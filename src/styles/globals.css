@@ -149,6 +149,32 @@ body {
   .mobile-menu-btn { display: none !important; }
 }
 
+/* Checkout / Cart responsive */
+@media (max-width: 860px) {
+  .checkout-grid { grid-template-columns: 1fr !important; }
+  .checkout-grid > div:last-child { position: static !important; }
+  .cart-grid { grid-template-columns: 1fr !important; }
+  .cart-grid > div:last-child { position: static !important; }
+  .addr-grid-3 { grid-template-columns: 1fr 1fr !important; }
+}
+@media (max-width: 600px) {
+  .checkout-name-grid { grid-template-columns: 1fr !important; }
+  .addr-grid-3 { grid-template-columns: 1fr !important; }
+}
+
+/* Admin responsive */
+@media (max-width: 1024px) {
+  .adm-sidebar { width: 200px !important; }
+  .adm-main { margin-left: 200px !important; }
+}
+@media (max-width: 768px) {
+  .adm-sidebar { display: none !important; }
+  .adm-main { margin-left: 0 !important; }
+  .adm-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .adm-analytics-grid { grid-template-columns: 1fr !important; }
+  .adm-two-col { grid-template-columns: 1fr !important; }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

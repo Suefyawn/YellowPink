@@ -7,12 +7,7 @@ import { ProductTile } from '@/components/ui/ProductTile';
 import { useCart } from '@/context/CartContext';
 import type { Product } from '@/types';
 
-const EXPANDABLES = [
-  { key: 'use', title: 'How to Use', content: 'Apply a small amount to clean skin. Blend evenly with fingertips or a brush for desired coverage. For best results, use with a primer.' },
-  { key: 'ingredients', title: 'Ingredients', content: 'Water, Cyclopentasiloxane, Titanium Dioxide, Glycerin, Dimethicone, Niacinamide, Tocopheryl Acetate, Hyaluronic Acid.' },
-  { key: 'reviews', title: 'Reviews (24)', content: 'Customers love this product for its blendability and long wear. Average rating: 4.7/5.' },
-  { key: 'shipping', title: 'Shipping & Returns', content: 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.' },
-];
+const SHIPPING_CONTENT = 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.';
 
 const PAIRS_WITH: Product[] = [
   { id: 'pair-1', brand: 'Pixi', name: 'On-the-Glow Blush', variant: 'Fleur', price: 3400, category: 'Blush', slug: 'pixi-on-the-glow-blush-stick', stock: 10 },
@@ -106,11 +101,19 @@ export function PDPPage({ product }: { product: Product }) {
                 {product.stock === 0 ? 'Out of Stock' : addedFlash ? 'Added ✓' : 'Add to Cart'}
               </button>
             </div>
-            <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 440 }}>
-              A high-coverage, crease-resistant formula that blends effortlessly for a natural, flawless finish. Imported and 100% authentic.
-            </p>
+            {product.description && (
+              <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 440 }}>
+                {product.description}
+              </p>
+            )}
             <hr className="hairline" style={{ marginBottom: 0 }} />
-            {EXPANDABLES.map(sec => (
+            {([
+              product.how_to_use ? { key: 'use', title: 'How to Use', content: product.how_to_use } : null,
+              product.ingredients ? { key: 'ingredients', title: 'Ingredients', content: product.ingredients } : null,
+              { key: 'shipping', title: 'Shipping & Returns', content: SHIPPING_CONTENT },
+            ] as Array<{ key: string; title: string; content: string } | null>)
+              .filter(Boolean)
+              .map(sec => sec && (
               <div key={sec.key} style={{ borderBottom: '1px solid var(--line)' }}>
                 <button onClick={() => setExpandedSection(expandedSection === sec.key ? null : sec.key)} style={{
                   width: '100%', padding: '16px 0', background: 'none', border: 'none', cursor: 'pointer',

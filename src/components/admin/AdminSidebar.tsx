@@ -8,6 +8,7 @@ const nav = [
   { href: '/admin/products',  label: 'Products',  icon: '◈' },
   { href: '/admin/orders',    label: 'Orders',    icon: '◎' },
   { href: '/admin/users',     label: 'Customers', icon: '◉' },
+  { href: '/admin/coupons',   label: 'Coupons',   icon: '◇' },
   { href: '/admin/blog',      label: 'Blog',      icon: '✦' },
 ];
 

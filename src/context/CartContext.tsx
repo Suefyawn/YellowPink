@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { CartItem, Product } from '@/types';
 
 interface CartContextValue {
@@ -16,14 +16,29 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
+const CART_KEY = 'yp_cart';
+
+function loadCart(): CartItem[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(CART_KEY);
+    return raw ? (JSON.parse(raw) as CartItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartItems, setCartItems] = useState<CartItem[]>(loadCart);
   const [cartOpen, setCartOpen] = useState(false);
+
+  useEffect(() => {
+    try { localStorage.setItem(CART_KEY, JSON.stringify(cartItems)); } catch { /* quota exceeded */ }
+  }, [cartItems]);
 
   const addToCart = (product: Product & { qty?: number }) => {
     setCartItems(prev => {
-      const key = product.name + (product.variant ?? '');
-      const existing = prev.findIndex(i => (i.name + (i.variant ?? '')) === key);
+      const existing = prev.findIndex(i => i.id === product.id);
       if (existing >= 0) {
         const updated = [...prev];
         updated[existing] = { ...updated[existing], qty: updated[existing].qty + (product.qty ?? 1) };

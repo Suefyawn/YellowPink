@@ -1,6 +1,7 @@
 'use client';
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { updateOrderStatus } from '@/app/admin/actions';
+import { useToast } from '@/components/admin/Toast';
 import type { OrderStatus } from '@/types';
 
 const STATUSES: { value: OrderStatus; label: string }[] = [
@@ -33,6 +34,12 @@ export function OrderStatusForm({ orderId, currentStatus, currentTracking }: {
 }) {
   const bound = updateOrderStatus.bind(null, orderId);
   const [state, action, pending] = useActionState(bound, null);
+  const toast = useToast();
+
+  useEffect(() => {
+    if (state?.success) toast('Order updated successfully');
+    if (state?.error) toast(state.error, 'error');
+  }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

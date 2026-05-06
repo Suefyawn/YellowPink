@@ -120,7 +120,7 @@ export function ProductForm({ product }: { product?: Product }) {
           </div>
 
           {/* Image URL */}
-          <div style={{ ...fieldWrap, marginBottom: 28 }}>
+          <div style={{ ...fieldWrap, marginBottom: 16 }}>
             <label style={lbl}>Product Image URL</label>
             <input
               name="image_url" type="url"
@@ -128,9 +128,28 @@ export function ProductForm({ product }: { product?: Product }) {
               style={inp}
               placeholder="https://example.com/image.jpg"
             />
-            <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4 }}>
-              Optional — used for product display on the storefront
-            </span>
+          </div>
+
+          {/* Content fields */}
+          <div style={{ ...fieldWrap, marginBottom: 16 }}>
+            <label style={lbl}>Description</label>
+            <textarea name="description" defaultValue={product?.description ?? ''} rows={3}
+              style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
+              placeholder="Short product description shown on the product page…" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+            <div style={fieldWrap}>
+              <label style={lbl}>How to Use</label>
+              <textarea name="how_to_use" defaultValue={product?.how_to_use ?? ''} rows={4}
+                style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
+                placeholder="Application instructions…" />
+            </div>
+            <div style={fieldWrap}>
+              <label style={lbl}>Ingredients</label>
+              <textarea name="ingredients" defaultValue={product?.ingredients ?? ''} rows={4}
+                style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
+                placeholder="Aqua, Glycerin, Niacinamide…" />
+            </div>
           </div>
 
           {/* Actions */}

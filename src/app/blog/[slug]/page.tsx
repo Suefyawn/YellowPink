@@ -1,9 +1,26 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getBlogPostBySlug, getBlogPosts, getProducts } from '@/lib/supabase';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
 import type { Product } from '@/types';
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getBlogPostBySlug(slug);
+  if (!post) return {};
+  const title = `${post.title} | Yellow Pink Blog`;
+  return {
+    title,
+    description: post.excerpt ?? post.title,
+    openGraph: {
+      title,
+      description: post.excerpt ?? post.title,
+      type: 'article',
+    },
+  };
+}
 
 export default async function BlogPostRoute({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;

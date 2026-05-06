@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
+import { sanitizeHtml } from '@/lib/sanitize';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
@@ -47,28 +48,17 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
         </div>
 
         <div className="container" style={{ maxWidth: 680, padding: '0 var(--side) 48px' }}>
-          <div style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}>
-            <p className="body-text" style={{ marginBottom: 20, fontSize: '0.9375rem', lineHeight: 1.8 }}>
-              When we talk about skincare in Pakistan, the conversation usually starts and ends with fairness creams. But real skincare — the kind that transforms your skin long-term — is about understanding your specific concerns and choosing ingredients backed by clinical evidence.
+          {post.body ? (
+            <div
+              className="blog-body"
+              style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.body) }}
+            />
+          ) : (
+            <p className="body-text" style={{ color: 'var(--ink-500)', fontStyle: 'italic' }}>
+              No content yet.
             </p>
-            <h2 className="h2" style={{ marginBottom: 12, marginTop: 40 }}>Understanding the Root Cause</h2>
-            <p className="body-text" style={{ marginBottom: 20, fontSize: '0.9375rem', lineHeight: 1.8 }}>
-              Whether it&apos;s melasma triggered by hormonal shifts, acne from a compromised moisture barrier, or hyperpigmentation from years of unprotected sun exposure — each condition has a different pathway and requires a different approach.
-            </p>
-            <blockquote style={{ margin: '40px 0', padding: '24px 32px', background: 'var(--brand-yellow)', borderRadius: 'var(--radius-card)' }}>
-              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, fontStyle: 'italic', color: 'var(--ink-900)', lineHeight: 1.4, margin: 0 }}>
-                &ldquo;The best skincare routine is the one you&apos;ll actually follow. Consistency beats complexity every time.&rdquo;
-              </p>
-            </blockquote>
-            <h2 className="h2" style={{ marginBottom: 12, marginTop: 40 }}>The Ingredients That Work</h2>
-            <p className="body-text" style={{ marginBottom: 20, fontSize: '0.9375rem', lineHeight: 1.8 }}>
-              We&apos;ve curated every product in our catalog based on ingredient efficacy. Niacinamide for texture. Salicylic acid for breakouts. Kojic acid and glutathione for pigmentation. SPF 46+ for daily protection.
-            </p>
-            <h2 className="h2" style={{ marginBottom: 12, marginTop: 40 }}>Building Your Routine</h2>
-            <p className="body-text" style={{ fontSize: '0.9375rem', lineHeight: 1.8 }}>
-              Start simple: cleanser, active treatment, moisturizer, SPF. Find what works, give it 6–8 weeks, and trust the process.
-            </p>
-          </div>
+          )}
         </div>
 
         <hr className="hairline" />

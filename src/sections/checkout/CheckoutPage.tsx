@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
-import { createOrder } from '@/lib/supabase';
 import { getBrowserClient } from '@/lib/supabase-browser';
+import type { Coupon } from '@/types';
 
 const FREE_SHIPPING = 2500;
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
@@ -21,13 +21,25 @@ export function CheckoutPage() {
   const { cartItems, clearCart } = useCart();
   const { user } = useAuth();
   const router = useRouter();
-  const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const shipping = total >= FREE_SHIPPING ? 0 : 200;
 
   const [payMethod, setPayMethod] = useState<PayMethod>('cod');
   const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '', address: '', city: '', province: '', zip: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [couponCode, setCouponCode] = useState('');
+  const [coupon, setCoupon] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+  const discount = coupon
+    ? coupon.type === 'percent'
+      ? Math.round(subtotal * coupon.value / 100)
+      : coupon.value
+    : 0;
+  const total = Math.max(0, subtotal - discount);
+  const shipping = total >= FREE_SHIPPING ? 0 : 200;
 
   const update = (key: string, val: string) => {
     setFormData(p => ({ ...p, [key]: val }));
@@ -38,43 +50,72 @@ export function CheckoutPage() {
     const e: Record<string, string> = {};
     if (!formData.firstName.trim()) e.firstName = 'Required';
     if (!formData.lastName.trim()) e.lastName = 'Required';
-    if (!formData.phone.trim()) e.phone = 'Required';
+    const phone = formData.phone.trim().replace(/\s/g, '');
+    if (!phone) {
+      e.phone = 'Required';
+    } else if (!/^(\+92|0092|0)?3\d{9}$/.test(phone)) {
+      e.phone = 'Enter a valid Pakistani mobile number (e.g. 03001234567)';
+    }
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      e.email = 'Enter a valid email address';
+    }
     if (!formData.address.trim()) e.address = 'Required';
     if (!formData.city.trim()) e.city = 'Required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
+  const applyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponError('');
+    setCouponLoading(true);
+    const sb = getBrowserClient();
+    const { data } = await sb.from('coupons').select('*').eq('code', couponCode.trim().toUpperCase()).eq('active', true).single();
+    setCouponLoading(false);
+    if (!data) { setCouponError('Invalid or expired coupon code'); return; }
+    const c = data as Coupon;
+    if (c.expires_at && new Date(c.expires_at) < new Date()) { setCouponError('This coupon has expired'); return; }
+    if (c.max_uses !== null && c.used_count >= c.max_uses) { setCouponError('This coupon has reached its usage limit'); return; }
+    if (subtotal < c.min_order) { setCouponError(`Minimum order of PKR ${c.min_order.toLocaleString()} required`); return; }
+    setCoupon(c);
+  };
+
   const handleSubmit = async () => {
     if (!validate()) return;
     setSubmitting(true);
+    setSubmitError('');
     try {
       const orderNumber = makeOrderNumber();
-      await createOrder({
-        order_number: orderNumber,
-        email: formData.email || undefined,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
-        phone: formData.phone,
-        address: formData.address,
-        city: formData.city,
-        province: formData.province || undefined,
-        zip: formData.zip || undefined,
-        pay_method: payMethod,
-        subtotal: total,
-        shipping,
-        total: total + shipping,
-        items: cartItems,
-        status: 'pending',
-        user_id: user?.id || undefined,
-      });
       const sb = getBrowserClient();
-      await Promise.all(cartItems.map(item =>
-        sb.rpc('decrement_stock' as never, { pid: item.id, amount: item.qty } as never)
-      ));
+      const { data, error } = await sb.rpc('place_order' as never, {
+        order_data: {
+          order_number: orderNumber,
+          email: formData.email || '',
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          phone: formData.phone.trim(),
+          address: formData.address,
+          city: formData.city,
+          province: formData.province || '',
+          zip: formData.zip || '',
+          pay_method: payMethod,
+          subtotal,
+          shipping,
+          total: total + shipping,
+          items: cartItems,
+          status: 'pending',
+          user_id: user?.id || '',
+          coupon_code: coupon?.code || '',
+          discount_amount: discount,
+        },
+      } as never);
+      if (error) throw new Error(error.message);
+      void data;
       clearCart();
       router.push(`/thank-you?order=${orderNumber}`);
-    } catch {
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      setSubmitError(msg);
       setSubmitting(false);
     }
   };
@@ -99,14 +140,15 @@ export function CheckoutPage() {
 
       <section style={{ padding: '40px 0 var(--section-gap)' }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48 }} className="duo-grid">
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48 }} className="checkout-grid">
             <div>
               <Overline style={{ display: 'block', marginBottom: 16 }}>Contact</Overline>
               <div style={{ marginBottom: 24 }}>
                 <label style={labelStyle}>Email (optional)</label>
                 <input type="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates" style={inputStyle('email')} />
+                {errors.email && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="checkout-name-grid">
                 <div>
                   <label style={labelStyle}>Phone *</label>
                   <input type="tel" value={formData.phone} onChange={e => update('phone', e.target.value)} placeholder="+92 300 1234567" style={inputStyle('phone')} />
@@ -133,7 +175,7 @@ export function CheckoutPage() {
                 <input value={formData.address} onChange={e => update('address', e.target.value)} placeholder="House/flat, street, area" style={inputStyle('address')} />
                 {errors.address && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.address}</span>}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }} className="addr-grid-3">
                 <div>
                   <label style={labelStyle}>City *</label>
                   <input value={formData.city} onChange={e => update('city', e.target.value)} style={inputStyle('city')} />
@@ -187,10 +229,45 @@ export function CheckoutPage() {
                 </div>
               ))}
               <hr className="hairline" style={{ margin: '16px 0' }} />
+
+              {/* Coupon code */}
+              {!coupon ? (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      value={couponCode}
+                      onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
+                      placeholder="Coupon code"
+                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none', background: 'white', fontFamily: 'monospace', textTransform: 'uppercase' }}
+                    />
+                    <button onClick={applyCoupon} disabled={couponLoading} style={{
+                      padding: '8px 14px', background: '#111827', color: 'white', border: 'none',
+                      borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: couponLoading ? 'not-allowed' : 'pointer',
+                    }}>
+                      {couponLoading ? '…' : 'Apply'}
+                    </button>
+                  </div>
+                  {couponError && <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--error)' }}>{couponError}</p>}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
+                  <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
+                    ✓ {coupon.code} {coupon.type === 'percent' ? `(${coupon.value}% off)` : `(PKR ${coupon.value} off)`}
+                  </span>
+                  <button onClick={() => { setCoupon(null); setCouponCode(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
+                </div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span className="small-text">Subtotal</span>
-                <span className="small-text tabular-nums" style={{ fontWeight: 500 }}>PKR {total.toLocaleString()}</span>
+                <span className="small-text tabular-nums" style={{ fontWeight: 500 }}>PKR {subtotal.toLocaleString()}</span>
               </div>
+              {discount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span className="small-text" style={{ color: '#15803d' }}>Discount</span>
+                  <span className="small-text tabular-nums" style={{ fontWeight: 500, color: '#15803d' }}>− PKR {discount.toLocaleString()}</span>
+                </div>
+              )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span className="small-text">Shipping</span>
                 <span className="small-text tabular-nums" style={{ fontWeight: 500, color: shipping === 0 ? 'var(--success)' : 'inherit' }}>{shipping === 0 ? 'FREE' : `PKR ${shipping}`}</span>
@@ -200,6 +277,11 @@ export function CheckoutPage() {
                 <span className="h3">Total</span>
                 <span className="h3 tabular-nums">PKR {(total + shipping).toLocaleString()}</span>
               </div>
+              {submitError && (
+                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: '0.8125rem' }}>
+                  {submitError}
+                </div>
+              )}
               <button className="btn-primary" style={{ width: '100%' }} onClick={handleSubmit} disabled={submitting}>
                 {submitting ? 'Placing Order…' : 'Place Order'}
               </button>

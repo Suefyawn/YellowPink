@@ -21,15 +21,30 @@ const statusMessages: Record<string, string> = {
   cancelled:  'This order was cancelled.',
 };
 
+const RATE_LIMIT_WINDOW = 60_000;
+const MAX_ATTEMPTS = 5;
+const attempts: { count: number; since: number } = { count: 0, since: Date.now() };
+
 export default function TrackPage() {
   const [orderNumber, setOrderNumber] = useState('');
+  const [phone, setPhone] = useState('');
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!orderNumber.trim()) return;
+    if (!orderNumber.trim() || !phone.trim()) return;
+
+    // Client-side rate limit
+    const now = Date.now();
+    if (now - attempts.since > RATE_LIMIT_WINDOW) { attempts.count = 0; attempts.since = now; }
+    attempts.count++;
+    if (attempts.count > MAX_ATTEMPTS) {
+      setError('Too many attempts. Please wait a minute before trying again.');
+      return;
+    }
+
     setError('');
     setOrder(null);
     setLoading(true);
@@ -38,7 +53,14 @@ export default function TrackPage() {
     if (!data) {
       setError('No order found with that number. Please check and try again.');
     } else {
-      setOrder(data as Order);
+      const record = data as Order;
+      // Verify phone matches — prevent enumeration
+      const normalise = (p: string) => p.replace(/[\s\-+]/g, '');
+      if (normalise(record.phone) !== normalise(phone)) {
+        setError('Phone number does not match our records for this order.');
+      } else {
+        setOrder(record);
+      }
     }
     setLoading(false);
   };
@@ -55,24 +77,39 @@ export default function TrackPage() {
           Enter your order number to check the status of your shipment.
         </p>
 
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: 12, marginBottom: 40 }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 40 }}>
           <input
             value={orderNumber}
             onChange={e => setOrderNumber(e.target.value)}
-            placeholder="e.g. YP-A1B2C3"
+            placeholder="Order number — e.g. YP-A1B2C3"
+            required
             style={{
-              flex: 1, padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
+              padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
               fontFamily: 'monospace', fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
               background: 'white', boxSizing: 'border-box',
             }}
           />
-          <button type="submit" disabled={loading} style={{
-            padding: '12px 24px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',
-            color: 'white', border: 'none', borderRadius: 10,
-            fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
-          }}>
-            {loading ? '…' : 'Track'}
-          </button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <input
+              value={phone}
+              onChange={e => setPhone(e.target.value)}
+              placeholder="Phone number used at checkout"
+              required
+              type="tel"
+              style={{
+                flex: 1, padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
+                fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
+                background: 'white', boxSizing: 'border-box',
+              }}
+            />
+            <button type="submit" disabled={loading} style={{
+              padding: '12px 24px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',
+              color: 'white', border: 'none', borderRadius: 10,
+              fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
+            }}>
+              {loading ? '…' : 'Track'}
+            </button>
+          </div>
         </form>
 
         {error && (

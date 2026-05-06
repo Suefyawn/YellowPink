@@ -12,6 +12,9 @@ export interface Product {
   slug: string;
   stock: number;
   image_url?: string;
+  description?: string;
+  how_to_use?: string;
+  ingredients?: string;
   created_at?: string;
 }
 
@@ -60,7 +63,21 @@ export interface Order {
   status?: OrderStatus;
   tracking_number?: string;
   user_id?: string;
+  coupon_code?: string;
+  discount_amount?: number;
   created_at?: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  type: 'percent' | 'fixed';
+  value: number;
+  min_order: number;
+  max_uses: number | null;
+  used_count: number;
+  active: boolean;
+  expires_at: string | null;
 }
 
 export interface Profile {
