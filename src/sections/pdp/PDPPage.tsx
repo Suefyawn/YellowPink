@@ -15,10 +15,10 @@ const EXPANDABLES = [
 ];
 
 const PAIRS_WITH: Product[] = [
-  { id: 'pair-1', brand: 'Pixi', name: 'On-the-Glow Blush', variant: 'Fleur', price: 3400, category: 'Blush', slug: 'pixi-on-the-glow-blush-stick' },
-  { id: 'pair-2', brand: 'SHEGLAM', name: 'Color Bloom Blush', variant: 'Risky Business', price: 1200, category: 'Blush', slug: 'sheglam-color-bloom-liquid-blush-risky-business' },
-  { id: 'pair-3', brand: 'Iconic London', name: 'Liquid Highlighter', variant: 'Original', price: 4800, category: 'Makeup', slug: 'iconic-london-liquid-highlighter' },
-  { id: 'pair-4', brand: 'CeraVe', name: 'Moisturizing Cream', variant: '340g', price: 3900, category: 'Skincare', slug: 'cerave-moisturizing-cream' },
+  { id: 'pair-1', brand: 'Pixi', name: 'On-the-Glow Blush', variant: 'Fleur', price: 3400, category: 'Blush', slug: 'pixi-on-the-glow-blush-stick', stock: 10 },
+  { id: 'pair-2', brand: 'SHEGLAM', name: 'Color Bloom Blush', variant: 'Risky Business', price: 1200, category: 'Blush', slug: 'sheglam-color-bloom-liquid-blush-risky-business', stock: 10 },
+  { id: 'pair-3', brand: 'Iconic London', name: 'Liquid Highlighter', variant: 'Original', price: 4800, category: 'Makeup', slug: 'iconic-london-liquid-highlighter', stock: 10 },
+  { id: 'pair-4', brand: 'CeraVe', name: 'Moisturizing Cream', variant: '340g', price: 3900, category: 'Skincare', slug: 'cerave-moisturizing-cream', stock: 10 },
 ];
 
 export function PDPPage({ product }: { product: Product }) {
@@ -73,12 +73,21 @@ export function PDPPage({ product }: { product: Product }) {
             {product.variant && (
               <div className="body-text" style={{ color: 'var(--ink-500)', marginBottom: 16 }}>{product.variant}</div>
             )}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
               <span className="tabular-nums" style={{ fontSize: '1.5rem', fontWeight: 600 }}>PKR {product.price.toLocaleString()}</span>
               {product.original_price && (
                 <span className="tabular-nums" style={{ textDecoration: 'line-through', color: 'var(--brand-pink)', fontSize: '1rem' }}>
                   PKR {product.original_price.toLocaleString()}
                 </span>
+              )}
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              {product.stock === 0 ? (
+                <span style={{ display: 'inline-block', padding: '3px 10px', background: '#fef2f2', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>Out of Stock</span>
+              ) : product.stock <= 5 ? (
+                <span style={{ display: 'inline-block', padding: '3px 10px', background: '#fffbeb', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#d97706' }}>Only {product.stock} left</span>
+              ) : (
+                <span style={{ display: 'inline-block', padding: '3px 10px', background: '#f0fdf4', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#16a34a' }}>In Stock</span>
               )}
             </div>
             <hr className="hairline" style={{ marginBottom: 24 }} />
@@ -88,12 +97,13 @@ export function PDPPage({ product }: { product: Product }) {
                 <span style={{ width: 32, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
                 <button onClick={() => setQty(qty + 1)} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>+</button>
               </div>
-              <button onClick={handleAdd} className="btn-primary" style={{
+              <button onClick={handleAdd} disabled={product.stock === 0} className="btn-primary" style={{
                 flex: 1,
-                background: addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink)',
+                background: product.stock === 0 ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink)',
                 transition: 'background 100ms ease-out',
+                cursor: product.stock === 0 ? 'not-allowed' : 'pointer',
               }}>
-                {addedFlash ? 'Added ✓' : 'Add to Cart'}
+                {product.stock === 0 ? 'Out of Stock' : addedFlash ? 'Added ✓' : 'Add to Cart'}
               </button>
             </div>
             <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 440 }}>

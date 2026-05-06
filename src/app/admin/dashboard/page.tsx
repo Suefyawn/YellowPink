@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import type { Order } from '@/types';
+import type { Order, Product } from '@/types';
 
 const fmt = (n: number) => `Rs ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -9,16 +10,28 @@ const fmtDate = (s: string) =>
 
 const payLabel: Record<string, string> = { cod: 'COD', card: 'Card', bank: 'Bank' };
 
-export default async function DashboardPage() {
-  const [{ count: productCount }, { count: orderCount }, { data: orders }, { count: blogCount }] =
-    await Promise.all([
-      supabase.from('products').select('*', { count: 'exact', head: true }),
-      supabase.from('orders').select('*', { count: 'exact', head: true }),
-      supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
-      supabase.from('blog_posts').select('*', { count: 'exact', head: true }),
-    ]);
+const statusColors: Record<string, string> = {
+  pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444',
+};
 
-  const revenue = (orders ?? []).reduce((s: number, o: Order) => s + o.total, 0);
+export default async function DashboardPage() {
+  const [
+    { count: productCount },
+    { count: orderCount },
+    { data: recentOrders },
+    { count: blogCount },
+    { data: allOrders },
+    { data: lowStockProducts },
+  ] = await Promise.all([
+    supabase.from('products').select('*', { count: 'exact', head: true }),
+    supabase.from('orders').select('*', { count: 'exact', head: true }),
+    supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
+    supabase.from('blog_posts').select('*', { count: 'exact', head: true }),
+    supabase.from('orders').select('total'),
+    supabase.from('products').select('*').lte('stock', 5).order('stock', { ascending: true }),
+  ]);
+
+  const revenue = (allOrders ?? []).reduce((s: number, o: { total: number }) => s + o.total, 0);
 
   const stats = [
     { label: 'Products', value: productCount ?? 0, icon: '◈', color: '#6366f1' },
@@ -37,16 +50,12 @@ export default async function DashboardPage() {
       </p>
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 40 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 32 }}>
         {stats.map(s => (
           <div key={s.label} style={{
-            background: 'white',
-            borderRadius: 10,
-            padding: '24px',
+            background: 'white', borderRadius: 10, padding: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
+            display: 'flex', flexDirection: 'column', gap: 12,
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500 }}>{s.label}</span>
@@ -64,13 +73,51 @@ export default async function DashboardPage() {
         ))}
       </div>
 
+      {/* Low Stock Alert */}
+      {lowStockProducts && lowStockProducts.length > 0 && (
+        <div style={{
+          background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
+          padding: '20px 24px', marginBottom: 32,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#92400e' }}>
+              ⚠ Low Stock Alert ({lowStockProducts.length} item{lowStockProducts.length > 1 ? 's' : ''})
+            </h2>
+            <Link href="/admin/products" style={{ fontSize: '0.8125rem', color: '#d97706', textDecoration: 'none' }}>
+              Manage products →
+            </Link>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            {(lowStockProducts as Product[]).map(p => (
+              <Link key={p.id} href={`/admin/products/${p.id}`} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 12px', background: 'white', borderRadius: 8,
+                border: '1px solid #fde68a', textDecoration: 'none',
+              }}>
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  width: 22, height: 22, borderRadius: '50%', fontSize: '0.6875rem', fontWeight: 700,
+                  background: p.stock === 0 ? '#fef2f2' : '#fffbeb',
+                  color: p.stock === 0 ? '#dc2626' : '#d97706',
+                }}>
+                  {p.stock}
+                </span>
+                <span style={{ fontSize: '0.8125rem', color: '#374151', fontWeight: 500 }}>
+                  {p.brand} {p.name}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Recent Orders */}
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Recent Orders</h2>
-          <a href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#ec4899', textDecoration: 'none' }}>View all →</a>
+          <Link href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#ec4899', textDecoration: 'none' }}>View all →</Link>
         </div>
-        {!orders || orders.length === 0 ? (
+        {!recentOrders || recentOrders.length === 0 ? (
           <div style={{ padding: '40px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
             No orders yet
           </div>
@@ -78,39 +125,52 @@ export default async function DashboardPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                {['Order', 'Customer', 'Total', 'Payment', 'Date'].map(h => (
+                {['Order', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
                   <th key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {(orders as Order[]).map((o, i) => (
-                <tr key={o.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <a href={`/admin/orders/${o.id}`} style={{ fontWeight: 600, fontSize: '0.875rem', color: '#ec4899', textDecoration: 'none' }}>
-                      {o.order_number}
-                    </a>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
-                    {o.first_name} {o.last_name}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
-                    {fmt(o.total)}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <span style={{
-                      display: 'inline-block', padding: '2px 10px',
-                      background: '#f3f4f6', borderRadius: 20,
-                      fontSize: '0.75rem', fontWeight: 500, color: '#374151',
-                    }}>
-                      {payLabel[o.pay_method] ?? o.pay_method}
-                    </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
-                    {o.created_at ? fmtDate(o.created_at) : '—'}
-                  </td>
-                </tr>
-              ))}
+              {(recentOrders as Order[]).map((o, i) => {
+                const status = o.status ?? 'pending';
+                return (
+                  <tr key={o.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 600, fontSize: '0.875rem', color: '#ec4899', textDecoration: 'none' }}>
+                        {o.order_number}
+                      </Link>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                      {o.first_name} {o.last_name}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                      {fmt(o.total)}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '2px 10px', borderRadius: 20,
+                        fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize',
+                        background: (statusColors[status] ?? '#6b7280') + '20',
+                        color: statusColors[status] ?? '#6b7280',
+                      }}>
+                        {status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '2px 10px',
+                        background: '#f3f4f6', borderRadius: 20,
+                        fontSize: '0.75rem', fontWeight: 500, color: '#374151',
+                      }}>
+                        {payLabel[o.pay_method] ?? o.pay_method}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+                      {o.created_at ? fmtDate(o.created_at) : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

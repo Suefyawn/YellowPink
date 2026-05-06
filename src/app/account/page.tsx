@@ -1,0 +1,59 @@
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+
+export default function AccountPage() {
+  const { user, loading, signOut } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !user) router.replace('/login');
+  }, [user, loading, router]);
+
+  if (loading || !user) {
+    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>Loading…</div>;
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
+  };
+
+  return (
+    <div className="container" style={{ padding: '48px var(--side)' }}>
+      <div style={{ maxWidth: 640, margin: '0 auto' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500, margin: '0 0 8px' }}>My Account</h1>
+        <p style={{ color: 'var(--ink-500)', margin: '0 0 40px', fontSize: '0.9375rem' }}>{user.email}</p>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
+          <Link href="/account/orders" style={{
+            display: 'block', padding: '28px 24px', background: 'white', borderRadius: 12,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textDecoration: 'none', border: '1px solid var(--line)',
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: 12 }}>◎</div>
+            <div style={{ fontWeight: 600, fontSize: '1.0625rem', color: 'var(--ink-900)', marginBottom: 4 }}>My Orders</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--ink-500)' }}>View order history and track shipments</div>
+          </Link>
+          <Link href="/account/profile" style={{
+            display: 'block', padding: '28px 24px', background: 'white', borderRadius: 12,
+            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textDecoration: 'none', border: '1px solid var(--line)',
+          }}>
+            <div style={{ fontSize: '2rem', marginBottom: 12 }}>◈</div>
+            <div style={{ fontWeight: 600, fontSize: '1.0625rem', color: 'var(--ink-900)', marginBottom: 4 }}>Profile</div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--ink-500)' }}>Manage your personal details</div>
+          </Link>
+        </div>
+
+        <button onClick={handleSignOut} style={{
+          padding: '10px 20px', background: 'transparent', border: '1px solid #d1d5db',
+          borderRadius: 8, color: '#6b7280', cursor: 'pointer', fontSize: '0.875rem',
+        }}>
+          Sign out
+        </button>
+      </div>
+    </div>
+  );
+}

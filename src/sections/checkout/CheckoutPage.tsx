@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { createOrder } from '@/lib/supabase';
+import { getBrowserClient } from '@/lib/supabase-browser';
 
 const FREE_SHIPPING = 2500;
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
@@ -13,6 +15,7 @@ type PayMethod = 'cod' | 'card' | 'bank';
 
 export function CheckoutPage() {
   const { cartItems, clearCart } = useCart();
+  const { user } = useAuth();
   const router = useRouter();
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const shipping = total >= FREE_SHIPPING ? 0 : 200;
@@ -58,7 +61,14 @@ export function CheckoutPage() {
         shipping,
         total: total + shipping,
         items: cartItems,
+        status: 'pending',
+        user_id: user?.id || undefined,
       });
+      const sb = getBrowserClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await Promise.all(cartItems.map(item =>
+        (sb as any).rpc('decrement_stock', { pid: item.id, amount: item.qty })
+      ));
       clearCart();
       router.push(`/thank-you?order=${orderNumber}`);
     } catch {

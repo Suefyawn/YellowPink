@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { AdminSidebar } from '@/components/admin/AdminSidebar';
+import { AdminShell } from '@/components/admin/AdminShell';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const store = await cookies();
@@ -21,12 +21,5 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
-  return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f3f4f6' }}>
-      <AdminSidebar />
-      <main style={{ flex: 1, marginLeft: 240, minHeight: '100vh', overflow: 'auto' }}>
-        {children}
-      </main>
-    </div>
-  );
+  return <AdminShell>{children}</AdminShell>;
 }

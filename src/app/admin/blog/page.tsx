@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { deleteBlogPost } from '@/app/admin/actions';
+import { DeleteButton } from '@/components/admin/DeleteButton';
 import type { BlogPost } from '@/types';
 
 export default async function BlogAdminPage() {
@@ -67,15 +68,11 @@ export default async function BlogAdminPage() {
                       }}>
                         Edit
                       </Link>
-                      <form action={deleteBlogPost} onSubmit={e => { if (!confirm(`Delete "${p.title}"?`)) e.preventDefault(); }}>
-                        <input type="hidden" name="id" value={p.id} />
-                        <button type="submit" style={{
-                          padding: '5px 12px', background: '#fef2f2', color: '#dc2626',
-                          border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 500, cursor: 'pointer',
-                        }}>
-                          Delete
-                        </button>
-                      </form>
+                      <DeleteButton
+                        id={p.id}
+                        action={deleteBlogPost}
+                        confirmMsg={`Delete "${p.title}"?`}
+                      />
                     </div>
                   </td>
                 </tr>

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
 import { useCart } from '@/context/CartContext';
 import { useSearch } from '@/context/SearchContext';
+import { useAuth } from '@/context/AuthContext';
 
 const NAV_ITEMS = [
   { label: 'Makeup',   href: '/shop?category=Makeup' },
@@ -20,6 +21,7 @@ export function Header() {
   const [mobileMenu, setMobileMenu] = useState(false);
   const { cartCount, setCartOpen } = useCart();
   const { setSearchOpen } = useSearch();
+  const { user } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -62,11 +64,11 @@ export function Header() {
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
-          <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-700)', display: 'flex' }}>
+          <Link href={user ? '/account' : '/login'} style={{ color: 'var(--ink-700)', display: 'flex' }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
             </svg>
-          </button>
+          </Link>
           <button onClick={() => setCartOpen(true)} style={{
             background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)',
             display: 'flex', alignItems: 'center', gap: 4, position: 'relative',

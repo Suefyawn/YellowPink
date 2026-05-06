@@ -82,7 +82,7 @@ export function ProductForm({ product }: { product?: Product }) {
           </div>
 
           {/* Row 3 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div style={fieldWrap}>
               <label style={lbl}>Category *</label>
               <input name="category" required defaultValue={product?.category} style={inp} placeholder="e.g. Skincare" />
@@ -97,6 +97,10 @@ export function ProductForm({ product }: { product?: Product }) {
                 <option value="Featured">Featured</option>
                 <option value="Limited">Limited</option>
               </select>
+            </div>
+            <div style={fieldWrap}>
+              <label style={lbl}>Stock Quantity *</label>
+              <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
             </div>
           </div>
 

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
+import type { OrderStatus } from '@/types';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,7 @@ export async function createProduct(
     category: formData.get('category') as string,
     tag: (formData.get('tag') as string) || null,
     slug: formData.get('slug') as string,
+    stock: Number(formData.get('stock') ?? 0),
   };
   const { error } = await supabase.from('products').insert(data);
   if (error) return { error: error.message };
@@ -67,6 +69,7 @@ export async function updateProduct(
     category: formData.get('category') as string,
     tag: (formData.get('tag') as string) || null,
     slug: formData.get('slug') as string,
+    stock: Number(formData.get('stock') ?? 0),
   };
   const { error } = await supabase.from('products').update(data).eq('id', id);
   if (error) return { error: error.message };
@@ -129,4 +132,23 @@ export async function deleteBlogPost(formData: FormData) {
   await supabase.from('blog_posts').delete().eq('id', id);
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
+}
+
+// ─── Orders ──────────────────────────────────────────────────────────────────
+
+export async function updateOrderStatus(
+  id: string,
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const status = formData.get('status') as OrderStatus;
+  const tracking_number = (formData.get('tracking_number') as string) || null;
+  const { error } = await supabase
+    .from('orders')
+    .update({ status, tracking_number })
+    .eq('id', id);
+  if (error) return { error: error.message };
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath('/admin/orders');
+  return { success: true };
 }
