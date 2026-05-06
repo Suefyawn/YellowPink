@@ -105,7 +105,7 @@ export function ProductForm({ product }: { product?: Product }) {
           </div>
 
           {/* Slug */}
-          <div style={{ ...fieldWrap, marginBottom: 28 }}>
+          <div style={{ ...fieldWrap, marginBottom: 16 }}>
             <label style={lbl}>URL Slug *</label>
             <input
               name="slug" required
@@ -116,6 +116,20 @@ export function ProductForm({ product }: { product?: Product }) {
             />
             <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4 }}>
               /product/{slug || 'product-slug'}
+            </span>
+          </div>
+
+          {/* Image URL */}
+          <div style={{ ...fieldWrap, marginBottom: 28 }}>
+            <label style={lbl}>Product Image URL</label>
+            <input
+              name="image_url" type="url"
+              defaultValue={product?.image_url ?? ''}
+              style={inp}
+              placeholder="https://example.com/image.jpg"
+            />
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4 }}>
+              Optional — used for product display on the storefront
             </span>
           </div>
 

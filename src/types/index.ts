@@ -11,7 +11,17 @@ export interface Product {
   tag?: string;
   slug: string;
   stock: number;
+  image_url?: string;
   created_at?: string;
+}
+
+export interface AdminUser {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  created_at: string;
 }
 
 export interface BlogPost {

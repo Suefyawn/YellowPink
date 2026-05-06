@@ -48,6 +48,7 @@ export async function createProduct(
     tag: (formData.get('tag') as string) || null,
     slug: formData.get('slug') as string,
     stock: Number(formData.get('stock') ?? 0),
+    image_url: (formData.get('image_url') as string) || null,
   };
   const { error } = await supabase.from('products').insert(data);
   if (error) return { error: error.message };
@@ -70,6 +71,7 @@ export async function updateProduct(
     tag: (formData.get('tag') as string) || null,
     slug: formData.get('slug') as string,
     stock: Number(formData.get('stock') ?? 0),
+    image_url: (formData.get('image_url') as string) || null,
   };
   const { error } = await supabase.from('products').update(data).eq('id', id);
   if (error) return { error: error.message };
@@ -135,6 +137,11 @@ export async function deleteBlogPost(formData: FormData) {
 }
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
+
+export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus) {
+  await supabase.from('orders').update({ status }).in('id', ids);
+  revalidatePath('/admin/orders');
+}
 
 export async function updateOrderStatus(
   id: string,

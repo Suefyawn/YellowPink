@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
-import type { Order, Product } from '@/types';
+import type { Order, Product, CartItem } from '@/types';
 
 const fmt = (n: number) => `Rs ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -13,6 +13,8 @@ const payLabel: Record<string, string> = { cod: 'COD', card: 'Card', bank: 'Bank
 const statusColors: Record<string, string> = {
   pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444',
 };
+
+const statusLabels = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as const;
 
 export default async function DashboardPage() {
   const [
@@ -27,11 +29,28 @@ export default async function DashboardPage() {
     supabase.from('orders').select('*', { count: 'exact', head: true }),
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
     supabase.from('blog_posts').select('*', { count: 'exact', head: true }),
-    supabase.from('orders').select('total'),
+    supabase.from('orders').select('total, status, items'),
     supabase.from('products').select('*').lte('stock', 5).order('stock', { ascending: true }),
   ]);
 
-  const revenue = (allOrders ?? []).reduce((s: number, o: { total: number }) => s + o.total, 0);
+  const allOrdersList = (allOrders ?? []) as Array<{ total: number; status: string; items: CartItem[] }>;
+  const revenue = allOrdersList.reduce((s, o) => s + o.total, 0);
+
+  // Status breakdown
+  const statusCounts = statusLabels.reduce<Record<string, number>>((acc, s) => {
+    acc[s] = allOrdersList.filter(o => o.status === s).length;
+    return acc;
+  }, {});
+
+  // Top products by order quantity
+  const productQty: Record<string, { name: string; brand: string; qty: number }> = {};
+  for (const order of allOrdersList) {
+    for (const item of (order.items ?? [])) {
+      if (!productQty[item.id]) productQty[item.id] = { name: item.name, brand: item.brand, qty: 0 };
+      productQty[item.id].qty += item.qty;
+    }
+  }
+  const topProducts = Object.values(productQty).sort((a, b) => b.qty - a.qty).slice(0, 5);
 
   const stats = [
     { label: 'Products', value: productCount ?? 0, icon: '◈', color: '#6366f1' },
@@ -110,6 +129,55 @@ export default async function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Orders by status + Top products */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 32 }}>
+        {/* Status breakdown */}
+        <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px' }}>
+          <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Orders by Status</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {statusLabels.map(s => {
+              const count = statusCounts[s] ?? 0;
+              const pct = orderCount ? Math.round((count / orderCount) * 100) : 0;
+              return (
+                <div key={s}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: '0.8125rem', color: '#374151', textTransform: 'capitalize', fontWeight: 500 }}>{s}</span>
+                    <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{count} ({pct}%)</span>
+                  </div>
+                  <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${pct}%`, background: statusColors[s], borderRadius: 3, transition: 'width 0.3s' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Top products */}
+        <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px' }}>
+          <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Top Products</h2>
+          {topProducts.length === 0 ? (
+            <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No sales yet</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {topProducts.map((p, i) => (
+                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{
+                    width: 24, height: 24, borderRadius: '50%', background: '#fdf2f8',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '0.75rem', fontWeight: 700, color: '#ec4899', flexShrink: 0,
+                  }}>{i + 1}</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.8125rem', color: '#111827', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.brand} {p.name}</div>
+                  </div>
+                  <span style={{ fontSize: '0.8125rem', color: '#6b7280', fontWeight: 600, flexShrink: 0 }}>{p.qty} sold</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Recent Orders */}
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>

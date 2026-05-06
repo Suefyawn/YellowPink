@@ -7,6 +7,7 @@ const nav = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: '▣' },
   { href: '/admin/products',  label: 'Products',  icon: '◈' },
   { href: '/admin/orders',    label: 'Orders',    icon: '◎' },
+  { href: '/admin/users',     label: 'Customers', icon: '◉' },
   { href: '/admin/blog',      label: 'Blog',      icon: '✦' },
 ];
 
