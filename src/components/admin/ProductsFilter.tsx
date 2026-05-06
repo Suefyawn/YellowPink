@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useTransition } from 'react';
+import { useCallback, useRef, useTransition } from 'react';
 
 const CATEGORIES = ['All', 'Makeup', 'Skincare', 'Wellness'];
 const TAGS = ['All', 'New', 'Sale', 'Bestseller', 'Featured', 'Limited'];
@@ -20,16 +20,16 @@ export function ProductsFilter({ total }: { total: number }) {
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString());
-    value === 'All' || value === 'all' ? next.delete(key) : next.set(key, value);
+    if (value === 'All' || value === 'all') { next.delete(key); } else { next.set(key, value); }
     push(next);
   };
 
-  let debounce: ReturnType<typeof setTimeout>;
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setSearch = (v: string) => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
+    if (debounce.current) clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
-      v ? next.set('q', v) : next.delete('q');
+      if (v) { next.set('q', v); } else { next.delete('q'); }
       push(next);
     }, 350);
   };

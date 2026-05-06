@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useTransition } from 'react';
+import { useCallback, useRef, useTransition } from 'react';
 
 const STATUSES = [
   { value: 'all',        label: 'All' },
@@ -25,17 +25,17 @@ export function OrdersFilter({ total }: { total: number }) {
 
   const setStatus = (s: string) => {
     const next = new URLSearchParams(params.toString());
-    s === 'all' ? next.delete('status') : next.set('status', s);
+    if (s === 'all') { next.delete('status'); } else { next.set('status', s); }
     next.delete('page');
     push(next);
   };
 
-  let debounce: ReturnType<typeof setTimeout>;
+  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setSearch = (v: string) => {
-    clearTimeout(debounce);
-    debounce = setTimeout(() => {
+    if (debounce.current) clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
-      v ? next.set('q', v) : next.delete('q');
+      if (v) { next.set('q', v); } else { next.delete('q'); }
       next.delete('page');
       push(next);
     }, 350);

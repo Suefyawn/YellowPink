@@ -21,7 +21,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   const { id } = await params;
 
   const [{ data: userData }, { data: orders }] = await Promise.all([
-    (supabase as any).rpc('get_admin_user', { p_id: id }),
+    supabase.rpc('get_admin_user' as never, { p_id: id } as never),
     supabase.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
   ]);
 
@@ -81,14 +81,14 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           {/* Stats */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {[
-              { label: 'Orders', value: orderList.length },
-              { label: 'Delivered', value: deliveredCount },
+              { label: 'Orders', value: orderList.length, wide: false },
+              { label: 'Delivered', value: deliveredCount, wide: false },
               { label: 'Total Spend', value: fmt(totalSpend), wide: true },
             ].map(s => (
               <div key={s.label} style={{
                 ...section,
                 padding: '16px 20px',
-                gridColumn: (s as any).wide ? '1 / -1' : undefined,
+                gridColumn: s.wide ? '1 / -1' : undefined,
               }}>
                 <div style={{ fontSize: '0.75rem', color: '#6b7280', fontWeight: 500, marginBottom: 4 }}>{s.label}</div>
                 <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>{s.value}</div>

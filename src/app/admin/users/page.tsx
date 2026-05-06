@@ -8,7 +8,7 @@ const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
 export default async function UsersPage() {
-  const { data: users } = await (supabase as any).rpc('get_admin_users');
+  const { data: users } = await supabase.rpc('get_admin_users' as never);
   const list = (users ?? []) as AdminUser[];
 
   return (
