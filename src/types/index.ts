@@ -1,0 +1,46 @@
+export interface Product {
+  id: string;
+  brand: string;
+  name: string;
+  variant?: string;
+  price: number;
+  original_price?: number;
+  category: string;
+  tag?: string;
+  slug: string;
+}
+
+export interface BlogPost {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string;
+  category: string;
+  date: string;
+  read_time: string;
+  featured?: boolean;
+  body?: string;
+}
+
+export interface CartItem extends Product {
+  qty: number;
+}
+
+export interface Order {
+  id?: string;
+  order_number: string;
+  email?: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  address: string;
+  city: string;
+  province?: string;
+  zip?: string;
+  pay_method: 'cod' | 'card' | 'bank';
+  subtotal: number;
+  shipping: number;
+  total: number;
+  items: CartItem[];
+  created_at?: string;
+}
