@@ -2,11 +2,13 @@
   "build": {
     "env": {
       "NEXT_PUBLIC_SUPABASE_URL": "https://cngsjtthiexcfpjpcpsg.supabase.co",
-      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuZ3NqdHRoaWV4Y2ZwanBjcHNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNTI4ODgsImV4cCI6MjA5MzYyODg4OH0.vcQqOr5hvpFJbmschr7MmriQ0z6Pl1KHq7PS6BpvY0g"
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuZ3NqdHRoaWV4Y2ZwanBjcHNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNTI4ODgsImV4cCI6MjA5MzYyODg4OH0.vcQqOr5hvpFJbmschr7MmriQ0z6Pl1KHq7PS6BpvY0g",
+      "ADMIN_PASSWORD": "yellowpink2024"
     }
   },
   "env": {
     "NEXT_PUBLIC_SUPABASE_URL": "https://cngsjtthiexcfpjpcpsg.supabase.co",
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuZ3NqdHRoaWV4Y2ZwanBjcHNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNTI4ODgsImV4cCI6MjA5MzYyODg4OH0.vcQqOr5hvpFJbmschr7MmriQ0z6Pl1KHq7PS6BpvY0g"
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuZ3NqdHRoaWV4Y2ZwanBjcHNnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNTI4ODgsImV4cCI6MjA5MzYyODg4OH0.vcQqOr5hvpFJbmschr7MmriQ0z6Pl1KHq7PS6BpvY0g",
+    "ADMIN_PASSWORD": "yellowpink2024"
   }
 }

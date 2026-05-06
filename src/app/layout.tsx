@@ -1,12 +1,7 @@
 import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { Providers } from '@/context/Providers';
-import { AnnouncementBar } from '@/components/layout/AnnouncementBar';
-import { Header } from '@/components/layout/Header';
-import { Footer } from '@/components/layout/Footer';
-import { MiniCart } from '@/components/cart/MiniCart';
-import { SearchOverlayWrapper } from '@/components/search/SearchOverlayWrapper';
-import { KeyboardShortcuts } from '@/components/layout/KeyboardShortcuts';
+import { SiteChrome } from '@/components/layout/SiteChrome';
 
 export const metadata: Metadata = {
   title: 'Yellow Pink — Imported Beauty & Wellness',
@@ -18,13 +13,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body>
         <Providers>
-          <AnnouncementBar />
-          <Header />
-          {children}
-          <Footer />
-          <MiniCart />
-          <SearchOverlayWrapper />
-          <KeyboardShortcuts />
+          <SiteChrome>{children}</SiteChrome>
         </Providers>
       </body>
     </html>
