@@ -1,0 +1,118 @@
+import Link from 'next/link';
+import { Overline } from '@/components/ui/Overline';
+import { ProductTile } from '@/components/ui/ProductTile';
+import type { BlogPost, Product } from '@/types';
+
+interface BlogPostPageProps {
+  post: BlogPost;
+  relatedPosts: BlogPost[];
+  relatedProducts: Product[];
+}
+
+export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPageProps) {
+  return (
+    <div>
+      <div className="container" style={{ padding: '16px var(--side)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Link href="/blog" style={{ fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', color: 'var(--ink-500)', textDecoration: 'none' }}>Journal</Link>
+          <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--ink-900)' }}>{post.category}</span>
+        </div>
+      </div>
+
+      <article style={{ borderTop: '1px solid var(--line)' }}>
+        <div className="container" style={{ maxWidth: 800, padding: '48px var(--side) 0' }}>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+            <Overline style={{ color: 'var(--ink-500)' }}>{post.category}</Overline>
+            <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-500)' }} />
+            <span className="small-text">{post.read_time}</span>
+          </div>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.75rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 16 }}>{post.title}</h1>
+          <p className="body-text" style={{ color: 'var(--ink-700)', fontSize: '1.0625rem', lineHeight: 1.6, marginBottom: 24 }}>{post.excerpt}</p>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 32, borderBottom: '1px solid var(--line)' }}>
+            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>YP</span>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Yellow Pink Editorial</div>
+              <div className="small-text">{post.date}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="container" style={{ maxWidth: 960, padding: '32px var(--side)' }}>
+          <div className="img-placeholder" style={{ aspectRatio: '16/9', borderRadius: 'var(--radius-card)' }}>
+            <span>article hero image</span>
+          </div>
+        </div>
+
+        <div className="container" style={{ maxWidth: 680, padding: '0 var(--side) 48px' }}>
+          <div style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}>
+            <p className="body-text" style={{ marginBottom: 20, fontSize: '0.9375rem', lineHeight: 1.8 }}>
+              When we talk about skincare in Pakistan, the conversation usually starts and ends with fairness creams. But real skincare — the kind that transforms your skin long-term — is about understanding your specific concerns and choosing ingredients backed by clinical evidence.
+            </p>
+            <h2 className="h2" style={{ marginBottom: 12, marginTop: 40 }}>Understanding the Root Cause</h2>
+            <p className="body-text" style={{ marginBottom: 20, fontSize: '0.9375rem', lineHeight: 1.8 }}>
+              Whether it&apos;s melasma triggered by hormonal shifts, acne from a compromised moisture barrier, or hyperpigmentation from years of unprotected sun exposure — each condition has a different pathway and requires a different approach.
+            </p>
+            <blockquote style={{ margin: '40px 0', padding: '24px 32px', background: 'var(--brand-yellow)', borderRadius: 'var(--radius-card)' }}>
+              <p style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, fontStyle: 'italic', color: 'var(--ink-900)', lineHeight: 1.4, margin: 0 }}>
+                &ldquo;The best skincare routine is the one you&apos;ll actually follow. Consistency beats complexity every time.&rdquo;
+              </p>
+            </blockquote>
+            <h2 className="h2" style={{ marginBottom: 12, marginTop: 40 }}>The Ingredients That Work</h2>
+            <p className="body-text" style={{ marginBottom: 20, fontSize: '0.9375rem', lineHeight: 1.8 }}>
+              We&apos;ve curated every product in our catalog based on ingredient efficacy. Niacinamide for texture. Salicylic acid for breakouts. Kojic acid and glutathione for pigmentation. SPF 46+ for daily protection.
+            </p>
+            <h2 className="h2" style={{ marginBottom: 12, marginTop: 40 }}>Building Your Routine</h2>
+            <p className="body-text" style={{ fontSize: '0.9375rem', lineHeight: 1.8 }}>
+              Start simple: cleanser, active treatment, moisturizer, SPF. Find what works, give it 6–8 weeks, and trust the process.
+            </p>
+          </div>
+        </div>
+
+        <hr className="hairline" />
+
+        {relatedProducts.length > 0 && (
+          <section style={{ padding: '48px 0' }}>
+            <div className="container">
+              <Overline style={{ display: 'block', marginBottom: 24 }}>Mentioned in This Article</Overline>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid-3">
+                {relatedProducts.map((p) => (
+                  <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <ProductTile product={p} />
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {relatedPosts.length > 0 && (
+          <>
+            <hr className="hairline" />
+            <section style={{ padding: '48px 0' }}>
+              <div className="container">
+                <Overline style={{ display: 'block', marginBottom: 24 }}>More from {post.category}</Overline>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--gutter)' }} className="duo-grid">
+                  {relatedPosts.map((rp) => (
+                    <Link key={rp.id} href={`/blog/${rp.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <article style={{ cursor: 'pointer' }}>
+                        <div className="img-placeholder" style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', marginBottom: 12 }}>
+                          <span>article image</span>
+                        </div>
+                        <Overline style={{ color: 'var(--ink-500)', display: 'block', marginBottom: 4 }}>{rp.category}</Overline>
+                        <h3 className="h3" style={{ marginBottom: 4 }}>{rp.title}</h3>
+                        <span className="small-text">{rp.date} · {rp.read_time}</span>
+                      </article>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+      </article>
+    </div>
+  );
+}
