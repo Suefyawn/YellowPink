@@ -13,6 +13,10 @@ const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 
 
 type PayMethod = 'cod' | 'card' | 'bank';
 
+function makeOrderNumber() {
+  return 'YP-' + Date.now().toString(36).slice(-6).toUpperCase();
+}
+
 export function CheckoutPage() {
   const { cartItems, clearCart } = useCart();
   const { user } = useAuth();
@@ -45,7 +49,7 @@ export function CheckoutPage() {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const orderNumber = 'YP-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const orderNumber = makeOrderNumber();
       await createOrder({
         order_number: orderNumber,
         email: formData.email || undefined,
@@ -65,9 +69,8 @@ export function CheckoutPage() {
         user_id: user?.id || undefined,
       });
       const sb = getBrowserClient();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await Promise.all(cartItems.map(item =>
-        (sb as any).rpc('decrement_stock', { pid: item.id, amount: item.qty })
+        sb.rpc('decrement_stock' as never, { pid: item.id, amount: item.qty } as never)
       ));
       clearCart();
       router.push(`/thank-you?order=${orderNumber}`);

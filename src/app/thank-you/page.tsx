@@ -1,10 +1,9 @@
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
-import { LogoMark } from '@/components/ui/LogoMark';
 
 export default async function ThankYouPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
   const { order } = await searchParams;
-  const orderNumber = order ?? 'YP-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+  const orderNumber = order ?? 'YP-??????';
 
   return (
     <main className="fade-in">

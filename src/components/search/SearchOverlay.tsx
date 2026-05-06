@@ -26,9 +26,9 @@ export function SearchOverlay() {
         });
       }
     } else {
-      setQuery('');
+      setQuery(''); // eslint-disable-line react-hooks/set-state-in-effect
     }
-  }, [searchOpen]);
+  }, [searchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {

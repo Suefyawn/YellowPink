@@ -49,13 +49,12 @@ export default function ProfilePage() {
     setSuccess(false);
     setSaving(true);
     const sb = getBrowserClient();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (sb.from('profiles') as any).upsert({
+    const { error } = await sb.from('profiles').upsert({
       id: user.id,
       first_name: firstName || null,
       last_name: lastName || null,
       phone: phone || null,
-    });
+    } as never);
     if (error) { setError(error.message); }
     else { setSuccess(true); }
     setSaving(false);

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
 import { useCart } from '@/context/CartContext';
 import { useSearch } from '@/context/SearchContext';
@@ -22,7 +21,6 @@ export function Header() {
   const { cartCount, setCartOpen } = useCart();
   const { setSearchOpen } = useSearch();
   const { user } = useAuth();
-  const router = useRouter();
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
