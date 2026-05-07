@@ -55,12 +55,13 @@ function Divider() {
   return <div style={{ height: 1, background: '#f3f4f6', margin: '20px 0' }} />;
 }
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: { saved?: string } }) {
   const session = await getStaffSession();
   if (!session?.isOwner) redirect('/admin/dashboard');
 
   const s = await getSiteSettings();
   const g = (key: string, fallback = '') => s[key] ?? fallback;
+  const saved = searchParams.saved === '1';
 
   return (
     <div style={{ padding: '32px 36px', maxWidth: 780 }}>
@@ -68,6 +69,16 @@ export default async function SettingsPage() {
       <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>
         Control the store appearance, promotional banners, and seasonal campaigns.
       </p>
+
+      {saved && (
+        <div style={{
+          background: '#f0fdf4', border: '1px solid #86efac', borderRadius: 8,
+          padding: '12px 16px', marginBottom: 24, color: '#15803d',
+          fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span>✓</span> Settings saved — changes are live on the site.
+        </div>
+      )}
 
       <form action={saveSettings}>
 

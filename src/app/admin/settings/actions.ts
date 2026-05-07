@@ -9,20 +9,25 @@ async function assertOwner() {
   if (!session?.isOwner) throw new Error('Unauthorized');
 }
 
-export async function saveSettings(formData: FormData): Promise<void> {
+export async function saveSettings(formData: FormData): Promise<{ error?: string } | void> {
   await assertOwner();
 
-  const pairs: { key: string; value: string }[] = [];
+  // Deduplicate: last value wins, so checkbox "true" overrides hidden "false"
+  const map = new Map<string, string>();
   for (const [key, val] of formData.entries()) {
-    if (typeof val === 'string') {
-      pairs.push({ key, value: val });
-    }
+    if (typeof val === 'string') map.set(key, val);
   }
 
+  const pairs = Array.from(map.entries()).map(([key, value]) => ({ key, value }));
+
   if (pairs.length) {
-    await supabase.from('site_settings').upsert(pairs);
+    const { error } = await supabase.from('site_settings').upsert(pairs, { onConflict: 'key' });
+    if (error) return { error: error.message };
   }
 
   revalidatePath('/', 'layout');
   revalidatePath('/admin/settings');
+
+  const { redirect } = await import('next/navigation');
+  redirect('/admin/settings?saved=1');
 }
