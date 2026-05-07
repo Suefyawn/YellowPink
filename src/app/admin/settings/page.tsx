@@ -55,13 +55,14 @@ function Divider() {
   return <div style={{ height: 1, background: '#f3f4f6', margin: '20px 0' }} />;
 }
 
-export default async function SettingsPage({ searchParams }: { searchParams: { saved?: string } }) {
+export default async function SettingsPage({ searchParams }: { searchParams: { saved?: string; error?: string } }) {
   const session = await getStaffSession();
   if (!session?.isOwner) redirect('/admin/dashboard');
 
   const s = await getSiteSettings();
   const g = (key: string, fallback = '') => s[key] ?? fallback;
   const saved = searchParams.saved === '1';
+  const saveError = searchParams.error;
 
   return (
     <div style={{ padding: '32px 36px', maxWidth: 780 }}>
@@ -77,6 +78,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
           fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8,
         }}>
           <span>✓</span> Settings saved — changes are live on the site.
+        </div>
+      )}
+      {saveError && (
+        <div style={{
+          background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8,
+          padding: '12px 16px', marginBottom: 24, color: '#dc2626',
+          fontSize: '0.875rem', fontWeight: 500,
+        }}>
+          Save failed: {saveError}
         </div>
       )}
 

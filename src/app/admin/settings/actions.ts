@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 
@@ -9,7 +10,7 @@ async function assertOwner() {
   if (!session?.isOwner) throw new Error('Unauthorized');
 }
 
-export async function saveSettings(formData: FormData): Promise<{ error?: string } | void> {
+export async function saveSettings(formData: FormData): Promise<void> {
   await assertOwner();
 
   // Deduplicate: last value wins, so checkbox "true" overrides hidden "false"
@@ -22,12 +23,12 @@ export async function saveSettings(formData: FormData): Promise<{ error?: string
 
   if (pairs.length) {
     const { error } = await supabase.from('site_settings').upsert(pairs, { onConflict: 'key' });
-    if (error) return { error: error.message };
+    if (error) {
+      redirect(`/admin/settings?error=${encodeURIComponent(error.message)}`);
+    }
   }
 
   revalidatePath('/', 'layout');
   revalidatePath('/admin/settings');
-
-  const { redirect } = await import('next/navigation');
   redirect('/admin/settings?saved=1');
 }
