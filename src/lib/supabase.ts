@@ -74,6 +74,15 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
   return data;
 }
 
+export async function getSiteSettings(): Promise<Record<string, string>> {
+  const { data } = await supabase.from('site_settings').select('key, value');
+  return Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]));
+}
+
+export async function updateSiteSetting(key: string, value: string): Promise<void> {
+  await supabase.from('site_settings').upsert({ key, value });
+}
+
 export async function createOrder(order: Omit<Order, 'id' | 'created_at'>): Promise<Order> {
   const { data, error } = await supabase
     .from('orders')

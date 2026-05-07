@@ -50,8 +50,13 @@ export function WellnessSection({ products }: { products: Product[] }) {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr repeat(3, 1fr)', gap: 'var(--gutter)', alignItems: 'center' }} className="wellness-grid">
-            <div className="img-placeholder" style={{ aspectRatio: '3/4', borderRadius: 'var(--radius-card)', position: 'relative' }}>
-              <span>wellness lifestyle<br />supplements + person</span>
+            <div style={{ aspectRatio: '3/4', borderRadius: 'var(--radius-card)', position: 'relative', overflow: 'hidden' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://images.unsplash.com/photo-v-TUQQlHeU8?w=500&auto=format&fit=crop&q=80"
+                alt="Wellness supplements"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
               <div style={{ position: 'absolute', top: 20, left: 20, background: 'var(--brand-yellow)', padding: '6px 12px', borderRadius: 'var(--radius-pill)' }}>
                 <span style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-900)' }}>New Category</span>
               </div>

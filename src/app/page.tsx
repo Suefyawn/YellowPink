@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { getProductsByTag, getProductsByCategoryAndTag } from '@/lib/supabase';
+import { getProductsByTag, getProductsByCategoryAndTag, getSiteSettings } from '@/lib/supabase';
 import { HeroSection } from '@/sections/home/HeroSection';
 import { TrustBar } from '@/sections/home/TrustBar';
 import { FeaturedProducts } from '@/sections/home/FeaturedProducts';
@@ -13,15 +13,28 @@ import { RealResults } from '@/sections/home/RealResults';
 import { PressStrip } from '@/sections/home/PressStrip';
 
 export default async function HomePage() {
-  const [bestsellers, saleProducts, wellnessProducts] = await Promise.all([
+  const [bestsellers, saleProducts, wellnessProducts, settings] = await Promise.all([
     getProductsByTag('Bestseller', 8),
     getProductsByTag('Sale', 4),
     getProductsByCategoryAndTag('Wellness', 3),
+    getSiteSettings(),
   ]);
+
+  const heroSettings = {
+    overline: settings.hero_overline,
+    headline: settings.hero_headline,
+    subline: settings.hero_subline,
+    cta1Text: settings.hero_cta1_text,
+    cta1Url: settings.hero_cta1_url,
+    cta2Text: settings.hero_cta2_text,
+    cta2Url: settings.hero_cta2_url,
+    imageUrl: settings.hero_image_url,
+    brands: settings.hero_brands ? settings.hero_brands.split(',').map(b => b.trim()) : [],
+  };
 
   return (
     <main className="fade-in">
-      <HeroSection />
+      <HeroSection settings={heroSettings} />
       <TrustBar />
       <FeaturedProducts products={bestsellers.slice(0, 4)} />
       <EditorialDuo />

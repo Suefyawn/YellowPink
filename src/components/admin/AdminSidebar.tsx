@@ -21,6 +21,7 @@ const NAV: NavItem[] = [
   { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
   { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'products' },
   { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
+  { href: '/admin/settings',  label: 'Settings',  icon: '⚙', ownerOnly: true },
 ];
 
 function canSee(item: NavItem, session: StaffSession): boolean {
