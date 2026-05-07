@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import type { StaffSession } from '@/lib/permissions';
 
-export function AdminShell({ children, session }: { children: React.ReactNode; session: StaffSession }) {
+export function AdminShell({ children, session, pendingOrderCount = 0 }: { children: React.ReactNode; session: StaffSession; pendingOrderCount?: number }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,7 +33,7 @@ export function AdminShell({ children, session }: { children: React.ReactNode; s
       {open && <div className="adm-overlay" onClick={() => setOpen(false)} />}
 
       <div className={`adm-sidebar${open ? ' open' : ''}`}>
-        <AdminSidebar session={session} onClose={() => setOpen(false)} />
+        <AdminSidebar session={session} onClose={() => setOpen(false)} pendingOrderCount={pendingOrderCount} />
       </div>
 
       <div className="adm-main">

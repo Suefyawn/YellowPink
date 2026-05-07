@@ -30,7 +30,7 @@ function canSee(item: NavItem, session: StaffSession): boolean {
   return session.isOwner || session.permissions.includes(item.permission);
 }
 
-export function AdminSidebar({ session, onClose }: { session: StaffSession; onClose?: () => void }) {
+export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { session: StaffSession; onClose?: () => void; pendingOrderCount?: number }) {
   const pathname = usePathname();
   const visibleNav = NAV.filter(item => canSee(item, session));
 
@@ -79,6 +79,8 @@ export function AdminSidebar({ session, onClose }: { session: StaffSession; onCl
       <nav style={{ flex: 1, paddingTop: 8 }}>
         {visibleNav.map(({ href, label, icon }) => {
           const active = pathname === href || (href !== '/admin/dashboard' && pathname.startsWith(href));
+          const isOrders = href === '/admin/orders';
+          const badgeCount = isOrders && pendingOrderCount > 0 ? pendingOrderCount : 0;
           return (
             <Link key={href} href={href} onClick={onClose} style={{
               display: 'flex', alignItems: 'center', gap: 10,
@@ -91,7 +93,18 @@ export function AdminSidebar({ session, onClose }: { session: StaffSession; onCl
               transition: 'all 0.15s',
             }}>
               <span style={{ fontSize: '1rem', opacity: active ? 1 : 0.6 }}>{icon}</span>
-              {label}
+              <span style={{ flex: 1 }}>{label}</span>
+              {badgeCount > 0 && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  minWidth: 20, height: 20, borderRadius: '50%',
+                  background: '#ef4444', color: '#ffffff',
+                  fontSize: '0.7rem', fontWeight: 700, lineHeight: 1,
+                  padding: '0 4px',
+                }}>
+                  {badgeCount > 99 ? '99+' : badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}

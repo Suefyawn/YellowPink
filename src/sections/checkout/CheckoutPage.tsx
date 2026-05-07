@@ -7,6 +7,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
+import { notifyNewOrder } from '@/app/checkout/actions';
 import type { Coupon } from '@/types';
 
 const FREE_SHIPPING = 2500;
@@ -113,6 +114,18 @@ export function CheckoutPage() {
       } as never);
       if (error) throw new Error(error.message);
       void data;
+      // Fire-and-forget email notification (errors are swallowed inside the action)
+      void notifyNewOrder({
+        order_number: orderNumber,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
+        phone: formData.phone.trim(),
+        city: formData.city,
+        province: formData.province || undefined,
+        total: total + shipping,
+        items: cartItems.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+        pay_method: payMethod,
+      });
       clearCart();
       router.push(`/thank-you?order=${orderNumber}`);
     } catch (err) {

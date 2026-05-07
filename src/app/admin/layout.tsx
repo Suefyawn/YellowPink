@@ -1,6 +1,7 @@
 import { getStaffSession } from '@/lib/staff-auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { ToastProvider } from '@/components/admin/Toast';
+import { supabase } from '@/lib/supabase';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getStaffSession();
@@ -19,9 +20,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
+  const { count: pendingOrderCount } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('status', 'pending');
+
   return (
     <ToastProvider>
-      <AdminShell session={session}>{children}</AdminShell>
+      <AdminShell session={session} pendingOrderCount={pendingOrderCount ?? 0}>{children}</AdminShell>
     </ToastProvider>
   );
 }
