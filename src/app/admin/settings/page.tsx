@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { getStaffSession } from '@/lib/staff-auth';
 import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from './actions';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 
 const inp: React.CSSProperties = {
   width: '100%', padding: '9px 12px', border: '1px solid #d1d5db',
@@ -213,11 +214,9 @@ export default async function SettingsPage() {
               </div>
             </div>
             <div>
-              <label style={lbl}>Hero Image URL</label>
-              <input name="hero_image_url" defaultValue={g('hero_image_url')} style={inp}
-                placeholder="https://images.unsplash.com/photo-…" />
-              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                Paste any image URL. Recommended size: 800×700px or taller. Leave blank to use the default gradient.
+              <ImageUpload name="hero_image_url" currentUrl={g('hero_image_url')} label="Hero Image" aspect={4 / 3} />
+              <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+                Recommended size: 800×700px or taller. Leave blank to use the default gradient.
               </p>
             </div>
             <div>

@@ -11,21 +11,24 @@ const CARDS = [
     subtitle: 'Real Solutions',
     cta: 'Explore Treatments',
     href: '/shop?category=Skincare',
-    img: 'https://images.unsplash.com/photo-ShuXkYOkDvs?w=700&auto=format&fit=crop&q=80',
-    alt: 'Skincare cream and serum products',
+    img: 'https://yellowpink.pk/wp-content/uploads/2025/01/anti-melasma-cream-2.webp',
+    fallbackColor: '#e8f5e9',
+    alt: 'Anti-melasma skincare products',
   },
   {
     title: 'Clear Skin',
     subtitle: 'Acne Care',
     cta: 'Shop Cleansers',
     href: '/shop?category=Skincare',
-    img: 'https://images.unsplash.com/photo-g6q3lFAe3kA?w=700&auto=format&fit=crop&q=80',
-    alt: 'Skincare products on natural background',
+    img: 'https://yellowpink.pk/wp-content/uploads/2025/01/barubt-tinted-moisturizer-and-sunscreen.webp',
+    fallbackColor: '#fdf6e3',
+    alt: 'Skincare moisturizer and sunscreen',
   },
 ];
 
-function DuoCard({ title, subtitle, cta, href, img, alt }: typeof CARDS[0]) {
+function DuoCard({ title, subtitle, cta, href, img, alt, fallbackColor }: typeof CARDS[0]) {
   const [hovered, setHovered] = useState(false);
+  const [imgFailed, setImgFailed] = useState(false);
   return (
     <Link href={href} style={{ textDecoration: 'none', color: 'inherit' }}>
       <div
@@ -34,17 +37,19 @@ function DuoCard({ title, subtitle, cta, href, img, alt }: typeof CARDS[0]) {
         style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
       >
         <div style={{ overflow: 'hidden', borderRadius: 'var(--radius-card)', aspectRatio: '4/3', position: 'relative' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={img}
-            alt={alt}
-            style={{
-              width: '100%', height: '100%', objectFit: 'cover',
-              transform: hovered ? 'scale(1.04)' : 'scale(1)',
-              transition: 'transform 400ms ease-out',
-              display: 'block',
-            }}
-          />
+          {!imgFailed ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={img} alt={alt} onError={() => setImgFailed(true)}
+              style={{
+                width: '100%', height: '100%', objectFit: 'cover',
+                transform: hovered ? 'scale(1.04)' : 'scale(1)',
+                transition: 'transform 400ms ease-out', display: 'block',
+              }}
+            />
+          ) : (
+            <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${fallbackColor} 0%, ${fallbackColor}88 100%)` }} />
+          )}
           <div style={{
             position: 'absolute', inset: 0,
             background: 'linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 60%)',

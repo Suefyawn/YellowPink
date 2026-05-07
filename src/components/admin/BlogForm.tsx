@@ -2,6 +2,7 @@
 import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { createBlogPost, updateBlogPost } from '@/app/admin/actions';
+import { ImageUpload } from './ImageUpload';
 import type { BlogPost } from '@/types';
 
 function toSlug(s: string) {
@@ -95,25 +96,9 @@ export function BlogForm({ post }: { post?: BlogPost }) {
             </div>
           </div>
 
-          {/* Image URL */}
+          {/* Cover Image */}
           <div style={{ marginBottom: 16 }}>
-            <label style={lbl}>Cover Image URL</label>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-              <input
-                name="image_url"
-                value={imageUrl}
-                onChange={e => setImageUrl(e.target.value)}
-                style={{ ...inp, flex: 1 }}
-                placeholder="https://..."
-              />
-              {imageUrl && (
-                <div style={{ width: 72, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', flexShrink: 0 }}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageUrl} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                </div>
-              )}
-            </div>
+            <ImageUpload name="image_url" currentUrl={imageUrl} label="Cover Image" aspect={16 / 9} />
           </div>
 
           {/* Featured */}
