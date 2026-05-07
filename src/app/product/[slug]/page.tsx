@@ -38,6 +38,26 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   return (
     <main className="fade-in">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": `${product.brand} ${product.name}${product.variant ? ` ${product.variant}` : ''}`,
+            "description": product.description ?? undefined,
+            "image": product.image_url ?? undefined,
+            "brand": { "@type": "Brand", "name": product.brand },
+            "offers": {
+              "@type": "Offer",
+              "priceCurrency": "PKR",
+              "price": product.price,
+              "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+              "seller": { "@type": "Organization", "name": "Yellow Pink" }
+            }
+          })
+        }}
+      />
       <PDPPage product={product} />
       <ReviewsSection productId={product.id} reviews={reviews ?? []} />
     </main>

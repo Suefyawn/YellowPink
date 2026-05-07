@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import type { Product } from '@/types';
+
+const PAGE_SIZE = 48;
 
 const TOP_CATEGORIES = ['All', 'Makeup', 'Skincare', 'Wellness'];
 
@@ -27,6 +29,9 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [activeSubcategory, setActiveSubcategory] = useState<string | null>(initialSubcategory);
   const [sortBy, setSortBy] = useState<SortKey>('featured');
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy]);
 
   function handleTopCategory(cat: string) {
     setActiveCategory(cat);
@@ -42,6 +47,9 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
   if (sortBy === 'price-low') filtered = [...filtered].sort((a, b) => a.price - b.price);
   else if (sortBy === 'price-high') filtered = [...filtered].sort((a, b) => b.price - a.price);
   else if (sortBy === 'name') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const subcats = activeCategory !== 'All' ? SUBCATEGORIES[activeCategory] ?? [] : [];
   const pageTitle = activeSubcategory ?? (activeCategory === 'All' ? 'All Products' : activeCategory);
@@ -105,7 +113,7 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
-            {filtered.map((p) => (
+            {paginated.map((p) => (
               <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <ProductTile product={p} />
               </Link>
@@ -114,6 +122,57 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
           {filtered.length === 0 && (
             <div style={{ textAlign: 'center', padding: '64px 0' }}>
               <p className="body-text" style={{ color: 'var(--ink-500)' }}>No products in this category yet.</p>
+            </div>
+          )}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 48 }}>
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+                style={{
+                  padding: '8px 14px', background: 'none', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+                  fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', cursor: page === 1 ? 'default' : 'pointer',
+                  color: page === 1 ? 'var(--ink-400)' : 'var(--ink-900)', transition: 'all 150ms',
+                }}
+              >←</button>
+              {(() => {
+                const pages: (number | '…')[] = [];
+                if (totalPages <= 7) {
+                  for (let i = 1; i <= totalPages; i++) pages.push(i);
+                } else {
+                  pages.push(1);
+                  if (page > 4) pages.push('…');
+                  for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+                  if (page < totalPages - 3) pages.push('…');
+                  pages.push(totalPages);
+                }
+                return pages.map((p, i) =>
+                  p === '…' ? (
+                    <span key={`ellipsis-${i}`} style={{ padding: '8px 6px', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', color: 'var(--ink-500)' }}>…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p as number)}
+                      style={{
+                        padding: '8px 12px', border: '1px solid', borderRadius: 'var(--radius-card)',
+                        borderColor: page === p ? 'var(--ink-900)' : 'var(--line)',
+                        background: page === p ? 'var(--ink-900)' : 'none',
+                        fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 600,
+                        color: page === p ? 'var(--paper)' : 'var(--ink-900)', cursor: 'pointer', transition: 'all 150ms',
+                      }}
+                    >{p}</button>
+                  )
+                );
+              })()}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                style={{
+                  padding: '8px 14px', background: 'none', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+                  fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', cursor: page === totalPages ? 'default' : 'pointer',
+                  color: page === totalPages ? 'var(--ink-400)' : 'var(--ink-900)', transition: 'all 150ms',
+                }}
+              >→</button>
             </div>
           )}
         </div>
