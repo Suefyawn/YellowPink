@@ -114,7 +114,10 @@ export default async function ProductsPage({
                         {outOfStock ? '✕ Out of stock' : lowStock ? `⚠ ${p.stock} left` : `✓ ${p.stock}`}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>{p.category}</td>
+                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>
+                      <div>{p.category}</div>
+                      {p.subcategory && <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{p.subcategory}</div>}
+                    </td>
                     <td style={{ padding: '12px 16px' }}>
                       {p.tag ? (
                         <span style={{ display: 'inline-block', padding: '2px 8px', background: '#fdf2f8', borderRadius: 20, fontSize: '0.75rem', fontWeight: 500, color: '#9d174d' }}>
