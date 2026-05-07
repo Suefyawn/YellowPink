@@ -6,14 +6,14 @@ import { Overline } from '@/components/ui/Overline';
 
 // Real product images from yellowpink.pk store
 const CATS = [
-  { label: 'Foundations',  href: '/shop?category=Foundations',  img: 'https://yellowpink.pk/wp-content/uploads/2025/01/NARS-Mont-Blanc.png',                                                                 color: '#f5e6d3' },
-  { label: 'Lip Tints',    href: '/shop?category=Lip Tints',    img: 'https://yellowpink.pk/wp-content/uploads/2025/02/pearly-peach-rose-2.webp',                                                            color: '#fce4ec' },
-  { label: 'Concealers',   href: '/shop?category=Concealers',   img: 'https://yellowpink.pk/wp-content/uploads/2025/02/2090-shape-tape-ultra-creamy-concealer-12N-scaled.jpg',                               color: '#fdf6e3' },
-  { label: 'Skincare',     href: '/shop?category=Skincare',     img: 'https://yellowpink.pk/wp-content/uploads/2025/01/anti-melasma-cream-2.webp',                                                           color: '#e8f5e9' },
-  { label: 'Sunscreen',    href: '/shop?category=Sunscreen',    img: 'https://yellowpink.pk/wp-content/uploads/2025/01/barubt-tinted-moisturizer-and-sunscreen.webp',                                        color: '#fff8e1' },
-  { label: 'Blush',        href: '/shop?category=Blush',        img: 'https://yellowpink.pk/wp-content/uploads/2025/01/birthday-suit-sheglam.jpg',                                                           color: '#fce4ec' },
-  { label: 'Highlighters', href: '/shop?category=Highlighters', img: 'https://yellowpink.pk/wp-content/uploads/2025/01/Iconic_Illuminator_Blush_Open_Pipette_0f8e3ca3-90ec-40b3-98a5-75120fb6cd93.jpg',     color: '#fffde7' },
-  { label: 'Wellness',     href: '/shop?category=Wellness',     img: 'https://yellowpink.pk/wp-content/uploads/2026/01/Untitled-1-08.webp',                                                                  color: '#e8f5e9' },
+  { label: 'Lip & Cheek Tints', href: '/shop?category=Makeup&subcategory=Lip+%26+Cheek+Tints', img: 'https://yellowpink.pk/wp-content/uploads/2025/02/pearly-peach-rose-2.webp',                                                            color: '#fce4ec' },
+  { label: 'Highlighters',      href: '/shop?category=Makeup&subcategory=Highlighters',         img: 'https://yellowpink.pk/wp-content/uploads/2025/01/Iconic_Illuminator_Blush_Open_Pipette_0f8e3ca3-90ec-40b3-98a5-75120fb6cd93.jpg',     color: '#fffde7' },
+  { label: 'Concealers',        href: '/shop?category=Makeup&subcategory=Concealers',           img: 'https://yellowpink.pk/wp-content/uploads/2025/02/2090-shape-tape-ultra-creamy-concealer-12N-scaled.jpg',                               color: '#fdf6e3' },
+  { label: 'Contour',           href: '/shop?category=Makeup&subcategory=Contour+Sticks',       img: 'https://yellowpink.pk/wp-content/uploads/2025/01/NARS-Mont-Blanc.png',                                                                 color: '#f5e6d3' },
+  { label: 'Skincare',          href: '/shop?category=Skincare',                                img: 'https://yellowpink.pk/wp-content/uploads/2025/01/anti-melasma-cream-2.webp',                                                           color: '#e8f5e9' },
+  { label: 'Moisturizers',      href: '/shop?category=Skincare&subcategory=Moisturizers',       img: 'https://yellowpink.pk/wp-content/uploads/2025/01/barubt-tinted-moisturizer-and-sunscreen.webp',                                        color: '#fff8e1' },
+  { label: 'Wellness',          href: '/shop?category=Wellness',                                img: 'https://yellowpink.pk/wp-content/uploads/2026/01/Untitled-1-08.webp',                                                                  color: '#e8f5e9' },
+  { label: 'Skin Makeup',       href: '/shop?category=Makeup&subcategory=Skin+Makeup',          img: 'https://yellowpink.pk/wp-content/uploads/2025/01/birthday-suit-sheglam.jpg',                                                           color: '#fce4ec' },
 ];
 
 function CatTile({ label, href, img, color }: typeof CATS[0]) {

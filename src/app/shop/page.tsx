@@ -4,11 +4,10 @@ import type { Metadata } from 'next';
 import { getProducts } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string }> }): Promise<Metadata> {
-  const { category } = await searchParams;
-  const title = category && category !== 'All'
-    ? `${category} — Shop | Yellow Pink`
-    : 'Shop All Products | Yellow Pink';
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string }> }): Promise<Metadata> {
+  const { category, subcategory } = await searchParams;
+  const label = subcategory ?? (category && category !== 'All' ? category : null);
+  const title = label ? `${label} — Shop | Yellow Pink` : 'Shop All Products | Yellow Pink';
   return {
     title,
     description: 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.',
@@ -16,12 +15,16 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   };
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string }> }) {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string }> }) {
   const products = await getProducts();
-  const { category } = await searchParams;
+  const { category, subcategory } = await searchParams;
   return (
     <main className="fade-in">
-      <CollectionPage products={products} initialCategory={category ?? 'All'} />
+      <CollectionPage
+        products={products}
+        initialCategory={category ?? 'All'}
+        initialSubcategory={subcategory ?? null}
+      />
     </main>
   );
 }

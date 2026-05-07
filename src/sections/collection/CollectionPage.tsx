@@ -23,9 +23,9 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 
 type SortKey = 'featured' | 'price-low' | 'price-high' | 'name';
 
-export function CollectionPage({ products, initialCategory = 'All' }: { products: Product[]; initialCategory?: string }) {
+export function CollectionPage({ products, initialCategory = 'All', initialSubcategory = null }: { products: Product[]; initialCategory?: string; initialSubcategory?: string | null }) {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
-  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(null);
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(initialSubcategory);
   const [sortBy, setSortBy] = useState<SortKey>('featured');
 
   function handleTopCategory(cat: string) {
