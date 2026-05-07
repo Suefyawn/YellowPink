@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
 
 interface HeroSettings {
@@ -25,8 +28,24 @@ const DEFAULTS: HeroSettings = {
   brands: ['NARS', 'Kiko Milano', 'PIXI', 'CeraVe'],
 };
 
+const GradientFallback = () => (
+  <div style={{
+    position: 'absolute', inset: 0,
+    background: 'linear-gradient(135deg, #fdf2f8 0%, #fef9ec 50%, #fdf2f8 100%)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }}>
+    <div style={{ textAlign: 'center', color: 'var(--ink-400)' }}>
+      <div style={{ fontSize: '3rem', marginBottom: 8 }}>✦</div>
+      <div style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+        Add hero image<br />in Admin → Settings
+      </div>
+    </div>
+  </div>
+);
+
 export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) {
   const s: HeroSettings = { ...DEFAULTS, ...settings };
+  const [imgFailed, setImgFailed] = useState(false);
 
   // Convert newlines to <br/> for headline
   const headlineHtml = s.headline
@@ -62,26 +81,16 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
         </div>
 
         <div style={{ position: 'relative', alignSelf: 'stretch' }}>
-          {s.imageUrl ? (
+          {s.imageUrl && !imgFailed ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={s.imageUrl}
               alt="Yellow Pink — Beauty & Wellness"
+              onError={() => setImgFailed(true)}
               style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
             />
           ) : (
-            <div style={{
-              position: 'absolute', inset: 0,
-              background: 'linear-gradient(135deg, #fdf2f8 0%, #fef9ec 50%, #fdf2f8 100%)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <div style={{ textAlign: 'center', color: 'var(--ink-400)' }}>
-                <div style={{ fontSize: '3rem', marginBottom: 8 }}>✦</div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-                  Add hero image<br />in Admin → Settings
-                </div>
-              </div>
-            </div>
+            <GradientFallback />
           )}
           <div style={{ position: 'absolute', bottom: 0, left: 0, width: 6, height: 80, background: 'var(--brand-yellow)' }} />
         </div>
