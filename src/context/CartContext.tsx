@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import type { CartItem, Product } from '@/types';
+import type { CartItem, Coupon, Product } from '@/types';
 
 interface CartContextValue {
   cartItems: CartItem[];
@@ -12,6 +12,8 @@ interface CartContextValue {
   updateQty: (idx: number, delta: number) => void;
   clearCart: () => void;
   cartCount: number;
+  appliedCoupon: Coupon | null;
+  setAppliedCoupon: (c: Coupon | null) => void;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -31,6 +33,7 @@ function loadCart(): CartItem[] {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>(loadCart);
   const [cartOpen, setCartOpen] = useState(false);
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
 
   useEffect(() => {
     try { localStorage.setItem(CART_KEY, JSON.stringify(cartItems)); } catch { /* quota exceeded */ }
@@ -59,12 +62,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return updated;
     });
 
-  const clearCart = () => setCartItems([]);
+  const clearCart = () => {
+    setCartItems([]);
+    setAppliedCoupon(null);
+  };
 
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
 
   return (
-    <CartContext.Provider value={{ cartItems, cartOpen, setCartOpen, addToCart, removeFromCart, updateQty, clearCart, cartCount }}>
+    <CartContext.Provider value={{ cartItems, cartOpen, setCartOpen, addToCart, removeFromCart, updateQty, clearCart, cartCount, appliedCoupon, setAppliedCoupon }}>
       {children}
     </CartContext.Provider>
   );

@@ -77,7 +77,14 @@ export default function LoginPage() {
             <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="you@example.com" autoComplete="email" />
           </div>
           <div>
-            <label style={lbl}>Password</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
+              <label style={{ ...lbl, marginBottom: 0 }}>Password</label>
+              {mode === 'login' && (
+                <Link href="/forgot-password" style={{ fontSize: '0.75rem', color: 'var(--brand-pink)', textDecoration: 'none' }}>
+                  Forgot password?
+                </Link>
+              )}
+            </div>
             <input type="password" required value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="••••••••" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} />
           </div>
           <button type="submit" disabled={loading} style={{

@@ -28,7 +28,7 @@ export default function AccountPage() {
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500, margin: '0 0 8px' }}>My Account</h1>
         <p style={{ color: 'var(--ink-500)', margin: '0 0 40px', fontSize: '0.9375rem' }}>{user.email}</p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }} className="duo-grid">
           <Link href="/account/orders" style={{
             display: 'block', padding: '28px 24px', background: 'white', borderRadius: 12,
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textDecoration: 'none', border: '1px solid var(--line)',

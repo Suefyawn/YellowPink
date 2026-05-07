@@ -1,27 +1,56 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Pagination } from '@/components/admin/Pagination';
+import { UsersFilter } from '@/components/admin/UsersFilter';
 import type { AdminUser } from '@/types';
+
+const PAGE_SIZE = 20;
 
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
-export default async function UsersPage() {
+export default async function UsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}) {
+  const { q, page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+
+  // get_admin_users RPC doesn't support filtering — fetch all and filter/slice in JS
   const { data: users } = await supabase.rpc('get_admin_users' as never);
-  const list = (users ?? []) as AdminUser[];
+  let list = (users ?? []) as AdminUser[];
+
+  if (q) {
+    const lower = q.toLowerCase();
+    list = list.filter(u =>
+      u.email?.toLowerCase().includes(lower) ||
+      u.first_name?.toLowerCase().includes(lower) ||
+      u.last_name?.toLowerCase().includes(lower)
+    );
+  }
+
+  const total = list.length;
+  const paginated = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div style={{ padding: '32px 36px' }}>
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Customers</h1>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{list.length} registered account{list.length !== 1 ? 's' : ''}</p>
+        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{total} registered account{total !== 1 ? 's' : ''}</p>
       </div>
 
+      <Suspense fallback={null}>
+        <UsersFilter total={total} />
+      </Suspense>
+
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        {list.length === 0 ? (
+        {paginated.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            No customers have signed up yet
+            {q ? `No customers matching "${q}"` : 'No customers have signed up yet'}
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -33,7 +62,7 @@ export default async function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {list.map((u, i) => (
+              {paginated.map((u, i) => (
                 <tr key={u.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
                   <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>
                     {u.email}
@@ -63,6 +92,10 @@ export default async function UsersPage() {
           </table>
         )}
       </div>
+
+      <Suspense fallback={null}>
+        <Pagination total={total} pageSize={PAGE_SIZE} currentPage={page} basePath="/admin/users" />
+      </Suspense>
     </div>
   );
 }

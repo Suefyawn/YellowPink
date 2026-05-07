@@ -7,7 +7,7 @@ import { OrderStatusForm } from '@/components/admin/OrderStatusForm';
 import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
 import type { Order, CartItem, OrderStatus } from '@/types';
 
-const fmt = (n: number) => `Rs ${n.toLocaleString()}`;
+const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 

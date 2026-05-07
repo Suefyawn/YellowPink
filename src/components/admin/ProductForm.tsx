@@ -27,6 +27,7 @@ export function ProductForm({ product }: { product?: Product }) {
 
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
+  const [imageUrl, setImageUrl] = useState(product?.image_url ?? '');
 
   return (
     <div style={{ padding: '32px 36px' }}>
@@ -122,12 +123,28 @@ export function ProductForm({ product }: { product?: Product }) {
           {/* Image URL */}
           <div style={{ ...fieldWrap, marginBottom: 16 }}>
             <label style={lbl}>Product Image URL</label>
-            <input
-              name="image_url" type="url"
-              defaultValue={product?.image_url ?? ''}
-              style={inp}
-              placeholder="https://example.com/image.jpg"
-            />
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <input
+                name="image_url" type="url"
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                style={{ ...inp, flex: 1 }}
+                placeholder="https://example.com/image.jpg"
+              />
+              {imageUrl && (
+                <div style={{
+                  width: 72, height: 72, borderRadius: 8, overflow: 'hidden',
+                  border: '1px solid #e5e7eb', flexShrink: 0, background: '#f9fafb',
+                }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imageUrl} alt="preview"
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Content fields */}

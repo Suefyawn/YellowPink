@@ -6,23 +6,42 @@ import { supabase } from '@/lib/supabase';
 import { deleteProduct } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { ProductsFilter } from '@/components/admin/ProductsFilter';
+import { Pagination } from '@/components/admin/Pagination';
 import type { Product } from '@/types';
 
-const fmt = (n: number) => `Rs ${n.toLocaleString()}`;
+const PAGE_SIZE = 25;
+
+const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; tag?: string; q?: string }>;
+  searchParams: Promise<{ category?: string; tag?: string; q?: string; page?: string }>;
 }) {
-  const { category, tag, q } = await searchParams;
+  const { category, tag, q, page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
 
-  let query = supabase.from('products').select('*').order('created_at', { ascending: false });
-  if (category && category !== 'All') query = query.eq('category', category);
-  if (tag && tag !== 'All') query = query.eq('tag', tag);
-  if (q) query = query.or(`name.ilike.%${q}%,brand.ilike.%${q}%`);
+  let countQuery = supabase.from('products').select('*', { count: 'exact', head: true });
+  let dataQuery = supabase.from('products').select('*').order('created_at', { ascending: false }).range(from, to);
 
-  const { data: products } = await query;
+  if (category && category !== 'All') {
+    countQuery = countQuery.eq('category', category);
+    dataQuery = dataQuery.eq('category', category);
+  }
+  if (tag && tag !== 'All') {
+    countQuery = countQuery.eq('tag', tag);
+    dataQuery = dataQuery.eq('tag', tag);
+  }
+  if (q) {
+    const filter = `name.ilike.%${q}%,brand.ilike.%${q}%`;
+    countQuery = countQuery.or(filter);
+    dataQuery = dataQuery.or(filter);
+  }
+
+  const [{ count: totalCount }, { data: products }] = await Promise.all([countQuery, dataQuery]);
+  const total = totalCount ?? 0;
   const list = (products ?? []) as Product[];
 
   return (
@@ -39,7 +58,7 @@ export default async function ProductsPage({
       </div>
 
       <Suspense fallback={null}>
-        <ProductsFilter total={list.length} />
+        <ProductsFilter total={total} />
       </Suspense>
 
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
@@ -115,6 +134,10 @@ export default async function ProductsPage({
           </table>
         )}
       </div>
+
+      <Suspense fallback={null}>
+        <Pagination total={total} pageSize={PAGE_SIZE} currentPage={page} basePath="/admin/products" />
+      </Suspense>
     </div>
   );
 }

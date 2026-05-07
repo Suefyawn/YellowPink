@@ -31,7 +31,7 @@ export function WellnessSection({ products }: { products: Product[] }) {
                 Because real beauty is health — inside out.
               </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="duo-grid">
               {PILLARS.map((p) => (
                 <div key={p.label} style={{
                   padding: 16, background: 'var(--paper2)', borderRadius: 'var(--radius-card)',

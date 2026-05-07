@@ -86,7 +86,7 @@ export default function ProfilePage() {
           )}
 
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="duo-grid">
               <div>
                 <label style={lbl}>First Name</label>
                 <input value={firstName} onChange={e => setFirstName(e.target.value)} style={inp} placeholder="Aisha" />

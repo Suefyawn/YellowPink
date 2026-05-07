@@ -5,7 +5,7 @@ import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { Order, AdminUser, OrderStatus } from '@/types';
 
-const fmt = (n: number) => `Rs ${n.toLocaleString()}`;
+const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 const fmtDateTime = (s: string) =>

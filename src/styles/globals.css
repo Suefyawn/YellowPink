@@ -167,9 +167,7 @@ body {
   .adm-sidebar { width: 200px !important; }
   .adm-main { margin-left: 200px !important; }
 }
-@media (max-width: 768px) {
-  .adm-sidebar { display: none !important; }
-  .adm-main { margin-left: 0 !important; }
+@media (max-width: 767px) {
   .adm-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .adm-analytics-grid { grid-template-columns: 1fr !important; }
   .adm-two-col { grid-template-columns: 1fr !important; }
