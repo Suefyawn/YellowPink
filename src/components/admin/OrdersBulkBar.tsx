@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { bulkUpdateOrderStatus } from '@/app/admin/actions';
+import { useToast } from '@/components/admin/Toast';
 import type { OrderStatus } from '@/types';
 
 const BULK_STATUSES: { value: OrderStatus; label: string; color: string }[] = [
@@ -13,12 +14,13 @@ const BULK_STATUSES: { value: OrderStatus; label: string; color: string }[] = [
 
 interface Props {
   orderIds: string[];
-  children: (toggle: (id: string) => void, selected: Set<string>) => React.ReactNode;
+  children: (toggle: (id: string) => void, selected: Set<string>, toggleAll: () => void) => React.ReactNode;
 }
 
 export function OrdersBulkBar({ orderIds, children }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
+  const toast = useToast();
 
   const toggle = (id: string) => setSelected(prev => {
     const next = new Set(prev);
@@ -32,16 +34,17 @@ export function OrdersBulkBar({ orderIds, children }: Props) {
 
   const bulk = (status: OrderStatus) => {
     if (selected.size === 0) return;
+    const count = selected.size;
     startTransition(async () => {
       await bulkUpdateOrderStatus(Array.from(selected), status);
       setSelected(new Set());
+      toast(`${count} order${count !== 1 ? 's' : ''} marked as ${status}`, 'success');
     });
   };
 
   return (
     <div style={{ position: 'relative' }}>
-      {/* Select-all checkbox row injected above table via children */}
-      {children(toggle, selected)}
+      {children(toggle, selected, toggleAll)}
 
       {selected.size > 0 && (
         <div style={{
@@ -61,7 +64,7 @@ export function OrdersBulkBar({ orderIds, children }: Props) {
               background: s.color + '30', color: s.color,
               fontSize: '0.8125rem', fontWeight: 600, opacity: pending ? 0.6 : 1,
             }}>
-              {s.label}
+              {pending ? '…' : s.label}
             </button>
           ))}
           <button onClick={() => setSelected(new Set())} style={{
@@ -73,16 +76,6 @@ export function OrdersBulkBar({ orderIds, children }: Props) {
           </button>
         </div>
       )}
-
-      {/* Select-all button */}
-      <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-        <button onClick={toggleAll} style={{
-          fontSize: '0.75rem', color: '#6b7280', background: 'none', border: 'none',
-          cursor: 'pointer', textDecoration: 'underline',
-        }}>
-          {selected.size === orderIds.length && orderIds.length > 0 ? 'Deselect all' : 'Select all'}
-        </button>
-      </div>
     </div>
   );
 }

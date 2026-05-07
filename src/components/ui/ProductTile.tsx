@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Overline } from './Overline';
+import { useWishlist } from '@/context/WishlistContext';
 import type { Product } from '@/types';
 
 interface ProductTileProps {
@@ -11,7 +12,9 @@ interface ProductTileProps {
 
 export function ProductTile({ product, onClick }: ProductTileProps) {
   const [hovered, setHovered] = useState(false);
-  const { brand, name, variant, price, original_price } = product;
+  const { toggle, isWishlisted } = useWishlist();
+  const { id, brand, name, variant, price, original_price } = product;
+  const wishlisted = isWishlisted(id);
 
   return (
     <div
@@ -37,6 +40,26 @@ export function ProductTile({ product, onClick }: ProductTileProps) {
             fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
           }}>Sale</span>
         )}
+        <button
+          onClick={e => { e.stopPropagation(); toggle(id); }}
+          aria-label={wishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
+          style={{
+            position: 'absolute', top: 8, right: 8,
+            width: 32, height: 32, borderRadius: '50%',
+            background: wishlisted ? 'var(--brand-pink)' : 'rgba(255,255,255,0.9)',
+            border: wishlisted ? 'none' : '1px solid rgba(0,0,0,0.08)',
+            cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '0.875rem',
+            transition: 'background 150ms, transform 150ms',
+            transform: wishlisted ? 'scale(1.1)' : 'scale(1)',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          }}
+        >
+          <span style={{ color: wishlisted ? 'white' : 'var(--ink-500)', lineHeight: 1 }}>
+            {wishlisted ? '♥' : '♡'}
+          </span>
+        </button>
       </div>
       <Overline style={{ color: 'var(--ink-500)', marginBottom: 2, display: 'block' }}>{brand}</Overline>
       <div className="h3" style={{ marginBottom: 2, position: 'relative', display: 'inline-block' }}>

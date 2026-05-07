@@ -18,7 +18,7 @@ function makeOrderNumber() {
 }
 
 export function CheckoutPage() {
-  const { cartItems, clearCart } = useCart();
+  const { cartItems, clearCart, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -27,8 +27,8 @@ export function CheckoutPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
-  const [couponCode, setCouponCode] = useState('');
-  const [coupon, setCoupon] = useState<Coupon | null>(null);
+  const [couponCode, setCouponCode] = useState(cartCoupon?.code ?? '');
+  const [coupon, setCoupon] = useState<Coupon | null>(cartCoupon);
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
 
@@ -78,6 +78,7 @@ export function CheckoutPage() {
     if (c.max_uses !== null && c.used_count >= c.max_uses) { setCouponError('This coupon has reached its usage limit'); return; }
     if (subtotal < c.min_order) { setCouponError(`Minimum order of PKR ${c.min_order.toLocaleString()} required`); return; }
     setCoupon(c);
+    setAppliedCoupon(c);
   };
 
   const handleSubmit = async () => {

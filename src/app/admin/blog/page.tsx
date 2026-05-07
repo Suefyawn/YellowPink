@@ -1,23 +1,51 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { deleteBlogPost } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { BlogFilter } from '@/components/admin/BlogFilter';
+import { Pagination } from '@/components/admin/Pagination';
 import type { BlogPost } from '@/types';
 
-export default async function BlogAdminPage() {
-  const { data: posts } = await supabase
-    .from('blog_posts')
-    .select('*')
-    .order('date', { ascending: false });
+const PAGE_SIZE = 20;
+
+export default async function BlogAdminPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+}) {
+  const { q, category, page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
+
+  // Get distinct categories for filter
+  const { data: allPosts } = await supabase.from('blog_posts').select('category');
+  const categories = Array.from(new Set((allPosts ?? []).map((p: { category: string }) => p.category))).sort() as string[];
+
+  let countQuery = supabase.from('blog_posts').select('*', { count: 'exact', head: true });
+  let dataQuery = supabase.from('blog_posts').select('*').order('date', { ascending: false }).range(from, to);
+
+  if (category && category !== 'All') {
+    countQuery = countQuery.eq('category', category);
+    dataQuery = dataQuery.eq('category', category);
+  }
+  if (q) {
+    countQuery = countQuery.ilike('title', `%${q}%`);
+    dataQuery = dataQuery.ilike('title', `%${q}%`);
+  }
+
+  const [{ count: totalCount }, { data: posts }] = await Promise.all([countQuery, dataQuery]);
+  const total = totalCount ?? 0;
 
   return (
     <div style={{ padding: '32px 36px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Blog Posts</h1>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{posts?.length ?? 0} posts</p>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{total} post{total !== 1 ? 's' : ''}</p>
         </div>
         <Link href="/admin/blog/new" style={{
           padding: '10px 20px', background: '#ec4899', color: 'white',
@@ -27,10 +55,14 @@ export default async function BlogAdminPage() {
         </Link>
       </div>
 
+      <Suspense fallback={null}>
+        <BlogFilter total={total} categories={categories} />
+      </Suspense>
+
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {!posts || posts.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            No posts yet. <Link href="/admin/blog/new" style={{ color: '#ec4899' }}>Write the first one →</Link>
+            {q || category ? 'No posts match your filters.' : <>No posts yet. <Link href="/admin/blog/new" style={{ color: '#ec4899' }}>Write the first one →</Link></>}
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -43,19 +75,22 @@ export default async function BlogAdminPage() {
             </thead>
             <tbody>
               {(posts as BlogPost[]).map((p, i) => (
-                <tr key={p.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                <tr key={p.id} style={{
+                  borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
+                  background: p.featured ? '#fffbeb' : 'transparent',
+                }}>
                   <td style={{ padding: '12px 16px', maxWidth: 300 }}>
-                    <div style={{ fontWeight: 500, fontSize: '0.875rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <div style={{ fontWeight: 500, fontSize: '0.875rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.title}>
                       {p.title}
                     </div>
-                    <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2, fontFamily: 'monospace' }}>{p.slug}</div>
+                    <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2, fontFamily: 'monospace' }} title={p.slug}>{p.slug}</div>
                   </td>
                   <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>{p.category}</td>
                   <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{p.date}</td>
                   <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>{p.read_time}</td>
                   <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                     {p.featured ? (
-                      <span style={{ color: '#10b981', fontSize: '1rem' }}>✓</span>
+                      <span style={{ display: 'inline-block', padding: '2px 8px', background: '#fef9c3', color: '#92400e', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>★ Featured</span>
                     ) : (
                       <span style={{ color: '#d1d5db', fontSize: '0.875rem' }}>—</span>
                     )}
@@ -81,6 +116,10 @@ export default async function BlogAdminPage() {
           </table>
         )}
       </div>
+
+      <Suspense fallback={null}>
+        <Pagination total={total} pageSize={PAGE_SIZE} currentPage={page} basePath="/admin/blog" />
+      </Suspense>
     </div>
   );
 }

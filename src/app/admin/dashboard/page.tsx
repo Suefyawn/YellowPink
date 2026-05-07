@@ -34,7 +34,8 @@ export default async function DashboardPage() {
   ]);
 
   const allOrdersList = (allOrders ?? []) as Array<{ total: number; status: string; items: CartItem[] }>;
-  const revenue = allOrdersList.reduce((s, o) => s + o.total, 0);
+  // Revenue excludes cancelled orders
+  const revenue = allOrdersList.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.total, 0);
 
   // Status breakdown
   const statusCounts = statusLabels.reduce<Record<string, number>>((acc, s) => {
@@ -55,7 +56,7 @@ export default async function DashboardPage() {
   const stats = [
     { label: 'Products', value: productCount ?? 0, icon: '◈', color: '#6366f1' },
     { label: 'Orders', value: orderCount ?? 0, icon: '◎', color: '#ec4899' },
-    { label: 'Revenue', value: fmt(revenue), icon: '₨', color: '#10b981', isRevenue: true },
+    { label: 'Revenue (excl. cancelled)', value: fmt(revenue), icon: '₨', color: '#10b981', isRevenue: true },
     { label: 'Blog Posts', value: blogCount ?? 0, icon: '✦', color: '#f59e0b' },
   ];
 

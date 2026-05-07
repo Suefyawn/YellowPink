@@ -20,7 +20,8 @@ export function ProductsFilter({ total }: { total: number }) {
 
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString());
-    if (value === 'All' || value === 'all') { next.delete(key); } else { next.set(key, value); }
+    if (value === 'All') { next.delete(key); } else { next.set(key, value); }
+    next.delete('page');
     push(next);
   };
 
@@ -30,9 +31,13 @@ export function ProductsFilter({ total }: { total: number }) {
     debounce.current = setTimeout(() => {
       const next = new URLSearchParams(params.toString());
       if (v) { next.set('q', v); } else { next.delete('q'); }
+      next.delete('page');
       push(next);
-    }, 350);
+    }, 300);
   };
+
+  const clearAll = () => push(new URLSearchParams());
+  const hasFilters = category !== 'All' || tag !== 'All' || !!q;
 
   const btnStyle = (active: boolean): React.CSSProperties => ({
     padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
@@ -43,18 +48,19 @@ export function ProductsFilter({ total }: { total: number }) {
 
   return (
     <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 4 }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {CATEGORIES.map(c => (
             <button key={c} onClick={() => setParam('category', c)} style={btnStyle(category === c)}>{c}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {TAGS.map(t => (
             <button key={t} onClick={() => setParam('tag', t)} style={btnStyle(tag === t)}>{t}</button>
           ))}
         </div>
         <input
+          key={q}
           defaultValue={q}
           onChange={e => setSearch(e.target.value)}
           placeholder="Search brand or name…"
@@ -63,7 +69,17 @@ export function ProductsFilter({ total }: { total: number }) {
             fontSize: '0.875rem', color: '#111827', background: 'white', outline: 'none', minWidth: 200,
           }}
         />
-        <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>{total} product{total !== 1 ? 's' : ''}</span>
+        {hasFilters && (
+          <button onClick={clearAll} style={{
+            padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 8,
+            fontSize: '0.8125rem', color: '#6b7280', background: 'white', cursor: 'pointer',
+          }}>
+            Clear ✕
+          </button>
+        )}
+        <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
+          {total} product{total !== 1 ? 's' : ''}
+        </span>
       </div>
     </div>
   );

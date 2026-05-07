@@ -3,29 +3,20 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useTransition } from 'react';
 
-const STATUSES = [
-  { value: 'all',        label: 'All' },
-  { value: 'pending',    label: 'Pending',    color: '#f59e0b' },
-  { value: 'processing', label: 'Processing', color: '#3b82f6' },
-  { value: 'shipped',    label: 'Shipped',    color: '#8b5cf6' },
-  { value: 'delivered',  label: 'Delivered',  color: '#10b981' },
-  { value: 'cancelled',  label: 'Cancelled',  color: '#ef4444' },
-];
-
-export function OrdersFilter({ total }: { total: number }) {
+export function BlogFilter({ total, categories }: { total: number; categories: string[] }) {
   const router = useRouter();
   const params = useSearchParams();
   const [, startTransition] = useTransition();
-  const status = params.get('status') ?? 'all';
   const q = params.get('q') ?? '';
+  const category = params.get('category') ?? 'All';
 
   const push = useCallback((next: URLSearchParams) => {
-    startTransition(() => router.push(`/admin/orders?${next.toString()}`));
+    startTransition(() => router.push(`/admin/blog?${next.toString()}`));
   }, [router]);
 
-  const setStatus = (s: string) => {
+  const setCategory = (c: string) => {
     const next = new URLSearchParams(params.toString());
-    if (s === 'all') { next.delete('status'); } else { next.set('status', s); }
+    if (c === 'All') { next.delete('category'); } else { next.set('category', c); }
     next.delete('page');
     push(next);
   };
@@ -42,39 +33,31 @@ export function OrdersFilter({ total }: { total: number }) {
   };
 
   const clearAll = () => push(new URLSearchParams());
-  const hasFilters = status !== 'all' || !!q;
+  const hasFilters = !!q || (category !== 'All');
+
+  const btnStyle = (active: boolean): React.CSSProperties => ({
+    padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
+    fontSize: '0.8125rem', fontWeight: active ? 600 : 400,
+    background: active ? '#111827' : '#f3f4f6',
+    color: active ? 'white' : '#6b7280',
+  });
 
   return (
     <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        {STATUSES.map(s => {
-          const isActive = status === s.value;
-          const color = s.color;
-          return (
-            <button key={s.value} onClick={() => setStatus(s.value)} style={{
-              padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-              fontSize: '0.8125rem', fontWeight: isActive ? 600 : 400,
-              background: isActive
-                ? (color ? color + '20' : '#111827')
-                : '#f3f4f6',
-              color: isActive ? (color ?? '#f9fafb') : '#6b7280',
-              outline: isActive && color ? `2px solid ${color}` : (isActive ? '2px solid #111827' : 'none'),
-              outlineOffset: -2,
-            }}>
-              {s.label}
-            </button>
-          );
-        })}
+        <button onClick={() => setCategory('All')} style={btnStyle(category === 'All')}>All</button>
+        {categories.map(c => (
+          <button key={c} onClick={() => setCategory(c)} style={btnStyle(category === c)}>{c}</button>
+        ))}
       </div>
       <input
-        key={q}
         defaultValue={q}
         onChange={e => setSearch(e.target.value)}
-        placeholder="Search order # or customer…"
+        placeholder="Search posts…"
         style={{
           padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8,
           fontSize: '0.875rem', color: '#111827', background: 'white', outline: 'none',
-          minWidth: 220,
+          minWidth: 200,
         }}
       />
       {hasFilters && (
@@ -86,7 +69,7 @@ export function OrdersFilter({ total }: { total: number }) {
         </button>
       )}
       <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
-        {total} order{total !== 1 ? 's' : ''}
+        {total} post{total !== 1 ? 's' : ''}
       </span>
     </div>
   );

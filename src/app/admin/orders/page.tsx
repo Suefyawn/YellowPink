@@ -5,7 +5,10 @@ import { Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { OrdersFilter } from '@/components/admin/OrdersFilter';
 import { OrdersBulkBar } from '@/components/admin/OrdersBulkBar';
+import { Pagination } from '@/components/admin/Pagination';
 import type { Order, OrderStatus } from '@/types';
+
+const PAGE_SIZE = 25;
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -25,15 +28,28 @@ const statusColors: Record<string, string> = {
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
-  const { status, q } = await searchParams;
+  const { status, q, page: pageParam } = await searchParams;
+  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+  const from = (page - 1) * PAGE_SIZE;
+  const to = from + PAGE_SIZE - 1;
 
-  let query = supabase.from('orders').select('*').order('created_at', { ascending: false });
-  if (status && status !== 'all') query = query.eq('status', status as OrderStatus);
-  if (q) query = query.or(`order_number.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`);
+  let countQuery = supabase.from('orders').select('*', { count: 'exact', head: true });
+  let dataQuery = supabase.from('orders').select('*').order('created_at', { ascending: false }).range(from, to);
 
-  const { data: orders } = await query;
+  if (status && status !== 'all') {
+    countQuery = countQuery.eq('status', status as OrderStatus);
+    dataQuery = dataQuery.eq('status', status as OrderStatus);
+  }
+  if (q) {
+    const filter = `order_number.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`;
+    countQuery = countQuery.or(filter);
+    dataQuery = dataQuery.or(filter);
+  }
+
+  const [{ count: totalCount }, { data: orders }] = await Promise.all([countQuery, dataQuery]);
+  const total = totalCount ?? 0;
   const list = (orders ?? []) as Order[];
 
   return (
@@ -43,7 +59,7 @@ export default async function OrdersPage({
       </div>
 
       <Suspense fallback={null}>
-        <OrdersFilter total={list.length} />
+        <OrdersFilter total={total} />
       </Suspense>
 
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
@@ -53,12 +69,20 @@ export default async function OrdersPage({
           </div>
         ) : (
           <OrdersBulkBar orderIds={list.map(o => o.id!)}>
-            {(toggle, selected) => (
+            {(toggle, selected, toggleAll) => (
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                    <th style={{ padding: '11px 12px', width: 40 }} />
-                    {['Order #', 'Customer', 'Total', 'Status', 'Payment', 'Date', ''].map(h => (
+                    <th style={{ padding: '11px 12px', width: 40, textAlign: 'center' }}>
+                      <input
+                        type="checkbox"
+                        checked={selected.size === list.length && list.length > 0}
+                        onChange={toggleAll}
+                        title="Select all"
+                        style={{ cursor: 'pointer', accentColor: '#ec4899' }}
+                      />
+                    </th>
+                    {['Order #', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
                       <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
@@ -107,14 +131,6 @@ export default async function OrdersPage({
                         <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                           {o.created_at ? fmtDate(o.created_at) : '—'}
                         </td>
-                        <td style={{ padding: '12px 16px' }}>
-                          <Link href={`/admin/orders/${o.id}`} style={{
-                            padding: '5px 12px', background: '#f3f4f6', color: '#374151',
-                            borderRadius: 6, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500, whiteSpace: 'nowrap',
-                          }}>
-                            View →
-                          </Link>
-                        </td>
                       </tr>
                     );
                   })}
@@ -124,6 +140,10 @@ export default async function OrdersPage({
           </OrdersBulkBar>
         )}
       </div>
+
+      <Suspense fallback={null}>
+        <Pagination total={total} pageSize={PAGE_SIZE} currentPage={page} basePath="/admin/orders" />
+      </Suspense>
     </div>
   );
 }

@@ -8,6 +8,20 @@ import type { Coupon } from '@/types';
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
+function getCouponState(c: Coupon): 'expired' | 'maxed' | 'active' | 'inactive' {
+  if (c.expires_at && new Date(c.expires_at) < new Date()) return 'expired';
+  if (c.max_uses && c.used_count >= c.max_uses) return 'maxed';
+  if (!c.active) return 'inactive';
+  return 'active';
+}
+
+const stateStyle: Record<string, React.CSSProperties> = {
+  expired:  { background: '#fef2f2' },
+  maxed:    { background: '#fff7ed' },
+  active:   {},
+  inactive: { background: '#f9fafb' },
+};
+
 export default async function CouponsPage() {
   const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
   const coupons = (data ?? []) as Coupon[];
@@ -20,7 +34,10 @@ export default async function CouponsPage() {
   return (
     <div style={{ padding: '32px 36px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
-        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Coupons</h1>
+        <div>
+          <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Coupons</h1>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{coupons.length} coupon{coupons.length !== 1 ? 's' : ''}</p>
+        </div>
       </div>
 
       {/* Create coupon form */}
@@ -77,37 +94,47 @@ export default async function CouponsPage() {
               </tr>
             </thead>
             <tbody>
-              {coupons.map((c, i) => (
-                <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                  <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
-                    {c.type === 'percent' ? `${c.value}%` : `PKR ${c.value.toLocaleString()}`}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
-                    {c.min_order ? `PKR ${c.min_order.toLocaleString()}` : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#6b7280' }}>
-                    {c.used_count}{c.max_uses ? ` / ${c.max_uses}` : ''}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
-                    {c.expires_at ? fmtDate(c.expires_at) : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <form action={toggleCoupon.bind(null, c.id, !c.active)}>
-                      <button type="submit" style={{
-                        padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
-                        background: c.active ? '#f0fdf4' : '#f3f4f6',
-                        color: c.active ? '#15803d' : '#9ca3af',
-                      }}>
-                        {c.active ? '● Active' : '○ Inactive'}
-                      </button>
-                    </form>
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <DeleteButton id={c.id} action={deleteCoupon} confirmMsg={`Delete coupon "${c.code}"?`} />
-                  </td>
-                </tr>
-              ))}
+              {coupons.map((c, i) => {
+                const state = getCouponState(c);
+                const isMaxed = state === 'maxed';
+                const isExpired = state === 'expired';
+                return (
+                  <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', ...stateStyle[state] }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</span>
+                      {isExpired && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#dc2626', background: '#fef2f2', padding: '1px 6px', borderRadius: 10 }}>EXPIRED</span>}
+                      {isMaxed && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#ea580c', background: '#fff7ed', padding: '1px 6px', borderRadius: 10 }}>MAXED</span>}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                      {c.type === 'percent' ? `${c.value}%` : `PKR ${c.value.toLocaleString()}`}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                      {c.min_order ? `PKR ${c.min_order.toLocaleString()}` : '—'}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: isMaxed ? '#ea580c' : '#6b7280', fontWeight: isMaxed ? 600 : 400 }}>
+                      {c.used_count}
+                      {c.max_uses ? <span style={{ color: '#9ca3af' }}> / {c.max_uses}</span> : ''}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: isExpired ? '#dc2626' : '#6b7280', fontWeight: isExpired ? 600 : 400 }}>
+                      {c.expires_at ? fmtDate(c.expires_at) : '—'}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <form action={toggleCoupon.bind(null, c.id, !c.active)}>
+                        <button type="submit" style={{
+                          padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+                          background: c.active && !isExpired && !isMaxed ? '#f0fdf4' : '#f3f4f6',
+                          color: c.active && !isExpired && !isMaxed ? '#15803d' : '#9ca3af',
+                        }}>
+                          {c.active ? 'Active' : 'Inactive'}
+                        </button>
+                      </form>
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <DeleteButton id={c.id} action={deleteCoupon} confirmMsg={`Delete coupon "${c.code}"?`} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
