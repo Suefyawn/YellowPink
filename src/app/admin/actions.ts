@@ -87,6 +87,7 @@ function parseProduct(formData: FormData) {
     price: Number(formData.get('price')),
     original_price: formData.get('original_price') ? Number(formData.get('original_price')) : null,
     category: (formData.get('category') as string).trim(),
+    subcategory: (formData.get('subcategory') as string).trim() || null,
     tag: (formData.get('tag') as string) || null,
     slug: (formData.get('slug') as string).trim(),
     stock: Number(formData.get('stock') ?? 0),
