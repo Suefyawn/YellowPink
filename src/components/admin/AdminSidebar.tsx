@@ -2,26 +2,40 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutAdmin } from '@/app/admin/actions';
+import type { StaffSession, Permission } from '@/lib/permissions';
 
-const nav = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: '▣' },
-  { href: '/admin/products',  label: 'Products',  icon: '◈' },
-  { href: '/admin/orders',    label: 'Orders',    icon: '◎' },
-  { href: '/admin/users',     label: 'Customers', icon: '◉' },
-  { href: '/admin/coupons',   label: 'Coupons',   icon: '◇' },
-  { href: '/admin/blog',      label: 'Blog',      icon: '✦' },
+type NavItem = {
+  href: string;
+  label: string;
+  icon: string;
+  permission?: Permission;
+  ownerOnly?: boolean;
+};
+
+const NAV: NavItem[] = [
+  { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permission: 'analytics' },
+  { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products' },
+  { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders' },
+  { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers' },
+  { href: '/admin/coupons',   label: 'Coupons',   icon: '◇', permission: 'coupons' },
+  { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
+  { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
 ];
 
-export function AdminSidebar({ onClose }: { onClose?: () => void }) {
+function canSee(item: NavItem, session: StaffSession): boolean {
+  if (item.ownerOnly) return session.isOwner;
+  if (!item.permission) return true;
+  return session.isOwner || session.permissions.includes(item.permission);
+}
+
+export function AdminSidebar({ session, onClose }: { session: StaffSession; onClose?: () => void }) {
   const pathname = usePathname();
+  const visibleNav = NAV.filter(item => canSee(item, session));
 
   return (
     <aside style={{
-      width: 240,
-      background: '#111827',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
+      width: 240, background: '#111827', minHeight: '100vh',
+      display: 'flex', flexDirection: 'column',
     }}>
       {/* Brand */}
       <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -35,15 +49,33 @@ export function AdminSidebar({ onClose }: { onClose?: () => void }) {
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem', padding: 4, lineHeight: 1 }}>
-            ✕
-          </button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem', padding: 4, lineHeight: 1 }}>✕</button>
         )}
+      </div>
+
+      {/* User badge */}
+      <div style={{ padding: '12px 20px', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{
+          width: 32, height: 32, borderRadius: '50%',
+          background: session.isOwner ? '#ec4899' : '#6366f1',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          color: 'white', fontWeight: 700, fontSize: '0.8125rem', flexShrink: 0,
+        }}>
+          {session.name.charAt(0).toUpperCase()}
+        </div>
+        <div style={{ overflow: 'hidden' }}>
+          <div style={{ color: '#f9fafb', fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {session.name}
+          </div>
+          <div style={{ color: session.isOwner ? '#f9a8d4' : '#a5b4fc', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+            {session.isOwner ? 'Owner' : 'Manager'}
+          </div>
+        </div>
       </div>
 
       {/* Nav */}
       <nav style={{ flex: 1, paddingTop: 8 }}>
-        {nav.map(({ href, label, icon }) => {
+        {visibleNav.map(({ href, label, icon }) => {
           const active = pathname === href || (href !== '/admin/dashboard' && pathname.startsWith(href));
           return (
             <Link key={href} href={href} onClick={onClose} style={{
@@ -51,8 +83,7 @@ export function AdminSidebar({ onClose }: { onClose?: () => void }) {
               padding: '10px 20px',
               color: active ? '#f9fafb' : '#9ca3af',
               background: active ? 'rgba(249,168,212,0.1)' : 'transparent',
-              textDecoration: 'none',
-              fontSize: '0.875rem',
+              textDecoration: 'none', fontSize: '0.875rem',
               fontWeight: active ? 600 : 400,
               borderLeft: `3px solid ${active ? '#f472b6' : 'transparent'}`,
               transition: 'all 0.15s',
@@ -64,8 +95,21 @@ export function AdminSidebar({ onClose }: { onClose?: () => void }) {
         })}
       </nav>
 
+      {/* Bottom links */}
+      <div style={{ padding: '12px 20px 0', borderTop: '1px solid #1f2937' }}>
+        {!session.isOwner && (
+          <Link href="/admin/profile" style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 0', color: '#9ca3af', textDecoration: 'none',
+            fontSize: '0.8125rem', borderBottom: '1px solid #1f2937', marginBottom: 8,
+          }}>
+            <span>⚙</span> My Profile
+          </Link>
+        )}
+      </div>
+
       {/* Logout */}
-      <div style={{ padding: '16px 20px', borderTop: '1px solid #1f2937' }}>
+      <div style={{ padding: '12px 20px 16px' }}>
         <form action={logoutAdmin}>
           <button type="submit" style={{
             width: '100%', padding: '8px 12px',

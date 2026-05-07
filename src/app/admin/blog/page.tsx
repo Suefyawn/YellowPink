@@ -7,6 +7,8 @@ import { deleteBlogPost } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { BlogFilter } from '@/components/admin/BlogFilter';
 import { Pagination } from '@/components/admin/Pagination';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 import type { BlogPost } from '@/types';
 
 const PAGE_SIZE = 20;
@@ -16,6 +18,10 @@ export default async function BlogAdminPage({
 }: {
   searchParams: Promise<{ q?: string; category?: string; page?: string }>;
 }) {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('blog')) {
+    return <NoAccess section="Blog" />;
+  }
   const { q, category, page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;

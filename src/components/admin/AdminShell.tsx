@@ -1,8 +1,9 @@
 'use client';
 import { useState } from 'react';
 import { AdminSidebar } from './AdminSidebar';
+import type { StaffSession } from '@/lib/permissions';
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children, session }: { children: React.ReactNode; session: StaffSession }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -32,7 +33,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       {open && <div className="adm-overlay" onClick={() => setOpen(false)} />}
 
       <div className={`adm-sidebar${open ? ' open' : ''}`}>
-        <AdminSidebar onClose={() => setOpen(false)} />
+        <AdminSidebar session={session} onClose={() => setOpen(false)} />
       </div>
 
       <div className="adm-main">

@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
+import { hashPassword, setStaffCookie, clearStaffCookie } from '@/lib/staff-auth';
 import type { OrderStatus } from '@/types';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -27,9 +28,33 @@ export async function loginAdmin(
   redirect('/admin/dashboard');
 }
 
+export async function loginStaff(
+  _prev: { error?: string } | null,
+  formData: FormData
+): Promise<{ error: string } | null> {
+  const email = (formData.get('email') as string).trim().toLowerCase();
+  const password = formData.get('password') as string;
+  if (!email || !password) return { error: 'Email and password are required' };
+
+  const { data } = await supabase
+    .from('staff_members')
+    .select('id, password_hash, password_salt, is_active')
+    .eq('email', email)
+    .single();
+
+  if (!data || !data.is_active) return { error: 'Invalid email or password' };
+
+  const hash = hashPassword(password, data.password_salt);
+  if (hash !== data.password_hash) return { error: 'Invalid email or password' };
+
+  await setStaffCookie(data.id);
+  redirect('/admin/dashboard');
+}
+
 export async function logoutAdmin() {
   const store = await cookies();
   store.delete('admin_session');
+  await clearStaffCookie();
   redirect('/admin');
 }
 

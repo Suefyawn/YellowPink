@@ -7,6 +7,8 @@ import { deleteProduct } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { ProductsFilter } from '@/components/admin/ProductsFilter';
 import { Pagination } from '@/components/admin/Pagination';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 import type { Product } from '@/types';
 
 const PAGE_SIZE = 25;
@@ -18,6 +20,10 @@ export default async function ProductsPage({
 }: {
   searchParams: Promise<{ category?: string; tag?: string; q?: string; page?: string }>;
 }) {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('products')) {
+    return <NoAccess section="Products" />;
+  }
   const { category, tag, q, page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;

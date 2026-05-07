@@ -1,14 +1,11 @@
-import { cookies } from 'next/headers';
+import { getStaffSession } from '@/lib/staff-auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { ToastProvider } from '@/components/admin/Toast';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const store = await cookies();
-  const session = store.get('admin_session')?.value;
-  const pass = process.env.ADMIN_PASSWORD;
-  const isAuth = pass ? session === Buffer.from(pass).toString('base64') : false;
+  const session = await getStaffSession();
 
-  if (!isAuth) {
+  if (!session) {
     return (
       <div style={{
         minHeight: '100vh',
@@ -24,7 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <ToastProvider>
-      <AdminShell>{children}</AdminShell>
+      <AdminShell session={session}>{children}</AdminShell>
     </ToastProvider>
   );
 }

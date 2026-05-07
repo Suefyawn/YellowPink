@@ -5,6 +5,8 @@ import { Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Pagination } from '@/components/admin/Pagination';
 import { UsersFilter } from '@/components/admin/UsersFilter';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 import type { AdminUser } from '@/types';
 
 const PAGE_SIZE = 20;
@@ -17,6 +19,10 @@ export default async function UsersPage({
 }: {
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('customers')) {
+    return <NoAccess section="Customers" />;
+  }
   const { q, page: pageParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
 

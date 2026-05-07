@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 import type { Order, Product, CartItem } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -17,6 +19,10 @@ const statusColors: Record<string, string> = {
 const statusLabels = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as const;
 
 export default async function DashboardPage() {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('analytics')) {
+    return <NoAccess section="Dashboard" />;
+  }
   const [
     { count: productCount },
     { count: orderCount },

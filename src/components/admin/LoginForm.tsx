@@ -1,20 +1,90 @@
 'use client';
-import { useActionState } from 'react';
-import { loginAdmin } from '@/app/admin/actions';
+import { useActionState, useState } from 'react';
+import { loginAdmin, loginStaff } from '@/app/admin/actions';
+
+const inp: React.CSSProperties = {
+  width: '100%', padding: '10px 14px',
+  border: '1px solid #d1d5db', borderRadius: 8,
+  fontSize: '0.875rem', color: '#111827', outline: 'none',
+  boxSizing: 'border-box',
+};
+const btn: React.CSSProperties = {
+  width: '100%', padding: 11,
+  background: '#ec4899', color: 'white',
+  border: 'none', borderRadius: 8,
+  fontSize: '0.9375rem', fontWeight: 600,
+  cursor: 'pointer',
+};
+const lbl: React.CSSProperties = {
+  display: 'block', fontSize: '0.8125rem',
+  fontWeight: 600, color: '#374151', marginBottom: 6,
+};
+const err: React.CSSProperties = {
+  color: '#ef4444', fontSize: '0.8125rem', marginTop: 6, marginBottom: 0,
+};
+
+function OwnerTab() {
+  const [state, action, pending] = useActionState(loginAdmin, null);
+  return (
+    <form action={action}>
+      <div style={{ marginBottom: 16 }}>
+        <label style={lbl}>Admin Password</label>
+        <input type="password" name="password" placeholder="Enter admin password"
+          required autoFocus
+          style={{ ...inp, borderColor: state?.error ? '#ef4444' : '#d1d5db' }} />
+        {state?.error && <p style={err}>{state.error}</p>}
+      </div>
+      <button type="submit" disabled={pending} style={{ ...btn, opacity: pending ? 0.6 : 1 }}>
+        {pending ? 'Signing in…' : 'Sign In as Owner'}
+      </button>
+    </form>
+  );
+}
+
+function StaffTab() {
+  const [state, action, pending] = useActionState(loginStaff, null);
+  return (
+    <form action={action}>
+      <div style={{ marginBottom: 14 }}>
+        <label style={lbl}>Email</label>
+        <input type="email" name="email" placeholder="you@example.com"
+          required autoFocus
+          style={{ ...inp, borderColor: state?.error ? '#ef4444' : '#d1d5db' }} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={lbl}>Password</label>
+        <input type="password" name="password" placeholder="Your password"
+          required
+          style={{ ...inp, borderColor: state?.error ? '#ef4444' : '#d1d5db' }} />
+        {state?.error && <p style={err}>{state.error}</p>}
+      </div>
+      <button type="submit" disabled={pending} style={{ ...btn, background: '#6366f1', opacity: pending ? 0.6 : 1 }}>
+        {pending ? 'Signing in…' : 'Sign In as Staff'}
+      </button>
+    </form>
+  );
+}
 
 export function LoginForm() {
-  const [state, action, pending] = useActionState(loginAdmin, null);
+  const [tab, setTab] = useState<'owner' | 'staff'>('owner');
+
+  const tabStyle = (active: boolean): React.CSSProperties => ({
+    flex: 1, padding: '8px 0', border: 'none', cursor: 'pointer',
+    background: active ? 'white' : 'transparent',
+    color: active ? '#111827' : '#6b7280',
+    fontWeight: active ? 600 : 400,
+    fontSize: '0.875rem',
+    borderRadius: 6,
+    transition: 'all 0.15s',
+  });
 
   return (
     <div style={{
-      background: 'white',
-      borderRadius: 12,
-      padding: '40px 36px',
-      width: 360,
-      boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
+      background: 'white', borderRadius: 12, padding: '40px 36px',
+      width: 360, boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
     }}>
       {/* Logo */}
-      <div style={{ textAlign: 'center', marginBottom: 32 }}>
+      <div style={{ textAlign: 'center', marginBottom: 28 }}>
         <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 6 }}>
           <span style={{ color: '#ec4899' }}>Yellow</span>
           <span style={{ color: '#111827' }}>Pink</span>
@@ -22,60 +92,20 @@ export function LoginForm() {
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Sign in to admin panel</p>
       </div>
 
-      <form action={action}>
-        <div style={{ marginBottom: 16 }}>
-          <label style={{
-            display: 'block',
-            fontSize: '0.8125rem',
-            fontWeight: 600,
-            color: '#374151',
-            marginBottom: 6,
-          }}>
-            Password
-          </label>
-          <input
-            type="password"
-            name="password"
-            placeholder="Enter admin password"
-            required
-            autoFocus
-            style={{
-              width: '100%',
-              padding: '10px 14px',
-              border: `1px solid ${state?.error ? '#ef4444' : '#d1d5db'}`,
-              borderRadius: 8,
-              fontSize: '0.875rem',
-              color: '#111827',
-              outline: 'none',
-              boxSizing: 'border-box',
-            }}
-          />
-          {state?.error && (
-            <p style={{ color: '#ef4444', fontSize: '0.8125rem', marginTop: 6, marginBottom: 0 }}>
-              {state.error}
-            </p>
-          )}
-        </div>
-
-        <button
-          type="submit"
-          disabled={pending}
-          style={{
-            width: '100%',
-            padding: '11px',
-            background: pending ? '#9ca3af' : '#ec4899',
-            color: 'white',
-            border: 'none',
-            borderRadius: 8,
-            fontSize: '0.9375rem',
-            fontWeight: 600,
-            cursor: pending ? 'not-allowed' : 'pointer',
-            transition: 'background 0.15s',
-          }}
-        >
-          {pending ? 'Signing in…' : 'Sign In'}
+      {/* Tab switcher */}
+      <div style={{
+        display: 'flex', background: '#f3f4f6', borderRadius: 8,
+        padding: 4, marginBottom: 24,
+      }}>
+        <button type="button" style={tabStyle(tab === 'owner')} onClick={() => setTab('owner')}>
+          Owner
         </button>
-      </form>
+        <button type="button" style={tabStyle(tab === 'staff')} onClick={() => setTab('staff')}>
+          Staff
+        </button>
+      </div>
+
+      {tab === 'owner' ? <OwnerTab /> : <StaffTab />}
     </div>
   );
 }

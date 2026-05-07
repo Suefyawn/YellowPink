@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic';
 import { supabase } from '@/lib/supabase';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { createCoupon, deleteCoupon, toggleCoupon } from '@/app/admin/coupon-actions';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 import type { Coupon } from '@/types';
 
 const fmtDate = (s: string) =>
@@ -23,6 +25,10 @@ const stateStyle: Record<string, React.CSSProperties> = {
 };
 
 export default async function CouponsPage() {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('coupons')) {
+    return <NoAccess section="Coupons" />;
+  }
   const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
   const coupons = (data ?? []) as Coupon[];
 

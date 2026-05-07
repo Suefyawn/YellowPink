@@ -7,6 +7,8 @@ import { OrdersFilter } from '@/components/admin/OrdersFilter';
 import { OrdersBulkBar } from '@/components/admin/OrdersBulkBar';
 import { Pagination } from '@/components/admin/Pagination';
 import { ExportCSVButton } from '@/components/admin/ExportCSVButton';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 import type { Order, OrderStatus } from '@/types';
 
 const PAGE_SIZE = 25;
@@ -27,6 +29,18 @@ const statusColors: Record<string, string> = {
 };
 
 export default async function OrdersPage({
+  // permission check happens before searchParams destructure
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ...rawProps}: any) {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('orders')) {
+    return <NoAccess section="Orders" />;
+  }
+  const { searchParams } = rawProps;
+  return <OrdersPageInner searchParams={searchParams} />;
+}
+
+async function OrdersPageInner({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string; q?: string; page?: string }>;
