@@ -8,7 +8,7 @@ import { DeleteButton } from '@/components/admin/DeleteButton';
 import { ProductsFilter } from '@/components/admin/ProductsFilter';
 import type { Product } from '@/types';
 
-const fmt = (n: number) => `Rs ${n.toLocaleString()}`;
+const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 
 export default async function ProductsPage({
   searchParams,

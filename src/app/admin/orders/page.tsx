@@ -7,7 +7,7 @@ import { OrdersFilter } from '@/components/admin/OrdersFilter';
 import { OrdersBulkBar } from '@/components/admin/OrdersBulkBar';
 import type { Order, OrderStatus } from '@/types';
 
-const fmt = (n: number) => `Rs ${n.toLocaleString()}`;
+const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
