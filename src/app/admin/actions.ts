@@ -134,6 +134,7 @@ export async function createBlogPost(
     read_time: (formData.get('read_time') as string).trim() || '3 min read',
     featured: formData.get('featured') === 'on',
     body: (formData.get('body') as string) || null,
+    image_url: (formData.get('image_url') as string).trim() || null,
   };
   const { error } = await supabase.from('blog_posts').insert(data);
   if (error) return { error: error.message };
@@ -157,6 +158,7 @@ export async function updateBlogPost(
     read_time: (formData.get('read_time') as string).trim() || '3 min read',
     featured: formData.get('featured') === 'on',
     body: (formData.get('body') as string) || null,
+    image_url: (formData.get('image_url') as string).trim() || null,
   };
   const { error } = await supabase.from('blog_posts').update(data).eq('id', id);
   if (error) return { error: error.message };

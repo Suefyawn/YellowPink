@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
@@ -218,8 +219,8 @@ export function CheckoutPage() {
               <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>Your Order</Overline>
               {cartItems.map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                  <div className="img-placeholder" style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, fontSize: '0.45rem', position: 'relative' }}>
-                    img
+                  <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)', position: 'relative' }}>
+                    <ProductImage src={item.image_url} alt={item.name} />
                     <span style={{ position: 'absolute', top: -6, right: -6, background: 'var(--ink-900)', color: 'var(--paper)', width: 18, height: 18, borderRadius: '50%', fontSize: '0.625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.qty}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

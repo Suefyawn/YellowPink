@@ -37,6 +37,7 @@ export interface BlogPost {
   read_time: string;
   featured?: boolean;
   body?: string;
+  image_url?: string;
   created_at?: string;
 }
 

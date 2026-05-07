@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { OrdersFilter } from '@/components/admin/OrdersFilter';
 import { OrdersBulkBar } from '@/components/admin/OrdersBulkBar';
 import { Pagination } from '@/components/admin/Pagination';
+import { ExportCSVButton } from '@/components/admin/ExportCSVButton';
 import type { Order, OrderStatus } from '@/types';
 
 const PAGE_SIZE = 25;
@@ -54,8 +55,9 @@ export default async function OrdersPage({
 
   return (
     <div style={{ padding: '32px 36px' }}>
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Orders</h1>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Orders</h1>
+        <ExportCSVButton status={status} q={q} />
       </div>
 
       <Suspense fallback={null}>

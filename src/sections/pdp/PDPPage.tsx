@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { useCart } from '@/context/CartContext';
 import type { Product } from '@/types';
@@ -17,7 +18,6 @@ const PAIRS_WITH: Product[] = [
 ];
 
 export function PDPPage({ product }: { product: Product }) {
-  const [selectedImage, setSelectedImage] = useState(0);
   const [qty, setQty] = useState(1);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
@@ -44,18 +44,8 @@ export function PDPPage({ product }: { product: Product }) {
       <div className="container" style={{ borderTop: '1px solid var(--line)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, padding: '40px 0' }} className="pdp-grid">
           <div style={{ display: 'flex', gap: 12 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
-              {[0, 1, 2, 3].map(idx => (
-                <div key={idx} onClick={() => setSelectedImage(idx)}
-                  className="img-placeholder" style={{
-                    width: 56, height: 56, borderRadius: 'var(--radius-card)', cursor: 'pointer',
-                    border: selectedImage === idx ? '2px solid var(--ink-900)' : '2px solid var(--line)',
-                    fontSize: '0.5rem', transition: 'border-color 150ms',
-                  }}>{idx + 1}</div>
-              ))}
-            </div>
-            <div className="img-placeholder" style={{ flex: 1, aspectRatio: '4/5', borderRadius: 'var(--radius-card)' }}>
-              <span>product image {selectedImage + 1}</span>
+            <div style={{ flex: 1, aspectRatio: '4/5', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--paper2)' }}>
+              <ProductImage src={product.image_url} alt={`${product.brand} ${product.name}`} />
             </div>
           </div>
 

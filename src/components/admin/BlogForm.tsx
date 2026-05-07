@@ -30,6 +30,7 @@ export function BlogForm({ post }: { post?: BlogPost }) {
 
   const [title, setTitle] = useState(post?.title ?? '');
   const [slug, setSlug] = useState(post?.slug ?? '');
+  const [imageUrl, setImageUrl] = useState(post?.image_url ?? '');
 
   return (
     <div style={{ padding: '32px 36px' }}>
@@ -91,6 +92,26 @@ export function BlogForm({ post }: { post?: BlogPost }) {
             <div>
               <label style={lbl}>Read Time *</label>
               <input name="read_time" required defaultValue={post?.read_time} style={inp} placeholder="5 min read" />
+            </div>
+          </div>
+
+          {/* Image URL */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Cover Image URL</label>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+              <input
+                name="image_url"
+                value={imageUrl}
+                onChange={e => setImageUrl(e.target.value)}
+                style={{ ...inp, flex: 1 }}
+                placeholder="https://..."
+              />
+              {imageUrl && (
+                <div style={{ width: 72, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', flexShrink: 0 }}>
+                  <img src={imageUrl} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                </div>
+              )}
             </div>
           </div>
 

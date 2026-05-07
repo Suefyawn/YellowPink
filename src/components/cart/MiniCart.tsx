@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 
 const FREE_SHIPPING = 2500;
@@ -64,7 +65,9 @@ export function MiniCart() {
             </div>
           ) : cartItems.map((item, i) => (
             <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--line)' }}>
-              <div className="img-placeholder" style={{ width: 64, height: 64, borderRadius: 'var(--radius-card)', flexShrink: 0, fontSize: '0.5rem' }}>photo</div>
+              <div style={{ width: 64, height: 64, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
+                <ProductImage src={item.image_url} alt={item.name} />
+              </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 2 }}>{item.name}</div>

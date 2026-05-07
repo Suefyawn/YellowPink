@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import type { Coupon } from '@/types';
@@ -100,7 +101,9 @@ export function CartPage() {
               {cartItems.map((item, i) => (
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, alignItems: 'center', padding: '20px 0', borderBottom: '1px solid var(--line)' }}>
                   <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                    <div className="img-placeholder" style={{ width: 72, height: 72, borderRadius: 'var(--radius-card)', flexShrink: 0, fontSize: '0.5rem' }}>photo</div>
+                    <div style={{ width: 72, height: 72, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
+                      <ProductImage src={item.image_url} alt={item.name} />
+                    </div>
                     <div>
                       <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>
                       <div style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{item.name}</div>

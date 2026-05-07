@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
+import { ProductImage } from '@/components/ui/ProductImage';
 import type { BlogPost } from '@/types';
 
 const FILTERS = ['All', 'Skincare', 'Makeup', 'Wellness'];
@@ -29,8 +30,8 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
           <div className="container">
             <Link href={`/blog/${featured.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 48, alignItems: 'center', cursor: 'pointer' }} className="duo-grid">
-                <div className="img-placeholder" style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)' }}>
-                  <span>featured article hero image</span>
+                <div style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden' }}>
+                  <ProductImage src={featured.image_url} alt={featured.title} />
                 </div>
                 <div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
@@ -69,11 +70,11 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
             {filtered.map((post) => (
               <Link key={post.id} href={`/blog/${post.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <article style={{ cursor: 'pointer' }}>
-                  <div className="img-placeholder" style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', marginBottom: 16, transition: 'transform 200ms ease-out' }}
+                  <div style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden', marginBottom: 16, transition: 'transform 200ms ease-out' }}
                     onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
                   >
-                    <span>article image</span>
+                    <ProductImage src={post.image_url} alt={post.title} />
                   </div>
                   <Overline style={{ color: 'var(--ink-500)', display: 'block', marginBottom: 6 }}>{post.category}</Overline>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3, marginBottom: 8 }}>{post.title}</h3>

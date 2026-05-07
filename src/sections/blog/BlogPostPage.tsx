@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { sanitizeHtml } from '@/lib/sanitize';
 import type { BlogPost, Product } from '@/types';
 
@@ -42,8 +43,8 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
         </div>
 
         <div className="container" style={{ maxWidth: 960, padding: '32px var(--side)' }}>
-          <div className="img-placeholder" style={{ aspectRatio: '16/9', borderRadius: 'var(--radius-card)' }}>
-            <span>article hero image</span>
+          <div style={{ aspectRatio: '16/9', borderRadius: 'var(--radius-card)', overflow: 'hidden' }}>
+            <ProductImage src={post.image_url} alt={post.title} />
           </div>
         </div>
 
@@ -88,8 +89,8 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
                   {relatedPosts.map((rp) => (
                     <Link key={rp.id} href={`/blog/${rp.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <article style={{ cursor: 'pointer' }}>
-                        <div className="img-placeholder" style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', marginBottom: 12 }}>
-                          <span>article image</span>
+                        <div style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden', marginBottom: 12 }}>
+                          <ProductImage src={rp.image_url} alt={rp.title} />
                         </div>
                         <Overline style={{ color: 'var(--ink-500)', display: 'block', marginBottom: 4 }}>{rp.category}</Overline>
                         <h3 className="h3" style={{ marginBottom: 4 }}>{rp.title}</h3>

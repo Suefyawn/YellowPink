@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Overline } from './Overline';
+import { ProductImage } from './ProductImage';
 import { useWishlist } from '@/context/WishlistContext';
 import type { Product } from '@/types';
 
@@ -27,11 +28,12 @@ export function ProductTile({ product, onClick }: ProductTileProps) {
         transition: 'transform 180ms ease-out',
       }}
     >
-      <div className="img-placeholder" style={{
+      <div style={{
         width: '100%', aspectRatio: '1', borderRadius: 'var(--radius-card)',
-        marginBottom: 12, position: 'relative',
+        marginBottom: 12, position: 'relative', overflow: 'hidden',
+        background: 'var(--paper2)',
       }}>
-        <span style={{ padding: 16 }}>product photo</span>
+        <ProductImage src={product.image_url} alt={`${brand} ${name}`} />
         {original_price && (
           <span style={{
             position: 'absolute', top: 8, left: 8,

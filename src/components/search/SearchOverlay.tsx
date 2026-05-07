@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
+import { ProductImage } from '@/components/ui/ProductImage';
 import { useSearch } from '@/context/SearchContext';
 import { supabase } from '@/lib/supabase';
 import type { Product } from '@/types';
@@ -112,7 +113,9 @@ export function SearchOverlay() {
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--paper2)')}
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
-                        <div className="img-placeholder" style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, fontSize: '0.5rem' }}>img</div>
+                        <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
+                          <ProductImage src={p.image_url} alt={p.name} />
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{p.brand}</Overline>
                           <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>{p.name}</div>
