@@ -4,7 +4,7 @@ import { ProductTile } from '@/components/ui/ProductTile';
 import type { Product } from '@/types';
 
 export function NewArrivals({ products }: { products: Product[] }) {
-  const items = products.slice(7, 11);
+  const items = products.slice(0, 4);
   return (
     <section style={{ paddingBottom: 'var(--section-gap)' }}>
       <div className="container">

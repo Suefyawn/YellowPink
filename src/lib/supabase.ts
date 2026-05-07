@@ -33,6 +33,28 @@ export async function getProductsByCategory(category: string): Promise<Product[]
   return data ?? [];
 }
 
+export async function getProductsByTag(tag: string, limit = 8): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('tag', tag)
+    .order('id')
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getProductsByCategoryAndTag(category: string, limit = 4): Promise<Product[]> {
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('category', category)
+    .order('id')
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getBlogPosts(): Promise<BlogPost[]> {
   const { data, error } = await supabase
     .from('blog_posts')

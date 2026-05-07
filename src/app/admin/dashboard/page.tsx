@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { RevenueChart } from '@/components/admin/RevenueChart';
 import type { Order, Product, CartItem } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -23,6 +24,8 @@ export default async function DashboardPage() {
   if (session && !session.isOwner && !session.permissions.includes('analytics')) {
     return <NoAccess section="Dashboard" />;
   }
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
   const [
     { count: productCount },
     { count: orderCount },
@@ -30,6 +33,7 @@ export default async function DashboardPage() {
     { count: blogCount },
     { data: allOrders },
     { data: lowStockProducts },
+    { data: recentOrdersForChart },
   ] = await Promise.all([
     supabase.from('products').select('*', { count: 'exact', head: true }),
     supabase.from('orders').select('*', { count: 'exact', head: true }),
@@ -37,7 +41,20 @@ export default async function DashboardPage() {
     supabase.from('blog_posts').select('*', { count: 'exact', head: true }),
     supabase.from('orders').select('total, status, items'),
     supabase.from('products').select('*').lte('stock', 5).order('stock', { ascending: true }),
+    supabase.from('orders').select('total, status, created_at').gte('created_at', thirtyDaysAgo).neq('status', 'cancelled'),
   ]);
+
+  // Build 30-day revenue series
+  const dayMap: Record<string, number> = {};
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    dayMap[d.toISOString().slice(0, 10)] = 0;
+  }
+  for (const o of (recentOrdersForChart ?? []) as Array<{ total: number; created_at: string }>) {
+    const day = o.created_at.slice(0, 10);
+    if (day in dayMap) dayMap[day] += o.total;
+  }
+  const chartDays = Object.entries(dayMap).map(([date, revenue]) => ({ date, revenue }));
 
   const allOrdersList = (allOrders ?? []) as Array<{ total: number; status: string; items: CartItem[] }>;
   // Revenue excludes cancelled orders
@@ -97,6 +114,17 @@ export default async function DashboardPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Revenue chart */}
+      <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px', marginBottom: 32 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Revenue — Last 30 Days</h2>
+          <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+            {fmt(chartDays.reduce((s, d) => s + d.revenue, 0))} total
+          </span>
+        </div>
+        <RevenueChart days={chartDays} />
       </div>
 
       {/* Low Stock Alert */}

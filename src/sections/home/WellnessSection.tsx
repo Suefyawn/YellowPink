@@ -14,7 +14,7 @@ const PILLARS = [
 ];
 
 export function WellnessSection({ products }: { products: Product[] }) {
-  const wellnessProducts = products.filter(p => p.category === 'Wellness').slice(0, 3);
+  const wellnessProducts = products.slice(0, 3);
   return (
     <section style={{ padding: 'var(--section-gap) 0' }}>
       <div className="container">

@@ -4,7 +4,7 @@ import { ProductTile } from '@/components/ui/ProductTile';
 import type { Product } from '@/types';
 
 export function BestsellersBand({ products }: { products: Product[] }) {
-  const items = products.filter(p => ['Tarte', 'NARS', 'CeraVe', 'Rhode'].includes(p.brand)).slice(0, 3);
+  const items = products.slice(0, 3);
   return (
     <section style={{ background: 'var(--paper2)', padding: 'var(--section-gap) 0', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
       <div className="container">

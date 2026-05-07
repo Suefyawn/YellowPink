@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { getProducts } from '@/lib/supabase';
+import { getProductsByTag, getProductsByCategoryAndTag } from '@/lib/supabase';
 import { HeroSection } from '@/sections/home/HeroSection';
 import { TrustBar } from '@/sections/home/TrustBar';
 import { FeaturedProducts } from '@/sections/home/FeaturedProducts';
@@ -13,16 +13,21 @@ import { RealResults } from '@/sections/home/RealResults';
 import { PressStrip } from '@/sections/home/PressStrip';
 
 export default async function HomePage() {
-  const products = await getProducts();
+  const [bestsellers, saleProducts, wellnessProducts] = await Promise.all([
+    getProductsByTag('Bestseller', 8),
+    getProductsByTag('Sale', 4),
+    getProductsByCategoryAndTag('Wellness', 3),
+  ]);
+
   return (
     <main className="fade-in">
       <HeroSection />
       <TrustBar />
-      <FeaturedProducts products={products} />
+      <FeaturedProducts products={bestsellers.slice(0, 4)} />
       <EditorialDuo />
-      <NewArrivals products={products} />
-      <BestsellersBand products={products} />
-      <WellnessSection products={products} />
+      <NewArrivals products={saleProducts} />
+      <BestsellersBand products={bestsellers.slice(4, 7)} />
+      <WellnessSection products={wellnessProducts} />
       <CategoryTiles />
       <RealResults />
       <PressStrip />
