@@ -8,6 +8,7 @@ export interface Product {
   price: number;
   original_price?: number;
   category: string;
+  subcategory?: string;
   tag?: string;
   slug: string;
   stock: number;
