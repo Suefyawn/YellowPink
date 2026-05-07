@@ -11,10 +11,10 @@ import type { Product } from '@/types';
 export function WishlistPage() {
   const { wishlist } = useWishlist();
   const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(wishlist.length > 0);
 
   useEffect(() => {
-    if (wishlist.length === 0) { setLoading(false); return; }
+    if (wishlist.length === 0) return;
     const sb = getBrowserClient();
     sb.from('products').select('*').in('id', wishlist).then(({ data }) => {
       if (data) setProducts(data as Product[]);

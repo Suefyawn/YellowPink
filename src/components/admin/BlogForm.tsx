@@ -108,6 +108,7 @@ export function BlogForm({ post }: { post?: BlogPost }) {
               />
               {imageUrl && (
                 <div style={{ width: 72, height: 72, borderRadius: 8, overflow: 'hidden', border: '1px solid #e5e7eb', flexShrink: 0 }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={imageUrl} alt="preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                 </div>
