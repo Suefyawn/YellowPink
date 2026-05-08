@@ -57,7 +57,7 @@ export function ProductForm({ product }: { product?: Product }) {
 
         <form action={action}>
           {/* Row 1 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
+          <div className="adm-form-brand" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
             <div style={fieldWrap}>
               <label style={lbl}>Brand *</label>
               <input name="brand" required defaultValue={product?.brand} style={inp} placeholder="e.g. CeraVe" />
@@ -74,7 +74,7 @@ export function ProductForm({ product }: { product?: Product }) {
           </div>
 
           {/* Row 2 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div style={fieldWrap}>
               <label style={lbl}>Variant</label>
               <input name="variant" defaultValue={product?.variant ?? ''} style={inp} placeholder="e.g. 250ml" />
@@ -90,7 +90,7 @@ export function ProductForm({ product }: { product?: Product }) {
           </div>
 
           {/* Row 3 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div className="adm-form-4col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div style={fieldWrap}>
               <label style={lbl}>Category *</label>
               <select name="category" required value={category} onChange={e => setCategory(e.target.value)} style={inp}>
@@ -153,7 +153,7 @@ export function ProductForm({ product }: { product?: Product }) {
               style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
               placeholder="Short product description shown on the product page…" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
             <div style={fieldWrap}>
               <label style={lbl}>How to Use</label>
               <textarea name="how_to_use" defaultValue={product?.how_to_use ?? ''} rows={4}

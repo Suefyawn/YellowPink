@@ -38,7 +38,7 @@ export default async function CouponsPage() {
   };
 
   return (
-    <div style={{ padding: '32px 36px' }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Coupons</h1>

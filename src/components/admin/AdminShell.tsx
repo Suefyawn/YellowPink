@@ -13,6 +13,12 @@ export function AdminShell({ children, session, pendingOrderCount = 0 }: { child
         .adm-main { margin-left: 240px; min-height: 100vh; background: #f3f4f6; }
         .adm-topbar { display: none; }
         .adm-overlay { display: none; }
+        .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        @media (max-width: 1023px) {
+          .adm-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .adm-analytics-grid { grid-template-columns: 1fr !important; }
+        }
 
         @media (max-width: 767px) {
           .adm-sidebar { transform: translateX(-240px); }
@@ -27,6 +33,12 @@ export function AdminShell({ children, session, pendingOrderCount = 0 }: { child
             display: block; position: fixed; inset: 0;
             background: rgba(0,0,0,0.5); z-index: 49;
           }
+          .adm-page { padding: 16px 14px !important; }
+          .adm-stat-grid { gap: 12px !important; }
+          .adm-form-2col { grid-template-columns: 1fr !important; }
+          .adm-form-3col { grid-template-columns: 1fr 1fr !important; }
+          .adm-form-4col { grid-template-columns: 1fr 1fr !important; }
+          .adm-form-brand { grid-template-columns: 1fr !important; }
         }
       `}</style>
 

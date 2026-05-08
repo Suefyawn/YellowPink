@@ -43,7 +43,7 @@ export default async function UsersPage({
   const paginated = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
-    <div style={{ padding: '32px 36px' }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Customers</h1>
         <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{total} registered account{total !== 1 ? 's' : ''}</p>

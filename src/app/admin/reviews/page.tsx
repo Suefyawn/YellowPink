@@ -92,7 +92,7 @@ export default async function ReviewsPage() {
   }
 
   return (
-    <div style={{ padding: '32px 36px' }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Reviews</h1>
       <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>
         Moderate customer product reviews before they appear on the site

@@ -51,7 +51,7 @@ export default async function ProductsPage({
   const list = (products ?? []) as Product[];
 
   return (
-    <div style={{ padding: '32px 36px' }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Products</h1>
         <Link href="/admin/products/new" style={{
@@ -67,7 +67,7 @@ export default async function ProductsPage({
         <ProductsFilter total={total} />
       </Suspense>
 
-      <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+      <div className="adm-table-scroll" style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {list.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af' }}>
             No products found. <Link href="/admin/products/new" style={{ color: '#ec4899' }}>Add one →</Link>
