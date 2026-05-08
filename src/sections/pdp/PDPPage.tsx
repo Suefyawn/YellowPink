@@ -10,14 +10,7 @@ import type { Product } from '@/types';
 
 const SHIPPING_CONTENT = 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.';
 
-const PAIRS_WITH: Product[] = [
-  { id: 'pair-1', brand: 'Pixi', name: 'On-the-Glow Blush', variant: 'Fleur', price: 3400, category: 'Blush', slug: 'pixi-on-the-glow-blush-stick', stock: 10 },
-  { id: 'pair-2', brand: 'SHEGLAM', name: 'Color Bloom Blush', variant: 'Risky Business', price: 1200, category: 'Blush', slug: 'sheglam-color-bloom-liquid-blush-risky-business', stock: 10 },
-  { id: 'pair-3', brand: 'Iconic London', name: 'Liquid Highlighter', variant: 'Original', price: 4800, category: 'Makeup', slug: 'iconic-london-liquid-highlighter', stock: 10 },
-  { id: 'pair-4', brand: 'CeraVe', name: 'Moisturizing Cream', variant: '340g', price: 3900, category: 'Skincare', slug: 'cerave-moisturizing-cream', stock: 10 },
-];
-
-export function PDPPage({ product }: { product: Product }) {
+export function PDPPage({ product, relatedProducts = [] }: { product: Product; relatedProducts?: Product[] }) {
   const [qty, setQty] = useState(1);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
@@ -140,18 +133,20 @@ export function PDPPage({ product }: { product: Product }) {
         </div>
       </section>
 
-      <section style={{ padding: 'var(--section-gap) 0' }}>
-        <div className="container">
-          <Overline style={{ display: 'block', marginBottom: 32 }}>Pairs With</Overline>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
-            {PAIRS_WITH.map((p) => (
-              <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <ProductTile product={p} />
-              </Link>
-            ))}
+      {relatedProducts.length > 0 && (
+        <section style={{ padding: 'var(--section-gap) 0' }}>
+          <div className="container">
+            <Overline style={{ display: 'block', marginBottom: 32 }}>You May Also Like</Overline>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
+              {relatedProducts.map((p) => (
+                <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <ProductTile product={p} />
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   );
 }

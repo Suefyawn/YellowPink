@@ -29,12 +29,23 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const { data: reviews } = await supabase
-    .from('product_reviews')
-    .select('id, author_name, rating, body, created_at')
-    .eq('product_id', product.id)
-    .eq('approved', true)
-    .order('created_at', { ascending: false });
+  const [{ data: reviews }, { data: relatedRaw }] = await Promise.all([
+    supabase
+      .from('product_reviews')
+      .select('id, author_name, rating, body, created_at')
+      .eq('product_id', product.id)
+      .eq('approved', true)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('products')
+      .select('*')
+      .eq('category', product.category)
+      .neq('id', product.id)
+      .limit(8),
+  ]);
+
+  // Shuffle and take 4 so "Pairs With" doesn't always show the same products
+  const shuffled = (relatedRaw ?? []).sort(() => Math.random() - 0.5).slice(0, 4);
 
   return (
     <main className="fade-in">
@@ -58,7 +69,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           })
         }}
       />
-      <PDPPage product={product} />
+      <PDPPage product={product} relatedProducts={shuffled} />
       <ReviewsSection productId={product.id} reviews={reviews ?? []} />
     </main>
   );
