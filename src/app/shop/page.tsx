@@ -8,10 +8,16 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const { category, subcategory } = await searchParams;
   const label = subcategory ?? (category && category !== 'All' ? category : null);
   const title = label ? `${label} — Shop | Yellow Pink` : 'Shop All Products | Yellow Pink';
+  const params = new URLSearchParams();
+  if (category && category !== 'All') params.set('category', category);
+  if (subcategory) params.set('subcategory', subcategory);
+  const qs = params.toString();
+  const canonical = `https://yellow-pink.vercel.app/shop${qs ? `?${qs}` : ''}`;
   return {
     title,
     description: 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.',
     openGraph: { title, description: 'Shop imported beauty & wellness. COD Pakistan.' },
+    alternates: { canonical },
   };
 }
 

@@ -18,7 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title,
       description: post.excerpt ?? post.title,
       type: 'article',
-      images: post.image_url ? [{ url: post.image_url }] : [],
+      ...(post.image_url ? { images: [{ url: post.image_url, width: 1200, height: 630, alt: post.title }] } : {}),
     },
   };
 }
@@ -39,22 +39,20 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
     return p.category === 'Makeup';
   }).slice(0, 3);
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.excerpt,
+    datePublished: post.date,
+    author: { '@type': 'Organization', name: 'Yellow Pink', url: 'https://yellow-pink.vercel.app' },
+    publisher: { '@type': 'Organization', name: 'Yellow Pink', url: 'https://yellow-pink.vercel.app' },
+    ...(post.image_url ? { image: post.image_url } : {}),
+  };
+
   return (
     <main className="fade-in">
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Article",
-            "headline": post.title,
-            "description": post.excerpt,
-            "image": post.image_url ?? undefined,
-            "datePublished": post.date,
-            "publisher": { "@type": "Organization", "name": "Yellow Pink", "url": "https://yellowpink.pk" }
-          })
-        }}
-      />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} />
     </main>
   );
