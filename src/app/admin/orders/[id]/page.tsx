@@ -122,9 +122,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: 6 }}>
             <span style={{ color: '#6b7280' }}>Subtotal</span><span>{fmt(o.subtotal)}</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: o.discount_amount && o.discount_amount > 0 ? 6 : 10 }}>
             <span style={{ color: '#6b7280' }}>Shipping</span><span>{o.shipping === 0 ? 'Free' : fmt(o.shipping)}</span>
           </div>
+          {o.discount_amount != null && o.discount_amount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', marginBottom: 10 }}>
+              <span style={{ color: '#15803d' }}>Discount{o.coupon_code ? ` (${o.coupon_code})` : ''}</span>
+              <span style={{ color: '#15803d' }}>− {fmt(o.discount_amount)}</span>
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1rem', borderTop: '2px solid #111827', paddingTop: 10 }}>
             <span>Total</span><span>{fmt(o.total)}</span>
           </div>
@@ -209,6 +215,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <span style={{ color: '#6b7280' }}>Shipping</span>
               <span>{o.shipping === 0 ? 'Free' : fmt(o.shipping)}</span>
             </div>
+            {o.discount_amount != null && o.discount_amount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+                <span style={{ color: '#15803d' }}>
+                  Discount{o.coupon_code ? ` (${o.coupon_code})` : ''}
+                </span>
+                <span style={{ color: '#15803d' }}>− {fmt(o.discount_amount)}</span>
+              </div>
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 700, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
               <span>Total</span>
               <span style={{ color: '#ec4899' }}>{fmt(o.total)}</span>

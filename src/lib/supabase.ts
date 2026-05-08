@@ -16,13 +16,22 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from('products')
     .select('*')
     .eq('slug', slug)
     .single();
-  if (error) return null;
-  return data;
+  if (data) return data;
+
+  // Fallback: some slugs have a doubled brand prefix (e.g. cerave-cerave-acne-control-cleanser).
+  // If the exact slug fails, try matching any slug that ends with -{slug}.
+  const { data: fallback } = await supabase
+    .from('products')
+    .select('*')
+    .ilike('slug', `%-${slug}`)
+    .limit(1)
+    .single();
+  return fallback ?? null;
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {
