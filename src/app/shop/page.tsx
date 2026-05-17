@@ -1,8 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
-import { getProducts } from '@/lib/supabase';
+import { getProducts, isDemo } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
+import { DEMO_CATEGORIES } from '@/lib/demo-data';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta } from '@/lib/seo';
 import type { Category, ProductAttribute, AttributeValue } from '@/types';
@@ -17,6 +18,8 @@ interface FacetData {
 }
 
 async function loadFacetData(): Promise<FacetData> {
+  // Demo-mode short-circuit: no variants in stub data, no facets.
+  if (isDemo) return { attributes: [], productValueMap: {} };
   // Pull every active variant + its option links, joined with the value + attribute
   // metadata. This is one round-trip; data is small enough (one row per
   // variant-value pair across the active catalog).
@@ -79,6 +82,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 }
 
 async function loadCategories(): Promise<Category[]> {
+  if (isDemo) return DEMO_CATEGORIES;
   // All categories; CollectionPage groups by parent_id client-side.
   const { data } = await supabase
     .from('categories')

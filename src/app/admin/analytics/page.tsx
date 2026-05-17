@@ -21,8 +21,8 @@ interface CohortRow { cohort_month: string; month_offset: number; customers: num
 async function rpc<T>(name: string, args: Record<string, unknown> = {}): Promise<T[]> {
   const { data, error } = await supabase.rpc(name as never, args as never);
   if (error) {
-    // eslint-disable-next-line no-console
-    console.warn(`[analytics] ${name} failed:`, error.message);
+    const { log } = await import('@/lib/logger');
+    log.warn('analytics.rpc_failed', { rpc: name, message: error.message });
     return [];
   }
   return (data ?? []) as T[];

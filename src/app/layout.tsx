@@ -1,11 +1,12 @@
 export const dynamic = 'force-dynamic';
 
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
 import { Providers } from '@/context/Providers';
 import { SiteChrome } from '@/components/layout/SiteChrome';
 import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
 import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
+import { DemoBanner } from '@/components/layout/DemoBanner';
 import { getSiteSettings } from '@/lib/supabase';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
 
@@ -17,7 +18,6 @@ export const metadata: Metadata = {
   },
   description: 'International skincare, makeup, and clinical-grade nutraceuticals. Now in Pakistan with COD.',
   applicationName: SITE_NAME,
-  themeColor: '#F7C948',
   icons: {
     icon: '/icon.svg',
     shortcut: '/icon.svg',
@@ -37,6 +37,10 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  themeColor: '#F7C948',
+};
+
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const settings = await getSiteSettings();
   return (
@@ -54,6 +58,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <a href="#main" className="skip-link">Skip to main content</a>
+        <DemoBanner />
         <WebVitalsReporter />
         <ServiceWorkerRegister />
         <Providers>

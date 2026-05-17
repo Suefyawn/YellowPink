@@ -155,7 +155,7 @@ function ReviewPhotoUploader({ urls, onChange }: { urls: string[]; onChange: (ur
 }
 
 // ─── Main section ──────────────────────────────────────────────────────────
-export function ReviewsSection({ productId, reviews }: { productId: string; reviews: Review[] }) {
+export function ReviewsSection({ productId, reviews, photosEnabled = true }: { productId: string; reviews: Review[]; photosEnabled?: boolean }) {
   const [state, action, pending] = useActionState(submitReview, null);
   const [sortBy, setSortBy] = useState<SortKey>('recent');
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -337,7 +337,7 @@ export function ReviewsSection({ productId, reviews }: { productId: string; revi
                   />
                 </div>
 
-                <ReviewPhotoUploader urls={photoUrls} onChange={setPhotoUrls} />
+                {photosEnabled && <ReviewPhotoUploader urls={photoUrls} onChange={setPhotoUrls} />}
 
                 {state && 'error' in state && state.error && (
                   <p style={{ margin: 0, color: '#ef4444', fontSize: '0.8125rem' }}>{state.error}</p>

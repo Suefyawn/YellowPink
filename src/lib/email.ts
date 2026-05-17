@@ -13,6 +13,7 @@
 // ============================================================================
 
 import { Resend } from 'resend';
+import { log } from './logger';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
@@ -49,10 +50,7 @@ function shell(inner: string): string {
 
 async function send(opts: { to: string | string[]; subject: string; html: string; replyTo?: string }) {
   if (!resend) {
-    if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
-      console.warn('[email] RESEND_API_KEY not set; skipping send to', opts.to, '—', opts.subject);
-    }
+    log.warn('email.skip', { reason: 'RESEND_API_KEY not set', to: opts.to, subject: opts.subject });
     return;
   }
   try {
@@ -63,9 +61,9 @@ async function send(opts: { to: string | string[]; subject: string; html: string
       html: opts.html,
       replyTo: opts.replyTo,
     });
+    log.info('email.sent', { to: opts.to, subject: opts.subject });
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[email] send failed', err);
+    log.error('email.send_failed', { to: opts.to, subject: opts.subject, err });
   }
 }
 

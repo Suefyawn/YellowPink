@@ -3,12 +3,13 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductBySlug, supabase } from '@/lib/supabase';
+import { getProductBySlug, supabase, isDemo } from '@/lib/supabase';
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
 import { pageMeta, jsonLd, productLd, breadcrumbLd } from '@/lib/seo';
+import { isEnabled } from '@/lib/flags';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -40,6 +41,7 @@ async function loadVariantData(productId: string): Promise<{
   variants: VariantWithOptions[];
   attributes: AttributeWithValues[];
 }> {
+  if (isDemo) return { variants: [], attributes: [] };
   const { data: variantRows } = await supabase
     .from('product_variants')
     .select('id, product_id, sku, price, compare_at_price, stock, image_url, weight_grams, enabled, sort_order')
@@ -95,6 +97,7 @@ async function loadVariantData(productId: string): Promise<{
 }
 
 async function loadGallery(productId: string): Promise<ProductImage[]> {
+  if (isDemo) return [];
   const { data } = await supabase
     .from('product_images')
     .select('id, product_id, variant_id, url, alt, sort_order')
@@ -104,6 +107,7 @@ async function loadGallery(productId: string): Promise<ProductImage[]> {
 }
 
 async function loadFrequentlyBoughtTogether(productId: string): Promise<Product[]> {
+  if (isDemo) return [];
   // RPC returns [{ product_id, co_count }] ordered desc.
   const { data, error } = await supabase.rpc('frequently_bought_with' as never, {
     p_product_id: productId,
@@ -120,6 +124,11 @@ async function loadFrequentlyBoughtTogether(productId: string): Promise<Product[
 }
 
 async function loadCrossSells(productId: string, fallbackCategory: string): Promise<Product[]> {
+  if (isDemo) {
+    // In demo, surface a few same-category products from stub data.
+    const { DEMO_PRODUCTS } = await import('@/lib/demo-data');
+    return DEMO_PRODUCTS.filter(p => p.id !== productId && p.category === fallbackCategory).slice(0, 4);
+  }
   // Prefer explicit cross-sells / upsells from product_relations.
   const { data: rels } = await supabase
     .from('product_relations')
@@ -152,13 +161,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
+  const [backInStockEnabled, reviewPhotosEnabled] = await Promise.all([
+    isEnabled('back_in_stock'),
+    isEnabled('reviews_photos'),
+  ]);
+
   const [{ data: reviewRows }, variantData, gallery, crossSells, fbt] = await Promise.all([
-    supabase
-      .from('product_reviews')
-      .select('id, author_name, rating, body, created_at, photo_urls, verified_purchase, helpful_count')
-      .eq('product_id', product.id)
-      .eq('approved', true)
-      .order('created_at', { ascending: false }),
+    isDemo
+      ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>> })
+      : supabase
+          .from('product_reviews')
+          .select('id, author_name, rating, body, created_at, photo_urls, verified_purchase, helpful_count')
+          .eq('product_id', product.id)
+          .eq('approved', true)
+          .order('created_at', { ascending: false }),
     product.kind === 'variable' ? loadVariantData(product.id) : Promise.resolve({ variants: [], attributes: [] }),
     loadGallery(product.id),
     loadCrossSells(product.id, product.category),
@@ -190,9 +206,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         variants={variantData.variants}
         attributes={variantData.attributes}
         gallery={gallery}
+        backInStockEnabled={backInStockEnabled}
       />
       <FrequentlyBoughtTogether anchor={product} suggestions={fbt} />
-      <ReviewsSection productId={product.id} reviews={reviews} />
+      <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} />
       <RecentlyViewed currentProductId={product.id} />
     </main>
   );

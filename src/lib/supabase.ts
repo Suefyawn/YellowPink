@@ -1,12 +1,23 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Product, BlogPost, Order } from '@/types';
+import { DEMO_PRODUCTS, DEMO_BLOG_POSTS, DEMO_SITE_SETTINGS } from './demo-data';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+/** True when no Supabase env vars are configured. Storefront helpers fall
+ *  back to stub data so the site renders for design / a11y review on a
+ *  fresh clone without setting up Supabase. */
+export const isDemo = !envUrl || !envKey;
+
+// Placeholder URL/key so createClient doesn't throw on import in demo mode.
+const supabaseUrl = envUrl || 'https://demo.invalid';
+const supabaseAnonKey = envKey || 'demo-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function getProducts(): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS;
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -16,6 +27,7 @@ export async function getProducts(): Promise<Product[]> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
+  if (isDemo) return DEMO_PRODUCTS.find(p => p.slug === slug) ?? null;
   const { data } = await supabase
     .from('products')
     .select('*')
@@ -35,6 +47,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {
+  if (isDemo) return category === 'All' ? DEMO_PRODUCTS : DEMO_PRODUCTS.filter(p => p.category === category);
   const query = supabase.from('products').select('*').order('id');
   if (category !== 'All') query.eq('category', category);
   const { data, error } = await query;
@@ -43,6 +56,7 @@ export async function getProductsByCategory(category: string): Promise<Product[]
 }
 
 export async function getProductsByTag(tag: string, limit = 8): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.filter(p => p.tag === tag).slice(0, limit);
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -54,6 +68,7 @@ export async function getProductsByTag(tag: string, limit = 8): Promise<Product[
 }
 
 export async function getProductsByCategoryAndTag(category: string, limit = 4): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.filter(p => p.category === category).slice(0, limit);
   const { data, error } = await supabase
     .from('products')
     .select('*')
@@ -65,6 +80,7 @@ export async function getProductsByCategoryAndTag(category: string, limit = 4): 
 }
 
 export async function getBlogPosts(): Promise<BlogPost[]> {
+  if (isDemo) return DEMO_BLOG_POSTS;
   const { data, error } = await supabase
     .from('blog_posts')
     .select('*')
@@ -74,6 +90,7 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+  if (isDemo) return DEMO_BLOG_POSTS.find(p => p.slug === slug) ?? null;
   const { data, error } = await supabase
     .from('blog_posts')
     .select('*')
@@ -84,6 +101,7 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
 }
 
 export async function getSiteSettings(): Promise<Record<string, string>> {
+  if (isDemo) return DEMO_SITE_SETTINGS;
   const { data } = await supabase.from('site_settings').select('key, value');
   return Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]));
 }

@@ -26,6 +26,7 @@ interface Props {
   variants?: VariantWithOptions[];
   attributes?: AttributeWithValues[];
   gallery?: ProductImageT[];
+  backInStockEnabled?: boolean;
 }
 
 // ─── Variant picker ─────────────────────────────────────────────────────────
@@ -161,7 +162,7 @@ function Gallery({
 }
 
 // ─── PDPPage ───────────────────────────────────────────────────────────────
-export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [] }: Props) {
+export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], backInStockEnabled = true }: Props) {
   const [qty, setQty] = useState(1);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
@@ -330,7 +331,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </button>
             </div>
 
-            {outOfStock && (
+            {outOfStock && backInStockEnabled && (
               <div style={{ marginBottom: 24 }}>
                 <BackInStockForm productId={product.id} variantId={activeVariant?.id ?? null} />
               </div>
