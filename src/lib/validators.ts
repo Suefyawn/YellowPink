@@ -90,10 +90,13 @@ export const checkoutSchema = z.object({
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
 export const reviewSchema = z.object({
-  product_id:  z.string().uuid(),
-  author_name: z.string().trim().min(1).max(120),
-  rating:      z.coerce.number().int().min(1).max(5),
-  body:        z.string().trim().min(10, 'Review must be at least 10 characters').max(4000),
+  product_id:    z.string().uuid(),
+  author_name:   z.string().trim().min(1).max(120),
+  reviewer_email: z.string().email().optional().or(z.literal('')),
+  rating:        z.coerce.number().int().min(1).max(5),
+  body:          z.string().trim().min(10, 'Review must be at least 10 characters').max(4000),
+  // Comma-separated list of already-uploaded image URLs (uploaded via /api/upload/review).
+  photo_urls:    z.string().optional().or(z.literal('')),
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 

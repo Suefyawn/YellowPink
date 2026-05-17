@@ -308,9 +308,11 @@ export interface ProductReview {
   product_id: string;
   user_id: string | null;
   author_name: string;
+  reviewer_email?: string | null;
   rating: number;
   body: string;
   approved: boolean;
+  verified_purchase: boolean;
   photo_urls: string[];
   helpful_count: number;
   brand_reply: string | null;

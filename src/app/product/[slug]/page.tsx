@@ -154,7 +154,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const [{ data: reviewRows }, variantData, gallery, crossSells, fbt] = await Promise.all([
     supabase
       .from('product_reviews')
-      .select('id, author_name, rating, body, created_at')
+      .select('id, author_name, rating, body, created_at, photo_urls, verified_purchase, helpful_count')
       .eq('product_id', product.id)
       .eq('approved', true)
       .order('created_at', { ascending: false }),
@@ -164,7 +164,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     loadFrequentlyBoughtTogether(product.id),
   ]);
 
-  const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at'>[];
+  const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>[];
 
   return (
     <main className="fade-in">
