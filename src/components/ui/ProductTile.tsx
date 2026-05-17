@@ -33,7 +33,7 @@ export function ProductTile({ product, onClick }: ProductTileProps) {
         marginBottom: 12, position: 'relative', overflow: 'hidden',
         background: 'var(--paper2)',
       }}>
-        <ProductImage src={product.image_url} alt={`${brand} ${name}`} />
+        <ProductImage src={product.image_url} alt={`${brand} ${name}`} label={brand} />
         {original_price && (
           <span style={{
             position: 'absolute', top: 8, left: 8,
