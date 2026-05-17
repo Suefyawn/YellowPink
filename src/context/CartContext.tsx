@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { track } from '@/lib/analytics';
 import type { CartItem, Coupon, Product } from '@/types';
 
 /** Optional variant info when adding a variable product to the cart. */
@@ -68,6 +69,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         variant_id: variantId,
         variant_label: product.variant_label ?? null,
       }];
+    });
+    track({
+      name: 'add_to_cart',
+      payload: {
+        product_id:   product.id,
+        product_name: product.name,
+        brand:        product.brand,
+        category:     product.category,
+        variant:      product.variant_label ?? product.variant,
+        price:        product.price,
+        qty:          product.qty ?? 1,
+        currency:     'PKR',
+      },
     });
     setCartOpen(true);
   };

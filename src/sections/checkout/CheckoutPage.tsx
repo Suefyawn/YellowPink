@@ -11,6 +11,7 @@ import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/check
 import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { validateGiftCardCode, validateReferralCode } from '@/app/checkout/rewards-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
+import { track } from '@/lib/analytics';
 import type { Coupon, PayMethod, LoyaltyAccount } from '@/types';
 
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
@@ -174,6 +175,18 @@ export function CheckoutPage() {
       return;
     }
 
+    track({
+      name: 'begin_checkout',
+      payload: {
+        value: total, currency: 'PKR',
+        items: cartItems.map(i => ({
+          product_id: i.id, product_name: i.name, brand: i.brand,
+          category: i.category, variant: i.variant_label ?? i.variant,
+          price: i.price, qty: i.qty, currency: 'PKR',
+        })),
+      },
+    });
+
     setSubmitting(true);
     setSubmitError('');
     try {
@@ -242,6 +255,18 @@ export function CheckoutPage() {
           name: i.name, qty: i.qty, price: i.price, brand: i.brand, variant: i.variant,
         })),
         pay_method: payMethod,
+      });
+      track({
+        name: 'purchase',
+        payload: {
+          transaction_id: orderNumber,
+          value: total, currency: 'PKR',
+          items: cartItems.map(i => ({
+            product_id: i.id, product_name: i.name, brand: i.brand,
+            category: i.category, variant: i.variant_label ?? i.variant,
+            price: i.price, qty: i.qty, currency: 'PKR',
+          })),
+        },
       });
       clearCart();
       router.push(dest.url);

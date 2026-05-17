@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { useCart } from '@/context/CartContext';
 import { BackInStockForm } from '@/components/pdp/BackInStockForm';
+import { track } from '@/lib/analytics';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 const SHIPPING_CONTENT = 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.';
@@ -165,6 +166,21 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
   const { addToCart } = useCart();
+
+  // view_item analytics — fires once per product visit.
+  useEffect(() => {
+    track({
+      name: 'view_item',
+      payload: {
+        product_id:   product.id,
+        product_name: product.name,
+        brand:        product.brand,
+        category:     product.category,
+        price:        product.price,
+        currency:     'PKR',
+      },
+    });
+  }, [product.id, product.name, product.brand, product.category, product.price]);
 
   // Default-select the first reachable value for every attribute (or none).
   const [selected, setSelected] = useState<Record<string, string>>(() => {

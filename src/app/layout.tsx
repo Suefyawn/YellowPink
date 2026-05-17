@@ -5,6 +5,7 @@ import '@/styles/globals.css';
 import { Providers } from '@/context/Providers';
 import { SiteChrome } from '@/components/layout/SiteChrome';
 import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
+import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
 import { getSiteSettings } from '@/lib/supabase';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
 
@@ -53,6 +54,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <WebVitalsReporter />
+        <ServiceWorkerRegister />
         <Providers>
           <SiteChrome settings={settings}>{children}</SiteChrome>
         </Providers>
