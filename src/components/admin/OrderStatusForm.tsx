@@ -5,19 +5,27 @@ import { useToast } from '@/components/admin/Toast';
 import type { OrderStatus } from '@/types';
 
 const STATUSES: { value: OrderStatus; label: string }[] = [
-  { value: 'pending',    label: 'Pending' },
-  { value: 'processing', label: 'Processing' },
-  { value: 'shipped',    label: 'Shipped' },
-  { value: 'delivered',  label: 'Delivered' },
-  { value: 'cancelled',  label: 'Cancelled' },
+  { value: 'payment_pending', label: 'Awaiting payment' },
+  { value: 'payment_failed',  label: 'Payment failed' },
+  { value: 'pending',         label: 'Pending' },
+  { value: 'processing',      label: 'Processing' },
+  { value: 'shipped',         label: 'Shipped' },
+  { value: 'delivered',       label: 'Delivered' },
+  { value: 'cancelled',       label: 'Cancelled' },
+  { value: 'returned',        label: 'Returned' },
+  { value: 'refunded',        label: 'Refunded' },
 ];
 
 const statusColors: Record<OrderStatus, string> = {
-  pending:    '#f59e0b',
-  processing: '#3b82f6',
-  shipped:    '#8b5cf6',
-  delivered:  '#10b981',
-  cancelled:  '#ef4444',
+  payment_pending: '#9ca3af',
+  payment_failed:  '#ef4444',
+  pending:         '#f59e0b',
+  processing:      '#3b82f6',
+  shipped:         '#8b5cf6',
+  delivered:       '#10b981',
+  cancelled:       '#ef4444',
+  returned:        '#6b7280',
+  refunded:        '#6b7280',
 };
 
 const inp: React.CSSProperties = {
@@ -27,10 +35,11 @@ const inp: React.CSSProperties = {
   background: 'white', outline: 'none', boxSizing: 'border-box',
 };
 
-export function OrderStatusForm({ orderId, currentStatus, currentTracking }: {
+export function OrderStatusForm({ orderId, currentStatus, currentTracking, currentCourier }: {
   orderId: string;
   currentStatus: OrderStatus;
   currentTracking: string | null;
+  currentCourier?: string | null;
 }) {
   const bound = updateOrderStatus.bind(null, orderId);
   const [state, action, pending] = useActionState(bound, null);
@@ -53,16 +62,31 @@ export function OrderStatusForm({ orderId, currentStatus, currentTracking }: {
           ))}
         </select>
       </div>
-      <div>
-        <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
-          Tracking Number
-        </label>
-        <input
-          name="tracking_number"
-          defaultValue={currentTracking ?? ''}
-          placeholder="e.g. TCS-1234567"
-          style={inp}
-        />
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
+            Tracking Number
+          </label>
+          <input
+            name="tracking_number"
+            defaultValue={currentTracking ?? ''}
+            placeholder="e.g. 1234567"
+            style={inp}
+          />
+        </div>
+        <div>
+          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
+            Courier
+          </label>
+          <select name="courier" defaultValue={currentCourier ?? ''} style={inp}>
+            <option value="">—</option>
+            <option value="TCS">TCS</option>
+            <option value="Leopards">Leopards</option>
+            <option value="M&P">M&P</option>
+            <option value="BlueEx">BlueEx</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button

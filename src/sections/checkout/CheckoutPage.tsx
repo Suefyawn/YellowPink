@@ -1,22 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
-import { notifyNewOrder } from '@/app/checkout/actions';
-import type { Coupon } from '@/types';
+import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/checkout/actions';
+import { postOrderDestination } from '@/lib/checkout-routing';
+import type { Coupon, PayMethod } from '@/types';
 
-const FREE_SHIPPING = 2500;
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
 
-type PayMethod = 'cod' | 'card' | 'bank';
+const PAY_METHODS: ReadonlyArray<[PayMethod, string, string]> = [
+  ['cod',       'Cash on Delivery (COD)', 'Pay when your order arrives'],
+  ['jazzcash',  'JazzCash',               'Pay with JazzCash mobile wallet'],
+  ['easypaisa', 'Easypaisa',              'Pay with Easypaisa mobile wallet'],
+  ['card',      'Credit / Debit Card',    'Visa, Mastercard via JazzCash'],
+  ['bank',      'Bank Transfer',          'Direct bank deposit'],
+];
 
 function makeOrderNumber() {
-  return 'YP-' + Date.now().toString(36).slice(-6).toUpperCase();
+  // Add a 2-byte random suffix so two near-simultaneous clicks can't collide.
+  const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
+  return 'YP-' + Date.now().toString(36).slice(-5).toUpperCase() + rand;
 }
 
 export function CheckoutPage() {
@@ -33,6 +41,7 @@ export function CheckoutPage() {
   const [coupon, setCoupon] = useState<Coupon | null>(cartCoupon);
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+  const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string }>({ rate: 200, free: false, label: 'Standard' });
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const discount = coupon
@@ -40,8 +49,20 @@ export function CheckoutPage() {
       ? Math.round(subtotal * coupon.value / 100)
       : coupon.value
     : 0;
-  const total = Math.max(0, subtotal - discount);
-  const shipping = total >= FREE_SHIPPING ? 0 : 200;
+  const lineTotal = Math.max(0, subtotal - discount);
+  const shipping = shippingInfo.rate;
+  const total = lineTotal + shipping;
+
+  // Recompute shipping whenever subtotal or province changes.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (lineTotal === 0) return;
+      const res = await calculateShipping({ province: formData.province || undefined, subtotal: lineTotal });
+      if (!cancelled) setShippingInfo(res);
+    })();
+    return () => { cancelled = true; };
+  }, [lineTotal, formData.province]);
 
   const update = (key: string, val: string) => {
     setFormData(p => ({ ...p, [key]: val }));
@@ -63,6 +84,10 @@ export function CheckoutPage() {
     }
     if (!formData.address.trim()) e.address = 'Required';
     if (!formData.city.trim()) e.city = 'Required';
+    // Card/JazzCash/Easypaisa require an email so we can send payment confirmations.
+    if ((payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') && !formData.email) {
+      e.email = 'Required for online payment confirmation';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -85,6 +110,13 @@ export function CheckoutPage() {
 
   const handleSubmit = async () => {
     if (!validate()) return;
+
+    const rate = await checkoutRateGate();
+    if (!rate.ok) {
+      setSubmitError('Too many checkout attempts. Please wait a minute and try again.');
+      return;
+    }
+
     setSubmitting(true);
     setSubmitError('');
     try {
@@ -104,7 +136,7 @@ export function CheckoutPage() {
           pay_method: payMethod,
           subtotal,
           shipping,
-          total: total + shipping,
+          total,
           items: cartItems,
           status: 'pending',
           user_id: user?.id || '',
@@ -114,20 +146,45 @@ export function CheckoutPage() {
       } as never);
       if (error) throw new Error(error.message);
       void data;
-      // Fire-and-forget email notification (errors are swallowed inside the action)
+
+      const dest = postOrderDestination(payMethod, orderNumber);
+
+      if (dest.kind === 'gateway_post') {
+        // Build a form and submit to the gateway initiator route.
+        // The route handler returns an HTML auto-submit form that POSTs to the
+        // real gateway. We POST as a form so the response can be a top-level
+        // navigation (the browser shows the gateway's hosted page).
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = dest.url;
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'order_number';
+        input.value = orderNumber;
+        form.appendChild(input);
+        document.body.appendChild(form);
+        clearCart();
+        form.submit();
+        return;
+      }
+
+      // COD / bank / gift_card path — fire customer + owner emails, then thank-you.
       void notifyNewOrder({
         order_number: orderNumber,
+        email: formData.email || undefined,
         first_name: formData.firstName,
         last_name: formData.lastName,
         phone: formData.phone.trim(),
         city: formData.city,
         province: formData.province || undefined,
-        total: total + shipping,
-        items: cartItems.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
+        total,
+        items: cartItems.map(i => ({
+          name: i.name, qty: i.qty, price: i.price, brand: i.brand, variant: i.variant,
+        })),
         pay_method: payMethod,
       });
       clearCart();
-      router.push(`/thank-you?order=${orderNumber}`);
+      router.push(dest.url);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
       setSubmitError(msg);
@@ -159,8 +216,8 @@ export function CheckoutPage() {
             <div>
               <Overline style={{ display: 'block', marginBottom: 16 }}>Contact</Overline>
               <div style={{ marginBottom: 24 }}>
-                <label style={labelStyle}>Email (optional)</label>
-                <input type="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates" style={inputStyle('email')} />
+                <label style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
+                <input type="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} />
                 {errors.email && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="checkout-name-grid">
@@ -211,7 +268,7 @@ export function CheckoutPage() {
 
               <hr className="hairline" style={{ margin: '32px 0' }} />
               <Overline style={{ display: 'block', marginBottom: 16 }}>Payment Method</Overline>
-              {([['cod', 'Cash on Delivery (COD)', 'Pay when your order arrives'], ['card', 'Credit / Debit Card', 'Visa, Mastercard, JazzCash'], ['bank', 'Bank Transfer', 'Direct bank deposit']] as [PayMethod, string, string][]).map(([key, label, desc]) => (
+              {PAY_METHODS.map(([key, label, desc]) => (
                 <label key={key} onClick={() => setPayMethod(key)} style={{
                   display: 'flex', alignItems: 'flex-start', gap: 12, padding: '16px',
                   border: '1px solid ' + (payMethod === key ? 'var(--ink-900)' : 'var(--line)'),
@@ -245,7 +302,6 @@ export function CheckoutPage() {
               ))}
               <hr className="hairline" style={{ margin: '16px 0' }} />
 
-              {/* Coupon code */}
               {!coupon ? (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -284,13 +340,13 @@ export function CheckoutPage() {
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span className="small-text">Shipping</span>
+                <span className="small-text">Shipping{shippingInfo.label ? ` (${shippingInfo.label})` : ''}</span>
                 <span className="small-text tabular-nums" style={{ fontWeight: 500, color: shipping === 0 ? 'var(--success)' : 'inherit' }}>{shipping === 0 ? 'FREE' : `PKR ${shipping}`}</span>
               </div>
               <hr className="hairline" style={{ margin: '16px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
                 <span className="h3">Total</span>
-                <span className="h3 tabular-nums">PKR {(total + shipping).toLocaleString()}</span>
+                <span className="h3 tabular-nums">PKR {total.toLocaleString()}</span>
               </div>
               {submitError && (
                 <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: '0.8125rem' }}>
@@ -298,7 +354,7 @@ export function CheckoutPage() {
                 </div>
               )}
               <button className="btn-primary" style={{ width: '100%' }} onClick={handleSubmit} disabled={submitting}>
-                {submitting ? 'Placing Order…' : 'Place Order'}
+                {submitting ? 'Placing Order…' : payMethod === 'jazzcash' || payMethod === 'easypaisa' ? `Continue to ${payMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa'} →` : 'Place Order'}
               </button>
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)' }}>Secure checkout · COD available</p>
             </div>

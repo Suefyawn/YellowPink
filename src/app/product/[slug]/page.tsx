@@ -5,23 +5,23 @@ import { notFound } from 'next/navigation';
 import { getProductBySlug, supabase } from '@/lib/supabase';
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
+import { pageMeta, jsonLd, productLd, breadcrumbLd } from '@/lib/seo';
+import type { ProductReview } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) return {};
-  const title = `${product.brand} ${product.name}${product.variant ? ` — ${product.variant}` : ''} | Yellow Pink`;
+  const title = `${product.brand} ${product.name}${product.variant ? ` — ${product.variant}` : ''}`;
   const description = `Buy ${product.brand} ${product.name} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`;
-  return {
+  return pageMeta({
     title,
     description,
-    openGraph: {
-      title,
-      description,
-      images: product.image_url ? [{ url: product.image_url }] : [],
-      type: 'website',
-    },
-  };
+    path: `/product/${product.slug}`,
+    image: product.image_url ?? undefined,
+    type: 'product',
+    keywords: [product.brand, product.name, product.category, 'Pakistan', 'COD'],
+  });
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -29,7 +29,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [{ data: reviews }, { data: relatedRaw }] = await Promise.all([
+  const [{ data: reviewRows }, { data: relatedRaw }] = await Promise.all([
     supabase
       .from('product_reviews')
       .select('id, author_name, rating, body, created_at')
@@ -44,33 +44,28 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       .limit(8),
   ]);
 
-  // Shuffle and take 4 so "Pairs With" doesn't always show the same products
+  const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at'>[];
   const shuffled = (relatedRaw ?? []).sort(() => Math.random() - 0.5).slice(0, 4);
 
   return (
     <main className="fade-in">
       <script
         type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(productLd(product, reviews)) }}
+      />
+      <script
+        type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Product",
-            "name": `${product.brand} ${product.name}${product.variant ? ` ${product.variant}` : ''}`,
-            "description": product.description ?? undefined,
-            "image": product.image_url ?? undefined,
-            "brand": { "@type": "Brand", "name": product.brand },
-            "offers": {
-              "@type": "Offer",
-              "priceCurrency": "PKR",
-              "price": product.price,
-              "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
-              "seller": { "@type": "Organization", "name": "Yellow Pink" }
-            }
-          })
+          __html: jsonLd(breadcrumbLd([
+            { name: 'Home',         path: '/' },
+            { name: 'Shop',         path: '/shop' },
+            { name: product.category, path: `/shop?cat=${encodeURIComponent(product.category)}` },
+            { name: product.name,   path: `/product/${product.slug}` },
+          ])),
         }}
       />
       <PDPPage product={product} relatedProducts={shuffled} />
-      <ReviewsSection productId={product.id} reviews={reviews ?? []} />
+      <ReviewsSection productId={product.id} reviews={reviews} />
     </main>
   );
 }

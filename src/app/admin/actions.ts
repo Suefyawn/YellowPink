@@ -1,18 +1,34 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
-import { hashPassword, setStaffCookie, clearStaffCookie } from '@/lib/staff-auth';
+import {
+  hashPassword, verifyPassword, upgradeStaffHash,
+  setStaffCookie, clearStaffCookie,
+} from '@/lib/staff-auth';
+import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
+import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import type { OrderStatus } from '@/types';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
+
+async function checkAuthRate(): Promise<{ error: string } | null> {
+  const h = await headers();
+  const ip = ipFromHeaders(h);
+  const { success } = await authLimiter.limit(ip);
+  if (!success) return { error: 'Too many attempts. Wait a minute, then try again.' };
+  return null;
+}
 
 export async function loginAdmin(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  const rateError = await checkAuthRate();
+  if (rateError) return rateError;
+
   const password = formData.get('password') as string;
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected) return { error: 'Admin access is not configured. Set ADMIN_PASSWORD environment variable.' };
@@ -32,6 +48,9 @@ export async function loginStaff(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  const rateError = await checkAuthRate();
+  if (rateError) return rateError;
+
   const email = (formData.get('email') as string).trim().toLowerCase();
   const password = formData.get('password') as string;
   if (!email || !password) return { error: 'Email and password are required' };
@@ -44,8 +63,13 @@ export async function loginStaff(
 
   if (!data || !data.is_active) return { error: 'Invalid email or password' };
 
-  const hash = hashPassword(password, data.password_salt);
-  if (hash !== data.password_hash) return { error: 'Invalid email or password' };
+  const verify = verifyPassword(password, data.password_hash, data.password_salt);
+  if (!verify.ok) return { error: 'Invalid email or password' };
+
+  // Transparent upgrade of legacy SHA-256 hashes to scrypt.
+  if (verify.upgraded) {
+    await upgradeStaffHash(data.id, verify.upgraded.newHash);
+  }
 
   await setStaffCookie(data.id);
   redirect('/admin/dashboard');
@@ -60,51 +84,13 @@ export async function logoutAdmin() {
 
 // ─── Products ────────────────────────────────────────────────────────────────
 
-function validateProduct(formData: FormData): { error: string } | null {
-  const brand = (formData.get('brand') as string).trim();
-  const name = (formData.get('name') as string).trim();
-  const slug = (formData.get('slug') as string).trim();
-  const category = (formData.get('category') as string).trim();
-  const price = Number(formData.get('price'));
-  const stock = Number(formData.get('stock') ?? 0);
-  const imageUrl = (formData.get('image_url') as string).trim();
-
-  if (!brand) return { error: 'Brand is required' };
-  if (!name) return { error: 'Product name is required' };
-  if (!slug || !/^[a-z0-9-]+$/.test(slug)) return { error: 'Slug must be lowercase letters, numbers, and hyphens only' };
-  if (!category) return { error: 'Category is required' };
-  if (isNaN(price) || price < 0) return { error: 'Price must be a positive number' };
-  if (isNaN(stock) || stock < 0) return { error: 'Stock must be 0 or more' };
-  if (imageUrl && !/^https?:\/\//.test(imageUrl)) return { error: 'Image URL must start with http:// or https://' };
-  return null;
-}
-
-function parseProduct(formData: FormData) {
-  return {
-    brand: (formData.get('brand') as string).trim(),
-    name: (formData.get('name') as string).trim(),
-    variant: (formData.get('variant') as string).trim() || null,
-    price: Number(formData.get('price')),
-    original_price: formData.get('original_price') ? Number(formData.get('original_price')) : null,
-    category: (formData.get('category') as string).trim(),
-    subcategory: (formData.get('subcategory') as string).trim() || null,
-    tag: (formData.get('tag') as string) || null,
-    slug: (formData.get('slug') as string).trim(),
-    stock: Number(formData.get('stock') ?? 0),
-    image_url: (formData.get('image_url') as string).trim() || null,
-    description: (formData.get('description') as string).trim() || null,
-    how_to_use: (formData.get('how_to_use') as string).trim() || null,
-    ingredients: (formData.get('ingredients') as string).trim() || null,
-  };
-}
-
 export async function createProduct(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const validationError = validateProduct(formData);
-  if (validationError) return validationError;
-  const { error } = await supabase.from('products').insert(parseProduct(formData));
+  const parsed = parseForm(productInputSchema, formData);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { error } = await supabase.from('products').insert(parsed.data);
   if (error) return { error: error.message };
   revalidatePath('/admin/products');
   redirect('/admin/products');
@@ -115,9 +101,9 @@ export async function updateProduct(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const validationError = validateProduct(formData);
-  if (validationError) return validationError;
-  const { error } = await supabase.from('products').update(parseProduct(formData)).eq('id', id);
+  const parsed = parseForm(productInputSchema, formData);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { error } = await supabase.from('products').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
   revalidatePath('/admin/products');
   redirect('/admin/products');
@@ -132,37 +118,19 @@ export async function deleteProduct(formData: FormData) {
 
 // ─── Blog ─────────────────────────────────────────────────────────────────────
 
-function validateBlogPost(formData: FormData): { error: string } | null {
-  const title = (formData.get('title') as string).trim();
-  const slug = (formData.get('slug') as string).trim();
-  const excerpt = (formData.get('excerpt') as string).trim();
-  const category = (formData.get('category') as string).trim();
-
-  if (!title) return { error: 'Title is required' };
-  if (!slug || !/^[a-z0-9-]+$/.test(slug)) return { error: 'Slug must be lowercase letters, numbers, and hyphens only' };
-  if (!excerpt || excerpt.length > 300) return { error: 'Excerpt is required and must be under 300 characters' };
-  if (!category) return { error: 'Category is required' };
-  return null;
-}
-
 export async function createBlogPost(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const validationError = validateBlogPost(formData);
-  if (validationError) return validationError;
-  const data = {
-    title: (formData.get('title') as string).trim(),
-    slug: (formData.get('slug') as string).trim(),
-    excerpt: (formData.get('excerpt') as string).trim(),
-    category: (formData.get('category') as string).trim(),
-    date: formData.get('date') as string,
-    read_time: (formData.get('read_time') as string).trim() || '3 min read',
-    featured: formData.get('featured') === 'on',
-    body: (formData.get('body') as string) || null,
-    image_url: (formData.get('image_url') as string).trim() || null,
-  };
-  const { error } = await supabase.from('blog_posts').insert(data);
+  // checkbox quirk: when unchecked, `featured` is absent from FormData.
+  const normalized = new FormData();
+  for (const [k, v] of formData.entries()) normalized.append(k, v);
+  if (!normalized.has('featured')) normalized.append('featured', 'false');
+  else normalized.set('featured', normalized.get('featured') === 'on' ? 'true' : String(normalized.get('featured')));
+
+  const parsed = parseForm(blogPostInputSchema, normalized);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { error } = await supabase.from('blog_posts').insert(parsed.data);
   if (error) return { error: error.message };
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
@@ -173,20 +141,14 @@ export async function updateBlogPost(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const validationError = validateBlogPost(formData);
-  if (validationError) return validationError;
-  const data = {
-    title: (formData.get('title') as string).trim(),
-    slug: (formData.get('slug') as string).trim(),
-    excerpt: (formData.get('excerpt') as string).trim(),
-    category: (formData.get('category') as string).trim(),
-    date: formData.get('date') as string,
-    read_time: (formData.get('read_time') as string).trim() || '3 min read',
-    featured: formData.get('featured') === 'on',
-    body: (formData.get('body') as string) || null,
-    image_url: (formData.get('image_url') as string).trim() || null,
-  };
-  const { error } = await supabase.from('blog_posts').update(data).eq('id', id);
+  const normalized = new FormData();
+  for (const [k, v] of formData.entries()) normalized.append(k, v);
+  if (!normalized.has('featured')) normalized.append('featured', 'false');
+  else normalized.set('featured', normalized.get('featured') === 'on' ? 'true' : String(normalized.get('featured')));
+
+  const parsed = parseForm(blogPostInputSchema, normalized);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+  const { error } = await supabase.from('blog_posts').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
@@ -213,12 +175,43 @@ export async function updateOrderStatus(
 ): Promise<{ error?: string; success?: boolean }> {
   const status = formData.get('status') as OrderStatus;
   const tracking_number = (formData.get('tracking_number') as string) || null;
+  const courier = (formData.get('courier') as string) || null;
+
+  // Read current state so we can detect transitions and email the customer.
+  const { data: before } = await supabase
+    .from('orders')
+    .select('status, email, first_name, order_number')
+    .eq('id', id)
+    .single();
+
   const { error } = await supabase
     .from('orders')
-    .update({ status, tracking_number })
+    .update({ status, tracking_number, courier })
     .eq('id', id);
   if (error) return { error: error.message };
+
+  // Fire-and-forget transition emails. The status trigger logs the change to
+  // order_events; here we only handle the customer-facing notification.
+  if (before && before.status !== status && before.email) {
+    const { sendShippedEmail, sendDeliveredEmail, sendCancelledEmail } = await import('@/lib/email');
+    const args = {
+      email: before.email,
+      first_name: before.first_name ?? 'there',
+      order_number: before.order_number,
+    };
+    if (status === 'shipped') {
+      void sendShippedEmail({ ...args, tracking_number: tracking_number ?? undefined, courier: courier ?? undefined });
+    } else if (status === 'delivered') {
+      void sendDeliveredEmail(args);
+    } else if (status === 'cancelled') {
+      void sendCancelledEmail(args);
+    }
+  }
+
   revalidatePath(`/admin/orders/${id}`);
   revalidatePath('/admin/orders');
   return { success: true };
 }
+
+// Hashed temp-password export so the staff/team UI keeps working.
+export { hashPassword };
