@@ -125,6 +125,17 @@ export default function AccountOrdersPage() {
                         <span>Total</span>
                         <span style={{ color: 'var(--brand-pink)' }}>{fmt(o.total)}</span>
                       </div>
+
+                      {status === 'delivered' && o.id && (
+                        <div style={{ marginTop: 16, textAlign: 'right' }}>
+                          <Link
+                            href={`/account/orders/returns/new?order=${encodeURIComponent(o.id)}`}
+                            style={{ fontSize: '0.8125rem', color: 'var(--ink-700)', textDecoration: 'underline' }}
+                          >
+                            Request a return →
+                          </Link>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
