@@ -35,6 +35,7 @@ export const productInputSchema = z.object({
   brand:          z.string().trim().min(1, 'Brand is required').max(80),
   name:           z.string().trim().min(1, 'Product name is required').max(200),
   variant:        z.string().trim().max(80).optional().nullable(),
+  kind:           z.enum(['simple','variable','bundle','external']).default('simple'),
   price:          positiveNumber,
   original_price: positiveNumber.optional().nullable(),
   category:       z.string().trim().min(1, 'Category is required').max(80),
@@ -44,10 +45,23 @@ export const productInputSchema = z.object({
   stock:          positiveInt,
   image_url:      httpsUrlSchema.optional().or(z.literal('')).nullable(),
   description:    z.string().max(8000).optional().nullable(),
+  short_description: z.string().max(1000).optional().nullable(),
   how_to_use:     z.string().max(8000).optional().nullable(),
   ingredients:    z.string().max(8000).optional().nullable(),
 });
 export type ProductInput = z.infer<typeof productInputSchema>;
+
+export const variantInputSchema = z.object({
+  product_id: z.string().uuid(),
+  sku:        z.string().trim().max(80).optional().or(z.literal('')).nullable(),
+  price:      positiveNumber,
+  compare_at_price: positiveNumber.optional().nullable(),
+  stock:      positiveInt,
+  image_url:  httpsUrlSchema.optional().or(z.literal('')).nullable(),
+  enabled:    z.coerce.boolean().default(true),
+  sort_order: positiveInt.default(0),
+});
+export type VariantInput = z.infer<typeof variantInputSchema>;
 
 export const blogPostInputSchema = z.object({
   title:     z.string().trim().min(1, 'Title is required').max(200),

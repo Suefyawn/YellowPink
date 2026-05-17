@@ -89,6 +89,22 @@ export function ProductForm({ product }: { product?: Product }) {
             </div>
           </div>
 
+          {/* Row 2.5 — product kind */}
+          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
+            <div style={fieldWrap}>
+              <label style={lbl}>Type</label>
+              <select name="kind" defaultValue={product?.kind ?? 'simple'} style={inp}>
+                <option value="simple">Simple (single SKU)</option>
+                <option value="variable">Variable (with variants)</option>
+                <option value="bundle">Bundle / grouped</option>
+                <option value="external">External</option>
+              </select>
+              <span style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 4 }}>
+                Variable products manage stock per variant below.
+              </span>
+            </div>
+          </div>
+
           {/* Row 3 */}
           <div className="adm-form-4col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div style={fieldWrap}>

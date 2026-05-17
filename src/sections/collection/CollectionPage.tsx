@@ -38,7 +38,55 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
   const [sortBy, setSortBy] = useState<SortKey>('featured');
   const [page, setPage] = useState(1);
 
-  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy]);
+  // ─── Facets (price / brand / in-stock / on-sale) ─────────────────────────
+  // Brand list + price bounds come from the *category-scoped* product set so
+  // they make sense as the user navigates between tabs.
+  const categoryScoped = useMemo(() =>
+    products.filter(p => activeCategory === 'All' || p.category === activeCategory)
+  , [products, activeCategory]);
+
+  const allBrands = useMemo(() =>
+    Array.from(new Set(categoryScoped.map(p => p.brand).filter(Boolean))).sort()
+  , [categoryScoped]);
+
+  const priceBounds = useMemo(() => {
+    if (categoryScoped.length === 0) return { min: 0, max: 10000 };
+    let min = Infinity, max = -Infinity;
+    for (const p of categoryScoped) {
+      if (p.price < min) min = p.price;
+      if (p.price > max) max = p.price;
+    }
+    return { min: Math.floor(min), max: Math.ceil(max) };
+  }, [categoryScoped]);
+
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
+  const [priceMin, setPriceMin] = useState<number | ''>('');
+  const [priceMax, setPriceMax] = useState<number | ''>('');
+  const [inStockOnly, setInStockOnly] = useState(false);
+  const [onSaleOnly, setOnSaleOnly] = useState(false);
+
+  function toggleBrand(b: string) {
+    setSelectedBrands(prev => {
+      const next = new Set(prev);
+      if (next.has(b)) next.delete(b); else next.add(b);
+      return next;
+    });
+  }
+  function clearFilters() {
+    setSelectedBrands(new Set());
+    setPriceMin(''); setPriceMax('');
+    setInStockOnly(false); setOnSaleOnly(false);
+  }
+
+  // Reset paging + brand selection when the category changes.
+  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, priceMin, priceMax, inStockOnly, onSaleOnly]);
+  useEffect(() => { setSelectedBrands(new Set()); }, [activeCategory]);
+
+  const activeFilterCount =
+    selectedBrands.size +
+    (priceMin !== '' || priceMax !== '' ? 1 : 0) +
+    (inStockOnly ? 1 : 0) +
+    (onSaleOnly ? 1 : 0);
 
   // Build the top-level and children category lists from the DB when present,
   // otherwise fall back to the hardcoded constants for pre-import installs.
@@ -68,6 +116,11 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
   let filtered = products.filter(p => {
     if (activeCategory !== 'All' && p.category !== activeCategory) return false;
     if (activeSubcategory && p.subcategory !== activeSubcategory) return false;
+    if (selectedBrands.size > 0 && !selectedBrands.has(p.brand)) return false;
+    if (priceMin !== '' && p.price < priceMin) return false;
+    if (priceMax !== '' && p.price > priceMax) return false;
+    if (inStockOnly && p.stock <= 0) return false;
+    if (onSaleOnly && !(p.original_price && p.original_price > p.price)) return false;
     return true;
   });
 
@@ -122,24 +175,100 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
 
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-            <span className="small-text">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="small-text">Sort by</span>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)} style={{
-                padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
-                background: 'var(--paper)', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
-                color: 'var(--ink-900)', cursor: 'pointer', outline: 'none',
-              }}>
-                <option value="featured">Featured</option>
-                <option value="price-low">Price: Low → High</option>
-                <option value="price-high">Price: High → Low</option>
-                <option value="name">Name A–Z</option>
-              </select>
-            </div>
-          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 32, alignItems: 'start' }} className="shop-grid">
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
+            {/* ─── Filter rail ───────────────────────────────────────── */}
+            <aside style={{ position: 'sticky', top: 100, paddingTop: 8 }} className="shop-rail">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <Overline>Filters</Overline>
+                {activeFilterCount > 0 && (
+                  <button onClick={clearFilters} style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '0.75rem', color: 'var(--brand-pink)', fontWeight: 600,
+                  }}>
+                    Clear ({activeFilterCount})
+                  </button>
+                )}
+              </div>
+
+              {/* Price */}
+              <fieldset style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+                <legend style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                  Price (PKR)
+                </legend>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    placeholder={String(priceBounds.min)}
+                    value={priceMin}
+                    onChange={e => setPriceMin(e.target.value === '' ? '' : Number(e.target.value))}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none' }}
+                  />
+                  <span style={{ color: 'var(--ink-500)' }}>–</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    placeholder={String(priceBounds.max)}
+                    value={priceMax}
+                    onChange={e => setPriceMax(e.target.value === '' ? '' : Number(e.target.value))}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none' }}
+                  />
+                </div>
+              </fieldset>
+
+              {/* Toggles */}
+              <fieldset style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '4px 0' }}>
+                  <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
+                  In stock only
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '4px 0' }}>
+                  <input type="checkbox" checked={onSaleOnly} onChange={e => setOnSaleOnly(e.target.checked)} />
+                  On sale
+                </label>
+              </fieldset>
+
+              {/* Brand */}
+              {allBrands.length > 1 && (
+                <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                  <legend style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                    Brand
+                  </legend>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
+                    {allBrands.map(b => (
+                      <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '3px 0' }}>
+                        <input type="checkbox" checked={selectedBrands.has(b)} onChange={() => toggleBrand(b)} />
+                        <span style={{ flex: 1 }}>{b}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+            </aside>
+
+            {/* ─── Product grid ──────────────────────────────────────── */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+                <span className="small-text">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span className="small-text">Sort by</span>
+                  <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)} style={{
+                    padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+                    background: 'var(--paper)', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
+                    color: 'var(--ink-900)', cursor: 'pointer', outline: 'none',
+                  }}>
+                    <option value="featured">Featured</option>
+                    <option value="price-low">Price: Low → High</option>
+                    <option value="price-high">Price: High → Low</option>
+                    <option value="name">Name A–Z</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
             {paginated.map((p) => (
               <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <ProductTile product={p} />
@@ -202,6 +331,8 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
               >→</button>
             </div>
           )}
+            </div> {/* close product grid column */}
+          </div>   {/* close shop-grid */}
         </div>
       </section>
     </div>

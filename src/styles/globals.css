@@ -149,6 +149,12 @@ body {
   .mobile-menu-btn { display: none !important; }
 }
 
+/* Shop filter rail responsive — stack rail above grid below tablet width */
+@media (max-width: 860px) {
+  .shop-grid { grid-template-columns: 1fr !important; }
+  .shop-rail { position: static !important; }
+}
+
 /* Checkout / Cart responsive */
 @media (max-width: 860px) {
   .checkout-grid { grid-template-columns: 1fr !important; }
