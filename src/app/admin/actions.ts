@@ -10,6 +10,7 @@ import {
 } from '@/lib/staff-auth';
 import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
+import { logAudit } from '@/lib/audit';
 import type { OrderStatus } from '@/types';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -88,10 +89,12 @@ export async function createProduct(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  const session = await getStaffSessionForActions();
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { error } = await supabase.from('products').insert(parsed.data);
+  const { data, error } = await supabase.from('products').insert(parsed.data).select('id').single();
   if (error) return { error: error.message };
+  await logAudit(session, { action: 'product.create', entity: 'product', entity_id: data?.id as string | undefined, diff: parsed.data });
   revalidatePath('/admin/products');
   redirect('/admin/products');
 }
@@ -101,19 +104,32 @@ export async function updateProduct(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  const session = await getStaffSessionForActions();
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
+  // Snapshot the prior state for the audit diff.
+  const { data: before } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
   const { error } = await supabase.from('products').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
+  await logAudit(session, { action: 'product.update', entity: 'product', entity_id: id, diff: { before, after: parsed.data } });
   revalidatePath('/admin/products');
   redirect('/admin/products');
 }
 
 export async function deleteProduct(formData: FormData) {
+  const session = await getStaffSessionForActions();
   const id = formData.get('id') as string;
   await supabase.from('products').delete().eq('id', id);
+  await logAudit(session, { action: 'product.delete', entity: 'product', entity_id: id });
   revalidatePath('/admin/products');
   redirect('/admin/products');
+}
+
+// Helper because we already import getStaffSession via staff-auth.
+async function getStaffSessionForActions() {
+  // Use the same staff-auth import already brought in.
+  const { getStaffSession } = await import('@/lib/staff-auth');
+  return getStaffSession();
 }
 
 // ─── Blog ─────────────────────────────────────────────────────────────────────
