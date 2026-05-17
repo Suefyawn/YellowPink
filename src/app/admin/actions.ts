@@ -11,6 +11,7 @@ import {
 import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
+import { verifyTotp } from '@/lib/totp';
 import type { OrderStatus } from '@/types';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
@@ -54,11 +55,12 @@ export async function loginStaff(
 
   const email = (formData.get('email') as string).trim().toLowerCase();
   const password = formData.get('password') as string;
+  const totpCode = (formData.get('totp') as string | null)?.trim() ?? '';
   if (!email || !password) return { error: 'Email and password are required' };
 
   const { data } = await supabase
     .from('staff_members')
-    .select('id, password_hash, password_salt, is_active')
+    .select('id, password_hash, password_salt, is_active, totp_enabled, totp_secret, backup_codes')
     .eq('email', email)
     .single();
 
@@ -67,9 +69,26 @@ export async function loginStaff(
   const verify = verifyPassword(password, data.password_hash, data.password_salt);
   if (!verify.ok) return { error: 'Invalid email or password' };
 
-  // Transparent upgrade of legacy SHA-256 hashes to scrypt.
   if (verify.upgraded) {
     await upgradeStaffHash(data.id, verify.upgraded.newHash);
+  }
+
+  // 2FA gate, if enabled for this staff member.
+  if (data.totp_enabled && data.totp_secret) {
+    if (!totpCode) return { error: 'Enter your 2FA code from your authenticator app' };
+    const codeIsTotp = verifyTotp(data.totp_secret as string, totpCode);
+    let codeIsBackup = false;
+    let backupCodes = (data.backup_codes as string[]) ?? [];
+    if (!codeIsTotp) {
+      const cleaned = totpCode.replace(/\s+/g, '').toLowerCase();
+      const idx = backupCodes.findIndex(c => c.toLowerCase() === cleaned);
+      if (idx >= 0) {
+        codeIsBackup = true;
+        backupCodes = backupCodes.filter((_, i) => i !== idx);
+        await supabase.from('staff_members').update({ backup_codes: backupCodes }).eq('id', data.id);
+      }
+    }
+    if (!codeIsTotp && !codeIsBackup) return { error: 'Invalid 2FA code' };
   }
 
   await setStaffCookie(data.id);
