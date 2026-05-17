@@ -31,6 +31,9 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 // Forward-progress states shown on the /track timeline.
 export const ORDER_TIMELINE_STEPS: OrderStatus[] = ['pending', 'processing', 'shipped', 'delivered'];
 
+export type ProductKind = 'simple' | 'variable' | 'bundle' | 'external';
+export type ProductStatus = 'draft' | 'published' | 'archived';
+
 export interface Product {
   id: string;
   brand: string;
@@ -38,6 +41,7 @@ export interface Product {
   variant?: string;
   price: number;
   original_price?: number;
+  /** Legacy single-category text. Prefer `categories` (M2M) via ProductWithCategories. */
   category: string;
   subcategory?: string;
   tag?: string;
@@ -45,10 +49,98 @@ export interface Product {
   stock: number;
   image_url?: string;
   description?: string;
+  short_description?: string;
   how_to_use?: string;
   ingredients?: string;
   tax_class_id?: string | null;
+  kind?: ProductKind;
+  status?: ProductStatus;
+  weight_grams?: number | null;
+  wp_product_id?: number | null;
   created_at?: string;
+}
+
+export interface Category {
+  id: string;
+  parent_id: string | null;
+  slug: string;
+  name: string;
+  description?: string | null;
+  image_url?: string | null;
+  sort_order: number;
+  wp_term_id?: number | null;
+}
+
+export interface ProductAttribute {
+  id: string;
+  slug: string;
+  name: string;
+  visible_on_pdp: boolean;
+  usable_in_filter: boolean;
+  sort_order: number;
+}
+
+export interface AttributeValue {
+  id: string;
+  attribute_id: string;
+  slug: string;
+  value: string;
+  color_hex?: string | null;
+  image_url?: string | null;
+  sort_order: number;
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
+  sku: string | null;
+  price: number;
+  compare_at_price?: number | null;
+  stock: number;
+  image_url?: string | null;
+  weight_grams?: number | null;
+  enabled: boolean;
+  sort_order: number;
+  /** Resolved attribute selections — populated by joins in queries. */
+  attributes?: { attribute_id: string; value_id: string }[];
+}
+
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  variant_id?: string | null;
+  url: string;
+  alt?: string | null;
+  sort_order: number;
+}
+
+export interface ProductRelation {
+  product_id: string;
+  related_product_id: string;
+  kind: 'cross_sell' | 'upsell' | 'related' | 'grouped';
+  sort_order: number;
+}
+
+export interface Page {
+  id: string;
+  slug: string;
+  title: string;
+  body_html: string;
+  excerpt?: string | null;
+  status: 'draft' | 'published' | 'archived';
+  meta_title?: string | null;
+  meta_description?: string | null;
+  show_in_footer: boolean;
+  sort_order: number;
+}
+
+export interface Redirect {
+  id: string;
+  from_path: string;
+  to_path: string;
+  status_code: 301 | 302 | 307 | 308;
+  source: 'manual' | 'wp_import' | 'admin';
+  hit_count: number;
 }
 
 export interface AdminUser {
@@ -101,6 +193,9 @@ export interface Order {
   coupon_code?: string;
   discount_amount?: number;
   notes?: string;
+  /** WP legacy fields populated by the importer. */
+  legacy_wp_order_id?: number | null;
+  legacy_wp_customer_id?: number | null;
   created_at?: string;
 }
 
@@ -116,16 +211,31 @@ export interface OrderEvent {
   created_at: string;
 }
 
+export type CouponDiscountType = 'percent' | 'fixed_cart' | 'fixed_product' | 'free_shipping';
+
 export interface Coupon {
   id: string;
   code: string;
+  /** Legacy column; prefer `discount_type`. */
   type: 'percent' | 'fixed';
+  discount_type?: CouponDiscountType;
   value: number;
   min_order: number;
+  max_order?: number | null;
   max_uses: number | null;
   used_count: number;
   active: boolean;
   expires_at: string | null;
+  individual_use?: boolean;
+  exclude_sale_items?: boolean;
+  free_shipping?: boolean;
+  usage_limit_per_user?: number | null;
+  product_ids?: string[];
+  excluded_product_ids?: string[];
+  category_ids?: string[];
+  excluded_category_ids?: string[];
+  email_restrictions?: string[];
+  description?: string | null;
 }
 
 export interface Profile {

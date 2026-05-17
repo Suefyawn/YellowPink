@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "wp-import": "tsx scripts/wp-import/run.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.3",
@@ -28,8 +29,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.3.4",
+    "dotenv": "^16.4.5",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
+    "tsx": "^4.19.2",
     "typescript": "^5",
     "vitest": "^2.1.5"
   }
