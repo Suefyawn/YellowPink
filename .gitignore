@@ -38,6 +38,9 @@ yarn-error.log*
 .idea
 .vscode
 
+# Claude Code local settings (per-user, do NOT commit).
+.claude/settings.local.json
+
 # vercel
 .vercel
 
