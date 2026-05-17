@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+// ISR: cache for 10 min; admin blog edits call revalidatePath to bust.
+export const revalidate = 600;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';

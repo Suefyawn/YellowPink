@@ -1,4 +1,5 @@
-export const dynamic = 'force-dynamic';
+// ISR: cache the rendered PDP for 5 min; admin edits call revalidatePath('/product/...') to bust.
+export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';

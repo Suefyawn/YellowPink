@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import '@/styles/globals.css';
 import { Providers } from '@/context/Providers';
 import { SiteChrome } from '@/components/layout/SiteChrome';
+import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
 import { getSiteSettings } from '@/lib/supabase';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
 
@@ -51,6 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body>
+        <WebVitalsReporter />
         <Providers>
           <SiteChrome settings={settings}>{children}</SiteChrome>
         </Providers>
