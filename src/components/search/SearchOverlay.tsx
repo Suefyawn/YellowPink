@@ -21,15 +21,21 @@ export function SearchOverlay() {
   useEffect(() => {
     if (searchOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
-      if (products.length === 0) {
-        supabase.from('products').select('*').order('id').then(({ data }) => {
-          if (data) setProducts(data);
-        });
-      }
     } else {
       setQuery(''); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [searchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Server-side typeahead via search_products RPC (pg_trgm). Debounced 200 ms.
+  useEffect(() => {
+    if (!searchOpen || query.trim().length === 0) { setProducts([]); return; }
+    const handle = setTimeout(() => {
+      supabase.rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
+        setProducts((data ?? []) as Product[]);
+      });
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [query, searchOpen]);
 
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
@@ -39,12 +45,8 @@ export function SearchOverlay() {
     return () => window.removeEventListener('keydown', fn);
   }, [searchOpen, setSearchOpen]);
 
-  const filtered = query.length > 0
-    ? products.filter(p =>
-        `${p.name} ${p.brand} ${p.variant ?? ''} ${p.category}`
-          .toLowerCase().includes(query.toLowerCase())
-      )
-    : [];
+  // Server already filtered + ranked via pg_trgm. Just rename for the JSX.
+  const filtered = products;
 
   const goToProduct = (slug: string) => {
     setSearchOpen(false);

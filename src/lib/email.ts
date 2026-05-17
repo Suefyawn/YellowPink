@@ -246,7 +246,27 @@ export async function sendAbandonedCartEmail(args: {
   });
 }
 
-// ─── 10. Owner: low-stock alert (background job) ────────────────────────────
+// ─── 10. Customer: back-in-stock ────────────────────────────────────────────
+export async function sendBackInStockEmail(args: {
+  email: string;
+  product_name: string;
+  product_url: string;
+  image_url?: string;
+}): Promise<void> {
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">It's back in stock!</h2>
+    <p>The product you asked us to watch is now available again:</p>
+    <p style="margin:14px 0"><strong>${escapeHtml(args.product_name)}</strong></p>
+    ${args.image_url ? `<img src="${escapeHtml(args.image_url)}" alt="${escapeHtml(args.product_name)}" style="max-width:280px;border-radius:8px;border:1px solid #e5e7eb"/>` : ''}
+    <p style="margin:24px 0 0">
+      <a href="${escapeHtml(args.product_url)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Shop now →</a>
+    </p>
+    <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Stock moves fast — finish your order soon if you don't want to miss it.</p>
+  `);
+  await send({ to: args.email, subject: `Back in stock: ${args.product_name}`, html });
+}
+
+// ─── 11. Owner: low-stock alert (background job) ────────────────────────────
 export async function sendLowStockAlertEmail(args: { products: { name: string; brand: string; stock: number; slug: string }[] }) {
   if (!args.products.length) return;
   const rows = args.products.map(p =>

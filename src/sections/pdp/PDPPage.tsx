@@ -6,6 +6,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { useCart } from '@/context/CartContext';
+import { BackInStockForm } from '@/components/pdp/BackInStockForm';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 const SHIPPING_CONTENT = 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.';
@@ -312,6 +313,12 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                   : 'Add to Cart'}
               </button>
             </div>
+
+            {outOfStock && (
+              <div style={{ marginBottom: 24 }}>
+                <BackInStockForm productId={product.id} variantId={activeVariant?.id ?? null} />
+              </div>
+            )}
 
             {product.description && (
               <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 440 }}>
