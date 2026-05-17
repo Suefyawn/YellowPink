@@ -12,14 +12,21 @@ export function Footer() {
         <LogoMark size={200} />
       </div>
       <div className="container">
-        {/* Marquee */}
-        <div style={{ borderBottom: '1px solid rgba(250,246,238,0.1)', paddingBottom: 32, marginBottom: 40, overflow: 'hidden', whiteSpace: 'nowrap' }}>
-          <div style={{
-            display: 'inline-block',
-            animation: 'marquee 30s linear infinite',
-            fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontStyle: 'italic',
-            color: 'rgba(250,246,238,0.2)',
-          }}>
+        {/* Marquee — paused on hover + when prefers-reduced-motion is set
+            (see .footer-marquee in globals.css). aria-hidden so screen
+            readers don't read the scrolling text. */}
+        <div
+          aria-hidden="true"
+          style={{ borderBottom: '1px solid rgba(250,246,238,0.1)', paddingBottom: 32, marginBottom: 40, overflow: 'hidden', whiteSpace: 'nowrap' }}
+        >
+          <div
+            className="footer-marquee"
+            style={{
+              display: 'inline-block',
+              fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontStyle: 'italic',
+              color: 'rgba(250,246,238,0.2)',
+            }}
+          >
             {Array(6).fill('Yellow Pink Store Pakistan · ').join('')}
           </div>
         </div>

@@ -116,6 +116,18 @@ body {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
+
+/* Footer marquee — auto-pauses on hover and respects prefers-reduced-motion.
+ * Previously inlined on the element, which forced screenshot tools / Lighthouse
+ * audits to wait forever for the page to "settle". */
+.footer-marquee {
+  animation: marquee 30s linear infinite;
+  will-change: transform;
+}
+.footer-marquee:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .footer-marquee { animation: none; transform: none; }
+}
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }

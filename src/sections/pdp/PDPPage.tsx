@@ -117,11 +117,12 @@ function VariantPicker({
 
 // ─── Multi-image gallery ───────────────────────────────────────────────────
 function Gallery({
-  images, alt, fallback,
+  images, alt, fallback, brandLabel,
 }: {
   images: ProductImageT[];
   alt: string;
   fallback?: string | null;
+  brandLabel?: string;
 }) {
   const hero = images[0]?.url ?? fallback ?? null;
   const [active, setActive] = useState<string | null>(hero);
@@ -129,7 +130,7 @@ function Gallery({
   if (images.length <= 1) {
     return (
       <div style={{ flex: 1, aspectRatio: '4/5', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--paper2)' }}>
-        <ProductImage src={active ?? fallback} alt={alt} />
+        <ProductImage src={active ?? fallback} alt={alt} label={brandLabel} priority />
       </div>
     );
   }
@@ -150,12 +151,12 @@ function Gallery({
               background: 'var(--paper2)', cursor: 'pointer',
             }}
           >
-            <ProductImage src={img.url} alt={img.alt ?? alt} />
+            <ProductImage src={img.url} alt={img.alt ?? alt} label={brandLabel} />
           </button>
         ))}
       </div>
       <div style={{ flex: 1, aspectRatio: '4/5', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--paper2)' }}>
-        <ProductImage src={active} alt={alt} />
+        <ProductImage src={active} alt={alt} label={brandLabel} priority />
       </div>
     </div>
   );
@@ -273,7 +274,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
 
       <div className="container" style={{ borderTop: '1px solid var(--line)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, padding: '40px 0' }} className="pdp-grid">
-          <Gallery images={galleryToShow} alt={`${product.brand} ${product.name}`} fallback={product.image_url} />
+          <Gallery images={galleryToShow} alt={`${product.brand} ${product.name}`} fallback={product.image_url} brandLabel={product.brand} />
 
           <div>
             <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>{product.brand}</Overline>

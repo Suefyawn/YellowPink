@@ -22,7 +22,7 @@ export const DEMO_PRODUCTS: Product[] = [
   {
     id: 'demo-2', brand: 'RHODE', name: 'Peptide Lip Treatment', slug: 'demo-rhode-peptide-lip',
     variant: 'Vanilla · 10ml', price: 3200, original_price: 3500, category: 'Makeup', subcategory: 'Lip & Cheek Tints',
-    tag: 'New', stock: 12, image_url: undefined,
+    tag: 'Sale', stock: 12, image_url: undefined,
     description: 'Hydrating peptide-rich lip treatment with a glossy non-sticky finish. Vanilla scent.',
     short_description: 'Peptide-rich glossy lip treatment.',
     kind: 'simple', status: 'published', created_at: TS,
@@ -30,7 +30,7 @@ export const DEMO_PRODUCTS: Product[] = [
   {
     id: 'demo-3', brand: 'PIXI', name: 'Glow Tonic', slug: 'demo-pixi-glow-tonic',
     variant: '250ml', price: 3800, category: 'Skincare', subcategory: 'Skincare',
-    stock: 0, image_url: undefined,
+    tag: 'Bestseller', stock: 0, image_url: undefined,
     description: '5% glycolic acid + aloe vera + ginseng — refines pores, evens tone, and gives skin that hero glow.',
     short_description: '5% glycolic exfoliating toner.',
     kind: 'simple', status: 'published', created_at: TS,
@@ -38,7 +38,7 @@ export const DEMO_PRODUCTS: Product[] = [
   {
     id: 'demo-4', brand: 'NARS', name: 'Light Reflecting Foundation', slug: 'demo-nars-foundation',
     variant: 'Mont Blanc', price: 12500, category: 'Makeup', subcategory: 'Foundations',
-    tag: 'Featured', stock: 8, image_url: undefined,
+    tag: 'Bestseller', stock: 8, image_url: undefined,
     description: 'Light-reflecting foundation that hydrates, smooths, and corrects with a luminous natural finish.',
     short_description: 'Luminous medium-coverage foundation.',
     kind: 'variable', status: 'published', created_at: TS,
@@ -62,7 +62,7 @@ export const DEMO_PRODUCTS: Product[] = [
   {
     id: 'demo-7', brand: 'DRMTLGY', name: 'Mineral Sunscreen SPF 45', slug: 'demo-drmtlgy-spf45',
     variant: '88ml', price: 6800, category: 'Skincare', subcategory: 'Sunscreens',
-    stock: 24, image_url: undefined,
+    tag: 'Bestseller', stock: 24, image_url: undefined,
     description: 'Tinted mineral SPF 45 with zinc oxide. Non-comedogenic, water-resistant, blends seamlessly into all skin tones.',
     short_description: 'Tinted mineral SPF 45.',
     kind: 'simple', status: 'published', created_at: TS,
