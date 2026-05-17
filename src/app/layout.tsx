@@ -53,10 +53,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
       </head>
       <body>
+        <a href="#main" className="skip-link">Skip to main content</a>
         <WebVitalsReporter />
         <ServiceWorkerRegister />
         <Providers>
-          <SiteChrome settings={settings}>{children}</SiteChrome>
+          <SiteChrome settings={settings}>
+            <div id="main">{children}</div>
+          </SiteChrome>
         </Providers>
       </body>
     </html>
