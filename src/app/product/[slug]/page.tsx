@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation';
 import { getProductBySlug, supabase } from '@/lib/supabase';
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
+import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
+import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
 import { pageMeta, jsonLd, productLd, breadcrumbLd } from '@/lib/seo';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
 
@@ -100,6 +102,22 @@ async function loadGallery(productId: string): Promise<ProductImage[]> {
   return (data ?? []) as ProductImage[];
 }
 
+async function loadFrequentlyBoughtTogether(productId: string): Promise<Product[]> {
+  // RPC returns [{ product_id, co_count }] ordered desc.
+  const { data, error } = await supabase.rpc('frequently_bought_with' as never, {
+    p_product_id: productId,
+    p_limit:      4,
+  } as never);
+  if (error) return [];
+  const rows = (data ?? []) as Array<{ product_id: string; co_count: number }>;
+  if (rows.length === 0) return [];
+  const ids = rows.map(r => r.product_id);
+  const { data: products } = await supabase.from('products').select('*').in('id', ids);
+  const map = new Map(((products ?? []) as Product[]).map(p => [p.id, p]));
+  // Preserve RPC order.
+  return ids.map(id => map.get(id)).filter((p): p is Product => Boolean(p));
+}
+
 async function loadCrossSells(productId: string, fallbackCategory: string): Promise<Product[]> {
   // Prefer explicit cross-sells / upsells from product_relations.
   const { data: rels } = await supabase
@@ -133,7 +151,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [{ data: reviewRows }, variantData, gallery, crossSells] = await Promise.all([
+  const [{ data: reviewRows }, variantData, gallery, crossSells, fbt] = await Promise.all([
     supabase
       .from('product_reviews')
       .select('id, author_name, rating, body, created_at')
@@ -143,6 +161,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     product.kind === 'variable' ? loadVariantData(product.id) : Promise.resolve({ variants: [], attributes: [] }),
     loadGallery(product.id),
     loadCrossSells(product.id, product.category),
+    loadFrequentlyBoughtTogether(product.id),
   ]);
 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at'>[];
@@ -171,7 +190,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         attributes={variantData.attributes}
         gallery={gallery}
       />
+      <FrequentlyBoughtTogether anchor={product} suggestions={fbt} />
       <ReviewsSection productId={product.id} reviews={reviews} />
+      <RecentlyViewed currentProductId={product.id} />
     </main>
   );
 }
