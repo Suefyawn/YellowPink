@@ -71,6 +71,11 @@ export function MiniCart() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 2 }}>{item.name}</div>
+                {(item.variant_label ?? item.variant) && (
+                  <div className="small-text" style={{ fontSize: '0.6875rem', color: 'var(--ink-500)' }}>
+                    {item.variant_label ?? item.variant}
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)' }}>
                     <button onClick={() => updateQty(i, -1)} style={{ width: 28, height: 28, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>−</button>

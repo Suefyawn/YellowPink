@@ -1,16 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
-import type { Product } from '@/types';
+import type { Product, Category } from '@/types';
 
 const PAGE_SIZE = 48;
 
-const TOP_CATEGORIES = ['All', 'Makeup', 'Skincare', 'Wellness'];
-
-const SUBCATEGORIES: Record<string, string[]> = {
+// Fallback used when the categories table is empty (pre-WP-import installs).
+const FALLBACK_TOP = ['All', 'Makeup', 'Skincare', 'Wellness'];
+const FALLBACK_SUB: Record<string, string[]> = {
   Makeup: ['Lip & Cheek Tints', 'Highlighters', 'Skin Makeup', 'Concealers', 'Contour Sticks', 'Foundations', 'Eyeshadow', 'Brushes'],
   Skincare: ['Skincare', 'Moisturizers', 'Hair Care'],
   Wellness: ['Health & Wellness', 'Human Health', 'Bone Health', 'Brain Health', 'Immune Support', 'Female Fertility & Reproductive Health', 'Digestive Health & Weight Management', 'Heart & Cardiovascular', 'Energy & Performance', 'Combo Packs', 'Pediatric Health', 'Sleep & Relaxation', 'Electrolyte Balance'],
@@ -25,13 +25,40 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 
 type SortKey = 'featured' | 'price-low' | 'price-high' | 'name';
 
-export function CollectionPage({ products, initialCategory = 'All', initialSubcategory = null }: { products: Product[]; initialCategory?: string; initialSubcategory?: string | null }) {
+interface Props {
+  products: Product[];
+  categories?: Category[];
+  initialCategory?: string;
+  initialSubcategory?: string | null;
+}
+
+export function CollectionPage({ products, categories = [], initialCategory = 'All', initialSubcategory = null }: Props) {
   const [activeCategory, setActiveCategory] = useState(initialCategory);
   const [activeSubcategory, setActiveSubcategory] = useState<string | null>(initialSubcategory);
   const [sortBy, setSortBy] = useState<SortKey>('featured');
   const [page, setPage] = useState(1);
 
   useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy]);
+
+  // Build the top-level and children category lists from the DB when present,
+  // otherwise fall back to the hardcoded constants for pre-import installs.
+  const { topCategoryNames, childrenByParentName } = useMemo(() => {
+    if (categories.length === 0) {
+      return {
+        topCategoryNames: FALLBACK_TOP,
+        childrenByParentName: FALLBACK_SUB,
+      };
+    }
+    const tops = categories.filter(c => c.parent_id == null);
+    const childByParent: Record<string, string[]> = {};
+    for (const top of tops) {
+      childByParent[top.name] = categories.filter(c => c.parent_id === top.id).map(c => c.name);
+    }
+    return {
+      topCategoryNames: ['All', ...tops.map(t => t.name)],
+      childrenByParentName: childByParent,
+    };
+  }, [categories]);
 
   function handleTopCategory(cat: string) {
     setActiveCategory(cat);
@@ -51,7 +78,7 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const subcats = activeCategory !== 'All' ? SUBCATEGORIES[activeCategory] ?? [] : [];
+  const subcats = activeCategory !== 'All' ? childrenByParentName[activeCategory] ?? [] : [];
   const pageTitle = activeSubcategory ?? (activeCategory === 'All' ? 'All Products' : activeCategory);
 
   return (
@@ -64,7 +91,7 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
             {CATEGORY_DESCRIPTIONS[activeCategory] ?? CATEGORY_DESCRIPTIONS.All}
           </p>
           <div style={{ display: 'flex', gap: 0, overflowX: 'auto', marginBottom: -1 }}>
-            {TOP_CATEGORIES.map(cat => (
+            {topCategoryNames.map(cat => (
               <button key={cat} onClick={() => handleTopCategory(cat)} style={{
                 padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer',
                 fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 600,

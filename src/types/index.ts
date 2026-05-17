@@ -168,6 +168,10 @@ export interface BlogPost {
 
 export interface CartItem extends Product {
   qty: number;
+  /** Set when adding a specific variant of a variable product. */
+  variant_id?: string | null;
+  /** Human-readable summary of the variant selection, e.g. "Shade: Coral · Size: 250ml". */
+  variant_label?: string | null;
 }
 
 export interface Order {

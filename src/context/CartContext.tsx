@@ -3,11 +3,18 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import type { CartItem, Coupon, Product } from '@/types';
 
+/** Optional variant info when adding a variable product to the cart. */
+export interface AddToCartInput extends Product {
+  qty?: number;
+  variant_id?: string | null;
+  variant_label?: string | null;
+}
+
 interface CartContextValue {
   cartItems: CartItem[];
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
-  addToCart: (product: Product & { qty?: number }) => void;
+  addToCart: (product: AddToCartInput) => void;
   removeFromCart: (idx: number) => void;
   updateQty: (idx: number, delta: number) => void;
   clearCart: () => void;
@@ -44,15 +51,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     try { localStorage.setItem(CART_KEY, JSON.stringify(cartItems)); } catch { /* quota exceeded */ }
   }, [cartItems]);
 
-  const addToCart = (product: Product & { qty?: number }) => {
+  const addToCart = (product: AddToCartInput) => {
     setCartItems(prev => {
-      const existing = prev.findIndex(i => i.id === product.id);
+      // Dedupe key: same product AND same variant. Adding two different shades
+      // of the same product results in two cart lines.
+      const variantId = product.variant_id ?? null;
+      const existing = prev.findIndex(i => i.id === product.id && (i.variant_id ?? null) === variantId);
       if (existing >= 0) {
         const updated = [...prev];
         updated[existing] = { ...updated[existing], qty: updated[existing].qty + (product.qty ?? 1) };
         return updated;
       }
-      return [...prev, { ...product, qty: product.qty ?? 1 }];
+      return [...prev, {
+        ...product,
+        qty: product.qty ?? 1,
+        variant_id: variantId,
+        variant_label: product.variant_label ?? null,
+      }];
     });
     setCartOpen(true);
   };
