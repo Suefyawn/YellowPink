@@ -1,19 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
-import type { Coupon } from '@/types';
+import type { CartItem, Coupon } from '@/types';
 
 const FREE_SHIPPING = 2500;
 
-export function CartPage() {
-  const { cartItems, removeFromCart, updateQty, appliedCoupon, setAppliedCoupon } = useCart();
+export function CartPage({ restoreToken = null }: { restoreToken?: string | null }) {
+  const { cartItems, removeFromCart, updateQty, appliedCoupon, setAppliedCoupon, addToCart } = useCart();
   const router = useRouter();
+
+  // ─── Abandoned-cart restore ─────────────────────────────────────────────
+  // Visiting /cart?restore=<token> rehydrates the cart from the snapshot we
+  // saved at checkout. We only do this once per token (ref guards against
+  // re-runs on hot reload), and only when the current cart is empty so we
+  // don't clobber what the user is already building.
+  const restored = useRef(false);
+  const [restoreNotice, setRestoreNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!restoreToken || restored.current) return;
+    if (cartItems.length > 0) {
+      // Cart already has items — keep them, but inform the user.
+      restored.current = true;
+      router.replace('/cart');
+      return;
+    }
+    restored.current = true;
+    (async () => {
+      const sb = getBrowserClient();
+      const { data } = await sb.rpc('restore_abandoned_cart' as never, { p_token: restoreToken } as never);
+      const rows = Array.isArray(data) ? data : data ? [data] : [];
+      const items = (rows[0] as { cart_items?: CartItem[] } | undefined)?.cart_items;
+      if (items && items.length) {
+        for (const i of items) addToCart({ ...i, qty: i.qty });
+        setRestoreNotice('Welcome back — your cart has been restored.');
+      } else {
+        setRestoreNotice('This cart link has expired or is no longer valid.');
+      }
+      router.replace('/cart');
+    })();
+  }, [restoreToken, cartItems.length, addToCart, router]);
 
   const [couponCode, setCouponCode] = useState(appliedCoupon?.code ?? '');
   const [couponError, setCouponError] = useState('');
@@ -70,9 +101,14 @@ export function CartPage() {
       <section style={{ padding: '48px 0 0' }}>
         <div className="container">
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Shopping Cart</Overline>
-          <h1 className="display-l" style={{ fontSize: '2rem', marginBottom: 32 }}>
+          <h1 className="display-l" style={{ fontSize: '2rem', marginBottom: 16 }}>
             Your Cart ({cartItems.reduce((s, i) => s + i.qty, 0)})
           </h1>
+          {restoreNotice && (
+            <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#166534', fontSize: '0.875rem', marginBottom: 24, maxWidth: 520 }}>
+              {restoreNotice}
+            </div>
+          )}
         </div>
       </section>
 

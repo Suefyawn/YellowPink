@@ -8,6 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/checkout/actions';
+import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import type { Coupon, PayMethod } from '@/types';
 
@@ -63,6 +64,23 @@ export function CheckoutPage() {
     })();
     return () => { cancelled = true; };
   }, [lineTotal, formData.province]);
+
+  // Capture abandoned-cart snapshot when the user supplies an email AND the
+  // cart is non-empty. Debounced 1.2 s so we don't fire per keystroke.
+  useEffect(() => {
+    if (cartItems.length === 0) return;
+    const email = formData.email.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    const t = setTimeout(() => {
+      void captureAbandonedCart({
+        email,
+        items: cartItems,
+        subtotal,
+        user_id: user?.id ?? null,
+      });
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [formData.email, cartItems, subtotal, user?.id]);
 
   const update = (key: string, val: string) => {
     setFormData(p => ({ ...p, [key]: val }));

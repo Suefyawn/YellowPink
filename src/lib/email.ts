@@ -209,7 +209,44 @@ export async function sendStaffTempPasswordEmail(args: { email: string; name: st
   await send({ to: args.email, subject: 'Yellow Pink admin access', html });
 }
 
-// ─── 9. Owner: low-stock alert (background job) ─────────────────────────────
+// ─── 9. Customer: abandoned cart reminder ──────────────────────────────────
+export async function sendAbandonedCartEmail(args: {
+  email: string;
+  first_name?: string;
+  items: OrderItemLine[];
+  total: number;
+  restore_url: string;
+  tier: 1 | 2 | 3;
+  discount_code?: string;
+  discount_pct?: number;
+}): Promise<void> {
+  const intro = args.tier === 1
+    ? `Hi${args.first_name ? ` ${escapeHtml(args.first_name)}` : ''} — you left some things in your cart. They're still here whenever you're ready.`
+    : args.tier === 2
+    ? `Just a friendly nudge — your cart's still waiting. Tap the button below to pick up where you left off.`
+    : `Last chance — your cart's about to expire.${args.discount_code ? ` Use code <strong>${escapeHtml(args.discount_code)}</strong> for ${args.discount_pct ?? 10}% off when you complete your order.` : ''}`;
+
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">${args.tier === 3 ? 'Last chance' : 'You left something behind'}</h2>
+    <p style="margin:0 0 16px;color:${INK};line-height:1.5">${intro}</p>
+    ${renderItemsTable(args.items)}
+    <p style="margin:8px 0 0;text-align:right;font-size:16px"><strong>Total: ${money(args.total)}</strong></p>
+    <p style="margin:24px 0 0;text-align:center">
+      <a href="${args.restore_url}" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Resume your cart →</a>
+    </p>
+  `);
+  await send({
+    to: args.email,
+    subject: args.tier === 3
+      ? `Last chance — your cart is about to expire`
+      : args.tier === 2
+      ? `Still thinking it over? Your cart's waiting`
+      : `You left some things in your cart`,
+    html,
+  });
+}
+
+// ─── 10. Owner: low-stock alert (background job) ────────────────────────────
 export async function sendLowStockAlertEmail(args: { products: { name: string; brand: string; stock: number; slug: string }[] }) {
   if (!args.products.length) return;
   const rows = args.products.map(p =>
