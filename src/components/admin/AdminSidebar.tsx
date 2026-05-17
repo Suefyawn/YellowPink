@@ -19,6 +19,7 @@ const NAV: NavItem[] = [
   { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders' },
   { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'orders' },
   { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers' },
+  { href: '/admin/segments',  label: 'Segments',  icon: '◐', permission: 'customers' },
   { href: '/admin/coupons',   label: 'Coupons',   icon: '◇', permission: 'coupons' },
   { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
   { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'products' },

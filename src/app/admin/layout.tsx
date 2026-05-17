@@ -20,14 +20,27 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
-  const { count: pendingOrderCount } = await supabase
-    .from('orders')
-    .select('id', { count: 'exact', head: true })
-    .eq('status', 'pending');
+  const [{ count: pendingOrderCount }, { data: notifications }] = await Promise.all([
+    supabase
+      .from('orders')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+    supabase
+      .from('admin_notifications')
+      .select('id, kind, title, body, link, read, created_at')
+      .order('created_at', { ascending: false })
+      .limit(30),
+  ]);
 
   return (
     <ToastProvider>
-      <AdminShell session={session} pendingOrderCount={pendingOrderCount ?? 0}>{children}</AdminShell>
+      <AdminShell
+        session={session}
+        pendingOrderCount={pendingOrderCount ?? 0}
+        notifications={(notifications ?? []) as Array<{ id: string; kind: string; title: string; body: string | null; link: string | null; read: boolean; created_at: string }>}
+      >
+        {children}
+      </AdminShell>
     </ToastProvider>
   );
 }
