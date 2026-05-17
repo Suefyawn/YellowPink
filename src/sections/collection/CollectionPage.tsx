@@ -1,10 +1,15 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
-import type { Product, Category } from '@/types';
+import type { Product, Category, ProductAttribute, AttributeValue } from '@/types';
+
+interface AttributeWithValues extends ProductAttribute {
+  values: AttributeValue[];
+}
 
 const PAGE_SIZE = 48;
 
@@ -28,15 +33,53 @@ type SortKey = 'featured' | 'price-low' | 'price-high' | 'name';
 interface Props {
   products: Product[];
   categories?: Category[];
+  attributes?: AttributeWithValues[];
+  /** Map of product_id → list of attribute_value_ids that the product's variants cover. */
+  productValueMap?: Record<string, string[]>;
   initialCategory?: string;
   initialSubcategory?: string | null;
 }
 
-export function CollectionPage({ products, categories = [], initialCategory = 'All', initialSubcategory = null }: Props) {
-  const [activeCategory, setActiveCategory] = useState(initialCategory);
-  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(initialSubcategory);
-  const [sortBy, setSortBy] = useState<SortKey>('featured');
-  const [page, setPage] = useState(1);
+export function CollectionPage({
+  products,
+  categories = [],
+  attributes = [],
+  productValueMap = {},
+  initialCategory = 'All',
+  initialSubcategory = null,
+}: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // ─── URL-state hydration ────────────────────────────────────────────────
+  // Parse once on mount from the search params; subsequent updates are
+  // pushed via router.replace below.
+  const readInitial = () => {
+    const sp = searchParams;
+    const cat = sp.get('cat') ?? sp.get('category') ?? initialCategory;
+    const sub = sp.get('sub') ?? sp.get('subcategory') ?? initialSubcategory ?? null;
+    const sort = (sp.get('sort') as SortKey | null) ?? 'featured';
+    const pageNum = Math.max(1, Number(sp.get('page') ?? '1'));
+    const brands = sp.get('brand')?.split(',').filter(Boolean) ?? [];
+    const attrs  = sp.get('attr')?.split(',').filter(Boolean) ?? [];
+    const min = sp.get('min'); const max = sp.get('max');
+    return {
+      cat, sub, sort, pageNum,
+      brands: new Set(brands),
+      attrs:  new Set(attrs),
+      min: min ? Number(min) : ('' as number | ''),
+      max: max ? Number(max) : ('' as number | ''),
+      stock: sp.get('stock') === '1',
+      sale:  sp.get('sale') === '1',
+    };
+  };
+  // Mount-time only — useState initialiser. Subsequent navigations are
+  // handled by re-rendering the page server-side, so this is correct.
+  const initialState = useRef(readInitial()).current;
+
+  const [activeCategory, setActiveCategory] = useState<string>(initialState.cat);
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(initialState.sub);
+  const [sortBy, setSortBy] = useState<SortKey>(initialState.sort);
+  const [page, setPage] = useState(initialState.pageNum);
 
   // ─── Facets (price / brand / in-stock / on-sale) ─────────────────────────
   // Brand list + price bounds come from the *category-scoped* product set so
@@ -59,11 +102,12 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
     return { min: Math.floor(min), max: Math.ceil(max) };
   }, [categoryScoped]);
 
-  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(new Set());
-  const [priceMin, setPriceMin] = useState<number | ''>('');
-  const [priceMax, setPriceMax] = useState<number | ''>('');
-  const [inStockOnly, setInStockOnly] = useState(false);
-  const [onSaleOnly, setOnSaleOnly] = useState(false);
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(initialState.brands);
+  const [selectedValueIds, setSelectedValueIds] = useState<Set<string>>(initialState.attrs);
+  const [priceMin, setPriceMin] = useState<number | ''>(initialState.min);
+  const [priceMax, setPriceMax] = useState<number | ''>(initialState.max);
+  const [inStockOnly, setInStockOnly] = useState(initialState.stock);
+  const [onSaleOnly, setOnSaleOnly] = useState(initialState.sale);
 
   function toggleBrand(b: string) {
     setSelectedBrands(prev => {
@@ -72,18 +116,47 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
       return next;
     });
   }
+  function toggleValue(id: string) {
+    setSelectedValueIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
   function clearFilters() {
     setSelectedBrands(new Set());
+    setSelectedValueIds(new Set());
     setPriceMin(''); setPriceMax('');
     setInStockOnly(false); setOnSaleOnly(false);
   }
 
-  // Reset paging + brand selection when the category changes.
-  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, priceMin, priceMax, inStockOnly, onSaleOnly]);
+  // Reset paging when *any* filter / sort / category changes.
+  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly]);
+  // Brand list rebuilds per-category; drop any selections that no longer apply.
   useEffect(() => { setSelectedBrands(new Set()); }, [activeCategory]);
+
+  // ─── URL persistence ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (activeCategory && activeCategory !== 'All') sp.set('cat', activeCategory);
+    if (activeSubcategory) sp.set('sub', activeSubcategory);
+    if (sortBy !== 'featured') sp.set('sort', sortBy);
+    if (page !== 1) sp.set('page', String(page));
+    if (selectedBrands.size > 0) sp.set('brand', Array.from(selectedBrands).join(','));
+    if (selectedValueIds.size > 0) sp.set('attr', Array.from(selectedValueIds).join(','));
+    if (priceMin !== '') sp.set('min', String(priceMin));
+    if (priceMax !== '') sp.set('max', String(priceMax));
+    if (inStockOnly) sp.set('stock', '1');
+    if (onSaleOnly) sp.set('sale', '1');
+    const qs = sp.toString();
+    const url = qs ? `/shop?${qs}` : '/shop';
+    // Replace, not push — filtering shouldn't pile up history entries.
+    router.replace(url, { scroll: false });
+  }, [activeCategory, activeSubcategory, sortBy, page, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, router]);
 
   const activeFilterCount =
     selectedBrands.size +
+    selectedValueIds.size +
     (priceMin !== '' || priceMax !== '' ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
     (onSaleOnly ? 1 : 0);
@@ -121,6 +194,26 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
     if (priceMax !== '' && p.price > priceMax) return false;
     if (inStockOnly && p.stock <= 0) return false;
     if (onSaleOnly && !(p.original_price && p.original_price > p.price)) return false;
+    if (selectedValueIds.size > 0) {
+      const productValues = productValueMap[p.id] ?? [];
+      // Require the product to cover at least one selected value *per attribute* the user picked.
+      // Build attrId → selectedValueIds map for this filter set.
+      const selectedByAttr = new Map<string, string[]>();
+      for (const id of selectedValueIds) {
+        for (const a of attributes) {
+          const v = a.values.find(x => x.id === id);
+          if (v) {
+            const arr = selectedByAttr.get(a.id) ?? [];
+            arr.push(id);
+            selectedByAttr.set(a.id, arr);
+            break;
+          }
+        }
+      }
+      for (const [, ids] of selectedByAttr) {
+        if (!ids.some(id => productValues.includes(id))) return false;
+      }
+    }
     return true;
   });
 
@@ -233,7 +326,7 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
 
               {/* Brand */}
               {allBrands.length > 1 && (
-                <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+                <fieldset style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
                   <legend style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
                     Brand
                   </legend>
@@ -247,6 +340,61 @@ export function CollectionPage({ products, categories = [], initialCategory = 'A
                   </div>
                 </fieldset>
               )}
+
+              {/* Variant attribute facets (Shade, Size, etc.) */}
+              {attributes.map(attr => {
+                const hasColor = attr.values.some(v => v.color_hex);
+                return (
+                  <fieldset key={attr.id} style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+                    <legend style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                      {attr.name}
+                    </legend>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {attr.values.map(v => {
+                        const active = selectedValueIds.has(v.id);
+                        if (hasColor && v.color_hex) {
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onClick={() => toggleValue(v.id)}
+                              title={v.value}
+                              aria-label={v.value}
+                              aria-pressed={active}
+                              style={{
+                                width: 28, height: 28, borderRadius: '50%',
+                                border: active ? '2px solid var(--ink-900)' : '2px solid var(--line)',
+                                outline: active ? '2px solid var(--paper)' : 'none', outlineOffset: -3,
+                                background: v.color_hex,
+                                cursor: 'pointer', padding: 0,
+                              }}
+                            />
+                          );
+                        }
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => toggleValue(v.id)}
+                            aria-pressed={active}
+                            style={{
+                              padding: '4px 10px',
+                              border: '1px solid ' + (active ? 'var(--ink-900)' : 'var(--line)'),
+                              background: active ? 'var(--ink-900)' : 'var(--paper)',
+                              color: active ? 'var(--paper)' : 'var(--ink-900)',
+                              borderRadius: 100,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {v.value}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                );
+              })}
             </aside>
 
             {/* ─── Product grid ──────────────────────────────────────── */}

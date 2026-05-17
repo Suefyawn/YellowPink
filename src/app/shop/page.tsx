@@ -5,7 +5,62 @@ import { getProducts } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta } from '@/lib/seo';
-import type { Category } from '@/types';
+import type { Category, ProductAttribute, AttributeValue } from '@/types';
+
+export interface AttributeWithValues extends ProductAttribute {
+  values: AttributeValue[];
+}
+
+interface FacetData {
+  attributes: AttributeWithValues[];
+  productValueMap: Record<string, string[]>;     // product_id → attribute_value_ids
+}
+
+async function loadFacetData(): Promise<FacetData> {
+  // Pull every active variant + its option links, joined with the value + attribute
+  // metadata. This is one round-trip; data is small enough (one row per
+  // variant-value pair across the active catalog).
+  const [{ data: vavRows }, { data: attrRows }, { data: valRows }] = await Promise.all([
+    supabase
+      .from('variant_attribute_values')
+      .select('attribute_value_id, variant:product_variants!inner(product_id, enabled)')
+      .eq('variant.enabled', true),
+    supabase.from('product_attributes')
+      .select('id, slug, name, visible_on_pdp, usable_in_filter, sort_order')
+      .eq('usable_in_filter', true)
+      .order('sort_order'),
+    supabase.from('attribute_values')
+      .select('id, attribute_id, slug, value, color_hex, image_url, sort_order')
+      .order('sort_order'),
+  ]);
+
+  // Bucket value ids per product id. Supabase types the nested relation as
+  // an array even when it's a 1:1 — destructure defensively.
+  const productValueMap: Record<string, string[]> = {};
+  const rows = (vavRows ?? []) as unknown as Array<{
+    attribute_value_id: string;
+    variant: { product_id: string } | { product_id: string }[] | null;
+  }>;
+  for (const row of rows) {
+    const v = Array.isArray(row.variant) ? row.variant[0] : row.variant;
+    const productId = v?.product_id;
+    if (!productId) continue;
+    const arr = productValueMap[productId] ?? [];
+    if (!arr.includes(row.attribute_value_id)) arr.push(row.attribute_value_id);
+    productValueMap[productId] = arr;
+  }
+
+  // Only show attributes that have at least one referenced value.
+  const usedValueIds = new Set(Object.values(productValueMap).flat());
+  const attributes: AttributeWithValues[] = ((attrRows ?? []) as ProductAttribute[])
+    .map(a => ({
+      ...a,
+      values: ((valRows ?? []) as AttributeValue[]).filter(v => v.attribute_id === a.id && usedValueIds.has(v.id)),
+    }))
+    .filter(a => a.values.length > 0);
+
+  return { attributes, productValueMap };
+}
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string }> }): Promise<Metadata> {
   const { category, subcategory, cat } = await searchParams;
@@ -40,7 +95,11 @@ async function resolveCategoryFromSlug(slug: string | undefined, categories: Cat
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string }> }) {
-  const [products, categories] = await Promise.all([getProducts(), loadCategories()]);
+  const [products, categories, facetData] = await Promise.all([
+    getProducts(),
+    loadCategories(),
+    loadFacetData(),
+  ]);
   const { category, subcategory, cat } = await searchParams;
 
   // Resolve ?cat=<slug> (used by WP redirects) into a display category name.
@@ -53,6 +112,8 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       <CollectionPage
         products={products}
         categories={categories}
+        attributes={facetData.attributes}
+        productValueMap={facetData.productValueMap}
         initialCategory={initialCategory}
         initialSubcategory={subcategory ?? null}
       />
