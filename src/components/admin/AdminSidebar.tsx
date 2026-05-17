@@ -14,6 +14,7 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permission: 'analytics' },
+  { href: '/admin/analytics', label: 'Analytics', icon: '◐', permission: 'analytics' },
   { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products' },
   { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders' },
   { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers' },
