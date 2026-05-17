@@ -9,8 +9,9 @@ import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/checkout/actions';
 import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
+import { validateGiftCardCode, validateReferralCode } from '@/app/checkout/rewards-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
-import type { Coupon, PayMethod } from '@/types';
+import type { Coupon, PayMethod, LoyaltyAccount } from '@/types';
 
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
 
@@ -44,15 +45,53 @@ export function CheckoutPage() {
   const [couponLoading, setCouponLoading] = useState(false);
   const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string }>({ rate: 200, free: false, label: 'Standard' });
 
+  // ─── Rewards: gift card + loyalty + referral ────────────────────────────
+  const [giftCardCode, setGiftCardCode]     = useState('');
+  const [giftCardError, setGiftCardError]   = useState('');
+  const [giftCard, setGiftCard]             = useState<{ code: string; balance: number } | null>(null);
+  const [refCodeInput, setRefCodeInput]     = useState('');
+  const [refCodeError, setRefCodeError]     = useState('');
+  const [refCode, setRefCode]               = useState<{ code: string; pct: number } | null>(null);
+  const [loyalty, setLoyalty]               = useState<LoyaltyAccount | null>(null);
+  const [pointsRedeemInput, setPointsRedeemInput] = useState<number | ''>('');
+  const [pointsRedeem, setPointsRedeem]     = useState(0);
+
+  // Pre-fill referral code from ?ref= or localStorage.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const sp = new URLSearchParams(window.location.search);
+    const fromUrl = sp.get('ref');
+    const stored  = window.localStorage.getItem('yp_ref');
+    const code    = fromUrl ?? stored ?? '';
+    if (fromUrl) window.localStorage.setItem('yp_ref', fromUrl);
+    if (code) setRefCodeInput(code);
+  }, []);
+
+  // Pull loyalty balance for signed-in users.
+  useEffect(() => {
+    if (!user) { setLoyalty(null); return; }
+    const sb = getBrowserClient();
+    sb.from('loyalty_accounts').select('*').eq('user_id', user.id).maybeSingle()
+      .then(({ data }) => setLoyalty(data as LoyaltyAccount | null));
+  }, [user]);
+
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const discount = coupon
+  const couponDiscount = coupon
     ? coupon.type === 'percent'
       ? Math.round(subtotal * coupon.value / 100)
       : coupon.value
     : 0;
+  const refDiscount = refCode ? Math.round(subtotal * refCode.pct / 100) : 0;
+  const discount = couponDiscount + refDiscount;
   const lineTotal = Math.max(0, subtotal - discount);
   const shipping = shippingInfo.rate;
-  const total = lineTotal + shipping;
+  const beforeRewards = lineTotal + shipping;
+
+  // Points: cap at the remaining payable amount AFTER gift card.
+  const giftCardCovers = giftCard ? Math.min(giftCard.balance, beforeRewards) : 0;
+  const remainingAfterGc = Math.max(0, beforeRewards - giftCardCovers);
+  const pointsCovers     = Math.min(pointsRedeem, remainingAfterGc);
+  const total            = Math.max(0, remainingAfterGc - pointsCovers);
 
   // Recompute shipping whenever subtotal or province changes.
   useEffect(() => {
@@ -154,13 +193,16 @@ export function CheckoutPage() {
           pay_method: payMethod,
           subtotal,
           shipping,
-          total,
+          total: beforeRewards,                  // pre-rewards order total — gift card / points decrement separately
           items: cartItems,
           status: 'pending',
           user_id: user?.id || '',
           coupon_code: coupon?.code || '',
           discount_amount: discount,
         },
+        gift_card_code:   giftCard?.code ?? null,
+        points_redeem:    pointsCovers > 0 ? pointsCovers : null,
+        referred_by_code: refCode?.code ?? null,
       } as never);
       if (error) throw new Error(error.message);
       void data;
@@ -347,6 +389,83 @@ export function CheckoutPage() {
                 </div>
               )}
 
+              {/* Gift card */}
+              {!giftCard ? (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      value={giftCardCode}
+                      onChange={e => { setGiftCardCode(e.target.value.toUpperCase()); setGiftCardError(''); }}
+                      placeholder="Gift card"
+                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none', background: 'white', fontFamily: 'monospace' }}
+                    />
+                    <button onClick={async () => {
+                      const r = await validateGiftCardCode(giftCardCode);
+                      if (!r.valid) { setGiftCardError('Invalid or empty gift card'); return; }
+                      setGiftCard({ code: giftCardCode.trim().toUpperCase(), balance: r.balance });
+                    }} style={{ padding: '8px 12px', background: 'var(--ink-900)', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Apply</button>
+                  </div>
+                  {giftCardError && <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--error)' }}>{giftCardError}</p>}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
+                  <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>🎁 {giftCard.code} (PKR {giftCard.balance.toLocaleString()} balance)</span>
+                  <button onClick={() => { setGiftCard(null); setGiftCardCode(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
+                </div>
+              )}
+
+              {/* Referral code */}
+              {!refCode ? (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      value={refCodeInput}
+                      onChange={e => { setRefCodeInput(e.target.value.toUpperCase()); setRefCodeError(''); }}
+                      placeholder="Referral code (optional)"
+                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none', background: 'white', fontFamily: 'monospace' }}
+                    />
+                    <button onClick={async () => {
+                      const r = await validateReferralCode(refCodeInput);
+                      if (!r.valid) { setRefCodeError('Not a valid referral code'); return; }
+                      setRefCode({ code: refCodeInput.trim().toUpperCase(), pct: r.discount_pct });
+                    }} style={{ padding: '8px 12px', background: 'var(--ink-900)', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Apply</button>
+                  </div>
+                  {refCodeError && <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--error)' }}>{refCodeError}</p>}
+                </div>
+              ) : (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#fdf4ff', borderRadius: 6, border: '1px solid #f5d0fe' }}>
+                  <span style={{ fontSize: '0.8125rem', color: '#a21caf', fontWeight: 600 }}>👥 {refCode.code} (−{refCode.pct}%)</span>
+                  <button onClick={() => { setRefCode(null); setRefCodeInput(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
+                </div>
+              )}
+
+              {/* Loyalty points redemption (only when signed in with balance) */}
+              {loyalty && loyalty.points_balance > 0 && (
+                <div style={{ marginBottom: 12, padding: '8px 10px', background: '#fffbeb', borderRadius: 6, border: '1px solid #fde68a' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                    <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600 }}>★ {loyalty.points_balance.toLocaleString()} points available</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <input
+                        type="number" min={0} max={Math.min(loyalty.points_balance, remainingAfterGc)}
+                        value={pointsRedeemInput}
+                        onChange={e => {
+                          const n = e.target.value === '' ? '' : Math.max(0, Math.min(loyalty.points_balance, Number(e.target.value)));
+                          setPointsRedeemInput(n);
+                          setPointsRedeem(typeof n === 'number' ? n : 0);
+                        }}
+                        placeholder="0"
+                        style={{ width: 70, padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #fde68a', borderRadius: 4, outline: 'none', background: 'white', fontFamily: 'monospace' }}
+                      />
+                      <button onClick={() => {
+                        const max = Math.min(loyalty.points_balance, remainingAfterGc);
+                        setPointsRedeemInput(max);
+                        setPointsRedeem(max);
+                      }} style={{ background: 'none', border: 'none', color: '#92400e', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 600 }}>Use max</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span className="small-text">Subtotal</span>
                 <span className="small-text tabular-nums" style={{ fontWeight: 500 }}>PKR {subtotal.toLocaleString()}</span>
@@ -361,9 +480,21 @@ export function CheckoutPage() {
                 <span className="small-text">Shipping{shippingInfo.label ? ` (${shippingInfo.label})` : ''}</span>
                 <span className="small-text tabular-nums" style={{ fontWeight: 500, color: shipping === 0 ? 'var(--success)' : 'inherit' }}>{shipping === 0 ? 'FREE' : `PKR ${shipping}`}</span>
               </div>
+              {giftCardCovers > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span className="small-text" style={{ color: '#15803d' }}>Gift card</span>
+                  <span className="small-text tabular-nums" style={{ fontWeight: 500, color: '#15803d' }}>− PKR {giftCardCovers.toLocaleString()}</span>
+                </div>
+              )}
+              {pointsCovers > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span className="small-text" style={{ color: '#92400e' }}>Loyalty points</span>
+                  <span className="small-text tabular-nums" style={{ fontWeight: 500, color: '#92400e' }}>− PKR {pointsCovers.toLocaleString()}</span>
+                </div>
+              )}
               <hr className="hairline" style={{ margin: '16px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-                <span className="h3">Total</span>
+                <span className="h3">Due now</span>
                 <span className="h3 tabular-nums">PKR {total.toLocaleString()}</span>
               </div>
               {submitError && (

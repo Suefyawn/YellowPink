@@ -248,7 +248,42 @@ export interface Profile {
   last_name: string | null;
   phone: string | null;
   dob?: string | null;
+  referral_code?: string | null;
+  referred_by_code?: string | null;
   created_at: string;
+}
+
+export interface LoyaltyAccount {
+  user_id: string;
+  points_balance: number;
+  lifetime_points: number;
+  updated_at: string;
+}
+
+export type LoyaltyReason =
+  | 'welcome' | 'order_delivered' | 'review_approved' | 'referral_reward'
+  | 'redemption' | 'birthday' | 'manual' | 'refund_reversal';
+
+export interface LoyaltyLedgerEntry {
+  id: string;
+  user_id: string;
+  delta: number;
+  reason: LoyaltyReason;
+  order_id: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export type LoyaltyTier = 'Bronze' | 'Silver' | 'Gold';
+
+export interface GiftCard {
+  id: string;
+  code: string;
+  initial_balance: number;
+  current_balance: number;
+  currency: string;
+  expires_at: string | null;
+  active: boolean;
 }
 
 export interface Address {
