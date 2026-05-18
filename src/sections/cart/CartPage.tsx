@@ -86,11 +86,22 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
     return (
       <section style={{ padding: 'var(--section-gap) 0', textAlign: 'center' }}>
         <div className="container" style={{ maxWidth: 560 }}>
-          <h1 className="h1" style={{ marginTop: 20, marginBottom: 12 }}>Your cart is empty</h1>
+          <div style={{ fontSize: '3.5rem', marginBottom: 16, opacity: 0.35 }} aria-hidden="true">◎</div>
+          <h1 className="h1" style={{ marginTop: 0, marginBottom: 12 }}>Your cart is empty</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 28 }}>
-            Looks like you haven&apos;t added anything yet. Explore our collection and find something you&apos;ll love.
+            Browse the catalog and pick up where you left off — your favourites are one tap away.
           </p>
-          <Link href="/shop" className="btn-primary">Continue Shopping</Link>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <Link href="/shop" className="btn-primary">Start shopping</Link>
+            <Link href="/blog" style={{
+              padding: '12px 24px', background: 'transparent',
+              border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+              fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600,
+              color: 'var(--ink-900)', textDecoration: 'none',
+            }}>
+              Read the edit
+            </Link>
+          </div>
         </div>
       </section>
     );

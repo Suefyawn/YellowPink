@@ -247,9 +247,18 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true }: { p
             )}
 
             {stats.total === 0 ? (
-              <p style={{ color: 'var(--ink-500)', fontSize: '0.875rem' }}>
-                No reviews yet. Be the first to review this product!
-              </p>
+              <div style={{
+                padding: '32px 24px', textAlign: 'center',
+                background: 'var(--paper2)', borderRadius: 'var(--radius-card)', border: '1px dashed var(--line)',
+              }}>
+                <div style={{ fontSize: '2rem', marginBottom: 8, opacity: 0.45 }}>✦</div>
+                <p style={{ margin: 0, color: 'var(--ink-700)', fontSize: '0.9375rem', fontWeight: 600 }}>
+                  No reviews yet
+                </p>
+                <p style={{ margin: '4px 0 0', color: 'var(--ink-500)', fontSize: '0.8125rem' }}>
+                  Tried it? Write the first review — other shoppers count on it.
+                </p>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {sorted.map(r => (

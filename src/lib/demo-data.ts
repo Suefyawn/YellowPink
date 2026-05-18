@@ -75,6 +75,22 @@ export const DEMO_PRODUCTS: Product[] = [
     short_description: 'Daily multivitamin · 60 tablets.',
     kind: 'simple', status: 'published', created_at: TS,
   },
+  {
+    id: 'demo-9', brand: 'NOW Foods', name: 'Vitamin D3 5000 IU', slug: 'demo-now-vitamin-d3',
+    variant: '120 softgels', price: 2400, category: 'Wellness', subcategory: 'Bone Health',
+    tag: 'Bestseller', stock: 38, image_url: undefined,
+    description: 'High-potency vitamin D3 to support bone health, immune function, and mood. Sourced from lanolin.',
+    short_description: 'High-potency D3 · 120 softgels.',
+    kind: 'simple', status: 'published', created_at: TS,
+  },
+  {
+    id: 'demo-10', brand: 'Nordic Naturals', name: 'Ultimate Omega', slug: 'demo-nordic-ultimate-omega',
+    variant: '60 softgels · lemon', price: 6400, original_price: 7200, category: 'Wellness', subcategory: 'Heart & Cardiovascular',
+    tag: 'Sale', stock: 22, image_url: undefined,
+    description: 'Triple-strength fish oil with 1280 mg of EPA + DHA per serving. Independently tested for purity and freshness. Natural lemon flavor.',
+    short_description: 'Triple-strength fish oil.',
+    kind: 'simple', status: 'published', created_at: TS,
+  },
 ];
 
 export const DEMO_CATEGORIES: Category[] = [
