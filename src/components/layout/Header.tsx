@@ -61,20 +61,41 @@ export function Header() {
           ))}
         </nav>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-          <button onClick={() => setSearchOpen(true)} aria-label="Search products" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-700)', display: 'flex' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Each header icon button gets a 40x40 hit area (10px padding around
+              an 18-20px glyph) so it satisfies WCAG 2.5.5 / 2.5.8 minimum tap
+              target without changing the visual look — the SVG still appears
+              the same size, but the clickable surface is much larger. */}
+          <button
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search products"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-700)',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 40, borderRadius: 8, padding: 0,
+            }}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
           </button>
-          <Link href={user ? '/account' : '/login'} aria-label={user ? 'My account' : 'Sign in'} style={{ color: 'var(--ink-700)', display: 'flex' }}>
+          <Link
+            href={user ? '/account' : '/login'}
+            aria-label={user ? 'My account' : 'Sign in'}
+            style={{
+              color: 'var(--ink-700)', display: 'inline-flex',
+              alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 40, borderRadius: 8,
+            }}
+          >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
             </svg>
           </Link>
           <button onClick={() => setCartOpen(true)} aria-label={`Open cart, ${cartCount} item${cartCount === 1 ? '' : 's'}`} style={{
             background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)',
-            display: 'flex', alignItems: 'center', gap: 4, position: 'relative',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 40, height: 40, borderRadius: 8, padding: 0, position: 'relative',
           }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
@@ -96,7 +117,12 @@ export function Header() {
             aria-label={mobileMenu ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileMenu}
             aria-controls="mobile-nav"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)', display: 'none' }}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)',
+              alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 40, borderRadius: 8, padding: 0,
+              display: 'none',
+            }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
               {mobileMenu
@@ -112,7 +138,7 @@ export function Header() {
         <nav
           id="mobile-nav"
           aria-label="Mobile menu"
-          style={{ padding: '16px var(--side)', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 16 }}
+          style={{ padding: '8px var(--side)', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column' }}
         >
           {NAV_ITEMS.map(item => (
             <Link key={item.label} href={item.href}
@@ -120,6 +146,12 @@ export function Header() {
               style={{
                 textDecoration: 'none', fontFamily: 'var(--font-ui)',
                 fontSize: '0.9375rem', fontWeight: 500, color: 'var(--ink-900)',
+                // 44px min tap target — beats WCAG AAA 2.5.5 + matches iOS guidance.
+                // Use border-bottom for the visual separator so each row reads
+                // as its own list item; last child loses the line.
+                display: 'flex', alignItems: 'center',
+                padding: '14px 0', minHeight: 44,
+                borderBottom: '1px solid var(--line)',
               }}
             >{item.label}</Link>
           ))}

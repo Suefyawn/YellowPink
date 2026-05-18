@@ -13,14 +13,21 @@ interface PageRow {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  if (isDemo) return [];
-
-  const { data } = await supabase
-    .from('pages')
-    .select('slug, updated_at, created_at')
-    .eq('status', 'published');
-
-  const rows = (data ?? []) as PageRow[];
+  let rows: PageRow[];
+  if (isDemo) {
+    const { DEMO_PAGES } = await import('@/lib/demo-data');
+    rows = DEMO_PAGES.map(p => ({ slug: p.slug, updated_at: null, created_at: null }));
+  } else {
+    try {
+      const { data } = await supabase
+        .from('pages')
+        .select('slug, updated_at, created_at')
+        .eq('status', 'published');
+      rows = (data ?? []) as PageRow[];
+    } catch {
+      rows = [];
+    }
+  }
   return rows.map(p => {
     const last = p.updated_at ?? p.created_at;
     return {

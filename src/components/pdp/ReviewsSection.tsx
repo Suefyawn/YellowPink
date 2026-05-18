@@ -328,18 +328,19 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true }: { p
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Name *</label>
-                    <input name="author_name" required placeholder="Your name" style={inp} />
+                    <label htmlFor="review-author-name" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Name *</label>
+                    <input id="review-author-name" name="author_name" required autoComplete="name" placeholder="Your name" style={inp} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Email (for verified badge)</label>
-                    <input name="reviewer_email" type="email" placeholder="you@example.com" style={inp} />
+                    <label htmlFor="review-reviewer-email" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Email (for verified badge)</label>
+                    <input id="review-reviewer-email" name="reviewer_email" type="email" autoComplete="email" placeholder="you@example.com" style={inp} />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Review *</label>
+                  <label htmlFor="review-body" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Review *</label>
                   <textarea
+                    id="review-body"
                     name="body" required minLength={10} rows={4}
                     placeholder="Share your experience with this product..."
                     style={{ ...inp, resize: 'vertical' }}

@@ -214,11 +214,18 @@ a.underline,
 @media (prefers-reduced-motion: reduce) {
   .footer-marquee { animation: none; transform: none; }
 }
+/* Page-level entry animation, applied via `.fade-in` to `<main>` on most
+ * routes. We deliberately use ONLY opacity here — no transform — because a
+ * transform on a parent element creates a new containing block for any
+ * `position: fixed` descendants, which would trap the shop-page filter
+ * drawer + cart drawer inside <main> rather than letting them anchor to the
+ * viewport. Opacity-only also paints faster and avoids the brief layout
+ * shift a translateY produces. */
 @keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
-.fade-in { animation: fadeUp 0.5s ease-out both; }
+.fade-in { animation: fadeUp 0.4s ease-out both; }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(8px); }

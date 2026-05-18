@@ -4,7 +4,7 @@
 //
 // Never returned in production — gated on `isDemo` in lib/supabase.ts.
 
-import type { BlogPost, Product, Category } from '@/types';
+import type { BlogPost, Product, Category, Page } from '@/types';
 
 const TS = '2026-05-22T12:00:00.000Z';
 
@@ -114,6 +114,51 @@ export const DEMO_BLOG_POSTS: BlogPost[] = [
     id: 'demo-blog-3', slug: 'demo-supplements-101', title: 'Supplements 101 for South Asian women',
     excerpt: 'Why vitamin D, B12, and iron deficiencies are so common — and what to do.', category: 'Wellness',
     date: '2026-04-28', read_time: '5 min read', featured: false, body: undefined, image_url: undefined, created_at: TS,
+  },
+];
+
+// CMS-like pages — match the slugs in `src/lib/page-faqs.ts` so the FAQ
+// JSON-LD + accordion can preview end-to-end without a database.
+export const DEMO_PAGES: Page[] = [
+  {
+    id: 'demo-page-shipping', slug: 'shipping', title: 'Shipping Policy',
+    status: 'published', show_in_footer: true, sort_order: 1,
+    meta_title: 'Shipping Policy | Yellow Pink',
+    meta_description: 'Delivery timelines, cash-on-delivery, free-shipping thresholds, and courier partners across Pakistan.',
+    excerpt: 'How orders ship across Pakistan.',
+    body_html: '<p>Yellow Pink ships to all major cities and most remote areas across Pakistan via TCS, Leopards, M&amp;P and BlueEx. Orders placed before 2 PM ship the same working day.</p><p>Cash on Delivery is available nationwide. Orders over PKR 2,500 ship free; below that a flat fee is calculated at checkout based on your city.</p>',
+  },
+  {
+    id: 'demo-page-returns', slug: 'returns', title: 'Returns & Refunds',
+    status: 'published', show_in_footer: true, sort_order: 2,
+    meta_title: 'Returns & Refunds | Yellow Pink',
+    meta_description: 'Our 7-day return window, who pays for return shipping, and how refunds are issued.',
+    excerpt: 'How returns and refunds work.',
+    body_html: '<p>You can request a return within 7 days of delivery for unopened items in their original packaging. Damaged or wrong-item shipments are returned at our cost; other reasons are returned at the customer\'s cost.</p><p>Refunds are issued as store credit by default — fast, with no payment-processor delay. Cash refunds for COD orders are available on request and take up to 5 working days.</p>',
+  },
+  {
+    id: 'demo-page-faq', slug: 'faq', title: 'Frequently Asked Questions',
+    status: 'published', show_in_footer: true, sort_order: 3,
+    meta_title: 'FAQ | Yellow Pink',
+    meta_description: 'Common questions about authenticity, order tracking, payment methods, and customer support.',
+    excerpt: 'Common questions, answered.',
+    body_html: '<p>Browse the most common questions about Yellow Pink. Don\'t see your answer? <a href="/page/contact">Contact us</a> and we\'ll respond within one working day.</p>',
+  },
+  {
+    id: 'demo-page-about', slug: 'about', title: 'About Yellow Pink',
+    status: 'published', show_in_footer: true, sort_order: 4,
+    meta_title: 'About Us | Yellow Pink',
+    meta_description: 'Yellow Pink imports beauty, skincare and wellness from international brands and delivers across Pakistan with COD.',
+    excerpt: 'Imported beauty & wellness for Pakistan.',
+    body_html: '<p>Yellow Pink imports skincare, makeup, and clinical-grade nutraceuticals from international brands and delivers them across Pakistan with cash on delivery. Real beauty starts with real ingredients — and real results.</p>',
+  },
+  {
+    id: 'demo-page-contact', slug: 'contact', title: 'Contact Us',
+    status: 'published', show_in_footer: true, sort_order: 5,
+    meta_title: 'Contact | Yellow Pink',
+    meta_description: 'Get in touch with Yellow Pink customer support.',
+    excerpt: 'Get in touch.',
+    body_html: '<p>Reach us at <a href="mailto:hello@yellowpink.pk">hello@yellowpink.pk</a> Monday to Saturday. Most enquiries are answered within one working day.</p>',
   },
 ];
 

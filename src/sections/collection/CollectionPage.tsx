@@ -454,16 +454,18 @@ export function CollectionPage({
                     type="number"
                     inputMode="numeric"
                     min={0}
+                    aria-label="Minimum price in PKR"
                     placeholder={String(priceBounds.min)}
                     value={priceMin}
                     onChange={e => setPriceMin(e.target.value === '' ? '' : Number(e.target.value))}
                     style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none' }}
                   />
-                  <span style={{ color: 'var(--ink-500)' }}>–</span>
+                  <span aria-hidden="true" style={{ color: 'var(--ink-500)' }}>–</span>
                   <input
                     type="number"
                     inputMode="numeric"
                     min={0}
+                    aria-label="Maximum price in PKR"
                     placeholder={String(priceBounds.max)}
                     value={priceMax}
                     onChange={e => setPriceMax(e.target.value === '' ? '' : Number(e.target.value))}

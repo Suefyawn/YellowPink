@@ -101,8 +101,15 @@ export function SearchOverlay() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-500)" strokeWidth="2" strokeLinecap="round">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
+            <label htmlFor="search-overlay-input" className="sr-only">
+              Search products, brands, or concerns
+            </label>
             <input
               ref={inputRef}
+              id="search-overlay-input"
+              type="search"
+              autoComplete="off"
+              aria-label="Search products, brands, or concerns"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search products, brands, concerns..."
@@ -112,10 +119,18 @@ export function SearchOverlay() {
                 color: 'var(--ink-900)',
               }}
             />
-            <button onClick={() => setSearchOpen(false)} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--ink-500)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: 'var(--font-ui)',
-            }}>Close</button>
+            <button
+              onClick={() => setSearchOpen(false)}
+              aria-label="Close search"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--ink-500)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: 'var(--font-ui)',
+                // ≥36px hit target — text stays compact, surrounding padding
+                // gives mouse + tap a comfortable surface.
+                padding: '10px 14px', borderRadius: 6, minHeight: 36,
+                display: 'inline-flex', alignItems: 'center',
+              }}
+            >Close</button>
           </div>
 
           {query.length > 0 ? (

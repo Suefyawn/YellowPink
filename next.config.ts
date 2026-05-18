@@ -27,6 +27,11 @@ const nextConfig: NextConfig = {
   },
   // Edge compression.
   compress: true,
+  // Allow Claude Preview / common dev tooling to load HMR + dev fonts when the
+  // browser hits 127.0.0.1 instead of localhost. Next 16 blocks cross-origin
+  // dev resources by default; this is a dev-only allowlist (does NOT affect
+  // production routing).
+  allowedDevOrigins: ['127.0.0.1', 'localhost'],
 };
 
 export default nextConfig;

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, isDemo } from '@/lib/supabase';
+import { DEMO_PAGES } from '@/lib/demo-data';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { pageMeta, jsonLd, pageArticleLd, faqLd, breadcrumbLd } from '@/lib/seo';
 import { getPageFaq } from '@/lib/page-faqs';
@@ -11,13 +12,21 @@ import type { Page } from '@/types';
 // stay stable.
 
 async function loadPage(slug: string): Promise<Page | null> {
-  const { data } = await supabase
-    .from('pages')
-    .select('*')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .maybeSingle();
-  return (data as Page | null) ?? null;
+  if (isDemo) return DEMO_PAGES.find(p => p.slug === slug) ?? null;
+  try {
+    const { data } = await supabase
+      .from('pages')
+      .select('*')
+      .eq('slug', slug)
+      .eq('status', 'published')
+      .maybeSingle();
+    return (data as Page | null) ?? null;
+  } catch (err) {
+    // Same resilience pattern as the storefront getters — a missing `pages`
+    // table shouldn't 404 every CMS slug.
+    console.warn(`[supabase] loadPage(${slug}) failed; falling back to null. ${(err as Error).message}`);
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

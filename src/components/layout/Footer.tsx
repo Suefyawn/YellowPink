@@ -166,7 +166,7 @@ export function Footer() {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
         }}>
           <span className="small-text" style={{ color: 'rgba(250,246,238,0.3)' }}>© {new Date().getFullYear()} Yellow Pink. All rights reserved.</span>
-          <div style={{ display: 'flex', gap: 20 }} aria-label="Social media">
+          <div style={{ display: 'flex', gap: 8 }} aria-label="Social media">
             {SOCIAL_LINKS.map(s => (
               <a
                 key={s.label}
@@ -182,6 +182,13 @@ export function Footer() {
                   letterSpacing: '0.12em',
                   textTransform: 'uppercase',
                   fontFamily: 'var(--font-ui)',
+                  // Pad to a comfortable tap target (~32+ px) and round so the
+                  // hover bg (if we add one later) reads as a chip not a slab.
+                  padding: '10px 12px',
+                  borderRadius: 6,
+                  minHeight: 36,
+                  display: 'inline-flex',
+                  alignItems: 'center',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.color = 'var(--paper)')}
                 onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,246,238,0.4)')}
