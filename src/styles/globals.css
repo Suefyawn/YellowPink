@@ -292,6 +292,13 @@ a.underline,
   .pdp-gallery-thumbs::-webkit-scrollbar { display: none; }
 }
 
+/* Frequently-bought-together: 2fr / 1fr stacks awkwardly on phones. Drop
+ * to a single column so the product rail and the totals/CTA card each
+ * get the full width. */
+@media (max-width: 900px) {
+  .fbt-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
+}
+
 @media (max-width: 600px) {
   .product-grid, .cat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .blog-grid { grid-template-columns: 1fr !important; }
