@@ -41,7 +41,7 @@ export default async function AuditPage() {
         {rows.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center', color: '#9ca3af' }}>No audit events yet.</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['When', 'Actor', 'Action', 'Entity', 'IP', 'Diff'].map(h => (
@@ -52,21 +52,21 @@ export default async function AuditPage() {
             <tbody>
               {rows.map(r => (
                 <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '10px 16px', whiteSpace: 'nowrap', color: '#6b7280', fontSize: '0.75rem' }}>
+                  <td data-label="When" style={{ padding: '10px 16px', whiteSpace: 'nowrap', color: '#6b7280', fontSize: '0.75rem' }}>
                     {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </td>
-                  <td style={{ padding: '10px 16px', color: '#111827' }}>
+                  <td data-label="Actor" style={{ padding: '10px 16px', color: '#111827' }}>
                     <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: r.actor_kind === 'owner' ? '#ec4899' : r.actor_kind === 'staff' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase' }}>
                       {r.actor_kind}
                     </span>
                     {r.actor_email && <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{r.actor_email}</div>}
                   </td>
-                  <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#374151', whiteSpace: 'nowrap' }}>{r.action}</td>
-                  <td style={{ padding: '10px 16px', fontSize: '0.75rem', color: '#374151', whiteSpace: 'nowrap' }}>
+                  <td data-label="Action" style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: '0.75rem', color: '#374151', whiteSpace: 'nowrap' }}>{r.action}</td>
+                  <td data-label="Entity" style={{ padding: '10px 16px', fontSize: '0.75rem', color: '#374151', whiteSpace: 'nowrap' }}>
                     {r.entity ? `${r.entity}${r.entity_id ? ` ${r.entity_id.slice(0, 8)}…` : ''}` : '—'}
                   </td>
-                  <td style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: '0.6875rem', color: '#6b7280' }}>{r.ip ?? '—'}</td>
-                  <td style={{ padding: '10px 16px', fontSize: '0.6875rem', color: '#374151' }}>
+                  <td data-label="IP" style={{ padding: '10px 16px', fontFamily: 'monospace', fontSize: '0.6875rem', color: '#6b7280' }}>{r.ip ?? '—'}</td>
+                  <td data-label="Diff" style={{ padding: '10px 16px', fontSize: '0.6875rem', color: '#374151' }}>
                     {r.diff ? <details><summary style={{ cursor: 'pointer' }}>view</summary><pre style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', maxWidth: 360 }}>{JSON.stringify(r.diff, null, 2)}</pre></details> : '—'}
                   </td>
                 </tr>

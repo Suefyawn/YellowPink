@@ -59,7 +59,7 @@ export default async function UsersPage({
             {q ? `No customers matching "${q}"` : 'No customers have signed up yet'}
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['Email', 'Name', 'Phone', 'Joined', ''].map(h => (
@@ -70,24 +70,25 @@ export default async function UsersPage({
             <tbody>
               {paginated.map((u, i) => (
                 <tr key={u.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>
+                  <td data-label="Email" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#111827', fontWeight: 500, wordBreak: 'break-word' }}>
                     {u.email}
                   </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                  <td data-label="Name" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                     {u.first_name || u.last_name
                       ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim()
                       : <span style={{ color: '#9ca3af' }}>—</span>}
                   </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+                  <td data-label="Phone" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
                     {u.phone ?? <span style={{ color: '#d1d5db' }}>—</span>}
                   </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                  <td data-label="Joined" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                     {fmtDate(u.created_at)}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
                     <Link href={`/admin/users/${u.id}`} style={{
-                      padding: '5px 12px', background: '#f3f4f6', color: '#374151',
+                      padding: '7px 14px', background: '#f3f4f6', color: '#374151',
                       borderRadius: 6, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500,
+                      minHeight: 32, display: 'inline-flex', alignItems: 'center',
                     }}>
                       View →
                     </Link>

@@ -71,7 +71,7 @@ export default async function BlogAdminPage({
             {q || category ? 'No posts match your filters.' : <>No posts yet. <Link href="/admin/blog/new" style={{ color: '#ec4899' }}>Write the first one →</Link></>}
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['Title', 'Category', 'Date', 'Read Time', 'Featured', 'Actions'].map(h => (
@@ -85,16 +85,16 @@ export default async function BlogAdminPage({
                   borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
                   background: p.featured ? '#fffbeb' : 'transparent',
                 }}>
-                  <td style={{ padding: '12px 16px', maxWidth: 300 }}>
+                  <td data-label="Title" style={{ padding: '12px 16px', maxWidth: 300 }}>
                     <div style={{ fontWeight: 500, fontSize: '0.875rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.title}>
                       {p.title}
                     </div>
                     <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2, fontFamily: 'monospace' }} title={p.slug}>{p.slug}</div>
                   </td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>{p.category}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{p.date}</td>
-                  <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>{p.read_time}</td>
-                  <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                  <td data-label="Category" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>{p.category}</td>
+                  <td data-label="Date" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{p.date}</td>
+                  <td data-label="Read time" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>{p.read_time}</td>
+                  <td data-label="Featured" style={{ padding: '12px 16px', textAlign: 'center' }}>
                     {p.featured ? (
                       <span style={{ display: 'inline-block', padding: '2px 8px', background: '#fef9c3', color: '#92400e', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>★ Featured</span>
                     ) : (

@@ -136,7 +136,7 @@ export default async function AdminPromosPage() {
             No promos yet — the storefront falls back to the legacy site-settings bars until you create one.
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['Slot', 'Headline', 'Audience', 'Window', 'Priority', 'Status', ''].map(h => (
@@ -151,30 +151,31 @@ export default async function AdminPromosPage() {
                   && (!p.end_at   || new Date(p.end_at)   >  new Date());
                 return (
                   <tr key={p.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', background: live ? '' : '#f9fafb' }}>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151', whiteSpace: 'nowrap' }}>
+                    <td data-label="Slot" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151', whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600 }}>{p.position === 'top_bar' ? 'Top bar' : 'Hero strip'}</div>
                       <div style={{ fontSize: '0.6875rem', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{p.kind}</div>
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#111827', maxWidth: 360 }}>
+                    <td data-label="Headline" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#111827', maxWidth: 360 }}>
                       <div style={{ fontWeight: 600 }}>{p.headline}</div>
                       {p.subline && <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 2 }}>{p.subline}</div>}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>
+                    <td data-label="Audience" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>
                       {p.audience ?? 'Everyone'}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                    <td data-label="Window" style={{ padding: '12px 16px', fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                       <div>From: {fmtDateTime(p.start_at)}</div>
                       <div>Until: {fmtDateTime(p.end_at)}</div>
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151', textAlign: 'center' }}>
+                    <td data-label="Priority" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151', textAlign: 'center' }}>
                       {p.priority}
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Status" style={{ padding: '12px 16px' }}>
                       <form action={togglePromo.bind(null, p.id, !p.enabled)}>
                         <button type="submit" style={{
-                          padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+                          padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
                           background: live ? '#f0fdf4' : '#f3f4f6',
                           color: live ? '#15803d' : '#9ca3af',
+                          minHeight: 30,
                         }}>
                           {p.enabled ? (live ? 'Live' : 'Scheduled') : 'Paused'}
                         </button>

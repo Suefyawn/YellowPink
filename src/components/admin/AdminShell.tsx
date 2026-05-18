@@ -1,7 +1,8 @@
 'use client';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import { NotificationsBell } from './NotificationsBell';
+import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import type { StaffSession } from '@/lib/permissions';
 
 interface Notification {
@@ -18,16 +19,71 @@ export function AdminShell({
   notifications?: Notification[];
 }) {
   const [open, setOpen] = useState(false);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+
+  // Drawer behaves as a modal sheet on mobile only — body scroll lock +
+  // focus trap kick in alongside the slide-in. Desktop ignores them.
+  useBodyScrollLock(open);
+  useEscapeKey(open, () => setOpen(false));
+  useFocusTrap(open, drawerRef);
+
+  // Auto-close the drawer when crossing to desktop so a stuck-open drawer
+  // doesn't leave the body scroll-locked when the viewport widens.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(min-width: 768px)');
+    const onChange = (e: MediaQueryListEvent) => { if (e.matches) setOpen(false); };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   return (
     <>
       <style>{`
-        .adm-sidebar { position: fixed; left: 0; top: 0; z-index: 50; transition: transform 0.25s ease; }
+        .adm-sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 50; transition: transform 0.25s ease; }
         .adm-main { margin-left: 240px; min-height: 100vh; background: #f3f4f6; }
-        .adm-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 24px; background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 30; }
+        .adm-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 30; }
         .adm-topbar .menu-btn { display: none; }
         .adm-overlay { display: none; }
         .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+        /* ─ Responsive table → card-stack utility ─
+         * Put .adm-table-cards on a <table>, add data-label="…" on each <td>,
+         * and below 768 px the table reflows into one stacked card per row
+         * with the label inline. Avoids horizontal scroll on phones. */
+        @media (max-width: 767px) {
+          .adm-table-cards thead { display: none; }
+          .adm-table-cards, .adm-table-cards tbody { display: block; width: 100%; }
+          .adm-table-cards tr {
+            display: block; background: white; border-radius: 10px;
+            padding: 12px 14px; margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            border: 1px solid #f3f4f6;
+          }
+          .adm-table-cards td {
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+            padding: 8px 0 !important;
+            border: none !important;
+            font-size: 0.8125rem !important;
+            text-align: right;
+          }
+          .adm-table-cards td + td {
+            border-top: 1px dashed #f3f4f6 !important;
+          }
+          .adm-table-cards td::before {
+            content: attr(data-label);
+            font-weight: 600; color: #6b7280; font-size: 0.6875rem;
+            text-transform: uppercase; letter-spacing: 0.05em;
+            text-align: left; flex-shrink: 0; padding-top: 2px;
+          }
+          /* Cells without a data-label (usually the actions column) stay full-width. */
+          .adm-table-cards td:not([data-label]) {
+            justify-content: flex-end;
+          }
+          .adm-table-cards td:not([data-label])::before {
+            content: none;
+          }
+        }
 
         @media (max-width: 1023px) {
           .adm-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
@@ -35,17 +91,20 @@ export function AdminShell({
         }
 
         @media (max-width: 767px) {
-          .adm-sidebar { transform: translateX(-240px); }
-          .adm-sidebar.open { transform: translateX(0); }
+          .adm-sidebar { transform: translateX(-100%); }
+          .adm-sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.18); }
           .adm-main { margin-left: 0; }
-          .adm-topbar { background: #111827; color: white; }
-          .adm-topbar .menu-btn { display: inline-flex; color: white; }
+          .adm-topbar { background: white; }
+          .adm-topbar .menu-btn { display: inline-flex; }
           .adm-overlay {
             display: block; position: fixed; inset: 0;
             background: rgba(0,0,0,0.5); z-index: 49;
+            opacity: 0; pointer-events: none;
+            transition: opacity 220ms ease-out;
           }
-          .adm-page { padding: 16px 14px !important; }
-          .adm-stat-grid { gap: 12px !important; }
+          .adm-overlay.open { opacity: 1; pointer-events: auto; }
+          .adm-page { padding: 14px 12px !important; }
+          .adm-stat-grid { gap: 10px !important; }
           .adm-form-2col { grid-template-columns: 1fr !important; }
           .adm-form-3col { grid-template-columns: 1fr 1fr !important; }
           .adm-form-4col { grid-template-columns: 1fr 1fr !important; }
@@ -53,9 +112,20 @@ export function AdminShell({
         }
       `}</style>
 
-      {open && <div className="adm-overlay" onClick={() => setOpen(false)} />}
+      <div
+        className={`adm-overlay${open ? ' open' : ''}`}
+        onClick={() => setOpen(false)}
+        aria-hidden="true"
+      />
 
-      <div className={`adm-sidebar${open ? ' open' : ''}`}>
+      <div
+        ref={drawerRef}
+        className={`adm-sidebar${open ? ' open' : ''}`}
+        role={open ? 'dialog' : undefined}
+        aria-modal={open ? 'true' : undefined}
+        aria-label="Admin navigation"
+        aria-hidden={typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches && !open ? 'true' : undefined}
+      >
         <AdminSidebar session={session} onClose={() => setOpen(false)} pendingOrderCount={pendingOrderCount} />
       </div>
 
@@ -64,10 +134,21 @@ export function AdminShell({
           <button
             className="menu-btn"
             onClick={() => setOpen(true)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', lineHeight: 1, padding: 4, alignItems: 'center' }}
-            aria-label="Open menu"
+            aria-label="Open admin menu"
+            aria-expanded={open}
+            aria-controls="admin-sidebar"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              width: 40, height: 40, borderRadius: 8, padding: 0,
+              alignItems: 'center', justifyContent: 'center',
+              color: '#111827',
+            }}
           >
-            ☰
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <line x1="3" y1="6"  x2="21" y2="6"  />
+              <line x1="3" y1="12" x2="21" y2="12" />
+              <line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
           </button>
           <span style={{ flex: 1, fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>
             <span style={{ color: '#ec4899' }}>Yellow</span>

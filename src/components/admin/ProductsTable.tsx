@@ -45,11 +45,11 @@ export function ProductsTable({ products }: { products: Product[] }) {
             No products found. <Link href="/admin/products/new" style={{ color: '#ec4899' }}>Add one →</Link>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 <th scope="col" style={{ padding: '11px 12px', width: 30 }}>
-                  <input type="checkbox" checked={allSelected} onChange={toggleAll} />
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all products" />
                 </th>
                 {['Brand / Name', 'Price', 'Stock', 'Category', 'Tag', 'Actions'].map(h => (
                   <th scope="col" key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
@@ -67,14 +67,14 @@ export function ProductsTable({ products }: { products: Product[] }) {
                     background: checked ? '#fdf2f8' : outOfStock ? '#fef2f2' : lowStock ? '#fffbeb' : 'transparent',
                   }}>
                     <td style={{ padding: '12px' }}>
-                      <input type="checkbox" checked={checked} onChange={() => toggle(p.id)} />
+                      <input type="checkbox" checked={checked} onChange={() => toggle(p.id)} aria-label={`Select ${p.name}`} />
                     </td>
-                    <td style={{ padding: '12px 16px', maxWidth: 260 }}>
+                    <td data-label="Brand / Name" style={{ padding: '12px 16px', maxWidth: 260 }}>
                       <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: 1 }}>{p.brand}</div>
                       <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
                       {p.variant && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{p.variant}</div>}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>
+                    <td data-label="Price" style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>
                       {fmt(p.price)}
                       {p.original_price && (
                         <div style={{ color: '#9ca3af', fontWeight: 400, textDecoration: 'line-through', fontSize: '0.75rem' }}>
@@ -82,7 +82,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                         </div>
                       )}
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Stock" style={{ padding: '12px 16px' }}>
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
@@ -93,11 +93,11 @@ export function ProductsTable({ products }: { products: Product[] }) {
                         {outOfStock ? '✕ Out of stock' : lowStock ? `⚠ ${p.stock} left` : `✓ ${p.stock}`}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>
+                    <td data-label="Category" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>
                       <div>{p.category}</div>
                       {p.subcategory && <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{p.subcategory}</div>}
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Tag" style={{ padding: '12px 16px' }}>
                       {p.tag ? (
                         <span style={{ display: 'inline-block', padding: '2px 8px', background: '#fdf2f8', borderRadius: 20, fontSize: '0.75rem', fontWeight: 500, color: '#9d174d' }}>
                           {p.tag}
@@ -105,8 +105,8 @@ export function ProductsTable({ products }: { products: Product[] }) {
                       ) : <span style={{ color: '#d1d5db' }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <Link href={`/admin/products/${p.id}`} style={{ padding: '5px 12px', background: '#f3f4f6', color: '#374151', borderRadius: 6, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500 }}>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                        <Link href={`/admin/products/${p.id}`} style={{ padding: '7px 14px', background: '#f3f4f6', color: '#374151', borderRadius: 6, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500, minHeight: 32, display: 'inline-flex', alignItems: 'center' }}>
                           Edit
                         </Link>
                         <DeleteButton id={p.id} action={deleteProduct} confirmMsg={`Delete "${p.name}"?`} />

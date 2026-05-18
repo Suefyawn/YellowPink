@@ -83,7 +83,7 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
         {rows.length === 0 ? (
           <div style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>No customers in this segment yet.</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['Customer', 'Segment', 'Orders', 'Revenue', 'Last order'].map(h => (
@@ -94,14 +94,14 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
             <tbody>
               {rows.map(r => (
                 <tr key={r.cust_key} style={{ borderTop: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '10px 16px', color: '#111827' }}>
+                  <td data-label="Customer" style={{ padding: '10px 16px', color: '#111827' }}>
                     {r.email ?? <span style={{ color: '#9ca3af', fontFamily: 'monospace', fontSize: '0.75rem' }}>{r.cust_key.slice(0, 16)}…</span>}
                     {r.user_id && <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>registered</div>}
                   </td>
-                  <td style={{ padding: '10px 16px' }}>{r.segment}</td>
-                  <td style={{ padding: '10px 16px', fontVariantNumeric: 'tabular-nums' }}>{r.orders}</td>
-                  <td style={{ padding: '10px 16px', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(Number(r.revenue))}</td>
-                  <td style={{ padding: '10px 16px', color: '#6b7280', fontSize: '0.75rem' }}>
+                  <td data-label="Segment" style={{ padding: '10px 16px' }}>{r.segment}</td>
+                  <td data-label="Orders" style={{ padding: '10px 16px', fontVariantNumeric: 'tabular-nums' }}>{r.orders}</td>
+                  <td data-label="Revenue" style={{ padding: '10px 16px', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>{fmt(Number(r.revenue))}</td>
+                  <td data-label="Last order" style={{ padding: '10px 16px', color: '#6b7280', fontSize: '0.75rem' }}>
                     {new Date(r.last_order_at).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: '2-digit' })}
                   </td>
                 </tr>

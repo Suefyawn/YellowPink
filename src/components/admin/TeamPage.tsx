@@ -234,7 +234,7 @@ function StaffRow({ staff }: { staff: Staff }) {
 
   return (
     <tr style={{ borderTop: '1px solid #f3f4f6' }}>
-      <td style={{ padding: '14px 20px' }}>
+      <td data-label="Member" style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 32, height: 32, borderRadius: '50%', background: '#eef2ff',
@@ -249,7 +249,7 @@ function StaffRow({ staff }: { staff: Staff }) {
           </div>
         </div>
       </td>
-      <td style={{ padding: '14px 20px' }}>
+      <td data-label="Permissions" style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
           {staff.permissions.length === 0
             ? <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>No permissions</span>
@@ -264,7 +264,7 @@ function StaffRow({ staff }: { staff: Staff }) {
           }
         </div>
       </td>
-      <td style={{ padding: '14px 20px' }}>
+      <td data-label="Status" style={{ padding: '14px 20px' }}>
         <span style={{
           background: staff.is_active ? '#dcfce7' : '#fee2e2',
           color: staff.is_active ? '#166534' : '#991b1b',
@@ -273,7 +273,7 @@ function StaffRow({ staff }: { staff: Staff }) {
           {staff.is_active ? 'Active' : 'Inactive'}
         </span>
       </td>
-      <td style={{ padding: '14px 20px', color: '#6b7280', fontSize: '0.8125rem' }}>
+      <td data-label="Added" style={{ padding: '14px 20px', color: '#6b7280', fontSize: '0.8125rem' }}>
         {new Date(staff.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
       </td>
       <td style={{ padding: '14px 20px' }}>
@@ -334,7 +334,7 @@ export function TeamPage({ staff }: { staff: Staff[] }) {
             <div style={{ fontSize: '0.875rem' }}>Click "Add Staff Member" to get started</div>
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
                 {['Staff Member', 'Permissions', 'Status', 'Added', 'Actions'].map(h => (
