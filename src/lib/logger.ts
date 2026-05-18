@@ -45,8 +45,12 @@ function emit(level: Level, msg: string, fields: Record<string, unknown> = {}): 
     ...fields,
   };
   // Errors and unknowns: serialise stack + name.
+  // Also grab the first Error so we can forward it to Sentry below — server
+  // actions that catch + log without re-throwing would otherwise be silent.
+  let firstError: Error | null = null;
   for (const [k, v] of Object.entries(payload)) {
     if (v instanceof Error) {
+      if (!firstError) firstError = v;
       payload[k] = { name: v.name, message: v.message, stack: v.stack };
     }
   }
@@ -54,6 +58,14 @@ function emit(level: Level, msg: string, fields: Record<string, unknown> = {}): 
   if (level === 'error')      console.error(line);
   else if (level === 'warn')  console.warn(line);
   else                        console.log(line);
+
+  // Forward errors to Sentry. Lazy import + fire-and-forget so the log
+  // call stays synchronous and we don't add a hard dep on monitoring.ts.
+  if (level === 'error') {
+    import('./monitoring')
+      .then(m => m.captureError(firstError ?? new Error(msg), { logger_msg: msg, ...fields }))
+      .catch(() => { /* monitoring unavailable — already logged to stderr */ });
+  }
 }
 
 export const log = {
