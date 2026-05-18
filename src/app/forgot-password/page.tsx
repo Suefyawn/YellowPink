@@ -59,13 +59,15 @@ export default function ForgotPasswordPage() {
               Enter your email and we&apos;ll send you a reset link.
             </p>
 
-            {error && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 20, color: '#dc2626', fontSize: '0.875rem' }}>
-                {error}
-              </div>
-            )}
+            <div aria-live="polite" aria-atomic="true">
+              {error && (
+                <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 20, color: '#dc2626', fontSize: '0.875rem' }}>
+                  {error}
+                </div>
+              )}
+            </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form onSubmit={handleSubmit} aria-busy={loading} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label htmlFor="forgot-email" style={lbl}>Email address</label>
                 <input id="forgot-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="you@example.com" autoComplete="email" />
@@ -76,7 +78,7 @@ export default function ForgotPasswordPage() {
                 fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
                 marginTop: 4,
               }}>
-                {loading ? '…' : 'Send reset link'}
+                {loading ? 'Sending…' : 'Send reset link'}
               </button>
             </form>
 

@@ -72,6 +72,21 @@ export function SearchOverlay() {
     router.push(`/product/${slug}`);
   };
 
+  // Submit the current query as a full /shop?q=… search and close the overlay.
+  // Called from Enter-key submit, the "View all results" link, and trending /
+  // category pill clicks (which now navigate rather than just showing inline
+  // typeahead matches).
+  const goToSearch = (term: string) => {
+    const t = term.trim();
+    if (!t) return;
+    setSearchOpen(false);
+    router.push(`/shop?q=${encodeURIComponent(t)}`);
+  };
+  const goToCategory = (cat: string) => {
+    setSearchOpen(false);
+    router.push(`/shop?cat=${encodeURIComponent(cat)}`);
+  };
+
   return (
     <>
       <div onClick={() => setSearchOpen(false)} style={{
@@ -94,11 +109,15 @@ export function SearchOverlay() {
         maxHeight: '80vh', overflowY: 'auto',
       }}>
         <div className="container" style={{ padding: '24px var(--side)' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            borderBottom: '2px solid var(--ink-900)', paddingBottom: 12, marginBottom: 24,
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-500)" strokeWidth="2" strokeLinecap="round">
+          <form
+            onSubmit={e => { e.preventDefault(); goToSearch(query); }}
+            role="search"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              borderBottom: '2px solid var(--ink-900)', paddingBottom: 12, marginBottom: 24,
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-500)" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
             <label htmlFor="search-overlay-input" className="sr-only">
@@ -109,6 +128,7 @@ export function SearchOverlay() {
               id="search-overlay-input"
               type="search"
               autoComplete="off"
+              enterKeyHint="search"
               aria-label="Search products, brands, or concerns"
               value={query}
               onChange={e => setQuery(e.target.value)}
@@ -120,18 +140,17 @@ export function SearchOverlay() {
               }}
             />
             <button
+              type="button"
               onClick={() => setSearchOpen(false)}
               aria-label="Close search"
               style={{
                 background: 'none', border: 'none', cursor: 'pointer',
                 color: 'var(--ink-500)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: 'var(--font-ui)',
-                // ≥36px hit target — text stays compact, surrounding padding
-                // gives mouse + tap a comfortable surface.
                 padding: '10px 14px', borderRadius: 6, minHeight: 36,
                 display: 'inline-flex', alignItems: 'center',
               }}
             >Close</button>
-          </div>
+          </form>
 
           {query.length > 0 ? (
             <div>
@@ -148,6 +167,9 @@ export function SearchOverlay() {
                     {filtered.slice(0, 6).map((p) => (
                       <div key={p.id}
                         onClick={() => goToProduct(p.slug)}
+                        role="link"
+                        tabIndex={0}
+                        onKeyDown={e => { if (e.key === 'Enter') goToProduct(p.slug); }}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 12,
                           padding: '12px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer',
@@ -168,6 +190,22 @@ export function SearchOverlay() {
                       </div>
                     ))}
                   </div>
+                  {/* "See all results" — full search page is the real source
+                      of truth (with sort + filters); the inline list is a
+                      typeahead preview only. */}
+                  <button
+                    onClick={() => goToSearch(query)}
+                    style={{
+                      marginTop: 14, padding: '10px 16px',
+                      background: 'var(--ink-900)', color: 'var(--paper)',
+                      border: 'none', borderRadius: 'var(--radius-card)',
+                      fontFamily: 'var(--font-ui)', fontSize: '0.75rem', fontWeight: 600,
+                      letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                    }}
+                  >
+                    See all results for &ldquo;{query}&rdquo; →
+                  </button>
                 </div>
               )}
             </div>
@@ -176,25 +214,39 @@ export function SearchOverlay() {
               <div>
                 <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Trending</Overline>
                 {TRENDING.map((t) => (
-                  <div key={t} onClick={() => setQuery(t)} style={{
-                    padding: '8px 0', cursor: 'pointer', fontSize: '0.9375rem',
-                    color: 'var(--ink-700)', borderBottom: '1px solid var(--line)',
-                  }}
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => goToSearch(t)}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      padding: '10px 0', fontSize: '0.9375rem',
+                      color: 'var(--ink-700)', borderBottom: '1px solid var(--line)',
+                      fontFamily: 'var(--font-ui)',
+                    }}
                     onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink-900)')}
                     onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-700)')}
-                  >{t}</div>
+                  >{t}</button>
                 ))}
               </div>
               <div>
                 <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Categories</Overline>
                 {POPULAR_CATS.map((c) => (
-                  <div key={c} onClick={() => setQuery(c)} style={{
-                    padding: '8px 0', cursor: 'pointer', fontSize: '0.9375rem',
-                    color: 'var(--ink-700)', borderBottom: '1px solid var(--line)',
-                  }}
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => goToCategory(c)}
+                    style={{
+                      display: 'block', width: '100%', textAlign: 'left',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      padding: '10px 0', fontSize: '0.9375rem',
+                      color: 'var(--ink-700)', borderBottom: '1px solid var(--line)',
+                      fontFamily: 'var(--font-ui)',
+                    }}
                     onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink-900)')}
                     onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-700)')}
-                  >{c}</div>
+                  >{c}</button>
                 ))}
               </div>
             </div>

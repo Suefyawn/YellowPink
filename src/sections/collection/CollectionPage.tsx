@@ -65,6 +65,10 @@ export function CollectionPage({
     const min = sp.get('min'); const max = sp.get('max');
     return {
       cat, sub, sort, pageNum,
+      // Free-text search term — populated when the user comes in from the
+      // search overlay (`/shop?q=cerave`) or from a WP-style `/?s=foo`
+      // redirect (see proxy.ts).
+      q: sp.get('q') ?? '',
       brands: new Set(brands),
       attrs:  new Set(attrs),
       min: min ? Number(min) : ('' as number | ''),
@@ -109,6 +113,7 @@ export function CollectionPage({
   const [priceMax, setPriceMax] = useState<number | ''>(initialState.max);
   const [inStockOnly, setInStockOnly] = useState(initialState.stock);
   const [onSaleOnly, setOnSaleOnly] = useState(initialState.sale);
+  const [q, setQ] = useState(initialState.q);
 
   // Filter rail is collapsed by default so the catalogue shows immediately.
   // When open it's a fixed left-side slide-in panel on every viewport.
@@ -127,6 +132,12 @@ export function CollectionPage({
   interface Chip { key: string; label: string; remove: () => void }
   const activeChips: Chip[] = useMemo(() => {
     const out: Chip[] = [];
+    if (q.trim()) {
+      out.push({
+        key: 'q', label: `“${q.trim()}”`,
+        remove: () => setQ(''),
+      });
+    }
     if (priceMin !== '' || priceMax !== '') {
       const lo = priceMin !== '' ? `PKR ${priceMin}` : '';
       const hi = priceMax !== '' ? `PKR ${priceMax}` : '';
@@ -147,7 +158,7 @@ export function CollectionPage({
       });
     }
     return out;
-  }, [priceMin, priceMax, inStockOnly, onSaleOnly, selectedBrands, selectedValueIds, attrValueLookup]);
+  }, [q, priceMin, priceMax, inStockOnly, onSaleOnly, selectedBrands, selectedValueIds, attrValueLookup]);
 
   function toggleBrand(b: string) {
     setSelectedBrands(prev => {
@@ -168,16 +179,18 @@ export function CollectionPage({
     setSelectedValueIds(new Set());
     setPriceMin(''); setPriceMax('');
     setInStockOnly(false); setOnSaleOnly(false);
+    setQ('');
   }
 
-  // Reset paging when *any* filter / sort / category changes.
-  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly]);
+  // Reset paging when *any* filter / sort / category / query changes.
+  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, q]);
   // Brand list rebuilds per-category; drop any selections that no longer apply.
   useEffect(() => { setSelectedBrands(new Set()); }, [activeCategory]);
 
   // ─── URL persistence ─────────────────────────────────────────────────────
   useEffect(() => {
     const sp = new URLSearchParams();
+    if (q.trim()) sp.set('q', q.trim());
     if (activeCategory && activeCategory !== 'All') sp.set('cat', activeCategory);
     if (activeSubcategory) sp.set('sub', activeSubcategory);
     if (sortBy !== 'featured') sp.set('sort', sortBy);
@@ -192,9 +205,10 @@ export function CollectionPage({
     const url = qs ? `/shop?${qs}` : '/shop';
     // Replace, not push — filtering shouldn't pile up history entries.
     router.replace(url, { scroll: false });
-  }, [activeCategory, activeSubcategory, sortBy, page, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, router]);
+  }, [q, activeCategory, activeSubcategory, sortBy, page, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, router]);
 
   const activeFilterCount =
+    (q.trim() ? 1 : 0) +
     selectedBrands.size +
     selectedValueIds.size +
     (priceMin !== '' || priceMax !== '' ? 1 : 0) +
@@ -232,7 +246,17 @@ export function CollectionPage({
     setActiveSubcategory(null);
   }
 
+  // Free-text query is matched case-insensitively against brand + name +
+  // category + subcategory + variant. Cheap substring containment is fine
+  // for the catalogue size we run — if it ever gets too big we'll swap in
+  // the `search_products` RPC (pg_trgm) the typeahead overlay already uses.
+  const qLower = q.trim().toLowerCase();
+
   let filtered = products.filter(p => {
+    if (qLower) {
+      const hay = `${p.brand} ${p.name} ${p.category ?? ''} ${p.subcategory ?? ''} ${p.variant ?? ''}`.toLowerCase();
+      if (!hay.includes(qLower)) return false;
+    }
     if (activeCategory !== 'All' && p.category !== activeCategory) return false;
     if (activeSubcategory && p.subcategory !== activeSubcategory) return false;
     if (selectedBrands.size > 0 && !selectedBrands.has(p.brand)) return false;

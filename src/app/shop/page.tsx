@@ -65,19 +65,38 @@ async function loadFacetData(): Promise<FacetData> {
   return { attributes, productValueMap };
 }
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string }> }): Promise<Metadata> {
-  const { category, subcategory, cat } = await searchParams;
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; q?: string }> }): Promise<Metadata> {
+  const { category, subcategory, cat, q } = await searchParams;
   const resolvedCategory = category ?? cat;
-  const label = subcategory ?? (resolvedCategory && resolvedCategory !== 'All' ? resolvedCategory : null);
-  const title = label ? `${label} — Shop` : 'Shop All Products';
-  const params = new URLSearchParams();
-  if (resolvedCategory && resolvedCategory !== 'All') params.set('category', resolvedCategory);
-  if (subcategory) params.set('subcategory', subcategory);
-  const qs = params.toString();
+  const trimmedQ = q?.trim();
+  // Title: query > category > generic. Each variant gets a distinct,
+  // human-readable title (good for SERPs).
+  let title: string;
+  if (trimmedQ)              title = `Search: ${trimmedQ}`;
+  else if (subcategory)      title = `${subcategory} — Shop`;
+  else if (resolvedCategory && resolvedCategory !== 'All') title = `${resolvedCategory} — Shop`;
+  else                        title = 'Shop All Products';
+
+  // Canonical strategy:
+  //   • `/shop` (no params) and `/shop?category=Foo` (or `/shop?subcategory=Bar`)
+  //     are real index targets — each canonicalizes to itself.
+  //   • Free-text searches, brand/attr/price/stock filters, sort, and
+  //     pagination are all variations of the same product set — they
+  //     canonicalize back to `/shop` (or the matching category root).
+  //     Keeps Google from indexing thousands of near-duplicate URLs.
+  const canonicalParams = new URLSearchParams();
+  if (resolvedCategory && resolvedCategory !== 'All') canonicalParams.set('category', resolvedCategory);
+  if (subcategory) canonicalParams.set('subcategory', subcategory);
+  const qs = canonicalParams.toString();
+
   return pageMeta({
     title,
-    description: 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.',
+    description: trimmedQ
+      ? `Search results for "${trimmedQ}" — imported skincare, makeup, and wellness products. COD nationwide in Pakistan.`
+      : 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.',
     path: `/shop${qs ? `?${qs}` : ''}`,
+    // Block free-text searches from being indexed (they're infinite-state).
+    noIndex: Boolean(trimmedQ),
   });
 }
 

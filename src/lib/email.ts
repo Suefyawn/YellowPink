@@ -34,7 +34,30 @@ function money(n: number): string {
   return `PKR ${n.toLocaleString()}`;
 }
 
-function shell(inner: string): string {
+// Build the unsubscribe link for a given recipient. Marketing emails (the
+// newsletter sender) MUST pass the recipient's email; transactional emails
+// (order confirmation, etc.) should NOT — they're not opt-in.
+function unsubscribeFooter(recipient?: string): string {
+  if (!recipient) return '';
+  // Import lazily inside the function to avoid a top-level dep that would
+  // force email.ts into the edge bundle.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { unsubscribeUrl } = require('./unsubscribe-token') as typeof import('./unsubscribe-token');
+  const url = unsubscribeUrl(SITE_URL, recipient);
+  return `
+    <br/>
+    <a href="${url}" style="color:${MUTED}">Unsubscribe</a>
+    ·
+    <a href="${SITE_URL}/privacy" style="color:${MUTED}">Privacy</a>`;
+}
+
+interface ShellOpts {
+  /** Marketing-mail recipient — adds the unsubscribe link to the footer.
+   *  Leave undefined for transactional mail (order confirmations etc.). */
+  marketingRecipient?: string;
+}
+
+function shell(inner: string, opts: ShellOpts = {}): string {
   return `
 <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;color:${INK};background:#fff">
   <div style="padding:24px 24px 0;border-bottom:1px solid #e5e7eb">
@@ -43,7 +66,7 @@ function shell(inner: string): string {
   <div style="padding:24px">${inner}</div>
   <div style="padding:16px 24px 24px;border-top:1px solid #e5e7eb;color:${MUTED};font-size:12px">
     Yellow Pink · Pakistan ·
-    <a href="${SITE_URL}" style="color:${MUTED}">${SITE_URL.replace(/^https?:\/\//, '')}</a>
+    <a href="${SITE_URL}" style="color:${MUTED}">${SITE_URL.replace(/^https?:\/\//, '')}</a>${unsubscribeFooter(opts.marketingRecipient)}
   </div>
 </div>`.trim();
 }
@@ -192,7 +215,7 @@ export async function sendWelcomeEmail(args: { email: string; first_name?: strin
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Welcome to Yellow Pink${args.first_name ? `, ${escapeHtml(args.first_name)}` : ''}</h2>
     <p>We're glad you're here. Take a look at <a href="${SITE_URL}/shop" style="color:${BRAND_PINK}">what's new</a>, or <a href="${SITE_URL}/blog" style="color:${BRAND_PINK}">read our edit</a> for routines and reviews.</p>
-  `);
+  `, { marketingRecipient: args.email });
   await send({ to: args.email, subject: 'Welcome to Yellow Pink', html });
 }
 
@@ -232,7 +255,7 @@ export async function sendAbandonedCartEmail(args: {
     <p style="margin:24px 0 0;text-align:center">
       <a href="${args.restore_url}" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Resume your cart →</a>
     </p>
-  `);
+  `, { marketingRecipient: args.email });
   await send({
     to: args.email,
     subject: args.tier === 3

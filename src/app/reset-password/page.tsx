@@ -88,13 +88,15 @@ export default function ResetPasswordPage() {
             <h1 style={{ margin: '0 0 6px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Set new password</h1>
             <p style={{ margin: '0 0 28px', color: '#6b7280', fontSize: '0.875rem' }}>Choose a strong password for your account.</p>
 
-            {error && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 20, color: '#dc2626', fontSize: '0.875rem' }}>
-                {error}
-              </div>
-            )}
+            <div aria-live="polite" aria-atomic="true">
+              {error && (
+                <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 20, color: '#dc2626', fontSize: '0.875rem' }}>
+                  {error}
+                </div>
+              )}
+            </div>
 
-            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <form onSubmit={handleSubmit} aria-busy={loading} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label htmlFor="reset-password" style={lbl}>New password</label>
                 <input id="reset-password" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="At least 6 characters" autoComplete="new-password" />
@@ -109,7 +111,7 @@ export default function ResetPasswordPage() {
                 fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
                 marginTop: 4,
               }}>
-                {loading ? '…' : 'Update password'}
+                {loading ? 'Updating…' : 'Update password'}
               </button>
             </form>
           </>
