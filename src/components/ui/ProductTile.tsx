@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Overline } from './Overline';
 import { ProductImage } from './ProductImage';
 import { useWishlist } from '@/context/WishlistContext';
+import { brandPlusName } from '@/lib/product-display';
 import type { Product } from '@/types';
 
 interface ProductTileProps {
@@ -42,7 +43,7 @@ export function ProductTile({ product, onClick }: ProductTileProps) {
           transform: hovered ? 'scale(1.035)' : 'scale(1)',
           transition: 'transform 500ms ease-out',
         }}>
-          <ProductImage src={product.image_url} alt={`${brand} ${name}`} label={brand} />
+          <ProductImage src={product.image_url} alt={brandPlusName(brand, name)} label={brand} />
         </div>
         {original_price && (
           <span style={{

@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useCart } from '@/context/CartContext';
+import { brandPlusName } from '@/lib/product-display';
 
 interface Toast { id: number; label: string; price: number; qty: number }
 
@@ -23,7 +24,7 @@ export function AddToCartToast() {
       const last = cartItems[cartItems.length - 1];
       if (last) {
         const id = Date.now();
-        const label = `${last.brand} ${last.name}`;
+        const label = brandPlusName(last.brand, last.name);
         setToasts(prev => [...prev, { id, label, price: last.price, qty: cartCount - prevCountRef.current! }]);
         // Auto-dismiss after 3.2 s.
         setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3200);

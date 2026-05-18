@@ -8,6 +8,7 @@
 
 import { SITE_URL, SITE_NAME, absoluteUrl } from '@/lib/seo';
 import { supabase, isDemo, getProducts } from '@/lib/supabase';
+import { brandPlusName } from '@/lib/product-display';
 
 export const runtime  = 'nodejs';
 // We don't set `revalidate` because the route fetches from Supabase per-render
@@ -61,7 +62,7 @@ export async function GET() {
   if (products.length > 0) {
     lines.push('## Sample products');
     for (const p of products.slice(0, 40)) {
-      lines.push(`- [${p.brand} ${p.name}](${absoluteUrl(`/product/${p.slug}`)}): PKR ${p.price.toLocaleString()}, ${p.category}`);
+      lines.push(`- [${brandPlusName(p.brand, p.name)}](${absoluteUrl(`/product/${p.slug}`)}): PKR ${p.price.toLocaleString()}, ${p.category}`);
     }
     lines.push('');
     lines.push(`See [the full sitemap](${SITE_URL}/sitemap.xml) for every product, blog post, and category page.`);

@@ -11,6 +11,7 @@ import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/check
 import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { validateGiftCardCode, validateReferralCode } from '@/app/checkout/rewards-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
+import { brandPlusName } from '@/lib/product-display';
 import { track } from '@/lib/analytics';
 import type { Coupon, PayMethod, LoyaltyAccount } from '@/types';
 
@@ -375,7 +376,7 @@ export function CheckoutPage() {
               {cartItems.map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                   <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)', position: 'relative' }}>
-                    <ProductImage src={item.image_url} alt={item.name} />
+                    <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} />
                     <span style={{ position: 'absolute', top: -6, right: -6, background: 'var(--ink-900)', color: 'var(--paper)', width: 18, height: 18, borderRadius: '50%', fontSize: '0.625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.qty}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

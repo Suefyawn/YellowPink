@@ -8,6 +8,7 @@ import { useSearch } from '@/context/SearchContext';
 import { supabase, isDemo } from '@/lib/supabase';
 import { DEMO_PRODUCTS } from '@/lib/demo-data';
 import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
+import { brandPlusName } from '@/lib/product-display';
 import type { Product } from '@/types';
 
 const TRENDING = ['CeraVe', 'Rhode Lip Tint', 'Melasma Cream', 'NARS Foundation', 'Tarte Concealer'];
@@ -178,7 +179,7 @@ export function SearchOverlay() {
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
                         <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
-                          <ProductImage src={p.image_url} alt={p.name} />
+                          <ProductImage src={p.image_url} alt={brandPlusName(p.brand, p.name)} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{p.brand}</Overline>

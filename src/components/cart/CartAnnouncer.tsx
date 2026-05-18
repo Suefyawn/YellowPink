@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useCart } from '@/context/CartContext';
+import { brandPlusName } from '@/lib/product-display';
 
 /**
  * Visually-hidden aria-live region that announces cart additions /
@@ -23,7 +24,7 @@ export function CartAnnouncer() {
       if (cartCount > prev) {
         // Newest item is the last one we added. Pull its label if available.
         const last = cartItems[cartItems.length - 1];
-        const label = last ? `${last.brand} ${last.name}` : 'Item';
+        const label = last ? brandPlusName(last.brand, last.name) : 'Item';
         setMessage(`${label} added to cart. ${cartCount} ${cartCount === 1 ? 'item' : 'items'} total.`);
       } else if (cartCount < prev) {
         setMessage(`Item removed from cart. ${cartCount} ${cartCount === 1 ? 'item' : 'items'} remaining.`);

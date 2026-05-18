@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { requestReturn } from '@/app/account/orders/returns/actions';
+import { brandPlusName } from '@/lib/product-display';
 import type { Order } from '@/types';
 
 function ReturnForm() {
@@ -60,7 +61,7 @@ function ReturnForm() {
       .map(({ idx, it }) => ({
         product_id: it.id ?? '',
         qty: Math.min(selected[idx] ?? 0, it.qty),
-        name: `${it.brand} ${it.name}`,
+        name: brandPlusName(it.brand, it.name),
         price: it.price,
       }));
     if (items.length === 0) { setErr('Select at least one item to return.'); return; }

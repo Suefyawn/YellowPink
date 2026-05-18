@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendBackInStockEmail } from '@/lib/email';
+import { brandPlusName } from '@/lib/product-display';
 
 interface SubRow {
   id: string;
@@ -71,7 +72,7 @@ export async function GET(req: NextRequest) {
     if (!available) continue;
     await sendBackInStockEmail({
       email: s.email,
-      product_name: `${product.brand} ${product.name}`,
+      product_name: brandPlusName(product.brand, product.name),
       product_url: `${SITE_URL}/product/${product.slug}`,
       image_url: (s.variant_id ? varMap.get(s.variant_id)?.image_url : null) ?? product.image_url ?? undefined,
     });

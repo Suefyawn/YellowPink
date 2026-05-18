@@ -14,6 +14,7 @@
 
 import { Resend } from 'resend';
 import { log } from './logger';
+import { brandPlusName } from './product-display';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
@@ -291,7 +292,7 @@ export async function sendBackInStockEmail(args: {
 export async function sendLowStockAlertEmail(args: { products: { name: string; brand: string; stock: number; slug: string }[] }) {
   if (!args.products.length) return;
   const rows = args.products.map(p =>
-    `<tr><td style="padding:6px 8px;font-size:14px">${escapeHtml(p.brand)} ${escapeHtml(p.name)}</td>
+    `<tr><td style="padding:6px 8px;font-size:14px">${escapeHtml(brandPlusName(p.brand, p.name))}</td>
          <td style="padding:6px 8px;font-size:14px;text-align:right">${p.stock}</td></tr>`
   ).join('');
   const html = shell(`
