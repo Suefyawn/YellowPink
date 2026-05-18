@@ -156,9 +156,30 @@ export function SearchOverlay() {
           {query.length > 0 ? (
             <div>
               {filtered.length === 0 ? (
-                <p className="body-text" style={{ color: 'var(--ink-500)', padding: '16px 0' }}>
-                  No results for &ldquo;{query}&rdquo;. Try a different search term.
-                </p>
+                <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                  <div aria-hidden="true" style={{ fontSize: '2rem', marginBottom: 8, opacity: 0.35 }}>○</div>
+                  <p className="body-text" style={{ color: 'var(--ink-700)', margin: '0 0 6px', fontWeight: 600 }}>
+                    No results for &ldquo;{query}&rdquo;
+                  </p>
+                  <p className="small-text" style={{ color: 'var(--ink-500)', margin: '0 0 16px' }}>
+                    Try a different search term, or jump to a category below.
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                    {POPULAR_CATS.map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setQuery(c)}
+                        style={{
+                          padding: '6px 12px', background: 'var(--paper2)',
+                          border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
+                          fontSize: '0.75rem', fontWeight: 500, color: 'var(--ink-900)',
+                          cursor: 'pointer',
+                        }}
+                      >{c}</button>
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div>
                   <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>
