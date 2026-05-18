@@ -378,36 +378,40 @@ export function CollectionPage({
             </div>
           </div>
 
-          {/* Mobile drawer backdrop — clicking it closes the rail. */}
-          {filtersOpen && (
-            <div
-              onClick={() => setFiltersOpen(false)}
-              aria-hidden="true"
-              className="shop-rail-backdrop"
-              style={{
-                position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.4)',
-                zIndex: 90, display: 'none',
-              }}
-            />
-          )}
-
+          {/* Backdrop behind the slide-in rail (all viewports). Clicking closes it. */}
           <div
+            onClick={() => setFiltersOpen(false)}
+            aria-hidden="true"
+            className="shop-rail-backdrop"
             style={{
-              display: 'grid',
-              gridTemplateColumns: filtersOpen ? '220px 1fr' : '1fr',
-              gap: 32, alignItems: 'start',
+              position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.45)',
+              zIndex: 90,
+              opacity: filtersOpen ? 1 : 0,
+              pointerEvents: filtersOpen ? 'auto' : 'none',
+              transition: 'opacity 220ms ease-out',
             }}
-            className="shop-grid"
-            data-filters-open={filtersOpen}
-          >
+          />
 
-            {/* ─── Filter rail ───────────────────────────────────────── */}
-            {filtersOpen && (
-            <aside
-              id="shop-filter-rail"
-              style={{ position: 'sticky', top: 100, paddingTop: 8 }}
-              className="shop-rail"
-            >
+          {/* Filter rail — fixed slide-in panel from the left, on every viewport.
+              Always in the DOM so opening / closing animates the transform. */}
+          <aside
+            id="shop-filter-rail"
+            className="shop-rail"
+            aria-hidden={!filtersOpen}
+            style={{
+              position: 'fixed', top: 0, left: 0, bottom: 0,
+              width: 320, maxWidth: '88vw',
+              background: 'var(--paper)',
+              borderRight: '1px solid var(--line)',
+              boxShadow: filtersOpen ? '4px 0 24px rgba(0,0,0,0.12)' : 'none',
+              transform: filtersOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 280ms ease-out, box-shadow 280ms ease-out',
+              zIndex: 100,
+              overflowY: 'auto',
+              padding: '20px 24px 32px',
+              display: 'flex', flexDirection: 'column',
+            }}
+          >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <Overline>Filters</Overline>
                 <button
@@ -537,9 +541,8 @@ export function CollectionPage({
                 );
               })}
             </aside>
-            )}
 
-            {/* ─── Product grid ──────────────────────────────────────── */}
+            {/* ─── Product grid (always full-width — rail floats over the top) ─ */}
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
             {paginated.map((p) => (
@@ -605,7 +608,6 @@ export function CollectionPage({
             </div>
           )}
             </div> {/* close product grid column */}
-          </div>   {/* close shop-grid */}
         </div>
       </section>
     </div>
