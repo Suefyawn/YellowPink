@@ -6,9 +6,10 @@
 import type { Metadata } from 'next';
 import type { Product, BlogPost, ProductReview, ProductVariant } from '@/types';
 
+const _vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
-  process.env.VERCEL_PROJECT_PRODUCTION_URL?.replace(/^https?:\/\//, 'https://') ??
+  (_vercelUrl ? (_vercelUrl.startsWith('http') ? _vercelUrl : `https://${_vercelUrl}`) : null) ??
   'https://yellowpink.pk';
 
 export const SITE_NAME = 'Yellow Pink';
