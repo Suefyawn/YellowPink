@@ -96,12 +96,12 @@ export default function ResetPasswordPage() {
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label style={lbl}>New password</label>
-                <input type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="At least 6 characters" autoComplete="new-password" />
+                <label htmlFor="reset-password" style={lbl}>New password</label>
+                <input id="reset-password" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="At least 6 characters" autoComplete="new-password" />
               </div>
               <div>
-                <label style={lbl}>Confirm password</label>
-                <input type="password" required minLength={6} value={confirm} onChange={e => setConfirm(e.target.value)} style={inp} placeholder="Repeat your new password" autoComplete="new-password" />
+                <label htmlFor="reset-password-confirm" style={lbl}>Confirm password</label>
+                <input id="reset-password-confirm" type="password" required minLength={6} value={confirm} onChange={e => setConfirm(e.target.value)} style={inp} placeholder="Repeat your new password" autoComplete="new-password" />
               </div>
               <button type="submit" disabled={loading} style={{
                 padding: '12px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',

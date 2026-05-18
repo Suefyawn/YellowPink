@@ -67,7 +67,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers>
           <CartAnnouncer />
           <SiteChrome settings={settings}>
-            <div id="main">{children}</div>
+            {/* tabindex=-1 so the skip-link can focus #main programmatically
+                without making it a sequential Tab stop. */}
+            <div id="main" tabIndex={-1} style={{ outline: 'none' }}>{children}</div>
           </SiteChrome>
         </Providers>
       </body>

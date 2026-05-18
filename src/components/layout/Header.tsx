@@ -6,6 +6,7 @@ import { LogoWordmark } from '@/components/ui/LogoWordmark';
 import { useCart } from '@/context/CartContext';
 import { useSearch } from '@/context/SearchContext';
 import { useAuth } from '@/context/AuthContext';
+import { useEscapeKey } from '@/lib/hooks/useBodyScrollLock';
 
 const NAV_ITEMS = [
   { label: 'Makeup',   href: '/shop?category=Makeup' },
@@ -18,6 +19,7 @@ const NAV_ITEMS = [
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  useEscapeKey(mobileMenu, () => setMobileMenu(false));
   const { cartCount, setCartOpen } = useCart();
   const { setSearchOpen } = useSearch();
   const { user } = useAuth();
@@ -90,6 +92,7 @@ export function Header() {
             onClick={() => setMobileMenu(!mobileMenu)}
             aria-label={mobileMenu ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileMenu}
+            aria-controls="mobile-nav"
             style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)', display: 'none' }}
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -103,7 +106,11 @@ export function Header() {
       </div>
 
       {mobileMenu && (
-        <div style={{ padding: '16px var(--side)', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <nav
+          id="mobile-nav"
+          aria-label="Mobile menu"
+          style={{ padding: '16px var(--side)', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 16 }}
+        >
           {NAV_ITEMS.map(item => (
             <Link key={item.label} href={item.href}
               onClick={() => setMobileMenu(false)}
@@ -113,7 +120,7 @@ export function Header() {
               }}
             >{item.label}</Link>
           ))}
-        </div>
+        </nav>
       )}
     </header>
   );

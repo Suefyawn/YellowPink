@@ -64,13 +64,18 @@ a.underline,
 /* a11y: bring back a real focus ring for keyboard users (mouse / touch users
  * see nothing — only :focus-visible triggers). Without this rule every
  * <button> looks the same focused vs unfocused, which silently breaks
- * keyboard navigation across the storefront. */
+ * keyboard navigation across the storefront. !important so it beats inline
+ * `outline: none` that many input elements ship with. */
 :focus { outline: none; }
 :focus-visible {
-  outline: 2px solid var(--brand-pink);
-  outline-offset: 2px;
+  outline: 2px solid var(--brand-pink) !important;
+  outline-offset: 2px !important;
   border-radius: 4px;
 }
+
+/* Dialog slide animations on filter rail / MiniCart / SearchOverlay are
+ * auto-suppressed by the existing global prefers-reduced-motion rule
+ * further down (kills transition-duration on every element). */
 
 /* Skip-to-main link — hidden until keyboard-focused, then surfaces at the
  * top-left as a high-contrast pill. Used by app/layout.tsx (`<a className="skip-link">`). */
@@ -253,41 +258,9 @@ a.underline,
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
 
-/* ─── Accessibility (Phase 6.9) ──────────────────────────────────────────── */
-
-/* Skip-to-content link — visible only when focused. */
-.skip-link {
-  position: absolute;
-  top: -40px;
-  left: 12px;
-  z-index: 1000;
-  padding: 8px 14px;
-  background: var(--ink-900);
-  color: var(--paper);
-  border-radius: 6px;
-  font-family: var(--font-ui);
-  font-size: 0.875rem;
-  font-weight: 600;
-  text-decoration: none;
-  transition: top 0.18s ease-out;
-}
-.skip-link:focus,
-.skip-link:focus-visible {
-  top: 12px;
-  outline: 2px solid var(--brand-pink);
-  outline-offset: 2px;
-}
-
-/* Strong, visible focus rings everywhere for keyboard users. */
-:focus-visible {
-  outline: 2px solid var(--brand-pink);
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
-  outline: 2px solid var(--brand-pink);
-  outline-offset: 2px;
-}
+/* :focus-visible + .skip-link rules live near the top of this file (the
+ * canonical ones with !important). Older non-!important duplicates that
+ * used to live here have been removed. */
 
 /* Screen-reader-only utility. */
 .sr-only {

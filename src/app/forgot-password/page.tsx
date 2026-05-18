@@ -67,8 +67,8 @@ export default function ForgotPasswordPage() {
 
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label style={lbl}>Email address</label>
-                <input type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="you@example.com" autoComplete="email" />
+                <label htmlFor="forgot-email" style={lbl}>Email address</label>
+                <input id="forgot-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="you@example.com" autoComplete="email" />
               </div>
               <button type="submit" disabled={loading} style={{
                 padding: '12px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',
