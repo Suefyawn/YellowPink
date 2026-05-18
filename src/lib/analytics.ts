@@ -12,6 +12,8 @@
 
 'use client';
 
+import { readConsent } from './consent';
+
 export interface TrackProductPayload {
   product_id?: string;
   product_name?: string;
@@ -43,6 +45,15 @@ const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
 
 export function track(event: TrackEvent): void {
   if (typeof window === 'undefined') return;
+
+  // GDPR / consent gate. If the visitor hasn't accepted analytics cookies
+  // (either explicitly rejected, or hasn't chosen yet), don't fire ANY
+  // tracking — no Plausible POST, no gtag, no DOM event. `purchase` and
+  // `sign_up` are kept gated too: the merchant can reconcile orders from
+  // the Supabase orders table without a third-party tracker, so analytics
+  // consent is genuinely optional for revenue accounting.
+  const consent = readConsent();
+  if (!consent?.analytics) return;
 
   // Dispatch a DOM event so a GA4 snippet (or a PostHog one) listening at the
   // page level can forward without us hard-depending on any vendor.
