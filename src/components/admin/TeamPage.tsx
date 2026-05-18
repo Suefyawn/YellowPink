@@ -144,7 +144,7 @@ function PermissionGrid({ selected, onChange }: {
                 {allOn ? 'Revoke all' : 'Grant all'}
               </button>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {items.map(p => {
                 const { label, icon, desc } = PERMISSION_META[p];
                 const on = selected.includes(p);

@@ -94,7 +94,7 @@ export function AdminShell({
           .adm-sidebar { transform: translateX(-100%); }
           .adm-sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.18); }
           .adm-main { margin-left: 0; }
-          .adm-topbar { background: white; }
+          .adm-topbar { background: white; padding: 10px 14px; }
           .adm-topbar .menu-btn { display: inline-flex; }
           .adm-overlay {
             display: block; position: fixed; inset: 0;
@@ -109,6 +109,39 @@ export function AdminShell({
           .adm-form-3col { grid-template-columns: 1fr 1fr !important; }
           .adm-form-4col { grid-template-columns: 1fr 1fr !important; }
           .adm-form-brand { grid-template-columns: 1fr !important; }
+
+          /* Variant rows on the PDP/admin product edit page were 6 columns wide
+           * — they overflowed on phones. Collapse to a card stack: option +
+           * SKU on top, price/stock/status flow underneath, Edit/Delete pinned
+           * to the right side. */
+          .adm-variant-row {
+            grid-template-columns: 1fr auto !important;
+            grid-template-areas: "summary actions" "price actions" "stock actions" "enabled actions" !important;
+            row-gap: 6px !important;
+          }
+          .adm-variant-row > :nth-child(1) { grid-area: summary; }
+          .adm-variant-row > :nth-child(2) { grid-area: price; font-weight: 600; }
+          .adm-variant-row > :nth-child(3) { grid-area: stock; }
+          .adm-variant-row > :nth-child(4) { grid-area: enabled; }
+          .adm-variant-row > :nth-child(5),
+          .adm-variant-row > :nth-child(6) { grid-area: actions; align-self: start; }
+
+          /* Modals (team/edit-staff, etc.) on phones */
+          .adm-modal { max-width: calc(100vw - 16px) !important; max-height: calc(100vh - 32px); overflow-y: auto; padding: 16px !important; }
+          .adm-modal-grid { grid-template-columns: 1fr !important; }
+
+          /* Header brand on a phone should keep "Pink" visible without
+           * spilling under the bell. */
+          .adm-topbar h1, .adm-topbar > span { font-size: 0.875rem !important; }
+
+          /* Per-page header rows (h1 + side action button) often use
+           * justifyContent space-between on desktop — let them stack on phones. */
+          .adm-page-header { flex-wrap: wrap !important; gap: 12px !important; }
+          .adm-page-header > * { flex: 1 1 auto; }
+
+          /* Sticky bulk-action bars need to hug the screen edge on phones,
+           * not the (now-zero) page padding. */
+          .adm-bulk-bar { margin: 12px -12px 0 !important; border-radius: 0 !important; flex-direction: column; align-items: stretch !important; gap: 8px !important; }
         }
       `}</style>
 

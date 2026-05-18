@@ -132,7 +132,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
       </table>
 
       {selected.size > 0 && (
-        <div style={{
+        <div className="adm-bulk-bar" style={{
           position: 'sticky', bottom: 16, zIndex: 20,
           background: '#111827', borderRadius: 10,
           padding: '12px 20px', margin: '12px 0 0',

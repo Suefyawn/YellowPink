@@ -3,8 +3,9 @@
 import { SectionDivider } from '@/components/ui/SectionDivider';
 import { Overline } from '@/components/ui/Overline';
 
-// Static social proof. Once product_reviews has real data, swap this for a
-// server-loaded selection (e.g. top-rated reviews with photo_urls).
+// Social-proof block on the home page. Stat strip + three featured review
+// cards. Once `product_reviews` is full of real data, swap REVIEWS for a
+// server-loaded selection (highest-helpful with photos).
 
 interface Review {
   rating: 5 | 4;
@@ -14,6 +15,10 @@ interface Review {
   location: string;
   product: { brand: string; name: string };
   verified: boolean;
+  /** Visual variant — each card gets a different on-brand colour treatment.
+   *  Tint draws from the brand palette (yellow / pink / paper) so the cards
+   *  feel like they belong on this site, not like generic Google reviews. */
+  accent: 'yellow' | 'pink' | 'cream';
 }
 
 const REVIEWS: Review[] = [
@@ -25,6 +30,7 @@ const REVIEWS: Review[] = [
     location: 'Karachi',
     product: { brand: 'CeraVe', name: 'Moisturising Cream' },
     verified: true,
+    accent:  'yellow',
   },
   {
     rating: 5,
@@ -34,6 +40,7 @@ const REVIEWS: Review[] = [
     location: 'Lahore',
     product: { brand: 'PIXI',   name: 'Glow Tonic' },
     verified: true,
+    accent:  'pink',
   },
   {
     rating: 5,
@@ -43,28 +50,72 @@ const REVIEWS: Review[] = [
     location: 'Islamabad',
     product: { brand: 'NARS',   name: 'Light Reflecting Foundation' },
     verified: true,
+    accent:  'cream',
   },
 ];
 
-// Aggregate numbers for the stat strip — replace with rollups from
-// analytics_kpis() / product_reviews once real data is flowing.
+// Aggregate numbers for the stat strip. Replace with rollups from
+// analytics_kpis() once a real reporting view exists.
 const STATS = [
-  { label: 'Average rating',   value: '4.9★', sub: 'from 2,400+ reviews' },
-  { label: 'Would buy again',  value: '94%',  sub: 'post-purchase survey' },
-  { label: 'Orders shipped',   value: '50k+', sub: 'across Pakistan' },
-  { label: 'Ships in',         value: '2-5 days', sub: 'COD nationwide' },
+  { label: 'Average rating',  value: '4.9★',     sub: 'from 2,400+ reviews' },
+  { label: 'Would buy again', value: '94%',      sub: 'post-purchase survey' },
+  { label: 'Orders shipped',  value: '50k+',     sub: 'across Pakistan' },
+  { label: 'Ships in',        value: '2-5 days', sub: 'COD nationwide' },
 ];
+
+// Each accent picks a different background + quote-mark + avatar tint so the
+// row reads as three distinct moments, not three identical white boxes.
+const ACCENT_STYLES: Record<Review['accent'], {
+  cardBg: string;
+  cardBorder: string;
+  quoteColor: string;
+  avatarBg: string;
+  avatarColor: string;
+  dot: string;
+}> = {
+  yellow: {
+    cardBg:      'linear-gradient(160deg, #FFF8E1 0%, #FAF6EE 60%, #FFF8E1 100%)',
+    cardBorder:  '1px solid rgba(247, 201, 72, 0.32)',
+    quoteColor:  '#F7C948',
+    avatarBg:    '#F7C948',
+    avatarColor: '#0A0A0A',
+    dot:         '#F7C948',
+  },
+  pink: {
+    cardBg:      'linear-gradient(160deg, #FDE7F0 0%, #FAF6EE 55%, #FFF1F8 100%)',
+    cardBorder:  '1px solid rgba(232, 72, 127, 0.30)',
+    quoteColor:  '#E8487F',
+    avatarBg:    '#E8487F',
+    avatarColor: '#FFFFFF',
+    dot:         '#E8487F',
+  },
+  cream: {
+    cardBg:      'linear-gradient(160deg, #FAF6EE 0%, #F2EDE2 100%)',
+    cardBorder:  '1px solid rgba(26, 26, 26, 0.12)',
+    quoteColor:  '#0A0A0A',
+    avatarBg:    '#0A0A0A',
+    avatarColor: '#FAF6EE',
+    dot:         '#0A0A0A',
+  },
+};
 
 function Stars({ count }: { count: number }) {
   return (
     <span aria-label={`${count} out of 5 stars`} style={{ display: 'inline-flex', gap: 2 }}>
       {[1, 2, 3, 4, 5].map(i => (
-        <svg key={i} width={14} height={14} viewBox="0 0 24 24" fill={i <= count ? 'var(--brand-yellow)' : '#e5e7eb'} aria-hidden="true">
+        <svg key={i} width={15} height={15} viewBox="0 0 24 24" fill={i <= count ? 'var(--brand-yellow)' : '#e5e7eb'} aria-hidden="true">
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
         </svg>
       ))}
     </span>
   );
+}
+
+function initials(name: string): string {
+  const parts = name.replace(/\./g, ' ').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
 export function RealResults() {
@@ -75,78 +126,187 @@ export function RealResults() {
 
         <div style={{ marginTop: 'var(--section-gap)' }}>
           <Overline style={{ display: 'block', marginBottom: 8 }}>Loved in Pakistan</Overline>
-          <h2 className="display-l" style={{ fontSize: '2.25rem', marginBottom: 4, maxWidth: 720 }}>
-            Trusted by thousands across Pakistan.
+          <h2
+            className="display-l"
+            style={{ fontSize: '2.5rem', marginBottom: 6, maxWidth: 720, letterSpacing: '-0.025em' }}
+          >
+            Real shoppers. Real results.<br />
+            <em style={{ color: 'var(--brand-pink)', fontStyle: 'italic' }}>Loved across Pakistan.</em>
           </h2>
-          <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 560, marginBottom: 36 }}>
-            Real customers, verified purchases. No paid reviews, no influencer copy-paste.
+          <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 600, marginBottom: 36, fontSize: '1.0625rem' }}>
+            Verified buyers from Karachi, Lahore, and Islamabad. No paid reviews, no influencer copy-paste.
           </p>
 
           {/* ─── Stats strip ───────────────────────────────────────────── */}
-          <div className="results-stats" style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)',
-            padding: '24px 28px', marginBottom: 36,
-            background: 'var(--paper2)', borderRadius: 'var(--radius-card)',
-            border: '1px solid var(--line)',
-          }}>
+          <div
+            className="results-stats"
+            style={{
+              display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)',
+              padding: '28px 32px', marginBottom: 48,
+              background: 'linear-gradient(120deg, var(--paper2) 0%, var(--paper) 100%)',
+              borderRadius: 'var(--radius-card)',
+              border: '1px solid var(--line)',
+              position: 'relative', overflow: 'hidden',
+            }}
+          >
+            {/* Decorative diagonal accent — picks up the brand tone without
+                competing with the numerals. */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute', top: -40, right: -40,
+                width: 180, height: 180, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(247,201,72,0.18), transparent 65%)',
+              }}
+            />
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute', bottom: -60, left: -60,
+                width: 220, height: 220, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(232,72,127,0.12), transparent 65%)',
+              }}
+            />
             {STATS.map(s => (
-              <div key={s.label}>
-                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.875rem', fontWeight: 500, lineHeight: 1, color: 'var(--ink-900)', letterSpacing: '-0.02em' }}>
+              <div key={s.label} style={{ position: 'relative' }}>
+                <div style={{
+                  fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 500,
+                  lineHeight: 1, color: 'var(--ink-900)', letterSpacing: '-0.025em',
+                }}>
                   {s.value}
                 </div>
-                <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', marginTop: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <div style={{
+                  fontSize: '0.6875rem', fontWeight: 700, color: 'var(--ink-900)',
+                  marginTop: 10, textTransform: 'uppercase', letterSpacing: '0.08em',
+                }}>
                   {s.label}
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 2 }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 4 }}>
                   {s.sub}
                 </div>
               </div>
             ))}
           </div>
 
-          {/* ─── Featured reviews ──────────────────────────────────────── */}
-          <div className="results-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }}>
-            {REVIEWS.map((r, i) => (
-              <article key={i} style={{
-                background: 'white', padding: 24,
-                borderRadius: 'var(--radius-card)', border: '1px solid var(--line)',
-                display: 'flex', flexDirection: 'column', gap: 12,
-                position: 'relative',
-              }}>
-                <span aria-hidden="true" style={{
-                  position: 'absolute', top: 16, right: 18,
-                  fontFamily: 'var(--font-display)', fontSize: '2.5rem', lineHeight: 1,
-                  color: 'var(--brand-pink)', opacity: 0.18,
-                }}>&ldquo;</span>
-                <Stars count={r.rating} />
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 500, color: 'var(--ink-900)', margin: 0, lineHeight: 1.3, letterSpacing: '-0.01em' }}>
-                  {r.headline}
-                </h3>
-                <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0, fontSize: '0.9375rem' }}>
-                  {r.body}
-                </p>
-                <div style={{ marginTop: 'auto', paddingTop: 12, borderTop: '1px solid var(--line)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.875rem', color: 'var(--ink-900)' }}>
-                        {r.author} <span style={{ fontWeight: 400, color: 'var(--ink-500)' }}>· {r.location}</span>
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 2 }}>
-                        on {r.product.brand} {r.product.name}
-                      </div>
-                    </div>
+          {/* ─── Review cards ──────────────────────────────────────────── */}
+          <div
+            className="results-grid"
+            style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }}
+          >
+            {REVIEWS.map((r, i) => {
+              const a = ACCENT_STYLES[r.accent];
+              return (
+                <article
+                  key={i}
+                  style={{
+                    position: 'relative',
+                    padding: '28px 26px 24px',
+                    borderRadius: 'var(--radius-card)',
+                    background: a.cardBg,
+                    border: a.cardBorder,
+                    display: 'flex', flexDirection: 'column', gap: 14,
+                    boxShadow: '0 2px 18px rgba(10, 10, 10, 0.04)',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {/* Oversized opening quote — a single editorial flourish per
+                      card, drawn in the card's accent colour. */}
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute', top: -8, left: 18,
+                      fontFamily: 'var(--font-display)', fontStyle: 'italic',
+                      fontSize: '6rem', lineHeight: 1, fontWeight: 600,
+                      color: a.quoteColor, opacity: 0.32,
+                      pointerEvents: 'none',
+                    }}
+                  >&ldquo;</span>
+
+                  {/* Tiny dot row at the top right marking accent identity. */}
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute', top: 24, right: 22,
+                      display: 'flex', gap: 4,
+                    }}
+                  >
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: a.dot }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: a.dot, opacity: 0.55 }} />
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: a.dot, opacity: 0.25 }} />
+                  </span>
+
+                  <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Stars count={r.rating} />
                     {r.verified && (
                       <span title="Verified purchase" style={{
-                        flexShrink: 0,
-                        fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.05em',
-                        padding: '2px 8px', borderRadius: 4,
-                        background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0',
-                      }}>VERIFIED</span>
+                        fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.06em',
+                        padding: '3px 8px', borderRadius: 4,
+                        background: 'rgba(45, 106, 79, 0.12)', color: 'var(--success)',
+                        border: '1px solid rgba(45, 106, 79, 0.25)',
+                      }}>VERIFIED BUYER</span>
                     )}
                   </div>
-                </div>
-              </article>
-            ))}
+
+                  <h3
+                    style={{
+                      fontFamily: 'var(--font-display)',
+                      fontSize: '1.375rem', fontWeight: 500,
+                      color: 'var(--ink-900)', margin: 0,
+                      lineHeight: 1.2, letterSpacing: '-0.018em',
+                    }}
+                  >
+                    {r.headline}
+                  </h3>
+
+                  <p
+                    className="body-text"
+                    style={{
+                      color: 'var(--ink-700)', margin: 0,
+                      fontSize: '0.9375rem', lineHeight: 1.6,
+                    }}
+                  >
+                    {r.body}
+                  </p>
+
+                  <div
+                    style={{
+                      marginTop: 'auto', paddingTop: 16,
+                      borderTop: '1px solid rgba(26, 26, 26, 0.08)',
+                      display: 'flex', alignItems: 'center', gap: 12,
+                    }}
+                  >
+                    {/* Avatar circle with the buyer's initials. Brand-coloured
+                        per card so the row reads warm, not corporate. */}
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        flexShrink: 0,
+                        width: 40, height: 40, borderRadius: '50%',
+                        background: a.avatarBg, color: a.avatarColor,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 700,
+                        letterSpacing: '0.02em',
+                      }}
+                    >
+                      {initials(r.author)}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        style={{
+                          fontWeight: 700, fontSize: '0.875rem', color: 'var(--ink-900)',
+                        }}
+                      >
+                        {r.author}
+                        <span style={{ fontWeight: 400, color: 'var(--ink-500)' }}> · {r.location}</span>
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 2 }}>
+                        on <span style={{ fontWeight: 600 }}>{r.product.brand}</span> {r.product.name}
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </div>
       </div>

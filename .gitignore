@@ -48,3 +48,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .claude/worktrees/
+
+# Local WP export dumps — not for the repo
+yellowpink.pk_*.csv

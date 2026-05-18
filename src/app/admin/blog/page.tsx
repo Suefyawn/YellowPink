@@ -48,7 +48,7 @@ export default async function BlogAdminPage({
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Blog Posts</h1>
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{total} post{total !== 1 ? 's' : ''}</p>

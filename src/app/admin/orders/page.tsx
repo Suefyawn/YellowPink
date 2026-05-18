@@ -53,7 +53,7 @@ async function OrdersPageInner({
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Orders</h1>
         <ExportCSVButton status={status} q={q} />
       </div>

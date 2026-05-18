@@ -81,7 +81,7 @@ export function BlogForm({ post }: { post?: BlogPost }) {
           </div>
 
           {/* Row: Category, Date, Read time */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div>
               <label style={lbl}>Category *</label>
               <input name="category" required defaultValue={post?.category} style={inp} placeholder="e.g. Skincare" />

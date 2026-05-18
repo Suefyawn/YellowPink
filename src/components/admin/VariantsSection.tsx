@@ -80,7 +80,7 @@ function VariantForm({
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div className="adm-form-4col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
           <label style={lbl}>SKU</label>
           <input name="sku" defaultValue={variant?.sku ?? ''} style={inp} placeholder="SKU-001" />
@@ -99,7 +99,7 @@ function VariantForm({
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '3fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <div>
           <label style={lbl}>Image URL</label>
           <input name="image_url" defaultValue={variant?.image_url ?? ''} style={inp} placeholder="https://…" />
@@ -214,13 +214,16 @@ export function VariantsSection({
               onDone={() => setEditingId(null)}
             />
           ) : (
-            <div style={{
-              display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto auto',
-              alignItems: 'center', gap: 12,
-              padding: '12px 14px', border: '1px solid #e5e7eb',
-              borderRadius: 8, marginBottom: 8,
-              opacity: v.enabled ? 1 : 0.55,
-            }}>
+            <div
+              className="adm-variant-row"
+              style={{
+                display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto auto',
+                alignItems: 'center', gap: 12,
+                padding: '12px 14px', border: '1px solid #e5e7eb',
+                borderRadius: 8, marginBottom: 8,
+                opacity: v.enabled ? 1 : 0.55,
+              }}
+            >
               <div>
                 <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{describeOptions(v, attributes)}</div>
                 {v.sku && <div style={{ fontSize: '0.6875rem', color: '#9ca3af', fontFamily: 'monospace' }}>{v.sku}</div>}
