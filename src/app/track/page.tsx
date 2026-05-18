@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { getBrowserClient } from '@/lib/supabase-browser';
-import { ORDER_STATUS_LABELS, ORDER_TIMELINE_STEPS } from '@/types';
+import { ORDER_STATUS_LABELS } from '@/types';
+import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
 import type { Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -90,8 +91,6 @@ export default function TrackPage() {
   };
 
   const status = (order?.status ?? 'pending') as OrderStatus;
-  const stepIdx = ORDER_TIMELINE_STEPS.indexOf(status);
-  const isTerminal = status === 'cancelled' || status === 'returned' || status === 'refunded';
   const trackingUrl = order?.tracking_number ? courierTrackingUrl(order.courier, order.tracking_number) : null;
 
   return (
@@ -141,16 +140,18 @@ export default function TrackPage() {
               color: 'white', border: 'none', borderRadius: 10,
               fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
             }}>
-              {loading ? '…' : 'Track'}
+              {loading ? 'Looking up…' : 'Track'}
             </button>
           </div>
         </form>
 
-        {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '16px 20px', color: '#dc2626', marginBottom: 32 }}>
-            {error}
-          </div>
-        )}
+        <div aria-live="polite" aria-atomic="true">
+          {error && (
+            <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10, padding: '16px 20px', color: '#dc2626', marginBottom: 32 }}>
+              {error}
+            </div>
+          )}
+        </div>
 
         {order && (
           <div style={{ background: 'white', borderRadius: 16, border: '1px solid var(--line)', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
@@ -177,24 +178,15 @@ export default function TrackPage() {
                 {statusMessages[status]}
               </p>
 
-              {!isTerminal && stepIdx >= 0 && (
-                <div style={{ marginBottom: 28 }}>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', position: 'relative', paddingTop: 4 }}>
-                    {ORDER_TIMELINE_STEPS.map((step, i) => (
-                      <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                        {i < ORDER_TIMELINE_STEPS.length - 1 && (
-                          <div style={{ position: 'absolute', top: 10, left: '50%', right: '-50%', height: 2, background: i < stepIdx ? 'var(--brand-pink)' : '#e5e7eb', zIndex: 0 }} />
-                        )}
-                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: i <= stepIdx ? 'var(--brand-pink)' : 'white', border: `2px solid ${i <= stepIdx ? 'var(--brand-pink)' : '#d1d5db'}`, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
-                          {i < stepIdx && <span style={{ color: 'white', fontSize: '0.625rem', fontWeight: 700 }}>✓</span>}
-                          {i === stepIdx && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white' }} />}
-                        </div>
-                        <div style={{ fontSize: '0.6875rem', color: i <= stepIdx ? 'var(--brand-pink)' : '#9ca3af', fontWeight: i === stepIdx ? 700 : 400, textTransform: 'capitalize', textAlign: 'center' }}>{ORDER_STATUS_LABELS[step]}</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div style={{ marginBottom: 28 }}>
+                <OrderStatusTimeline
+                  status={status}
+                  // We only have `created_at` on the order itself today;
+                  // shipped / delivered timestamps will come from
+                  // `order_events` once that join is wired here.
+                  events={{ pending: order.created_at ?? undefined }}
+                />
+              </div>
 
               {order.tracking_number && (
                 <div style={{ padding: '14px 18px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, marginBottom: 24, fontSize: '0.9375rem' }}>

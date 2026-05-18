@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
+import { brandPlusName } from '@/lib/product-display';
 import type { Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -14,8 +16,6 @@ const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-PK', { day: 'n
 const statusColors: Record<string, string> = {
   pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444',
 };
-
-const STATUS_STEPS: OrderStatus[] = ['pending', 'processing', 'shipped', 'delivered'];
 
 export default function AccountOrdersPage() {
   const { user, loading } = useAuth();
@@ -88,15 +88,21 @@ export default function AccountOrdersPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {orders.map(o => {
               const status = o.status ?? 'pending';
-              const stepIdx = STATUS_STEPS.indexOf(status as OrderStatus);
-              const isCancelled = status === 'cancelled';
               const isExpanded = expanded === o.id;
 
               return (
                 <div key={o.id} style={{ background: 'white', borderRadius: 12, border: '1px solid var(--line)', overflow: 'hidden' }}>
-                  <div
+                  <button
+                    type="button"
                     onClick={() => setExpanded(isExpanded ? null : o.id!)}
-                    style={{ padding: '20px 24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}
+                    aria-expanded={isExpanded}
+                    aria-controls={`order-${o.id}-detail`}
+                    style={{
+                      width: '100%', textAlign: 'left', background: 'transparent',
+                      border: 'none', font: 'inherit', color: 'inherit',
+                      padding: '20px 24px', cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+                    }}
                   >
                     <div>
                       <div style={{ fontWeight: 700, fontFamily: 'monospace', fontSize: '1rem', color: 'var(--ink-900)', marginBottom: 4 }}>{o.order_number}</div>
@@ -110,35 +116,21 @@ export default function AccountOrdersPage() {
                       }}>
                         {status}
                       </span>
-                      <span style={{ color: 'var(--ink-400)', fontSize: '0.875rem' }}>{isExpanded ? '▲' : '▼'}</span>
+                      <span aria-hidden="true" style={{ color: 'var(--ink-400)', fontSize: '0.875rem' }}>{isExpanded ? '▲' : '▼'}</span>
                     </div>
-                  </div>
+                  </button>
 
                   {isExpanded && (
-                    <div style={{ borderTop: '1px solid var(--line)', padding: '20px 24px' }}>
-                      {/* Progress tracker */}
-                      {!isCancelled && (
-                        <div style={{ marginBottom: 24 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
-                            {STATUS_STEPS.map((step, i) => (
-                              <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: i === 0 ? 'flex-start' : i === STATUS_STEPS.length - 1 ? 'flex-end' : 'center', position: 'relative' }}>
-                                {i < STATUS_STEPS.length - 1 && (
-                                  <div style={{ position: 'absolute', top: 10, left: i === 0 ? '50%' : 0, right: i === STATUS_STEPS.length - 2 ? '50%' : 0, height: 2, background: i < stepIdx ? 'var(--brand-pink)' : '#e5e7eb', zIndex: 0 }} />
-                                )}
-                                <div style={{ width: 20, height: 20, borderRadius: '50%', background: i <= stepIdx ? 'var(--brand-pink)' : 'white', border: `2px solid ${i <= stepIdx ? 'var(--brand-pink)' : '#d1d5db'}`, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 6 }}>
-                                  {i <= stepIdx && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white' }} />}
-                                </div>
-                                <div style={{ fontSize: '0.6875rem', color: i <= stepIdx ? 'var(--brand-pink)' : '#9ca3af', fontWeight: i === stepIdx ? 700 : 400, textTransform: 'capitalize', textAlign: 'center' }}>{step}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
+                    <div id={`order-${o.id}-detail`} style={{ borderTop: '1px solid var(--line)', padding: '20px 24px' }}>
+                      <div style={{ marginBottom: 24 }}>
+                        <OrderStatusTimeline status={status as OrderStatus} compact />
+                      </div>
 
                       {o.tracking_number && (
                         <div style={{ marginBottom: 16, padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, fontSize: '0.875rem' }}>
                           <span style={{ color: '#0369a1', fontWeight: 600 }}>Tracking: </span>
                           <span style={{ fontFamily: 'monospace', color: '#0c4a6e' }}>{o.tracking_number}</span>
+                          {o.courier && <span style={{ color: '#0369a1', marginLeft: 8 }}>· {o.courier}</span>}
                         </div>
                       )}
 
@@ -146,7 +138,7 @@ export default function AccountOrdersPage() {
                         <tbody>
                           {(o.items ?? []).map((item, i) => (
                             <tr key={i} style={{ borderTop: i > 0 ? '1px solid var(--line)' : 'none' }}>
-                              <td style={{ padding: '8px 0', color: 'var(--ink-900)', fontWeight: 500 }}>{item.brand} {item.name}</td>
+                              <td style={{ padding: '8px 0', color: 'var(--ink-900)', fontWeight: 500 }}>{brandPlusName(item.brand, item.name)}</td>
                               <td style={{ padding: '8px 0', color: 'var(--ink-500)', textAlign: 'center' }}>×{item.qty}</td>
                               <td style={{ padding: '8px 0', color: 'var(--ink-900)', fontWeight: 600, textAlign: 'right' }}>{fmt(item.price * item.qty)}</td>
                             </tr>

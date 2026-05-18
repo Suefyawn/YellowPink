@@ -6,6 +6,9 @@ interface WishlistContextValue {
   wishlist: string[];
   toggle: (id: string) => void;
   isWishlisted: (id: string) => boolean;
+  /** Remove every id from the list — used by the "Clear all" affordance
+   *  on the wishlist page. */
+  clear: () => void;
 }
 
 const WishlistContext = createContext<WishlistContextValue | null>(null);
@@ -30,9 +33,10 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const isWishlisted = useCallback((id: string) => wishlist.includes(id), [wishlist]);
+  const clear = useCallback(() => setWishlist([]), []);
 
   return (
-    <WishlistContext.Provider value={{ wishlist, toggle, isWishlisted }}>
+    <WishlistContext.Provider value={{ wishlist, toggle, isWishlisted, clear }}>
       {children}
     </WishlistContext.Provider>
   );

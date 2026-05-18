@@ -409,26 +409,94 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
         </div>
       </div>
 
-      <section style={{ background: 'var(--paper2)', padding: 'var(--section-gap) 0', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
-        <div className="container story-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center' }}>
-          <div className="img-placeholder" style={{ aspectRatio: '4/3', borderRadius: 'var(--radius-card)' }}>
-            <span>editorial lifestyle photo</span>
+      <section
+        style={{
+          background: 'linear-gradient(120deg, var(--paper2) 0%, var(--paper) 60%, #FFF8E1 100%)',
+          padding: '64px 0',
+          borderTop: '1px solid var(--line)',
+          borderBottom: '1px solid var(--line)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Decorative brand-tint blobs — replaces the missing editorial
+            photo placeholder with something that always looks intentional. */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', top: -80, left: -60,
+            width: 220, height: 220, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(247,201,72,0.22), transparent 65%)',
+          }}
+        />
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute', bottom: -100, right: -80,
+            width: 280, height: 280, borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(232,72,127,0.16), transparent 65%)',
+          }}
+        />
+
+        <div className="container" style={{ position: 'relative' }}>
+          <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 40px' }}>
+            <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Why Yellow Pink</Overline>
+            <h2 className="display-l" style={{ fontSize: '2.25rem', margin: '0 0 12px', letterSpacing: '-0.02em' }}>
+              Why this {product.category?.toLowerCase() ?? 'product'} earns a spot in your routine
+            </h2>
+            <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0 }}>
+              Every product is tested for Pakistani skin and climate, sourced from authorised distributors, and shipped with cash-on-delivery nationwide.
+            </p>
           </div>
-          <div>
-            <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>The Story</Overline>
-            <h2 className="display-l" style={{ fontSize: '2rem', marginBottom: 16 }}>Why {product.name}?</h2>
-            <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 16, maxWidth: 440 }}>
-              Every product we carry has been tested, reviewed, and chosen for Pakistani skin tones and climates. We don&apos;t carry what doesn&apos;t work.
-            </p>
-            <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 440 }}>
-              Imported directly from authorized distributors. No fakes, no compromises.
-            </p>
+
+          <div
+            className="trust-grid"
+            style={{
+              display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)',
+              maxWidth: 960, margin: '0 auto',
+            }}
+          >
+            {[
+              { icon: '✓', label: '100% authentic', sub: 'Imported direct from authorised distributors' },
+              { icon: '◐', label: 'Tested locally', sub: 'For Pakistani skin tones + climate' },
+              { icon: '◎', label: 'COD nationwide', sub: 'Pay on delivery, free over PKR 2,500' },
+              { icon: '↩', label: '7-day returns', sub: 'On unopened items, no questions asked' },
+            ].map(t => (
+              <div
+                key={t.label}
+                style={{
+                  background: 'rgba(255,255,255,0.7)',
+                  border: '1px solid rgba(26,26,26,0.06)',
+                  borderRadius: 'var(--radius-card)',
+                  padding: '20px 18px',
+                  backdropFilter: 'blur(6px)',
+                  WebkitBackdropFilter: 'blur(6px)',
+                  textAlign: 'left',
+                }}
+              >
+                <span
+                  aria-hidden="true"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    width: 36, height: 36, borderRadius: 8,
+                    background: 'var(--brand-yellow)', color: 'var(--ink-900)',
+                    fontSize: '1.125rem', fontWeight: 700, marginBottom: 12,
+                  }}
+                >{t.icon}</span>
+                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--ink-900)', marginBottom: 4 }}>
+                  {t.label}
+                </div>
+                <div style={{ fontSize: '0.8125rem', color: 'var(--ink-700)', lineHeight: 1.45 }}>
+                  {t.sub}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {relatedProducts.length > 0 && (
-        <section style={{ padding: 'var(--section-gap) 0' }}>
+        <section style={{ padding: '64px 0' }}>
           <div className="container">
             <Overline style={{ display: 'block', marginBottom: 32 }}>Pairs With</Overline>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
