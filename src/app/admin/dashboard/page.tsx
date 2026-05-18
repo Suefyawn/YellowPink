@@ -12,6 +12,7 @@ import { TopPagesWidget } from '@/components/admin/TopPagesWidget';
 import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { brandPlusName } from '@/lib/product-display';
+import { can, canAny } from '@/lib/permissions';
 import type { Order, Product, CartItem } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -28,9 +29,15 @@ const statusLabels = ['pending', 'processing', 'shipped', 'delivered', 'cancelle
 
 export default async function DashboardPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('analytics')) {
+  // Dashboard is the landing surface — anyone with overview OR either of the
+  // finer analytics perms can land here; they'll just see fewer widgets.
+  if (session && !canAny(session, ['analytics', 'analytics_traffic', 'analytics_errors'])) {
     return <NoAccess section="Dashboard" />;
   }
+  const canOverview = !session || can(session, 'analytics');
+  const canTraffic  = !session || can(session, 'analytics_traffic');
+  const canErrors   = !session || can(session, 'analytics_errors');
+  const canRefresh  = !session || can(session, 'analytics_refresh');
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
@@ -96,12 +103,15 @@ export default async function DashboardPage() {
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: 0 }}>
           Dashboard
         </h1>
-        <RefreshAnalyticsButton />
+        {canRefresh && <RefreshAnalyticsButton />}
       </div>
       <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 32px' }}>
         Welcome back. Here&apos;s what&apos;s happening with your store.
       </p>
 
+      {/* ── Overview block (gated on `analytics` permission) ────────────── */}
+      {canOverview && (
+      <>
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 32 }} className="adm-stat-grid">
         {stats.map(s => (
@@ -224,27 +234,33 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* ── Analytics block ────────────────────────────────────────────────
-          Layout (desktop):
-            ┌──────────── Conversion funnel ────────────┐ ┌── PostHog stats ──┐
-            ├────────── Top pages ──────────┤ ├───── Top events + sources ────┤
-            ├────────── Sentry (full width with trend + top routes + issues) ─┤
-          Mobile auto-stacks via .adm-analytics-grid override. */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginBottom: 20 }} className="adm-analytics-grid">
-        <ConversionFunnelWidget />
-        <PostHogWidget />
-      </div>
+      </>
+      )}
+      {/* ── /Overview block ────────────────────────────────────────────── */}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }} className="adm-analytics-grid">
-        <TopPagesWidget />
-        <TopEventsWidget />
-      </div>
+      {/* ── Traffic block (gated on `analytics_traffic`) ───────────────── */}
+      {canTraffic && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginBottom: 20 }} className="adm-analytics-grid">
+            <ConversionFunnelWidget />
+            <PostHogWidget />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }} className="adm-analytics-grid">
+            <TopPagesWidget />
+            <TopEventsWidget />
+          </div>
+        </>
+      )}
 
-      <div style={{ marginBottom: 32 }}>
-        <SentryWidget />
-      </div>
+      {/* ── Error monitoring (gated on `analytics_errors`) ─────────────── */}
+      {canErrors && (
+        <div style={{ marginBottom: 32 }}>
+          <SentryWidget />
+        </div>
+      )}
 
-      {/* Recent Orders */}
+      {/* Recent Orders (overview-gated) */}
+      {canOverview && (
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Recent Orders</h2>
@@ -308,6 +324,7 @@ export default async function DashboardPage() {
           </table>
         )}
       </div>
+      )}
     </div>
   );
 }

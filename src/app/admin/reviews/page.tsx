@@ -20,7 +20,7 @@ function Stars({ rating }: { rating: number }) {
 
 export default async function ReviewsPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products')) {
+  if (session && !session.isOwner && !session.permissions.includes('reviews')) {
     return <NoAccess section="Reviews" />;
   }
 

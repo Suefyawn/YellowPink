@@ -22,7 +22,11 @@ interface ReturnRow {
 
 export default async function ReturnsPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders')) {
+  // Returns gated on its own permission; orders perm also satisfies it for
+  // backward-compat with existing staff who only have `orders`.
+  if (session && !session.isOwner
+      && !session.permissions.includes('returns')
+      && !session.permissions.includes('orders')) {
     return <NoAccess section="Returns" />;
   }
 

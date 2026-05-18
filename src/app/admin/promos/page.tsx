@@ -22,9 +22,7 @@ const inp: React.CSSProperties = {
 
 export default async function AdminPromosPage() {
   const session = await getStaffSession();
-  // Promos override the storefront's site-settings bars, so we gate the
-  // surface on owner-only — same scope as /admin/settings.
-  if (session && !session.isOwner) {
+  if (session && !session.isOwner && !session.permissions.includes('promos')) {
     return <NoAccess section="Promos" />;
   }
 

@@ -57,7 +57,9 @@ function Divider() {
 
 export default async function SettingsPage({ searchParams }: { searchParams: { saved?: string; error?: string } }) {
   const session = await getStaffSession();
-  if (!session?.isOwner) redirect('/admin/dashboard');
+  if (session && !session.isOwner && !session.permissions.includes('settings')) {
+    redirect('/admin/dashboard');
+  }
 
   const s = await getSiteSettings();
   const g = (key: string, fallback = '') => s[key] ?? fallback;

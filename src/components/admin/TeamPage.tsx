@@ -1,11 +1,15 @@
 'use client';
-import { useState, useActionState } from 'react';
+import { useMemo, useState, useActionState } from 'react';
 import {
   createStaffMember, updateStaffPermissions,
   toggleStaffActive, resetStaffPassword, deleteStaffMember,
 } from '@/app/admin/team/actions';
-import { ALL_PERMISSIONS, PERMISSION_META } from '@/lib/permissions';
-import type { Permission } from '@/lib/permissions';
+import {
+  ALL_PERMISSIONS, PERMISSION_META, GROUP_META,
+  ROLE_TEMPLATES, matchRole,
+  type PermissionGroup,
+} from '@/lib/permissions';
+import type { Permission, RoleKey } from '@/lib/permissions';
 
 interface Staff {
   id: string;
@@ -34,7 +38,18 @@ const btn = (color = '#111827', ghost = false): React.CSSProperties => ({
   color: ghost ? color : 'white',
 });
 
-// ─── Permission checkbox grid ─────────────────────────────────────────────────
+// ─── Permission picker ───────────────────────────────────────────────────────
+// Three layers:
+//   1. Role template dropdown (Owner, Manager, Marketer, Support, …) — sets
+//      a known bundle of permissions in one click. Picking "Custom" leaves
+//      the current selection untouched so the user can hand-tune.
+//   2. Quick actions: Select all / Clear / Revoke analytics — common
+//      one-click flows.
+//   3. Grouped checklist (Commerce / Content / Analytics / Store) with full
+//      label + description per row so the merchant knows what they're handing
+//      out.
+
+const GROUPS_ORDER: PermissionGroup[] = ['commerce', 'content', 'analytics', 'store'];
 
 function PermissionGrid({ selected, onChange }: {
   selected: Permission[];
@@ -43,33 +58,131 @@ function PermissionGrid({ selected, onChange }: {
   const toggle = (p: Permission) =>
     onChange(selected.includes(p) ? selected.filter(x => x !== p) : [...selected, p]);
 
+  const currentRole: RoleKey = useMemo(() => matchRole(selected), [selected]);
+
+  const applyRole = (key: RoleKey) => {
+    if (key === 'custom') return;
+    const tmpl = ROLE_TEMPLATES.find(r => r.key === key);
+    if (!tmpl) return;
+    onChange([...tmpl.permissions]);
+  };
+
+  // Group the permission list once.
+  const byGroup = useMemo(() => {
+    const map: Record<PermissionGroup, Permission[]> = { commerce: [], content: [], analytics: [], store: [] };
+    for (const p of ALL_PERMISSIONS) map[PERMISSION_META[p].group].push(p);
+    return map;
+  }, []);
+
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-      {ALL_PERMISSIONS.map(p => {
-        const { label, icon, desc } = PERMISSION_META[p];
-        const on = selected.includes(p);
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Hidden inputs so the form submission picks them up regardless of
+          which rows are checked in the visible UI. We submit one value per
+          selected permission so the server action receives them as an array. */}
+      {selected.map(p => <input key={p} type="hidden" name="permissions" value={p} />)}
+
+      {/* Role template + quick actions */}
+      <div style={{
+        display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10,
+        padding: '12px 14px', background: '#f9fafb', borderRadius: 8,
+        border: '1px solid #e5e7eb',
+      }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: '#374151', fontWeight: 500 }}>
+          Role template
+          <select
+            value={currentRole}
+            onChange={e => applyRole(e.target.value as RoleKey)}
+            style={{
+              padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 6,
+              fontSize: '0.8125rem', background: 'white', cursor: 'pointer',
+            }}
+          >
+            {ROLE_TEMPLATES.map(r => (
+              <option key={r.key} value={r.key}>{r.label}</option>
+            ))}
+          </select>
+        </label>
+        <span style={{ fontSize: '0.75rem', color: '#6b7280', flex: 1, minWidth: 200 }}>
+          {ROLE_TEMPLATES.find(r => r.key === currentRole)?.description}
+        </span>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <button type="button" onClick={() => onChange([...ALL_PERMISSIONS])} style={miniBtn('#374151', true)}>
+            Select all
+          </button>
+          <button type="button" onClick={() => onChange([])} style={miniBtn('#dc2626', true)}>
+            Clear
+          </button>
+        </div>
+      </div>
+
+      {/* Grouped checklist */}
+      {GROUPS_ORDER.map(group => {
+        const items = byGroup[group];
+        if (items.length === 0) return null;
+        const { label, desc } = GROUP_META[group];
+        const allOn = items.every(p => selected.includes(p));
         return (
-          <label key={p} style={{
-            display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px',
-            border: `1px solid ${on ? '#6366f1' : '#e5e7eb'}`,
-            borderRadius: 8, cursor: 'pointer',
-            background: on ? '#eef2ff' : 'white',
-            transition: 'all 0.15s',
-          }}>
-            <input type="checkbox" name="permissions" value={p}
-              checked={on} onChange={() => toggle(p)}
-              style={{ marginTop: 2, accentColor: '#6366f1' }} />
-            <div>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827' }}>
-                {icon} {label}
+          <div key={group}>
+            <div style={{
+              display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8,
+            }}>
+              <div>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{desc}</div>
               </div>
-              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{desc}</div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (allOn) onChange(selected.filter(p => !items.includes(p)));
+                  else       onChange([...new Set([...selected, ...items])]);
+                }}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  color: '#6366f1', fontSize: '0.75rem', fontWeight: 600,
+                }}
+              >
+                {allOn ? 'Revoke all' : 'Grant all'}
+              </button>
             </div>
-          </label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+              {items.map(p => {
+                const { label, icon, desc } = PERMISSION_META[p];
+                const on = selected.includes(p);
+                return (
+                  <label key={p} style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 12px',
+                    border: `1px solid ${on ? '#6366f1' : '#e5e7eb'}`,
+                    borderRadius: 8, cursor: 'pointer',
+                    background: on ? '#eef2ff' : 'white',
+                    transition: 'all 0.15s',
+                  }}>
+                    <input type="checkbox"
+                      checked={on} onChange={() => toggle(p)}
+                      style={{ marginTop: 2, accentColor: '#6366f1' }} />
+                    <div>
+                      <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827' }}>
+                        {icon} {label}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, lineHeight: 1.45 }}>{desc}</div>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
         );
       })}
     </div>
   );
+}
+
+function miniBtn(color: string, ghost = false): React.CSSProperties {
+  return {
+    padding: '5px 10px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600,
+    cursor: 'pointer', border: ghost ? `1px solid ${color}` : 'none',
+    background: ghost ? 'transparent' : color,
+    color: ghost ? color : 'white',
+  };
 }
 
 // ─── Add Staff Modal ──────────────────────────────────────────────────────────

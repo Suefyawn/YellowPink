@@ -4,35 +4,42 @@ import { usePathname } from 'next/navigation';
 import { logoutAdmin } from '@/app/admin/actions';
 import type { StaffSession, Permission } from '@/lib/permissions';
 
+// `permissionsAny` = nav item visible if the session holds ANY of these perms
+// (mirrors the canAny() helper). Use the array form for surfaces that can be
+// granted via multiple permissions (e.g. dashboard reachable via any of three
+// analytics perms). Single-permission rows use `permission` for brevity.
 type NavItem = {
   href: string;
   label: string;
   icon: string;
   permission?: Permission;
+  permissionsAny?: Permission[];
   ownerOnly?: boolean;
 };
 
 const NAV: NavItem[] = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permission: 'analytics' },
+  { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
   { href: '/admin/analytics', label: 'Analytics', icon: '◐', permission: 'analytics' },
   { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products' },
   { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders' },
-  { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'orders' },
+  { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'returns' },
   { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers' },
   { href: '/admin/segments',  label: 'Segments',  icon: '◐', permission: 'customers' },
   { href: '/admin/coupons',   label: 'Coupons',   icon: '◇', permission: 'coupons' },
-  { href: '/admin/promos',    label: 'Promos',    icon: '✧', ownerOnly: true },
+  { href: '/admin/promos',    label: 'Promos',    icon: '✧', permission: 'promos' },
   { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
-  { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'products' },
+  { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'reviews' },
   { href: '/admin/audit',     label: 'Audit log', icon: '◉', ownerOnly: true },
   { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
-  { href: '/admin/settings',  label: 'Settings',  icon: '⚙', ownerOnly: true },
+  { href: '/admin/settings',  label: 'Settings',  icon: '⚙', permission: 'settings' },
 ];
 
 function canSee(item: NavItem, session: StaffSession): boolean {
   if (item.ownerOnly) return session.isOwner;
-  if (!item.permission) return true;
-  return session.isOwner || session.permissions.includes(item.permission);
+  if (session.isOwner) return true;
+  if (item.permission)     return session.permissions.includes(item.permission);
+  if (item.permissionsAny) return item.permissionsAny.some(p => session.permissions.includes(p));
+  return true;
 }
 
 export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { session: StaffSession; onClose?: () => void; pendingOrderCount?: number }) {
