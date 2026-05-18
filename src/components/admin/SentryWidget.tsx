@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
 
 interface SentryIssue {
   id: string;
@@ -14,39 +14,18 @@ interface SentryData {
   errors: number;
   warnings: number;
   issues: SentryIssue[];
-}
-
-async function fetchSentryData(): Promise<{ data: SentryData; updatedAt: string } | null> {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
-    const { data, error } = await supabase
-      .from('analytics_cache')
-      .select('data, updated_at')
-      .eq('key', 'sentry')
-      .single();
-    if (error || !data) return null;
-    return { data: data.data as SentryData, updatedAt: data.updated_at };
-  } catch {
-    return null;
-  }
+  /** Top affected URLs aggregated from issue `url` tags (best-effort). */
+  topRoutes?: { url: string; count: number }[];
+  /** Daily error totals for the last 14 days (oldest first). */
+  trend?: { date: string; count: number }[];
 }
 
 const levelColors: Record<string, string> = {
   fatal: '#dc2626', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6',
 };
 
-function timeAgoShort(iso: string) {
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (m < 60) return `${m}m ago`;
-  if (m < 1440) return `${Math.floor(m / 60)}h ago`;
-  return `${Math.floor(m / 1440)}d ago`;
-}
-
 export async function SentryWidget() {
-  const result = await fetchSentryData();
+  const result = await readAnalyticsCache<SentryData>('sentry');
 
   const cardStyle = {
     background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px',
@@ -57,9 +36,9 @@ export async function SentryWidget() {
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <span style={{ fontSize: '1.1rem' }}>🐛</span>
-          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Sentry Error Tracking</h2>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Sentry error tracking</h2>
         </div>
-        <p style={{ color: '#9ca3af', fontSize: '0.875rem', margin: 0 }}>No data yet. Ask Claude to refresh analytics.</p>
+        <p style={{ color: '#9ca3af', fontSize: '0.875rem', margin: 0 }}>No data yet — hit Refresh analytics.</p>
       </div>
     );
   }
@@ -71,7 +50,7 @@ export async function SentryWidget() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: '1.1rem' }}>🐛</span>
-          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Sentry Error Tracking</h2>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Sentry error tracking</h2>
         </div>
         <a
           href="https://trellee.sentry.io/projects/yellowpink/"
@@ -88,9 +67,9 @@ export async function SentryWidget() {
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
         {[
-          { label: 'Total Issues', value: stats.total, color: '#6366f1' },
-          { label: 'Errors', value: stats.errors, color: '#ef4444' },
-          { label: 'Warnings', value: stats.warnings, color: '#f59e0b' },
+          { label: 'Total issues', value: stats.total, color: '#6366f1' },
+          { label: 'Errors',       value: stats.errors, color: '#ef4444' },
+          { label: 'Warnings',     value: stats.warnings, color: '#f59e0b' },
         ].map(s => (
           <div key={s.label} style={{
             background: s.color + '10', borderRadius: 8, padding: '12px',
@@ -102,12 +81,52 @@ export async function SentryWidget() {
         ))}
       </div>
 
+      {/* 14-day trend — only render when we have a meaningful shape. */}
+      {stats.trend && stats.trend.length > 1 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Errors per day · 14d
+            </span>
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+              {stats.trend.reduce((s, d) => s + d.count, 0).toLocaleString()} total
+            </span>
+          </div>
+          <TrendBars data={stats.trend} />
+        </div>
+      )}
+
+      {/* Top affected routes */}
+      {stats.topRoutes && stats.topRoutes.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
+            Top affected URLs
+          </div>
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {stats.topRoutes.slice(0, 5).map(r => (
+              <li key={r.url} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, fontSize: '0.75rem' }}>
+                <span
+                  style={{ color: '#374151', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}
+                  title={r.url}
+                >
+                  {r.url}
+                </span>
+                <span style={{ color: '#ef4444', fontWeight: 700, flexShrink: 0 }}>{r.count.toLocaleString()}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {stats.issues.length === 0 ? (
         <div style={{ padding: '12px', textAlign: 'center', color: '#10b981', fontSize: '0.875rem' }}>
           ✓ No unresolved issues
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Recent issues
+          </div>
           {stats.issues.map(issue => (
             <a
               key={issue.id}
@@ -145,5 +164,38 @@ export async function SentryWidget() {
         </div>
       )}
     </div>
+  );
+}
+
+// Inline 14-bar trend chart. SVG, no JS, no client component — just a row
+// of red bars scaled to the max value in the series.
+function TrendBars({ data }: { data: { date: string; count: number }[] }) {
+  const max = Math.max(...data.map(d => d.count), 1);
+  const W = 240;
+  const H = 40;
+  const barW = W / data.length;
+  return (
+    <svg
+      width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
+      role="img" aria-label={`Errors per day — last ${data.length} days`}
+      style={{ display: 'block' }}
+    >
+      {data.map((d, i) => {
+        const h = (d.count / max) * (H - 2);
+        return (
+          <rect
+            key={d.date}
+            x={i * barW + barW * 0.1}
+            y={H - h}
+            width={barW * 0.8}
+            height={h || 1}
+            fill={d.count === 0 ? '#e5e7eb' : '#ef4444'}
+            rx={1}
+          >
+            <title>{d.date}: {d.count} errors</title>
+          </rect>
+        );
+      })}
+    </svg>
   );
 }

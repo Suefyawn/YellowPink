@@ -7,7 +7,11 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
 import { SentryWidget } from '@/components/admin/SentryWidget';
 import { PostHogWidget } from '@/components/admin/PostHogWidget';
+import { ConversionFunnelWidget } from '@/components/admin/ConversionFunnelWidget';
+import { TopPagesWidget } from '@/components/admin/TopPagesWidget';
+import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
+import { brandPlusName } from '@/lib/product-display';
 import type { Order, Product, CartItem } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -163,7 +167,7 @@ export default async function DashboardPage() {
                   {p.stock}
                 </span>
                 <span style={{ fontSize: '0.8125rem', color: '#374151', fontWeight: 500 }}>
-                  {p.brand} {p.name}
+                  {brandPlusName(p.brand, p.name)}
                 </span>
               </Link>
             ))}
@@ -210,7 +214,7 @@ export default async function DashboardPage() {
                     fontSize: '0.75rem', fontWeight: 700, color: '#ec4899', flexShrink: 0,
                   }}>{i + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.8125rem', color: '#111827', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.brand} {p.name}</div>
+                    <div style={{ fontSize: '0.8125rem', color: '#111827', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandPlusName(p.brand, p.name)}</div>
                   </div>
                   <span style={{ fontSize: '0.8125rem', color: '#6b7280', fontWeight: 600, flexShrink: 0 }}>{p.qty} sold</span>
                 </div>
@@ -220,10 +224,24 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Sentry + PostHog widgets */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 32 }} className="adm-analytics-grid">
-        <SentryWidget />
+      {/* ── Analytics block ────────────────────────────────────────────────
+          Layout (desktop):
+            ┌──────────── Conversion funnel ────────────┐ ┌── PostHog stats ──┐
+            ├────────── Top pages ──────────┤ ├───── Top events + sources ────┤
+            ├────────── Sentry (full width with trend + top routes + issues) ─┤
+          Mobile auto-stacks via .adm-analytics-grid override. */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginBottom: 20 }} className="adm-analytics-grid">
+        <ConversionFunnelWidget />
         <PostHogWidget />
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }} className="adm-analytics-grid">
+        <TopPagesWidget />
+        <TopEventsWidget />
+      </div>
+
+      <div style={{ marginBottom: 32 }}>
+        <SentryWidget />
       </div>
 
       {/* Recent Orders */}

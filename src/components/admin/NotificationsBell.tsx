@@ -17,6 +17,8 @@ interface Notification {
 const KIND_ICON: Record<string, string> = {
   new_order: '◎', low_stock: '⚠', payment_failed: '✕',
   return_request: '↩', new_review: '★', staff_added: '⬡',
+  // Analytics monitors (see refreshAnalytics in src/app/admin/dashboard/actions.ts)
+  sentry_issue: '🐛', posthog_spike: '📈', posthog_drop: '📉',
 };
 
 export function NotificationsBell({ notifications }: { notifications: Notification[] }) {

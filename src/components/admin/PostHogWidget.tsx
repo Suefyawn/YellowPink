@@ -1,28 +1,10 @@
-import { createClient } from '@supabase/supabase-js';
+import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
 
 interface PHData {
   pageviews: number;
   uniqueUsers: number;
   sessions: number;
   trend: { date: string; count: number }[];
-}
-
-async function fetchPHData(): Promise<{ data: PHData; updatedAt: string } | null> {
-  try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    );
-    const { data, error } = await supabase
-      .from('analytics_cache')
-      .select('data, updated_at')
-      .eq('key', 'posthog')
-      .single();
-    if (error || !data) return null;
-    return { data: data.data as PHData, updatedAt: data.updated_at };
-  } catch {
-    return null;
-  }
 }
 
 function MiniSparkline({ trend }: { trend: { date: string; count: number }[] }) {
@@ -35,21 +17,14 @@ function MiniSparkline({ trend }: { trend: { date: string; count: number }[] }) 
     return `${x},${y}`;
   }).join(' ');
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }}>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }} role="img" aria-label="Pageviews trend">
       <polyline points={pts} fill="none" stroke="#ec4899" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
 
-function timeAgoShort(iso: string) {
-  const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (m < 60) return `${m}m ago`;
-  if (m < 1440) return `${Math.floor(m / 60)}h ago`;
-  return `${Math.floor(m / 1440)}d ago`;
-}
-
 export async function PostHogWidget() {
-  const result = await fetchPHData();
+  const result = await readAnalyticsCache<PHData>('posthog');
 
   const cardStyle = {
     background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px',
@@ -60,18 +35,18 @@ export async function PostHogWidget() {
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
           <span style={{ fontSize: '1.1rem' }}>📊</span>
-          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>PostHog Analytics</h2>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>PostHog analytics</h2>
         </div>
-        <p style={{ color: '#9ca3af', fontSize: '0.875rem', margin: 0 }}>No data yet. Ask Claude to refresh analytics.</p>
+        <p style={{ color: '#9ca3af', fontSize: '0.875rem', margin: 0 }}>No data yet — hit Refresh analytics.</p>
       </div>
     );
   }
 
   const { data: stats, updatedAt } = result;
   const statItems = [
-    { label: 'Page Views', value: stats.pageviews, color: '#ec4899' },
-    { label: 'Unique Users', value: stats.uniqueUsers, color: '#8b5cf6' },
-    { label: 'Sessions', value: stats.sessions, color: '#3b82f6' },
+    { label: 'Pageviews',    value: stats.pageviews,   color: '#ec4899' },
+    { label: 'Unique users', value: stats.uniqueUsers, color: '#8b5cf6' },
+    { label: 'Sessions',     value: stats.sessions,    color: '#3b82f6' },
   ];
 
   return (
@@ -79,7 +54,7 @@ export async function PostHogWidget() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: '1.1rem' }}>📊</span>
-          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>PostHog Analytics</h2>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>PostHog analytics</h2>
         </div>
         <a
           href="https://us.posthog.com/project/429225"

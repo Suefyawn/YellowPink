@@ -3,18 +3,21 @@
 import { revalidatePath } from 'next/cache';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
+// ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
-const PH_BASE = 'https://us.posthog.com';
-const SENTRY_ORG = 'trellee';
+const PH_BASE       = 'https://us.posthog.com';
+const SENTRY_ORG    = 'trellee';
 const SENTRY_PROJECT = 'yellowpink';
+const SENTRY_PROJECT_URL = `https://${SENTRY_ORG}.sentry.io/projects/${SENTRY_PROJECT}/`;
 
 // `createClient` without explicit generics returns a client whose `.from()`
-// inference treats every table as `never`, so any .upsert / .insert payload
-// type-errors. We aren't using Supabase's generated types here, so widen to a
-// permissive shape — the runtime contract (a single row keyed by `key`) is
-// owned by the analytics_cache migration.
+// inference treats every table as `never`, so .upsert / .insert payloads
+// fail type-check. We don't ship generated DB types, so widen to a
+// permissive shape — the runtime contract is owned by the analytics_cache
+// migration.
 type PermissiveSupabase = SupabaseClient<unknown, never, never, never, never>;
 
+// ─── PostHog helpers ────────────────────────────────────────────────────────
 async function phQuery(apiKey: string, sql: string) {
   const res = await fetch(`${PH_BASE}/api/projects/${PH_PROJECT_ID}/query`, {
     method: 'POST',
@@ -26,57 +29,255 @@ async function phQuery(apiKey: string, sql: string) {
   return (await res.json()).results as unknown[][];
 }
 
-async function refreshPostHog(supabase: PermissiveSupabase) {
+// Cast helper so a single `.upsert` payload isn't fighting the `never[]` inference.
+function upsertCache(supabase: PermissiveSupabase, key: string, data: unknown) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (supabase.from('analytics_cache') as any).upsert({
+    key, data, updated_at: new Date().toISOString(),
+  });
+}
+
+// ─── refreshPostHog ─────────────────────────────────────────────────────────
+async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
   const apiKey = process.env.POSTHOG_PERSONAL_API_KEY;
   if (!apiKey) throw new Error('POSTHOG_PERSONAL_API_KEY not configured');
 
-  const W7 = `timestamp >= now() - interval 7 day`;
-  const PV = `event = '$pageview'`;
+  const W7  = `timestamp >= now() - interval 7 day`;
+  const PV  = `event = '$pageview'`;
 
-  const [pvRows, uuRows, sessRows, trendRows] = await Promise.all([
+  // Pull every panel in parallel so the refresh stays under ~2 s even when
+  // PostHog is slow. The four "core" stats keep the existing 'posthog' cache
+  // entry shape so the existing widget stays backward-compatible.
+  const [
+    pvRows, uuRows, sessRows, trendRows,
+    topPagesRows, topEventsRows, topReferrersRows,
+    funnelRows,
+  ] = await Promise.all([
+    // ── core stats
     phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7}`),
     phQuery(apiKey, `SELECT count(distinct distinct_id) FROM events WHERE ${PV} AND ${W7}`),
     phQuery(apiKey, `SELECT count(distinct properties.\`$session_id\`) FROM events WHERE ${PV} AND ${W7}`),
     phQuery(apiKey, `SELECT toString(toDate(timestamp)) as d, count() FROM events WHERE ${PV} AND ${W7} GROUP BY d ORDER BY d`),
+
+    // ── top 10 pages (path + count + uniques)
+    phQuery(apiKey, `
+      SELECT properties.\`$pathname\` as path,
+             count() as views,
+             count(distinct distinct_id) as uniques
+      FROM events
+      WHERE ${PV} AND ${W7} AND properties.\`$pathname\` is not null
+      GROUP BY path
+      ORDER BY views DESC
+      LIMIT 10
+    `),
+
+    // ── top 10 events (any kind, count + uniques)
+    phQuery(apiKey, `
+      SELECT event, count() as n, count(distinct distinct_id) as uniques
+      FROM events
+      WHERE ${W7}
+      GROUP BY event
+      ORDER BY n DESC
+      LIMIT 10
+    `),
+
+    // ── top 10 referrers (initial referring_domain)
+    phQuery(apiKey, `
+      SELECT coalesce(nullIf(properties.\`$initial_referring_domain\`, ''), 'direct') as src,
+             count(distinct distinct_id) as visitors
+      FROM events
+      WHERE ${PV} AND ${W7}
+      GROUP BY src
+      ORDER BY visitors DESC
+      LIMIT 10
+    `),
+
+    // ── 5-step funnel: home_view → product_view → add_to_cart → begin_checkout → purchase
+    // Use the simple session-based count of each event; conversion is the
+    // ratio of step n+1 to step n. Not as accurate as PostHog's Funnel
+    // insight, but lightweight and good enough for an at-a-glance chart.
+    phQuery(apiKey, `
+      SELECT
+        countIf(event = '$pageview' AND properties.\`$pathname\` = '/')                    as home_view,
+        countIf(event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/')) as product_view,
+        countIf(event = 'add_to_cart')                                                     as add_to_cart,
+        countIf(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as begin_checkout,
+        countIf(event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
+      FROM events
+      WHERE ${W7}
+    `),
   ]);
 
-  const data = {
-    pageviews: Number(pvRows[0]?.[0] ?? 0),
-    uniqueUsers: Number(uuRows[0]?.[0] ?? 0),
-    sessions: Number(sessRows[0]?.[0] ?? 0),
+  // Build the shapes the widgets expect.
+  const core = {
+    pageviews:   Number(pvRows[0]?.[0]   ?? 0),
+    uniqueUsers: Number(uuRows[0]?.[0]   ?? 0),
+    sessions:    Number(sessRows[0]?.[0] ?? 0),
     trend: trendRows.map(([date, count]) => ({ date: String(date), count: Number(count) })),
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('analytics_cache') as any).upsert({ key: 'posthog', data, updated_at: new Date().toISOString() });
+  const topPages = topPagesRows.map(([path, views, uniques]) => ({
+    path: String(path), views: Number(views), uniques: Number(uniques),
+  }));
+  const topEvents = topEventsRows.map(([event, n, uniques]) => ({
+    event: String(event), count: Number(n), uniques: Number(uniques),
+  }));
+  const topReferrers = topReferrersRows.map(([src, visitors]) => ({
+    source: String(src), visitors: Number(visitors),
+  }));
+  const f = funnelRows[0] ?? [];
+  const funnel = {
+    steps: [
+      { label: 'Home',     event: 'home_view',      count: Number(f[0] ?? 0) },
+      { label: 'Product',  event: 'product_view',   count: Number(f[1] ?? 0) },
+      { label: 'Add to cart', event: 'add_to_cart', count: Number(f[2] ?? 0) },
+      { label: 'Checkout', event: 'begin_checkout', count: Number(f[3] ?? 0) },
+      { label: 'Purchase', event: 'purchase',       count: Number(f[4] ?? 0) },
+    ],
+  };
+
+  // Detect a >50% week-over-week drop in pageviews → notify. (Compare last 3 vs
+  // first 3 days of the trend window — same row of data, cheap, no extra query.)
+  const t = core.trend;
+  if (t.length >= 6) {
+    const recent = t.slice(-3).reduce((s, d) => s + d.count, 0);
+    const prior  = t.slice(0, 3).reduce((s, d) => s + d.count, 0);
+    if (prior > 100 && recent < prior * 0.5) {
+      await notifyAdmin(supabase, {
+        kind: 'posthog_drop',
+        title: 'Traffic dip detected',
+        body:  `Pageviews are down ${(100 - Math.round(recent / prior * 100))}% vs the start of the week (${prior} → ${recent}).`,
+        link:  '/admin/dashboard',
+        dedupKey: `posthog_drop:${new Date().toISOString().slice(0, 10)}`,
+      });
+    }
+  }
+
+  await Promise.all([
+    upsertCache(supabase, 'posthog',              core),
+    upsertCache(supabase, 'posthog_top_pages',    { items: topPages }),
+    upsertCache(supabase, 'posthog_top_events',   { items: topEvents }),
+    upsertCache(supabase, 'posthog_top_referrers',{ items: topReferrers }),
+    upsertCache(supabase, 'posthog_funnel',       funnel),
+  ]);
 }
 
-async function refreshSentry(supabase: PermissiveSupabase) {
+// ─── refreshSentry ──────────────────────────────────────────────────────────
+interface SentryIssue {
+  id: string; title: string; level: string; count: string;
+  lastSeen: string; firstSeen?: string; permalink: string;
+  metadata?: { value?: string }; tags?: Array<{ key: string; value: string }>;
+}
+
+async function refreshSentry(supabase: PermissiveSupabase): Promise<void> {
   const token = process.env.SENTRY_AUTH_TOKEN;
   if (!token) throw new Error('SENTRY_AUTH_TOKEN not configured');
 
-  const res = await fetch(
+  // Issues list — same shape we had, plus firstSeen so the dedup logic can
+  // tell "brand-new issue today" from "still open from last week".
+  const issuesRes = await fetch(
     `https://sentry.io/api/0/projects/${SENTRY_ORG}/${SENTRY_PROJECT}/issues/?query=is:unresolved&limit=25`,
     { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' },
   );
-  if (!res.ok) throw new Error(`Sentry ${res.status}: ${await res.text()}`);
+  if (!issuesRes.ok) throw new Error(`Sentry ${issuesRes.status}: ${await issuesRes.text()}`);
+  const issues = (await issuesRes.json()) as SentryIssue[];
 
-  const issues: Array<{ id: string; title: string; level: string; count: string; lastSeen: string; permalink: string }> = await res.json();
+  // 14-day error trend via the events-stats endpoint.
+  const trendRes = await fetch(
+    `https://sentry.io/api/0/organizations/${SENTRY_ORG}/events-stats/`
+      + `?project=${SENTRY_PROJECT}&field=count()&statsPeriod=14d&interval=1d`
+      + `&query=${encodeURIComponent('event.type:error')}`,
+    { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' },
+  );
+  let trend: { date: string; count: number }[] = [];
+  if (trendRes.ok) {
+    const json = await trendRes.json() as { data?: Array<[number, Array<{ count: number }>]> };
+    trend = (json.data ?? []).map(([ts, buckets]) => ({
+      date: new Date(ts * 1000).toISOString().slice(0, 10),
+      count: buckets.reduce((s, b) => s + (b?.count ?? 0), 0),
+    }));
+  }
+
+  // Top affected URLs (best-effort — collapse the issue list by `url` tag).
+  const urlCounts = new Map<string, number>();
+  for (const i of issues) {
+    const url = i.tags?.find(t => t.key === 'url')?.value;
+    if (!url) continue;
+    urlCounts.set(url, (urlCounts.get(url) ?? 0) + Number(i.count));
+  }
+  const topRoutes = [...urlCounts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([url, count]) => ({ url, count }));
 
   const data = {
-    total: issues.length,
-    errors: issues.filter(i => i.level === 'error' || i.level === 'fatal').length,
+    total:    issues.length,
+    errors:   issues.filter(i => i.level === 'error' || i.level === 'fatal').length,
     warnings: issues.filter(i => i.level === 'warning').length,
-    issues: issues.slice(0, 10).map(i => ({
+    issues:   issues.slice(0, 10).map(i => ({
       id: i.id, title: i.title, level: i.level,
       count: i.count, lastSeen: i.lastSeen, permalink: i.permalink,
     })),
+    topRoutes,
+    trend,
   };
 
+  // ── Notification dedup: only notify for issue ids we haven't seen before.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.from('analytics_cache') as any).upsert({ key: 'sentry', data, updated_at: new Date().toISOString() });
+  const meta = supabase.from('analytics_meta') as any;
+  const { data: prev } = await meta.select('value').eq('key', 'sentry_seen_ids').single();
+  const seen: string[] = Array.isArray(prev?.value?.ids) ? prev.value.ids : [];
+  const seenSet = new Set(seen);
+  const newIssues = issues.filter(i => !seenSet.has(i.id));
+
+  for (const issue of newIssues.slice(0, 10)) {
+    await notifyAdmin(supabase, {
+      kind: 'sentry_issue',
+      title: `New ${issue.level} in Sentry`,
+      body:  issue.title.slice(0, 220),
+      link:  issue.permalink,
+      dedupKey: `sentry_issue:${issue.id}`,
+    });
+  }
+
+  // Persist the full current id set (truncated to the most recent 200 so the
+  // row stays small).
+  const allIds = issues.map(i => i.id).concat(seen).slice(0, 200);
+  await meta.upsert({ key: 'sentry_seen_ids', value: { ids: [...new Set(allIds)] }, updated_at: new Date().toISOString() });
+
+  await upsertCache(supabase, 'sentry', data);
 }
 
+// ─── Admin-notification helper ──────────────────────────────────────────────
+interface NotifyInput {
+  kind: 'sentry_issue' | 'posthog_spike' | 'posthog_drop';
+  title: string;
+  body: string;
+  link: string;
+  /** Idempotency key — we skip the insert if a row already exists with this
+   *  value stashed in `entity_id`. Lets the refresher run repeatedly without
+   *  duplicating the same notification. */
+  dedupKey: string;
+}
+
+async function notifyAdmin(supabase: PermissiveSupabase, input: NotifyInput): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const notifs = supabase.from('admin_notifications') as any;
+  const { data: existing } = await notifs
+    .select('id')
+    .eq('entity_id', input.dedupKey)
+    .limit(1);
+  if (existing && existing.length > 0) return;
+  await notifs.insert({
+    kind:      input.kind,
+    title:     input.title,
+    body:      input.body,
+    link:      input.link,
+    entity_id: input.dedupKey,
+  });
+}
+
+// ─── Public action ──────────────────────────────────────────────────────────
 export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string[] }> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -95,4 +296,10 @@ export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string
   revalidatePath('/admin/dashboard');
 
   return errors.length ? { ok: false, errors } : { ok: true };
+}
+
+// Re-exported so the SentryWidget can build "Open Sentry →" link without
+// duplicating the org/project constants.
+export async function getSentryProjectUrl(): Promise<string> {
+  return SENTRY_PROJECT_URL;
 }
