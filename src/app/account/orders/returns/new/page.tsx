@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { requestReturn } from '@/app/account/orders/returns/actions';
 import { brandPlusName } from '@/lib/product-display';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { Order } from '@/types';
 
 function ReturnForm() {
@@ -29,9 +30,20 @@ function ReturnForm() {
       .then(({ data }) => setOrder(data as Order | null));
   }, [user, loading, orderId, router]);
 
-  if (loading) return <div style={{ minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>Loading…</div>;
+  if (loading || (orderId && !order)) {
+    return (
+      <div className="container" style={{ padding: '48px var(--side)' }}>
+        <div style={{ maxWidth: 600, margin: '0 auto' }}>
+          <Skeleton height={28} width="40%" style={{ marginBottom: 24 }} />
+          <Skeleton height={180} radius={12} style={{ marginBottom: 16 }} />
+          <Skeleton height={120} radius={12} style={{ marginBottom: 16 }} />
+          <Skeleton height={44} width="35%" radius={8} />
+        </div>
+      </div>
+    );
+  }
   if (!orderId) return <p style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>Missing order reference.</p>;
-  if (!order)   return <p style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>Loading order…</p>;
+  if (!order)   return <p style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>Order not found.</p>;
   if (order.status !== 'delivered') {
     return (
       <div style={{ padding: 48, textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>

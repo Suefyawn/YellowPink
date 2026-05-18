@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function AccountPage() {
   const { user, loading, signOut } = useAuth();
@@ -14,7 +15,19 @@ export default function AccountPage() {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>Loading…</div>;
+    return (
+      <div className="container" style={{ padding: '48px var(--side)' }}>
+        <div style={{ maxWidth: 640, margin: '0 auto' }}>
+          <Skeleton height={40} width="50%" style={{ marginBottom: 8 }} />
+          <Skeleton height={16} width="35%" style={{ marginBottom: 40 }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 32 }}>
+            {[0, 1, 2, 3].map(i => (
+              <Skeleton key={i} height={130} radius={12} />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleSignOut = async () => {
