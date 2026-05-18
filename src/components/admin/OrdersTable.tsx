@@ -66,7 +66,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-            <th style={{ padding: '11px 12px', width: 40, textAlign: 'center' }}>
+            <th scope="col" style={{ padding: '11px 12px', width: 40, textAlign: 'center' }}>
               <input
                 type="checkbox"
                 checked={selected.size === orders.length && orders.length > 0}
@@ -76,7 +76,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
               />
             </th>
             {['Order #', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
-              <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+              <th scope="col" key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
             ))}
           </tr>
         </thead>

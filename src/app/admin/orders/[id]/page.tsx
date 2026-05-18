@@ -103,7 +103,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <thead>
             <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
               {['Item', 'Price', 'Qty', 'Total'].map(h => (
-                <th key={h} style={{ padding: '8px 0', textAlign: h === 'Price' || h === 'Qty' || h === 'Total' ? 'right' : 'left', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280' }}>{h}</th>
+                <th scope="col" key={h} style={{ padding: '8px 0', textAlign: h === 'Price' || h === 'Qty' || h === 'Total' ? 'right' : 'left', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#6b7280' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -173,7 +173,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <thead>
             <tr style={{ borderBottom: '2px solid #f3f4f6' }}>
               {['Product', 'Brand', 'Variant', 'Price', 'Qty', 'Subtotal'].map(h => (
-                <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                <th scope="col" key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
               ))}
             </tr>
           </thead>

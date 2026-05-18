@@ -111,7 +111,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               <thead>
                 <tr style={{ borderBottom: '2px solid #f3f4f6' }}>
                   {['Order #', 'Date', 'Items', 'Total', 'Status', 'Payment', ''].map(h => (
-                    <th key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                    <th scope="col" key={h} style={{ padding: '8px 12px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
                   ))}
                 </tr>
               </thead>

@@ -116,6 +116,46 @@ function VariantPicker({
 }
 
 // ─── Multi-image gallery ───────────────────────────────────────────────────
+// Hover-zoom wrapper. Tracks mouse position over the container, sets
+// transform-origin to the cursor, and scales the inner image. Pointer-events
+// only — touch users get the native pinch-zoom from the OS instead.
+function ZoomableImage({ src, alt, label, fallback }: { src: string | null; alt: string; label?: string; fallback?: string | null }) {
+  const [zoomed, setZoomed] = useState(false);
+  const [origin, setOrigin] = useState({ x: 50, y: 50 });
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top)  / r.height) * 100;
+    setOrigin({ x, y });
+  };
+  return (
+    <div
+      style={{
+        flex: 1, aspectRatio: '4/5',
+        borderRadius: 'var(--radius-card)', overflow: 'hidden',
+        background: 'var(--paper2)',
+        cursor: zoomed ? 'zoom-out' : 'zoom-in',
+        position: 'relative',
+      }}
+      onPointerEnter={e => e.pointerType === 'mouse' && setZoomed(true)}
+      onPointerLeave={() => setZoomed(false)}
+      onMouseMove={onMove}
+    >
+      <div
+        style={{
+          width: '100%', height: '100%',
+          transform: zoomed ? 'scale(1.8)' : 'scale(1)',
+          transformOrigin: `${origin.x}% ${origin.y}%`,
+          transition: 'transform 220ms ease-out',
+          willChange: 'transform',
+        }}
+      >
+        <ProductImage src={src ?? fallback} alt={alt} label={label} priority />
+      </div>
+    </div>
+  );
+}
+
 function Gallery({
   images, alt, fallback, brandLabel,
 }: {
@@ -128,11 +168,7 @@ function Gallery({
   const [active, setActive] = useState<string | null>(hero);
 
   if (images.length <= 1) {
-    return (
-      <div style={{ flex: 1, aspectRatio: '4/5', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--paper2)' }}>
-        <ProductImage src={active ?? fallback} alt={alt} label={brandLabel} priority />
-      </div>
-    );
+    return <ZoomableImage src={active} alt={alt} label={brandLabel} fallback={fallback} />;
   }
 
   return (
@@ -155,9 +191,7 @@ function Gallery({
           </button>
         ))}
       </div>
-      <div style={{ flex: 1, aspectRatio: '4/5', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--paper2)' }}>
-        <ProductImage src={active} alt={alt} label={brandLabel} priority />
-      </div>
+      <ZoomableImage src={active} alt={alt} label={brandLabel} fallback={fallback} />
     </div>
   );
 }

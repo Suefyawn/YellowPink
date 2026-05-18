@@ -203,6 +203,9 @@ export function CollectionPage({
 
   // Build the top-level and children category lists from the DB when present,
   // otherwise fall back to the hardcoded constants for pre-import installs.
+  // When the DB has top-level categories but no children yet (e.g. demo data),
+  // merge in FALLBACK_SUB for top names we recognise so the subcategory chip
+  // row still has something to show.
   const { topCategoryNames, childrenByParentName } = useMemo(() => {
     if (categories.length === 0) {
       return {
@@ -213,7 +216,10 @@ export function CollectionPage({
     const tops = categories.filter(c => c.parent_id == null);
     const childByParent: Record<string, string[]> = {};
     for (const top of tops) {
-      childByParent[top.name] = categories.filter(c => c.parent_id === top.id).map(c => c.name);
+      const dbChildren = categories.filter(c => c.parent_id === top.id).map(c => c.name);
+      childByParent[top.name] = dbChildren.length > 0
+        ? dbChildren
+        : (FALLBACK_SUB[top.name] ?? []);
     }
     return {
       topCategoryNames: ['All', ...tops.map(t => t.name)],

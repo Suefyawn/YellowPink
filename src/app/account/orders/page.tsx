@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
+import { Skeleton } from '@/components/ui/Skeleton';
 import type { Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -32,7 +33,22 @@ export default function AccountOrdersPage() {
   }, [user, loading, router]);
 
   if (loading || fetching) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>Loading orders…</div>;
+    return (
+      <div className="container" style={{ padding: '48px var(--side)' }}>
+        <div style={{ maxWidth: 760, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <Skeleton height={28} width="40%" style={{ marginBottom: 24 }} />
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} style={{ background: 'white', borderRadius: 12, border: '1px solid var(--line)', padding: '20px 24px', display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <Skeleton height={16} width={120} />
+                <Skeleton height={12} width={180} />
+              </div>
+              <Skeleton height={24} width={70} radius={20} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

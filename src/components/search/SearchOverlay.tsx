@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useSearch } from '@/context/SearchContext';
-import { supabase } from '@/lib/supabase';
+import { supabase, isDemo } from '@/lib/supabase';
+import { DEMO_PRODUCTS } from '@/lib/demo-data';
 import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import type { Product } from '@/types';
 
@@ -31,8 +32,22 @@ export function SearchOverlay() {
   }, [searchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Server-side typeahead via search_products RPC (pg_trgm). Debounced 200 ms.
+  // Demo-mode short-circuit: filter the stub catalog client-side instead so
+  // the overlay actually returns something on a fresh clone.
   useEffect(() => {
     if (!searchOpen || query.trim().length === 0) { setProducts([]); return; }
+    if (isDemo) {
+      const q = query.trim().toLowerCase();
+      setProducts(
+        DEMO_PRODUCTS.filter(p =>
+          p.name.toLowerCase().includes(q) ||
+          p.brand.toLowerCase().includes(q) ||
+          (p.category ?? '').toLowerCase().includes(q) ||
+          (p.subcategory ?? '').toLowerCase().includes(q)
+        ).slice(0, 8)
+      );
+      return;
+    }
     const handle = setTimeout(() => {
       supabase.rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
         setProducts((data ?? []) as Product[]);

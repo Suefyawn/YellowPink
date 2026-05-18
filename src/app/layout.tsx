@@ -9,6 +9,7 @@ import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister
 import { PWAInstallPrompt } from '@/components/layout/PWAInstallPrompt';
 import { DemoBanner } from '@/components/layout/DemoBanner';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
+import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { getSiteSettings } from '@/lib/supabase';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
 
@@ -66,6 +67,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <PWAInstallPrompt />
         <Providers>
           <CartAnnouncer />
+          <AddToCartToast />
           <SiteChrome settings={settings}>
             {/* tabindex=-1 so the skip-link can focus #main programmatically
                 without making it a sequential Tab stop. */}

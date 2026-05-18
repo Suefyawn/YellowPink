@@ -338,7 +338,7 @@ export function TeamPage({ staff }: { staff: Staff[] }) {
             <thead>
               <tr style={{ background: '#f9fafb' }}>
                 {['Staff Member', 'Permissions', 'Status', 'Added', 'Actions'].map(h => (
-                  <th key={h} style={{
+                  <th scope="col" key={h} style={{
                     padding: '12px 20px', textAlign: 'left',
                     fontSize: '0.75rem', fontWeight: 600,
                     color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em',

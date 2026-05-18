@@ -73,9 +73,9 @@ export function ReturnsQueue({ rows, orderMap }: {
             <table style={{ width: '100%', marginTop: 10, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
-                  <th style={{ padding: '6px 0', textAlign: 'left', color: '#6b7280', fontWeight: 600 }}>Item</th>
-                  <th style={{ padding: '6px 0', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>Qty</th>
-                  <th style={{ padding: '6px 0', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>Subtotal</th>
+                  <th scope="col" style={{ padding: '6px 0', textAlign: 'left', color: '#6b7280', fontWeight: 600 }}>Item</th>
+                  <th scope="col" style={{ padding: '6px 0', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>Qty</th>
+                  <th scope="col" style={{ padding: '6px 0', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>Subtotal</th>
                 </tr>
               </thead>
               <tbody>
