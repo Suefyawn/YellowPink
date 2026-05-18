@@ -109,6 +109,41 @@ export function CollectionPage({
   const [inStockOnly, setInStockOnly] = useState(initialState.stock);
   const [onSaleOnly, setOnSaleOnly] = useState(initialState.sale);
 
+  // Filter rail is collapsed by default so the catalogue shows immediately.
+  // On mobile (≤ 860 px) the rail opens as a slide-up drawer with backdrop.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  // Look up an attribute_value by id (for the chip label).
+  const attrValueLookup = useMemo(() => {
+    const m = new Map<string, { attrName: string; value: string }>();
+    for (const a of attributes) for (const v of a.values) m.set(v.id, { attrName: a.name, value: v.value });
+    return m;
+  }, [attributes]);
+
+  interface Chip { key: string; label: string; remove: () => void }
+  const activeChips: Chip[] = useMemo(() => {
+    const out: Chip[] = [];
+    if (priceMin !== '' || priceMax !== '') {
+      const lo = priceMin !== '' ? `PKR ${priceMin}` : '';
+      const hi = priceMax !== '' ? `PKR ${priceMax}` : '';
+      out.push({
+        key: 'price', label: lo && hi ? `${lo} – ${hi}` : lo ? `≥ ${lo}` : `≤ ${hi}`,
+        remove: () => { setPriceMin(''); setPriceMax(''); },
+      });
+    }
+    if (inStockOnly) out.push({ key: 'stock', label: 'In stock', remove: () => setInStockOnly(false) });
+    if (onSaleOnly) out.push({ key: 'sale', label: 'On sale', remove: () => setOnSaleOnly(false) });
+    for (const b of selectedBrands) out.push({ key: `b:${b}`, label: b, remove: () => toggleBrand(b) });
+    for (const id of selectedValueIds) {
+      const v = attrValueLookup.get(id);
+      out.push({
+        key: `a:${id}`,
+        label: v ? `${v.attrName}: ${v.value}` : id.slice(0, 8),
+        remove: () => toggleValue(id),
+      });
+    }
+    return out;
+  }, [priceMin, priceMax, inStockOnly, onSaleOnly, selectedBrands, selectedValueIds, attrValueLookup]);
+
   function toggleBrand(b: string) {
     setSelectedBrands(prev => {
       const next = new Set(prev);
@@ -268,20 +303,126 @@ export function CollectionPage({
 
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 32, alignItems: 'start' }} className="shop-grid">
+
+          {/* ─── Toolbar above the grid: Filters toggle · chips · sort · count ─ */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(o => !o)}
+                aria-expanded={filtersOpen}
+                aria-controls="shop-filter-rail"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '8px 14px', borderRadius: 100,
+                  border: '1px solid ' + (filtersOpen ? 'var(--ink-900)' : 'var(--line)'),
+                  background: filtersOpen ? 'var(--ink-900)' : 'var(--paper)',
+                  color: filtersOpen ? 'var(--paper)' : 'var(--ink-900)',
+                  fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <line x1="4" y1="6" x2="20" y2="6" /><line x1="7" y1="12" x2="17" y2="12" /><line x1="10" y1="18" x2="14" y2="18" />
+                </svg>
+                Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+              </button>
+
+              {/* Active filter chips — always visible so users know what's applied
+                  without opening the rail. */}
+              {activeChips.map(c => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={c.remove}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '5px 10px', borderRadius: 100,
+                    border: '1px solid var(--line)',
+                    background: 'var(--paper2)', color: 'var(--ink-900)',
+                    fontSize: '0.75rem', cursor: 'pointer',
+                    fontFamily: 'var(--font-ui)',
+                  }}
+                  aria-label={`Remove filter ${c.label}`}
+                >
+                  {c.label}
+                  <span aria-hidden="true" style={{ color: 'var(--ink-500)', fontSize: '0.875rem', lineHeight: 1 }}>×</span>
+                </button>
+              ))}
+              {activeFilterCount > 0 && (
+                <button onClick={clearFilters} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '0.75rem', color: 'var(--brand-pink)', fontWeight: 600,
+                  fontFamily: 'var(--font-ui)',
+                }}>
+                  Clear all
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <span className="small-text">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</span>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)}
+                aria-label="Sort products"
+                style={{
+                  padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+                  background: 'var(--paper)', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
+                  color: 'var(--ink-900)', cursor: 'pointer', outline: 'none',
+                }}
+              >
+                <option value="featured">Featured</option>
+                <option value="price-low">Price: Low → High</option>
+                <option value="price-high">Price: High → Low</option>
+                <option value="name">Name A–Z</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Mobile drawer backdrop — clicking it closes the rail. */}
+          {filtersOpen && (
+            <div
+              onClick={() => setFiltersOpen(false)}
+              aria-hidden="true"
+              className="shop-rail-backdrop"
+              style={{
+                position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.4)',
+                zIndex: 90, display: 'none',
+              }}
+            />
+          )}
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: filtersOpen ? '220px 1fr' : '1fr',
+              gap: 32, alignItems: 'start',
+            }}
+            className="shop-grid"
+            data-filters-open={filtersOpen}
+          >
 
             {/* ─── Filter rail ───────────────────────────────────────── */}
-            <aside style={{ position: 'sticky', top: 100, paddingTop: 8 }} className="shop-rail">
+            {filtersOpen && (
+            <aside
+              id="shop-filter-rail"
+              style={{ position: 'sticky', top: 100, paddingTop: 8 }}
+              className="shop-rail"
+            >
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
                 <Overline>Filters</Overline>
-                {activeFilterCount > 0 && (
-                  <button onClick={clearFilters} style={{
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  aria-label="Close filters"
+                  className="shop-rail-close"
+                  style={{
                     background: 'none', border: 'none', cursor: 'pointer',
-                    fontSize: '0.75rem', color: 'var(--brand-pink)', fontWeight: 600,
-                  }}>
-                    Clear ({activeFilterCount})
-                  </button>
-                )}
+                    fontSize: '1.125rem', color: 'var(--ink-500)', padding: 4, lineHeight: 1,
+                    display: 'none',
+                  }}
+                >
+                  ×
+                </button>
               </div>
 
               {/* Price */}
@@ -396,26 +537,10 @@ export function CollectionPage({
                 );
               })}
             </aside>
+            )}
 
             {/* ─── Product grid ──────────────────────────────────────── */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <span className="small-text">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span className="small-text">Sort by</span>
-                  <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)} style={{
-                    padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
-                    background: 'var(--paper)', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
-                    color: 'var(--ink-900)', cursor: 'pointer', outline: 'none',
-                  }}>
-                    <option value="featured">Featured</option>
-                    <option value="price-low">Price: Low → High</option>
-                    <option value="price-high">Price: High → Low</option>
-                    <option value="name">Name A–Z</option>
-                  </select>
-                </div>
-              </div>
-
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
             {paginated.map((p) => (
               <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
