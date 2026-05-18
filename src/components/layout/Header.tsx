@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
 import { useCart } from '@/context/CartContext';
 import { useSearch } from '@/context/SearchContext';
@@ -23,12 +24,35 @@ export function Header() {
   const { cartCount, setCartOpen } = useCart();
   const { setSearchOpen } = useSearch();
   const { user } = useAuth();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Decide which NAV_ITEM is "active" for the current URL. We match on
+  // pathname + category query so /shop?category=Makeup highlights "Makeup",
+  // but plain /shop highlights "Shop", and any /blog/* highlights "Blog".
+  function isActiveLink(href: string): boolean {
+    const [hPath, hQuery] = href.split('?');
+    if (hPath !== pathname && !(hPath === '/blog' && pathname.startsWith('/blog/'))) return false;
+    if (!hQuery) {
+      // /shop active only when no category — otherwise the category items match.
+      if (hPath === '/shop') return !searchParams.get('category');
+      return true;
+    }
+    const wantCat = new URLSearchParams(hQuery).get('category');
+    return searchParams.get('category') === wantCat;
+  }
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40);
     window.addEventListener('scroll', fn, { passive: true });
     return () => window.removeEventListener('scroll', fn);
   }, []);
+
+  // Close the mobile menu whenever the route changes — otherwise a tap on a
+  // nav item navigates but leaves the menu open underneath the new page.
+  useEffect(() => {
+    setMobileMenu(false);
+  }, [pathname, searchParams]);
 
   return (
     <header style={{
@@ -46,19 +70,31 @@ export function Header() {
           <LogoWordmark />
         </Link>
 
-        <nav style={{ display: 'flex', gap: 32, alignItems: 'center' }} className="desktop-nav">
-          {NAV_ITEMS.map(item => (
-            <Link key={item.label} href={item.href} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 500,
-              color: 'var(--ink-700)', letterSpacing: '0.02em',
-              padding: '4px 0', textDecoration: 'none',
-              transition: 'color 150ms',
-            }}
-              onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink-900)')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'var(--ink-700)')}
-            >{item.label}</Link>
-          ))}
+        <nav style={{ display: 'flex', gap: 32, alignItems: 'center' }} className="desktop-nav" aria-label="Primary">
+          {NAV_ITEMS.map(item => {
+            const active = isActiveLink(item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
+                  fontWeight: active ? 600 : 500,
+                  color: active ? 'var(--ink-900)' : 'var(--ink-700)',
+                  letterSpacing: '0.02em',
+                  padding: '4px 0', textDecoration: 'none',
+                  // Subtle pink underline on the active item — keeps the rest
+                  // of the nav uncluttered while making the current page legible.
+                  borderBottom: active ? '2px solid var(--brand-pink)' : '2px solid transparent',
+                  transition: 'color 150ms',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink-900)')}
+                onMouseLeave={e => (e.currentTarget.style.color = active ? 'var(--ink-900)' : 'var(--ink-700)')}
+              >{item.label}</Link>
+            );
+          })}
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -140,21 +176,28 @@ export function Header() {
           aria-label="Mobile menu"
           style={{ padding: '8px var(--side)', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column' }}
         >
-          {NAV_ITEMS.map(item => (
-            <Link key={item.label} href={item.href}
-              onClick={() => setMobileMenu(false)}
-              style={{
-                textDecoration: 'none', fontFamily: 'var(--font-ui)',
-                fontSize: '0.9375rem', fontWeight: 500, color: 'var(--ink-900)',
-                // 44px min tap target — beats WCAG AAA 2.5.5 + matches iOS guidance.
-                // Use border-bottom for the visual separator so each row reads
-                // as its own list item; last child loses the line.
-                display: 'flex', alignItems: 'center',
-                padding: '14px 0', minHeight: 44,
-                borderBottom: '1px solid var(--line)',
-              }}
-            >{item.label}</Link>
-          ))}
+          {NAV_ITEMS.map((item, i) => {
+            const active = isActiveLink(item.href);
+            return (
+              <Link
+                key={item.label}
+                href={item.href}
+                onClick={() => setMobileMenu(false)}
+                aria-current={active ? 'page' : undefined}
+                style={{
+                  textDecoration: 'none', fontFamily: 'var(--font-ui)',
+                  fontSize: '0.9375rem', fontWeight: active ? 700 : 500,
+                  color: active ? 'var(--brand-pink)' : 'var(--ink-900)',
+                  // 44px min tap target — beats WCAG AAA 2.5.5 + matches iOS guidance.
+                  display: 'flex', alignItems: 'center',
+                  padding: '14px 0', minHeight: 44,
+                  // Border on every row except the last so the menu doesn't end
+                  // on a dangling rule.
+                  borderBottom: i < NAV_ITEMS.length - 1 ? '1px solid var(--line)' : 'none',
+                }}
+              >{item.label}</Link>
+            );
+          })}
         </nav>
       )}
     </header>
