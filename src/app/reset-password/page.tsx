@@ -53,11 +53,16 @@ export default function ResetPasswordPage() {
     if (password.length < 6) { setError('Password must be at least 6 characters'); return; }
     setLoading(true);
     const sb = getBrowserClient();
-    const { error } = await sb.auth.updateUser({ password });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    setSuccess(true);
-    setTimeout(() => router.push('/account'), 2000);
+    try {
+      const { error } = await sb.auth.updateUser({ password });
+      if (error) { setError(error.message); return; }
+      setSuccess(true);
+      setTimeout(() => router.push('/account'), 2000);
+    } catch (err) {
+      setError((err as Error).message || 'Could not update password. Try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!ready) {

@@ -327,7 +327,7 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true }: { p
                   <StarPicker name="rating" />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div className="duo-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
                     <label htmlFor="review-author-name" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Name *</label>
                     <input id="review-author-name" name="author_name" required autoComplete="name" placeholder="Your name" style={inp} />

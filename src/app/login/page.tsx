@@ -32,15 +32,23 @@ export default function LoginPage() {
     setMessage('');
     setLoading(true);
     const sb = getBrowserClient();
-
-    if (mode === 'login') {
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) { setError(error.message); setLoading(false); return; }
-      router.push('/account');
-    } else {
+    try {
+      if (mode === 'login') {
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) { setError(error.message); return; }
+        router.push('/account');
+        // Don't clear loading on success — the page is about to navigate
+        // and resetting state would briefly flash the unstuck button.
+        return;
+      }
       const { error } = await sb.auth.signUp({ email, password });
-      if (error) { setError(error.message); setLoading(false); return; }
+      if (error) { setError(error.message); return; }
       setMessage('Account created! Check your email to confirm your address.');
+    } catch (err) {
+      // Offline / DNS / transient network — surface a message and unstick
+      // the button. Without this catch the spinner would spin forever.
+      setError((err as Error).message || 'Something went wrong. Please try again.');
+    } finally {
       setLoading(false);
     }
   };

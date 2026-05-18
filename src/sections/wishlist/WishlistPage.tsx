@@ -27,10 +27,14 @@ export function WishlistPage() {
       return;
     }
     const sb = getBrowserClient();
-    sb.from('products').select('*').in('id', wishlist).then(({ data }) => {
-      if (data) setProducts(data as Product[]);
-      setLoading(false);
-    });
+    sb.from('products').select('*').in('id', wishlist)
+      .then(({ data }) => {
+        if (data) setProducts(data as Product[]);
+      })
+      // Always clear the spinner — flaky mobile data shouldn't strand
+      // the user staring at a skeleton forever.
+      .then(undefined, () => undefined)
+      .then(() => setLoading(false));
   }, [wishlist]);
 
   // Totals shown above the grid — both number-of-items and rolling sum so the

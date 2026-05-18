@@ -74,7 +74,10 @@ export function PWAInstallPrompt() {
       role="dialog"
       aria-label="Install Yellow Pink"
       style={{
-        position: 'fixed', bottom: 16, right: 16, zIndex: 1500,
+        // Sit above body content but BELOW any open modal (search z=300,
+        // mini-cart z=201, newsletter z=351, consent z=400, mobile menu z=960).
+        // Previously z=1500 floated over those, blocking interaction.
+        position: 'fixed', bottom: 16, right: 16, zIndex: 180,
         background: 'var(--ink-900)', color: 'var(--paper)',
         borderRadius: 12, padding: '14px 16px', maxWidth: 320,
         boxShadow: '0 6px 24px rgba(0,0,0,0.25)',

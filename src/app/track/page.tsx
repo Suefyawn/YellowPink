@@ -111,6 +111,9 @@ export default function TrackPage() {
             onChange={e => setOrderNumber(e.target.value)}
             placeholder="Order number — e.g. YP-A1B2C3"
             required
+            autoCapitalize="characters"
+            autoComplete="off"
+            spellCheck={false}
             style={{
               padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
               fontFamily: 'monospace', fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
@@ -129,6 +132,7 @@ export default function TrackPage() {
               required
               type="tel"
               autoComplete="tel"
+              inputMode="tel"
               style={{
                 flex: 1, padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
                 fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',

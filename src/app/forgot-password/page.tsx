@@ -24,12 +24,19 @@ export default function ForgotPasswordPage() {
     setError('');
     setLoading(true);
     const sb = getBrowserClient();
-    const { error } = await sb.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setLoading(false);
-    if (error) { setError(error.message); return; }
-    setSent(true);
+    try {
+      const { error } = await sb.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) { setError(error.message); return; }
+      setSent(true);
+    } catch (err) {
+      // Network/CORS rejection — without this catch the button stays stuck
+      // on "Sending…" indefinitely.
+      setError((err as Error).message || 'Could not send reset email. Try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

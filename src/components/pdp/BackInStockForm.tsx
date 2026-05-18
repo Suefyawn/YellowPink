@@ -35,19 +35,29 @@ export function BackInStockForm({ productId, variantId = null }: { productId: st
 
   return (
     <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <label style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-900)' }}>
+      <label htmlFor="back-in-stock-email" style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-900)' }}>
         Notify me when it&apos;s back
       </label>
       <div style={{ display: 'flex', gap: 8 }}>
         <input
-          type="email" placeholder="you@example.com" value={email} onChange={e => setEmail(e.target.value)}
+          id="back-in-stock-email"
+          name="email"
+          type="email"
+          autoComplete="email"
+          inputMode="email"
+          required
+          disabled={status === 'submitting'}
+          placeholder="you@example.com"
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          aria-invalid={status === 'error'}
           style={{ flex: 1, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 8, fontSize: '0.875rem', outline: 'none', background: 'white' }}
         />
-        <button type="submit" disabled={status === 'submitting'} className="btn-primary" style={{ padding: '10px 16px' }}>
+        <button type="submit" disabled={status === 'submitting'} className="btn-primary" style={{ padding: '10px 16px', minHeight: 44 }}>
           {status === 'submitting' ? '…' : 'Notify me'}
         </button>
       </div>
-      {errorMsg && <span style={{ color: 'var(--error)', fontSize: '0.75rem' }}>{errorMsg}</span>}
+      {errorMsg && <span role="alert" style={{ color: 'var(--error)', fontSize: '0.75rem' }}>{errorMsg}</span>}
     </form>
   );
 }

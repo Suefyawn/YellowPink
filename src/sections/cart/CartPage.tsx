@@ -163,13 +163,13 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)' }}>
-                      <button type="button" aria-label={`Decrease quantity of ${item.name}`} onClick={() => updateQty(i, -1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>−</button>
-                      <span aria-live="polite" style={{ width: 28, textAlign: 'center', fontSize: '0.8125rem', fontWeight: 500 }}>{item.qty}</span>
-                      <button type="button" aria-label={`Increase quantity of ${item.name}`} onClick={() => updateQty(i, 1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>+</button>
+                      <button type="button" aria-label={`Decrease quantity of ${item.name}`} onClick={() => updateQty(i, -1)} style={{ width: 44, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>−</button>
+                      <span aria-live="polite" style={{ width: 32, textAlign: 'center', fontSize: '0.9375rem', fontWeight: 500 }}>{item.qty}</span>
+                      <button type="button" aria-label={`Increase quantity of ${item.name}`} onClick={() => updateQty(i, 1)} style={{ width: 44, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>+</button>
                     </div>
                   </div>
                   <div className="tabular-nums" style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.9375rem' }}>PKR {(item.price * item.qty).toLocaleString()}</div>
-                  <button type="button" aria-label={`Remove ${item.name} from cart`} onClick={() => removeFromCart(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-500)', fontSize: '1rem' }}>×</button>
+                  <button type="button" aria-label={`Remove ${item.name} from cart`} onClick={() => removeFromCart(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-500)', fontSize: '1.25rem', width: 44, height: 44, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>×</button>
                 </div>
               ))}
               <div style={{ marginTop: 20 }}>
