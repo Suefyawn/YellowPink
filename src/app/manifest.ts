@@ -12,12 +12,27 @@ export default function manifest(): MetadataRoute.Manifest {
     background_color: '#FFFCF7',
     theme_color: '#F7C948',
     orientation: 'portrait',
+    // PNG icons matching yellowpink.pk's actual brand mark (the hand-drawn
+     // yellow flower scribble). 192/512 are the PWA-required pair; the
+     // maskable variant lets Android render us with its themed background.
     icons: [
       {
-        src: '/icon.svg',
-        sizes: 'any',
-        type: 'image/svg+xml',
+        src: '/icon-192.png',
+        sizes: '192x192',
+        type: 'image/png',
         purpose: 'any',
+      },
+      {
+        src: '/icon-512.png',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: '/icon-192-maskable.png',
+        sizes: '192x192',
+        type: 'image/png',
+        purpose: 'maskable',
       },
     ],
     categories: ['shopping', 'lifestyle', 'beauty'],

@@ -21,8 +21,17 @@ const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
 const FROM = process.env.EMAIL_FROM ?? 'Yellow Pink Orders <orders@yellowpink.pk>';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://yellowpink.pk';
 const BRAND_PINK = '#E8487F';
+const BRAND_YELLOW = '#F7C948';
+const PAPER = '#FAF6EE';
 const INK = '#111827';
+const INK_700 = '#374151';
 const MUTED = '#6b7280';
+const LINE = '#e5e7eb';
+
+// Logo URL — Resend lets us link to any public image. Using the same flower
+// mark that the live site uses as its favicon so the email feels on-brand
+// from the inbox preview onward.
+const LOGO_URL = `${SITE_URL}/icon-192.png`;
 
 // ─── Primitives ─────────────────────────────────────────────────────────────
 function escapeHtml(s: string): string {
@@ -60,14 +69,29 @@ interface ShellOpts {
 
 function shell(inner: string, opts: ShellOpts = {}): string {
   return `
-<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:560px;margin:0 auto;color:${INK};background:#fff">
-  <div style="padding:24px 24px 0;border-bottom:1px solid #e5e7eb">
-    <h1 style="margin:0 0 16px;font-family:Georgia,serif;font-size:24px;color:${BRAND_PINK};letter-spacing:-0.5px">Yellow Pink</h1>
-  </div>
-  <div style="padding:24px">${inner}</div>
-  <div style="padding:16px 24px 24px;border-top:1px solid #e5e7eb;color:${MUTED};font-size:12px">
-    Yellow Pink · Pakistan ·
-    <a href="${SITE_URL}" style="color:${MUTED}">${SITE_URL.replace(/^https?:\/\//, '')}</a>${unsubscribeFooter(opts.marketingRecipient)}
+<div style="background:${PAPER};padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+  <div style="max-width:560px;margin:0 auto;color:${INK};background:#fff;border-radius:8px;overflow:hidden;border:1px solid ${LINE}">
+    <!-- Branded header: cream band with the live-site flower mark + wordmark.
+         The yellow stripe along the top is a subtle nod to the brand palette
+         that survives even when an email client strips background images. -->
+    <div style="height:4px;background:${BRAND_YELLOW}"></div>
+    <div style="padding:20px 28px;background:${PAPER};display:flex;align-items:center;gap:12px;border-bottom:1px solid ${LINE}">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="vertical-align:middle;padding-right:12px">
+          <img src="${LOGO_URL}" width="36" height="36" alt="" style="display:block;border:0" />
+        </td>
+        <td style="vertical-align:middle">
+          <span style="font-family:Georgia,serif;font-size:22px;font-weight:500;color:${INK};letter-spacing:-0.3px">Yellow Pink</span>
+        </td>
+      </tr></table>
+    </div>
+    <div style="padding:28px;line-height:1.55;font-size:15px;color:${INK_700}">${inner}</div>
+    <div style="padding:18px 28px 22px;border-top:1px solid ${LINE};color:${MUTED};font-size:12px;line-height:1.6">
+      <strong style="color:${INK}">Yellow Pink</strong> · Karachi · Lahore · Islamabad<br/>
+      <a href="${SITE_URL}" style="color:${MUTED};text-decoration:underline">${SITE_URL.replace(/^https?:\/\//, '')}</a> ·
+      <a href="${SITE_URL}/track" style="color:${MUTED};text-decoration:underline">Track an order</a> ·
+      <a href="${SITE_URL}/page/contact" style="color:${MUTED};text-decoration:underline">Contact us</a>${unsubscribeFooter(opts.marketingRecipient)}
+    </div>
   </div>
 </div>`.trim();
 }
@@ -286,6 +310,37 @@ export async function sendBackInStockEmail(args: {
     <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Stock moves fast — finish your order soon if you don't want to miss it.</p>
   `);
   await send({ to: args.email, subject: `Back in stock: ${args.product_name}`, html });
+}
+
+// ─── 11.5. Customer: newsletter welcome ─────────────────────────────────────
+// Fires immediately after a newsletter signup succeeds. Sets expectations
+// (one email a fortnight, what's in it), confirms the email is on file, and
+// gives a frictionless way to back out via the unsubscribe footer link.
+export async function sendNewsletterWelcomeEmail(args: { email: string; source: string }): Promise<void> {
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">You're in 💌</h2>
+    <p style="margin:0 0 14px">Thanks for joining the Yellow Pink list. Here's what you can expect:</p>
+    <ul style="margin:0 0 20px;padding-left:20px;color:${INK_700}">
+      <li style="margin-bottom:6px"><strong>One email a fortnight</strong> — we never blast.</li>
+      <li style="margin-bottom:6px">New drops, restock alerts, and a tightly-edited offer or two.</li>
+      <li style="margin-bottom:6px">Pakistan-specific routine tips from our editorial team.</li>
+    </ul>
+    <p style="margin:0 0 24px;color:${INK_700}">
+      Curious what we've already written? <a href="${SITE_URL}/blog" style="color:${BRAND_PINK};font-weight:600">Read the edit →</a>
+    </p>
+    <p style="margin:24px 0 0;text-align:center">
+      <a href="${SITE_URL}/shop" style="display:inline-block;padding:12px 28px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600;letter-spacing:0.02em">Start shopping</a>
+    </p>
+    <p style="margin:24px 0 0;color:${MUTED};font-size:12px;line-height:1.5">
+      You're getting this because <strong>${escapeHtml(args.email)}</strong> just signed up via the
+      <strong>${escapeHtml(args.source)}</strong> form. Wasn't you? Use the unsubscribe link below to remove it.
+    </p>
+  `, { marketingRecipient: args.email });
+  await send({
+    to: args.email,
+    subject: 'Welcome to Yellow Pink — your fortnightly edit starts here',
+    html,
+  });
 }
 
 // ─── 11. Owner: low-stock alert (background job) ────────────────────────────

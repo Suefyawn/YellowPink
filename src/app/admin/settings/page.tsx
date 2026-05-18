@@ -55,6 +55,39 @@ function Divider() {
   return <div style={{ height: 1, background: '#f3f4f6', margin: '20px 0' }} />;
 }
 
+// Payment-method row: a labelled toggle with secondary description text.
+// Matches the visual rhythm of the rest of the settings page; the toggle is
+// the same component used for boolean flags elsewhere.
+function PayMethodRow({ name, checked, label, desc }: { name: string; checked: boolean; label: string; desc: string }) {
+  return (
+    <label
+      htmlFor={`set-${name}`}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: 14,
+        padding: '14px 16px', borderRadius: 8,
+        background: '#fafafa', border: '1px solid #f3f4f6',
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ paddingTop: 2 }}>
+        <input type="hidden" name={name} value="false" />
+        <input
+          id={`set-${name}`}
+          type="checkbox"
+          name={name}
+          value="true"
+          defaultChecked={checked}
+          style={{ width: 18, height: 18, accentColor: '#6366f1', cursor: 'pointer' }}
+        />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{label}</div>
+        <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, lineHeight: 1.5 }}>{desc}</div>
+      </div>
+    </label>
+  );
+}
+
 export default async function SettingsPage({ searchParams }: { searchParams: { saved?: string; error?: string } }) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('settings')) {
@@ -140,6 +173,54 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
             <div>
               <label style={lbl}>Tax Inclusive Pricing</label>
               <Toggle name="tax_inclusive" checked={g('tax_inclusive') === 'true'} />
+            </div>
+          </div>
+        </Card>
+
+        {/* ── Payment Methods ─────────────────────────────── */}
+        <Card>
+          {section('Payment Methods', 'Which payment options the customer sees at checkout. Unticked methods disappear from the picker entirely. Default: all on.')}
+          <Divider />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <PayMethodRow
+              name="pay_cod_enabled"
+              checked={g('pay_cod_enabled', 'true') !== 'false'}
+              label="Cash on Delivery (COD)"
+              desc="Customer pays the courier when the order arrives. No payment gateway needed."
+            />
+            <PayMethodRow
+              name="pay_jazzcash_enabled"
+              checked={g('pay_jazzcash_enabled', 'true') !== 'false'}
+              label="JazzCash"
+              desc="Mobile wallet. Requires JAZZCASH_MERCHANT_ID + JAZZCASH_PASSWORD + JAZZCASH_INTEGRITY_SALT env vars."
+            />
+            <PayMethodRow
+              name="pay_easypaisa_enabled"
+              checked={g('pay_easypaisa_enabled', 'true') !== 'false'}
+              label="Easypaisa"
+              desc="Mobile wallet. Requires EASYPAISA_STORE_ID + EASYPAISA_HASH_KEY env vars."
+            />
+            <PayMethodRow
+              name="pay_card_enabled"
+              checked={g('pay_card_enabled', 'true') !== 'false'}
+              label="Credit / Debit Card"
+              desc="Visa / Mastercard via JazzCash Card. Uses the same JazzCash credentials."
+            />
+            <PayMethodRow
+              name="pay_bank_enabled"
+              checked={g('pay_bank_enabled', 'true') !== 'false'}
+              label="Bank Transfer"
+              desc="Manual: customer transfers to your account, you confirm + ship. Fill in your bank details below so they appear on the thank-you page."
+            />
+            <div style={{ marginTop: 8 }}>
+              <label style={lbl}>Bank transfer instructions (shown on thank-you page)</label>
+              <textarea
+                name="pay_bank_instructions"
+                defaultValue={g('pay_bank_instructions', '')}
+                rows={3}
+                style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }}
+                placeholder="Account title: Yellow Pink&#10;Bank: Meezan Bank&#10;Account #: 0123456789&#10;IBAN: PK00 MEZN 0000 0123 4567 89"
+              />
             </div>
           </div>
         </Card>

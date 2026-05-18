@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { supabase, isDemo } from '@/lib/supabase';
 import { newsletterLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { log } from '@/lib/logger';
+import { sendNewsletterWelcomeEmail } from '@/lib/email';
 
 // Newsletter signup server action — wired into the footer form, post-purchase
 // opt-in, and the timed / exit-intent modal.
@@ -53,24 +54,35 @@ export async function subscribeToNewsletter(
 
   if (isDemo) {
     log.info('newsletter.demo_subscribe', { email, source });
+    // Even in demo mode, fire the welcome email — it's how the merchant
+    // verifies the template + Resend wiring before going live.
+    void sendNewsletterWelcomeEmail({ email, source });
     return { ok: true, email };
   }
 
   try {
+    const normalisedEmail = email.toLowerCase().trim();
     const { error } = await supabase
       .from('newsletter_subscribers')
       .insert({
-        email: email.toLowerCase().trim(),
+        email: normalisedEmail,
         source,
         user_agent: ua,
         ip_address: ip === 'unknown' ? null : ip,
       });
-    // Unique-violation = already subscribed; treat as success so we don't leak
-    // membership via response shape (timing-attack-ish concern).
-    if (error && error.code !== '23505') {
+    if (error && error.code === '23505') {
+      // Already subscribed — silently treat as success. We deliberately don't
+      // send a second welcome email here so re-submitting the form (e.g. from
+      // a different page) doesn't double-mail them.
+      return { ok: true, email };
+    }
+    if (error) {
       log.error('newsletter.insert_failed', { error: error.message });
       return { ok: false, error: 'Something went wrong. Please try again.' };
     }
+    // Fresh signup — fire-and-forget the welcome email. We don't await so a
+    // Resend hiccup doesn't fail the signup itself (the row is already in).
+    void sendNewsletterWelcomeEmail({ email: normalisedEmail, source });
     return { ok: true, email };
   } catch (err) {
     log.error('newsletter.unexpected', { error: (err as Error).message });

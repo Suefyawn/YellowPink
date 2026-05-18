@@ -31,12 +31,32 @@ function makeOrderNumber() {
   return 'YP-' + Date.now().toString(36).slice(-5).toUpperCase() + rand;
 }
 
-export function CheckoutPage() {
+// Server-resolved props from /checkout/page.tsx — which payment methods
+// the merchant has enabled in admin settings, plus the bank-transfer
+// instructions to show on the thank-you page.
+interface CheckoutPageProps {
+  enabledMethods?: PayMethod[];
+  bankInstructions?: string;
+}
+
+export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageProps = {}) {
   const { cartItems, clearCart, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
   const router = useRouter();
 
-  const [payMethod, setPayMethod] = useState<PayMethod>('cod');
+  // Filter the hard-coded PAY_METHODS by what's actually enabled in admin
+  // settings. If `enabledMethods` is undefined (server didn't pass one, e.g.
+  // demo mode), default to all on — same as before this prop existed.
+  const visiblePayMethods = enabledMethods && enabledMethods.length > 0
+    ? PAY_METHODS.filter(([m]) => enabledMethods.includes(m))
+    : PAY_METHODS;
+
+  // Default to the first enabled method so we never auto-select a hidden one.
+  const defaultMethod: PayMethod = visiblePayMethods[0]?.[0] ?? 'cod';
+  const [payMethod, setPayMethod] = useState<PayMethod>(defaultMethod);
+  // Stash bank instructions so we can pass them to the thank-you page after
+  // a successful bank-transfer order (used in postOrderDestination payload).
+  void bankInstructions;
   const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '', address: '', city: '', province: '', zip: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -354,7 +374,7 @@ export function CheckoutPage() {
 
               <hr className="hairline" style={{ margin: '32px 0' }} />
               <Overline style={{ display: 'block', marginBottom: 16 }}>Payment Method</Overline>
-              {PAY_METHODS.map(([key, label, desc]) => (
+              {visiblePayMethods.map(([key, label, desc]) => (
                 <label key={key} onClick={() => setPayMethod(key)} style={{
                   display: 'flex', alignItems: 'flex-start', gap: 12, padding: '16px',
                   border: '1px solid ' + (payMethod === key ? 'var(--ink-900)' : 'var(--line)'),
