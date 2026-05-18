@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { EARN_RULES, REASON_LABELS, nextTierTarget, tierForLifetime } from '@/lib/loyalty';
 import type { LoyaltyAccount, LoyaltyLedgerEntry, Profile } from '@/types';
 
@@ -35,7 +36,17 @@ export default function RewardsPage() {
   }, [user, loading, router]);
 
   if (loading || !user) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>Loading…</div>;
+    return (
+      <div className="container" style={{ padding: '48px var(--side)' }}>
+        <div style={{ maxWidth: 800, margin: '0 auto' }}>
+          <Skeleton height={32} width="30%" style={{ marginBottom: 32 }} />
+          <Skeleton height={140} radius={16} style={{ marginBottom: 24 }} />
+          <Skeleton height={120} radius={12} style={{ marginBottom: 24 }} />
+          <Skeleton height={180} radius={12} style={{ marginBottom: 24 }} />
+          <Skeleton height={200} radius={12} />
+        </div>
+      </div>
+    );
   }
 
   const balance  = account?.points_balance ?? 0;
@@ -133,7 +144,8 @@ export default function RewardsPage() {
           {ledger.length === 0 ? (
             <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--ink-500)' }}>No points activity yet. Place an order to start earning.</p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+            <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table style={{ width: '100%', minWidth: 380, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--line)' }}>
                   <th style={{ textAlign: 'left',  padding: '6px 0', color: '#6b7280', fontWeight: 600 }}>Reason</th>
@@ -155,6 +167,7 @@ export default function RewardsPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       </div>
