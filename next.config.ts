@@ -64,22 +64,71 @@ const nextConfig: NextConfig = {
   // so we get HSTS (closes the Semrush "No HSTS support" finding), a sensible
   // Referrer-Policy + Permissions-Policy, and a strong X-Content-Type-Options.
   // Static `/_next/image/*` results also get a long browser cache.
+  //
+  // Caching strategy (Vercel CDN):
+  // ─ Public catalog routes (home, shop, PDP, blog, /page/:slug) get a short
+  //   `s-maxage` so the CDN serves cached HTML between renders, plus a long
+  //   `stale-while-revalidate` window so a slow Supabase fetch never blocks
+  //   the visitor.
+  // ─ Private surfaces (admin, account, cart, checkout, login flows) get
+  //   `private, no-store` so they never land in a shared cache — important
+  //   because pages like /account/orders contain user-scoped data.
+  // ─ Crawler endpoints (sitemap, robots, llms.txt) get longer s-maxage.
+  // ─ Everything else falls through with the framework default.
   async headers() {
+    const SECURITY: Array<{ key: string; value: string }> = [
+      { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+      { key: 'X-Content-Type-Options',    value: 'nosniff' },
+      { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
+      { key: 'X-Frame-Options',           value: 'SAMEORIGIN' },
+      { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
+    ];
+
+    // 5-minute edge freshness, 24-hour SWR — enough to absorb traffic bursts
+    // and survive a Supabase blip, short enough that stock changes on the PDP
+    // surface within ~5 min without an explicit revalidate.
+    const PUBLIC_CACHE = 'public, s-maxage=300, stale-while-revalidate=86400';
+
+    // 1-hour edge freshness for crawler endpoints — they regenerate from DB
+    // but the shape changes less often than the catalog itself.
+    const CRAWLER_CACHE = 'public, s-maxage=3600, stale-while-revalidate=86400';
+
+    // Authenticated / user-scoped routes. CDN must never cache these.
+    const PRIVATE_NO_STORE = 'private, no-store, max-age=0';
+
     return [
-      {
-        // Every route. The HSTS preload-list directive is safe here because
-        // we're on Vercel HTTPS-only with a wildcard cert.
-        source: '/:path*',
-        headers: [
-          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
-          { key: 'X-Content-Type-Options',    value: 'nosniff' },
-          { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
-          { key: 'X-Frame-Options',           value: 'SAMEORIGIN' },
-          // Conservative defaults — turn on individual features per surface
-          // (e.g. camera for a future ID-upload flow) when we actually need them.
-          { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
-        ],
-      },
+      // Every route gets security headers.
+      { source: '/:path*', headers: SECURITY },
+
+      // Public catalog HTML — explicit s-maxage so the Vercel edge serves
+      // cached renders. Listed individually rather than as one big regex
+      // so Vercel's matcher stays predictable.
+      { source: '/',                 headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/shop',             headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/product/:slug',    headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/blog',             headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/blog/:slug',       headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/page/:slug',       headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/privacy',          headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+
+      // Crawler endpoints — longer s-maxage.
+      { source: '/sitemap.xml',      headers: [{ key: 'Cache-Control', value: CRAWLER_CACHE }] },
+      { source: '/robots.txt',       headers: [{ key: 'Cache-Control', value: CRAWLER_CACHE }] },
+      { source: '/llms.txt',         headers: [{ key: 'Cache-Control', value: CRAWLER_CACHE }] },
+
+      // Private / user-scoped surfaces. Explicitly opt out of any shared
+      // cache so a different user's session can't be served from the edge.
+      { source: '/admin/:path*',     headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/account/:path*',   headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/cart',             headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/checkout',         headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/wishlist',         headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/track',            headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/login',            headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/forgot-password',  headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/reset-password',   headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/thank-you',        headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+      { source: '/api/:path*',       headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
     ];
   },
   // Next 16 already sets `Cache-Control: public, max-age=…` on /_next/image
