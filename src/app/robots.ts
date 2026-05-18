@@ -29,7 +29,16 @@ export default function robots(): MetadataRoute.Robots {
         ],
       },
     ],
-    sitemap: `${SITE_URL}/sitemap.xml`,
+    // Advertise every sub-sitemap individually so crawlers don't need a
+    // sitemap-index round-trip. The product/blog sub-sitemaps publish under
+    // /<segment>/sitemap/<id>.xml — pointing at id 0 covers shops up to the
+    // 5 000-URL chunk size; if we cross that, add another entry.
+    sitemap: [
+      `${SITE_URL}/sitemap.xml`,
+      `${SITE_URL}/product/sitemap/0.xml`,
+      `${SITE_URL}/blog/sitemap/0.xml`,
+      `${SITE_URL}/page/sitemap.xml`,
+    ],
     host: SITE_URL.replace(/^https?:\/\//, ''),
   };
 }

@@ -33,9 +33,12 @@ export function Header() {
   return (
     <header style={{
       position: 'sticky', top: 0, zIndex: 100,
-      background: 'var(--paper)',
-      borderBottom: '1px solid var(--line)',
-      transition: 'padding 200ms ease-out',
+      background: scrolled ? 'rgba(250, 246, 238, 0.86)' : 'var(--paper)',
+      backdropFilter: scrolled ? 'saturate(140%) blur(10px)' : 'none',
+      WebkitBackdropFilter: scrolled ? 'saturate(140%) blur(10px)' : 'none',
+      borderBottom: '1px solid ' + (scrolled ? 'rgba(26,26,26,0.08)' : 'var(--line)'),
+      boxShadow: scrolled ? '0 6px 18px rgba(0,0,0,0.04)' : 'none',
+      transition: 'padding 200ms ease-out, background 200ms ease-out, box-shadow 200ms ease-out',
       padding: scrolled ? '8px 0' : '14px 0',
     }}>
       <div className="container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

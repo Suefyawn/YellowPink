@@ -1,5 +1,11 @@
+// Root sitemap — static + category landing routes only.
+// Product, blog, and CMS-page URLs live in their own sub-sitemaps (see
+// src/app/product/sitemap.ts etc.) so each segment can independently chunk +
+// scale toward Google's 50k-URLs-per-sitemap cap. robots.ts advertises all of
+// them so search engines crawl every one.
+
 import type { MetadataRoute } from 'next';
-import { supabase } from '@/lib/supabase';
+import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
 
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
@@ -11,27 +17,16 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [{ data: products }, { data: posts }] = await Promise.all([
-    supabase.from('products').select('slug, category, updated_at, created_at'),
-    supabase.from('blog_posts').select('slug, updated_at, created_at'),
-  ]);
+  // Derive category landing pages from distinct product categories.
+  let categories: string[] = [];
+  if (!isDemo) {
+    const { data: products } = await supabase.from('products').select('category');
+    categories = Array.from(new Set((products ?? []).map(p => p.category as string).filter(Boolean)));
+  } else {
+    const { DEMO_PRODUCTS } = await import('@/lib/demo-data');
+    categories = Array.from(new Set(DEMO_PRODUCTS.map(p => p.category).filter(Boolean)));
+  }
 
-  const productUrls: MetadataRoute.Sitemap = (products ?? []).map(p => ({
-    url: absoluteUrl(`/product/${p.slug}`),
-    lastModified: p.updated_at ?? p.created_at ? new Date(p.updated_at ?? p.created_at) : new Date(),
-    changeFrequency: 'weekly',
-    priority: 0.8,
-  }));
-
-  const blogUrls: MetadataRoute.Sitemap = (posts ?? []).map(p => ({
-    url: absoluteUrl(`/blog/${p.slug}`),
-    lastModified: p.updated_at ?? p.created_at ? new Date(p.updated_at ?? p.created_at) : new Date(),
-    changeFrequency: 'monthly',
-    priority: 0.6,
-  }));
-
-  // Derive category landing pages from the product table to keep the sitemap fresh.
-  const categories = Array.from(new Set((products ?? []).map(p => p.category as string).filter(Boolean)));
   const categoryUrls: MetadataRoute.Sitemap = categories.map(cat => ({
     url: `${SITE_URL}/shop?cat=${encodeURIComponent(cat)}`,
     lastModified: new Date(),
@@ -47,7 +42,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: r.priority,
     })),
     ...categoryUrls,
-    ...productUrls,
-    ...blogUrls,
   ];
 }

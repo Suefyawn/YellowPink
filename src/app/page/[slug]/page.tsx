@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { sanitizeHtml } from '@/lib/sanitize';
-import { pageMeta } from '@/lib/seo';
+import { pageMeta, jsonLd, pageArticleLd, faqLd, breadcrumbLd } from '@/lib/seo';
+import { getPageFaq } from '@/lib/page-faqs';
 import type { Page } from '@/types';
 
 // Static content imported from WordPress (About, Privacy, Terms, FAQ…).
@@ -38,22 +39,80 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
   // body_html is sanitised once at import-time (see importer) but defensively
   // re-sanitise here in case content was edited via raw SQL.
   const safeHtml = sanitizeHtml(page.body_html);
+  const faqs = getPageFaq(page.slug);
 
   return (
-    <article className="container" style={{ padding: '64px var(--side)' }}>
-      <div style={{ maxWidth: 720, margin: '0 auto' }}>
-        <h1
-          className="display-l"
-          style={{ fontSize: '2.5rem', fontWeight: 500, margin: '0 0 32px', letterSpacing: '-0.025em' }}
-        >
-          {page.title}
-        </h1>
-        <div
-          className="body-text"
-          style={{ color: 'var(--ink-700)', lineHeight: 1.7, fontSize: '1.0625rem' }}
-          dangerouslySetInnerHTML={{ __html: safeHtml }}
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLd(pageArticleLd({
+            title: page.title,
+            description: page.meta_description ?? page.excerpt ?? page.title,
+            path: `/page/${page.slug}`,
+          })),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLd(breadcrumbLd([
+            { name: 'Home',     path: '/' },
+            { name: page.title, path: `/page/${page.slug}` },
+          ])),
+        }}
+      />
+      {faqs && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(faqs)) }}
         />
-      </div>
-    </article>
+      )}
+      <article className="container" style={{ padding: '64px var(--side)' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <h1
+            className="display-l"
+            style={{ fontSize: '2.5rem', fontWeight: 500, margin: '0 0 32px', letterSpacing: '-0.025em' }}
+          >
+            {page.title}
+          </h1>
+          <div
+            className="body-text"
+            style={{ color: 'var(--ink-700)', lineHeight: 1.7, fontSize: '1.0625rem' }}
+            dangerouslySetInnerHTML={{ __html: safeHtml }}
+          />
+          {faqs && (
+            <section style={{ marginTop: 48 }} aria-label="Frequently asked questions">
+              <h2 className="h2" style={{ marginBottom: 24 }}>Frequently asked questions</h2>
+              <div>
+                {faqs.map(f => (
+                  <details
+                    key={f.question}
+                    style={{
+                      borderBottom: '1px solid var(--line)',
+                      padding: '16px 0',
+                    }}
+                  >
+                    <summary
+                      style={{
+                        cursor: 'pointer', fontWeight: 600, fontSize: '1rem',
+                        listStyle: 'none', display: 'flex', justifyContent: 'space-between',
+                        alignItems: 'center', gap: 16,
+                      }}
+                    >
+                      <span>{f.question}</span>
+                      <span aria-hidden="true" style={{ color: 'var(--ink-500)', fontSize: '1.25rem' }}>+</span>
+                    </summary>
+                    <p style={{ marginTop: 12, color: 'var(--ink-700)', lineHeight: 1.6 }}>
+                      {f.answer}
+                    </p>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      </article>
+    </>
   );
 }

@@ -137,7 +137,35 @@ a.underline,
 }
 .btn-primary:hover { background: #d43d6f; transform: translateY(-1px); }
 
+/* Outlined twin to .btn-primary — same height + padding so the two CTAs sit
+ * on a shared baseline. Ghost button reads as "alternative path" not "tiny
+ * text link", which is what hero / section CTAs need for visual hierarchy. */
 .btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 28px;
+  background: transparent;
+  color: var(--ink-900);
+  font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid var(--ink-900); border-radius: var(--radius-card); cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  transition: background 180ms ease-out, color 180ms ease-out, transform 180ms ease-out;
+}
+.btn-secondary::after {
+  content: '→'; margin-left: 2px;
+  transition: transform 180ms ease-out;
+}
+.btn-secondary:hover {
+  background: var(--ink-900);
+  color: var(--paper);
+  transform: translateY(-1px);
+}
+.btn-secondary:hover::after { transform: translateX(3px); }
+
+/* Inline text-link variant for spots where .btn-secondary would feel too heavy
+ * (e.g. "View all →" in a section header). Opt-in via className="text-link". */
+.text-link {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 0; background: none; border: none; cursor: pointer;
   font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600;
@@ -145,11 +173,11 @@ a.underline,
   text-decoration: none;
   position: relative;
 }
-.btn-secondary::after {
+.text-link::after {
   content: '→'; margin-left: 4px;
   transition: transform 180ms ease-out;
 }
-.btn-secondary:hover::after { transform: translateX(3px); }
+.text-link:hover::after { transform: translateX(3px); }
 
 /* Placeholder image */
 .img-placeholder {

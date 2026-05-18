@@ -9,7 +9,7 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
       <div className="container">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
           <Overline>This Week</Overline>
-          <Link href="/shop" className="btn-secondary">View All</Link>
+          <Link href="/shop" className="text-link">View All</Link>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
           {products.slice(0, 4).map((p) => (

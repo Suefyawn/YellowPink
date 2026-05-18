@@ -58,7 +58,7 @@ function DuoCard({ title, subtitle, cta, href, img, alt, fallbackColor }: typeof
         <div style={{ marginTop: 16 }}>
           <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--ink-500)' }}>{subtitle}</Overline>
           <h2 className="display-l" style={{ fontSize: '2rem', marginBottom: 12 }}>{title}</h2>
-          <span className="btn-secondary">{cta}</span>
+          <span className="text-link">{cta}</span>
         </div>
       </div>
     </Link>

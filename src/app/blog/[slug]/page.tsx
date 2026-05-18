@@ -5,23 +5,21 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getBlogPostBySlug, getBlogPosts, getProducts } from '@/lib/supabase';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
+import { pageMeta, jsonLd, articleLd, breadcrumbLd } from '@/lib/seo';
 import type { Product } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
   if (!post) return {};
-  const title = `${post.title} | Yellow Pink Blog`;
-  return {
-    title,
+  return pageMeta({
+    title: post.title,
     description: post.excerpt ?? post.title,
-    openGraph: {
-      title,
-      description: post.excerpt ?? post.title,
-      type: 'article',
-      ...(post.image_url ? { images: [{ url: post.image_url, width: 1200, height: 630, alt: post.title }] } : {}),
-    },
-  };
+    path: `/blog/${post.slug}`,
+    image: post.image_url ?? undefined,
+    type: 'article',
+    keywords: post.category ? [post.category, 'Beauty', 'Wellness', 'Pakistan'] : undefined,
+  });
 }
 
 export default async function BlogPostRoute({ params }: { params: Promise<{ slug: string }> }) {
@@ -40,20 +38,22 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
     return p.category === 'Makeup';
   }).slice(0, 3);
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: post.title,
-    description: post.excerpt,
-    datePublished: post.date,
-    author: { '@type': 'Organization', name: 'Yellow Pink', url: 'https://yellow-pink.vercel.app' },
-    publisher: { '@type': 'Organization', name: 'Yellow Pink', url: 'https://yellow-pink.vercel.app' },
-    ...(post.image_url ? { image: post.image_url } : {}),
-  };
-
   return (
     <main className="fade-in">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(articleLd(post)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLd(breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: 'Blog', path: '/blog' },
+            { name: post.title, path: `/blog/${post.slug}` },
+          ])),
+        }}
+      />
       <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} />
     </main>
   );

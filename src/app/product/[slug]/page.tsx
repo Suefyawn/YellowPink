@@ -187,7 +187,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <main className="fade-in">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(productLd(product, reviews)) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(productLd(product, reviews, variantData.variants)) }}
       />
       <script
         type="application/ld+json"

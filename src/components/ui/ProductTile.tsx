@@ -24,16 +24,26 @@ export function ProductTile({ product, onClick }: ProductTileProps) {
       onMouseLeave={() => setHovered(false)}
       style={{
         cursor: 'pointer',
-        transform: hovered ? 'translateY(-2px)' : 'translateY(0)',
-        transition: 'transform 180ms ease-out',
+        transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
+        transition: 'transform 220ms ease-out',
       }}
     >
       <div style={{
         width: '100%', aspectRatio: '1', borderRadius: 'var(--radius-card)',
         marginBottom: 12, position: 'relative', overflow: 'hidden',
         background: 'var(--paper2)',
+        boxShadow: hovered
+          ? '0 12px 28px rgba(26, 26, 26, 0.10), 0 2px 6px rgba(26, 26, 26, 0.04)'
+          : '0 1px 2px rgba(26, 26, 26, 0.03)',
+        transition: 'box-shadow 240ms ease-out',
       }}>
-        <ProductImage src={product.image_url} alt={`${brand} ${name}`} label={brand} />
+        <div style={{
+          width: '100%', height: '100%',
+          transform: hovered ? 'scale(1.035)' : 'scale(1)',
+          transition: 'transform 500ms ease-out',
+        }}>
+          <ProductImage src={product.image_url} alt={`${brand} ${name}`} label={brand} />
+        </div>
         {original_price && (
           <span style={{
             position: 'absolute', top: 8, left: 8,

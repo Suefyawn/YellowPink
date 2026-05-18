@@ -11,7 +11,7 @@ import { DemoBanner } from '@/components/layout/DemoBanner';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { getSiteSettings } from '@/lib/supabase';
-import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
+import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd, localBusinessLd } from '@/lib/seo';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -49,7 +49,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <head>
-        {/* Site-wide JSON-LD: Organization + WebSite (sitelinks search box). */}
+        {/* Site-wide JSON-LD: Organization + WebSite (sitelinks search box) +
+            OnlineStore (PK localisation — currency, payment methods, area
+            served). All three render on every page; they are cheap and the
+            duplication-across-pages pattern is what Google expects for this
+            class of markup. */}
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLd(organizationLd()) }}
@@ -57,6 +61,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLd(websiteLd()) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd(localBusinessLd()) }}
         />
       </head>
       <body>
