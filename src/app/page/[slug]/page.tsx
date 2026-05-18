@@ -97,6 +97,7 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
                 {faqs.map(f => (
                   <details
                     key={f.question}
+                    className="faq-item"
                     style={{
                       borderBottom: '1px solid var(--line)',
                       padding: '16px 0',
@@ -110,7 +111,18 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
                       }}
                     >
                       <span>{f.question}</span>
-                      <span aria-hidden="true" style={{ color: 'var(--ink-500)', fontSize: '1.25rem' }}>+</span>
+                      <span
+                        aria-hidden="true"
+                        className="faq-chevron"
+                        style={{
+                          color: 'var(--ink-500)', fontSize: '1.25rem',
+                          flexShrink: 0,
+                          // Rotates 45° when the details is open via CSS in
+                          // globals.css — turns + into × cleanly.
+                          transition: 'transform 200ms ease-out',
+                          display: 'inline-block',
+                        }}
+                      >+</span>
                     </summary>
                     <p style={{ marginTop: 12, color: 'var(--ink-700)', lineHeight: 1.6 }}>
                       {f.answer}
