@@ -111,10 +111,11 @@ const nextConfig: NextConfig = {
       { source: '/page/:slug',       headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
       { source: '/privacy',          headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
 
-      // Crawler endpoints — longer s-maxage.
+      // Crawler endpoints — longer s-maxage. Note: /llms.txt sets its own
+      // 24 h Cache-Control inside the route handler, so we don't override
+      // it here (handler-set headers can race with these).
       { source: '/sitemap.xml',      headers: [{ key: 'Cache-Control', value: CRAWLER_CACHE }] },
       { source: '/robots.txt',       headers: [{ key: 'Cache-Control', value: CRAWLER_CACHE }] },
-      { source: '/llms.txt',         headers: [{ key: 'Cache-Control', value: CRAWLER_CACHE }] },
 
       // Private / user-scoped surfaces. Explicitly opt out of any shared
       // cache so a different user's session can't be served from the edge.
