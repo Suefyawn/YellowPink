@@ -83,8 +83,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const maxCohortCount = Math.max(1, ...cohort.map(c => c.customers));
 
   return (
-    <div style={{ padding: '32px 36px' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 28 }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Analytics</h1>
           <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>

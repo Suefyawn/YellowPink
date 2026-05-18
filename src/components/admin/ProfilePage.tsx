@@ -17,7 +17,7 @@ export function ProfilePage({ name, email, twoFaEnabled = false }: { name: strin
   const [state, action, pending] = useActionState(changeMyPassword, null);
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 600 }}>
+    <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 600 }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>My Profile</h1>
       <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>Manage your account settings</p>
 

@@ -48,8 +48,8 @@ export default async function ReturnsPage() {
   }
 
   return (
-    <div style={{ padding: '32px 36px' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 24 }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Returns</h1>
         <Link href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>← All orders</Link>
       </div>

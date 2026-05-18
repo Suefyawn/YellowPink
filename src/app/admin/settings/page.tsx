@@ -67,7 +67,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
   const saveError = searchParams.error;
 
   return (
-    <div style={{ padding: '32px 36px', maxWidth: 780 }}>
+    <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 780 }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Site Settings</h1>
       <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>
         Control the store appearance, promotional banners, and seasonal campaigns.
@@ -98,7 +98,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
         <Card>
           {section('Store Info', 'Shown in email footers, structured data, and on the contact page.')}
           <Divider />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
               <label style={lbl}>Store Name</label>
               <input name="store_name" defaultValue={g('store_name', 'Yellow Pink')} style={inp} />
@@ -124,7 +124,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
         <Card>
           {section('Shipping & Tax', 'Default rates that fall back when no per-zone rule applies. Per-zone rates live in shipping_zones / shipping_rates.')}
           <Divider />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
               <label style={lbl}>Default Shipping Rate (PKR)</label>
               <input name="default_shipping_rate" type="number" min={0} defaultValue={g('default_shipping_rate', '200')} style={inp} />
@@ -148,7 +148,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
         <Card>
           {section('Loyalty Program', 'How points are earned and redeemed. Triggers in Postgres read these on every order/review/signup.')}
           <Divider />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
             <div>
               <label style={lbl}>Points per PKR spent</label>
               <input name="loyalty_points_per_pkr" type="number" step="0.01" min={0} defaultValue={g('loyalty_points_per_pkr', '0.1')} style={inp} />
@@ -180,7 +180,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
         <Card>
           {section('Brand Colors', 'Used by emails and storefront accents. CSS variables in globals.css are the source of truth for the storefront; these copies are for email + future theming.')}
           <Divider />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
             <div>
               <label style={lbl}>Brand Pink</label>
               <ColorPicker name="brand_pink"   value={g('brand_pink',   '#E8487F')} label="Primary" />
