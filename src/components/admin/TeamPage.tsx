@@ -219,7 +219,7 @@ function AddStaffModal({ onClose }: { onClose: () => void }) {
       <div style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 20, color: '#111827' }}>
         Add Staff Member
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+      <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div>
           <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
             Full Name

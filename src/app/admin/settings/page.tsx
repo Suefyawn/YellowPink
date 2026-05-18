@@ -227,7 +227,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
               <Toggle name="promo_active" checked={g('promo_active') === 'true'} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={lbl}>Label / Tag</label>
                 <input name="promo_label" defaultValue={g('promo_label', 'Sale')} style={inp}
@@ -250,7 +250,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
                 placeholder="Limited time offer — shop before it ends" />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={lbl}>Button Text</label>
                 <input name="promo_cta_text" defaultValue={g('promo_cta_text', 'Shop Sale')} style={inp} />
@@ -262,7 +262,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               <div>
                 <label style={lbl}>Background Color</label>
                 <ColorPicker name="promo_bg_color" value={g('promo_bg_color', '#E8487F')} label="Banner background" />
@@ -318,7 +318,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
               <label style={lbl}>Sub-text</label>
               <textarea name="hero_subline" defaultValue={g('hero_subline')} rows={3} style={{ ...inp, resize: 'vertical' }} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={lbl}>Primary Button Text</label>
                 <input name="hero_cta1_text" defaultValue={g('hero_cta1_text', 'Shop Beauty')} style={inp} />
@@ -328,7 +328,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
                 <input name="hero_cta1_url" defaultValue={g('hero_cta1_url', '/shop')} style={inp} />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
                 <label style={lbl}>Secondary Button Text</label>
                 <input name="hero_cta2_text" defaultValue={g('hero_cta2_text', 'Explore Wellness')} style={inp} />

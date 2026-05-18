@@ -38,8 +38,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   };
 
   return (
-    <div style={{ padding: '32px 36px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
         <Link href="/admin/users" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '0.875rem' }}>← Customers</Link>
         <span style={{ color: '#d1d5db' }}>/</span>
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
@@ -49,7 +49,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         </h1>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, marginBottom: 20 }}>
+      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, marginBottom: 20 }}>
         {/* Profile card */}
         <div>
           <div style={{ ...section, marginBottom: 16 }}>
@@ -79,7 +79,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           </div>
 
           {/* Stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {[
               { label: 'Orders', value: orderList.length, wide: false },
               { label: 'Delivered', value: deliveredCount, wide: false },
