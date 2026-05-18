@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
 import { useCart } from '@/context/CartContext';
 import { useSearch } from '@/context/SearchContext';
 import { useAuth } from '@/context/AuthContext';
-import { useEscapeKey } from '@/lib/hooks/useBodyScrollLock';
+import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 
 const NAV_ITEMS = [
   { label: 'Makeup',   href: '/shop?category=Makeup' },
@@ -20,7 +20,13 @@ const NAV_ITEMS = [
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+  // Mobile-menu modal behaviour: lock body scroll, trap focus inside the
+  // drawer, close on Escape. Without scroll-lock the page underneath
+  // would keep scrolling behind the open menu — a confusing UX.
+  useBodyScrollLock(mobileMenu);
   useEscapeKey(mobileMenu, () => setMobileMenu(false));
+  useFocusTrap(mobileMenu, drawerRef);
   const { cartCount, setCartOpen } = useCart();
   const { setSearchOpen } = useSearch();
   const { user } = useAuth();
@@ -170,12 +176,47 @@ export function Header() {
         </div>
       </div>
 
-      {mobileMenu && (
-        <nav
-          id="mobile-nav"
-          aria-label="Mobile menu"
-          style={{ padding: '8px var(--side)', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column' }}
-        >
+      {/* Mobile-menu modal: backdrop darkens the page, drawer slides down
+          from the header. The body is scroll-locked while open (see
+          useBodyScrollLock above). Renders inside the <header> so it sits
+          at the same z-index as the sticky bar, then the absolute drawer
+          escapes the header padding via a fixed-position overlay. */}
+      <div
+        onClick={() => setMobileMenu(false)}
+        aria-hidden="true"
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.4)',
+          opacity: mobileMenu ? 1 : 0,
+          pointerEvents: mobileMenu ? 'auto' : 'none',
+          transition: 'opacity 200ms ease-out',
+          zIndex: 90, // below the header (100), above page content
+        }}
+      />
+      <div
+        ref={drawerRef}
+        id="mobile-nav"
+        role={mobileMenu ? 'dialog' : undefined}
+        aria-modal={mobileMenu ? 'true' : undefined}
+        aria-label="Mobile menu"
+        aria-hidden={!mobileMenu}
+        style={{
+          position: 'fixed', top: 0, left: 0, right: 0,
+          background: 'var(--paper)',
+          borderBottom: '1px solid var(--line)',
+          boxShadow: mobileMenu ? '0 12px 32px rgba(0,0,0,0.12)' : 'none',
+          // Slide-down + fade from header. Translate by 100% of own height
+          // when closed so the panel hides cleanly above the viewport.
+          transform: mobileMenu ? 'translateY(0)' : 'translateY(-100%)',
+          opacity: mobileMenu ? 1 : 0,
+          transition: 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease-out',
+          zIndex: 95, // above overlay (90), below sticky header content (100)
+          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 56px)', // clear the header bar
+          maxHeight: '100vh',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        <nav aria-label="Mobile primary" style={{ padding: '8px var(--side) 20px', display: 'flex', flexDirection: 'column' }}>
           {NAV_ITEMS.map((item, i) => {
             const active = isActiveLink(item.href);
             return (
@@ -184,22 +225,40 @@ export function Header() {
                 href={item.href}
                 onClick={() => setMobileMenu(false)}
                 aria-current={active ? 'page' : undefined}
+                tabIndex={mobileMenu ? 0 : -1}
                 style={{
                   textDecoration: 'none', fontFamily: 'var(--font-ui)',
-                  fontSize: '0.9375rem', fontWeight: active ? 700 : 500,
+                  fontSize: '1rem', fontWeight: active ? 700 : 500,
                   color: active ? 'var(--brand-pink)' : 'var(--ink-900)',
-                  // 44px min tap target — beats WCAG AAA 2.5.5 + matches iOS guidance.
+                  // 48px min tap target — comfortable phone hit area.
                   display: 'flex', alignItems: 'center',
-                  padding: '14px 0', minHeight: 44,
-                  // Border on every row except the last so the menu doesn't end
-                  // on a dangling rule.
+                  padding: '16px 4px', minHeight: 48,
                   borderBottom: i < NAV_ITEMS.length - 1 ? '1px solid var(--line)' : 'none',
                 }}
               >{item.label}</Link>
             );
           })}
+          {/* Account shortcut at the bottom of the drawer — saves the user
+              from hitting the tiny header icon a second time. */}
+          <Link
+            href={user ? '/account' : '/login'}
+            onClick={() => setMobileMenu(false)}
+            tabIndex={mobileMenu ? 0 : -1}
+            style={{
+              marginTop: 16, padding: '14px 16px',
+              background: 'var(--paper2)', borderRadius: 'var(--radius-card)',
+              textDecoration: 'none', color: 'var(--ink-900)',
+              fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 10, minHeight: 48,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </svg>
+            {user ? 'My account' : 'Sign in / Create account'}
+          </Link>
         </nav>
-      )}
+      </div>
     </header>
   );
 }
