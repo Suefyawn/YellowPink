@@ -183,19 +183,26 @@ function Gallery({
   }
 
   return (
-    <div style={{ display: 'flex', gap: 12, flex: 1 }}>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64, flexShrink: 0 }}>
+    // Desktop: vertical thumbnail rail on the left + main image. Mobile (per
+    // .pdp-gallery in globals.css): flip to column-reverse so the main image
+    // gets the full width and the thumbnails sit underneath as a horizontal
+    // strip — no more 64px sidebar stealing space on a phone.
+    <div className="pdp-gallery" style={{ display: 'flex', gap: 12, flex: 1 }}>
+      <div className="pdp-gallery-thumbs" style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64, flexShrink: 0 }}>
         {images.map(img => (
           <button
             key={img.id}
             type="button"
             onClick={() => setActive(img.url)}
             aria-label={img.alt ?? alt}
+            aria-current={active === img.url ? 'true' : undefined}
+            className="pdp-gallery-thumb"
             style={{
               width: 64, height: 80, padding: 0,
               border: '1px solid ' + (active === img.url ? 'var(--ink-900)' : 'var(--line)'),
               borderRadius: 'var(--radius-card)', overflow: 'hidden',
               background: 'var(--paper2)', cursor: 'pointer',
+              flexShrink: 0,
             }}
           >
             <ProductImage src={img.url} alt={img.alt ?? alt} label={brandLabel} sizes="80px" />

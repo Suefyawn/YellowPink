@@ -273,6 +273,25 @@ a.underline,
   .hero-grid { grid-template-columns: 1fr !important; min-height: auto !important; }
   .hero-grid > div:last-child { min-height: 300px; position: relative !important; }
 }
+/* PDP gallery: on phones the 64px vertical thumbnail rail steals too much
+ * width from the hero image. Flip to column-reverse so the hero gets full
+ * width and the thumbnails wrap onto a horizontal scroll strip below it. */
+@media (max-width: 720px) {
+  .pdp-gallery {
+    flex-direction: column-reverse !important;
+    gap: 12px !important;
+  }
+  .pdp-gallery-thumbs {
+    flex-direction: row !important;
+    width: 100% !important;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .pdp-gallery-thumbs::-webkit-scrollbar { display: none; }
+}
+
 @media (max-width: 600px) {
   .product-grid, .cat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .blog-grid { grid-template-columns: 1fr !important; }
