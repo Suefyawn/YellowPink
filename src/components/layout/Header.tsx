@@ -176,20 +176,21 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile-menu modal: backdrop darkens the page, drawer slides down
-          from the header. The body is scroll-locked while open (see
-          useBodyScrollLock above). Renders inside the <header> so it sits
-          at the same z-index as the sticky bar, then the absolute drawer
-          escapes the header padding via a fixed-position overlay. */}
+      {/* Mobile-menu sheet: covers the full viewport when open. We use a
+          full-screen sheet instead of a header-anchored dropdown so we
+          don't have to coordinate with the announcement bar / promo banner
+          / sticky-header heights — those vary per page and per scroll
+          position. The sheet has its own close button so the user always
+          knows how to dismiss it. */}
       <div
         onClick={() => setMobileMenu(false)}
         aria-hidden="true"
         style={{
-          position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.4)',
+          position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.55)',
           opacity: mobileMenu ? 1 : 0,
           pointerEvents: mobileMenu ? 'auto' : 'none',
           transition: 'opacity 200ms ease-out',
-          zIndex: 90, // below the header (100), above page content
+          zIndex: 950,
         }}
       />
       <div
@@ -202,21 +203,54 @@ export function Header() {
         style={{
           position: 'fixed', top: 0, left: 0, right: 0,
           background: 'var(--paper)',
-          borderBottom: '1px solid var(--line)',
-          boxShadow: mobileMenu ? '0 12px 32px rgba(0,0,0,0.12)' : 'none',
-          // Slide-down + fade from header. Translate by 100% of own height
-          // when closed so the panel hides cleanly above the viewport.
-          transform: mobileMenu ? 'translateY(0)' : 'translateY(-100%)',
+          // Slide-down from the top with a fade. Translate well past the
+          // viewport top so the slide is visible even on tall phones.
+          transform: mobileMenu ? 'translateY(0)' : 'translateY(-105%)',
           opacity: mobileMenu ? 1 : 0,
           transition: 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease-out',
-          zIndex: 95, // above overlay (90), below sticky header content (100)
-          paddingTop: 'calc(env(safe-area-inset-top, 0px) + 56px)', // clear the header bar
-          maxHeight: '100vh',
+          zIndex: 960, // above its own overlay; below toasts at z=9999
+          maxHeight: '100vh', minHeight: 240,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
+          paddingTop: 'env(safe-area-inset-top, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        <nav aria-label="Mobile primary" style={{ padding: '8px var(--side) 20px', display: 'flex', flexDirection: 'column' }}>
+        {/* Sheet header — logo + close button. Mirrors the storefront
+            header so the user has a consistent reference frame when the
+            sheet is open. */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '14px var(--side)', borderBottom: '1px solid var(--line)',
+        }}>
+          <Link
+            href="/"
+            onClick={() => setMobileMenu(false)}
+            tabIndex={mobileMenu ? 0 : -1}
+            aria-label="Yellow Pink — home"
+            style={{ textDecoration: 'none', color: 'inherit', display: 'inline-flex' }}
+          >
+            <LogoWordmark />
+          </Link>
+          <button
+            type="button"
+            onClick={() => setMobileMenu(false)}
+            aria-label="Close menu"
+            tabIndex={mobileMenu ? 0 : -1}
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)',
+              width: 44, height: 44, borderRadius: 8, padding: 0,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+
+        <nav aria-label="Mobile primary" style={{ padding: '8px var(--side) 24px', display: 'flex', flexDirection: 'column' }}>
           {NAV_ITEMS.map((item, i) => {
             const active = isActiveLink(item.href);
             return (
@@ -228,31 +262,30 @@ export function Header() {
                 tabIndex={mobileMenu ? 0 : -1}
                 style={{
                   textDecoration: 'none', fontFamily: 'var(--font-ui)',
-                  fontSize: '1rem', fontWeight: active ? 700 : 500,
+                  fontSize: '1.0625rem', fontWeight: active ? 700 : 500,
                   color: active ? 'var(--brand-pink)' : 'var(--ink-900)',
-                  // 48px min tap target — comfortable phone hit area.
                   display: 'flex', alignItems: 'center',
-                  padding: '16px 4px', minHeight: 48,
+                  padding: '18px 4px', minHeight: 52,
                   borderBottom: i < NAV_ITEMS.length - 1 ? '1px solid var(--line)' : 'none',
                 }}
               >{item.label}</Link>
             );
           })}
-          {/* Account shortcut at the bottom of the drawer — saves the user
-              from hitting the tiny header icon a second time. */}
+          {/* Account shortcut card — saves the user from dismissing the
+              menu + hitting the tiny header icon. */}
           <Link
             href={user ? '/account' : '/login'}
             onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}
             style={{
-              marginTop: 16, padding: '14px 16px',
+              marginTop: 20, padding: '16px 18px',
               background: 'var(--paper2)', borderRadius: 'var(--radius-card)',
               textDecoration: 'none', color: 'var(--ink-900)',
-              fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600,
-              display: 'flex', alignItems: 'center', gap: 10, minHeight: 48,
+              fontFamily: 'var(--font-ui)', fontSize: '0.9375rem', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 12, minHeight: 52,
             }}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
             </svg>
             {user ? 'My account' : 'Sign in / Create account'}

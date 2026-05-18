@@ -49,6 +49,19 @@ body {
   overflow-x: hidden;
 }
 
+/* iOS Safari zooms in on focused inputs whose font-size is below 16 px.
+ * Pretty much every form on this site uses 14–15 px inline styles for
+ * visual density, so the page jolts every time a customer taps an input
+ * on iPhone. Force ≥16 px only on coarse-pointer devices (phones, tablets,
+ * touchscreens) so desktop forms keep their tighter look. */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='color']):not([type='range']),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* Modern reset: links never underline by default; bring it back via .underline
  * (e.g. for inline body-text links like the cart "Forgot password?" links).
  * Buttons styled as links keep clean type. */
