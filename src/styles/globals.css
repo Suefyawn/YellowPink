@@ -452,8 +452,14 @@ a.underline,
   .addr-grid-3 { grid-template-columns: 1fr !important; }
 }
 
-/* Admin responsive */
-@media (max-width: 1024px) {
+/* Admin responsive
+ *
+ * The 768-1024 px rule narrows the permanent sidebar for tablets. It MUST be
+ * scoped to (min-width: 768px) so it doesn't bleed onto phones — on phones
+ * the sidebar transforms off-screen and `.adm-main` runs full width, but if
+ * this rule fires with !important it would re-apply margin-left:200px and
+ * leave only ~200 px for content. */
+@media (min-width: 768px) and (max-width: 1024px) {
   .adm-sidebar { width: 200px !important; }
   .adm-main { margin-left: 200px !important; }
 }

@@ -91,9 +91,11 @@ export function AdminShell({
         }
 
         @media (max-width: 767px) {
-          .adm-sidebar { transform: translateX(-100%); }
+          .adm-sidebar { transform: translateX(-100%); width: min(280px, 86vw) !important; }
           .adm-sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.18); }
-          .adm-main { margin-left: 0; }
+          /* !important defends against any stray desktop rule that tried to
+           * pin margin-left at the (now-hidden) sidebar's width. */
+          .adm-main { margin-left: 0 !important; }
           .adm-topbar { background: white; padding: 10px 14px; }
           .adm-topbar .menu-btn { display: inline-flex; }
           .adm-overlay {

@@ -271,7 +271,8 @@ export default async function DashboardPage() {
             No orders yet
           </div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="adm-table-scroll">
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
                 {['Order', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
@@ -322,6 +323,7 @@ export default async function DashboardPage() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
       )}
