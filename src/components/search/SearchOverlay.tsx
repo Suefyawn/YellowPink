@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useSearch } from '@/context/SearchContext';
-import { supabase } from '@/lib/supabase';
+import { supabase, isDemo } from '@/lib/supabase';
+import { DEMO_PRODUCTS } from '@/lib/demo-data';
+import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import type { Product } from '@/types';
 
 const TRENDING = ['CeraVe', 'Rhode Lip Tint', 'Melasma Cream', 'NARS Foundation', 'Tarte Concealer'];
@@ -16,20 +18,43 @@ export function SearchOverlay() {
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+  useBodyScrollLock(searchOpen);
+  useFocusTrap(searchOpen, panelRef);
 
   useEffect(() => {
     if (searchOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
-      if (products.length === 0) {
-        supabase.from('products').select('*').order('id').then(({ data }) => {
-          if (data) setProducts(data);
-        });
-      }
     } else {
       setQuery(''); // eslint-disable-line react-hooks/set-state-in-effect
     }
   }, [searchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Server-side typeahead via search_products RPC (pg_trgm). Debounced 200 ms.
+  // Demo-mode short-circuit: filter the stub catalog client-side instead so
+  // the overlay actually returns something on a fresh clone.
+  useEffect(() => {
+    if (!searchOpen || query.trim().length === 0) { setProducts([]); return; }
+    if (isDemo) {
+      const q = query.trim().toLowerCase();
+      setProducts(
+        DEMO_PRODUCTS.filter(p =>
+          p.name.toLowerCase().includes(q) ||
+          p.brand.toLowerCase().includes(q) ||
+          (p.category ?? '').toLowerCase().includes(q) ||
+          (p.subcategory ?? '').toLowerCase().includes(q)
+        ).slice(0, 8)
+      );
+      return;
+    }
+    const handle = setTimeout(() => {
+      supabase.rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
+        setProducts((data ?? []) as Product[]);
+      });
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [query, searchOpen]);
 
   useEffect(() => {
     const fn = (e: KeyboardEvent) => {
@@ -39,12 +64,8 @@ export function SearchOverlay() {
     return () => window.removeEventListener('keydown', fn);
   }, [searchOpen, setSearchOpen]);
 
-  const filtered = query.length > 0
-    ? products.filter(p =>
-        `${p.name} ${p.brand} ${p.variant ?? ''} ${p.category}`
-          .toLowerCase().includes(query.toLowerCase())
-      )
-    : [];
+  // Server already filtered + ranked via pg_trgm. Just rename for the JSX.
+  const filtered = products;
 
   const goToProduct = (slug: string) => {
     setSearchOpen(false);
@@ -58,7 +79,13 @@ export function SearchOverlay() {
         opacity: searchOpen ? 1 : 0, pointerEvents: searchOpen ? 'auto' : 'none',
         transition: 'opacity 200ms ease-out', zIndex: 300,
       }} />
-      <div style={{
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal={searchOpen}
+        aria-label="Search"
+        aria-hidden={!searchOpen}
+        style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         background: 'var(--paper)', zIndex: 301,
         transform: searchOpen ? 'translateY(0)' : 'translateY(-100%)',
@@ -74,8 +101,15 @@ export function SearchOverlay() {
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--ink-500)" strokeWidth="2" strokeLinecap="round">
               <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
+            <label htmlFor="search-overlay-input" className="sr-only">
+              Search products, brands, or concerns
+            </label>
             <input
               ref={inputRef}
+              id="search-overlay-input"
+              type="search"
+              autoComplete="off"
+              aria-label="Search products, brands, or concerns"
               value={query}
               onChange={e => setQuery(e.target.value)}
               placeholder="Search products, brands, concerns..."
@@ -85,10 +119,18 @@ export function SearchOverlay() {
                 color: 'var(--ink-900)',
               }}
             />
-            <button onClick={() => setSearchOpen(false)} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              color: 'var(--ink-500)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: 'var(--font-ui)',
-            }}>Close</button>
+            <button
+              onClick={() => setSearchOpen(false)}
+              aria-label="Close search"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--ink-500)', fontSize: '0.8125rem', fontWeight: 500, fontFamily: 'var(--font-ui)',
+                // ≥36px hit target — text stays compact, surrounding padding
+                // gives mouse + tap a comfortable surface.
+                padding: '10px 14px', borderRadius: 6, minHeight: 36,
+                display: 'inline-flex', alignItems: 'center',
+              }}
+            >Close</button>
           </div>
 
           {query.length > 0 ? (

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { SectionDivider } from '@/components/ui/SectionDivider';
 import { Overline } from '@/components/ui/Overline';
@@ -38,19 +39,23 @@ function DuoCard({ title, subtitle, cta, href, img, alt, fallbackColor }: typeof
       >
         <div style={{ overflow: 'hidden', borderRadius: 'var(--radius-card)', aspectRatio: '4/3', position: 'relative' }}>
           {!imgFailed ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={img} alt={alt} onError={() => setImgFailed(true)}
+            <Image
+              src={img} alt={alt}
+              fill
+              // Two-up grid below the hero — half-width on desktop, full on
+              // phone (per the .duo-grid mobile rule in globals.css).
+              sizes="(max-width: 900px) 100vw, 50vw"
+              onError={() => setImgFailed(true)}
               style={{
-                width: '100%', height: '100%', objectFit: 'cover',
+                objectFit: 'cover',
                 transform: hovered ? 'scale(1.04)' : 'scale(1)',
-                transition: 'transform 400ms ease-out', display: 'block',
+                transition: 'transform 400ms ease-out',
               }}
             />
           ) : (
             <div style={{ width: '100%', height: '100%', background: `linear-gradient(135deg, ${fallbackColor} 0%, ${fallbackColor}88 100%)` }} />
           )}
-          <div style={{
+          <div aria-hidden="true" style={{
             position: 'absolute', inset: 0,
             background: 'linear-gradient(to top, rgba(0,0,0,0.35) 0%, transparent 60%)',
           }} />
@@ -58,7 +63,7 @@ function DuoCard({ title, subtitle, cta, href, img, alt, fallbackColor }: typeof
         <div style={{ marginTop: 16 }}>
           <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--ink-500)' }}>{subtitle}</Overline>
           <h2 className="display-l" style={{ fontSize: '2rem', marginBottom: 12 }}>{title}</h2>
-          <span className="btn-secondary">{cta}</span>
+          <span className="text-link">{cta}</span>
         </div>
       </div>
     </Link>

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
 
@@ -28,19 +29,21 @@ const DEFAULTS: HeroSettings = {
   brands: ['NARS', 'Kiko Milano', 'PIXI', 'CeraVe'],
 };
 
+// Soft, on-brand gradient that stands in for the hero photo until the
+// merchant uploads one in admin/settings. Intentionally text-free — it
+// looks like a deliberate design, not "broken admin chatter on the
+// customer page".
 const GradientFallback = () => (
-  <div style={{
-    position: 'absolute', inset: 0,
-    background: 'linear-gradient(135deg, #fdf2f8 0%, #fef9ec 50%, #fdf2f8 100%)',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-  }}>
-    <div style={{ textAlign: 'center', color: 'var(--ink-400)' }}>
-      <div style={{ fontSize: '3rem', marginBottom: 8 }}>✦</div>
-      <div style={{ fontSize: '0.75rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-        Add hero image<br />in Admin → Settings
-      </div>
-    </div>
-  </div>
+  <div
+    aria-hidden="true"
+    style={{
+      position: 'absolute', inset: 0,
+      background: `
+        radial-gradient(at 78% 22%, rgba(247, 201, 72, 0.45), transparent 55%),
+        radial-gradient(at 22% 78%, rgba(232, 72, 127, 0.35), transparent 55%),
+        linear-gradient(135deg, #fdf2f8 0%, #fef9ec 50%, #fdf2f8 100%)`,
+    }}
+  />
 );
 
 export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) {
@@ -82,17 +85,24 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
 
         <div style={{ position: 'relative', alignSelf: 'stretch' }}>
           {s.imageUrl && !imgFailed ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
+            <Image
               src={s.imageUrl}
               alt="Yellow Pink — Beauty & Wellness"
+              fill
+              // Hero shot is the LCP — mark it `priority` so Next emits a
+              // <link rel="preload"> and skips lazy-loading. `sizes`
+              // matches the grid: 90vw on phones (single column), 45vw on
+              // desktop (right column of a 1.1fr/0.9fr split).
+              priority
+              fetchPriority="high"
+              sizes="(max-width: 900px) 100vw, 45vw"
               onError={() => setImgFailed(true)}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{ objectFit: 'cover' }}
             />
           ) : (
             <GradientFallback />
           )}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, width: 6, height: 80, background: 'var(--brand-yellow)' }} />
+          <div aria-hidden="true" style={{ position: 'absolute', bottom: 0, left: 0, width: 6, height: 80, background: 'var(--brand-yellow)' }} />
         </div>
       </div>
     </section>

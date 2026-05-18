@@ -1,16 +1,22 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
-import type { Product } from '@/types';
+import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
+import type { Product, Category, ProductAttribute, AttributeValue } from '@/types';
+
+interface AttributeWithValues extends ProductAttribute {
+  values: AttributeValue[];
+}
 
 const PAGE_SIZE = 48;
 
-const TOP_CATEGORIES = ['All', 'Makeup', 'Skincare', 'Wellness'];
-
-const SUBCATEGORIES: Record<string, string[]> = {
+// Fallback used when the categories table is empty (pre-WP-import installs).
+const FALLBACK_TOP = ['All', 'Makeup', 'Skincare', 'Wellness'];
+const FALLBACK_SUB: Record<string, string[]> = {
   Makeup: ['Lip & Cheek Tints', 'Highlighters', 'Skin Makeup', 'Concealers', 'Contour Sticks', 'Foundations', 'Eyeshadow', 'Brushes'],
   Skincare: ['Skincare', 'Moisturizers', 'Hair Care'],
   Wellness: ['Health & Wellness', 'Human Health', 'Bone Health', 'Brain Health', 'Immune Support', 'Female Fertility & Reproductive Health', 'Digestive Health & Weight Management', 'Heart & Cardiovascular', 'Energy & Performance', 'Combo Packs', 'Pediatric Health', 'Sleep & Relaxation', 'Electrolyte Balance'],
@@ -25,13 +31,201 @@ const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 
 type SortKey = 'featured' | 'price-low' | 'price-high' | 'name';
 
-export function CollectionPage({ products, initialCategory = 'All', initialSubcategory = null }: { products: Product[]; initialCategory?: string; initialSubcategory?: string | null }) {
-  const [activeCategory, setActiveCategory] = useState(initialCategory);
-  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(initialSubcategory);
-  const [sortBy, setSortBy] = useState<SortKey>('featured');
-  const [page, setPage] = useState(1);
+interface Props {
+  products: Product[];
+  categories?: Category[];
+  attributes?: AttributeWithValues[];
+  /** Map of product_id → list of attribute_value_ids that the product's variants cover. */
+  productValueMap?: Record<string, string[]>;
+  initialCategory?: string;
+  initialSubcategory?: string | null;
+}
 
-  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy]);
+export function CollectionPage({
+  products,
+  categories = [],
+  attributes = [],
+  productValueMap = {},
+  initialCategory = 'All',
+  initialSubcategory = null,
+}: Props) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  // ─── URL-state hydration ────────────────────────────────────────────────
+  // Parse once on mount from the search params; subsequent updates are
+  // pushed via router.replace below.
+  const readInitial = () => {
+    const sp = searchParams;
+    const cat = sp.get('cat') ?? sp.get('category') ?? initialCategory;
+    const sub = sp.get('sub') ?? sp.get('subcategory') ?? initialSubcategory ?? null;
+    const sort = (sp.get('sort') as SortKey | null) ?? 'featured';
+    const pageNum = Math.max(1, Number(sp.get('page') ?? '1'));
+    const brands = sp.get('brand')?.split(',').filter(Boolean) ?? [];
+    const attrs  = sp.get('attr')?.split(',').filter(Boolean) ?? [];
+    const min = sp.get('min'); const max = sp.get('max');
+    return {
+      cat, sub, sort, pageNum,
+      brands: new Set(brands),
+      attrs:  new Set(attrs),
+      min: min ? Number(min) : ('' as number | ''),
+      max: max ? Number(max) : ('' as number | ''),
+      stock: sp.get('stock') === '1',
+      sale:  sp.get('sale') === '1',
+    };
+  };
+  // Mount-time only — useState initialiser. Subsequent navigations are
+  // handled by re-rendering the page server-side, so this is correct.
+  const initialState = useRef(readInitial()).current;
+
+  const [activeCategory, setActiveCategory] = useState<string>(initialState.cat);
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(initialState.sub);
+  const [sortBy, setSortBy] = useState<SortKey>(initialState.sort);
+  const [page, setPage] = useState(initialState.pageNum);
+
+  // ─── Facets (price / brand / in-stock / on-sale) ─────────────────────────
+  // Brand list + price bounds come from the *category-scoped* product set so
+  // they make sense as the user navigates between tabs.
+  const categoryScoped = useMemo(() =>
+    products.filter(p => activeCategory === 'All' || p.category === activeCategory)
+  , [products, activeCategory]);
+
+  const allBrands = useMemo(() =>
+    Array.from(new Set(categoryScoped.map(p => p.brand).filter(Boolean))).sort()
+  , [categoryScoped]);
+
+  const priceBounds = useMemo(() => {
+    if (categoryScoped.length === 0) return { min: 0, max: 10000 };
+    let min = Infinity, max = -Infinity;
+    for (const p of categoryScoped) {
+      if (p.price < min) min = p.price;
+      if (p.price > max) max = p.price;
+    }
+    return { min: Math.floor(min), max: Math.ceil(max) };
+  }, [categoryScoped]);
+
+  const [selectedBrands, setSelectedBrands] = useState<Set<string>>(initialState.brands);
+  const [selectedValueIds, setSelectedValueIds] = useState<Set<string>>(initialState.attrs);
+  const [priceMin, setPriceMin] = useState<number | ''>(initialState.min);
+  const [priceMax, setPriceMax] = useState<number | ''>(initialState.max);
+  const [inStockOnly, setInStockOnly] = useState(initialState.stock);
+  const [onSaleOnly, setOnSaleOnly] = useState(initialState.sale);
+
+  // Filter rail is collapsed by default so the catalogue shows immediately.
+  // When open it's a fixed left-side slide-in panel on every viewport.
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterPanelRef = useRef<HTMLElement | null>(null);
+  useBodyScrollLock(filtersOpen);
+  useEscapeKey(filtersOpen, () => setFiltersOpen(false));
+  useFocusTrap(filtersOpen, filterPanelRef);
+  // Look up an attribute_value by id (for the chip label).
+  const attrValueLookup = useMemo(() => {
+    const m = new Map<string, { attrName: string; value: string }>();
+    for (const a of attributes) for (const v of a.values) m.set(v.id, { attrName: a.name, value: v.value });
+    return m;
+  }, [attributes]);
+
+  interface Chip { key: string; label: string; remove: () => void }
+  const activeChips: Chip[] = useMemo(() => {
+    const out: Chip[] = [];
+    if (priceMin !== '' || priceMax !== '') {
+      const lo = priceMin !== '' ? `PKR ${priceMin}` : '';
+      const hi = priceMax !== '' ? `PKR ${priceMax}` : '';
+      out.push({
+        key: 'price', label: lo && hi ? `${lo} – ${hi}` : lo ? `≥ ${lo}` : `≤ ${hi}`,
+        remove: () => { setPriceMin(''); setPriceMax(''); },
+      });
+    }
+    if (inStockOnly) out.push({ key: 'stock', label: 'In stock', remove: () => setInStockOnly(false) });
+    if (onSaleOnly) out.push({ key: 'sale', label: 'On sale', remove: () => setOnSaleOnly(false) });
+    for (const b of selectedBrands) out.push({ key: `b:${b}`, label: b, remove: () => toggleBrand(b) });
+    for (const id of selectedValueIds) {
+      const v = attrValueLookup.get(id);
+      out.push({
+        key: `a:${id}`,
+        label: v ? `${v.attrName}: ${v.value}` : id.slice(0, 8),
+        remove: () => toggleValue(id),
+      });
+    }
+    return out;
+  }, [priceMin, priceMax, inStockOnly, onSaleOnly, selectedBrands, selectedValueIds, attrValueLookup]);
+
+  function toggleBrand(b: string) {
+    setSelectedBrands(prev => {
+      const next = new Set(prev);
+      if (next.has(b)) next.delete(b); else next.add(b);
+      return next;
+    });
+  }
+  function toggleValue(id: string) {
+    setSelectedValueIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+  function clearFilters() {
+    setSelectedBrands(new Set());
+    setSelectedValueIds(new Set());
+    setPriceMin(''); setPriceMax('');
+    setInStockOnly(false); setOnSaleOnly(false);
+  }
+
+  // Reset paging when *any* filter / sort / category changes.
+  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly]);
+  // Brand list rebuilds per-category; drop any selections that no longer apply.
+  useEffect(() => { setSelectedBrands(new Set()); }, [activeCategory]);
+
+  // ─── URL persistence ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const sp = new URLSearchParams();
+    if (activeCategory && activeCategory !== 'All') sp.set('cat', activeCategory);
+    if (activeSubcategory) sp.set('sub', activeSubcategory);
+    if (sortBy !== 'featured') sp.set('sort', sortBy);
+    if (page !== 1) sp.set('page', String(page));
+    if (selectedBrands.size > 0) sp.set('brand', Array.from(selectedBrands).join(','));
+    if (selectedValueIds.size > 0) sp.set('attr', Array.from(selectedValueIds).join(','));
+    if (priceMin !== '') sp.set('min', String(priceMin));
+    if (priceMax !== '') sp.set('max', String(priceMax));
+    if (inStockOnly) sp.set('stock', '1');
+    if (onSaleOnly) sp.set('sale', '1');
+    const qs = sp.toString();
+    const url = qs ? `/shop?${qs}` : '/shop';
+    // Replace, not push — filtering shouldn't pile up history entries.
+    router.replace(url, { scroll: false });
+  }, [activeCategory, activeSubcategory, sortBy, page, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, router]);
+
+  const activeFilterCount =
+    selectedBrands.size +
+    selectedValueIds.size +
+    (priceMin !== '' || priceMax !== '' ? 1 : 0) +
+    (inStockOnly ? 1 : 0) +
+    (onSaleOnly ? 1 : 0);
+
+  // Build the top-level and children category lists from the DB when present,
+  // otherwise fall back to the hardcoded constants for pre-import installs.
+  // When the DB has top-level categories but no children yet (e.g. demo data),
+  // merge in FALLBACK_SUB for top names we recognise so the subcategory chip
+  // row still has something to show.
+  const { topCategoryNames, childrenByParentName } = useMemo(() => {
+    if (categories.length === 0) {
+      return {
+        topCategoryNames: FALLBACK_TOP,
+        childrenByParentName: FALLBACK_SUB,
+      };
+    }
+    const tops = categories.filter(c => c.parent_id == null);
+    const childByParent: Record<string, string[]> = {};
+    for (const top of tops) {
+      const dbChildren = categories.filter(c => c.parent_id === top.id).map(c => c.name);
+      childByParent[top.name] = dbChildren.length > 0
+        ? dbChildren
+        : (FALLBACK_SUB[top.name] ?? []);
+    }
+    return {
+      topCategoryNames: ['All', ...tops.map(t => t.name)],
+      childrenByParentName: childByParent,
+    };
+  }, [categories]);
 
   function handleTopCategory(cat: string) {
     setActiveCategory(cat);
@@ -41,6 +235,31 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
   let filtered = products.filter(p => {
     if (activeCategory !== 'All' && p.category !== activeCategory) return false;
     if (activeSubcategory && p.subcategory !== activeSubcategory) return false;
+    if (selectedBrands.size > 0 && !selectedBrands.has(p.brand)) return false;
+    if (priceMin !== '' && p.price < priceMin) return false;
+    if (priceMax !== '' && p.price > priceMax) return false;
+    if (inStockOnly && p.stock <= 0) return false;
+    if (onSaleOnly && !(p.original_price && p.original_price > p.price)) return false;
+    if (selectedValueIds.size > 0) {
+      const productValues = productValueMap[p.id] ?? [];
+      // Require the product to cover at least one selected value *per attribute* the user picked.
+      // Build attrId → selectedValueIds map for this filter set.
+      const selectedByAttr = new Map<string, string[]>();
+      for (const id of selectedValueIds) {
+        for (const a of attributes) {
+          const v = a.values.find(x => x.id === id);
+          if (v) {
+            const arr = selectedByAttr.get(a.id) ?? [];
+            arr.push(id);
+            selectedByAttr.set(a.id, arr);
+            break;
+          }
+        }
+      }
+      for (const [, ids] of selectedByAttr) {
+        if (!ids.some(id => productValues.includes(id))) return false;
+      }
+    }
     return true;
   });
 
@@ -51,7 +270,7 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const subcats = activeCategory !== 'All' ? SUBCATEGORIES[activeCategory] ?? [] : [];
+  const subcats = activeCategory !== 'All' ? childrenByParentName[activeCategory] ?? [] : [];
   const pageTitle = activeSubcategory ?? (activeCategory === 'All' ? 'All Products' : activeCategory);
 
   return (
@@ -64,7 +283,7 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
             {CATEGORY_DESCRIPTIONS[activeCategory] ?? CATEGORY_DESCRIPTIONS.All}
           </p>
           <div style={{ display: 'flex', gap: 0, overflowX: 'auto', marginBottom: -1 }}>
-            {TOP_CATEGORIES.map(cat => (
+            {topCategoryNames.map(cat => (
               <button key={cat} onClick={() => handleTopCategory(cat)} style={{
                 padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer',
                 fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 600,
@@ -95,15 +314,73 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
 
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 32 }}>
-            <span className="small-text">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span className="small-text">Sort by</span>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)} style={{
-                padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
-                background: 'var(--paper)', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
-                color: 'var(--ink-900)', cursor: 'pointer', outline: 'none',
-              }}>
+
+          {/* ─── Toolbar above the grid: Filters toggle · chips · sort · count ─ */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+              <button
+                type="button"
+                onClick={() => setFiltersOpen(o => !o)}
+                aria-expanded={filtersOpen}
+                aria-controls="shop-filter-rail"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '8px 14px', borderRadius: 100,
+                  border: '1px solid ' + (filtersOpen ? 'var(--ink-900)' : 'var(--line)'),
+                  background: filtersOpen ? 'var(--ink-900)' : 'var(--paper)',
+                  color: filtersOpen ? 'var(--paper)' : 'var(--ink-900)',
+                  fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+                  fontFamily: 'var(--font-ui)',
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <line x1="4" y1="6" x2="20" y2="6" /><line x1="7" y1="12" x2="17" y2="12" /><line x1="10" y1="18" x2="14" y2="18" />
+                </svg>
+                Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
+              </button>
+
+              {/* Active filter chips — always visible so users know what's applied
+                  without opening the rail. */}
+              {activeChips.map(c => (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={c.remove}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    padding: '5px 10px', borderRadius: 100,
+                    border: '1px solid var(--line)',
+                    background: 'var(--paper2)', color: 'var(--ink-900)',
+                    fontSize: '0.75rem', cursor: 'pointer',
+                    fontFamily: 'var(--font-ui)',
+                  }}
+                  aria-label={`Remove filter ${c.label}`}
+                >
+                  {c.label}
+                  <span aria-hidden="true" style={{ color: 'var(--ink-500)', fontSize: '0.875rem', lineHeight: 1 }}>×</span>
+                </button>
+              ))}
+              {activeFilterCount > 0 && (
+                <button onClick={clearFilters} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '0.75rem', color: 'var(--brand-pink)', fontWeight: 600,
+                  fontFamily: 'var(--font-ui)',
+                }}>
+                  Clear all
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
+              <span className="small-text">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</span>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)}
+                aria-label="Sort products"
+                style={{
+                  padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+                  background: 'var(--paper)', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
+                  color: 'var(--ink-900)', cursor: 'pointer', outline: 'none',
+                }}
+              >
                 <option value="featured">Featured</option>
                 <option value="price-low">Price: Low → High</option>
                 <option value="price-high">Price: High → Low</option>
@@ -112,7 +389,179 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
+          {/* Backdrop behind the slide-in rail (all viewports). Clicking closes it. */}
+          <div
+            onClick={() => setFiltersOpen(false)}
+            aria-hidden="true"
+            className="shop-rail-backdrop"
+            style={{
+              position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.45)',
+              zIndex: 90,
+              opacity: filtersOpen ? 1 : 0,
+              pointerEvents: filtersOpen ? 'auto' : 'none',
+              transition: 'opacity 220ms ease-out',
+            }}
+          />
+
+          {/* Filter rail — fixed slide-in panel from the left, on every viewport.
+              Always in the DOM so opening / closing animates the transform. */}
+          <aside
+            id="shop-filter-rail"
+            className="shop-rail"
+            ref={filterPanelRef}
+            role="dialog"
+            aria-modal={filtersOpen}
+            aria-label="Filter products"
+            aria-hidden={!filtersOpen}
+            style={{
+              position: 'fixed', top: 0, left: 0, bottom: 0,
+              width: 320, maxWidth: '88vw',
+              background: 'var(--paper)',
+              borderRight: '1px solid var(--line)',
+              boxShadow: filtersOpen ? '4px 0 24px rgba(0,0,0,0.12)' : 'none',
+              transform: filtersOpen ? 'translateX(0)' : 'translateX(-100%)',
+              transition: 'transform 280ms ease-out, box-shadow 280ms ease-out',
+              zIndex: 100,
+              overflowY: 'auto',
+              padding: '20px 24px 32px',
+              display: 'flex', flexDirection: 'column',
+            }}
+          >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <Overline>Filters</Overline>
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  aria-label="Close filters"
+                  className="shop-rail-close"
+                  style={{
+                    background: 'none', border: 'none', cursor: 'pointer',
+                    fontSize: '1.125rem', color: 'var(--ink-500)', padding: 4, lineHeight: 1,
+                    display: 'none',
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Price */}
+              <fieldset style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+                <legend style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                  Price (PKR)
+                </legend>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    aria-label="Minimum price in PKR"
+                    placeholder={String(priceBounds.min)}
+                    value={priceMin}
+                    onChange={e => setPriceMin(e.target.value === '' ? '' : Number(e.target.value))}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none' }}
+                  />
+                  <span aria-hidden="true" style={{ color: 'var(--ink-500)' }}>–</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    aria-label="Maximum price in PKR"
+                    placeholder={String(priceBounds.max)}
+                    value={priceMax}
+                    onChange={e => setPriceMax(e.target.value === '' ? '' : Number(e.target.value))}
+                    style={{ width: '100%', padding: '6px 8px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none' }}
+                  />
+                </div>
+              </fieldset>
+
+              {/* Toggles */}
+              <fieldset style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '4px 0' }}>
+                  <input type="checkbox" checked={inStockOnly} onChange={e => setInStockOnly(e.target.checked)} />
+                  In stock only
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '4px 0' }}>
+                  <input type="checkbox" checked={onSaleOnly} onChange={e => setOnSaleOnly(e.target.checked)} />
+                  On sale
+                </label>
+              </fieldset>
+
+              {/* Brand */}
+              {allBrands.length > 1 && (
+                <fieldset style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+                  <legend style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                    Brand
+                  </legend>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
+                    {allBrands.map(b => (
+                      <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '3px 0' }}>
+                        <input type="checkbox" checked={selectedBrands.has(b)} onChange={() => toggleBrand(b)} />
+                        <span style={{ flex: 1 }}>{b}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
+
+              {/* Variant attribute facets (Shade, Size, etc.) */}
+              {attributes.map(attr => {
+                const hasColor = attr.values.some(v => v.color_hex);
+                return (
+                  <fieldset key={attr.id} style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+                    <legend style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                      {attr.name}
+                    </legend>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {attr.values.map(v => {
+                        const active = selectedValueIds.has(v.id);
+                        if (hasColor && v.color_hex) {
+                          return (
+                            <button
+                              key={v.id}
+                              type="button"
+                              onClick={() => toggleValue(v.id)}
+                              title={v.value}
+                              aria-label={v.value}
+                              aria-pressed={active}
+                              style={{
+                                width: 28, height: 28, borderRadius: '50%',
+                                border: active ? '2px solid var(--ink-900)' : '2px solid var(--line)',
+                                outline: active ? '2px solid var(--paper)' : 'none', outlineOffset: -3,
+                                background: v.color_hex,
+                                cursor: 'pointer', padding: 0,
+                              }}
+                            />
+                          );
+                        }
+                        return (
+                          <button
+                            key={v.id}
+                            type="button"
+                            onClick={() => toggleValue(v.id)}
+                            aria-pressed={active}
+                            style={{
+                              padding: '4px 10px',
+                              border: '1px solid ' + (active ? 'var(--ink-900)' : 'var(--line)'),
+                              background: active ? 'var(--ink-900)' : 'var(--paper)',
+                              color: active ? 'var(--paper)' : 'var(--ink-900)',
+                              borderRadius: 100,
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {v.value}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </fieldset>
+                );
+              })}
+            </aside>
+
+            {/* ─── Product grid (always full-width — rail floats over the top) ─ */}
+            <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
             {paginated.map((p) => (
               <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <ProductTile product={p} />
@@ -175,6 +624,7 @@ export function CollectionPage({ products, initialCategory = 'All', initialSubca
               >→</button>
             </div>
           )}
+            </div> {/* close product grid column */}
         </div>
       </section>
     </div>

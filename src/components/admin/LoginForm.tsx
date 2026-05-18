@@ -51,11 +51,19 @@ function StaffTab() {
           required autoFocus
           style={{ ...inp, borderColor: state?.error ? '#ef4444' : '#d1d5db' }} />
       </div>
-      <div style={{ marginBottom: 16 }}>
+      <div style={{ marginBottom: 14 }}>
         <label style={lbl}>Password</label>
         <input type="password" name="password" placeholder="Your password"
           required
           style={{ ...inp, borderColor: state?.error ? '#ef4444' : '#d1d5db' }} />
+      </div>
+      <div style={{ marginBottom: 16 }}>
+        <label style={lbl}>2FA code <span style={{ color: '#9ca3af', fontWeight: 400 }}>(if enabled)</span></label>
+        <input
+          name="totp" inputMode="numeric" autoComplete="one-time-code" maxLength={8}
+          placeholder="123 456"
+          style={{ ...inp, borderColor: state?.error ? '#ef4444' : '#d1d5db', fontFamily: 'monospace', letterSpacing: '0.2em' }}
+        />
         {state?.error && <p style={err}>{state.error}</p>}
       </div>
       <button type="submit" disabled={pending} style={{ ...btn, background: '#6366f1', opacity: pending ? 0.6 : 1 }}>

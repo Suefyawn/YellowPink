@@ -1,34 +1,124 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
-import { getProducts } from '@/lib/supabase';
+import { getProducts, isDemo } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { DEMO_CATEGORIES } from '@/lib/demo-data';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
+import { pageMeta } from '@/lib/seo';
+import type { Category, ProductAttribute, AttributeValue } from '@/types';
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string }> }): Promise<Metadata> {
-  const { category, subcategory } = await searchParams;
-  const label = subcategory ?? (category && category !== 'All' ? category : null);
-  const title = label ? `${label} — Shop | Yellow Pink` : 'Shop All Products | Yellow Pink';
-  const params = new URLSearchParams();
-  if (category && category !== 'All') params.set('category', category);
-  if (subcategory) params.set('subcategory', subcategory);
-  const qs = params.toString();
-  const canonical = `https://yellow-pink.vercel.app/shop${qs ? `?${qs}` : ''}`;
-  return {
-    title,
-    description: 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.',
-    openGraph: { title, description: 'Shop imported beauty & wellness. COD Pakistan.' },
-    alternates: { canonical },
-  };
+export interface AttributeWithValues extends ProductAttribute {
+  values: AttributeValue[];
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string }> }) {
-  const products = await getProducts();
-  const { category, subcategory } = await searchParams;
+interface FacetData {
+  attributes: AttributeWithValues[];
+  productValueMap: Record<string, string[]>;     // product_id → attribute_value_ids
+}
+
+async function loadFacetData(): Promise<FacetData> {
+  // Demo-mode short-circuit: no variants in stub data, no facets.
+  if (isDemo) return { attributes: [], productValueMap: {} };
+  // Pull every active variant + its option links, joined with the value + attribute
+  // metadata. This is one round-trip; data is small enough (one row per
+  // variant-value pair across the active catalog).
+  const [{ data: vavRows }, { data: attrRows }, { data: valRows }] = await Promise.all([
+    supabase
+      .from('variant_attribute_values')
+      .select('attribute_value_id, variant:product_variants!inner(product_id, enabled)')
+      .eq('variant.enabled', true),
+    supabase.from('product_attributes')
+      .select('id, slug, name, visible_on_pdp, usable_in_filter, sort_order')
+      .eq('usable_in_filter', true)
+      .order('sort_order'),
+    supabase.from('attribute_values')
+      .select('id, attribute_id, slug, value, color_hex, image_url, sort_order')
+      .order('sort_order'),
+  ]);
+
+  // Bucket value ids per product id. Supabase types the nested relation as
+  // an array even when it's a 1:1 — destructure defensively.
+  const productValueMap: Record<string, string[]> = {};
+  const rows = (vavRows ?? []) as unknown as Array<{
+    attribute_value_id: string;
+    variant: { product_id: string } | { product_id: string }[] | null;
+  }>;
+  for (const row of rows) {
+    const v = Array.isArray(row.variant) ? row.variant[0] : row.variant;
+    const productId = v?.product_id;
+    if (!productId) continue;
+    const arr = productValueMap[productId] ?? [];
+    if (!arr.includes(row.attribute_value_id)) arr.push(row.attribute_value_id);
+    productValueMap[productId] = arr;
+  }
+
+  // Only show attributes that have at least one referenced value.
+  const usedValueIds = new Set(Object.values(productValueMap).flat());
+  const attributes: AttributeWithValues[] = ((attrRows ?? []) as ProductAttribute[])
+    .map(a => ({
+      ...a,
+      values: ((valRows ?? []) as AttributeValue[]).filter(v => v.attribute_id === a.id && usedValueIds.has(v.id)),
+    }))
+    .filter(a => a.values.length > 0);
+
+  return { attributes, productValueMap };
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string }> }): Promise<Metadata> {
+  const { category, subcategory, cat } = await searchParams;
+  const resolvedCategory = category ?? cat;
+  const label = subcategory ?? (resolvedCategory && resolvedCategory !== 'All' ? resolvedCategory : null);
+  const title = label ? `${label} — Shop` : 'Shop All Products';
+  const params = new URLSearchParams();
+  if (resolvedCategory && resolvedCategory !== 'All') params.set('category', resolvedCategory);
+  if (subcategory) params.set('subcategory', subcategory);
+  const qs = params.toString();
+  return pageMeta({
+    title,
+    description: 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.',
+    path: `/shop${qs ? `?${qs}` : ''}`,
+  });
+}
+
+async function loadCategories(): Promise<Category[]> {
+  if (isDemo) return DEMO_CATEGORIES;
+  // All categories; CollectionPage groups by parent_id client-side.
+  const { data } = await supabase
+    .from('categories')
+    .select('id, parent_id, slug, name, description, image_url, sort_order, wp_term_id')
+    .order('sort_order')
+    .order('name');
+  return (data ?? []) as Category[];
+}
+
+async function resolveCategoryFromSlug(slug: string | undefined, categories: Category[]): Promise<string | null> {
+  if (!slug) return null;
+  const hit = categories.find(c => c.slug.toLowerCase() === slug.toLowerCase());
+  return hit?.name ?? null;
+}
+
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string }> }) {
+  const [products, categories, facetData] = await Promise.all([
+    getProducts(),
+    loadCategories(),
+    loadFacetData(),
+  ]);
+  const { category, subcategory, cat } = await searchParams;
+
+  // Resolve ?cat=<slug> (used by WP redirects) into a display category name.
+  const initialCategory =
+    category ??
+    (cat ? (await resolveCategoryFromSlug(cat, categories)) ?? cat : 'All');
+
   return (
     <main className="fade-in">
       <CollectionPage
         products={products}
-        initialCategory={category ?? 'All'}
+        categories={categories}
+        attributes={facetData.attributes}
+        productValueMap={facetData.productValueMap}
+        initialCategory={initialCategory}
         initialSubcategory={subcategory ?? null}
       />
     </main>

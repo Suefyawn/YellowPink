@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
 
@@ -27,12 +28,15 @@ function CatTile({ label, href, img, color }: typeof CATS[0]) {
         style={{ overflow: 'hidden', borderRadius: 'var(--radius-card)', position: 'relative', aspectRatio: '1' }}
       >
         {!imgFailed ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
+          <Image
             src={img} alt={label}
+            fill
+            // 4-up grid on desktop ≈ 25vw; 2-up on tablet ≈ 50vw;
+            // 1-up below 600 ≈ 100vw (per .cat-grid in globals.css).
+            sizes="(max-width: 600px) 50vw, (max-width: 900px) 50vw, 25vw"
             onError={() => setImgFailed(true)}
             style={{
-              width: '100%', height: '100%', objectFit: 'cover', display: 'block',
+              objectFit: 'cover',
               transform: hovered ? 'scale(1.06)' : 'scale(1)',
               transition: 'transform 350ms ease-out',
             }}

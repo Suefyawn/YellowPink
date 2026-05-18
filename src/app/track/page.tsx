@@ -3,23 +3,47 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { getBrowserClient } from '@/lib/supabase-browser';
+import { ORDER_STATUS_LABELS, ORDER_TIMELINE_STEPS } from '@/types';
 import type { Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 
-const STATUS_STEPS: OrderStatus[] = ['pending', 'processing', 'shipped', 'delivered'];
-
 const statusColors: Record<string, string> = {
-  pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444',
+  payment_pending: '#9ca3af',
+  payment_failed:  '#ef4444',
+  pending:         '#f59e0b',
+  processing:      '#3b82f6',
+  shipped:         '#8b5cf6',
+  delivered:       '#10b981',
+  cancelled:       '#ef4444',
+  returned:        '#6b7280',
+  refunded:        '#6b7280',
 };
 
 const statusMessages: Record<string, string> = {
-  pending:    'Your order has been received and is awaiting processing.',
-  processing: 'We\'re preparing your items for shipment.',
-  shipped:    'Your order is on its way! Check the tracking number below.',
-  delivered:  'Your order has been delivered. Enjoy your products!',
-  cancelled:  'This order was cancelled.',
+  payment_pending: 'We\'re waiting for your payment to come through.',
+  payment_failed:  'Your payment didn\'t go through. Please reorder or contact us.',
+  pending:         'Your order has been received and is awaiting processing.',
+  processing:      "We're preparing your items for shipment.",
+  shipped:         'Your order is on its way! Check the tracking number below.',
+  delivered:       'Your order has been delivered. Enjoy your products!',
+  cancelled:       'This order was cancelled.',
+  returned:        'This order was returned.',
+  refunded:        'This order has been refunded.',
 };
+
+// Quick courier tracking URL builders for the most common PK carriers.
+function courierTrackingUrl(courier: string | undefined, tracking: string): string | null {
+  if (!courier) return null;
+  const c = courier.toLowerCase();
+  if (c.includes('tcs'))      return `https://www.tcsexpress.com/track/${encodeURIComponent(tracking)}`;
+  if (c.includes('leopard'))  return `https://www.leopardscourier.com/leopards/tracking?tracking_number=${encodeURIComponent(tracking)}`;
+  if (c.includes('m&p') || c.includes('mp'))
+                              return `https://www.mulphilog.com/tracking?cnno=${encodeURIComponent(tracking)}`;
+  if (c.includes('bluex') || c.includes('blueex'))
+                              return `https://www.blue-ex.com/tracking/${encodeURIComponent(tracking)}`;
+  return null;
+}
 
 const RATE_LIMIT_WINDOW = 60_000;
 const MAX_ATTEMPTS = 5;
@@ -36,7 +60,6 @@ export default function TrackPage() {
     e.preventDefault();
     if (!orderNumber.trim() || !phone.trim()) return;
 
-    // Client-side rate limit
     const now = Date.now();
     if (now - attempts.since > RATE_LIMIT_WINDOW) { attempts.count = 0; attempts.since = now; }
     attempts.count++;
@@ -49,36 +72,42 @@ export default function TrackPage() {
     setOrder(null);
     setLoading(true);
     const sb = getBrowserClient();
-    const { data } = await sb.from('orders').select('*').eq('order_number', orderNumber.trim().toUpperCase()).single();
-    if (!data) {
-      setError('No order found with that number. Please check and try again.');
-    } else {
-      const record = data as Order;
-      // Verify phone matches — prevent enumeration
-      const normalise = (p: string) => p.replace(/[\s\-+]/g, '');
-      if (normalise(record.phone) !== normalise(phone)) {
-        setError('Phone number does not match our records for this order.');
-      } else {
-        setOrder(record);
-      }
-    }
+    // Server-side lookup via SECURITY DEFINER RPC: only returns the row if
+    // (order_number, phone) match. No anon read on the orders table needed.
+    const { data, error: rpcError } = await sb.rpc('lookup_order' as never, {
+      p_order_number: orderNumber.trim().toUpperCase(),
+      p_phone: phone.trim(),
+    } as never);
     setLoading(false);
+
+    const row = Array.isArray(data) ? (data[0] as Order | undefined) : (data as Order | null);
+
+    if (rpcError || !row) {
+      setError('No order matches that order number and phone. Please check and try again.');
+      return;
+    }
+    setOrder(row);
   };
 
-  const status = order?.status ?? 'pending';
-  const stepIdx = STATUS_STEPS.indexOf(status as OrderStatus);
-  const isCancelled = status === 'cancelled';
+  const status = (order?.status ?? 'pending') as OrderStatus;
+  const stepIdx = ORDER_TIMELINE_STEPS.indexOf(status);
+  const isTerminal = status === 'cancelled' || status === 'returned' || status === 'refunded';
+  const trackingUrl = order?.tracking_number ? courierTrackingUrl(order.courier, order.tracking_number) : null;
 
   return (
     <div className="container" style={{ padding: '64px var(--side)' }}>
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 500, margin: '0 0 8px', letterSpacing: '-0.025em' }}>Track Order</h1>
         <p style={{ color: 'var(--ink-500)', margin: '0 0 40px', fontSize: '1rem' }}>
-          Enter your order number to check the status of your shipment.
+          Enter your order number and the phone you used at checkout.
         </p>
 
         <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 40 }}>
+          <label htmlFor="track-order" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+            Order number
+          </label>
           <input
+            id="track-order"
             value={orderNumber}
             onChange={e => setOrderNumber(e.target.value)}
             placeholder="Order number — e.g. YP-A1B2C3"
@@ -90,12 +119,17 @@ export default function TrackPage() {
             }}
           />
           <div style={{ display: 'flex', gap: 12 }}>
+            <label htmlFor="track-phone" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+              Phone number
+            </label>
             <input
+              id="track-phone"
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="Phone number used at checkout"
               required
               type="tel"
+              autoComplete="tel"
               style={{
                 flex: 1, padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
                 fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
@@ -133,7 +167,7 @@ export default function TrackPage() {
                   background: (statusColors[status] ?? '#6b7280') + '20',
                   color: statusColors[status] ?? '#6b7280',
                 }}>
-                  {status}
+                  {ORDER_STATUS_LABELS[status]}
                 </span>
               </div>
             </div>
@@ -143,19 +177,19 @@ export default function TrackPage() {
                 {statusMessages[status]}
               </p>
 
-              {!isCancelled && (
+              {!isTerminal && stepIdx >= 0 && (
                 <div style={{ marginBottom: 28 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', position: 'relative', paddingTop: 4 }}>
-                    {STATUS_STEPS.map((step, i) => (
+                    {ORDER_TIMELINE_STEPS.map((step, i) => (
                       <div key={step} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                        {i < STATUS_STEPS.length - 1 && (
+                        {i < ORDER_TIMELINE_STEPS.length - 1 && (
                           <div style={{ position: 'absolute', top: 10, left: '50%', right: '-50%', height: 2, background: i < stepIdx ? 'var(--brand-pink)' : '#e5e7eb', zIndex: 0 }} />
                         )}
                         <div style={{ width: 22, height: 22, borderRadius: '50%', background: i <= stepIdx ? 'var(--brand-pink)' : 'white', border: `2px solid ${i <= stepIdx ? 'var(--brand-pink)' : '#d1d5db'}`, zIndex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 8 }}>
                           {i < stepIdx && <span style={{ color: 'white', fontSize: '0.625rem', fontWeight: 700 }}>✓</span>}
                           {i === stepIdx && <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'white' }} />}
                         </div>
-                        <div style={{ fontSize: '0.6875rem', color: i <= stepIdx ? 'var(--brand-pink)' : '#9ca3af', fontWeight: i === stepIdx ? 700 : 400, textTransform: 'capitalize', textAlign: 'center' }}>{step}</div>
+                        <div style={{ fontSize: '0.6875rem', color: i <= stepIdx ? 'var(--brand-pink)' : '#9ca3af', fontWeight: i === stepIdx ? 700 : 400, textTransform: 'capitalize', textAlign: 'center' }}>{ORDER_STATUS_LABELS[step]}</div>
                       </div>
                     ))}
                   </div>
@@ -164,8 +198,18 @@ export default function TrackPage() {
 
               {order.tracking_number && (
                 <div style={{ padding: '14px 18px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, marginBottom: 24, fontSize: '0.9375rem' }}>
-                  <span style={{ color: '#0369a1', fontWeight: 600 }}>Tracking number: </span>
-                  <span style={{ fontFamily: 'monospace', color: '#0c4a6e', fontWeight: 700 }}>{order.tracking_number}</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                    <div>
+                      <span style={{ color: '#0369a1', fontWeight: 600 }}>Tracking: </span>
+                      <span style={{ fontFamily: 'monospace', color: '#0c4a6e', fontWeight: 700 }}>{order.tracking_number}</span>
+                      {order.courier && <span style={{ color: '#0369a1', marginLeft: 8 }}>· {order.courier}</span>}
+                    </div>
+                    {trackingUrl && (
+                      <a href={trackingUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', fontWeight: 600, textDecoration: 'none', fontSize: '0.8125rem' }}>
+                        Open courier page →
+                      </a>
+                    )}
+                  </div>
                 </div>
               )}
 

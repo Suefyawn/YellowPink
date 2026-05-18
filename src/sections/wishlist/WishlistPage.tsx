@@ -34,11 +34,12 @@ export function WishlistPage() {
     return (
       <section style={{ padding: 'var(--section-gap) 0', textAlign: 'center' }}>
         <div className="container" style={{ maxWidth: 560 }}>
-          <h1 className="h1" style={{ marginTop: 20, marginBottom: 12 }}>Your wishlist is empty</h1>
+          <div style={{ fontSize: '3.5rem', marginBottom: 16, opacity: 0.35, color: 'var(--brand-pink)' }} aria-hidden="true">♡</div>
+          <h1 className="h1" style={{ marginTop: 0, marginBottom: 12 }}>No favourites yet</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 28 }}>
-            Tap the heart on any product to save it here.
+            Tap the heart on any product to save it here — we&apos;ll let you know when prices drop or stock gets low.
           </p>
-          <Link href="/shop" className="btn-primary">Browse Products</Link>
+          <Link href="/shop" className="btn-primary">Browse products</Link>
         </div>
       </section>
     );

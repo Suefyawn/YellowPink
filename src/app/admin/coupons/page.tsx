@@ -91,11 +91,11 @@ export default async function CouponsPage() {
         {coupons.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>No coupons yet</div>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['Code', 'Discount', 'Min Order', 'Used', 'Expires', 'Status', ''].map(h => (
-                  <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
+                  <th scope="col" key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -106,30 +106,31 @@ export default async function CouponsPage() {
                 const isExpired = state === 'expired';
                 return (
                   <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', ...stateStyle[state] }}>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Code" style={{ padding: '12px 16px' }}>
                       <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</span>
                       {isExpired && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#dc2626', background: '#fef2f2', padding: '1px 6px', borderRadius: 10 }}>EXPIRED</span>}
                       {isMaxed && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#ea580c', background: '#fff7ed', padding: '1px 6px', borderRadius: 10 }}>MAXED</span>}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                    <td data-label="Discount" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {c.type === 'percent' ? `${c.value}%` : `PKR ${c.value.toLocaleString()}`}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                    <td data-label="Min order" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {c.min_order ? `PKR ${c.min_order.toLocaleString()}` : '—'}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: isMaxed ? '#ea580c' : '#6b7280', fontWeight: isMaxed ? 600 : 400 }}>
+                    <td data-label="Used" style={{ padding: '12px 16px', fontSize: '0.875rem', color: isMaxed ? '#ea580c' : '#6b7280', fontWeight: isMaxed ? 600 : 400 }}>
                       {c.used_count}
                       {c.max_uses ? <span style={{ color: '#9ca3af' }}> / {c.max_uses}</span> : ''}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: isExpired ? '#dc2626' : '#6b7280', fontWeight: isExpired ? 600 : 400 }}>
+                    <td data-label="Expires" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: isExpired ? '#dc2626' : '#6b7280', fontWeight: isExpired ? 600 : 400 }}>
                       {c.expires_at ? fmtDate(c.expires_at) : '—'}
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Status" style={{ padding: '12px 16px' }}>
                       <form action={toggleCoupon.bind(null, c.id, !c.active)}>
                         <button type="submit" style={{
-                          padding: '3px 10px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+                          padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
                           background: c.active && !isExpired && !isMaxed ? '#f0fdf4' : '#f3f4f6',
                           color: c.active && !isExpired && !isMaxed ? '#15803d' : '#9ca3af',
+                          minHeight: 30,
                         }}>
                           {c.active ? 'Active' : 'Inactive'}
                         </button>

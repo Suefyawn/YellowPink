@@ -4,7 +4,13 @@
 :root {
   --ink-900: #0A0A0A;
   --ink-700: #2A2A2A;
-  --ink-500: #6B6B6B;
+  /* --ink-500 hits ~5.6:1 on --paper (WCAG AA for normal body text). */
+  --ink-500: #595959;
+  /* Truly muted: dates, helper labels, decorative captions. ~3.5:1 — large
+   * text only (>= 18 px or bold >= 14 px). */
+  --ink-400: #7A7A7A;
+  /* Disabled / placeholder — decorative only, never essential text. */
+  --ink-300: #B0B0B0;
   --paper: #FAF6EE;
   --paper2: #F2EDE2;
   --brand-yellow: #F7C948;
@@ -43,6 +49,56 @@ body {
   overflow-x: hidden;
 }
 
+/* Modern reset: links never underline by default; bring it back via .underline
+ * (e.g. for inline body-text links like the cart "Forgot password?" links).
+ * Buttons styled as links keep clean type. */
+a { color: inherit; text-decoration: none; }
+a.underline,
+.body-text a,
+.body-text-link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/* a11y: bring back a real focus ring for keyboard users (mouse / touch users
+ * see nothing — only :focus-visible triggers). Without this rule every
+ * <button> looks the same focused vs unfocused, which silently breaks
+ * keyboard navigation across the storefront. !important so it beats inline
+ * `outline: none` that many input elements ship with. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--brand-pink) !important;
+  outline-offset: 2px !important;
+  border-radius: 4px;
+}
+
+/* Dialog slide animations on filter rail / MiniCart / SearchOverlay are
+ * auto-suppressed by the existing global prefers-reduced-motion rule
+ * further down (kills transition-duration on every element). */
+
+/* Skip-to-main link — hidden until keyboard-focused, then surfaces at the
+ * top-left as a high-contrast pill. Used by app/layout.tsx (`<a className="skip-link">`). */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -100px;
+  z-index: 1000;
+  padding: 10px 16px;
+  background: var(--ink-900);
+  color: var(--paper);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 160ms ease-out;
+}
+.skip-link:focus { top: 12px; outline: 2px solid var(--brand-yellow); outline-offset: 2px; }
+
+/* When the skip-link focuses #main, browsers scroll it to the top edge.
+ * Without scroll-margin the sticky-ish header + banners cover it. */
+#main { scroll-margin-top: 200px; }
+
 /* Typography scale */
 .display-xl { font-family: var(--font-display); font-size: 4.5rem; font-weight: 500; letter-spacing: -0.03em; line-height: 1.05; }
 .display-l  { font-family: var(--font-display); font-size: 3rem; font-weight: 500; letter-spacing: -0.025em; line-height: 1.1; }
@@ -76,22 +132,52 @@ body {
   font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase;
   border: none; border-radius: var(--radius-card); cursor: pointer;
+  text-decoration: none;
   transition: background 180ms ease-out, transform 180ms ease-out;
 }
 .btn-primary:hover { background: #d43d6f; transform: translateY(-1px); }
 
+/* Outlined twin to .btn-primary — same height + padding so the two CTAs sit
+ * on a shared baseline. Ghost button reads as "alternative path" not "tiny
+ * text link", which is what hero / section CTAs need for visual hierarchy. */
 .btn-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 13px 28px;
+  background: transparent;
+  color: var(--ink-900);
+  font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid var(--ink-900); border-radius: var(--radius-card); cursor: pointer;
+  text-decoration: none;
+  position: relative;
+  transition: background 180ms ease-out, color 180ms ease-out, transform 180ms ease-out;
+}
+.btn-secondary::after {
+  content: '→'; margin-left: 2px;
+  transition: transform 180ms ease-out;
+}
+.btn-secondary:hover {
+  background: var(--ink-900);
+  color: var(--paper);
+  transform: translateY(-1px);
+}
+.btn-secondary:hover::after { transform: translateX(3px); }
+
+/* Inline text-link variant for spots where .btn-secondary would feel too heavy
+ * (e.g. "View all →" in a section header). Opt-in via className="text-link". */
+.text-link {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 0; background: none; border: none; cursor: pointer;
   font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-900);
+  text-decoration: none;
   position: relative;
 }
-.btn-secondary::after {
+.text-link::after {
   content: '→'; margin-left: 4px;
   transition: transform 180ms ease-out;
 }
-.btn-secondary:hover::after { transform: translateX(3px); }
+.text-link:hover::after { transform: translateX(3px); }
 
 /* Placeholder image */
 .img-placeholder {
@@ -116,11 +202,62 @@ body {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
 }
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+
+/* Footer marquee — auto-pauses on hover and respects prefers-reduced-motion.
+ * Previously inlined on the element, which forced screenshot tools / Lighthouse
+ * audits to wait forever for the page to "settle". */
+.footer-marquee {
+  animation: marquee 30s linear infinite;
+  will-change: transform;
 }
-.fade-in { animation: fadeUp 0.5s ease-out both; }
+.footer-marquee:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .footer-marquee { animation: none; transform: none; }
+}
+/* Page-level entry animation, applied via `.fade-in` to `<main>` on most
+ * routes. We deliberately use ONLY opacity here — no transform — because a
+ * transform on a parent element creates a new containing block for any
+ * `position: fixed` descendants, which would trap the shop-page filter
+ * drawer + cart drawer inside <main> rather than letting them anchor to the
+ * viewport. Opacity-only also paints faster and avoids the brief layout
+ * shift a translateY produces. */
+@keyframes fadeUp {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.fade-in { animation: fadeUp 0.4s ease-out both; }
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading skeletons (see components/ui/Skeleton). Soft shimmer over a muted
+ * paper colour so it feels native to the brand palette. */
+@keyframes skeleton-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background-color: var(--paper2);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.55) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+
+/* Stats strip in RealResults: 4 cols desktop → 2 cols tablet → stacks lower */
+@media (max-width: 900px) {
+  .results-stats { grid-template-columns: repeat(2, 1fr) !important; row-gap: 20px !important; }
+}
+@media (max-width: 480px) {
+  .results-stats { grid-template-columns: 1fr 1fr !important; padding: 20px !important; }
+}
 
 /* Responsive grid helpers */
 @media (max-width: 900px) {
@@ -149,6 +286,12 @@ body {
   .mobile-menu-btn { display: none !important; }
 }
 
+/* Shop filter rail — left-side slide-in panel on every viewport.
+ * Position / transform / backdrop are inlined in CollectionPage.tsx; we
+ * only add the always-visible close-× rule here since it's controlled
+ * by a class. */
+.shop-rail-close { display: inline-block; }
+
 /* Checkout / Cart responsive */
 @media (max-width: 860px) {
   .checkout-grid { grid-template-columns: 1fr !important; }
@@ -176,4 +319,21 @@ body {
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+
+/* :focus-visible + .skip-link rules live near the top of this file (the
+ * canonical ones with !important). Older non-!important duplicates that
+ * used to live here have been removed. */
+
+/* Screen-reader-only utility. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
 }

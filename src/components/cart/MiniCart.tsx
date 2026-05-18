@@ -1,15 +1,21 @@
 'use client';
 
+import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
+import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 
 const FREE_SHIPPING = 2500;
 
 export function MiniCart() {
   const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty } = useCart();
   const router = useRouter();
+  useBodyScrollLock(cartOpen);
+  useEscapeKey(cartOpen, () => setCartOpen(false));
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(cartOpen, panelRef);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const progress = Math.min(total / FREE_SHIPPING, 1);
 
@@ -30,30 +36,83 @@ export function MiniCart() {
         opacity: cartOpen ? 1 : 0, pointerEvents: cartOpen ? 'auto' : 'none',
         transition: 'opacity 250ms ease-out', zIndex: 200,
       }} />
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '90vw',
-        background: 'var(--paper)', boxShadow: 'var(--shadow-1)',
-        transform: cartOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 300ms ease-out', zIndex: 201,
-        display: 'flex', flexDirection: 'column',
-      }}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal={cartOpen}
+        aria-label="Shopping cart"
+        aria-hidden={!cartOpen}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '90vw',
+          background: 'var(--paper)', boxShadow: 'var(--shadow-1)',
+          transform: cartOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 300ms ease-out', zIndex: 201,
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="h3">Your Cart</span>
-          <button onClick={() => setCartOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)', fontSize: '1.25rem' }}>×</button>
+          <button
+            onClick={() => setCartOpen(false)}
+            aria-label="Close cart"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--ink-900)', fontSize: '1.5rem', lineHeight: 1,
+              width: 40, height: 40, borderRadius: 8,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              marginRight: -8,
+            }}
+          >×</button>
         </div>
 
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--line)' }}>
-          <div className="small-text" style={{ marginBottom: 8, color: 'var(--ink-700)' }}>
-            {progress >= 1
-              ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>You qualify for free shipping!</span>
-              : <>PKR {(FREE_SHIPPING - total).toLocaleString()} away from <span style={{ color: 'var(--brand-pink)', fontWeight: 600 }}>FREE</span> shipping</>
-            }
+        <div
+          style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)' }}
+          aria-live="polite"
+        >
+          <div
+            className="small-text"
+            style={{
+              marginBottom: 8, color: 'var(--ink-700)',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}
+          >
+            {progress >= 1 ? (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--success)', flexShrink: 0 }}>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                <span style={{ color: 'var(--success)', fontWeight: 600 }}>
+                  Free shipping unlocked
+                </span>
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--ink-500)', flexShrink: 0 }}>
+                  <rect x="1" y="3" width="15" height="13" rx="1" />
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                  <circle cx="5.5" cy="18.5" r="2.5" />
+                  <circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
+                <span>
+                  Spend <span className="tabular-nums" style={{ fontWeight: 600, color: 'var(--ink-900)' }}>PKR {(FREE_SHIPPING - total).toLocaleString()}</span> more for <span style={{ fontWeight: 600, color: 'var(--brand-pink)' }}>free shipping</span>
+                </span>
+              </>
+            )}
           </div>
-          <div style={{ height: 4, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}>
+          <div
+            role="progressbar"
+            aria-valuenow={Math.round(progress * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-label="Free shipping progress"
+            style={{ height: 6, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}
+          >
             <div style={{
               height: '100%', width: `${progress * 100}%`,
-              background: 'linear-gradient(90deg, var(--brand-yellow), var(--brand-pink))',
-              borderRadius: 'var(--radius-pill)', transition: 'width 400ms ease-out',
+              background: progress >= 1
+                ? 'var(--success)'
+                : 'linear-gradient(90deg, var(--brand-yellow), var(--brand-pink))',
+              borderRadius: 'var(--radius-pill)', transition: 'width 400ms ease-out, background 400ms ease-out',
             }} />
           </div>
         </div>
@@ -71,6 +130,11 @@ export function MiniCart() {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 2 }}>{item.name}</div>
+                {(item.variant_label ?? item.variant) && (
+                  <div className="small-text" style={{ fontSize: '0.6875rem', color: 'var(--ink-500)' }}>
+                    {item.variant_label ?? item.variant}
+                  </div>
+                )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)' }}>
                     <button onClick={() => updateQty(i, -1)} style={{ width: 28, height: 28, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>−</button>

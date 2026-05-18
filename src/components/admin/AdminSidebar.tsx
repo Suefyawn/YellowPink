@@ -14,12 +14,17 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permission: 'analytics' },
+  { href: '/admin/analytics', label: 'Analytics', icon: '◐', permission: 'analytics' },
   { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products' },
   { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders' },
+  { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'orders' },
   { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers' },
+  { href: '/admin/segments',  label: 'Segments',  icon: '◐', permission: 'customers' },
   { href: '/admin/coupons',   label: 'Coupons',   icon: '◇', permission: 'coupons' },
+  { href: '/admin/promos',    label: 'Promos',    icon: '✧', ownerOnly: true },
   { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
   { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'products' },
+  { href: '/admin/audit',     label: 'Audit log', icon: '◉', ownerOnly: true },
   { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
   { href: '/admin/settings',  label: 'Settings',  icon: '⚙', ownerOnly: true },
 ];
@@ -35,9 +40,10 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
   const visibleNav = NAV.filter(item => canSee(item, session));
 
   return (
-    <aside style={{
-      width: 240, background: '#111827', minHeight: '100vh',
+    <aside id="admin-sidebar" style={{
+      width: 240, background: '#111827', minHeight: '100vh', height: '100%',
       display: 'flex', flexDirection: 'column',
+      overflowY: 'auto',
     }}>
       {/* Brand */}
       <div style={{ padding: '24px 20px 20px', borderBottom: '1px solid #1f2937', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -51,7 +57,17 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
           </div>
         </div>
         {onClose && (
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1.25rem', padding: 4, lineHeight: 1 }}>✕</button>
+          <button
+            onClick={onClose}
+            aria-label="Close admin menu"
+            style={{
+              background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer',
+              fontSize: '1.25rem', lineHeight: 1,
+              width: 40, height: 40, borderRadius: 8,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              marginRight: -8,
+            }}
+          >✕</button>
         )}
       </div>
 
@@ -83,8 +99,12 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
           const badgeCount = isOrders && pendingOrderCount > 0 ? pendingOrderCount : 0;
           return (
             <Link key={href} href={href} onClick={onClose} style={{
-              display: 'flex', alignItems: 'center', gap: 10,
-              padding: '10px 20px',
+              display: 'flex', alignItems: 'center', gap: 12,
+              // 44 px min tap target for mobile phones — desktop still looks
+              // tight because the font size is 0.875rem so the row reads
+              // compactly.
+              padding: '12px 20px',
+              minHeight: 44,
               color: active ? '#f9fafb' : '#9ca3af',
               background: active ? 'rgba(249,168,212,0.1)' : 'transparent',
               textDecoration: 'none', fontSize: '0.875rem',

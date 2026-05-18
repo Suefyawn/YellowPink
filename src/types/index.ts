@@ -1,4 +1,38 @@
-export type OrderStatus = 'pending' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
+// ============================================================================
+// Domain types. Mirrors the schema in supabase/migrations/.
+// ============================================================================
+
+export type OrderStatus =
+  | 'payment_pending'
+  | 'payment_failed'
+  | 'pending'
+  | 'processing'
+  | 'shipped'
+  | 'delivered'
+  | 'cancelled'
+  | 'returned'
+  | 'refunded';
+
+export type PayMethod = 'cod' | 'card' | 'bank' | 'jazzcash' | 'easypaisa' | 'gift_card';
+
+// Customer-facing labels for each status. Used on /track, account/orders, admin order detail.
+export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
+  payment_pending: 'Awaiting payment',
+  payment_failed:  'Payment failed',
+  pending:         'Order received',
+  processing:      'Preparing',
+  shipped:         'Shipped',
+  delivered:       'Delivered',
+  cancelled:       'Cancelled',
+  returned:        'Returned',
+  refunded:        'Refunded',
+};
+
+// Forward-progress states shown on the /track timeline.
+export const ORDER_TIMELINE_STEPS: OrderStatus[] = ['pending', 'processing', 'shipped', 'delivered'];
+
+export type ProductKind = 'simple' | 'variable' | 'bundle' | 'external';
+export type ProductStatus = 'draft' | 'published' | 'archived';
 
 export interface Product {
   id: string;
@@ -7,6 +41,7 @@ export interface Product {
   variant?: string;
   price: number;
   original_price?: number;
+  /** Legacy single-category text. Prefer `categories` (M2M) via ProductWithCategories. */
   category: string;
   subcategory?: string;
   tag?: string;
@@ -14,9 +49,98 @@ export interface Product {
   stock: number;
   image_url?: string;
   description?: string;
+  short_description?: string;
   how_to_use?: string;
   ingredients?: string;
+  tax_class_id?: string | null;
+  kind?: ProductKind;
+  status?: ProductStatus;
+  weight_grams?: number | null;
+  wp_product_id?: number | null;
   created_at?: string;
+}
+
+export interface Category {
+  id: string;
+  parent_id: string | null;
+  slug: string;
+  name: string;
+  description?: string | null;
+  image_url?: string | null;
+  sort_order: number;
+  wp_term_id?: number | null;
+}
+
+export interface ProductAttribute {
+  id: string;
+  slug: string;
+  name: string;
+  visible_on_pdp: boolean;
+  usable_in_filter: boolean;
+  sort_order: number;
+}
+
+export interface AttributeValue {
+  id: string;
+  attribute_id: string;
+  slug: string;
+  value: string;
+  color_hex?: string | null;
+  image_url?: string | null;
+  sort_order: number;
+}
+
+export interface ProductVariant {
+  id: string;
+  product_id: string;
+  sku: string | null;
+  price: number;
+  compare_at_price?: number | null;
+  stock: number;
+  image_url?: string | null;
+  weight_grams?: number | null;
+  enabled: boolean;
+  sort_order: number;
+  /** Resolved attribute selections — populated by joins in queries. */
+  attributes?: { attribute_id: string; value_id: string }[];
+}
+
+export interface ProductImage {
+  id: string;
+  product_id: string;
+  variant_id?: string | null;
+  url: string;
+  alt?: string | null;
+  sort_order: number;
+}
+
+export interface ProductRelation {
+  product_id: string;
+  related_product_id: string;
+  kind: 'cross_sell' | 'upsell' | 'related' | 'grouped';
+  sort_order: number;
+}
+
+export interface Page {
+  id: string;
+  slug: string;
+  title: string;
+  body_html: string;
+  excerpt?: string | null;
+  status: 'draft' | 'published' | 'archived';
+  meta_title?: string | null;
+  meta_description?: string | null;
+  show_in_footer: boolean;
+  sort_order: number;
+}
+
+export interface Redirect {
+  id: string;
+  from_path: string;
+  to_path: string;
+  status_code: 301 | 302 | 307 | 308;
+  source: 'manual' | 'wp_import' | 'admin';
+  hit_count: number;
 }
 
 export interface AdminUser {
@@ -44,6 +168,10 @@ export interface BlogPost {
 
 export interface CartItem extends Product {
   qty: number;
+  /** Set when adding a specific variant of a variable product. */
+  variant_id?: string | null;
+  /** Human-readable summary of the variant selection, e.g. "Shade: Coral · Size: 250ml". */
+  variant_label?: string | null;
 }
 
 export interface Order {
@@ -57,29 +185,61 @@ export interface Order {
   city: string;
   province?: string;
   zip?: string;
-  pay_method: 'cod' | 'card' | 'bank';
+  pay_method: PayMethod;
   subtotal: number;
   shipping: number;
   total: number;
   items: CartItem[];
   status?: OrderStatus;
   tracking_number?: string;
+  courier?: string;
   user_id?: string;
   coupon_code?: string;
   discount_amount?: number;
+  notes?: string;
+  /** WP legacy fields populated by the importer. */
+  legacy_wp_order_id?: number | null;
+  legacy_wp_customer_id?: number | null;
   created_at?: string;
 }
+
+export interface OrderEvent {
+  id: string;
+  order_id: string;
+  from_status: OrderStatus | null;
+  to_status: OrderStatus;
+  note?: string;
+  actor_kind: 'customer' | 'staff' | 'system' | 'gateway';
+  actor_id?: string;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+}
+
+export type CouponDiscountType = 'percent' | 'fixed_cart' | 'fixed_product' | 'free_shipping';
 
 export interface Coupon {
   id: string;
   code: string;
+  /** Legacy column; prefer `discount_type`. */
   type: 'percent' | 'fixed';
+  discount_type?: CouponDiscountType;
   value: number;
   min_order: number;
+  max_order?: number | null;
   max_uses: number | null;
   used_count: number;
   active: boolean;
   expires_at: string | null;
+  individual_use?: boolean;
+  exclude_sale_items?: boolean;
+  free_shipping?: boolean;
+  usage_limit_per_user?: number | null;
+  product_ids?: string[];
+  excluded_product_ids?: string[];
+  category_ids?: string[];
+  excluded_category_ids?: string[];
+  email_restrictions?: string[];
+  description?: string | null;
 }
 
 export interface Profile {
@@ -87,5 +247,109 @@ export interface Profile {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
+  dob?: string | null;
+  referral_code?: string | null;
+  referred_by_code?: string | null;
+  created_at: string;
+}
+
+export interface LoyaltyAccount {
+  user_id: string;
+  points_balance: number;
+  lifetime_points: number;
+  updated_at: string;
+}
+
+export type LoyaltyReason =
+  | 'welcome' | 'order_delivered' | 'review_approved' | 'referral_reward'
+  | 'redemption' | 'birthday' | 'manual' | 'refund_reversal';
+
+export interface LoyaltyLedgerEntry {
+  id: string;
+  user_id: string;
+  delta: number;
+  reason: LoyaltyReason;
+  order_id: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export type LoyaltyTier = 'Bronze' | 'Silver' | 'Gold';
+
+export interface GiftCard {
+  id: string;
+  code: string;
+  initial_balance: number;
+  current_balance: number;
+  currency: string;
+  expires_at: string | null;
+  active: boolean;
+}
+
+export interface Address {
+  id: string;
+  user_id: string;
+  label: string | null;
+  first_name: string;
+  last_name: string;
+  phone: string;
+  line1: string;
+  line2: string | null;
+  city: string;
+  province: string | null;
+  zip: string | null;
+  is_default: boolean;
+  created_at: string;
+}
+
+export interface ShippingZone {
+  id: string;
+  name: string;
+  active: boolean;
+}
+
+export interface ShippingRate {
+  id: string;
+  zone_id: string;
+  rate: number;
+  free_shipping_threshold: number | null;
+  label: string;
+  estimated_days_min: number | null;
+  estimated_days_max: number | null;
+}
+
+export interface TaxClass {
+  id: string;
+  name: string;
+  rate_percent: number;
+  inclusive: boolean;
+}
+
+export interface Payment {
+  id: string;
+  order_id: string;
+  gateway: 'jazzcash' | 'easypaisa' | 'cod' | 'bank' | 'manual' | 'gift_card';
+  amount: number;
+  currency: string;
+  status: 'initiated' | 'succeeded' | 'failed' | 'refunded' | 'cancelled';
+  txn_ref: string | null;
+  raw_payload?: Record<string, unknown>;
+  error_message?: string | null;
+  created_at: string;
+}
+
+export interface ProductReview {
+  id: string;
+  product_id: string;
+  user_id: string | null;
+  author_name: string;
+  reviewer_email?: string | null;
+  rating: number;
+  body: string;
+  approved: boolean;
+  verified_purchase: boolean;
+  photo_urls: string[];
+  helpful_count: number;
+  brand_reply: string | null;
   created_at: string;
 }

@@ -63,10 +63,10 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+      <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-            <th style={{ padding: '11px 12px', width: 40, textAlign: 'center' }}>
+            <th scope="col" style={{ padding: '11px 12px', width: 40, textAlign: 'center' }}>
               <input
                 type="checkbox"
                 checked={selected.size === orders.length && orders.length > 0}
@@ -76,7 +76,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
               />
             </th>
             {['Order #', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
-              <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+              <th scope="col" key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
             ))}
           </tr>
         </thead>
@@ -92,21 +92,22 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggle(o.id!)}
+                    aria-label={`Select order ${o.order_number}`}
                     style={{ cursor: 'pointer', accentColor: '#ec4899' }}
                   />
                 </td>
-                <td style={{ padding: '12px 16px' }}>
+                <td data-label="Order #" style={{ padding: '12px 16px' }}>
                   <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ec4899', textDecoration: 'none', fontFamily: 'monospace' }}>
                     {o.order_number}
                   </Link>
                 </td>
-                <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                <td data-label="Customer" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                   {o.first_name} {o.last_name}
                 </td>
-                <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap' }}>
+                <td data-label="Total" style={{ padding: '12px 16px', fontWeight: 700, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap' }}>
                   {fmt(o.total)}
                 </td>
-                <td style={{ padding: '12px 16px' }}>
+                <td data-label="Status" style={{ padding: '12px 16px' }}>
                   <span style={{
                     display: 'inline-block', padding: '3px 10px', borderRadius: 20,
                     fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize',
@@ -116,12 +117,12 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     {st}
                   </span>
                 </td>
-                <td style={{ padding: '12px 16px' }}>
+                <td data-label="Payment" style={{ padding: '12px 16px' }}>
                   <span style={{ display: 'inline-block', padding: '3px 10px', background: badge.bg, color: badge.color, borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>
                     {badge.label}
                   </span>
                 </td>
-                <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                <td data-label="Date" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                   {o.created_at ? fmtDate(o.created_at) : '—'}
                 </td>
               </tr>

@@ -2,7 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
-import { getStaffSession, hashPassword, generateSalt, generateTempPassword } from '@/lib/staff-auth';
+import { getStaffSession, hashPassword, generateTempPassword, verifyPassword, upgradeStaffHash } from '@/lib/staff-auth';
+import { sendStaffTempPasswordEmail } from '@/lib/email';
 import type { Permission } from '@/lib/permissions';
 
 async function assertOwner() {
@@ -24,14 +25,13 @@ export async function createStaffMember(
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Invalid email address' };
 
   const tempPassword = generateTempPassword();
-  const salt = generateSalt();
-  const hash = hashPassword(tempPassword, salt);
+  const hash = hashPassword(tempPassword); // scrypt now self-salts
 
   const { error } = await supabase.from('staff_members').insert({
     email, name,
     permissions,
     password_hash: hash,
-    password_salt: salt,
+    password_salt: '',                 // empty for scrypt rows
     is_active: true,
   });
 
@@ -39,6 +39,9 @@ export async function createStaffMember(
     if (error.code === '23505') return { error: 'A staff member with this email already exists' };
     return { error: error.message };
   }
+
+  // Best-effort: email the temp password too (the UI still shows it in case Resend isn't configured).
+  void sendStaffTempPasswordEmail({ email, name, tempPassword });
 
   revalidatePath('/admin/team');
   return { tempPassword };
@@ -86,15 +89,19 @@ export async function resetStaffPassword(
 
   const id = formData.get('id') as string;
   const tempPassword = generateTempPassword();
-  const salt = generateSalt();
-  const hash = hashPassword(tempPassword, salt);
+  const hash = hashPassword(tempPassword);
 
-  const { error } = await supabase
+  const { data: staff, error } = await supabase
     .from('staff_members')
-    .update({ password_hash: hash, password_salt: salt })
-    .eq('id', id);
+    .update({ password_hash: hash, password_salt: '' })
+    .eq('id', id)
+    .select('email, name')
+    .single();
 
   if (error) return { error: error.message };
+  if (staff?.email && staff?.name) {
+    void sendStaffTempPasswordEmail({ email: staff.email, name: staff.name, tempPassword });
+  }
   revalidatePath('/admin/team');
   return { tempPassword };
 }
@@ -131,17 +138,12 @@ export async function changeMyPassword(
 
   if (!data) return { error: 'Account not found' };
 
-  const currentHash = hashPassword(current, data.password_salt);
-  if (currentHash !== data.password_hash) return { error: 'Current password is incorrect' };
+  const verify = verifyPassword(current, data.password_hash, data.password_salt);
+  if (!verify.ok) return { error: 'Current password is incorrect' };
 
-  const salt = generateSalt();
-  const hash = hashPassword(next, salt);
+  // Always store the new password as scrypt, regardless of legacy state.
+  const newHash = hashPassword(next);
+  await upgradeStaffHash(session.id, newHash);
 
-  const { error } = await supabase
-    .from('staff_members')
-    .update({ password_hash: hash, password_salt: salt })
-    .eq('id', session.id);
-
-  if (error) return { error: error.message };
   return { success: true };
 }

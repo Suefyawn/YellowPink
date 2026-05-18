@@ -92,6 +92,108 @@ export default async function SettingsPage({ searchParams }: { searchParams: { s
 
       <form action={saveSettings}>
 
+        {/* ── Store Info ─────────────────────────────────── */}
+        <Card>
+          {section('Store Info', 'Shown in email footers, structured data, and on the contact page.')}
+          <Divider />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={lbl}>Store Name</label>
+              <input name="store_name" defaultValue={g('store_name', 'Yellow Pink')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Currency</label>
+              <input name="currency" defaultValue={g('currency', 'PKR')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Store Email</label>
+              <input name="store_email" type="email" defaultValue={g('store_email')} style={inp}
+                placeholder="hello@yellowpink.pk" />
+            </div>
+            <div>
+              <label style={lbl}>Store Phone</label>
+              <input name="store_phone" type="tel" defaultValue={g('store_phone')} style={inp}
+                placeholder="+92 300 1234567" />
+            </div>
+          </div>
+        </Card>
+
+        {/* ── Shipping & Tax ─────────────────────────────── */}
+        <Card>
+          {section('Shipping & Tax', 'Default rates that fall back when no per-zone rule applies. Per-zone rates live in shipping_zones / shipping_rates.')}
+          <Divider />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={lbl}>Default Shipping Rate (PKR)</label>
+              <input name="default_shipping_rate" type="number" min={0} defaultValue={g('default_shipping_rate', '200')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Free Shipping Threshold (PKR)</label>
+              <input name="free_shipping_threshold" type="number" min={0} defaultValue={g('free_shipping_threshold', '2500')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Tax Rate (%)</label>
+              <input name="tax_rate_percent" type="number" step="0.01" min={0} max={100} defaultValue={g('tax_rate_percent', '0')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Tax Inclusive Pricing</label>
+              <Toggle name="tax_inclusive" checked={g('tax_inclusive') === 'true'} />
+            </div>
+          </div>
+        </Card>
+
+        {/* ── Loyalty ─────────────────────────────────────── */}
+        <Card>
+          {section('Loyalty Program', 'How points are earned and redeemed. Triggers in Postgres read these on every order/review/signup.')}
+          <Divider />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={lbl}>Points per PKR spent</label>
+              <input name="loyalty_points_per_pkr" type="number" step="0.01" min={0} defaultValue={g('loyalty_points_per_pkr', '0.1')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>PKR per point at redemption</label>
+              <input name="loyalty_pkr_per_point" type="number" step="0.01" min={0} defaultValue={g('loyalty_pkr_per_point', '1')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Welcome points (signup)</label>
+              <input name="loyalty_welcome_points" type="number" min={0} defaultValue={g('loyalty_welcome_points', '100')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Approved review points</label>
+              <input name="loyalty_review_points" type="number" min={0} defaultValue={g('loyalty_review_points', '25')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Referrer reward (points)</label>
+              <input name="loyalty_referral_points" type="number" min={0} defaultValue={g('loyalty_referral_points', '500')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Referee discount (%)</label>
+              <input name="loyalty_referral_discount_pct" type="number" min={0} max={100} defaultValue={g('loyalty_referral_discount_pct', '10')} style={inp} />
+            </div>
+          </div>
+        </Card>
+
+        {/* ── Brand colors ───────────────────────────────── */}
+        <Card>
+          {section('Brand Colors', 'Used by emails and storefront accents. CSS variables in globals.css are the source of truth for the storefront; these copies are for email + future theming.')}
+          <Divider />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={lbl}>Brand Pink</label>
+              <ColorPicker name="brand_pink"   value={g('brand_pink',   '#E8487F')} label="Primary" />
+            </div>
+            <div>
+              <label style={lbl}>Brand Yellow</label>
+              <ColorPicker name="brand_yellow" value={g('brand_yellow', '#F7C948')} label="Accent" />
+            </div>
+            <div>
+              <label style={lbl}>Ink</label>
+              <ColorPicker name="ink_900"      value={g('ink_900',      '#111827')} label="Text" />
+            </div>
+          </div>
+        </Card>
+
         {/* ── Announcement Bar ─────────────────────────────── */}
         <Card>
           {section('Announcement Bar', 'The thin bar at the very top of every page.')}

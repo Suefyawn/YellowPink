@@ -1,9 +1,10 @@
 import { CartPage } from '@/sections/cart/CartPage';
 
-export default function CartRoute() {
+export default async function CartRoute({ searchParams }: { searchParams: Promise<{ restore?: string }> }) {
+  const { restore } = await searchParams;
   return (
     <main className="fade-in">
-      <CartPage />
+      <CartPage restoreToken={restore ?? null} />
     </main>
   );
 }
