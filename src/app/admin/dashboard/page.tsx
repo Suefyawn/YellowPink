@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
+import { SentryWidget } from '@/components/admin/SentryWidget';
+import { PostHogWidget } from '@/components/admin/PostHogWidget';
 import type { Order, Product, CartItem } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -212,6 +214,12 @@ export default async function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Sentry + PostHog widgets */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 32 }} className="adm-analytics-grid">
+        <SentryWidget />
+        <PostHogWidget />
       </div>
 
       {/* Recent Orders */}
