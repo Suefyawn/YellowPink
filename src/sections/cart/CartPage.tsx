@@ -140,14 +140,16 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, marginTop: 32 }} className="cart-grid">
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
+              {/* Column labels — hidden on mobile via .cart-row-head, replaced
+                  by inline labels on each row card. */}
+              <div className="cart-row-head" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
                 <Overline style={{ color: 'var(--ink-500)' }}>Product</Overline>
                 <Overline style={{ color: 'var(--ink-500)', textAlign: 'center' }}>Quantity</Overline>
                 <Overline style={{ color: 'var(--ink-500)', textAlign: 'right' }}>Total</Overline>
                 <span />
               </div>
               {cartItems.map((item, i) => (
-                <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, alignItems: 'center', padding: '20px 0', borderBottom: '1px solid var(--line)' }}>
+                <div key={i} className="cart-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, alignItems: 'center', padding: '20px 0', borderBottom: '1px solid var(--line)' }}>
                   <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                     <div style={{ width: 72, height: 72, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
                       <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} sizes="72px" />

@@ -299,6 +299,30 @@ a.underline,
   .fbt-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
 }
 
+/* Cart rows: the desktop "Product | Quantity | Total | ×" 4-col grid
+ * gets too cramped under 700px (qty stepper alone needs ~96px). Re-flow
+ * into a 2-col layout: product spans the full row, qty + total share
+ * the row below, × pins to the top-right. */
+@media (max-width: 700px) {
+  .cart-row-head { display: none !important; }
+  .cart-row {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 12px 16px !important;
+    padding: 18px 0 !important;
+    position: relative;
+    align-items: center !important;
+  }
+  .cart-row > div:nth-child(1) { grid-column: 1 / -1 !important; }
+  .cart-row > div:nth-child(2) { grid-column: 1 !important; justify-content: flex-start !important; }
+  .cart-row > div:nth-child(3) { grid-column: 2 !important; text-align: right !important; }
+  .cart-row > button:last-child {
+    position: absolute !important;
+    top: 14px !important; right: 0 !important;
+    width: 32px !important; height: 32px !important;
+    display: inline-flex !important; align-items: center; justify-content: center;
+  }
+}
+
 @media (max-width: 600px) {
   .product-grid, .cat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .blog-grid { grid-template-columns: 1fr !important; }
