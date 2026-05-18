@@ -4,12 +4,15 @@ import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
+import { useBodyScrollLock, useEscapeKey } from '@/lib/hooks/useBodyScrollLock';
 
 const FREE_SHIPPING = 2500;
 
 export function MiniCart() {
   const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty } = useCart();
   const router = useRouter();
+  useBodyScrollLock(cartOpen);
+  useEscapeKey(cartOpen, () => setCartOpen(false));
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const progress = Math.min(total / FREE_SHIPPING, 1);
 
@@ -30,13 +33,19 @@ export function MiniCart() {
         opacity: cartOpen ? 1 : 0, pointerEvents: cartOpen ? 'auto' : 'none',
         transition: 'opacity 250ms ease-out', zIndex: 200,
       }} />
-      <div style={{
-        position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '90vw',
-        background: 'var(--paper)', boxShadow: 'var(--shadow-1)',
-        transform: cartOpen ? 'translateX(0)' : 'translateX(100%)',
-        transition: 'transform 300ms ease-out', zIndex: 201,
-        display: 'flex', flexDirection: 'column',
-      }}>
+      <div
+        role="dialog"
+        aria-modal={cartOpen}
+        aria-label="Shopping cart"
+        aria-hidden={!cartOpen}
+        style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '90vw',
+          background: 'var(--paper)', boxShadow: 'var(--shadow-1)',
+          transform: cartOpen ? 'translateX(0)' : 'translateX(100%)',
+          transition: 'transform 300ms ease-out', zIndex: 201,
+          display: 'flex', flexDirection: 'column',
+        }}
+      >
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="h3">Your Cart</span>
           <button onClick={() => setCartOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)', fontSize: '1.25rem' }}>×</button>

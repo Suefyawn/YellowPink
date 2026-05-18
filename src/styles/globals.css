@@ -55,6 +55,35 @@ a.underline,
   text-underline-offset: 2px;
 }
 
+/* a11y: bring back a real focus ring for keyboard users (mouse / touch users
+ * see nothing — only :focus-visible triggers). Without this rule every
+ * <button> looks the same focused vs unfocused, which silently breaks
+ * keyboard navigation across the storefront. */
+:focus { outline: none; }
+:focus-visible {
+  outline: 2px solid var(--brand-pink);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Skip-to-main link — hidden until keyboard-focused, then surfaces at the
+ * top-left as a high-contrast pill. Used by app/layout.tsx (`<a className="skip-link">`). */
+.skip-link {
+  position: absolute;
+  left: 12px;
+  top: -100px;
+  z-index: 1000;
+  padding: 10px 16px;
+  background: var(--ink-900);
+  color: var(--paper);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 160ms ease-out;
+}
+.skip-link:focus { top: 12px; outline: 2px solid var(--brand-yellow); outline-offset: 2px; }
+
 /* Typography scale */
 .display-xl { font-family: var(--font-display); font-size: 4.5rem; font-weight: 500; letter-spacing: -0.03em; line-height: 1.05; }
 .display-l  { font-family: var(--font-display); font-size: 3rem; font-weight: 500; letter-spacing: -0.025em; line-height: 1.1; }

@@ -6,6 +6,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useSearch } from '@/context/SearchContext';
 import { supabase } from '@/lib/supabase';
+import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
 import type { Product } from '@/types';
 
 const TRENDING = ['CeraVe', 'Rhode Lip Tint', 'Melasma Cream', 'NARS Foundation', 'Tarte Concealer'];
@@ -17,6 +18,7 @@ export function SearchOverlay() {
   const [products, setProducts] = useState<Product[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  useBodyScrollLock(searchOpen);
 
   useEffect(() => {
     if (searchOpen) {

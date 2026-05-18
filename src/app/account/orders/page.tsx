@@ -45,12 +45,28 @@ export default function AccountOrdersPage() {
         </div>
 
         {orders.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '80px 24px' }}>
-            <div style={{ fontSize: '3rem', marginBottom: 16, opacity: 0.3 }}>◎</div>
-            <p style={{ color: 'var(--ink-500)', marginBottom: 24 }}>No orders yet</p>
-            <Link href="/shop" style={{ padding: '10px 24px', background: 'var(--brand-pink)', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: '0.9375rem' }}>
-              Start shopping
-            </Link>
+          <div style={{
+            textAlign: 'center', padding: '64px 32px',
+            background: 'white', borderRadius: 16, border: '1px dashed var(--line)',
+          }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: 16, opacity: 0.35 }} aria-hidden="true">◎</div>
+            <h2 style={{ margin: '0 0 8px', fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500 }}>
+              No orders yet
+            </h2>
+            <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 360, marginLeft: 'auto', marginRight: 'auto' }}>
+              Once you place an order, you&apos;ll be able to track it and reorder favourites from here.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <Link href="/shop" className="btn-primary">Start shopping</Link>
+              <Link href="/track" style={{
+                padding: '12px 24px', background: 'transparent',
+                border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+                fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600,
+                color: 'var(--ink-900)', letterSpacing: '0.04em', textTransform: 'uppercase',
+              }}>
+                Track an order
+              </Link>
+            </div>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
