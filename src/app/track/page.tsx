@@ -103,7 +103,11 @@ export default function TrackPage() {
         </p>
 
         <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 40 }}>
+          <label htmlFor="track-order" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+            Order number
+          </label>
           <input
+            id="track-order"
             value={orderNumber}
             onChange={e => setOrderNumber(e.target.value)}
             placeholder="Order number — e.g. YP-A1B2C3"
@@ -115,12 +119,17 @@ export default function TrackPage() {
             }}
           />
           <div style={{ display: 'flex', gap: 12 }}>
+            <label htmlFor="track-phone" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+              Phone number
+            </label>
             <input
+              id="track-phone"
               value={phone}
               onChange={e => setPhone(e.target.value)}
               placeholder="Phone number used at checkout"
               required
               type="tel"
+              autoComplete="tel"
               style={{
                 flex: 1, padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
                 fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',

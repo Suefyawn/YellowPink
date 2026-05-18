@@ -192,6 +192,7 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                 ) : (
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
+                      aria-label="Coupon code"
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
                       onKeyDown={e => e.key === 'Enter' && applyCoupon()}

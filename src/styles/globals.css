@@ -95,6 +95,10 @@ a.underline,
 }
 .skip-link:focus { top: 12px; outline: 2px solid var(--brand-yellow); outline-offset: 2px; }
 
+/* When the skip-link focuses #main, browsers scroll it to the top edge.
+ * Without scroll-margin the sticky-ish header + banners cover it. */
+#main { scroll-margin-top: 200px; }
+
 /* Typography scale */
 .display-xl { font-family: var(--font-display); font-size: 4.5rem; font-weight: 500; letter-spacing: -0.03em; line-height: 1.05; }
 .display-l  { font-family: var(--font-display); font-size: 3rem; font-weight: 500; letter-spacing: -0.025em; line-height: 1.1; }

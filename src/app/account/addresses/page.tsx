@@ -122,46 +122,46 @@ export default function AddressesPage() {
             )}
             <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
-                <label style={lbl}>Label (e.g. Home, Office)</label>
-                <input name="label" placeholder="Home" style={inp} />
+                <label htmlFor="addr-label" style={lbl}>Label (e.g. Home, Office)</label>
+                <input id="addr-label" name="label" placeholder="Home" style={inp} />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={lbl}>First Name *</label>
-                  <input name="first_name" required style={inp} />
+                  <label htmlFor="addr-fname" style={lbl}>First Name *</label>
+                  <input id="addr-fname" name="first_name" autoComplete="given-name" required style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Last Name *</label>
-                  <input name="last_name" required style={inp} />
+                  <label htmlFor="addr-lname" style={lbl}>Last Name *</label>
+                  <input id="addr-lname" name="last_name" autoComplete="family-name" required style={inp} />
                 </div>
               </div>
               <div>
-                <label style={lbl}>Phone *</label>
-                <input name="phone" type="tel" required placeholder="+92 300 1234567" style={inp} />
+                <label htmlFor="addr-phone" style={lbl}>Phone *</label>
+                <input id="addr-phone" name="phone" type="tel" autoComplete="tel" required placeholder="+92 300 1234567" style={inp} />
               </div>
               <div>
-                <label style={lbl}>Address Line 1 *</label>
-                <input name="line1" required style={inp} placeholder="House/flat, street" />
+                <label htmlFor="addr-line1" style={lbl}>Address Line 1 *</label>
+                <input id="addr-line1" name="line1" autoComplete="address-line1" required style={inp} placeholder="House/flat, street" />
               </div>
               <div>
-                <label style={lbl}>Address Line 2</label>
-                <input name="line2" style={inp} placeholder="Area, landmark" />
+                <label htmlFor="addr-line2" style={lbl}>Address Line 2</label>
+                <input id="addr-line2" name="line2" autoComplete="address-line2" style={inp} placeholder="Area, landmark" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                 <div>
-                  <label style={lbl}>City *</label>
-                  <input name="city" required style={inp} />
+                  <label htmlFor="addr-city" style={lbl}>City *</label>
+                  <input id="addr-city" name="city" autoComplete="address-level2" required style={inp} />
                 </div>
                 <div>
-                  <label style={lbl}>Province</label>
-                  <select name="province" style={inp}>
+                  <label htmlFor="addr-province" style={lbl}>Province</label>
+                  <select id="addr-province" name="province" autoComplete="address-level1" style={inp}>
                     <option value="">Select</option>
                     {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={lbl}>Postal Code</label>
-                  <input name="zip" style={inp} />
+                  <label htmlFor="addr-zip" style={lbl}>Postal Code</label>
+                  <input id="addr-zip" name="zip" autoComplete="postal-code" inputMode="numeric" style={inp} />
                 </div>
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--ink-700)' }}>

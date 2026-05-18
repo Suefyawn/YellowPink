@@ -88,17 +88,17 @@ export default function ProfilePage() {
           <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }} className="duo-grid">
               <div>
-                <label style={lbl}>First Name</label>
-                <input value={firstName} onChange={e => setFirstName(e.target.value)} style={inp} placeholder="Aisha" />
+                <label htmlFor="profile-fname" style={lbl}>First Name</label>
+                <input id="profile-fname" autoComplete="given-name" value={firstName} onChange={e => setFirstName(e.target.value)} style={inp} placeholder="Aisha" />
               </div>
               <div>
-                <label style={lbl}>Last Name</label>
-                <input value={lastName} onChange={e => setLastName(e.target.value)} style={inp} placeholder="Khan" />
+                <label htmlFor="profile-lname" style={lbl}>Last Name</label>
+                <input id="profile-lname" autoComplete="family-name" value={lastName} onChange={e => setLastName(e.target.value)} style={inp} placeholder="Khan" />
               </div>
             </div>
             <div>
-              <label style={lbl}>Phone Number</label>
-              <input value={phone} onChange={e => setPhone(e.target.value)} style={inp} placeholder="+92 300 1234567" type="tel" />
+              <label htmlFor="profile-phone" style={lbl}>Phone Number</label>
+              <input id="profile-phone" autoComplete="tel" value={phone} onChange={e => setPhone(e.target.value)} style={inp} placeholder="+92 300 1234567" type="tel" />
             </div>
             <button type="submit" disabled={saving} style={{
               padding: '12px', background: saving ? '#f9a8d4' : 'var(--brand-pink)',

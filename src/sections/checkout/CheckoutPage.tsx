@@ -301,15 +301,15 @@ export function CheckoutPage() {
             <div>
               <Overline style={{ display: 'block', marginBottom: 16 }}>Contact</Overline>
               <div style={{ marginBottom: 24 }}>
-                <label style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
-                <input type="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} />
-                {errors.email && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
+                <label htmlFor="co-email" style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
+                <input id="co-email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
+                {errors.email && <span id="co-email-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="checkout-name-grid">
                 <div>
-                  <label style={labelStyle}>Phone *</label>
-                  <input type="tel" value={formData.phone} onChange={e => update('phone', e.target.value)} placeholder="+92 300 1234567" style={inputStyle('phone')} />
-                  {errors.phone && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.phone}</span>}
+                  <label htmlFor="co-phone" style={labelStyle}>Phone *</label>
+                  <input id="co-phone" type="tel" autoComplete="tel" value={formData.phone} onChange={e => update('phone', e.target.value)} placeholder="+92 300 1234567" style={inputStyle('phone')} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'co-phone-error' : undefined} />
+                  {errors.phone && <span id="co-phone-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.phone}</span>}
                 </div>
               </div>
 
@@ -317,37 +317,37 @@ export function CheckoutPage() {
               <Overline style={{ display: 'block', marginBottom: 16 }}>Shipping Address</Overline>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
                 <div>
-                  <label style={labelStyle}>First Name *</label>
-                  <input value={formData.firstName} onChange={e => update('firstName', e.target.value)} style={inputStyle('firstName')} />
-                  {errors.firstName && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.firstName}</span>}
+                  <label htmlFor="co-fname" style={labelStyle}>First Name *</label>
+                  <input id="co-fname" autoComplete="given-name" value={formData.firstName} onChange={e => update('firstName', e.target.value)} style={inputStyle('firstName')} aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? 'co-fname-error' : undefined} />
+                  {errors.firstName && <span id="co-fname-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.firstName}</span>}
                 </div>
                 <div>
-                  <label style={labelStyle}>Last Name *</label>
-                  <input value={formData.lastName} onChange={e => update('lastName', e.target.value)} style={inputStyle('lastName')} />
-                  {errors.lastName && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.lastName}</span>}
+                  <label htmlFor="co-lname" style={labelStyle}>Last Name *</label>
+                  <input id="co-lname" autoComplete="family-name" value={formData.lastName} onChange={e => update('lastName', e.target.value)} style={inputStyle('lastName')} aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? 'co-lname-error' : undefined} />
+                  {errors.lastName && <span id="co-lname-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.lastName}</span>}
                 </div>
               </div>
               <div style={{ marginBottom: 16 }}>
-                <label style={labelStyle}>Address *</label>
-                <input value={formData.address} onChange={e => update('address', e.target.value)} placeholder="House/flat, street, area" style={inputStyle('address')} />
-                {errors.address && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.address}</span>}
+                <label htmlFor="co-address" style={labelStyle}>Address *</label>
+                <input id="co-address" autoComplete="street-address" value={formData.address} onChange={e => update('address', e.target.value)} placeholder="House/flat, street, area" style={inputStyle('address')} aria-invalid={!!errors.address} aria-describedby={errors.address ? 'co-address-error' : undefined} />
+                {errors.address && <span id="co-address-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.address}</span>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }} className="addr-grid-3">
                 <div>
-                  <label style={labelStyle}>City *</label>
-                  <input value={formData.city} onChange={e => update('city', e.target.value)} style={inputStyle('city')} />
-                  {errors.city && <span style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.city}</span>}
+                  <label htmlFor="co-city" style={labelStyle}>City *</label>
+                  <input id="co-city" autoComplete="address-level2" value={formData.city} onChange={e => update('city', e.target.value)} style={inputStyle('city')} aria-invalid={!!errors.city} aria-describedby={errors.city ? 'co-city-error' : undefined} />
+                  {errors.city && <span id="co-city-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.city}</span>}
                 </div>
                 <div>
-                  <label style={labelStyle}>Province</label>
-                  <select value={formData.province} onChange={e => update('province', e.target.value)} style={{ ...inputStyle('province'), cursor: 'pointer' }}>
+                  <label htmlFor="co-province" style={labelStyle}>Province</label>
+                  <select id="co-province" autoComplete="address-level1" value={formData.province} onChange={e => update('province', e.target.value)} style={{ ...inputStyle('province'), cursor: 'pointer' }}>
                     <option value="">Select</option>
                     {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={labelStyle}>Postal Code</label>
-                  <input value={formData.zip} onChange={e => update('zip', e.target.value)} style={inputStyle('zip')} />
+                  <label htmlFor="co-zip" style={labelStyle}>Postal Code</label>
+                  <input id="co-zip" autoComplete="postal-code" inputMode="numeric" value={formData.zip} onChange={e => update('zip', e.target.value)} style={inputStyle('zip')} />
                 </div>
               </div>
 
@@ -391,6 +391,7 @@ export function CheckoutPage() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
+                      aria-label="Coupon code"
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
                       placeholder="Coupon code"
@@ -419,6 +420,7 @@ export function CheckoutPage() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
+                      aria-label="Gift card code"
                       value={giftCardCode}
                       onChange={e => { setGiftCardCode(e.target.value.toUpperCase()); setGiftCardError(''); }}
                       placeholder="Gift card"
@@ -444,6 +446,7 @@ export function CheckoutPage() {
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
+                      aria-label="Referral code"
                       value={refCodeInput}
                       onChange={e => { setRefCodeInput(e.target.value.toUpperCase()); setRefCodeError(''); }}
                       placeholder="Referral code (optional)"
@@ -471,6 +474,7 @@ export function CheckoutPage() {
                     <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600 }}>★ {loyalty.points_balance.toLocaleString()} points available</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input
+                        aria-label="Points to redeem"
                         type="number" min={0} max={Math.min(loyalty.points_balance, remainingAfterGc)}
                         value={pointsRedeemInput}
                         onChange={e => {
