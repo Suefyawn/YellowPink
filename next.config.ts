@@ -60,6 +60,32 @@ const nextConfig: NextConfig = {
   // dev resources by default; this is a dev-only allowlist (does NOT affect
   // production routing).
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
+  // Security + caching response headers. Applied to every storefront response
+  // so we get HSTS (closes the Semrush "No HSTS support" finding), a sensible
+  // Referrer-Policy + Permissions-Policy, and a strong X-Content-Type-Options.
+  // Static `/_next/image/*` results also get a long browser cache.
+  async headers() {
+    return [
+      {
+        // Every route. The HSTS preload-list directive is safe here because
+        // we're on Vercel HTTPS-only with a wildcard cert.
+        source: '/:path*',
+        headers: [
+          { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+          { key: 'X-Content-Type-Options',    value: 'nosniff' },
+          { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Frame-Options',           value: 'SAMEORIGIN' },
+          // Conservative defaults — turn on individual features per surface
+          // (e.g. camera for a future ID-upload flow) when we actually need them.
+          { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
+        ],
+      },
+    ];
+  },
+  // Next 16 already sets `Cache-Control: public, max-age=…` on /_next/image
+  // responses via `images.minimumCacheTTL`. Setting a custom header here
+  // triggered a build-time warning + invalid-segment-config error, so we
+  // leave it to the framework defaults.
 };
 
 export default withSentryConfig(withBundleAnalyzer(nextConfig), {

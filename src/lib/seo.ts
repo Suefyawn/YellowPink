@@ -35,6 +35,21 @@ interface PageMetaInput {
   noIndex?: boolean;
 }
 
+// Google truncates SERP titles around 60 characters and descriptions around
+// 160. Strings longer than `MAX` are truncated at the last word boundary
+// (no awkward "Foo Ba…"). Used by `pageMeta()` so every page-level helper
+// gets safe lengths without each caller having to remember the limits.
+const TITLE_MAX = 60;
+const DESC_MAX  = 158;
+
+export function truncateOnWord(s: string, max: number): string {
+  if (!s || s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  const trimmed = (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd();
+  return trimmed.replace(/[,;:!\-–—.]+$/, '') + '…';
+}
+
 export function pageMeta(input: PageMetaInput): Metadata {
   const url = absoluteUrl(input.path ?? '/');
   // If the caller didn't supply an explicit image, leave `images` undefined so
@@ -45,15 +60,23 @@ export function pageMeta(input: PageMetaInput): Metadata {
   const image = input.image;
   const ogImages = image ? [{ url: image }] : undefined;
   const twImages = image ? [image] : undefined;
+
+  // Cap title + description so we don't get Semrush "Title element is too
+  // long" / "meta description too long" warnings. The original `title` is
+  // still used for the OG/Twitter title where length matters less and the
+  // canonical-URL alternate is unaffected.
+  const safeTitle = truncateOnWord(input.title.trim(), TITLE_MAX);
+  const safeDesc  = truncateOnWord(input.description.trim(), DESC_MAX);
+
   return {
-    title: input.title,
-    description: input.description,
+    title: safeTitle,
+    description: safeDesc,
     keywords: input.keywords,
     robots: input.noIndex ? { index: false, follow: false } : undefined,
     alternates: { canonical: url },
     openGraph: {
-      title: input.title,
-      description: input.description,
+      title: safeTitle,
+      description: safeDesc,
       url,
       siteName: SITE_NAME,
       locale: 'en_PK',
@@ -62,8 +85,8 @@ export function pageMeta(input: PageMetaInput): Metadata {
     },
     twitter: {
       card: 'summary_large_image',
-      title: input.title,
-      description: input.description,
+      title: safeTitle,
+      description: safeDesc,
       images: twImages,
     },
   };

@@ -134,6 +134,22 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // ─── WP pattern 301s (URL preservation for legacy slugs) ──────────────────
+  // The Semrush audit of the live WP site flagged a thousand+ broken internal
+  // links pointing at WP-style URLs (/about-us/, /shop/page/2/, /category/x/,
+  // /?page_id=3). These rules cover the common shapes; per-slug redirects are
+  // still served from the `redirects` table below (built by the WP importer
+  // from old product / blog ids).
+  //
+  // Runs on ALL paths (incl. `/`) because `/?s=foo` is itself a WP redirect
+  // target — `isOwnedPath` would otherwise filter it out before we got here.
+  {
+    const patternTo = wpPatternRedirect(pathname, request.nextUrl.searchParams);
+    if (patternTo && patternTo !== pathname + (search ?? '')) {
+      return NextResponse.redirect(new URL(patternTo, request.url), 301);
+    }
+  }
+
   // ─── 301 redirect lookup (WordPress URL preservation) ─────────────────────
   // Only run on paths we don't already own to avoid useless work and any
   // potential loops with route-handler-owned URLs.
@@ -146,6 +162,59 @@ export async function proxy(request: NextRequest) {
   }
 
   return NextResponse.next();
+}
+
+// Map a known WP-style URL to the Next route, or null if no rule matches and
+// we should fall through to the per-slug `redirects` lookup. Pure function —
+// no DB hits, no async — runs at edge speed.
+function wpPatternRedirect(pathname: string, params: URLSearchParams): string | null {
+  // /shop/page/2/ → /shop?page=2
+  const shopPage = pathname.match(/^\/shop\/page\/(\d+)\/?$/);
+  if (shopPage) return `/shop?page=${shopPage[1]}`;
+
+  // /blog/page/2/ → /blog?page=2
+  const blogPage = pathname.match(/^\/blog\/page\/(\d+)\/?$/);
+  if (blogPage) return `/blog?page=${blogPage[1]}`;
+
+  // /category/<slug>/ + /product-category/<slug>/ + /brand/<slug>/
+  //   → /shop?category=<slug>
+  const cat = pathname.match(/^\/(?:product-category|category|brand)\/([^/]+)\/?$/);
+  if (cat) return `/shop?category=${encodeURIComponent(cat[1])}`;
+
+  // /author/<name>/<page?>/ → /blog (we don't have author archives)
+  if (/^\/author\/[^/]+(?:\/page\/\d+)?\/?$/.test(pathname)) return '/blog';
+
+  // WP standard slugs that map to our CMS page route.
+  const PAGE_SLUG_MAP: Record<string, string> = {
+    '/about-us':         '/page/about',
+    '/about':            '/page/about',
+    '/contact-us':       '/page/contact',
+    '/contact':          '/page/contact',
+    '/shipping-policy':  '/page/shipping',
+    '/shipping':         '/page/shipping',
+    '/return-policy':    '/page/returns',
+    '/returns-policy':   '/page/returns',
+    '/returns-refunds':  '/page/returns',
+    '/refund-policy':    '/page/returns',
+    '/faqs':             '/page/faq',
+    '/faq':              '/page/faq',
+    '/privacy-policy':   '/privacy',
+    '/terms':            '/page/terms',
+    '/terms-conditions': '/page/terms',
+  };
+  const trimmed = pathname.replace(/\/$/, '') || '/';
+  if (PAGE_SLUG_MAP[trimmed]) return PAGE_SLUG_MAP[trimmed];
+
+  // /?s=foo&post_type=product (or any /?s=) → /shop with q param
+  if (pathname === '' || pathname === '/') {
+    const s = params.get('s');
+    if (s) return `/shop?q=${encodeURIComponent(s)}`;
+    // /?page_id=N is a WP fallback; route to home (page_ids aren't preserved
+    // post-migration but the redirects table handles per-id mappings).
+    if (params.get('page_id')) return '/';
+  }
+
+  return null;
 }
 
 // Run on everything except Next.js internals and static assets.

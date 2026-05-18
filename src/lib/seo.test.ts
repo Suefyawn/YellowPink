@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { breadcrumbLd, jsonLd, productLd } from './seo';
+import { breadcrumbLd, jsonLd, productLd, truncateOnWord } from './seo';
 import type { Product, ProductReview, ProductVariant } from '@/types';
 
 const sampleProduct: Product = {
@@ -81,6 +81,31 @@ describe('SEO JSON-LD helpers', () => {
     const offer = ld.offers as { shippingDetails: unknown; hasMerchantReturnPolicy: unknown };
     expect(offer.shippingDetails).toBeDefined();
     expect(offer.hasMerchantReturnPolicy).toBeDefined();
+  });
+
+  describe('truncateOnWord', () => {
+    it('returns input unchanged when under the cap', () => {
+      expect(truncateOnWord('Hello world', 60)).toBe('Hello world');
+    });
+
+    it('truncates at the last word boundary above 60% of cap', () => {
+      const out = truncateOnWord('Kiko Milano 3D Hydra Lip Gloss 04 Pearly Peach Rose Limited Edition', 40);
+      expect(out.endsWith('…')).toBe(true);
+      expect(out.length).toBeLessThanOrEqual(41);
+      // Trims trailing punctuation before the ellipsis.
+      expect(out).not.toMatch(/[-,:;.]…$/);
+    });
+
+    it('hard-cuts when no word boundary is reachable', () => {
+      // Single-word string longer than the cap — should still terminate cleanly.
+      const out = truncateOnWord('SuperCalifragilisticExpialidocious', 12);
+      expect(out.endsWith('…')).toBe(true);
+    });
+
+    it('handles empty / short input', () => {
+      expect(truncateOnWord('', 60)).toBe('');
+      expect(truncateOnWord('a', 60)).toBe('a');
+    });
   });
 
   it('builds breadcrumb with positional list', () => {
