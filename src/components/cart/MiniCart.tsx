@@ -138,14 +138,14 @@ export function MiniCart() {
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
                   <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)' }}>
-                    <button onClick={() => updateQty(i, -1)} style={{ width: 28, height: 28, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>−</button>
-                    <span style={{ width: 24, textAlign: 'center', fontSize: '0.8125rem', fontWeight: 500 }}>{item.qty}</span>
-                    <button onClick={() => updateQty(i, 1)} style={{ width: 28, height: 28, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>+</button>
+                    <button type="button" aria-label={`Decrease quantity of ${item.name}`} onClick={() => updateQty(i, -1)} style={{ width: 28, height: 28, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>−</button>
+                    <span aria-live="polite" style={{ width: 24, textAlign: 'center', fontSize: '0.8125rem', fontWeight: 500 }}>{item.qty}</span>
+                    <button type="button" aria-label={`Increase quantity of ${item.name}`} onClick={() => updateQty(i, 1)} style={{ width: 28, height: 28, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>+</button>
                   </div>
                   <span className="tabular-nums" style={{ fontSize: '0.875rem', fontWeight: 600 }}>PKR {(item.price * item.qty).toLocaleString()}</span>
                 </div>
               </div>
-              <button onClick={() => removeFromCart(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-500)', fontSize: '1rem', alignSelf: 'flex-start', marginTop: 4 }}>×</button>
+              <button type="button" aria-label={`Remove ${item.name} from cart`} onClick={() => removeFromCart(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-500)', fontSize: '1rem', alignSelf: 'flex-start', marginTop: 4 }}>×</button>
             </div>
           ))}
           {cartItems.length > 0 && (

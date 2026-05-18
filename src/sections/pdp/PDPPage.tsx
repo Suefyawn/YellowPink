@@ -355,9 +355,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
 
             <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)' }}>
-                <button onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>−</button>
-                <span style={{ width: 32, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
-                <button onClick={() => setQty(qty + 1)} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>+</button>
+                <button type="button" aria-label="Decrease quantity" onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>−</button>
+                <span aria-live="polite" style={{ width: 32, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
+                <button type="button" aria-label="Increase quantity" onClick={() => setQty(qty + 1)} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>+</button>
               </div>
               <button onClick={handleAdd} disabled={ctaDisabled} className="btn-primary" style={{
                 flex: 1,
@@ -392,16 +392,22 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               .filter(Boolean)
               .map(sec => sec && (
               <div key={sec.key} style={{ borderBottom: '1px solid var(--line)' }}>
-                <button onClick={() => setExpandedSection(expandedSection === sec.key ? null : sec.key)} style={{
-                  width: '100%', padding: '16px 0', background: 'none', border: 'none', cursor: 'pointer',
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-900)',
-                }}>
+                <button
+                  type="button"
+                  aria-expanded={expandedSection === sec.key}
+                  aria-controls={`pdp-section-${sec.key}`}
+                  onClick={() => setExpandedSection(expandedSection === sec.key ? null : sec.key)}
+                  style={{
+                    width: '100%', padding: '16px 0', background: 'none', border: 'none', cursor: 'pointer',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-900)',
+                  }}
+                >
                   {sec.title}
-                  <span style={{ transform: expandedSection === sec.key ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 200ms ease-out', fontSize: '0.75rem' }}>▼</span>
+                  <span aria-hidden="true" style={{ transform: expandedSection === sec.key ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 200ms ease-out', fontSize: '0.75rem' }}>▼</span>
                 </button>
                 {expandedSection === sec.key && (
-                  <div className="body-text" style={{ color: 'var(--ink-700)', paddingBottom: 16 }}>{sec.content}</div>
+                  <div id={`pdp-section-${sec.key}`} className="body-text" style={{ color: 'var(--ink-700)', paddingBottom: 16 }}>{sec.content}</div>
                 )}
               </div>
             ))}

@@ -412,7 +412,7 @@ export function CheckoutPage() {
                   <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
                     ✓ {coupon.code} {coupon.type === 'percent' ? `(${coupon.value}% off)` : `(PKR ${coupon.value} off)`}
                   </span>
-                  <button onClick={() => { setCoupon(null); setCouponCode(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
+                  <button type="button" aria-label="Remove coupon" onClick={() => { setCoupon(null); setCouponCode(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
                 </div>
               )}
 
@@ -438,7 +438,7 @@ export function CheckoutPage() {
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
                   <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>🎁 {giftCard.code} (PKR {giftCard.balance.toLocaleString()} balance)</span>
-                  <button onClick={() => { setGiftCard(null); setGiftCardCode(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
+                  <button type="button" aria-label="Remove gift card" onClick={() => { setGiftCard(null); setGiftCardCode(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
                 </div>
               )}
 
@@ -464,7 +464,7 @@ export function CheckoutPage() {
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#fdf4ff', borderRadius: 6, border: '1px solid #f5d0fe' }}>
                   <span style={{ fontSize: '0.8125rem', color: '#a21caf', fontWeight: 600 }}>👥 {refCode.code} (−{refCode.pct}%)</span>
-                  <button onClick={() => { setRefCode(null); setRefCodeInput(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
+                  <button type="button" aria-label="Remove referral code" onClick={() => { setRefCode(null); setRefCodeInput(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '0.75rem' }}>✕</button>
                 </div>
               )}
 

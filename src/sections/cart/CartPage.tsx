@@ -161,13 +161,13 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)' }}>
-                      <button onClick={() => updateQty(i, -1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>−</button>
-                      <span style={{ width: 28, textAlign: 'center', fontSize: '0.8125rem', fontWeight: 500 }}>{item.qty}</span>
-                      <button onClick={() => updateQty(i, 1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>+</button>
+                      <button type="button" aria-label={`Decrease quantity of ${item.name}`} onClick={() => updateQty(i, -1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>−</button>
+                      <span aria-live="polite" style={{ width: 28, textAlign: 'center', fontSize: '0.8125rem', fontWeight: 500 }}>{item.qty}</span>
+                      <button type="button" aria-label={`Increase quantity of ${item.name}`} onClick={() => updateQty(i, 1)} style={{ width: 32, height: 32, background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }}>+</button>
                     </div>
                   </div>
                   <div className="tabular-nums" style={{ textAlign: 'right', fontWeight: 600, fontSize: '0.9375rem' }}>PKR {(item.price * item.qty).toLocaleString()}</div>
-                  <button onClick={() => removeFromCart(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-500)', fontSize: '1rem' }}>×</button>
+                  <button type="button" aria-label={`Remove ${item.name} from cart`} onClick={() => removeFromCart(i)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-500)', fontSize: '1rem' }}>×</button>
                 </div>
               ))}
               <div style={{ marginTop: 20 }}>
@@ -188,7 +188,7 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                         — {appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `PKR ${appliedCoupon.value.toLocaleString()} off`}
                       </span>
                     </div>
-                    <button onClick={removeCoupon} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '1rem', lineHeight: 1, padding: 2 }}>×</button>
+                    <button type="button" aria-label="Remove coupon" onClick={removeCoupon} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '1rem', lineHeight: 1, padding: 2 }}>×</button>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', gap: 8 }}>
