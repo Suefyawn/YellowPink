@@ -2,10 +2,13 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { captureError } from '@/lib/monitoring';
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    console.error(error);
+    // Fire-and-forget — captureError lazy-loads the Sentry SDK; the page
+    // can still re-render before that promise settles.
+    void captureError(error, { source: 'app/error.tsx', digest: error.digest });
   }, [error]);
 
   return (
@@ -19,6 +22,14 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
         </h1>
         <p style={{ color: 'var(--ink-500)', margin: '0 0 32px', lineHeight: 1.6 }}>
           An unexpected error occurred. Our team has been notified.
+          {error.digest && (
+            <>
+              <br />
+              <span style={{ fontFamily: 'monospace', fontSize: '0.75rem', color: 'var(--ink-400)' }}>
+                Ref: {error.digest}
+              </span>
+            </>
+          )}
         </p>
         <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
           <button onClick={reset} style={{

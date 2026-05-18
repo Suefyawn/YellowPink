@@ -2,10 +2,11 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { captureError } from '@/lib/monitoring';
 
 export default function AdminError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
-    console.error('[Admin error]', error);
+    void captureError(error, { source: 'app/admin/error.tsx', digest: error.digest });
   }, [error]);
 
   return (
