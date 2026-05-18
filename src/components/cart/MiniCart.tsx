@@ -1,10 +1,11 @@
 'use client';
 
+import { useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
-import { useBodyScrollLock, useEscapeKey } from '@/lib/hooks/useBodyScrollLock';
+import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 
 const FREE_SHIPPING = 2500;
 
@@ -13,6 +14,8 @@ export function MiniCart() {
   const router = useRouter();
   useBodyScrollLock(cartOpen);
   useEscapeKey(cartOpen, () => setCartOpen(false));
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  useFocusTrap(cartOpen, panelRef);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const progress = Math.min(total / FREE_SHIPPING, 1);
 
@@ -34,6 +37,7 @@ export function MiniCart() {
         transition: 'opacity 250ms ease-out', zIndex: 200,
       }} />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal={cartOpen}
         aria-label="Shopping cart"
@@ -48,7 +52,17 @@ export function MiniCart() {
       >
         <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span className="h3">Your Cart</span>
-          <button onClick={() => setCartOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)', fontSize: '1.25rem' }}>×</button>
+          <button
+            onClick={() => setCartOpen(false)}
+            aria-label="Close cart"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--ink-900)', fontSize: '1.5rem', lineHeight: 1,
+              width: 40, height: 40, borderRadius: 8,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              marginRight: -8,
+            }}
+          >×</button>
         </div>
 
         <div style={{ padding: '16px 24px', borderBottom: '1px solid var(--line)' }}>

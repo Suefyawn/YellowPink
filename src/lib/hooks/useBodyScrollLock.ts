@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, type RefObject } from 'react';
 
 // Locks <body> scroll while a modal/drawer is open. Restores the original
 // overflow on close. Pass `lock=true` to engage.
@@ -52,4 +52,55 @@ export function useEscapeKey(active: boolean, onClose: () => void): void {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [active, onClose]);
+}
+
+/**
+ * Keep Tab focus inside `ref.current` while `active`. On open, focus the
+ * first focusable element inside the container. On close, restore focus
+ * to whatever was focused before opening. Standard modal-dialog pattern.
+ */
+const FOCUSABLE = [
+  'a[href]', 'button:not([disabled])', 'input:not([disabled])',
+  'select:not([disabled])', 'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+export function useFocusTrap<T extends HTMLElement>(active: boolean, ref: RefObject<T | null>): void {
+  useEffect(() => {
+    if (!active || typeof document === 'undefined') return;
+    const container = ref.current;
+    if (!container) return;
+
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+
+    // Defer initial focus a tick so the open transition can start first.
+    const initial = setTimeout(() => {
+      const first = container.querySelector<HTMLElement>(FOCUSABLE);
+      first?.focus();
+    }, 50);
+
+    const onKeydown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const list = Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE))
+        .filter(el => !el.hasAttribute('aria-hidden'));
+      if (list.length === 0) return;
+      const first = list[0];
+      const last  = list[list.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) {
+        e.preventDefault(); last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault(); first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKeydown);
+
+    return () => {
+      clearTimeout(initial);
+      document.removeEventListener('keydown', onKeydown);
+      // Restore focus after the panel closes so keyboard users land back
+      // where they were (e.g. on the "Filters" pill that opened the rail).
+      previouslyFocused?.focus?.();
+    };
+  }, [active, ref]);
 }

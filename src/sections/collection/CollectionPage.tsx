@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
-import { useBodyScrollLock, useEscapeKey } from '@/lib/hooks/useBodyScrollLock';
+import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import type { Product, Category, ProductAttribute, AttributeValue } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -113,8 +113,10 @@ export function CollectionPage({
   // Filter rail is collapsed by default so the catalogue shows immediately.
   // When open it's a fixed left-side slide-in panel on every viewport.
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const filterPanelRef = useRef<HTMLElement | null>(null);
   useBodyScrollLock(filtersOpen);
   useEscapeKey(filtersOpen, () => setFiltersOpen(false));
+  useFocusTrap(filtersOpen, filterPanelRef);
   // Look up an attribute_value by id (for the chip label).
   const attrValueLookup = useMemo(() => {
     const m = new Map<string, { attrName: string; value: string }>();
@@ -400,6 +402,7 @@ export function CollectionPage({
           <aside
             id="shop-filter-rail"
             className="shop-rail"
+            ref={filterPanelRef}
             role="dialog"
             aria-modal={filtersOpen}
             aria-label="Filter products"

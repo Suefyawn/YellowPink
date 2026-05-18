@@ -8,6 +8,7 @@ import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
 import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
 import { PWAInstallPrompt } from '@/components/layout/PWAInstallPrompt';
 import { DemoBanner } from '@/components/layout/DemoBanner';
+import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { getSiteSettings } from '@/lib/supabase';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
 
@@ -64,6 +65,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ServiceWorkerRegister />
         <PWAInstallPrompt />
         <Providers>
+          <CartAnnouncer />
           <SiteChrome settings={settings}>
             <div id="main">{children}</div>
           </SiteChrome>

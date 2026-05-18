@@ -4,7 +4,13 @@
 :root {
   --ink-900: #0A0A0A;
   --ink-700: #2A2A2A;
-  --ink-500: #6B6B6B;
+  /* --ink-500 hits ~5.6:1 on --paper (WCAG AA for normal body text). */
+  --ink-500: #595959;
+  /* Truly muted: dates, helper labels, decorative captions. ~3.5:1 — large
+   * text only (>= 18 px or bold >= 14 px). */
+  --ink-400: #7A7A7A;
+  /* Disabled / placeholder — decorative only, never essential text. */
+  --ink-300: #B0B0B0;
   --paper: #FAF6EE;
   --paper2: #F2EDE2;
   --brand-yellow: #F7C948;

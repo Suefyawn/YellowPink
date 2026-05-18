@@ -6,7 +6,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useSearch } from '@/context/SearchContext';
 import { supabase } from '@/lib/supabase';
-import { useBodyScrollLock } from '@/lib/hooks/useBodyScrollLock';
+import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import type { Product } from '@/types';
 
 const TRENDING = ['CeraVe', 'Rhode Lip Tint', 'Melasma Cream', 'NARS Foundation', 'Tarte Concealer'];
@@ -17,8 +17,10 @@ export function SearchOverlay() {
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   useBodyScrollLock(searchOpen);
+  useFocusTrap(searchOpen, panelRef);
 
   useEffect(() => {
     if (searchOpen) {
@@ -62,7 +64,13 @@ export function SearchOverlay() {
         opacity: searchOpen ? 1 : 0, pointerEvents: searchOpen ? 'auto' : 'none',
         transition: 'opacity 200ms ease-out', zIndex: 300,
       }} />
-      <div style={{
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal={searchOpen}
+        aria-label="Search"
+        aria-hidden={!searchOpen}
+        style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         background: 'var(--paper)', zIndex: 301,
         transform: searchOpen ? 'translateY(0)' : 'translateY(-100%)',
