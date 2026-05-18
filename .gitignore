@@ -51,3 +51,4 @@ next-env.d.ts
 
 # Local WP export dumps — not for the repo
 yellowpink.pk_*.csv
+*.lnk
