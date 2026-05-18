@@ -7,6 +7,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
 import { SentryWidget } from '@/components/admin/SentryWidget';
 import { PostHogWidget } from '@/components/admin/PostHogWidget';
+import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import type { Order, Product, CartItem } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -87,9 +88,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: '0 0 8px' }}>
-        Dashboard
-      </h1>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: 0 }}>
+          Dashboard
+        </h1>
+        <RefreshAnalyticsButton />
+      </div>
       <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 32px' }}>
         Welcome back. Here&apos;s what&apos;s happening with your store.
       </p>
