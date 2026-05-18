@@ -45,7 +45,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
 
         <div className="container" style={{ maxWidth: 960, padding: '32px var(--side)' }}>
           <div style={{ aspectRatio: '16/9', borderRadius: 'var(--radius-card)', overflow: 'hidden' }}>
-            <ProductImage src={post.image_url} alt={post.title} />
+            <ProductImage src={post.image_url} alt={post.title} priority sizes="(max-width: 1024px) 100vw, 960px" />
           </div>
         </div>
 
@@ -91,7 +91,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
                     <Link key={rp.id} href={`/blog/${rp.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <article style={{ cursor: 'pointer' }}>
                         <div style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden', marginBottom: 12 }}>
-                          <ProductImage src={rp.image_url} alt={rp.title} />
+                          <ProductImage src={rp.image_url} alt={rp.title} sizes="(max-width: 700px) 100vw, 50vw" />
                         </div>
                         <Overline style={{ color: 'var(--ink-500)', display: 'block', marginBottom: 4 }}>{rp.category}</Overline>
                         <h3 className="h3" style={{ marginBottom: 4 }}>{rp.title}</h3>

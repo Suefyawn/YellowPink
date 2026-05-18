@@ -31,7 +31,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
             <Link href={`/blog/${featured.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 48, alignItems: 'center', cursor: 'pointer' }} className="duo-grid">
                 <div style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden' }}>
-                  <ProductImage src={featured.image_url} alt={featured.title} />
+                  <ProductImage src={featured.image_url} alt={featured.title} priority sizes="(max-width: 900px) 100vw, 60vw" />
                 </div>
                 <div>
                   <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
@@ -74,7 +74,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
                     onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
                     onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
                   >
-                    <ProductImage src={post.image_url} alt={post.title} />
+                    <ProductImage src={post.image_url} alt={post.title} sizes="(max-width: 700px) 100vw, 33vw" />
                   </div>
                   <Overline style={{ color: 'var(--ink-500)', display: 'block', marginBottom: 6 }}>{post.category}</Overline>
                   <h3 style={{ fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3, marginBottom: 8 }}>{post.title}</h3>

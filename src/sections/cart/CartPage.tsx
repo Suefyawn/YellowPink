@@ -150,7 +150,7 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                 <div key={i} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, alignItems: 'center', padding: '20px 0', borderBottom: '1px solid var(--line)' }}>
                   <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                     <div style={{ width: 72, height: 72, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
-                      <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} />
+                      <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} sizes="72px" />
                     </div>
                     <div>
                       <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>

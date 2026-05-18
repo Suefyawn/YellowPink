@@ -151,7 +151,17 @@ function ZoomableImage({ src, alt, label, fallback }: { src: string | null; alt:
           willChange: 'transform',
         }}
       >
-        <ProductImage src={src ?? fallback} alt={alt} label={label} priority />
+        <ProductImage
+          src={src ?? fallback}
+          alt={alt}
+          label={label}
+          priority
+          // PDP hero is the LCP: full column width on mobile (~100vw),
+          // ~45vw on desktop (right column of a 2-col split). Without an
+          // explicit sizes hint the default 320px clamp serves a blurry
+          // upscale.
+          sizes="(max-width: 900px) 100vw, 45vw"
+        />
       </div>
     </div>
   );
@@ -188,7 +198,7 @@ function Gallery({
               background: 'var(--paper2)', cursor: 'pointer',
             }}
           >
-            <ProductImage src={img.url} alt={img.alt ?? alt} label={brandLabel} />
+            <ProductImage src={img.url} alt={img.alt ?? alt} label={brandLabel} sizes="80px" />
           </button>
         ))}
       </div>

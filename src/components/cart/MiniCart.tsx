@@ -126,7 +126,7 @@ export function MiniCart() {
           ) : cartItems.map((item, i) => (
             <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--line)' }}>
               <div style={{ width: 64, height: 64, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
-                <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} />
+                <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} sizes="64px" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>
