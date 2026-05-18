@@ -593,8 +593,68 @@ export function CollectionPage({
             ))}
           </div>
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '64px 0' }}>
-              <p className="body-text" style={{ color: 'var(--ink-500)' }}>No products in this category yet.</p>
+            <div
+              style={{
+                textAlign: 'center', padding: '56px 24px',
+                background: 'linear-gradient(135deg, var(--paper2) 0%, var(--paper) 100%)',
+                border: '1px dashed var(--line)', borderRadius: 'var(--radius-card)',
+                marginTop: 24,
+              }}
+            >
+              <div
+                aria-hidden="true"
+                style={{
+                  width: 60, height: 60, margin: '0 auto 18px',
+                  borderRadius: '50%',
+                  background: 'linear-gradient(135deg, #FDE7F0 0%, #FFF8E1 100%)',
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '1.5rem', color: 'var(--brand-pink)',
+                }}
+              >○</div>
+              <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 8px' }}>
+                {q.trim()
+                  ? <>No results for &ldquo;{q.trim()}&rdquo;</>
+                  : activeFilterCount > 0
+                  ? 'No products match those filters'
+                  : 'No products in this category yet'}
+              </h2>
+              <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 420, margin: '0 auto 20px' }}>
+                {q.trim()
+                  ? 'Try a different spelling, a shorter term, or browse a category instead.'
+                  : activeFilterCount > 0
+                  ? "Try clearing a filter or two — we'll show you what's available."
+                  : "We're restocking — check back soon or browse another category."}
+              </p>
+              <div style={{ display: 'inline-flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+                {(q.trim() || activeFilterCount > 0) && (
+                  <button
+                    type="button"
+                    onClick={() => { setQ(''); clearFilters(); }}
+                    className="btn-primary"
+                    style={{ fontSize: '0.75rem' }}
+                  >Clear all filters</button>
+                )}
+                {topCategoryNames
+                  .filter(c => c !== 'All' && c !== activeCategory)
+                  .slice(0, 3)
+                  .map(c => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => { setQ(''); setActiveCategory(c); }}
+                      style={{
+                        padding: '10px 16px',
+                        background: 'white', border: '1px solid var(--line)',
+                        borderRadius: 'var(--radius-card)',
+                        fontFamily: 'var(--font-ui)', fontSize: '0.75rem', fontWeight: 600,
+                        letterSpacing: '0.06em', textTransform: 'uppercase',
+                        color: 'var(--ink-900)', cursor: 'pointer',
+                        minHeight: 36,
+                      }}
+                    >Try {c}</button>
+                  ))
+                }
+              </div>
             </div>
           )}
           {totalPages > 1 && (
