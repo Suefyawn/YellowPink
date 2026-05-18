@@ -184,22 +184,48 @@ export function ProductForm({ product }: { product?: Product }) {
             </div>
           </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 12, paddingTop: 4 }}>
-            <button type="submit" disabled={pending} style={{
-              padding: '10px 24px', background: pending ? '#9ca3af' : '#ec4899',
-              color: 'white', border: 'none', borderRadius: 7,
-              fontSize: '0.875rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
-            }}>
-              {pending ? 'Saving…' : isEdit ? 'Save Changes' : 'Create Product'}
-            </button>
-            <Link href="/admin/products" style={{
-              padding: '10px 20px', background: 'white', color: '#374151',
-              border: '1px solid #d1d5db', borderRadius: 7,
-              fontSize: '0.875rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
-            }}>
-              Cancel
-            </Link>
+          {/* Sticky save bar — pins to the bottom of the viewport while the
+              admin scrolls long product edits. Falls back to flow on short
+              forms so it doesn't float in negative space. */}
+          <div
+            style={{
+              position: 'sticky', bottom: 0,
+              marginTop: 20,
+              padding: '12px 16px',
+              background: 'rgba(255,255,255,0.94)',
+              backdropFilter: 'saturate(140%) blur(8px)',
+              WebkitBackdropFilter: 'saturate(140%) blur(8px)',
+              borderTop: '1px solid #e5e7eb',
+              borderRadius: '0 0 10px 10px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, flexWrap: 'wrap',
+              boxShadow: '0 -6px 18px rgba(0,0,0,0.04)',
+              zIndex: 5,
+            }}
+          >
+            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+              {pending
+                ? 'Saving…'
+                : isEdit
+                  ? <>Editing <strong style={{ color: '#111827' }}>{product?.name ?? 'product'}</strong></>
+                  : 'Creating a new product'}
+            </div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <Link href="/admin/products" style={{
+                padding: '9px 18px', background: 'white', color: '#374151',
+                border: '1px solid #d1d5db', borderRadius: 7,
+                fontSize: '0.8125rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+              }}>
+                Cancel
+              </Link>
+              <button type="submit" disabled={pending} style={{
+                padding: '10px 24px', background: pending ? '#9ca3af' : '#ec4899',
+                color: 'white', border: 'none', borderRadius: 7,
+                fontSize: '0.8125rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
+              }}>
+                {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Create product'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

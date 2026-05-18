@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { OrderStatusForm } from '@/components/admin/OrderStatusForm';
 import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
+import { brandPlusName } from '@/lib/product-display';
 import type { Order, CartItem, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -25,6 +26,32 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const o = order as Order;
   const items = (o.items ?? []) as CartItem[];
   const currentStatus = (o.status ?? 'pending') as OrderStatus;
+
+  // Customer history block — lifetime orders + total spend for the same
+  // (user_id OR phone OR email). Cheap query — admin-only view, no caching
+  // needed. Excludes the current order from "previous" + "ltv" so the
+  // merchant sees "this is their 3rd order" rather than counting the one
+  // they're already looking at.
+  const orFilters = [
+    o.user_id ? `user_id.eq.${o.user_id}` : null,
+    o.email ? `email.eq.${o.email}` : null,
+    o.phone ? `phone.eq.${o.phone}` : null,
+  ].filter(Boolean).join(',');
+  let customerStats: { count: number; total: number; first: string | null } | null = null;
+  if (orFilters) {
+    const { data: history } = await supabase
+      .from('orders')
+      .select('id, total, status, created_at')
+      .or(orFilters)
+      .neq('status', 'cancelled');
+    const rows = (history ?? []) as Array<{ id: string; total: number; status: string; created_at: string }>;
+    const orderCount = rows.length;
+    const total = rows.reduce((s, r) => s + (r.total ?? 0), 0);
+    const first = rows.length > 0
+      ? rows.reduce((min, r) => (r.created_at < min ? r.created_at : min), rows[0].created_at)
+      : null;
+    customerStats = { count: orderCount, total, first };
+  }
 
   const section: React.CSSProperties = {
     background: 'white', borderRadius: 10,
@@ -110,7 +137,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <tbody>
             {items.map((item, idx) => (
               <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '10px 0', fontSize: '0.875rem' }}>{item.brand} {item.name}{item.variant ? ` — ${item.variant}` : ''}</td>
+                <td style={{ padding: '10px 0', fontSize: '0.875rem' }}>{brandPlusName(item.brand, item.name)}{item.variant ? ` — ${item.variant}` : ''}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', textAlign: 'right' }}>{fmt(item.price)}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', textAlign: 'right' }}>{item.qty}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', fontWeight: 600, textAlign: 'right' }}>{fmt(item.price * item.qty)}</td>
@@ -140,22 +167,46 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
         {/* Customer */}
         <div style={section}>
-          <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Customer</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
+            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Customer</h2>
+            {customerStats && customerStats.count > 1 && (
+              <span
+                title={customerStats.first ? `First ordered ${new Date(customerStats.first).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}` : undefined}
+                style={{
+                  fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05em',
+                  textTransform: 'uppercase',
+                  padding: '3px 9px', borderRadius: 20,
+                  background: '#fdf2f8', color: '#9d174d', border: '1px solid #fbcfe8',
+                }}
+              >
+                Repeat · {customerStats.count} orders
+              </span>
+            )}
+          </div>
           <dl style={dl}>
             <dt style={dt}>Name</dt>
             <dd style={dd}>{o.first_name} {o.last_name}</dd>
             <dt style={dt}>Phone</dt>
             <dd style={dd}>{o.phone}</dd>
             {o.email && <><dt style={dt}>Email</dt><dd style={dd}>{o.email}</dd></>}
+            {customerStats && (
+              <>
+                <dt style={dt}>Lifetime spend</dt>
+                <dd style={dd}>
+                  <strong style={{ color: '#16a34a' }}>{fmt(customerStats.total)}</strong>
+                  <span style={{ color: '#9ca3af', marginLeft: 6, fontSize: '0.75rem' }}>across {customerStats.count} order{customerStats.count !== 1 ? 's' : ''}</span>
+                </dd>
+              </>
+            )}
           </dl>
         </div>
 
         {/* Shipping */}
         <div style={section}>
-          <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipping Address</h2>
+          <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipping address</h2>
           <dl style={dl}>
             <dt style={dt}>Address</dt>
             <dd style={dd}>{o.address}</dd>
@@ -168,7 +219,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
       {/* Order Items */}
       <div style={{ ...section, marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order Items</h2>
+        <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order items</h2>
+        <div className="adm-table-scroll">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ borderBottom: '2px solid #f3f4f6' }}>
@@ -190,9 +242,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
+      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
         {/* Order Status Management */}
         <div style={section}>
           <h2 style={{ margin: '0 0 20px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Update Order</h2>

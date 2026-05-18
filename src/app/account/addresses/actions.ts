@@ -95,3 +95,19 @@ export async function deleteAddress(formData: FormData): Promise<void> {
   await sb.from('addresses').delete().eq('id', id);
   revalidatePath('/account/addresses');
 }
+
+// Flip the `is_default` flag on one address — clearing the previous default
+// in the same transaction so the user always has exactly one. Used by the
+// "Make default" button on each non-default card.
+export async function setDefaultAddress(formData: FormData): Promise<void> {
+  const id = formData.get('id');
+  if (typeof id !== 'string') return;
+  const sb = await authedClient();
+  const { data: user } = await sb.auth.getUser();
+  if (!user.user) return;
+
+  // Clear current default first (RLS scopes to user).
+  await sb.from('addresses').update({ is_default: false } as never).eq('user_id', user.user.id).eq('is_default', true);
+  await sb.from('addresses').update({ is_default: true } as never).eq('id', id).eq('user_id', user.user.id);
+  revalidatePath('/account/addresses');
+}

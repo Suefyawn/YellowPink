@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
-import { createAddress, deleteAddress } from './actions';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { createAddress, deleteAddress, setDefaultAddress } from './actions';
 import type { Address } from '@/types';
 
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
@@ -40,7 +41,24 @@ export default function AddressesPage() {
   }, [user, state]);
 
   if (loading || !user) {
-    return <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>Loading…</div>;
+    return (
+      <div className="container" style={{ padding: '48px var(--side)' }}>
+        <div style={{ maxWidth: 720, margin: '0 auto' }}>
+          <Skeleton height={32} width="35%" style={{ marginBottom: 32 }} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(280px,1fr))', gap: 16 }}>
+            {[0, 1].map(i => (
+              <div key={i} style={{ background: 'white', borderRadius: 12, padding: 20, border: '1px solid var(--line)' }}>
+                <Skeleton height={14} width="40%" style={{ marginBottom: 8 }} />
+                <Skeleton height={18} width="60%" style={{ marginBottom: 12 }} />
+                <Skeleton height={14} width="80%" style={{ marginBottom: 4 }} />
+                <Skeleton height={14} width="70%" style={{ marginBottom: 4 }} />
+                <Skeleton height={14} width="50%" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -88,15 +106,42 @@ export default function AddressesPage() {
                   {addr.city}{addr.province ? `, ${addr.province}` : ''} {addr.zip ?? ''}<br />
                   {addr.phone}
                 </div>
-                <form action={deleteAddress} style={{ marginTop: 12 }}>
-                  <input type="hidden" name="id" value={addr.id} />
-                  <button type="submit" style={{
-                    background: 'none', border: 'none', color: '#ef4444',
-                    padding: 0, fontSize: '0.8125rem', cursor: 'pointer',
-                  }}>
-                    Remove
-                  </button>
-                </form>
+                <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  {!addr.is_default && (
+                    <form action={setDefaultAddress}>
+                      <input type="hidden" name="id" value={addr.id} />
+                      <button
+                        type="submit"
+                        style={{
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: 'var(--brand-pink)', fontWeight: 600,
+                          fontSize: '0.8125rem', padding: 0,
+                        }}
+                      >
+                        Set as default
+                      </button>
+                    </form>
+                  )}
+                  <form
+                    action={deleteAddress}
+                    onSubmit={e => {
+                      if (!confirm(`Remove ${addr.label ?? 'this address'}? This can't be undone.`)) {
+                        e.preventDefault();
+                      }
+                    }}
+                  >
+                    <input type="hidden" name="id" value={addr.id} />
+                    <button
+                      type="submit"
+                      style={{
+                        background: 'none', border: 'none', color: '#ef4444',
+                        padding: 0, fontSize: '0.8125rem', cursor: 'pointer',
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </form>
+                </div>
               </div>
             ))}
           </div>

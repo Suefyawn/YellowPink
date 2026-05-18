@@ -3,6 +3,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { sanitizeHtml } from '@/lib/sanitize';
+import { linkProductMentions } from '@/lib/link-product-mentions';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
@@ -53,7 +54,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
             <div
               className="blog-body"
               style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(post.body) }}
+              dangerouslySetInnerHTML={{ __html: linkProductMentions(sanitizeHtml(post.body), relatedProducts) }}
             />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-500)', fontStyle: 'italic' }}>
