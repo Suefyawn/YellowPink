@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import { SectionDivider } from '@/components/ui/SectionDivider';
 import { Overline } from '@/components/ui/Overline';
 
@@ -119,6 +120,53 @@ function initials(name: string): string {
 }
 
 export function RealResults() {
+  // Active slide index for the mobile slider's dot indicator. Updated by
+  // an IntersectionObserver watching each card — pure read-only, the
+  // dots are presentational (tapping them is a nice-to-have we can add
+  // later without breaking the swipe interaction).
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const cardRefs = useRef<Array<HTMLElement | null>>([]);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(() => {
+    const root = gridRef.current;
+    if (!root) return;
+    // Suppress on desktop — the static grid renders all cards at once and
+    // IntersectionObserver would report whichever happens to be intersecting
+    // most, which is meaningless.
+    if (window.matchMedia('(min-width: 721px)').matches) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        // Pick the entry with the largest intersectionRatio that's >= 0.5 —
+        // that's the card that "owns" the viewport right now.
+        let best: { idx: number; ratio: number } | null = null;
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const idx = cardRefs.current.findIndex(el => el === e.target);
+          if (idx < 0) continue;
+          if (!best || e.intersectionRatio > best.ratio) {
+            best = { idx, ratio: e.intersectionRatio };
+          }
+        }
+        if (best) setActiveIdx(best.idx);
+      },
+      { root, threshold: [0.5, 0.75, 1] }
+    );
+
+    cardRefs.current.forEach(el => el && observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  // Tap a dot to jump to that card. Smooth-scroll the container to the
+  // chosen card's offsetLeft so scroll-snap settles cleanly.
+  const goToSlide = (i: number) => {
+    const root = gridRef.current;
+    const card = cardRefs.current[i];
+    if (!root || !card) return;
+    root.scrollTo({ left: card.offsetLeft - root.offsetLeft, behavior: 'smooth' });
+  };
+
   return (
     <section style={{ paddingBottom: 'var(--section-gap)' }}>
       <div className="container">
@@ -188,9 +236,15 @@ export function RealResults() {
             ))}
           </div>
 
-          {/* ─── Review cards ──────────────────────────────────────────── */}
+          {/* ─── Review cards ────────────────────────────────────────────
+              Desktop: 3-col grid. Mobile (≤720px): horizontal CSS scroll-snap
+              slider — one card per view with the next card peeking. Override
+              + slider styles live in .results-grid in globals.css. */}
           <div
+            ref={gridRef}
             className="results-grid"
+            role="region"
+            aria-label="Customer reviews"
             style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }}
           >
             {REVIEWS.map((r, i) => {
@@ -198,6 +252,9 @@ export function RealResults() {
               return (
                 <article
                   key={i}
+                  ref={el => { cardRefs.current[i] = el; }}
+                  aria-roledescription="slide"
+                  aria-label={`Review ${i + 1} of ${REVIEWS.length}`}
                   style={{
                     position: 'relative',
                     padding: '28px 26px 24px',
@@ -307,6 +364,29 @@ export function RealResults() {
                 </article>
               );
             })}
+          </div>
+
+          {/* Slide indicator — only visible on the mobile slider via CSS in
+              globals.css. Each dot is a real button so a keyboard or AT user
+              can jump between slides without horizontal scrolling. */}
+          <div
+            className="results-dots"
+            role="tablist"
+            aria-label="Review pagination"
+            style={{ display: 'none' }}
+          >
+            {REVIEWS.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                role="tab"
+                aria-selected={i === activeIdx}
+                aria-label={`Go to review ${i + 1}`}
+                onClick={() => goToSlide(i)}
+                className="results-dot"
+                data-active={i === activeIdx ? 'true' : 'false'}
+              />
+            ))}
           </div>
         </div>
       </div>

@@ -276,11 +276,67 @@ a.underline,
 @media (max-width: 600px) {
   .product-grid, .cat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .product-grid-3, .blog-grid { grid-template-columns: 1fr !important; }
-  .results-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .trust-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .desktop-nav { display: none !important; }
   .mobile-menu-btn { display: flex !important; }
   .display-xl { font-size: 2.25rem !important; }
+}
+
+/* Home reviews: 2-col crushes the cards on mobile. Convert the grid into a
+ * native CSS scroll-snap slider so each review gets one full card width,
+ * with the next card peeking in to hint that there's more to swipe.
+ * Pure CSS — no JS, no carousel library.
+ *
+ * `scrollbar-width: none` + ::-webkit-scrollbar:none hides the rail; the
+ * scroll-snap dots in the JSX provide orientation instead.
+ */
+@media (max-width: 720px) {
+  .results-grid {
+    display: flex !important;
+    grid-template-columns: none !important;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: var(--side);
+    /* Negative margin + matching padding so cards can scroll edge-to-edge
+     * while keeping the container aligned with the rest of the page gutter. */
+    margin-left: calc(var(--side) * -1);
+    margin-right: calc(var(--side) * -1);
+    padding-left: var(--side);
+    padding-right: var(--side);
+    gap: 16px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    /* Force iOS / Safari to honour scroll-snap on momentum-fling. */
+    -webkit-overflow-scrolling: touch;
+  }
+  .results-grid::-webkit-scrollbar { display: none; }
+  .results-grid > * {
+    flex: 0 0 86%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  /* Slide indicator dots — only visible on the mobile slider. */
+  .results-dots {
+    display: flex !important;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .results-dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border-radius: 50%;
+    border: none;
+    background: rgba(26, 26, 26, 0.20);
+    cursor: pointer;
+    transition: background 200ms ease-out, transform 200ms ease-out, width 200ms ease-out;
+  }
+  .results-dot[data-active='true'] {
+    background: var(--brand-pink);
+    width: 24px;
+    border-radius: 4px;
+  }
 }
 @media (min-width: 601px) {
   .mobile-menu-btn { display: none !important; }
