@@ -1,12 +1,19 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 const PH_PROJECT_ID = 429225;
 const PH_BASE = 'https://us.posthog.com';
 const SENTRY_ORG = 'trellee';
 const SENTRY_PROJECT = 'yellowpink';
+
+// `createClient` without explicit generics returns a client whose `.from()`
+// inference treats every table as `never`, so any .upsert / .insert payload
+// type-errors. We aren't using Supabase's generated types here, so widen to a
+// permissive shape — the runtime contract (a single row keyed by `key`) is
+// owned by the analytics_cache migration.
+type PermissiveSupabase = SupabaseClient<unknown, never, never, never, never>;
 
 async function phQuery(apiKey: string, sql: string) {
   const res = await fetch(`${PH_BASE}/api/projects/${PH_PROJECT_ID}/query`, {
@@ -19,7 +26,7 @@ async function phQuery(apiKey: string, sql: string) {
   return (await res.json()).results as unknown[][];
 }
 
-async function refreshPostHog(supabase: ReturnType<typeof createClient>) {
+async function refreshPostHog(supabase: PermissiveSupabase) {
   const apiKey = process.env.POSTHOG_PERSONAL_API_KEY;
   if (!apiKey) throw new Error('POSTHOG_PERSONAL_API_KEY not configured');
 
@@ -40,10 +47,11 @@ async function refreshPostHog(supabase: ReturnType<typeof createClient>) {
     trend: trendRows.map(([date, count]) => ({ date: String(date), count: Number(count) })),
   };
 
-  await supabase.from('analytics_cache').upsert({ key: 'posthog', data, updated_at: new Date().toISOString() });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from('analytics_cache') as any).upsert({ key: 'posthog', data, updated_at: new Date().toISOString() });
 }
 
-async function refreshSentry(supabase: ReturnType<typeof createClient>) {
+async function refreshSentry(supabase: PermissiveSupabase) {
   const token = process.env.SENTRY_AUTH_TOKEN;
   if (!token) throw new Error('SENTRY_AUTH_TOKEN not configured');
 
@@ -65,14 +73,15 @@ async function refreshSentry(supabase: ReturnType<typeof createClient>) {
     })),
   };
 
-  await supabase.from('analytics_cache').upsert({ key: 'sentry', data, updated_at: new Date().toISOString() });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from('analytics_cache') as any).upsert({ key: 'sentry', data, updated_at: new Date().toISOString() });
 }
 
 export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string[] }> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  );
+  ) as PermissiveSupabase;
 
   const results = await Promise.allSettled([
     refreshPostHog(supabase),

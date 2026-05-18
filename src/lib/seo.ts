@@ -5,6 +5,7 @@
 
 import type { Metadata } from 'next';
 import type { Product, BlogPost, ProductReview, ProductVariant } from '@/types';
+import { brandPlusName } from '@/lib/product-display';
 
 const _vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 export const SITE_URL =
@@ -216,7 +217,7 @@ export function productLd(
     '@context': 'https://schema.org',
     '@type': 'Product',
     '@id': absoluteUrl(`/product/${product.slug}#product`),
-    name: `${product.brand} ${product.name}${product.variant ? ` ${product.variant}` : ''}`,
+    name: `${brandPlusName(product.brand, product.name)}${product.variant ? ` ${product.variant}` : ''}`,
     description: product.description ?? undefined,
     image: product.image_url ?? undefined,
     sku: product.id,

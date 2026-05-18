@@ -10,21 +10,25 @@ import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
 import { pageMeta, jsonLd, productLd, breadcrumbLd } from '@/lib/seo';
 import { isEnabled } from '@/lib/flags';
+import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
   if (!product) return {};
-  const title = `${product.brand} ${product.name}${product.variant ? ` — ${product.variant}` : ''}`;
-  const description = `Buy ${product.brand} ${product.name} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`;
+  // Use the dedupe-aware composer so WP imports that already prefix the
+  // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
+  const displayName = brandPlusName(product.brand, product.name);
+  const title = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
+  const description = `Buy ${displayName} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`;
   return pageMeta({
     title,
     description,
     path: `/product/${product.slug}`,
     image: product.image_url ?? undefined,
     type: 'product',
-    keywords: [product.brand, product.name, product.category, 'Pakistan', 'COD'],
+    keywords: [product.brand, stripBrandPrefix(product.brand, product.name), product.category, 'Pakistan', 'COD'],
   });
 }
 

@@ -8,6 +8,7 @@ import { ProductTile } from '@/components/ui/ProductTile';
 import { useCart } from '@/context/CartContext';
 import { BackInStockForm } from '@/components/pdp/BackInStockForm';
 import { track } from '@/lib/analytics';
+import { stripBrandPrefix } from '@/lib/product-display';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 const SHIPPING_CONTENT = 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.';
@@ -294,6 +295,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const outOfStock = displayStock === 0;
   const ctaDisabled = outOfStock || (variants.length > 0 && !activeVariant);
 
+  // WP imports often include the brand inside the name (e.g. brand="Kiko Milano",
+  // name="Kiko Milano 3D Hydra Lip Gloss"). Strip the brand prefix for the visible
+  // h1 + breadcrumb crumb so we don't render "KIKO MILANO" twice in a row.
+  const displayName = stripBrandPrefix(product.brand, product.name);
+
   return (
     <div>
       <div className="container" style={{ padding: '16px var(--side)' }}>
@@ -302,20 +308,20 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
           <Link href="/shop" style={{ fontSize: '0.8125rem', color: 'var(--ink-500)', textDecoration: 'none' }}>{product.brand}</Link>
           <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
-          <span style={{ fontSize: '0.8125rem', color: 'var(--ink-900)' }}>{product.name}</span>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--ink-900)' }}>{displayName}</span>
         </div>
       </div>
 
       <div className="container" style={{ borderTop: '1px solid var(--line)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, padding: '40px 0' }} className="pdp-grid">
-          <Gallery images={galleryToShow} alt={`${product.brand} ${product.name}`} fallback={product.image_url} brandLabel={product.brand} />
+          <Gallery images={galleryToShow} alt={`${product.brand} ${displayName}`} fallback={product.image_url} brandLabel={product.brand} />
 
           <div>
             <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>{product.brand}</Overline>
             <h1 style={{
               fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500,
               letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 8,
-            }}>{product.name}</h1>
+            }}>{displayName}</h1>
             {product.variant && variants.length === 0 && (
               <div className="body-text" style={{ color: 'var(--ink-500)', marginBottom: 16 }}>{product.variant}</div>
             )}
