@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
 
@@ -84,17 +85,24 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
 
         <div style={{ position: 'relative', alignSelf: 'stretch' }}>
           {s.imageUrl && !imgFailed ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
+            <Image
               src={s.imageUrl}
               alt="Yellow Pink — Beauty & Wellness"
+              fill
+              // Hero shot is the LCP — mark it `priority` so Next emits a
+              // <link rel="preload"> and skips lazy-loading. `sizes`
+              // matches the grid: 90vw on phones (single column), 45vw on
+              // desktop (right column of a 1.1fr/0.9fr split).
+              priority
+              fetchPriority="high"
+              sizes="(max-width: 900px) 100vw, 45vw"
               onError={() => setImgFailed(true)}
-              style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+              style={{ objectFit: 'cover' }}
             />
           ) : (
             <GradientFallback />
           )}
-          <div style={{ position: 'absolute', bottom: 0, left: 0, width: 6, height: 80, background: 'var(--brand-yellow)' }} />
+          <div aria-hidden="true" style={{ position: 'absolute', bottom: 0, left: 0, width: 6, height: 80, background: 'var(--brand-yellow)' }} />
         </div>
       </div>
     </section>

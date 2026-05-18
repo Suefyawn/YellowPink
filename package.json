@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:analyze": "ANALYZE=true next build --no-turbopack",
+    "analyze": "next experimental-analyze",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
@@ -24,6 +26,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@next/bundle-analyzer": "^16.2.6",
     "@playwright/test": "^1.48.2",
     "@types/node": "^20",
     "@types/react": "^19",

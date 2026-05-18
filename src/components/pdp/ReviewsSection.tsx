@@ -1,6 +1,7 @@
 'use client';
 
 import { useActionState, useMemo, useState } from 'react';
+import Image from 'next/image';
 import { submitReview, voteReviewHelpful } from '@/app/product/[slug]/actions';
 
 interface Review {
@@ -123,8 +124,7 @@ function ReviewPhotoUploader({ urls, onChange }: { urls: string[]; onChange: (ur
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
         {urls.map((u, i) => (
           <div key={u} style={{ position: 'relative', width: 64, height: 64, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--line)' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={u} alt={`Review photo ${i + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <Image src={u} alt={`Review photo ${i + 1}`} fill sizes="64px" style={{ objectFit: 'cover' }} />
             <button
               type="button"
               onClick={() => onChange(urls.filter(x => x !== u))}
@@ -287,8 +287,9 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true }: { p
                     {r.photo_urls && r.photo_urls.length > 0 && (
                       <div style={{ display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' }}>
                         {r.photo_urls.map((u, i) => (
-                          /* eslint-disable-next-line @next/next/no-img-element */
-                          <img key={u} src={u} alt={`Review photo ${i + 1}`} style={{ width: 64, height: 64, borderRadius: 6, objectFit: 'cover', border: '1px solid var(--line)' }} />
+                          <div key={u} style={{ position: 'relative', width: 64, height: 64, borderRadius: 6, overflow: 'hidden', border: '1px solid var(--line)' }}>
+                            <Image src={u} alt={`Review photo ${i + 1}`} fill sizes="64px" style={{ objectFit: 'cover' }} />
+                          </div>
                         ))}
                       </div>
                     )}
