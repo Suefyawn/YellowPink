@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
 import { Overline } from '@/components/ui/Overline';
+import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 
 // Footer link list rendered with a consistent "overline-ish" treatment —
 // slightly tighter letter-spacing and weight than body text, so each
@@ -51,6 +52,7 @@ const HELP_LINKS = [
   { label: 'My Account',   href: '/account' },
   { label: 'Returns',      href: '/page/returns' },
   { label: 'FAQ',          href: '/page/faq' },
+  { label: 'Privacy',      href: '/privacy' },
 ];
 
 const SOCIAL_LINKS = [
@@ -127,37 +129,7 @@ export function Footer() {
           <div>
             <Overline style={{ color: 'rgba(250,246,238,0.4)', display: 'block', marginBottom: 16 }}>Newsletter</Overline>
             <p className="small-text" style={{ color: 'rgba(250,246,238,0.55)', marginBottom: 12 }}>Sign up for health tips & exclusive offers.</p>
-            <form
-              action="/api/newsletter"
-              method="post"
-              style={{ display: 'flex', gap: 0 }}
-              aria-label="Newsletter signup"
-            >
-              <label htmlFor="footer-newsletter-email" className="sr-only">Email address</label>
-              <input
-                id="footer-newsletter-email"
-                type="email"
-                name="email"
-                required
-                autoComplete="email"
-                placeholder="your@email.com"
-                style={{
-                  flex: 1, padding: '10px 12px', background: 'rgba(250,246,238,0.08)',
-                  border: '1px solid rgba(250,246,238,0.15)', borderRight: 'none',
-                  borderRadius: '3px 0 0 3px', color: 'var(--paper)', fontSize: '0.8125rem',
-                  outline: 'none', fontFamily: 'var(--font-ui)',
-                }}
-              />
-              <button
-                type="submit"
-                aria-label="Subscribe to newsletter"
-                style={{
-                  padding: '10px 16px', background: 'var(--brand-pink)', border: 'none',
-                  borderRadius: '0 3px 3px 0', color: '#fff', fontSize: '0.75rem', fontWeight: 600,
-                  letterSpacing: '0.06em', cursor: 'pointer', fontFamily: 'var(--font-ui)', textTransform: 'uppercase',
-                }}
-              >Join</button>
-            </form>
+            <NewsletterSignup source="footer" variant="dark" />
           </div>
         </div>
 

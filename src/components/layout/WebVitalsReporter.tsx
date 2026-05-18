@@ -2,15 +2,15 @@
 
 import { useEffect } from 'react';
 import { captureMessage } from '@/lib/monitoring';
+import { useConsent } from '@/lib/consent';
 
 // Reports Core Web Vitals (LCP, CLS, INP, etc.) using Next.js' built-in
 // reportWebVitals hook via useReportWebVitals. We forward to:
-//   • console (dev)
-//   • Sentry / captureMessage (prod, when configured)
+//   • console (dev) — always, regardless of consent (developer signal only)
+//   • Sentry / captureMessage (prod) — ONLY when the visitor has opted in
+//     via the cookie-consent banner (`consent.analytics === true`)
 //
-// Next 16 ships useReportWebVitals via 'next/web-vitals' (per the docs).
-// If that import path differs in your install, swap to next/script + the
-// `<script>` snippet from the Vercel Speed Insights docs.
+// Next 16 ships useReportWebVitals via 'next/web-vitals'.
 
 import { useReportWebVitals } from 'next/web-vitals';
 
@@ -23,13 +23,18 @@ interface Metric {
 }
 
 export function WebVitalsReporter() {
+  const { consent } = useConsent();
+  const analyticsAllowed = consent?.analytics === true;
+
   useReportWebVitals((metric: Metric) => {
-    // Dev: log to console for inspection.
+    // Dev console is always-on — pure developer signal, no PII leaves the
+    // browser. Production reporting is gated on consent.
     if (process.env.NODE_ENV !== 'production') {
       // eslint-disable-next-line no-console
       console.debug('[vitals]', metric.name, Math.round(metric.value), metric.rating);
+      return;
     }
-    // Prod: surface only poor metrics so we don't flood the monitor.
+    if (!analyticsAllowed) return;
     if (metric.rating === 'poor') {
       void captureMessage(`Web Vital ${metric.name} = ${Math.round(metric.value)} (poor)`, 'warning');
     }

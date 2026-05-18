@@ -62,6 +62,7 @@ export const checkoutLimiter  = makeLimiter('checkout', 20, 60);   // 20 per min
 export const reviewLimiter    = makeLimiter('review',    5, 60);   // 5 per minute
 export const trackLimiter     = makeLimiter('track',    10, 60);   // 10 per minute
 export const uploadLimiter    = makeLimiter('upload',   30, 60);   // 30 per minute
+export const newsletterLimiter = makeLimiter('newsletter', 5, 60 * 10);  // 5 per 10 minutes per IP
 
 // ─── Identifier extraction ──────────────────────────────────────────────────
 // Use IP from Vercel-set x-forwarded-for, fall back to a stable header.

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
+import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 
 const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '923001234567';
 
@@ -69,9 +70,32 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             </a>
           </div>
 
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 40 }}>
             <Link href="/shop" className="btn-primary">Continue Shopping</Link>
             <Link href="/" className="btn-secondary">Back to Home</Link>
+          </div>
+
+          {/* Post-purchase opt-in — soft ask after a successful order. The
+              checkout itself doesn't ship the email to the newsletter list
+              (consent must be explicit), this is the explicit moment. */}
+          <div
+            style={{
+              padding: 20,
+              background: 'var(--paper2)',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--radius-card)',
+              textAlign: 'left',
+              maxWidth: 480,
+              margin: '0 auto',
+            }}
+          >
+            <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--brand-pink)' }}>
+              Stay in the loop
+            </Overline>
+            <p className="small-text" style={{ marginBottom: 12, color: 'var(--ink-700)' }}>
+              Get a fortnightly note on new drops, restocks, and routine tips. Unsubscribe any time.
+            </p>
+            <NewsletterSignup source="post_purchase" variant="light" ctaLabel="Sign up" />
           </div>
         </div>
       </section>
