@@ -17,11 +17,18 @@ const lbl: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', font
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
   const router = useRouter();
+
+  // Live validation hints: surface mismatches as the user types instead of
+  // waiting for submit. We only flag mismatch once the confirm field has
+  // some content, so the user isn't yelled at on first keystroke.
+  const tooShort = password.length > 0 && password.length < 6;
+  const mismatch = confirm.length > 0 && password !== confirm;
 
   useEffect(() => {
     // Supabase redirects with #access_token=...&type=recovery in the hash.
@@ -99,16 +106,76 @@ export default function ResetPasswordPage() {
             <form onSubmit={handleSubmit} aria-busy={loading} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label htmlFor="reset-password" style={lbl}>New password</label>
-                <input id="reset-password" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="At least 6 characters" autoComplete="new-password" />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="reset-password"
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    style={{ ...inp, paddingRight: 44, borderColor: tooShort ? '#fca5a5' : '#d1d5db' }}
+                    placeholder="At least 6 characters"
+                    autoComplete="new-password"
+                    aria-invalid={tooShort}
+                    aria-describedby="reset-password-hint"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(s => !s)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showPassword}
+                    style={{
+                      position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '0.75rem', fontWeight: 600, color: '#6b7280',
+                      padding: '4px 8px', borderRadius: 6,
+                    }}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {tooShort && (
+                  <div id="reset-password-hint" style={{ marginTop: 6, fontSize: '0.75rem', color: '#dc2626' }}>
+                    Use at least 6 characters.
+                  </div>
+                )}
               </div>
               <div>
                 <label htmlFor="reset-password-confirm" style={lbl}>Confirm password</label>
-                <input id="reset-password-confirm" type="password" required minLength={6} value={confirm} onChange={e => setConfirm(e.target.value)} style={inp} placeholder="Repeat your new password" autoComplete="new-password" />
+                <input
+                  id="reset-password-confirm"
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={confirm}
+                  onChange={e => setConfirm(e.target.value)}
+                  style={{ ...inp, borderColor: mismatch ? '#fca5a5' : '#d1d5db' }}
+                  placeholder="Repeat your new password"
+                  autoComplete="new-password"
+                  aria-invalid={mismatch}
+                  aria-describedby="reset-password-confirm-hint"
+                />
+                <div
+                  id="reset-password-confirm-hint"
+                  style={{
+                    marginTop: 6, fontSize: '0.75rem',
+                    color: mismatch ? '#dc2626' : confirm.length > 0 && !mismatch ? '#16a34a' : 'var(--ink-500)',
+                  }}
+                >
+                  {mismatch
+                    ? 'Passwords do not match.'
+                    : confirm.length > 0 && !mismatch
+                    ? '✓ Passwords match'
+                    : 'Type the same password again.'}
+                </div>
               </div>
-              <button type="submit" disabled={loading} style={{
-                padding: '12px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',
+              <button type="submit" disabled={loading || tooShort || mismatch || confirm.length === 0} style={{
+                padding: '12px',
+                background: (loading || tooShort || mismatch || confirm.length === 0) ? '#f9a8d4' : 'var(--brand-pink)',
                 color: 'white', border: 'none', borderRadius: 8,
-                fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '0.9375rem', fontWeight: 600,
+                cursor: (loading || tooShort || mismatch || confirm.length === 0) ? 'not-allowed' : 'pointer',
                 marginTop: 4,
               }}>
                 {loading ? 'Updating…' : 'Update password'}

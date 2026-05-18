@@ -20,6 +20,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -57,7 +58,9 @@ export default function LoginPage() {
           {mode === 'login' ? 'Sign in' : 'Create account'}
         </h1>
         <p style={{ margin: '0 0 28px', color: '#6b7280', fontSize: '0.875rem' }}>
-          {mode === 'login' ? 'Welcome back to YellowPink' : 'Join YellowPink for a better experience'}
+          {mode === 'login'
+            ? 'Welcome back to Yellow Pink'
+            : 'Track orders, save addresses, earn rewards.'}
         </p>
 
         <div aria-live="polite" aria-atomic="true">
@@ -87,7 +90,33 @@ export default function LoginPage() {
                 </Link>
               )}
             </div>
-            <input id="login-password" type="password" required value={password} onChange={e => setPassword(e.target.value)} style={inp} placeholder="••••••••" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} minLength={6} />
+            <div style={{ position: 'relative' }}>
+              <input
+                id="login-password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                style={{ ...inp, paddingRight: 44 }}
+                placeholder="••••••••"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                minLength={6}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(s => !s)}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-pressed={showPassword}
+                style={{
+                  position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '0.75rem', fontWeight: 600, color: '#6b7280',
+                  padding: '4px 8px', borderRadius: 6,
+                }}
+              >
+                {showPassword ? 'Hide' : 'Show'}
+              </button>
+            </div>
           </div>
           <button type="submit" disabled={loading} style={{
             padding: '12px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',
