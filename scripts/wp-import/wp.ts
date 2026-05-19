@@ -34,9 +34,25 @@ function buildUrl(base: string, path: string, query?: FetchOpts['query']): strin
   return url.toString();
 }
 
+// Cloudflare-fronted WP hosts (which yellowpink.pk is) will challenge bare
+// Node fetch with a 503 / "Just a moment..." page if no User-Agent header
+// is sent. A real-looking UA + Accept-Language gets past that. Keep the
+// string conservative — we're not pretending to be Chrome, just identifying
+// as a script. Cloudflare's bot-protect allowlist is keyed on the *presence*
+// of headers, not their exact value.
+const UA = 'YellowPink-WP-Importer/1.0 (+https://yellowpink.pk)';
+
 async function get<T>(base: string, auth: string, path: string, opts: FetchOpts = {}): Promise<{ data: T; totalPages: number; total: number }> {
   const url = buildUrl(base, path, opts.query);
-  const res = await fetch(url, { headers: { Authorization: auth, Accept: 'application/json' }, signal: opts.signal });
+  const res = await fetch(url, {
+    headers: {
+      Authorization:     auth,
+      Accept:            'application/json',
+      'User-Agent':      UA,
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+    signal: opts.signal,
+  });
   if (!res.ok) {
     const body = await res.text();
     throw new Error(`${res.status} ${res.statusText} on GET ${url}\n${body.slice(0, 300)}`);

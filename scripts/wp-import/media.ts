@@ -37,8 +37,16 @@ export async function uploadIfNeeded(media: WpMedia): Promise<{ url: string; med
       const hash = createHash('sha1').update(media.source_url).digest('hex').slice(0, 8);
       const filename = `wp/${media.id}-${hash}${ext}`;
 
-      // Stream the file from WP.
-      const res = await fetch(media.source_url);
+      // Stream the file from WP. Cloudflare-fronted WP hosts (which
+      // yellowpink.pk is) block Node fetch's default empty UA with a 503;
+      // a real-looking User-Agent gets past that.
+      const res = await fetch(media.source_url, {
+        headers: {
+          'User-Agent':      'YellowPink-WP-Importer/1.0 (+https://yellowpink.pk)',
+          'Accept-Language': 'en-US,en;q=0.9',
+          Accept:            'image/*,*/*;q=0.8',
+        },
+      });
       if (!res.ok) {
         log.warn(`media ${media.id}: ${res.status} fetching ${media.source_url}`);
         return null;
