@@ -6,6 +6,104 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — WP → Supabase migration: 6 runs to get clean
+
+**Goal:** complete the partial WP import (266 products + 64 blog posts
+from an ad-hoc earlier script) and pick up everything missing:
+categories, attributes, variants, images, customers, orders, reviews,
+pages, redirects.
+
+**Final state (verified clean):**
+
+| Table | Count | vs WP |
+|---|---|---|
+| products | 109 | = published count |
+| product_variants | 177 | = all variations |
+| product_images | 463 | OK |
+| categories | 45 | OK |
+| product_attributes (parent) | 3 | OK (32 attribute_values) |
+| product_categories | 162 | OK |
+| product_relations | 512 | OK |
+| blog_posts | 64 | OK |
+| pages | 9 | OK |
+| coupons | 15 | 12 WP + 3 pre-existing local |
+| orders | 51 | 50 WP + 1 prior test |
+| auth.users + profiles | 70 / 70 | OK |
+| product_reviews | 23 | + 17 spam-filtered |
+| redirects (wp_import) | 118 | OK |
+
+**Six-run path to clean:**
+
+Run 1 — surfaced four importer bugs at once:
+- `sb.ts:25` did `.select('id')` after every upsert; join tables
+  (`product_categories`, `product_relations`) have no `id` column.
+- `orders.ts:155` set a `notes` field; orders table has no such column.
+- Schema gap: products had a `products_set_updated_at` BEFORE UPDATE
+  trigger but no `updated_at` column.
+- 266 legacy products without `wp_product_id` had slugs that collided
+  with the WP import's upsert (the upsert key is `wp_product_id`, so
+  the legacy rows never matched — INSERT was attempted and failed on
+  the slug unique constraint).
+
+Run 2 — after `sb.ts` + `orders.ts` fixes + deleting the 266 legacy
+products. Still hit the `updated_at` trigger + a similar legacy
+problem on blog (64 legacy rows without `wp_post_id`).
+
+Run 3 — after deleting 64 legacy blog posts and temporarily disabling
+the two order-creation triggers (`on_order_created`,
+`orders_notify_new`) to avoid customer emails for 6-month-old orders.
+First clean run for blog (64) and orders (50). Products only got to
+100/145 because…
+
+Run 4 — …WP was returning all statuses (`status=any`), pulling
+~36 drafts/private products on top of 109 published. One draft shared
+a slug with a published product (WP lets them coexist; renames on
+publish). Fixed importer to `status='publish'`.
+
+Also surfaced the same `updated_at` trigger on `orders` and
+`blog_posts` (because run 3 made them existing rows, so run 4's
+upserts now took the UPDATE path).
+
+Run 5 — after migration 072 added `updated_at` to `orders`,
+`blog_posts`, and `site_settings`. Everything green except 8 variants
+in batch 0 colliding on SKU `PBSV`. Investigation showed WP has
+exactly 1 distinct non-empty variant SKU across 177 variations, and
+it's the placeholder `PBSV` on all 8 Pixi Blush Sticks variations.
+
+Run 6 — clean. Importer now nulls SKUs that appear more than once
+within a parent's variants. 709 entities imported, 0 errors.
+
+**Post-import cleanup:**
+- Re-enabled `on_order_created` and `orders_notify_new` triggers.
+- Pruned 34 unpublished products that had snuck in during runs 1-3
+  (drafts with valid `wp_product_id` not in the current
+  publish-status list). CASCADE swept their `product_images`,
+  `product_categories`, `product_relations`, `product_variants`.
+
+**Migrations applied (in repo):**
+- `071_products_updated_at.sql`
+- `072_updated_at_blog_orders_settings.sql`
+
+**Code changes shipped (in repo):**
+- `scripts/wp-import/sb.ts` — `.select('id')` replaced with
+  `count: 'exact'`, fixes join-table upserts.
+- `scripts/wp-import/importers/orders.ts` — `notes` field removed
+  from the orders payload.
+- `scripts/wp-import/importers/products.ts` — fetches only
+  `status='publish'` from `/wc/v3/products`.
+- `scripts/wp-import/importers/variations.ts` — dedupes shared
+  SKUs across a parent's variants by nulling the duplicates.
+
+**Lesson:** Always probe the source-of-truth dataset (`/wc/v3/products?status=publish`)
+BEFORE the first import run, so the dev DB looks like production from
+the start. Also: when a BEFORE UPDATE trigger references a NEW.<col>,
+prefix the migration that creates the trigger with a hard check that
+`<col>` exists on the table — `do $$ if not exists … raise exception$$`
+catches this at trigger-creation time instead of years later when
+someone tries to upsert.
+
+---
+
 ## 2026-05-19 — Vercel "build failed" was actually plan-limit rejection
 
 **Symptom:** User reported "build failed" after pushing 10 commits

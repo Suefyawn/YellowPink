@@ -73,6 +73,23 @@ export async function run(): Promise<{ imported: number; skipped: number; errors
       };
     }));
 
+    // Some WP setups attach the same "placeholder" SKU to every variation
+    // of one parent (e.g. Pixi Blush Sticks all sharing 'PBSV') because
+    // the merchant never assigned per-variant SKUs. The Supabase table
+    // has a unique constraint on product_variants.sku — those collisions
+    // roll back the whole batch. Null any SKU that appears more than once
+    // within the prepared rows. The variation still imports; SKU search
+    // just won't reach it (acceptable — it had no real SKU to begin with).
+    {
+      const seen = new Map<string, number>();
+      for (const r of variantRows) {
+        if (!r.sku) continue;
+        seen.set(r.sku, (seen.get(r.sku) ?? 0) + 1);
+      }
+      for (const r of variantRows) {
+        if (r.sku && (seen.get(r.sku) ?? 0) > 1) r.sku = null;
+      }
+    }
     const ins = await upsertBatched('product_variants', variantRows, { onConflict: 'wp_variation_id' });
     errors.push(...ins.errors);
     totalVariants += ins.inserted;

@@ -152,7 +152,9 @@ export async function run(): Promise<{ imported: number; skipped: number; errors
       tracking_number:       null,
       coupon_code:           o.coupon_lines?.[0]?.code ?? null,
       discount_amount:       Number(o.discount_total || 0),
-      notes:                 o.customer_note || null,
+      // `notes` removed — orders table has no such column. WP's
+      // customer_note is currently dropped; if we ever want to preserve
+      // it, add a `notes text` column to orders in a migration first.
       user_id:               profileMap.get(o.customer_id) ?? null,
       created_at:            o.date_created ? new Date(o.date_created).toISOString() : undefined,
     };

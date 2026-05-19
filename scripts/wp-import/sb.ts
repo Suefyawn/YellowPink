@@ -19,14 +19,18 @@ export async function upsert(
   if (CONFIG.dryRun) {
     return { inserted: arr.length };
   }
-  const { error, data } = await sb
+  // Don't `.select('id')` after — join tables (product_categories,
+  // product_relations) have composite PKs and no `id` column, which
+  // would fail the post-insert SELECT. Use { count: 'exact' } to get
+  // the row count without selecting any columns; falls back to
+  // arr.length if PostgREST omits the count (e.g. ignoreDuplicates).
+  const { error, count } = await sb
     .from(table)
-    .upsert(arr, { onConflict: opts.onConflict, ignoreDuplicates: opts.ignoreDuplicates ?? false })
-    .select('id');
+    .upsert(arr, { onConflict: opts.onConflict, ignoreDuplicates: opts.ignoreDuplicates ?? false, count: 'exact' });
   if (error) {
     return { inserted: 0, error: error.message };
   }
-  return { inserted: data?.length ?? arr.length };
+  return { inserted: count ?? arr.length };
 }
 
 // Batch wrapper — splits a long list and upserts in chunks so we don't blow

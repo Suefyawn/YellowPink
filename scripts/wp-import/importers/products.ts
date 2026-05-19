@@ -71,9 +71,14 @@ function pickPrimaryCategory(p: WcProduct): string {
 export async function run(): Promise<{ imported: number; skipped: number; errors: string[] }> {
   const errors: string[] = [];
 
-  // Pull every product (simple + variable parent). Variations are pulled later.
+  // Only publish — drafts/pending/private aren't customer-facing on the
+  // live WP site and importing them caused slug collisions when a draft
+  // shared a slug with a published product (WP's editor lets them
+  // coexist; the draft would be auto-renamed on publish). Audit
+  // expects the new storefront to mirror what's actually shoppable.
+  // Variations are pulled later in the variations importer.
   const products: WcProduct[] = [];
-  for await (const p of wc.paginate<WcProduct>('/products', { per_page: 100, status: 'any' })) {
+  for await (const p of wc.paginate<WcProduct>('/products', { per_page: 100, status: 'publish' })) {
     products.push(p);
   }
   if (products.length === 0) return { imported: 0, skipped: 0, errors };
