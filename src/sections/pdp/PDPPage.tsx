@@ -207,7 +207,7 @@ function Gallery({
               flexShrink: 0,
             }}
           >
-            <ProductImage src={img.url} alt={img.alt ?? alt} label={brandLabel} sizes="80px" />
+            <ProductImage src={img.url} alt={img.alt ?? alt} label={brandLabel} width={80} height={80} />
           </button>
         ))}
       </div>

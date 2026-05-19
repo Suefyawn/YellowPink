@@ -8,7 +8,7 @@ import { getProducts, isDemo } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
 import { DEMO_CATEGORIES } from '@/lib/demo-data';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
-import { pageMeta } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import type { Category, ProductAttribute, AttributeValue } from '@/types';
 
 export interface AttributeWithValues extends ProductAttribute {
@@ -144,8 +144,46 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const { findTaxon } = await import('@/lib/category-taxonomy');
   const taxonObj = findTaxon(taxon);
 
+  // Scope the JSON-LD ItemList to whatever the URL implies — taxon →
+  // products in those categories, single category → that category, else
+  // top of the catalog. We cap at 24 to keep the schema lean.
+  const scopedProducts = taxonObj
+    ? products.filter(p => taxonObj.categories.includes(p.category)).slice(0, 24)
+    : initialCategory !== 'All'
+      ? products.filter(p => p.category === initialCategory).slice(0, 24)
+      : products.slice(0, 24);
+
+  const breadcrumb = [
+    { name: 'Home', path: '/' },
+    { name: 'Shop', path: '/shop' },
+    ...(taxonObj ? [{ name: taxonObj.label, path: `/shop?taxon=${taxonObj.key}` }] : []),
+    ...(initialCategory !== 'All' && !taxonObj
+      ? [{ name: initialCategory, path: `/shop?category=${encodeURIComponent(initialCategory)}` }]
+      : []),
+  ];
+
   return (
     <main className="fade-in">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLd(itemListLd(
+            taxonObj?.label ?? (initialCategory !== 'All' ? initialCategory : 'All products'),
+            scopedProducts.map(p => ({
+              name: p.name,
+              path: `/product/${p.slug}`,
+              image: p.image_url ?? null,
+              price: p.price,
+              priceCurrency: 'PKR',
+              brand: p.brand,
+            })),
+          )),
+        }}
+      />
       <CollectionPage
         products={products}
         categories={categories}
