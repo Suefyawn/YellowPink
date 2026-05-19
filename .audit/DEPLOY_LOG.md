@@ -40,8 +40,8 @@ nbf 1779196527, exp 1865596527.
   from the TCS account manager before bookings will work.
   `isConfigured()` returns false until they're filled, so the
   ShipmentBookingForm falls back to the manual tracking-number entry.
-- `TCS_SHIPPER_NAME=Yellow Pink`, `TCS_SHIPPER_CITY_CODE=KHI`,
-  `TCS_SHIPPER_CITY_NAME=Karachi`, `TCS_SERVICE_CODE=O` (overnight) —
+- `TCS_SHIPPER_NAME=Yellow Pink`, `TCS_SHIPPER_CITY_CODE=LHE`,
+  `TCS_SHIPPER_CITY_NAME=Lahore`, `TCS_SERVICE_CODE=O` (overnight) —
   sensible defaults.
 
 **Smoke probe:** `node --env-file=.env.local` POST to a deliberately
