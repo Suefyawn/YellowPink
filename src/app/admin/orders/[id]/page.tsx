@@ -5,7 +5,9 @@ import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { OrderStatusForm } from '@/components/admin/OrderStatusForm';
 import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
+import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
 import { brandPlusName } from '@/lib/product-display';
+import { configuredAdapterIds } from '@/lib/couriers';
 import type { Order, CartItem, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -26,6 +28,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const o = order as Order;
   const items = (o.items ?? []) as CartItem[];
   const currentStatus = (o.status ?? 'pending') as OrderStatus;
+
+  // Pull the most-recent shipment for this order so the booking form can
+  // toggle into its "already shipped" state. Cheap query — one row max for
+  // most orders. Couriers with a configured API adapter (env vars set) get
+  // a "Book pickup" button; everything else falls back to manual entry.
+  const { data: shipmentRow } = await supabase
+    .from('shipments')
+    .select('id, courier, tracking_number, status')
+    .eq('order_id', id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const apiAdapters = configuredAdapterIds();
 
   // Customer history block — lifetime orders + total spend for the same
   // (user_id OR phone OR email). Cheap query — admin-only view, no caching
@@ -243,6 +258,23 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </tbody>
         </table>
         </div>
+      </div>
+
+      {/* Shipment booking — sits above the status update because most
+          merchant workflows book a courier first, then mark the order
+          shipped. */}
+      <div style={{ ...section, marginTop: 12 }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipment</h2>
+        <ShipmentBookingForm
+          orderId={o.id!}
+          apiAdapters={apiAdapters}
+          shipment={shipmentRow ? {
+            id: shipmentRow.id as string,
+            courier: shipmentRow.courier as string,
+            tracking_number: shipmentRow.tracking_number as string,
+            status: shipmentRow.status as string,
+          } : null}
+        />
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
