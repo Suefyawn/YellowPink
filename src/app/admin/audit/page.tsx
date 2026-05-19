@@ -56,7 +56,7 @@ export default async function AuditPage() {
                     {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                   </td>
                   <td data-label="Actor" style={{ padding: '10px 16px', color: '#111827' }}>
-                    <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: r.actor_kind === 'owner' ? '#ec4899' : r.actor_kind === 'staff' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase' }}>
+                    <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: r.actor_kind === 'owner' ? '#C5286A' : r.actor_kind === 'staff' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase' }}>
                       {r.actor_kind}
                     </span>
                     {r.actor_email && <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{r.actor_email}</div>}

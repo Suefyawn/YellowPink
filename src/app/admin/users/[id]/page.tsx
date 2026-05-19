@@ -122,7 +122,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                   return (
                     <tr key={o.id} style={{ borderTop: i > 0 ? '1px solid #f9fafb' : 'none' }}>
                       <td style={{ padding: '10px 12px' }}>
-                        <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ec4899', textDecoration: 'none', fontFamily: 'monospace' }}>
+                        <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '0.875rem', color: '#C5286A', textDecoration: 'none', fontFamily: 'monospace' }}>
                           {o.order_number}
                         </Link>
                       </td>

@@ -437,7 +437,7 @@ export function TeamPage({ staff }: { staff: Staff[] }) {
             Manage staff accounts and their permissions
           </p>
         </div>
-        <button style={btn('#ec4899')} onClick={() => setAdding(true)}>+ Add Staff Member</button>
+        <button style={btn('#C5286A')} onClick={() => setAdding(true)}>+ Add Staff Member</button>
       </div>
 
       {adding && (

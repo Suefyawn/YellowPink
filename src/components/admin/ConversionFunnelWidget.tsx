@@ -43,7 +43,7 @@ export async function ConversionFunnelWidget() {
     return prev > 0 ? Math.round((s.count / prev) * 100) : 0;
   });
 
-  const COLOURS = ['#6366f1', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981'];
+  const COLOURS = ['#6366f1', '#8b5cf6', '#C5286A', '#f59e0b', '#10b981'];
 
   return (
     <div style={cardStyle}>

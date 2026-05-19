@@ -94,7 +94,7 @@ export function OrderStatusForm({ orderId, currentStatus, currentTracking, curre
           disabled={pending}
           style={{
             padding: '9px 20px',
-            background: pending ? '#9ca3af' : '#ec4899',
+            background: pending ? '#9ca3af' : '#C5286A',
             color: 'white', border: 'none', borderRadius: 7,
             fontSize: '0.875rem', fontWeight: 600,
             cursor: pending ? 'not-allowed' : 'pointer',

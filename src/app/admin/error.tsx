@@ -18,7 +18,7 @@ export default function AdminError({ error, reset }: { error: Error & { digest?:
       </p>
       <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
         <button onClick={reset} style={{
-          padding: '8px 20px', background: '#ec4899', color: 'white',
+          padding: '8px 20px', background: '#C5286A', color: 'white',
           border: 'none', borderRadius: 7, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
         }}>
           Retry

@@ -121,7 +121,7 @@ export default async function AdminPromosPage() {
 
           <div style={{ gridColumn: '1 / -1', marginTop: 4 }}>
             <button type="submit" style={{
-              padding: '10px 24px', background: '#ec4899', color: 'white',
+              padding: '10px 24px', background: '#C5286A', color: 'white',
               border: 'none', borderRadius: 7, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
             }}>Create promo</button>
           </div>

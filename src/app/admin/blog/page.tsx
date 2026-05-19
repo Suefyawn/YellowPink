@@ -54,7 +54,7 @@ export default async function BlogAdminPage({
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{total} post{total !== 1 ? 's' : ''}</p>
         </div>
         <Link href="/admin/blog/new" style={{
-          padding: '10px 20px', background: '#ec4899', color: 'white',
+          padding: '10px 20px', background: '#C5286A', color: 'white',
           borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
         }}>
           + New Post
@@ -68,7 +68,7 @@ export default async function BlogAdminPage({
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {!posts || posts.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            {q || category ? 'No posts match your filters.' : <>No posts yet. <Link href="/admin/blog/new" style={{ color: '#ec4899' }}>Write the first one →</Link></>}
+            {q || category ? 'No posts match your filters.' : <>No posts yet. <Link href="/admin/blog/new" style={{ color: '#C5286A' }}>Write the first one →</Link></>}
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>

@@ -96,7 +96,7 @@ export default async function DashboardPage() {
 
   const stats = [
     { label: 'Products', value: productCount ?? 0, icon: '◈', color: '#6366f1' },
-    { label: 'Orders', value: orderCount ?? 0, icon: '◎', color: '#ec4899' },
+    { label: 'Orders', value: orderCount ?? 0, icon: '◎', color: '#C5286A' },
     { label: 'Revenue (excl. cancelled)', value: fmt(revenue), icon: '₨', color: '#10b981', isRevenue: true },
     { label: 'Blog Posts', value: blogCount ?? 0, icon: '✦', color: '#f59e0b' },
   ];
@@ -225,7 +225,7 @@ export default async function DashboardPage() {
                   <span style={{
                     width: 24, height: 24, borderRadius: '50%', background: '#fdf2f8',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.75rem', fontWeight: 700, color: '#ec4899', flexShrink: 0,
+                    fontSize: '0.75rem', fontWeight: 700, color: '#C5286A', flexShrink: 0,
                   }}>{i + 1}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.8125rem', color: '#111827', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandPlusName(p.brand, p.name)}</div>
@@ -268,7 +268,7 @@ export default async function DashboardPage() {
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Recent Orders</h2>
-          <Link href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#ec4899', textDecoration: 'none' }}>View all →</Link>
+          <Link href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#C5286A', textDecoration: 'none' }}>View all →</Link>
         </div>
         {!recentOrders || recentOrders.length === 0 ? (
           <div style={{ padding: '40px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
@@ -290,7 +290,7 @@ export default async function DashboardPage() {
                 return (
                   <tr key={o.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
                     <td style={{ padding: '12px 16px' }}>
-                      <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 600, fontSize: '0.875rem', color: '#ec4899', textDecoration: 'none' }}>
+                      <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 600, fontSize: '0.875rem', color: '#C5286A', textDecoration: 'none' }}>
                         {o.order_number}
                       </Link>
                     </td>

@@ -42,7 +42,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
       <div className="adm-table-scroll" style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {products.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af' }}>
-            No products found. <Link href="/admin/products/new" style={{ color: '#ec4899' }}>Add one →</Link>
+            No products found. <Link href="/admin/products/new" style={{ color: '#C5286A' }}>Add one →</Link>
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>

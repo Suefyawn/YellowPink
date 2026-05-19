@@ -29,7 +29,7 @@ export function RevenueChart({ days }: { days: DayRevenue[] }) {
           return (
             <g key={d.date}>
               <rect x={x} y={y} width={barW} height={barH} rx={2}
-                fill={isLast ? '#ec4899' : '#fce7f3'}
+                fill={isLast ? '#C5286A' : '#fce7f3'}
               />
               {/* Show label only every ~7 days to avoid clutter */}
               {(i % 7 === 0 || isLast) && (
@@ -41,7 +41,7 @@ export function RevenueChart({ days }: { days: DayRevenue[] }) {
               {/* Tooltip: show on last bar */}
               {isLast && d.revenue > 0 && (
                 <text x={x + barW / 2} y={y - 4} textAnchor="middle"
-                  fontSize="9" fill="#ec4899" fontWeight="600">
+                  fontSize="9" fill="#C5286A" fontWeight="600">
                   {fmt(d.revenue)}
                 </text>
               )}

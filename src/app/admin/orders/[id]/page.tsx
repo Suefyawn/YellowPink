@@ -310,7 +310,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             )}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 700, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
               <span>Total</span>
-              <span style={{ color: '#ec4899' }}>{fmt(o.total)}</span>
+              <span style={{ color: '#C5286A' }}>{fmt(o.total)}</span>
             </div>
             <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#6b7280' }}>
               Method: <strong style={{ color: '#374151' }}>{payLabel[o.pay_method] ?? o.pay_method}</strong>

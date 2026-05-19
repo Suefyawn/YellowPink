@@ -76,7 +76,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                 checked={selected.size === orders.length && orders.length > 0}
                 onChange={toggleAll}
                 title="Select all"
-                style={{ cursor: 'pointer', accentColor: '#ec4899' }}
+                style={{ cursor: 'pointer', accentColor: '#C5286A' }}
               />
             </th>
             {['Order #', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
@@ -97,11 +97,11 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     checked={isSelected}
                     onChange={() => toggle(o.id!)}
                     aria-label={`Select order ${o.order_number}`}
-                    style={{ cursor: 'pointer', accentColor: '#ec4899' }}
+                    style={{ cursor: 'pointer', accentColor: '#C5286A' }}
                   />
                 </td>
                 <td data-label="Order #" style={{ padding: '12px 16px' }}>
-                  <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '0.875rem', color: '#ec4899', textDecoration: 'none', fontFamily: 'monospace' }}>
+                  <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '0.875rem', color: '#C5286A', textDecoration: 'none', fontFamily: 'monospace' }}>
                     {o.order_number}
                   </Link>
                 </td>

@@ -18,7 +18,7 @@ function MiniSparkline({ trend }: { trend: { date: string; count: number }[] }) 
   }).join(' ');
   return (
     <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: 'block' }} role="img" aria-label="Pageviews trend">
-      <polyline points={pts} fill="none" stroke="#ec4899" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+      <polyline points={pts} fill="none" stroke="#C5286A" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
@@ -44,7 +44,7 @@ export async function PostHogWidget() {
 
   const { data: stats, updatedAt } = result;
   const statItems = [
-    { label: 'Pageviews',    value: stats.pageviews,   color: '#ec4899' },
+    { label: 'Pageviews',    value: stats.pageviews,   color: '#C5286A' },
     { label: 'Unique users', value: stats.uniqueUsers, color: '#8b5cf6' },
     { label: 'Sessions',     value: stats.sessions,    color: '#3b82f6' },
   ];
@@ -59,7 +59,7 @@ export async function PostHogWidget() {
         <a
           href="https://us.posthog.com/project/429225"
           target="_blank" rel="noopener noreferrer"
-          style={{ fontSize: '0.8125rem', color: '#ec4899', textDecoration: 'none' }}
+          style={{ fontSize: '0.8125rem', color: '#C5286A', textDecoration: 'none' }}
         >
           Open PostHog →
         </a>

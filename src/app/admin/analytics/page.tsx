@@ -88,7 +88,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Analytics</h1>
           <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-            Time window: last {window} days · <Link href="/admin/analytics?days=7" style={{ color: '#ec4899' }}>7d</Link> · <Link href="/admin/analytics?days=30" style={{ color: '#ec4899' }}>30d</Link> · <Link href="/admin/analytics?days=90" style={{ color: '#ec4899' }}>90d</Link> · <Link href="/admin/analytics?days=365" style={{ color: '#ec4899' }}>1y</Link>
+            Time window: last {window} days · <Link href="/admin/analytics?days=7" style={{ color: '#C5286A' }}>7d</Link> · <Link href="/admin/analytics?days=30" style={{ color: '#C5286A' }}>30d</Link> · <Link href="/admin/analytics?days=90" style={{ color: '#C5286A' }}>90d</Link> · <Link href="/admin/analytics?days=365" style={{ color: '#C5286A' }}>1y</Link>
           </p>
         </div>
       </div>
@@ -126,7 +126,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
                 <div key={s.status} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: '0.8125rem' }}>
                   <span style={{ width: 120, color: '#374151' }}>{ORDER_STATUS_LABELS[s.status as OrderStatus] ?? s.status}</span>
                   <div style={{ flex: 1, height: 8, background: '#f3f4f6', borderRadius: 4, overflow: 'hidden' }}>
-                    <div style={{ width: `${p}%`, height: '100%', background: '#ec4899' }} />
+                    <div style={{ width: `${p}%`, height: '100%', background: '#C5286A' }} />
                   </div>
                   <span style={{ width: 50, textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#111827', fontWeight: 600 }}>{s.count}</span>
                 </div>

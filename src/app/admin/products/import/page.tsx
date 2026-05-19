@@ -85,7 +85,7 @@ export default function ImportProductsPage() {
             onClick={runImport}
             disabled={!csv.trim() || pending}
             style={{
-              padding: '10px 20px', background: pending ? '#9ca3af' : '#ec4899',
+              padding: '10px 20px', background: pending ? '#9ca3af' : '#C5286A',
               color: 'white', border: 'none', borderRadius: 8,
               fontSize: '0.875rem', fontWeight: 600,
               cursor: pending || !csv.trim() ? 'not-allowed' : 'pointer',

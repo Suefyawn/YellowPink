@@ -140,7 +140,7 @@ export function BlogForm({ post }: { post?: BlogPost }) {
           {/* Actions */}
           <div style={{ display: 'flex', gap: 12 }}>
             <button type="submit" disabled={pending} style={{
-              padding: '10px 24px', background: pending ? '#9ca3af' : '#ec4899',
+              padding: '10px 24px', background: pending ? '#9ca3af' : '#C5286A',
               color: 'white', border: 'none', borderRadius: 7,
               fontSize: '0.875rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
             }}>

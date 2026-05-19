@@ -78,7 +78,7 @@ export default async function CouponsPage() {
             <input name="expires_at" type="date" style={inp} />
           </div>
           <button type="submit" style={{
-            padding: '8px 20px', background: '#ec4899', color: 'white',
+            padding: '8px 20px', background: '#C5286A', color: 'white',
             border: 'none', borderRadius: 7, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
           }}>
             + Create

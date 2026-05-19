@@ -200,7 +200,7 @@ export function AdminShell({
             </svg>
           </button>
           <span style={{ flex: 1, fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>
-            <span style={{ color: '#ec4899' }}>Yellow</span>
+            <span style={{ color: '#C5286A' }}>Yellow</span>
             <span>Pink</span>
             <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: '0.75rem', marginLeft: 8 }}>Admin</span>
           </span>

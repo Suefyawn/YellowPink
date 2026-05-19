@@ -96,7 +96,7 @@ export function LoginForm() {
       {/* Logo */}
       <div style={{ textAlign: 'center', marginBottom: 28 }}>
         <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '-0.03em', marginBottom: 6 }}>
-          <span style={{ color: '#ec4899' }}>Yellow</span>
+          <span style={{ color: '#C5286A' }}>Yellow</span>
           <span style={{ color: '#111827' }}>Pink</span>
         </div>
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>Sign in to admin panel</p>
