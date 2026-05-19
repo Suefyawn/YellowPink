@@ -52,8 +52,13 @@ interface PromoBannerProps {
 }
 
 export function PromoBanner({ label, headline, subline, ctaText, ctaUrl, bgColor, textColor, endDate }: PromoBannerProps) {
+  // On mobile this banner used to eat ~250 px of the first viewport (label
+  // chip + headline + subline + CTA all stacked) so the user landed on the
+  // home page looking at a promo, not the product hero. Tightened the
+  // mobile spacing (12 / 16 / 18 instead of 20 / 24 / 24) and hid the
+  // subline below 600 px — desktop still gets the full editorial card.
   return (
-    <div style={{
+    <div className="promo-banner" style={{
       background: bgColor, color: textColor,
       padding: '20px 24px', textAlign: 'center',
       borderBottom: `3px solid rgba(255,255,255,0.2)`,
@@ -71,10 +76,10 @@ export function PromoBanner({ label, headline, subline, ctaText, ctaUrl, bgColor
         </div>
 
         {headline && (
-          <div style={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2 }}>{headline}</div>
+          <div className="promo-banner-headline" style={{ fontSize: '1.25rem', fontWeight: 700, lineHeight: 1.2 }}>{headline}</div>
         )}
         {subline && (
-          <div style={{ fontSize: '0.875rem', opacity: 0.9 }}>{subline}</div>
+          <div className="promo-banner-subline" style={{ fontSize: '0.875rem', opacity: 0.9 }}>{subline}</div>
         )}
 
         {ctaText && (

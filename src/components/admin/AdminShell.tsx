@@ -41,6 +41,13 @@ export function AdminShell({
     <>
       <style>{`
         .adm-sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 50; transition: transform 0.25s ease; }
+        /* Hide the per-sidebar close (X) button on desktop — the sidebar is
+         * always-mounted at >= 768 px so there's nothing to close. The
+         * AdminSidebar component still renders it (the JSX is shared with
+         * the mobile drawer), we just hide it visually here. !important
+         * is required because the inline button style hard-codes
+         * display:inline-flex. */
+        .adm-sidebar button[aria-label="Close admin menu"] { display: none !important; }
         .adm-main { margin-left: 240px; min-height: 100vh; background: #f3f4f6; }
         .adm-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 30; }
         .adm-topbar .menu-btn { display: none; }
@@ -93,6 +100,9 @@ export function AdminShell({
         @media (max-width: 767px) {
           .adm-sidebar { transform: translateX(-100%); width: min(280px, 86vw) !important; }
           .adm-sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.18); }
+          /* Re-show the close (X) button on mobile so the drawer is
+           * dismissible. (The desktop rule above hides it.) */
+          .adm-sidebar button[aria-label="Close admin menu"] { display: inline-flex !important; }
           /* !important defends against any stray desktop rule that tried to
            * pin margin-left at the (now-hidden) sidebar's width. */
           .adm-main { margin-left: 0 !important; }

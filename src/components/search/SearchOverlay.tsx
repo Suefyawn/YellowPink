@@ -155,9 +155,15 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
               aria-label="Search products, brands, or concerns"
               value={query}
               onChange={e => setQuery(e.target.value)}
-              placeholder="Search products, brands, concerns..."
+              placeholder="Search products…"
               style={{
-                flex: 1, border: 'none', outline: 'none', background: 'transparent',
+                // `minWidth: 0` lets the input shrink past its default
+                // intrinsic content-size inside the flex row — without
+                // this the 18 px placeholder pushed the form past the
+                // mobile viewport (the Close button got cropped). The
+                // placeholder is also shorter now ("Search products…")
+                // so it doesn't get truncated at all on a 375 px screen.
+                flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
                 fontFamily: 'var(--font-ui)', fontSize: '1.125rem', fontWeight: 400,
                 color: 'var(--ink-900)',
               }}

@@ -50,6 +50,13 @@
     --section-gap: 64px;
     --gutter: 16px;
   }
+
+  /* Mobile-tight promo banner: was eating ~250 px of the first viewport
+   * (almost a full thumbswipe). Tighten padding, drop the subline, and
+   * shrink the headline so the bar is informative without being a wall. */
+  .promo-banner { padding: 12px 16px !important; }
+  .promo-banner-headline { font-size: 1rem !important; }
+  .promo-banner-subline { display: none !important; }
 }
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
