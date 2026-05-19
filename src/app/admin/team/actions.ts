@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession, hashPassword, generateTempPassword, verifyPassword, upgradeStaffHash } from '@/lib/staff-auth';
 import { sendStaffTempPasswordEmail } from '@/lib/email';
@@ -73,10 +74,13 @@ export async function toggleStaffActive(formData: FormData): Promise<void> {
   const id = formData.get('id') as string;
   const isActive = formData.get('is_active') === 'true';
 
-  await supabaseAdmin()
+  const { error } = await supabaseAdmin()
     .from('staff_members')
     .update({ is_active: !isActive })
     .eq('id', id);
+  if (error) {
+    redirect(`/admin/team?error=${encodeURIComponent('Could not change status: ' + error.message)}`);
+  }
 
   revalidatePath('/admin/team');
 }
@@ -110,7 +114,10 @@ export async function deleteStaffMember(formData: FormData): Promise<void> {
   await assertOwner();
 
   const id = formData.get('id') as string;
-  await supabaseAdmin().from('staff_members').delete().eq('id', id);
+  const { error } = await supabaseAdmin().from('staff_members').delete().eq('id', id);
+  if (error) {
+    redirect(`/admin/team?error=${encodeURIComponent('Could not delete member: ' + error.message)}`);
+  }
   revalidatePath('/admin/team');
 }
 

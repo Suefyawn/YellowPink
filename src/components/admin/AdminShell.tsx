@@ -164,7 +164,11 @@ export function AdminShell({
         <AdminSidebar session={session} onClose={() => setOpen(false)} pendingOrderCount={pendingOrderCount} />
       </div>
 
-      <div className="adm-main">
+      {/* `<main>` instead of `<div>` so screen-reader landmark navigation
+       *  and the skip-link target actually reach the admin content. The
+       *  .adm-main class still drives the desktop margin-left offset for
+       *  the permanent sidebar. */}
+      <main className="adm-main" id="admin-main">
         <div className="adm-topbar">
           <button
             className="menu-btn"
@@ -193,7 +197,7 @@ export function AdminShell({
           <NotificationsBell notifications={notifications} />
         </div>
         {children}
-      </div>
+      </main>
     </>
   );
 }
