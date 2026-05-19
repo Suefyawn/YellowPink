@@ -1,8 +1,9 @@
 // ============================================================================
-// Consolidated daily cron. Runs three jobs sequentially:
-//   1. abandoned-cart  — drip emails to carts left for 24 h / 72 h
-//   2. back-in-stock   — notify watchers whose product came back
-//   3. courier-sync    — poll courier APIs for in-transit shipments
+// Consolidated daily cron. Runs four jobs sequentially:
+//   1. abandoned-cart    — drip emails to carts left for 24 h / 72 h
+//   2. back-in-stock     — notify watchers whose product came back
+//   3. courier-sync      — poll courier APIs for in-transit shipments
+//   4. analytics-refresh — refresh PostHog + Sentry dashboard widgets
 //
 // Vercel Hobby allows only 2 cron entries per project and only at
 // daily-or-less-frequent schedules. The previous setup (three crons,
@@ -66,12 +67,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 
-  // Run sequentially so we don't blow the 60 s budget with three parallel
+  // Run sequentially so we don't blow the 60 s budget with parallel
   // long-runs, and so a failure in one job doesn't abort the others.
   const results: SubJobResult[] = [];
   results.push(await runJob(req, '/api/cron/abandoned-cart'));
   results.push(await runJob(req, '/api/cron/back-in-stock'));
   results.push(await runJob(req, '/api/cron/courier-sync'));
+  results.push(await runJob(req, '/api/cron/analytics-refresh'));
 
   const allOk = results.every(r => r.ok);
   return NextResponse.json(
