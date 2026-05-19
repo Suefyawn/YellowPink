@@ -127,6 +127,53 @@ The shipment-booking UI gracefully degrades when these aren't set — every cour
 
 ---
 
+## 4½ · WordPress migration (one shot, then never again)
+
+The current Supabase has products + blog imported but **0 customers, 0 historic orders, no reviews, no coupons, no WP redirect map**. Bring the rest over with a single command, then leave WP read-only for 30 days as a safety net.
+
+**Pre-flight — put these five values in `.env.local` at the repo root:**
+
+```
+WP_SITE_URL=https://yellowpink.pk
+WC_CONSUMER_KEY=ck_…           # WP admin → WooCommerce → Settings → Advanced → REST API
+WC_CONSUMER_SECRET=cs_…        # same place
+WP_USERNAME=                   # your WP admin username
+WP_APPLICATION_PASSWORD=       # WP admin → Users → your user → Application Passwords
+```
+
+(Plus `NEXT_PUBLIC_SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` — the importer writes via service role to bypass RLS.)
+
+**Run it:**
+
+```bash
+WP_IMPORT_DRY_RUN=true npm run wp-import   # sanity-check first (no writes)
+npm run wp-import                          # the real one
+```
+
+**Verify counts in Supabase Studio → SQL Editor:**
+
+```sql
+select
+  (select count(*) from public.products)                            as products,
+  (select count(*) from public.product_variants)                    as variants,
+  (select count(*) from public.product_images)                      as images,
+  (select count(*) from public.categories)                          as categories,
+  (select count(*) from public.blog_posts)                          as blog_posts,
+  (select count(*) from public.pages)                               as pages,
+  (select count(*) from public.coupons)                             as coupons,
+  (select count(*) from public.orders)                              as orders,
+  (select count(*) from auth.users)                                 as auth_users,
+  (select count(*) from public.profiles)                            as profiles,
+  (select count(*) from public.product_reviews)                     as reviews,
+  (select count(*) from public.redirects where source = 'wp_import') as wp_redirects;
+```
+
+Numbers should match your WooCommerce dashboard. If a customer used the same email on WP and signs up again on the new site, the importer skips the auth.users insert but still upserts their profile — no duplicates either way.
+
+After this, you're done with WordPress for good. Long-form troubleshooting (rare 401s, slow media, etc.) is in `scripts/wp-import/README.md`.
+
+---
+
 ## 5 · TCS UAT → production handover (per TCS, 3 working days)
 
 Per the API doc: production access requires a passing UAT phase.
@@ -192,7 +239,9 @@ These are still open from the audit + the courier work; flag which you want me t
 2. **Apply migration** (§2) — the SEV-0 stops leaking the second the policy lands.
 3. **Run the four verification SQL queries** (§2 verify block).
 4. **Test signup** (§3) — confirms the SEV-1 is unblocked.
-5. **Walk the verification table** (§6) — about 10 minutes; tells you nothing else regressed.
-6. **Set TCS env vars** when ready (§4 + §5) — courier UI lights up automatically.
+5. **WP migration** (§4½) — `npm run wp-import`. Brings customers + orders + reviews + coupons + redirects across in one shot. Skip if you've already done this since the audit; the dry-run flag is your friend either way.
+6. **Set env vars in Vercel** (§4) — anything missing from your secrets store.
+7. **Walk the verification table** (§6) — about 10 minutes; tells you nothing else regressed.
+8. **Set TCS env vars** when ready (§4 + §5) — courier UI lights up automatically.
 
-Total wall-clock: ~30 min to fully clean. Without (4)–(6), you're still launch-ready — the courier system gracefully degrades to manual entry.
+Total wall-clock: ~40 min to fully clean. Without (5)–(8), you're still launch-ready — the courier system gracefully degrades to manual entry and the audit-fix migration alone closes the launch blockers.
