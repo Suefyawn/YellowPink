@@ -32,7 +32,10 @@ export const positiveInt    = z.coerce.number().int().nonnegative('Must be a who
 
 // ─── Domain schemas ─────────────────────────────────────────────────────────
 export const productInputSchema = z.object({
-  brand:          z.string().trim().min(1, 'Brand is required').max(80),
+  // Brand is optional after migration 077 — own-label Pakistani supplements
+  // don't have a consumer-facing brand. An empty string from the form
+  // normalises to null at the DB level (NULL is now allowed).
+  brand:          z.string().trim().max(80).transform(s => s || null).nullable(),
   name:           z.string().trim().min(1, 'Product name is required').max(200),
   variant:        z.string().trim().max(80).optional().nullable(),
   kind:           z.enum(['simple','variable','bundle','external']).default('simple'),

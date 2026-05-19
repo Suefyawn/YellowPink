@@ -99,7 +99,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       payload: {
         product_id:   product.id,
         product_name: product.name,
-        brand:        product.brand,
+        brand:        product.brand ?? undefined,
         category:     product.category,
         variant:      product.variant_label ?? product.variant,
         price:        product.price,

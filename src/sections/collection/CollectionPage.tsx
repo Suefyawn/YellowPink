@@ -119,8 +119,14 @@ export function CollectionPage({
     return products.filter(p => activeCategory === 'All' || p.category === activeCategory);
   }, [products, activeCategory, initialTaxonCategories]);
 
-  const allBrands = useMemo(() =>
-    Array.from(new Set(categoryScoped.map(p => p.brand).filter(Boolean))).sort()
+  const allBrands = useMemo<string[]>(() =>
+    Array.from(
+      new Set(
+        categoryScoped
+          .map(p => p.brand)
+          .filter((b): b is string => Boolean(b)),
+      ),
+    ).sort()
   , [categoryScoped]);
 
   const priceBounds = useMemo(() => {
@@ -299,7 +305,7 @@ export function CollectionPage({
       return false;
     }
     if (activeSubcategory && p.subcategory !== activeSubcategory) return false;
-    if (selectedBrands.size > 0 && !selectedBrands.has(p.brand)) return false;
+    if (selectedBrands.size > 0 && (!p.brand || !selectedBrands.has(p.brand))) return false;
     if (priceMin !== '' && p.price < priceMin) return false;
     if (priceMax !== '' && p.price > priceMax) return false;
     if (inStockOnly && p.stock <= 0) return false;

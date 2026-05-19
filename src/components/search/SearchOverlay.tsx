@@ -72,7 +72,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
       setProducts(
         DEMO_PRODUCTS.filter(p =>
           p.name.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q) ||
+          (p.brand ?? '').toLowerCase().includes(q) ||
           (p.category ?? '').toLowerCase().includes(q) ||
           (p.subcategory ?? '').toLowerCase().includes(q)
         ).slice(0, 8)

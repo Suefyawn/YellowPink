@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
           city: '',
           order_number: order.order_number,
           total: order.total,
-          items: items.map(i => ({ name: i.name, brand: i.brand, variant: i.variant, qty: i.qty, price: i.price })),
+          items: items.map(i => ({ name: i.name, brand: i.brand ?? undefined, variant: i.variant, qty: i.qty, price: i.price })),
           pay_method: 'easypaisa',
         }),
       ]);

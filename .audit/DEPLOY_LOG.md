@@ -6,6 +6,123 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Brand data quality + inventory ledger
+
+Two structural follow-ups after the homepage/admin RLS pass.
+
+### 1. Brand column normalisation (migration 077)
+
+The WP→Supabase importer copied a WC "concern" attribute into
+`products.brand` instead of the WC "brands" attribute. Result: out of
+109 rows, only ~32 had a real brand value (with multiple casing
+duplicates: CeraVe + cerave, NARS + nars, PIXI + pixi) and the rest
+carried strings like "arthritis", "bone health", "blush", "cheek tint",
+"anti-aging", "foundation", "Couple", "Pregnancy", "Strong".
+
+**User-visible impact:** Shop-page brand filter showed
+"antioxidants" as a brand alongside CeraVe. PDPs displayed
+"blush brush by Real Techniques" with brand="blush brush". JSON-LD
+`brand.name` was junk. Order emails and structured data carried the
+bad strings into search results.
+
+**Fix:** re-derive brand from the product name's prefix using a
+21-entry canonical allowlist (CeraVe, PIXI, NARS, SHEGLAM,
+Real Techniques, Anastasia Beverly Hills, Christine, Huda Beauty,
+DRMTLGY, Skin1004, Dior, Fenty Beauty, Glow Recipe, Iconic London,
+Kiko Milano, Makeup Revolution, Rhode, Tarte, The Ordinary,
+Rare Beauty, Argivital) plus 3 suffix patterns for "X by Real
+Techniques" / "X by Pixi" / "X by NARS". Pattern matching is
+case-insensitive against `lower(name)`; longer-prefix brands have
+priority 10 so "Huda Beauty" wins before a bare "Huda" match.
+
+**Schema change:** dropped `NOT NULL` on `products.brand` so own-label
+Pakistani supplements (60/109 SKUs — Argivital sachets, Calin G, Asco
+C, Femeez, Kidogest, etc.) can legitimately have no brand and the
+shop-page filter sidebar doesn't show "antioxidants" as one. The
+`Product` TS type, `brandPlusName()` helper, and 8 caller files
+updated to accept `string | null`. Admin product form makes the
+field optional with placeholder "leave blank for own-label products".
+
+**Result:** 19 distinct canonical brands across 49 products + 60
+NULL brands. Index on `lower(brand)` for the shop-page filter.
+
+### 2. Inventory ledger (migration 078)
+
+Up till now stock was a mutable scalar on `products.stock` /
+`product_variants.stock` with no history. `decrement_stock` (used by
+`place_order`) silently overwrote the value. Manual admin
+adjustments via bulk-product-actions / variant-actions paths did the
+same. Returns, damages, restocks, and corrections all looked
+identical from the outside: a single number that drifted with no
+explanation. The DEPLOY_LOG's audit findings had this as the
+biggest structural gap.
+
+**Schema:**
+
+- New table `public.inventory_ledger` with one row per stock movement:
+  `(product_id, variant_id, qty_delta, balance_after, reason,
+   order_id, return_id, actor_kind, actor_email, note, created_at)`.
+- `inventory_reason` enum: `import`, `order`, `return`, `restock`,
+  `adjustment`, `damage`, `transfer`.
+- RLS enabled, service-role-only — the ledger surfaces customer
+  order_id linkage that should never be anon-readable.
+- Four indexes covering the expected query shapes (per-product
+  history, per-variant history, per-order trace, recent-N global).
+
+**Helper RPC `record_stock_change`:**
+
+SECURITY DEFINER, service-role-EXECUTE-only. Wraps the
+`products.stock` (or `product_variants.stock`) update and the
+ledger INSERT in a single transaction so the running balance can
+never diverge from the sum of deltas. Returns `(ledger_id,
+new_balance)` so the caller can confirm.
+
+**Backfill:** 286 ledger rows inserted at migration time (109
+products + 177 variants), each `reason='import'` with
+`balance_after = current stock`. The /admin/inventory page now
+shows real history for every SKU instead of "no movements yet",
+and a future negative delta on a SKU with no manual movement
+correctly balances against the import row.
+
+**Admin UI:**
+
+- New `/admin/inventory` page with a 200-row ledger table, filter
+  chips per reason, and a one-line "Log change" form for manual
+  adjustments (`reason ∈ {restock, adjustment, damage}` — the
+  storefront-driven reasons `order` / `return` are not exposed).
+- New `src/app/admin/inventory-actions.ts` with `adjustStock`
+  server action — calls `record_stock_change` via supabaseAdmin
+  and logs an `inventory.adjust` audit event.
+- AdminSidebar nav: new "Inventory" link between Products and
+  Orders.
+
+Future work (not in this PR): wire `place_order` to call
+`record_stock_change` with `reason='order'` and `order_id` set
+(currently calls the older `decrement_stock` directly). Same for
+the return-received transition: call with `reason='return'` and
+`return_id`. Until that's done, customer-driven stock movements
+still mutate `stock` silently — manual adjustments are the only
+ones writing to the ledger.
+
+**Verification gate (both migrations):**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+- `npm run build`     — succeeds, `/admin/inventory` in the manifest
+- DB checks: 19 canonical brands, 49 branded + 60 null; 288 ledger
+  rows (286 from backfill + 2 smoke-test that were reverted).
+
+**Lesson:** When a bulk import lands, schema-shape correctness is
+half the work — column *semantics* are the other half. The
+`brand` column had values in it for every row, so it looked correct
+on the surface; only a human eyeballing the shop-page sidebar would
+notice that "anti-inflammatory" isn't a brand. A linter that asserts
+"every distinct value in a categorical column appears in an
+allowlist" would have caught it on the first run. Worth building
+for the next bulk-data drop.
+
+---
+
 ## 2026-05-19 — Empty homepage + missing orders + dead audit log (the RLS-hardening blast radius)
 
 **Symptom triplet, all reported by the user in one session:**
