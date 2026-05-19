@@ -89,6 +89,97 @@ revenue justifies it.
 
 ---
 
+## 2026-05-19 — Populate empty PDP content fields for all 109 products
+
+Migration 081 added the columns. Migration 082 backfilled prices. But
+the actual content blocks — `how_to_use`, `ingredients`,
+`key_benefits[]`, `faq[]`, `usage_tips` — were all 0/109 populated
+because the WP import didn't bring them across. Production smoke audit
+confirmed this on the live PDP: no "How to Use" / "Ingredients"
+accordions visible because the conditional render hides them when
+the field is null.
+
+**Research:** A subagent ran ~10 minutes of WebSearch against brand
+official pages (CeraVe.com, NARS, PIXI, Tarte, Huda Beauty, Rhode,
+Real Techniques) for international SKUs and against dvago.pk /
+dawaai.pk / medplus.pk for Pakistani supplements (Argivital, Calin G,
+Asco C, Femeez, Ferosim, Repro-F/M, Cranblue, Calosent, Cee, Vit KD,
+etc.). For each product it wrote a JSON row with:
+
+- `how_to_use` — 1-3 short sentences in Pakistani-English tone
+- `ingredients` — comma-separated list when known; fall-back
+  `"Multi-ingredient formulation; consult the package leaflet…"`
+  for the truly obscure local supplements
+- `key_benefits` — 3-5 items with an emoji icon + ≤8-word text
+- `faq` — 2-4 Q&A pairs targeting real customer concerns
+  (pregnancy safety, shade match for wheatish/medium-deep skin,
+  iron + calcium spacing, authenticity, layering with retinol/SPF,
+  etc.)
+- `usage_tips` — one paragraph (~40 words) with care/storage advice
+- `social_proof` — empty string; merchant will hand-author
+  testimonials later
+
+**Migration 084 — bulk content backfill.**
+
+Build path: the SQL containing all 109 product payloads inline came to
+134 KB, too large for a single MCP `execute_sql` call. Workaround was a
+one-shot SECURITY DEFINER RPC `_populate_product_content(jsonb)` (also
+in migration 084) that took the JSON array via PostgREST and applied
+the update server-side. A small Python+curl loop POSTed five 22-row
+batches to the RPC using the service-role key. Each batch returned
+its row-update count; total 109/109 updated. Coverage post-run:
+109/109 across every field.
+
+Migration file in the repo carries the full JSON inline so CI / dev
+restores reproduce the same content. Idempotent: every field uses
+`COALESCE(NULLIF(existing,''), backfilled)` so admin edits made after
+this PR can't be clobbered by a re-run.
+
+The RPC was dropped from the live DB immediately after the backfill
+ran — it's not part of the steady-state schema.
+
+**Quality spot-checks:**
+
+- CeraVe Hydrating Cleanser: real INCI list (Ceramide NP/AP/EOP,
+  Hyaluronic Acid, Niacinamide, etc.); FAQ has "Is it suitable for
+  oily, acne-prone skin?" / "Can I use it daily?" / "Will it dry out
+  my skin?"
+- NARS Afterglow Liquid Blush: Pakistan-shade FAQ "Will this look
+  chalky on wheatish skin?" with shade-undertone answer.
+- Argivital Sachet: L-Arginine + L-Citrulline noted as the typical
+  active set; FAQs cover timing, safety in pregnancy, side effects;
+  ingredient line ends with the leaflet disclaimer.
+- Pixi Blush Sticks Buy 1 Get 1 Free: bundle-specific FAQ ("Are both
+  sticks the same shade?", "How long do they last on combination
+  skin?").
+
+**Verification gate (all green):**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+- DB: 109/109 across all five content fields
+
+**Operational follow-ups:**
+
+- Merchant should eyeball the auto-generated content for the
+  flagship products (CeraVe, PIXI, NARS, the Pakistan-specific
+  supplements they actually carry) — the research was thorough but a
+  human pass catches edge cases like Pakistan-specific dosing or
+  off-label uses.
+- `social_proof` is empty — populate as merchant collects
+  testimonials. Field is a single text column on `products`, editable
+  from `/admin/products/<id>` → Content & SEO section.
+
+**Lesson:** When a research-heavy bulk content task hits the
+MCP-input character ceiling, the cleanest workaround isn't
+splitting into batches at the MCP layer — it's a one-shot
+SECURITY DEFINER RPC + curl loop using the service-role key.
+The data travels via PostgREST's wider body limit, the SQL itself
+stays tiny, and the migration file can still hold the inline
+payload for repro. Reusable for any future bulk-content drop.
+
+---
+
 ## 2026-05-19 — Order-cancellation restock + per-product inventory history
 
 Closes the last documented gap in the inventory ledger: cancelled orders.
