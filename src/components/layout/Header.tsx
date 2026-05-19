@@ -56,7 +56,11 @@ export function Header() {
 
   // Close the mobile menu whenever the route changes — otherwise a tap on a
   // nav item navigates but leaves the menu open underneath the new page.
+  // The setState is intentional: pathname is from the routing system (an
+  // external store), and the desired effect is to reset internal UI state
+  // when the URL changes — there's no prop-derived equivalent.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenu(false);
   }, [pathname, searchParams]);
 

@@ -45,16 +45,17 @@ function shouldSuppress(): boolean {
 export function NewsletterModal() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
-  useBodyScrollLock(open);
-  useEscapeKey(open, () => close());
-  useFocusTrap(open, panelRef);
 
   const close = () => {
     try { window.localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {}
     setOpen(false);
   };
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useBodyScrollLock(open);
+  useEscapeKey(open, close);
+  useFocusTrap(open, panelRef);
+
+  // Arm exit-intent + the timed fallback once on mount.
   useEffect(() => {
     if (shouldSuppress()) return;
 

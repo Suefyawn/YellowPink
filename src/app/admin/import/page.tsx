@@ -89,7 +89,7 @@ export default async function ImportPage() {
           Import status
         </h2>
         <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
-          What's currently in Supabase. Empty rows mean that import step hasn&apos;t run yet — or there&apos;s nothing in WP to import.
+          What&apos;s currently in Supabase. Empty rows mean that import step hasn&apos;t run yet — or there&apos;s nothing in WP to import.
         </p>
 
         <div

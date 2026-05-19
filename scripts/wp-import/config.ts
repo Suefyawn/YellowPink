@@ -13,7 +13,6 @@ for (const file of ['.env.local', '.env']) {
 function required(name: string): string {
   const v = process.env[name];
   if (!v) {
-    // eslint-disable-next-line no-console
     console.error(`✗ Missing required env var: ${name}`);
     process.exit(1);
   }
@@ -43,6 +42,5 @@ export const CONFIG = {
 } as const;
 
 if (CONFIG.dryRun) {
-  // eslint-disable-next-line no-console
   console.warn('⚠ DRY RUN — no writes will be performed');
 }

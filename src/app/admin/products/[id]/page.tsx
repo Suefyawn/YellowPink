@@ -34,7 +34,7 @@ async function loadAttributesAndVariants(productId: string): Promise<{
 
   const variants = (variantRows ?? []) as ProductVariant[];
   const variantIds = variants.map(v => v.id);
-  let optionMap = new Map<string, string[]>();
+  const optionMap = new Map<string, string[]>();
   if (variantIds.length) {
     const { data: vavRows } = await supabase
       .from('variant_attribute_values')

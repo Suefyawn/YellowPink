@@ -45,7 +45,13 @@ export default async function DashboardPage() {
   const canTraffic  = !session || can(session, 'analytics_traffic');
   const canErrors   = !session || can(session, 'analytics_errors');
   const canRefresh  = !session || can(session, 'analytics_refresh');
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Server components render once per request — pulling the "now" once
+  // here is fine. The `react-hooks/purity` rule flags Date.now() as impure;
+  // that warning is for client components that may be re-rendered by the
+  // React Compiler. Async server components don't memoise.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+  const thirtyDaysAgo = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
 
   const [
     { count: productCount },
@@ -69,10 +75,11 @@ export default async function DashboardPage() {
     supabase.from('orders').select('total, status, created_at').gte('created_at', thirtyDaysAgo).neq('status', 'cancelled'),
   ]);
 
-  // Build 30-day revenue series
+  // Build 30-day revenue series — reuse the `nowMs` we pinned above so the
+  // bucket boundaries match the `thirtyDaysAgo` window we queried with.
   const dayMap: Record<string, number> = {};
   for (let i = 29; i >= 0; i--) {
-    const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const d = new Date(nowMs - i * 24 * 60 * 60 * 1000);
     dayMap[d.toISOString().slice(0, 10)] = 0;
   }
   for (const o of (recentOrdersForChart ?? []) as Array<{ total: number; created_at: string }>) {

@@ -54,8 +54,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [addCounter, setAddCounter] = useState(0);
   const [lastAdded, setLastAdded] = useState<CartContextValue['lastAdded']>(null);
 
-  // Load from localStorage after hydration to avoid SSR/client mismatch
+  // Load from localStorage after hydration to avoid SSR/client mismatch.
+  // setState-in-effect is intentional: the cart is persisted in an external
+  // store (localStorage) and we sync it into React state at mount.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCartItems(loadCart());
   }, []);
 

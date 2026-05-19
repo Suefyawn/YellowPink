@@ -43,7 +43,6 @@ export async function captureError(err: unknown, extra?: ErrorContext): Promise<
   await maybeInit();
   if (sentry) sentry.captureException(err, { extra });
   else if (process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
     console.error('[monitoring]', err, extra);
   }
 }
@@ -52,7 +51,6 @@ export async function captureMessage(msg: string, level: 'info' | 'warning' | 'e
   await maybeInit();
   if (sentry) sentry.captureMessage(msg, level);
   else if (process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
     console.log(`[monitoring:${level}]`, msg);
   }
 }

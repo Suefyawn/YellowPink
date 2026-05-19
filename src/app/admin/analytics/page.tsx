@@ -50,7 +50,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   // Map top product ids → product details.
   const topIds = top.map(t => t.product_id);
-  let productMap = new Map<string, { brand: string; name: string; slug: string }>();
+  const productMap = new Map<string, { brand: string; name: string; slug: string }>();
   if (topIds.length) {
     const { data: prods } = await supabase.from('products').select('id, brand, name, slug').in('id', topIds);
     for (const p of (prods ?? []) as Array<{ id: string; brand: string; name: string; slug: string }>) {
@@ -210,7 +210,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
             Cohort retention · last 6 months
           </h2>
           <p style={{ margin: '0 0 12px', fontSize: '0.6875rem', color: '#9ca3af' }}>
-            Rows = month of customer's first order. Columns = months since.
+            Rows = month of customer&apos;s first order. Columns = months since.
           </p>
           {cohortMatrix.months.length === 0 ? (
             <p style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>Not enough data yet.</p>

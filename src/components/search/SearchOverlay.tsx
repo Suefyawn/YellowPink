@@ -46,19 +46,27 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   useBodyScrollLock(searchOpen);
   useFocusTrap(searchOpen, panelRef);
 
+  // Sync UI state to the overlay's open/closed external signal — focus the
+  // search input when opening, clear the typeahead query when closing.
   useEffect(() => {
     if (searchOpen) {
       setTimeout(() => inputRef.current?.focus(), 100);
     } else {
-      setQuery(''); // eslint-disable-line react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setQuery('');
     }
-  }, [searchOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [searchOpen]);
 
   // Server-side typeahead via search_products RPC (pg_trgm). Debounced 200 ms.
   // Demo-mode short-circuit: filter the stub catalog client-side instead so
-  // the overlay actually returns something on a fresh clone.
+  // the overlay actually returns something on a fresh clone. setState-in-effect
+  // is intentional: results come from the network (external system).
   useEffect(() => {
-    if (!searchOpen || query.trim().length === 0) { setProducts([]); return; }
+    if (!searchOpen || query.trim().length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setProducts([]);
+      return;
+    }
     if (isDemo) {
       const q = query.trim().toLowerCase();
       setProducts(

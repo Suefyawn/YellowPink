@@ -38,7 +38,6 @@ export default function ProfilePage() {
   const successTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ─── Load existing profile ────────────────────────────────────────────────
-  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
     if (!user) return;

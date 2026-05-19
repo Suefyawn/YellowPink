@@ -43,7 +43,7 @@ function VariantPicker({
   function isReachable(attrId: string, valueId: string): boolean {
     const test = { ...selected, [attrId]: valueId };
     return variants.some(v =>
-      Object.entries(test).every(([_a, vId]) => v.option_value_ids.includes(vId))
+      Object.entries(test).every(([, vId]) => v.option_value_ids.includes(vId))
     );
   }
   return (
