@@ -52,13 +52,21 @@ visible to user showed a failure banner.
 - Commit body documents the Pro upgrade path (split back into three
   separate crons with `courier-sync` on a 30 min cadence).
 
-**Aftermath:** This unstuck the 12-commit backlog (`399f755` →
-`28e18a4`). Build expected to land within ~2 min of the push.
+**Aftermath:** Unstuck the 12-commit backlog (`399f755` → `28e18a4`).
+Verified READY:
+- `dpl_GWwi4GMqgDu3Ji32wvm12Wdh1ZwG` — commit `28e18a4`, the cron
+  consolidation that ended the rejection cycle.
+- `dpl_9rkiNNZiReUraFMVJCWVi4bY8ghT` — commit `56fefe4`, this
+  deployment log.
 
 **Lesson:** Vercel's plan-limit rejection is silent to the API/MCP.
 If `latestDeployment` lags behind `origin/main` and no FAILED record
 shows up between, suspect a `vercel.json` plan violation before
-suspecting a dead webhook.
+suspecting a dead webhook. Quick checks:
+- `cat vercel.json` — count cron entries (Hobby ≤ 2) and check
+  `schedule` is daily or less frequent.
+- `npx vercel-build-output --version` not needed; the gate is
+  enforced by the platform on push, not in the build runner.
 
 ---
 
