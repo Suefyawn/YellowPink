@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { createCoupon, deleteCoupon, toggleCoupon } from '@/app/admin/coupon-actions';
 import { getStaffSession } from '@/lib/staff-auth';
@@ -29,7 +29,9 @@ export default async function CouponsPage() {
   if (session && !session.isOwner && !session.permissions.includes('coupons')) {
     return <NoAccess section="Coupons" />;
   }
-  const { data } = await supabase.from('coupons').select('*').order('created_at', { ascending: false });
+  // coupons RLS (migration 070) drops anon SELECT — admin reads need
+  // the service role.
+  const { data } = await supabaseAdmin().from('coupons').select('*').order('created_at', { ascending: false });
   const coupons = (data ?? []) as Coupon[];
 
   const inp: React.CSSProperties = {

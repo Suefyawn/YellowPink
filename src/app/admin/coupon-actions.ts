@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
 
@@ -18,7 +18,9 @@ export async function createCoupon(formData: FormData) {
   if (!/^[A-Z0-9_-]+$/.test(code)) return;
   if (value <= 0) return;
 
-  const { data: created } = await supabase
+  // coupons RLS bars anon write/read after migration 070; admin
+  // mutations must go through the service role.
+  const { data: created } = await supabaseAdmin()
     .from('coupons')
     .insert({ code, type, value, min_order, max_uses, expires_at })
     .select('id')
@@ -33,8 +35,8 @@ export async function createCoupon(formData: FormData) {
 export async function deleteCoupon(formData: FormData) {
   const session = await assertPermission('coupons');
   const id = formData.get('id') as string;
-  const { data: target } = await supabase.from('coupons').select('code').eq('id', id).single();
-  await supabase.from('coupons').delete().eq('id', id);
+  const { data: target } = await supabaseAdmin().from('coupons').select('code').eq('id', id).single();
+  await supabaseAdmin().from('coupons').delete().eq('id', id);
   void logAudit(session, {
     action: 'coupon.delete', entity: 'coupons', entity_id: id,
     diff: { code: target?.code },
@@ -44,7 +46,7 @@ export async function deleteCoupon(formData: FormData) {
 
 export async function toggleCoupon(id: string, active: boolean) {
   const session = await assertPermission('coupons');
-  await supabase.from('coupons').update({ active }).eq('id', id);
+  await supabaseAdmin().from('coupons').update({ active }).eq('id', id);
   void logAudit(session, {
     action: active ? 'coupon.activate' : 'coupon.deactivate',
     entity: 'coupons', entity_id: id,

@@ -8,12 +8,18 @@ import { useCart } from '@/context/CartContext';
 import { useSearch } from '@/context/SearchContext';
 import { useAuth } from '@/context/AuthContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
+import { TAXONS } from '@/lib/category-taxonomy';
 
+// Nav is driven by the central taxonomy so editorial changes don't require
+// touching the header. The previous hardcoded list ("Makeup" /
+// "Skincare" / "Wellness") linked to category values that didn't exist in
+// the WP-imported catalog — e.g. /shop?category=Makeup matched zero rows
+// because the real values are "Lip & Cheek Tints" / "Highlighters" etc.
+// The shop page now expands a taxon key into its category set.
 const NAV_ITEMS = [
-  { label: 'Makeup',   href: '/shop?category=Makeup' },
-  { label: 'Skincare', href: '/shop?category=Skincare' },
-  { label: 'Wellness', href: '/shop?category=Wellness' },
-  { label: 'Shop',     href: '/shop' },
+  ...TAXONS.map(t => ({ label: t.label, href: `/shop?taxon=${t.key}` })),
+  { label: 'Sale',     href: '/shop?on_sale=1' },
+  { label: 'All',      href: '/shop' },
   { label: 'Blog',     href: '/blog' },
 ];
 
@@ -40,12 +46,17 @@ export function Header() {
     const [hPath, hQuery] = href.split('?');
     if (hPath !== pathname && !(hPath === '/blog' && pathname.startsWith('/blog/'))) return false;
     if (!hQuery) {
-      // /shop active only when no category — otherwise the category items match.
-      if (hPath === '/shop') return !searchParams.get('category');
+      // /shop active only when there's no taxon / category / sale param.
+      if (hPath === '/shop') {
+        return !searchParams.get('taxon') && !searchParams.get('category') && !searchParams.get('on_sale');
+      }
       return true;
     }
-    const wantCat = new URLSearchParams(hQuery).get('category');
-    return searchParams.get('category') === wantCat;
+    const want = new URLSearchParams(hQuery);
+    for (const [k, v] of want.entries()) {
+      if (searchParams.get(k) !== v) return false;
+    }
+    return true;
   }
 
   useEffect(() => {

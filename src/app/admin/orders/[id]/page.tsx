@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { OrderStatusForm } from '@/components/admin/OrderStatusForm';
 import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
 import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
@@ -22,7 +22,7 @@ const statusColors: Record<string, string> = {
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { data: order } = await supabase.from('orders').select('*').eq('id', id).single();
+  const { data: order } = await supabaseAdmin().from('orders').select('*').eq('id', id).single();
   if (!order) notFound();
 
   const o = order as Order;
@@ -33,7 +33,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // toggle into its "already shipped" state. Cheap query — one row max for
   // most orders. Couriers with a configured API adapter (env vars set) get
   // a "Book pickup" button; everything else falls back to manual entry.
-  const { data: shipmentRow } = await supabase
+  const { data: shipmentRow } = await supabaseAdmin()
     .from('shipments')
     .select('id, courier, tracking_number, status')
     .eq('order_id', id)
@@ -54,7 +54,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   ].filter(Boolean).join(',');
   let customerStats: { count: number; total: number; first: string | null } | null = null;
   if (orFilters) {
-    const { data: history } = await supabase
+    const { data: history } = await supabaseAdmin()
       .from('orders')
       .select('id, total, status, created_at')
       .or(orFilters)

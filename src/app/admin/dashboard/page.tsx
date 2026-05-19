@@ -53,6 +53,10 @@ export default async function DashboardPage() {
   const nowMs = Date.now();
   const thirtyDaysAgo = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+  // orders RLS (migration 070) drops anon SELECT — use the service role
+  // for every orders read on this page. products / blog_posts still
+  // allow anon SELECT and can stay on the public client.
+  const admin = supabaseAdmin();
   const [
     { count: productCount },
     { data: recentOrders },
@@ -62,17 +66,17 @@ export default async function DashboardPage() {
     { data: recentOrdersForChart },
   ] = await Promise.all([
     supabase.from('products').select('*', { count: 'exact', head: true }),
-    supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
+    admin.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
     supabase.from('blog_posts').select('*', { count: 'exact', head: true }),
     // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
     // top products) in one SQL pass via dashboard_kpis() RPC. Previously
     // pulled every orders row + its JSONB items into Node and aggregated in
     // JS — would degrade linearly with order count.
-    supabaseAdmin().rpc('dashboard_kpis' as never) as unknown as Promise<{ data: DashboardKpis | null }>,
+    admin.rpc('dashboard_kpis' as never) as unknown as Promise<{ data: DashboardKpis | null }>,
     // Cap low-stock to 50 so a long-tail catalog with many out-of-stock
     // rows doesn't blow up the dashboard.
     supabase.from('products').select('*').lte('stock', 5).order('stock', { ascending: true }).limit(50),
-    supabase.from('orders').select('total, status, created_at').gte('created_at', thirtyDaysAgo).neq('status', 'cancelled'),
+    admin.from('orders').select('total, status, created_at').gte('created_at', thirtyDaysAgo).neq('status', 'cancelled'),
   ]);
 
   // Build 30-day revenue series — reuse the `nowMs` we pinned above so the

@@ -1,7 +1,7 @@
 import { getStaffSession } from '@/lib/staff-auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { ToastProvider } from '@/components/admin/Toast';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { can, type Permission } from '@/lib/permissions';
 
 interface NotificationRow {
@@ -43,12 +43,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
+  // orders + admin_notifications are RLS-locked with no anon SELECT —
+  // staff-cookie auth doesn't go through Supabase Auth, so the public
+  // client returns 0 rows. The badge count and notification feed need
+  // the service role.
+  const admin = supabaseAdmin();
   const [{ count: pendingOrderCount }, { data: rawNotifications }] = await Promise.all([
-    supabase
+    admin
       .from('orders')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'pending'),
-    supabase
+    admin
       .from('admin_notifications')
       .select('id, kind, title, body, link, read, created_at')
       .order('created_at', { ascending: false })

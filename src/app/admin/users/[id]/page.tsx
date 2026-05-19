@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import type { Order, AdminUser, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -20,9 +20,12 @@ const payLabel: Record<string, string> = { cod: 'COD', card: 'Card', bank: 'Bank
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
+  // orders is RLS-locked; the `get_admin_user` RPC already uses
+  // SECURITY DEFINER but route via service-role for consistency.
+  const admin = supabaseAdmin();
   const [{ data: userData }, { data: orders }] = await Promise.all([
-    supabase.rpc('get_admin_user' as never, { p_id: id } as never),
-    supabase.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
+    admin.rpc('get_admin_user' as never, { p_id: id } as never),
+    admin.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
   ]);
 
   if (!userData) notFound();

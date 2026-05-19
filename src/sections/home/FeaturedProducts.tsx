@@ -4,6 +4,8 @@ import { ProductTile } from '@/components/ui/ProductTile';
 import type { Product } from '@/types';
 
 export function FeaturedProducts({ products }: { products: Product[] }) {
+  // Self-hide on empty so the page doesn't render an Overline + empty grid.
+  if (products.length === 0) return null;
   return (
     <section style={{ padding: 'var(--section-gap) 0' }}>
       <div className="container">

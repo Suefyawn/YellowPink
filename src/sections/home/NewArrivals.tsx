@@ -5,6 +5,7 @@ import type { Product } from '@/types';
 
 export function NewArrivals({ products }: { products: Product[] }) {
   const items = products.slice(0, 4);
+  if (items.length === 0) return null;
   return (
     <section style={{ paddingBottom: 'var(--section-gap)' }}>
       <div className="container">

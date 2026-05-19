@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { OrdersFilter } from '@/components/admin/OrdersFilter';
 import { OrdersTable } from '@/components/admin/OrdersTable';
 import { Pagination } from '@/components/admin/Pagination';
@@ -34,8 +34,13 @@ async function OrdersPageInner({
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  let countQuery = supabase.from('orders').select('*', { count: 'exact', head: true });
-  let dataQuery = supabase.from('orders').select('*').order('created_at', { ascending: false }).range(from, to);
+  // orders RLS (migration 070) removed the anon SELECT path — the table
+  // is now service-role / authenticated-self-only. Staff-cookie auth
+  // doesn't go through Supabase Auth, so admin reads MUST use the
+  // service-role client. The anon path returned 0 rows silently.
+  const admin = supabaseAdmin();
+  let countQuery = admin.from('orders').select('*', { count: 'exact', head: true });
+  let dataQuery = admin.from('orders').select('*').order('created_at', { ascending: false }).range(from, to);
 
   if (status && status !== 'all') {
     countQuery = countQuery.eq('status', status as OrderStatus);

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 
@@ -22,7 +22,9 @@ export default async function AuditPage() {
     return <NoAccess section="Audit log" />;
   }
 
-  const { data } = await supabase
+  // audit_log RLS has no anon SELECT policy. Service role bypasses RLS
+  // and is the correct credential for an owner-only internal view.
+  const { data } = await supabaseAdmin()
     .from('audit_log')
     .select('id, actor_kind, actor_email, action, entity, entity_id, diff, ip, created_at')
     .order('created_at', { ascending: false })
