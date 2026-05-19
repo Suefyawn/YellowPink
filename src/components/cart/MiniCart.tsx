@@ -150,7 +150,7 @@ export function MiniCart() {
           ))}
           {cartItems.length > 0 && (
             <div style={{ marginTop: 16, padding: 12, background: 'var(--paper2)', borderRadius: 'var(--radius-card)', border: '1px solid var(--line)' }}>
-              <Overline style={{ color: 'var(--brand-pink-text)', display: 'block', marginBottom: 4, fontSize: '0.625rem' }}>Add a Free Sample</Overline>
+              <Overline style={{ color: 'var(--brand-pink-text)', display: 'block', marginBottom: 4, fontSize: '0.75rem' }}>Add a Free Sample</Overline>
               <div className="small-text">Get a complimentary skincare sample with your order.</div>
             </div>
           )}

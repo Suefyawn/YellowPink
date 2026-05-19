@@ -265,7 +265,7 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true }: { p
                   <div key={r.id} style={{ padding: '16px 20px', background: 'white', borderRadius: 'var(--radius-card)', border: '1px solid var(--line)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--brand-pink)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '0.875rem' }}>
+                        <div style={{ width: 32, height: 32, borderRadius: '50%', background: 'var(--brand-pink-cta)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 700, fontSize: '0.875rem' }}>
                           {r.author_name.charAt(0).toUpperCase()}
                         </div>
                         <div>

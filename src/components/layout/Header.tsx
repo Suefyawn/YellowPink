@@ -146,7 +146,7 @@ export function Header() {
             {cartCount > 0 && (
               <span aria-hidden="true" style={{
                 position: 'absolute', top: -6, right: -8,
-                background: 'var(--brand-pink)', color: '#fff',
+                background: 'var(--brand-pink-cta)', color: '#fff',
                 width: 16, height: 16, borderRadius: '50%',
                 fontSize: '0.625rem', fontWeight: 700,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',

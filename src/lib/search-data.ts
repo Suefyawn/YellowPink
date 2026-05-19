@@ -1,17 +1,16 @@
-import { SearchOverlay } from './SearchOverlay';
+// Server-only helpers that derive the "Trending brands" and "Popular categories"
+// lists shown in the search overlay from real catalog data.
+//
+// Lives in lib/ (not in components/) because the calling tree starts at
+// app/layout.tsx (a server component). SiteChrome is `'use client'`, so we
+// cannot pass an async server-component wrapper through it — the data has
+// to be resolved at the layout level and handed down as plain props.
+
 import { supabase, isDemo } from '@/lib/supabase';
 
-// Server component that resolves the "Trending" list from real catalog data,
-// then hands it down to the client SearchOverlay. The hardcoded fallback
-// was the source of the audit's SEV-2 "dead-end search" — typing 'CeraVe'
-// returned no results because the catalog didn't have any. Pulling top
-// brands by product count fixes that automatically as the catalog evolves.
-async function loadTrendingBrands(): Promise<string[]> {
+export async function loadTrendingBrands(): Promise<string[]> {
   if (isDemo) return ['CeraVe', 'NARS', 'Kiko Milano', 'PIXI', 'Rhode'];
   try {
-    // Cheap query — we only need the brand column. Group + count + top-5
-    // is done client-side because Supabase REST doesn't expose GROUP BY
-    // without a view, and the catalog row count (266) is tiny.
     const { data } = await supabase
       .from('products')
       .select('brand')
@@ -33,9 +32,7 @@ async function loadTrendingBrands(): Promise<string[]> {
   }
 }
 
-// Sub-categories the merchant has stocked. Same logic as brands — derive
-// from what's actually in inventory instead of guessing.
-async function loadPopularCategories(): Promise<string[]> {
+export async function loadPopularCategories(): Promise<string[]> {
   if (isDemo) return ['Skincare', 'Lip Tints', 'Foundations', 'Sunscreen', 'Wellness'];
   try {
     const { data } = await supabase
@@ -57,12 +54,4 @@ async function loadPopularCategories(): Promise<string[]> {
   } catch {
     return [];
   }
-}
-
-export async function SearchOverlayWrapper() {
-  const [trending, categories] = await Promise.all([
-    loadTrendingBrands(),
-    loadPopularCategories(),
-  ]);
-  return <SearchOverlay trending={trending} categories={categories} />;
 }

@@ -4,34 +4,35 @@
 // Pairs with CartAnnouncer (which handles screen readers via aria-live).
 // The mini-cart drawer also opens on add — the toast is the at-a-glance
 // affordance for when the user is mid-page and not focusing on the drawer.
+//
+// Subscribes to `addCounter` / `lastAdded` on CartContext (not to
+// `cartCount`) so it does NOT flash when the persisted cart hydrates
+// from localStorage on a fresh page load.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCart } from '@/context/CartContext';
 import { brandPlusName } from '@/lib/product-display';
 
-interface Toast { id: number; label: string; price: number; qty: number }
+interface Toast { id: number; label: string }
 
 export function AddToCartToast() {
-  const { cartItems, cartCount } = useCart();
-  const prevCountRef = useRef<number | null>(null);
+  const { addCounter, lastAdded } = useCart();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   useEffect(() => {
-    const prev = prevCountRef.current;
-    // First render — establish baseline; don't toast restored cart on reload.
-    if (prev === null) { prevCountRef.current = cartCount; return; }
-    if (cartCount > prev) {
-      const last = cartItems[cartItems.length - 1];
-      if (last) {
-        const id = Date.now();
-        const label = brandPlusName(last.brand, last.name);
-        setToasts(prev => [...prev, { id, label, price: last.price, qty: cartCount - prevCountRef.current! }]);
-        // Auto-dismiss after 3.2 s.
-        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3200);
-      }
-    }
-    prevCountRef.current = cartCount;
-  }, [cartCount, cartItems]);
+    // addCounter starts at 0 and only increments when addToCart is called.
+    // Anything below 1 means we're still in the initial mount / hydration
+    // window and have nothing real to announce.
+    if (addCounter < 1 || !lastAdded) return;
+    const id = Date.now();
+    const label = brandPlusName(lastAdded.brand, lastAdded.name);
+    setToasts(t => [...t, { id, label }]);
+    const handle = setTimeout(
+      () => setToasts(t => t.filter(x => x.id !== id)),
+      3200,
+    );
+    return () => clearTimeout(handle);
+  }, [addCounter, lastAdded]);
 
   if (toasts.length === 0) return null;
 
@@ -71,7 +72,7 @@ export function AddToCartToast() {
             style={{
               flexShrink: 0,
               width: 22, height: 22, borderRadius: '50%',
-              background: 'var(--brand-pink)', color: '#fff',
+              background: 'var(--brand-pink-cta)', color: '#fff',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '0.875rem', fontWeight: 700,
             }}

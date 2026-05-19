@@ -58,7 +58,7 @@ function ReturnForm() {
       <div style={{ padding: 48, textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 500, marginBottom: 12 }}>Return request submitted</h1>
         <p style={{ color: 'var(--ink-700)', marginBottom: 24 }}>We'll review it and email you within 48 hours.</p>
-        <Link href="/account/orders" style={{ padding: '10px 18px', background: 'var(--brand-pink)', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
+        <Link href="/account/orders" style={{ padding: '10px 18px', background: 'var(--brand-pink-cta)', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
           Back to orders
         </Link>
       </div>

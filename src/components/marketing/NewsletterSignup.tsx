@@ -77,7 +77,11 @@ export function NewsletterSignup({
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `nl-error-${source}` : undefined}
           style={{
-            flex: 1, padding: '10px 12px',
+            // `min-width: 0` lets the input shrink below the browser's
+            // default 20-char content min so the footer column (~200px)
+            // doesn't blow out horizontally. Without this, input+button
+            // overflow the column and force the marquee to push wider.
+            flex: 1, minWidth: 0, padding: '10px 12px',
             background: inputBg, border: inputBdr, borderRight: 'none',
             borderRadius: '3px 0 0 3px', color: inputColor,
             fontSize: '0.8125rem', outline: 'none',
@@ -89,7 +93,7 @@ export function NewsletterSignup({
           disabled={pending}
           aria-label="Subscribe to newsletter"
           style={{
-            padding: '10px 16px', background: 'var(--brand-pink)', border: 'none',
+            padding: '10px 16px', background: 'var(--brand-pink-cta)', border: 'none',
             borderRadius: '0 3px 3px 0', color: '#fff', fontSize: '0.75rem', fontWeight: 600,
             letterSpacing: '0.06em', cursor: pending ? 'wait' : 'pointer',
             fontFamily: 'var(--font-ui)', textTransform: 'uppercase',

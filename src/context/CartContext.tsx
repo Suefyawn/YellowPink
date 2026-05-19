@@ -20,6 +20,15 @@ interface CartContextValue {
   updateQty: (idx: number, delta: number) => void;
   clearCart: () => void;
   cartCount: number;
+  /** Increments every time `addToCart` is called. The "add to cart" toast
+   *  subscribes to this rather than `cartCount` so it doesn't flash on
+   *  page-load hydration of a saved cart. */
+  addCounter: number;
+  /** The last item the user explicitly added — paired with `addCounter`
+   *  so the toast can read the brand+name without re-deriving from the
+   *  end of `cartItems` (which is wrong if the add merged into an
+   *  existing line). */
+  lastAdded: { name: string; brand?: string | null; price: number; qty: number } | null;
   appliedCoupon: Coupon | null;
   setAppliedCoupon: (c: Coupon | null) => void;
 }
@@ -42,6 +51,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartOpen, setCartOpen] = useState(false);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [addCounter, setAddCounter] = useState(0);
+  const [lastAdded, setLastAdded] = useState<CartContextValue['lastAdded']>(null);
 
   // Load from localStorage after hydration to avoid SSR/client mismatch
   useEffect(() => {
@@ -93,6 +104,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         currency:     'PKR',
       },
     });
+    setAddCounter(c => c + 1);
+    setLastAdded({
+      name:  product.name,
+      brand: product.brand,
+      price: product.price,
+      qty:   product.qty ?? 1,
+    });
     setCartOpen(true);
   };
 
@@ -121,7 +139,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
 
   return (
-    <CartContext.Provider value={{ cartItems, cartOpen, setCartOpen, addToCart, removeFromCart, updateQty, clearCart, cartCount, appliedCoupon, setAppliedCoupon }}>
+    <CartContext.Provider value={{ cartItems, cartOpen, setCartOpen, addToCart, removeFromCart, updateQty, clearCart, cartCount, addCounter, lastAdded, appliedCoupon, setAppliedCoupon }}>
       {children}
     </CartContext.Provider>
   );

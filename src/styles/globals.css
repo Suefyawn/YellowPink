@@ -23,6 +23,13 @@
    * --brand-pink-text for any text or icon-button label that lives on a
    * light background. */
   --brand-pink-text: #C5286A;
+  /* Pink-fill button surfaces (Shop / Add to Cart / Checkout / Subscribe).
+   * Same darker tone as --brand-pink-text — picked because the WHITE button
+   * label sits at 3.39:1 on #E8487F (fails AA at <18px) but 5.4:1 on
+   * #C5286A (passes AA & AAA-large). Use this var for any pink button
+   * background that carries white text; reserve --brand-pink for
+   * decorative pills / heart fills / chips without text on them. */
+  --brand-pink-cta: #C5286A;
   --line: rgba(26,26,26,0.10);
   --success: #2D6A4F;
   --error: #9B2C2C;
@@ -150,7 +157,9 @@ a.underline,
 .btn-primary {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 14px 32px;
-  background: var(--brand-pink);
+  /* --brand-pink-cta (#C5286A) — passes WCAG AA for the small uppercase
+   * white label below. The lighter --brand-pink fails 1.4.3 at 13px. */
+  background: var(--brand-pink-cta);
   color: #fff;
   font-family: var(--font-ui); font-size: 0.8125rem; font-weight: 600;
   letter-spacing: 0.08em; text-transform: uppercase;
@@ -158,7 +167,7 @@ a.underline,
   text-decoration: none;
   transition: background 180ms ease-out, transform 180ms ease-out;
 }
-.btn-primary:hover { background: #d43d6f; transform: translateY(-1px); }
+.btn-primary:hover { background: #aa1f5a; transform: translateY(-1px); }
 
 /* Outlined twin to .btn-primary — same height + padding so the two CTAs sit
  * on a shared baseline. Ghost button reads as "alternative path" not "tiny

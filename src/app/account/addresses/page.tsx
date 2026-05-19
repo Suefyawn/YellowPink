@@ -76,7 +76,7 @@ export default function AddressesPage() {
           <div style={{ background: 'white', border: '1px dashed var(--line)', borderRadius: 12, padding: 32, textAlign: 'center' }}>
             <p style={{ color: 'var(--ink-500)', margin: '0 0 16px' }}>No saved addresses yet.</p>
             <button onClick={() => setShowForm(true)} style={{
-              padding: '10px 18px', background: 'var(--brand-pink)', color: 'white', border: 'none',
+              padding: '10px 18px', background: 'var(--brand-pink-cta)', color: 'white', border: 'none',
               borderRadius: 8, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
             }}>
               + Add address
@@ -95,7 +95,7 @@ export default function AddressesPage() {
                 {addr.is_default && (
                   <span style={{
                     position: 'absolute', top: 12, right: 12,
-                    background: 'var(--brand-pink)', color: 'white',
+                    background: 'var(--brand-pink-cta)', color: 'white',
                     fontSize: '0.6875rem', fontWeight: 700, padding: '2px 8px', borderRadius: 4,
                   }}>DEFAULT</span>
                 )}

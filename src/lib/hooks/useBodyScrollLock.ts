@@ -3,42 +3,77 @@
 import { useEffect, type RefObject } from 'react';
 
 // Locks <body> scroll while a modal/drawer is open. Restores the original
-// overflow on close. Pass `lock=true` to engage.
+// overflow + scroll position on close. Pass `lock=true` to engage.
 //
-// iOS Safari quirk: simply setting `overflow:hidden` on body doesn't
-// prevent rubber-band scroll. We also pin position via top + restore on
-// close, which is the most reliable cross-browser pattern.
+// Implementation notes:
+//
+// 1. Reference-counted via a body-scoped dataset attribute. Multiple
+//    components can call this hook concurrently (e.g. MiniCart + a modal
+//    opened from inside it) and the lock is only released when the last
+//    consumer unmounts. Previously, two overlapping consumers would race
+//    and one's cleanup would either undo the other's lock OR leave the
+//    body permanently locked.
+//
+// 2. The scroll-Y the page was at when the FIRST consumer engaged is
+//    stashed on `body.dataset.ypScrollY` so subsequent consumers don't
+//    overwrite it with `0` (they read it after the body has already been
+//    pinned, where scrollY is meaningless).
+//
+// 3. Survives Fast Refresh: if a component unmounts dirty (HMR, React
+//    error boundary), the inline styles linger but the count goes to
+//    zero on next mount. We always clear when count hits zero, regardless
+//    of who set what — the values stored in dataset are authoritative.
+
+const COUNT_KEY    = 'ypScrollLockCount';
+const SCROLLY_KEY  = 'ypScrollLockY';
+
+function applyLock() {
+  if (typeof document === 'undefined') return;
+  const body = document.body;
+  const html = document.documentElement;
+  const dataset = body.dataset;
+
+  const current = Number(dataset[COUNT_KEY] ?? '0');
+  dataset[COUNT_KEY] = String(current + 1);
+
+  // Only the first lock writes the freeze styles + records scrollY.
+  if (current === 0) {
+    dataset[SCROLLY_KEY] = String(window.scrollY);
+    body.style.overflow  = 'hidden';
+    body.style.position  = 'fixed';
+    body.style.top       = `-${window.scrollY}px`;
+    body.style.width     = '100%';
+    html.style.overflow  = 'hidden';
+  }
+}
+
+function releaseLock() {
+  if (typeof document === 'undefined') return;
+  const body = document.body;
+  const html = document.documentElement;
+  const dataset = body.dataset;
+
+  const current = Number(dataset[COUNT_KEY] ?? '0');
+  const next = Math.max(0, current - 1);
+  dataset[COUNT_KEY] = String(next);
+
+  if (next === 0) {
+    const y = Number(dataset[SCROLLY_KEY] ?? '0');
+    delete dataset[SCROLLY_KEY];
+    body.style.overflow  = '';
+    body.style.position  = '';
+    body.style.top       = '';
+    body.style.width     = '';
+    html.style.overflow  = '';
+    window.scrollTo(0, y);
+  }
+}
 
 export function useBodyScrollLock(lock: boolean): void {
   useEffect(() => {
-    if (!lock || typeof document === 'undefined') return;
-
-    const html = document.documentElement;
-    const body = document.body;
-    const scrollY = window.scrollY;
-
-    const prevOverflow      = body.style.overflow;
-    const prevPosition      = body.style.position;
-    const prevTop           = body.style.top;
-    const prevWidth         = body.style.width;
-    const prevHtmlOverflow  = html.style.overflow;
-
-    body.style.overflow = 'hidden';
-    // iOS-safe: pin the body in place so touch scrolling is blocked.
-    body.style.position = 'fixed';
-    body.style.top      = `-${scrollY}px`;
-    body.style.width    = '100%';
-    html.style.overflow = 'hidden';
-
-    return () => {
-      body.style.overflow = prevOverflow;
-      body.style.position = prevPosition;
-      body.style.top      = prevTop;
-      body.style.width    = prevWidth;
-      html.style.overflow = prevHtmlOverflow;
-      // Restore scroll position the user was at before opening.
-      window.scrollTo(0, scrollY);
-    };
+    if (!lock) return;
+    applyLock();
+    return releaseLock;
   }, [lock]);
 }
 

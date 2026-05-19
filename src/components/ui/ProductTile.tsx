@@ -66,7 +66,14 @@ export function ProductTile({ product }: ProductTileProps) {
             }}>Sale</span>
           )}
         </div>
-        <Overline style={{ color: 'var(--ink-500)', marginBottom: 2, display: 'block' }}>{brand}</Overline>
+        {/* Brand line — slightly larger (12px) and tighter than the default
+            overline (11px) so it actually identifies the brand at a glance
+            on a desk-distance browser. Was the smallest readable text on
+            the entire homepage. */}
+        <Overline style={{
+          color: 'var(--ink-500)', marginBottom: 4, display: 'block',
+          fontSize: '0.75rem', letterSpacing: '0.12em',
+        }}>{brand}</Overline>
         <div className="h3" style={{ marginBottom: 2, position: 'relative', display: 'inline-block' }}>
           {name}
           <div style={{

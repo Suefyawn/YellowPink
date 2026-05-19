@@ -5,7 +5,7 @@ import { PromoBanner } from './PromoBanner';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { MiniCart } from '@/components/cart/MiniCart';
-import { SearchOverlayWrapper } from '@/components/search/SearchOverlayWrapper';
+import { SearchOverlay } from '@/components/search/SearchOverlay';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import type { Promo } from '@/lib/promos';
 
@@ -16,9 +16,15 @@ interface SiteChromeProps {
    *  If null, we fall back to the legacy site_settings-based config so the
    *  bars still render before the merchant has authored any rows. */
   promos?: { top_bar: Promo | null; hero_strip: Promo | null } | null;
+  /** Server-resolved data for the search overlay. Passed through here
+   *  (rather than rendered as its own server-component wrapper) because
+   *  SiteChrome is `'use client'` — an async server component cannot live
+   *  inside a client tree without a Suspense boundary. */
+  searchTrending: string[];
+  searchCategories: string[];
 }
 
-export function SiteChrome({ children, settings, promos }: SiteChromeProps) {
+export function SiteChrome({ children, settings, promos, searchTrending, searchCategories }: SiteChromeProps) {
   const pathname = usePathname();
   if (pathname.startsWith('/admin')) return <>{children}</>;
 
@@ -74,7 +80,7 @@ export function SiteChrome({ children, settings, promos }: SiteChromeProps) {
       {children}
       <Footer />
       <MiniCart />
-      <SearchOverlayWrapper />
+      <SearchOverlay trending={searchTrending} categories={searchCategories} />
       <KeyboardShortcuts />
     </>
   );

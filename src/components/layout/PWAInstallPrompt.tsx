@@ -98,7 +98,7 @@ export function PWAInstallPrompt() {
           <button
             onClick={install}
             style={{
-              padding: '6px 12px', background: 'var(--brand-pink)', color: 'white',
+              padding: '6px 12px', background: 'var(--brand-pink-cta)', color: 'white',
               border: 'none', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
             }}
           >Install</button>

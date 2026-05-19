@@ -54,11 +54,14 @@ function CatTile({ label, href, img, color }: typeof CATS[0]) {
           position: 'absolute', inset: 0,
           background: hovered
             ? 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 100%)'
-            : 'linear-gradient(to top, rgba(0,0,0,0.38) 0%, transparent 55%)',
+            : 'linear-gradient(to top, rgba(0,0,0,0.42) 0%, transparent 55%)',
           transition: 'background 300ms ease-out',
-          display: 'flex', alignItems: 'flex-end', padding: 12,
+          display: 'flex', alignItems: 'flex-end', padding: 14,
         }}>
-          <Overline style={{ color: '#fff', fontSize: '0.625rem' }}>{label}</Overline>
+          {/* Label is the primary CTA of the tile — bump the overline to
+              13px (was 10px) so it's legible at a glance and reads as a
+              clickable tag, not a fine-print caption. */}
+          <Overline style={{ color: '#fff', fontSize: '0.8125rem', letterSpacing: '0.12em' }}>{label}</Overline>
         </div>
       </div>
     </Link>

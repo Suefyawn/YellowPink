@@ -16,7 +16,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
           <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: '0 0 12px' }}>Critical error</h1>
           <p style={{ color: '#6b7280', margin: '0 0 28px' }}>The application encountered a critical error.</p>
           <button onClick={reset} style={{
-            padding: '11px 24px', background: '#E8487F', color: 'white',
+            padding: '11px 24px', background: '#C5286A', color: 'white',
             border: 'none', borderRadius: 8, fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer',
           }}>
             Try again

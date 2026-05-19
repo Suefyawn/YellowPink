@@ -23,6 +23,7 @@ import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { getSiteSettings } from '@/lib/supabase';
 import { getActivePromos, audienceFor } from '@/lib/promos';
+import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd, localBusinessLd } from '@/lib/seo';
 
 export const metadata: Metadata = {
@@ -57,13 +58,17 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const settings = await getSiteSettings();
-  // TODO: read auth session + lifetime-order count to refine the audience.
-  // For now everyone is treated as 'guest' so any null-audience or
-  // guest-audience promo will match; logged_in / first_time / returning
-  // rows will simply not show until the audience resolver is wired to
-  // session data.
-  const promos = await getActivePromos(audienceFor(false, false));
+  const [settings, promos, searchTrending, searchCategories] = await Promise.all([
+    getSiteSettings(),
+    // TODO: read auth session + lifetime-order count to refine the audience.
+    // For now everyone is treated as 'guest' so any null-audience or
+    // guest-audience promo will match; logged_in / first_time / returning
+    // rows will simply not show until the audience resolver is wired to
+    // session data.
+    getActivePromos(audienceFor(false, false)),
+    loadTrendingBrands(),
+    loadPopularCategories(),
+  ]);
   return (
     <html lang="en">
       <head>
@@ -96,7 +101,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers>
           <CartAnnouncer />
           <AddToCartToast />
-          <SiteChrome settings={settings} promos={promos}>
+          <SiteChrome
+            settings={settings}
+            promos={promos}
+            searchTrending={searchTrending}
+            searchCategories={searchCategories}
+          >
             {/* tabindex=-1 so the skip-link can focus #main programmatically
                 without making it a sequential Tab stop. */}
             <div id="main" tabIndex={-1} style={{ outline: 'none' }}>{children}</div>
