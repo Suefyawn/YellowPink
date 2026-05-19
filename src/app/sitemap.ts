@@ -8,12 +8,13 @@ import type { MetadataRoute } from 'next';
 import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
 
+// Removed /track and /login — both are robots-disallowed (utility / private),
+// so listing them in the sitemap sends a conflicting signal to crawlers.
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
   { path: '/',         priority: 1.0, freq: 'daily' },
   { path: '/shop',     priority: 0.9, freq: 'daily' },
   { path: '/blog',     priority: 0.7, freq: 'weekly' },
-  { path: '/track',    priority: 0.4, freq: 'yearly' },
-  { path: '/login',    priority: 0.3, freq: 'yearly' },
+  { path: '/faq',      priority: 0.5, freq: 'monthly' },
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -27,8 +28,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     categories = Array.from(new Set(DEMO_PRODUCTS.map(p => p.category).filter(Boolean)));
   }
 
+  // Use ?category= to match what canonical / PDP-breadcrumb / footer links
+  // emit. The /shop page accepts both `?cat=` and `?category=` at runtime,
+  // but mixing them in the sitemap vs the canonical splits SEO signal.
   const categoryUrls: MetadataRoute.Sitemap = categories.map(cat => ({
-    url: `${SITE_URL}/shop?cat=${encodeURIComponent(cat)}`,
+    url: `${SITE_URL}/shop?category=${encodeURIComponent(cat)}`,
     lastModified: new Date(),
     changeFrequency: 'weekly',
     priority: 0.7,

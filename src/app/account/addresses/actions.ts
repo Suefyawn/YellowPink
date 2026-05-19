@@ -88,26 +88,36 @@ export async function updateAddress(
   return { success: true };
 }
 
-export async function deleteAddress(formData: FormData): Promise<void> {
+export async function deleteAddress(formData: FormData): Promise<{ error?: string } | void> {
   const id = formData.get('id');
   if (typeof id !== 'string') return;
   const sb = await authedClient();
-  await sb.from('addresses').delete().eq('id', id);
+  const { error } = await sb.from('addresses').delete().eq('id', id);
+  if (error) return { error: error.message };
   revalidatePath('/account/addresses');
 }
 
 // Flip the `is_default` flag on one address — clearing the previous default
-// in the same transaction so the user always has exactly one. Used by the
-// "Make default" button on each non-default card.
-export async function setDefaultAddress(formData: FormData): Promise<void> {
+// first so the user always has exactly one. If the clear+set isn't atomic
+// in two updates, the second-half failure can leave zero defaults — so we
+// SET the new default FIRST, then clear all others except the new one.
+// Worst-case interruption now leaves two defaults briefly, never zero.
+export async function setDefaultAddress(formData: FormData): Promise<{ error?: string } | void> {
   const id = formData.get('id');
   if (typeof id !== 'string') return;
   const sb = await authedClient();
   const { data: user } = await sb.auth.getUser();
-  if (!user.user) return;
+  if (!user.user) return { error: 'Not signed in.' };
 
-  // Clear current default first (RLS scopes to user).
-  await sb.from('addresses').update({ is_default: false } as never).eq('user_id', user.user.id).eq('is_default', true);
-  await sb.from('addresses').update({ is_default: true } as never).eq('id', id).eq('user_id', user.user.id);
+  // Set the new default first.
+  const { error: setErr } = await sb
+    .from('addresses').update({ is_default: true } as never)
+    .eq('id', id).eq('user_id', user.user.id);
+  if (setErr) return { error: setErr.message };
+  // Then clear every other default for this user.
+  const { error: clrErr } = await sb
+    .from('addresses').update({ is_default: false } as never)
+    .eq('user_id', user.user.id).eq('is_default', true).neq('id', id);
+  if (clrErr) return { error: clrErr.message };
   revalidatePath('/account/addresses');
 }

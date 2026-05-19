@@ -66,13 +66,18 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
     setCouponError('');
     setCouponLoading(true);
     const sb = getBrowserClient();
-    const { data } = await sb.from('coupons').select('*').eq('code', couponCode.trim().toUpperCase()).eq('active', true).single();
+    const { data, error } = await sb.from('coupons').select('*').eq('code', couponCode.trim().toUpperCase()).eq('active', true).single();
     setCouponLoading(false);
+    if (error && error.code !== 'PGRST116') { setCouponError('Could not validate coupon. Try again.'); return; }
     if (!data) { setCouponError('Invalid or inactive coupon code'); return; }
     const c = data as Coupon;
-    if (c.expires_at && new Date(c.expires_at) < new Date()) { setCouponError('This coupon has expired'); return; }
-    if (c.max_uses !== null && c.used_count >= c.max_uses) { setCouponError('This coupon has reached its usage limit'); return; }
-    if (subtotal < c.min_order) { setCouponError(`Minimum order of PKR ${c.min_order.toLocaleString()} required`); return; }
+
+    // Cart is anonymous (no email field) — server still enforces per-user
+    // caps + email restrictions at checkout. This is best-effort UX.
+    const { validateCoupon } = await import('@/lib/coupon-validation');
+    const verdict = validateCoupon({ coupon: c, cartItems, subtotal });
+    if (!verdict.ok) { setCouponError(verdict.error); return; }
+
     setAppliedCoupon(c);
     setCouponCode(c.code);
   };

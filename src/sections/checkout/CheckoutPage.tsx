@@ -176,13 +176,36 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
     setCouponError('');
     setCouponLoading(true);
     const sb = getBrowserClient();
-    const { data } = await sb.from('coupons').select('*').eq('code', couponCode.trim().toUpperCase()).eq('active', true).single();
-    setCouponLoading(false);
-    if (!data) { setCouponError('Invalid or expired coupon code'); return; }
+    const { data, error } = await sb.from('coupons').select('*').eq('code', couponCode.trim().toUpperCase()).eq('active', true).single();
+
+    // Distinguish "row not found" (PGRST116) from real infra errors so the
+    // user gets a useful message instead of "invalid" for both.
+    if (error && error.code !== 'PGRST116') {
+      setCouponLoading(false);
+      setCouponError('Could not validate coupon. Try again.');
+      return;
+    }
+    if (!data) { setCouponLoading(false); setCouponError('Invalid or expired coupon code'); return; }
     const c = data as Coupon;
-    if (c.expires_at && new Date(c.expires_at) < new Date()) { setCouponError('This coupon has expired'); return; }
-    if (c.max_uses !== null && c.used_count >= c.max_uses) { setCouponError('This coupon has reached its usage limit'); return; }
-    if (subtotal < c.min_order) { setCouponError(`Minimum order of PKR ${c.min_order.toLocaleString()} required`); return; }
+
+    // Per-user usage cap — pull prior redemption count when we know the user.
+    let perUserUsedCount: number | undefined;
+    if (formData.email && typeof c.usage_limit_per_user === 'number' && c.usage_limit_per_user > 0) {
+      const { count } = await sb.from('coupon_redemptions')
+        .select('id', { count: 'exact', head: true })
+        .eq('coupon_id', c.id).eq('email', formData.email);
+      perUserUsedCount = count ?? 0;
+    }
+
+    setCouponLoading(false);
+
+    const { validateCoupon } = await import('@/lib/coupon-validation');
+    const verdict = validateCoupon({
+      coupon: c, cartItems, subtotal,
+      email: formData.email ?? null,
+      perUserUsedCount,
+    });
+    if (!verdict.ok) { setCouponError(verdict.error); return; }
     setCoupon(c);
     setAppliedCoupon(c);
   };

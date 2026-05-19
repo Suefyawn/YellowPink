@@ -146,10 +146,14 @@ export async function updateProduct(
 export async function deleteProduct(formData: FormData) {
   const session = await getStaffSessionForActions();
   const id = formData.get('id') as string;
-  await supabase.from('products').delete().eq('id', id);
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) {
+    // Surface via query string. Index page reads ?error= and shows a toast.
+    redirect(`/admin/products?error=${encodeURIComponent(error.message)}`);
+  }
   await logAudit(session, { action: 'product.delete', entity: 'product', entity_id: id });
   revalidatePath('/admin/products');
-  redirect('/admin/products');
+  redirect('/admin/products?deleted=1');
 }
 
 // Helper because we already import getStaffSession via staff-auth.
@@ -199,16 +203,24 @@ export async function updateBlogPost(
 
 export async function deleteBlogPost(formData: FormData) {
   const id = formData.get('id') as string;
-  await supabase.from('blog_posts').delete().eq('id', id);
+  const { error } = await supabase.from('blog_posts').delete().eq('id', id);
+  if (error) {
+    redirect(`/admin/blog?error=${encodeURIComponent(error.message)}`);
+  }
   revalidatePath('/admin/blog');
-  redirect('/admin/blog');
+  redirect('/admin/blog?deleted=1');
 }
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
-export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus) {
-  await supabase.from('orders').update({ status }).in('id', ids);
+export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus): Promise<{ error?: string; count?: number }> {
+  const { error, count } = await supabase
+    .from('orders')
+    .update({ status }, { count: 'exact' })
+    .in('id', ids);
+  if (error) return { error: error.message };
   revalidatePath('/admin/orders');
+  return { count: count ?? ids.length };
 }
 
 export async function updateOrderStatus(

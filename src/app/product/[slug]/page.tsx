@@ -199,7 +199,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           __html: jsonLd(breadcrumbLd([
             { name: 'Home',           path: '/' },
             { name: 'Shop',           path: '/shop' },
-            { name: product.category, path: `/shop?cat=${encodeURIComponent(product.category)}` },
+            { name: product.category, path: `/shop?category=${encodeURIComponent(product.category)}` },
             { name: product.name,     path: `/product/${product.slug}` },
           ])),
         }}

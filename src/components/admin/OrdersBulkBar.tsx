@@ -36,7 +36,11 @@ export function OrdersBulkBar({ orderIds, children }: Props) {
     if (selected.size === 0) return;
     const count = selected.size;
     startTransition(async () => {
-      await bulkUpdateOrderStatus(Array.from(selected), status);
+      const result = await bulkUpdateOrderStatus(Array.from(selected), status);
+      if (result.error) {
+        toast(`Couldn't update orders: ${result.error}`, 'error');
+        return;
+      }
       setSelected(new Set());
       toast(`${count} order${count !== 1 ? 's' : ''} marked as ${status}`, 'success');
     });
