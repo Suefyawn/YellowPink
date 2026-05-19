@@ -34,9 +34,14 @@ function FooterLink({ href, label }: { href: string; label: string }) {
 }
 
 const SHOP_LINKS = [
-  { label: 'Makeup',       href: '/shop?category=Makeup' },
-  { label: 'Skincare',     href: '/shop?category=Skincare' },
-  { label: 'Wellness',     href: '/shop?category=Wellness' },
+  // Taxon URLs match the post-076 nav: ?taxon=<key> expands to the
+  // category set defined in lib/category-taxonomy.ts. `?category=Makeup`
+  // and `?category=Wellness` return zero products because the real
+  // category values are "Lip & Cheek Tints", "Human Health", etc.
+  // Skincare keeps the taxon form for consistency (covers Moisturizers).
+  { label: 'Makeup',       href: '/shop?taxon=makeup' },
+  { label: 'Skincare',     href: '/shop?taxon=skincare' },
+  { label: 'Wellness',     href: '/shop?taxon=wellness' },
   { label: 'All Products', href: '/shop' },
 ];
 

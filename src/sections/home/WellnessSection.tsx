@@ -71,7 +71,7 @@ export function WellnessSection({ products }: { products: Product[] }) {
           </div>
 
           <div style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
-            <Link href="/shop?category=Wellness" className="btn-secondary">Explore Wellness</Link>
+            <Link href="/shop?taxon=wellness" className="btn-secondary">Explore Wellness</Link>
           </div>
         </div>
       </div>

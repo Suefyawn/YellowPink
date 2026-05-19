@@ -417,7 +417,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               </div>
               <div>
                 <label style={lbl}>Secondary Button URL</label>
-                <input name="hero_cta2_url" defaultValue={g('hero_cta2_url', '/shop?category=Wellness')} style={inp} />
+                <input name="hero_cta2_url" defaultValue={g('hero_cta2_url', '/shop?taxon=wellness')} style={inp} />
               </div>
             </div>
             <div>
