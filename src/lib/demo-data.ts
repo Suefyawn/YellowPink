@@ -184,6 +184,6 @@ export const DEMO_SITE_SETTINGS: Record<string, string> = {
   hero_cta1_text: 'Shop Beauty',
   hero_cta1_url: '/shop',
   hero_cta2_text: 'Explore Wellness',
-  hero_cta2_url: '/shop?cat=Wellness',
+  hero_cta2_url: '/shop?category=Wellness',
   hero_brands: 'NARS,Kiko Milano,PIXI,CeraVe,SHEGLAM,RHODE',
 };

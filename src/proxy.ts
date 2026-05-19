@@ -184,6 +184,23 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // ─── Canonical query-param 301 (audit SEV-2) ──────────────────────────────
+  // The /shop page historically wrote `?cat=` and `?sub=` to the URL, while
+  // header nav + sitemap + breadcrumb canonical URLs all use `?category=` /
+  // `?subcategory=`. That dual-URL surface dilutes SEO ranking — fold every
+  // legacy short-form back to the canonical name.
+  if (pathname === '/shop') {
+    const url = request.nextUrl;
+    const cat = url.searchParams.get('cat');
+    const sub = url.searchParams.get('sub');
+    if (cat !== null || sub !== null) {
+      const next = url.clone();
+      if (cat !== null) { next.searchParams.delete('cat'); next.searchParams.set('category', cat); }
+      if (sub !== null) { next.searchParams.delete('sub'); next.searchParams.set('subcategory', sub); }
+      return NextResponse.redirect(next, 301);
+    }
+  }
+
   // ─── WP pattern 301s (URL preservation for legacy slugs) ──────────────────
   // The Semrush audit of the live WP site flagged a thousand+ broken internal
   // links pointing at WP-style URLs (/about-us/, /shop/page/2/, /category/x/,

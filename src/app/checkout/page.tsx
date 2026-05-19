@@ -1,6 +1,14 @@
+import type { Metadata } from 'next';
 import { CheckoutPage } from '@/sections/checkout/CheckoutPage';
 import { getSiteSettings } from '@/lib/supabase';
 import type { PayMethod } from '@/types';
+
+// Cart→checkout pages must not be indexed (audit SEV-2). Also override the
+// page title — without this it inherits the homepage default.
+export const metadata: Metadata = {
+  title: 'Checkout',
+  robots: { index: false, follow: false },
+};
 
 export default async function CheckoutRoute() {
   // Read which payment methods the merchant has toggled on in admin settings.

@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
+import { logAudit } from '@/lib/audit';
 
 // Admin server actions for the promo CMS. Every action revalidates the root
 // layout (which renders the bars) AND the admin list, so the merchant sees
@@ -39,20 +40,24 @@ function bust() {
 }
 
 export async function createPromo(formData: FormData) {
-  await assertPermission('promos');
+  const session = await assertPermission('promos');
   const parsed = PromoSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
-  await supabase.from('promos').insert(emptyToNull({
+  const { data: created } = await supabase.from('promos').insert(emptyToNull({
     ...parsed.data,
     show_countdown: parsed.data.show_countdown ?? false,
     enabled: parsed.data.enabled ?? true,
     priority: parsed.data.priority ?? 0,
-  }));
+  })).select('id').single();
+  void logAudit(session, {
+    action: 'promo.create', entity: 'promos', entity_id: created?.id ?? null,
+    diff: { headline: parsed.data.headline, position: parsed.data.position },
+  });
   bust();
 }
 
 export async function updatePromo(id: string, formData: FormData) {
-  await assertPermission('promos');
+  const session = await assertPermission('promos');
   const parsed = PromoSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   await supabase.from('promos').update(emptyToNull({
@@ -61,18 +66,31 @@ export async function updatePromo(id: string, formData: FormData) {
     enabled: parsed.data.enabled ?? false,
     priority: parsed.data.priority ?? 0,
   })).eq('id', id);
+  void logAudit(session, {
+    action: 'promo.update', entity: 'promos', entity_id: id,
+    diff: { headline: parsed.data.headline, enabled: parsed.data.enabled ?? false },
+  });
   bust();
 }
 
 export async function togglePromo(id: string, enabled: boolean) {
-  await assertPermission('promos');
+  const session = await assertPermission('promos');
   await supabase.from('promos').update({ enabled }).eq('id', id);
+  void logAudit(session, {
+    action: enabled ? 'promo.enable' : 'promo.disable',
+    entity: 'promos', entity_id: id,
+  });
   bust();
 }
 
 export async function deletePromo(formData: FormData) {
-  await assertPermission('promos');
+  const session = await assertPermission('promos');
   const id = formData.get('id') as string;
+  const { data: target } = await supabase.from('promos').select('headline').eq('id', id).single();
   await supabase.from('promos').delete().eq('id', id);
+  void logAudit(session, {
+    action: 'promo.delete', entity: 'promos', entity_id: id,
+    diff: { headline: target?.headline },
+  });
   bust();
 }

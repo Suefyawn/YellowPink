@@ -5,18 +5,20 @@ import { redirect } from 'next/navigation';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession, hashPassword, generateTempPassword, verifyPassword, upgradeStaffHash } from '@/lib/staff-auth';
 import { sendStaffTempPasswordEmail } from '@/lib/email';
+import { logAudit } from '@/lib/audit';
 import type { Permission } from '@/lib/permissions';
 
 async function assertOwner() {
   const session = await getStaffSession();
   if (!session?.isOwner) throw new Error('Unauthorized');
+  return session;
 }
 
 export async function createStaffMember(
   _prev: { error?: string; tempPassword?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | { tempPassword: string }> {
-  await assertOwner();
+  const session = await assertOwner();
 
   const email = (formData.get('email') as string).trim().toLowerCase();
   const name = (formData.get('name') as string).trim();
@@ -28,13 +30,17 @@ export async function createStaffMember(
   const tempPassword = generateTempPassword();
   const hash = hashPassword(tempPassword); // scrypt now self-salts
 
-  const { error } = await supabaseAdmin().from('staff_members').insert({
-    email, name,
-    permissions,
-    password_hash: hash,
-    password_salt: '',                 // empty for scrypt rows
-    is_active: true,
-  });
+  const { data: created, error } = await supabaseAdmin()
+    .from('staff_members')
+    .insert({
+      email, name,
+      permissions,
+      password_hash: hash,
+      password_salt: '',                 // empty for scrypt rows
+      is_active: true,
+    })
+    .select('id')
+    .single();
 
   if (error) {
     if (error.code === '23505') return { error: 'A staff member with this email already exists' };
@@ -44,6 +50,13 @@ export async function createStaffMember(
   // Best-effort: email the temp password too (the UI still shows it in case Resend isn't configured).
   void sendStaffTempPasswordEmail({ email, name, tempPassword });
 
+  void logAudit(session, {
+    action: 'staff.create',
+    entity: 'staff_members',
+    entity_id: created?.id ?? null,
+    diff: { email, name, permissions },
+  });
+
   revalidatePath('/admin/team');
   return { tempPassword };
 }
@@ -52,7 +65,7 @@ export async function updateStaffPermissions(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  await assertOwner();
+  const session = await assertOwner();
 
   const id = formData.get('id') as string;
   const name = (formData.get('name') as string).trim();
@@ -64,12 +77,18 @@ export async function updateStaffPermissions(
     .eq('id', id);
 
   if (error) return { error: error.message };
+  void logAudit(session, {
+    action: 'staff.update',
+    entity: 'staff_members',
+    entity_id: id,
+    diff: { name, permissions },
+  });
   revalidatePath('/admin/team');
   return null;
 }
 
 export async function toggleStaffActive(formData: FormData): Promise<void> {
-  await assertOwner();
+  const session = await assertOwner();
 
   const id = formData.get('id') as string;
   const isActive = formData.get('is_active') === 'true';
@@ -82,6 +101,11 @@ export async function toggleStaffActive(formData: FormData): Promise<void> {
     redirect(`/admin/team?error=${encodeURIComponent('Could not change status: ' + error.message)}`);
   }
 
+  void logAudit(session, {
+    action: isActive ? 'staff.deactivate' : 'staff.activate',
+    entity: 'staff_members',
+    entity_id: id,
+  });
   revalidatePath('/admin/team');
 }
 
@@ -89,7 +113,7 @@ export async function resetStaffPassword(
   _prev: { error?: string; tempPassword?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | { tempPassword: string }> {
-  await assertOwner();
+  const session = await assertOwner();
 
   const id = formData.get('id') as string;
   const tempPassword = generateTempPassword();
@@ -106,18 +130,34 @@ export async function resetStaffPassword(
   if (staff?.email && staff?.name) {
     void sendStaffTempPasswordEmail({ email: staff.email, name: staff.name, tempPassword });
   }
+  void logAudit(session, {
+    action: 'staff.reset_password',
+    entity: 'staff_members',
+    entity_id: id,
+    diff: { target_email: staff?.email },
+  });
   revalidatePath('/admin/team');
   return { tempPassword };
 }
 
 export async function deleteStaffMember(formData: FormData): Promise<void> {
-  await assertOwner();
+  const session = await assertOwner();
 
   const id = formData.get('id') as string;
+  // Capture identifying info BEFORE the delete so the audit row has it.
+  const { data: target } = await supabaseAdmin()
+    .from('staff_members').select('email, name').eq('id', id).single();
+
   const { error } = await supabaseAdmin().from('staff_members').delete().eq('id', id);
   if (error) {
     redirect(`/admin/team?error=${encodeURIComponent('Could not delete member: ' + error.message)}`);
   }
+  void logAudit(session, {
+    action: 'staff.delete',
+    entity: 'staff_members',
+    entity_id: id,
+    diff: { email: target?.email, name: target?.name },
+  });
   revalidatePath('/admin/team');
 }
 

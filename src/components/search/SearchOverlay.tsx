@@ -85,7 +85,7 @@ export function SearchOverlay() {
   };
   const goToCategory = (cat: string) => {
     setSearchOpen(false);
-    router.push(`/shop?cat=${encodeURIComponent(cat)}`);
+    router.push(`/shop?category=${encodeURIComponent(cat)}`);
   };
 
   return (

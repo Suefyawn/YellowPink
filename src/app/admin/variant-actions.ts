@@ -4,12 +4,14 @@ import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { variantInputSchema, parseForm, firstError } from '@/lib/validators';
+import { logAudit } from '@/lib/audit';
 
-async function assertProducts(): Promise<void> {
+async function assertProducts() {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('products'))) {
     throw new Error('Unauthorized');
   }
+  return session;
 }
 
 // ─── Create / update / delete ──────────────────────────────────────────────
@@ -17,7 +19,7 @@ export async function createVariant(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
-  await assertProducts();
+  const session = await assertProducts();
   const parsed = parseForm(variantInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
@@ -31,6 +33,10 @@ export async function createVariant(
 
   await syncVariantOptions(data.id as string, formData);
 
+  void logAudit(session, {
+    action: 'variant.create', entity: 'product_variants', entity_id: data.id as string,
+    diff: { product_id: data.product_id, sku: parsed.data.sku, price: parsed.data.price },
+  });
   revalidatePath(`/admin/products/${data.product_id as string}`);
   return { success: true };
 }
@@ -40,7 +46,7 @@ export async function updateVariant(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
-  await assertProducts();
+  const session = await assertProducts();
   const parsed = parseForm(variantInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
@@ -60,16 +66,24 @@ export async function updateVariant(
 
   await syncVariantOptions(variantId, formData);
 
+  void logAudit(session, {
+    action: 'variant.update', entity: 'product_variants', entity_id: variantId,
+    diff: { product_id: parsed.data.product_id, price: parsed.data.price, stock: parsed.data.stock, enabled: parsed.data.enabled },
+  });
   revalidatePath(`/admin/products/${parsed.data.product_id}`);
   return { success: true };
 }
 
 export async function deleteVariant(formData: FormData): Promise<void> {
-  await assertProducts();
+  const session = await assertProducts();
   const id = formData.get('id');
   const productId = formData.get('product_id');
   if (typeof id !== 'string' || typeof productId !== 'string') return;
   await supabase.from('product_variants').delete().eq('id', id);
+  void logAudit(session, {
+    action: 'variant.delete', entity: 'product_variants', entity_id: id,
+    diff: { product_id: productId },
+  });
   revalidatePath(`/admin/products/${productId}`);
 }
 

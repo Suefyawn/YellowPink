@@ -56,8 +56,12 @@ export function CollectionPage({
   // pushed via router.replace below.
   const readInitial = () => {
     const sp = searchParams;
-    const cat = sp.get('cat') ?? sp.get('category') ?? initialCategory;
-    const sub = sp.get('sub') ?? sp.get('subcategory') ?? initialSubcategory ?? null;
+    // The proxy 301s ?cat=→?category= and ?sub=→?subcategory= so by the time
+    // we read here, the canonical names are in place. We still fall through
+    // to the short forms as a belt-and-braces safety net (e.g. if someone
+    // disables middleware during local dev).
+    const cat = sp.get('category') ?? sp.get('cat') ?? initialCategory;
+    const sub = sp.get('subcategory') ?? sp.get('sub') ?? initialSubcategory ?? null;
     const sort = (sp.get('sort') as SortKey | null) ?? 'featured';
     const pageNum = Math.max(1, Number(sp.get('page') ?? '1'));
     const brands = sp.get('brand')?.split(',').filter(Boolean) ?? [];
@@ -191,8 +195,10 @@ export function CollectionPage({
   useEffect(() => {
     const sp = new URLSearchParams();
     if (q.trim()) sp.set('q', q.trim());
-    if (activeCategory && activeCategory !== 'All') sp.set('cat', activeCategory);
-    if (activeSubcategory) sp.set('sub', activeSubcategory);
+    // Use `category=` / `subcategory=` (matches header nav + sitemap +
+    // breadcrumb canonical URLs — see audit SEV-2 on cat/category mismatch).
+    if (activeCategory && activeCategory !== 'All') sp.set('category', activeCategory);
+    if (activeSubcategory) sp.set('subcategory', activeSubcategory);
     if (sortBy !== 'featured') sp.set('sort', sortBy);
     if (page !== 1) sp.set('page', String(page));
     if (selectedBrands.size > 0) sp.set('brand', Array.from(selectedBrands).join(','));

@@ -3,9 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
+import { logAudit } from '@/lib/audit';
 
 export async function createCoupon(formData: FormData) {
-  await assertPermission('coupons');
+  const session = await assertPermission('coupons');
   const code = (formData.get('code') as string).trim().toUpperCase();
   const type = formData.get('type') as 'percent' | 'fixed';
   const value = Number(formData.get('value'));
@@ -17,19 +18,36 @@ export async function createCoupon(formData: FormData) {
   if (!/^[A-Z0-9_-]+$/.test(code)) return;
   if (value <= 0) return;
 
-  await supabase.from('coupons').insert({ code, type, value, min_order, max_uses, expires_at });
+  const { data: created } = await supabase
+    .from('coupons')
+    .insert({ code, type, value, min_order, max_uses, expires_at })
+    .select('id')
+    .single();
+  void logAudit(session, {
+    action: 'coupon.create', entity: 'coupons', entity_id: created?.id ?? null,
+    diff: { code, type, value, min_order, max_uses, expires_at },
+  });
   revalidatePath('/admin/coupons');
 }
 
 export async function deleteCoupon(formData: FormData) {
-  await assertPermission('coupons');
+  const session = await assertPermission('coupons');
   const id = formData.get('id') as string;
+  const { data: target } = await supabase.from('coupons').select('code').eq('id', id).single();
   await supabase.from('coupons').delete().eq('id', id);
+  void logAudit(session, {
+    action: 'coupon.delete', entity: 'coupons', entity_id: id,
+    diff: { code: target?.code },
+  });
   revalidatePath('/admin/coupons');
 }
 
 export async function toggleCoupon(id: string, active: boolean) {
-  await assertPermission('coupons');
+  const session = await assertPermission('coupons');
   await supabase.from('coupons').update({ active }).eq('id', id);
+  void logAudit(session, {
+    action: active ? 'coupon.activate' : 'coupon.deactivate',
+    entity: 'coupons', entity_id: id,
+  });
   revalidatePath('/admin/coupons');
 }

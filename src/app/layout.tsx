@@ -33,11 +33,11 @@ export const metadata: Metadata = {
   },
   description: 'International skincare, makeup, and clinical-grade nutraceuticals. Now in Pakistan with COD.',
   applicationName: SITE_NAME,
-  icons: {
-    icon: '/icon.svg',
-    shortcut: '/icon.svg',
-    apple: '/icon.svg',
-  },
+  // We deleted /icon.svg when installing the flower favicon. Next.js
+  // auto-generates /icon and /apple-icon link tags from
+  // src/app/icon.png + apple-icon.png, so we don't list them here — listing
+  // /icon.svg explicitly was causing a 404'd <link rel="apple-touch-icon">.
+  // The .ico is picked up automatically from src/app/favicon.ico too.
   openGraph: {
     siteName: SITE_NAME,
     locale: 'en_PK',

@@ -364,17 +364,24 @@ function StaffRow({ staff }: { staff: Staff }) {
       </td>
       <td data-label="Permissions" style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-          {staff.permissions.length === 0
-            ? <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>No permissions</span>
-            : staff.permissions.map(p => (
+          {(() => {
+            // Defence-in-depth: dedupe at render time. The audit caught a
+            // staff member whose permissions column had duplicate entries —
+            // the SQL fix in migration 070 dedupes existing data, this
+            // guards against any future regression.
+            const uniq = Array.from(new Set(staff.permissions));
+            if (uniq.length === 0) {
+              return <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>No permissions</span>;
+            }
+            return uniq.map(p => (
               <span key={p} style={{
                 background: '#eef2ff', color: '#6366f1', borderRadius: 4,
                 padding: '2px 7px', fontSize: '0.6875rem', fontWeight: 600,
               }}>
                 {PERMISSION_META[p]?.label ?? p}
               </span>
-            ))
-          }
+            ));
+          })()}
         </div>
       </td>
       <td data-label="Status" style={{ padding: '14px 20px' }}>

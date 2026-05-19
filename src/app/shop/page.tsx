@@ -71,7 +71,12 @@ async function loadFacetData(): Promise<FacetData> {
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; q?: string }> }): Promise<Metadata> {
   const { category, subcategory, cat, q } = await searchParams;
   const resolvedCategory = category ?? cat;
-  const trimmedQ = q?.trim();
+  // Sanitise free-text query before interpolating it into the title /
+  // description / og:title (audit SEV-2: raw `<img onerror=…>` ended up in
+  // og:title `content` attribute when query was malicious). Strip every
+  // character that has structural meaning in HTML and clamp length.
+  const rawQ = q?.trim() ?? '';
+  const trimmedQ = rawQ ? rawQ.replace(/[<>"'&]/g, '').slice(0, 80) : '';
   // Title: query > category > generic. Each variant gets a distinct,
   // human-readable title (good for SERPs).
   let title: string;

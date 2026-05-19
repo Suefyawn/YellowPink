@@ -1,8 +1,16 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 
 const WA_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '923001234567';
+
+// Order-confirmation page should never be indexed — leaks order_number
+// existence + lets crawlers guess valid IDs (audit SEV-2 + SEV-3).
+export const metadata: Metadata = {
+  title: 'Thank you',
+  robots: { index: false, follow: false },
+};
 
 export default async function ThankYouPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
   const { order } = await searchParams;
