@@ -1,5 +1,12 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+
+// Force dynamic so prerender doesn't choke on the useSearchParams() inside
+// the PostHogProvider that the root layout renders. The cost is one extra
+// SSR per 404 hit which is negligible (404s are rare and uncacheable
+// anyway). This used to be implicit when the layout exported
+// force-dynamic — restored explicitly when the layout opt-out shipped.
+export const dynamic = 'force-dynamic';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { Overline } from '@/components/ui/Overline';
 import { getProducts } from '@/lib/supabase';
