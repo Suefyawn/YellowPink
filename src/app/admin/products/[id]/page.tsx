@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { VariantsSection } from '@/components/admin/VariantsSection';
+import { ProductInventoryHistory } from '@/components/admin/ProductInventoryHistory';
 import type { Product, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -72,6 +73,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           attributes={attributes}
           variants={variants}
         />
+        <ProductInventoryHistory productId={product.id} />
       </div>
     </>
   );

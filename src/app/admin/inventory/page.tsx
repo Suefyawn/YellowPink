@@ -13,7 +13,7 @@ interface LedgerRow {
   variant_id: string | null;
   qty_delta: number;
   balance_after: number | null;
-  reason: 'import' | 'order' | 'return' | 'restock' | 'adjustment' | 'damage' | 'transfer';
+  reason: 'import' | 'order' | 'return' | 'restock' | 'adjustment' | 'damage' | 'transfer' | 'cancellation';
   order_id: string | null;
   actor_kind: 'system' | 'owner' | 'staff' | 'customer';
   actor_email: string | null;
@@ -25,13 +25,14 @@ interface ProductLite { id: string; name: string; brand: string | null; stock: n
 interface OrderLite { id: string; order_number: string }
 
 const reasonColors: Record<LedgerRow['reason'], { bg: string; fg: string }> = {
-  import:     { bg: '#eef2ff', fg: '#3730a3' },
-  order:      { bg: '#fce7f3', fg: '#9d174d' },
-  return:     { bg: '#d1fae5', fg: '#065f46' },
-  restock:    { bg: '#d1fae5', fg: '#065f46' },
-  adjustment: { bg: '#fef3c7', fg: '#92400e' },
-  damage:     { bg: '#fee2e2', fg: '#991b1b' },
-  transfer:   { bg: '#e5e7eb', fg: '#374151' },
+  import:       { bg: '#eef2ff', fg: '#3730a3' },
+  order:        { bg: '#fce7f3', fg: '#9d174d' },
+  return:       { bg: '#d1fae5', fg: '#065f46' },
+  cancellation: { bg: '#ede9fe', fg: '#5b21b6' },
+  restock:      { bg: '#d1fae5', fg: '#065f46' },
+  adjustment:   { bg: '#fef3c7', fg: '#92400e' },
+  damage:       { bg: '#fee2e2', fg: '#991b1b' },
+  transfer:     { bg: '#e5e7eb', fg: '#374151' },
 };
 
 const fmtDate = (s: string) =>
@@ -125,7 +126,7 @@ export default async function InventoryPage({
       {/* ─── Filters ────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, fontSize: '0.8125rem' }}>
         <Link href="/admin/inventory" style={chipLink(!reasonFilter && !productFilter)}>All</Link>
-        {(['order','return','restock','adjustment','damage','import'] as const).map(r => (
+        {(['order','return','cancellation','restock','adjustment','damage','import'] as const).map(r => (
           <Link key={r} href={`/admin/inventory?reason=${r}`} style={chipLink(reasonFilter === r)}>
             {r.charAt(0).toUpperCase() + r.slice(1)}
           </Link>
