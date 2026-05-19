@@ -237,7 +237,7 @@ export function ProductForm({ product }: { product?: Product }) {
                 name="key_benefits"
                 defaultValue={product?.key_benefits ? JSON.stringify(product.key_benefits, null, 2) : ''}
                 rows={5}
-                placeholder={`JSON array of {icon?, text}. e.g.\n[\n  {"icon":"✨","text":"Brightens in 7 days"},\n  {"icon":"💧","text":"Hyaluronic acid + ceramides"}\n]`}
+                placeholder={`JSON array of {icon?, text}. icon names: shield, leaf, sparkle, droplet, pulse, flower, bottle, heart, bolt, sun, moon, dna, flame.\n[\n  {"icon":"sparkle","text":"Brightens in 7 days"},\n  {"icon":"droplet","text":"Hyaluronic acid + ceramides"}\n]`}
                 style={{ ...inp, fontFamily: 'monospace', fontSize: '0.75rem' }}
               />
               <div style={hint}>Rendered as the benefit bar at the top of the PDP. JSON array.</div>
