@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
@@ -13,7 +13,14 @@ import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
-import type { Order, Product, CartItem } from '@/types';
+import type { Order, Product } from '@/types';
+
+interface DashboardKpis {
+  total_revenue: number;
+  order_count: number;
+  status_counts: Record<string, number>;
+  top_products: { id: string; name: string; brand: string; qty: number }[];
+}
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -42,19 +49,23 @@ export default async function DashboardPage() {
 
   const [
     { count: productCount },
-    { count: orderCount },
     { data: recentOrders },
     { count: blogCount },
-    { data: allOrders },
+    { data: kpisData },
     { data: lowStockProducts },
     { data: recentOrdersForChart },
   ] = await Promise.all([
     supabase.from('products').select('*', { count: 'exact', head: true }),
-    supabase.from('orders').select('*', { count: 'exact', head: true }),
     supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
     supabase.from('blog_posts').select('*', { count: 'exact', head: true }),
-    supabase.from('orders').select('total, status, items'),
-    supabase.from('products').select('*').lte('stock', 5).order('stock', { ascending: true }),
+    // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
+    // top products) in one SQL pass via dashboard_kpis() RPC. Previously
+    // pulled every orders row + its JSONB items into Node and aggregated in
+    // JS — would degrade linearly with order count.
+    supabaseAdmin().rpc('dashboard_kpis' as never) as unknown as Promise<{ data: DashboardKpis | null }>,
+    // Cap low-stock to 50 so a long-tail catalog with many out-of-stock
+    // rows doesn't blow up the dashboard.
+    supabase.from('products').select('*').lte('stock', 5).order('stock', { ascending: true }).limit(50),
     supabase.from('orders').select('total, status, created_at').gte('created_at', thirtyDaysAgo).neq('status', 'cancelled'),
   ]);
 
@@ -70,25 +81,18 @@ export default async function DashboardPage() {
   }
   const chartDays = Object.entries(dayMap).map(([date, revenue]) => ({ date, revenue }));
 
-  const allOrdersList = (allOrders ?? []) as Array<{ total: number; status: string; items: CartItem[] }>;
-  // Revenue excludes cancelled orders
-  const revenue = allOrdersList.filter(o => o.status !== 'cancelled').reduce((s, o) => s + o.total, 0);
-
-  // Status breakdown
+  // Unpack the aggregated KPIs. RPC returns one jsonb object; default to
+  // empty shape if it ever returns null (RLS denied, table missing, etc.).
+  const kpis: DashboardKpis = kpisData ?? {
+    total_revenue: 0, order_count: 0, status_counts: {}, top_products: [],
+  };
+  const orderCount = kpis.order_count;
+  const revenue = Number(kpis.total_revenue) || 0;
   const statusCounts = statusLabels.reduce<Record<string, number>>((acc, s) => {
-    acc[s] = allOrdersList.filter(o => o.status === s).length;
+    acc[s] = kpis.status_counts[s] ?? 0;
     return acc;
   }, {});
-
-  // Top products by order quantity
-  const productQty: Record<string, { name: string; brand: string; qty: number }> = {};
-  for (const order of allOrdersList) {
-    for (const item of (order.items ?? [])) {
-      if (!productQty[item.id]) productQty[item.id] = { name: item.name, brand: item.brand, qty: 0 };
-      productQty[item.id].qty += item.qty;
-    }
-  }
-  const topProducts = Object.values(productQty).sort((a, b) => b.qty - a.qty).slice(0, 5);
+  const topProducts = kpis.top_products.map(p => ({ name: p.name, brand: p.brand, qty: p.qty }));
 
   const stats = [
     { label: 'Products', value: productCount ?? 0, icon: '◈', color: '#6366f1' },
