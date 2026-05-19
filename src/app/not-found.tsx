@@ -22,11 +22,11 @@ export const metadata: Metadata = {
 };
 
 const POPULAR_LINKS = [
-  { label: 'Makeup',     href: '/shop?category=Makeup' },
-  { label: 'Skincare',   href: '/shop?category=Skincare' },
-  { label: 'Wellness',   href: '/shop?category=Wellness' },
-  { label: 'Bestsellers', href: '/shop?tag=Bestseller' },
-  { label: 'New In',     href: '/shop?tag=New' },
+  { label: 'Makeup',     href: '/shop?taxon=makeup' },
+  { label: 'Skincare',   href: '/shop?taxon=skincare' },
+  { label: 'Wellness',   href: '/shop?taxon=wellness' },
+  { label: 'Bestsellers', href: '/shop?bestseller=1' },
+  { label: 'New In',     href: '/shop' },
   { label: 'Blog',       href: '/blog' },
 ];
 
