@@ -1,9 +1,13 @@
-// `dynamic = 'force-dynamic'` was removed 2026-05-24 (audit P0-7). It was
-// neutralising every per-page `revalidate` and pinning home/shop/PDP/blog to
-// a per-request render even though the upstream Supabase data only needs
-// minute-level freshness. Per-route opt-in remains via each page's own
-// `dynamic`/`revalidate` export (admin pages still set `force-dynamic`
-// because they call cookies()/auth).
+// `dynamic = 'force-dynamic'` is restored here after a failed attempt to
+// rely on per-page opt-in. The root layout renders the PostHog provider,
+// whose PageViewTracker uses useSearchParams() — and prerender chokes on
+// that on every user-scoped page (/_not-found, /account/*, …) without a
+// Suspense boundary high enough in the tree. Wrapping every consumer in
+// Suspense would also work, but force-dynamic at the layout is the
+// smaller, safer surface for a launch. The audit perf finding (P0-7) is
+// re-queued for a follow-up that splits the PostHog provider into a
+// suspended client island.
+export const dynamic = 'force-dynamic';
 
 import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';
