@@ -26,6 +26,7 @@ const lbl: React.CSSProperties = {
   fontWeight: 600, color: '#374151', marginBottom: 5,
 };
 const fieldWrap: React.CSSProperties = { display: 'flex', flexDirection: 'column' };
+const hint: React.CSSProperties = { marginTop: 4, fontSize: '0.6875rem', color: '#6b7280' };
 
 export function ProductForm({ product }: { product?: Product }) {
   const isEdit = Boolean(product);
@@ -181,6 +182,101 @@ export function ProductForm({ product }: { product?: Product }) {
               <textarea name="ingredients" defaultValue={product?.ingredients ?? ''} rows={4}
                 style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
                 placeholder="Aqua, Glycerin, Niacinamide…" />
+            </div>
+
+            {/* ── Migration 081: PDP content + SEO fields ─────────────────── */}
+            <div style={{ marginTop: 12, paddingTop: 18, borderTop: '1px dashed #e5e7eb' }}>
+              <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 700, color: '#111827' }}>Content & SEO</h2>
+              <p style={{ margin: '0 0 14px', fontSize: '0.75rem', color: '#6b7280' }}>
+                Everything below is optional. Leave blank to fall back to auto-generated values.
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div>
+                <label style={lbl}>SEO title</label>
+                <input
+                  name="seo_title"
+                  type="text"
+                  defaultValue={product?.seo_title ?? ''}
+                  maxLength={120}
+                  placeholder='e.g. "CeraVe Hydrating Cleanser — Buy in Pakistan (COD)"'
+                  style={inp}
+                />
+                <div style={hint}>Auto-default: brand + name. ≤60 chars ideal.</div>
+              </div>
+              <div>
+                <label style={lbl}>OG image URL</label>
+                <input
+                  name="og_image_url"
+                  type="url"
+                  defaultValue={product?.og_image_url ?? ''}
+                  maxLength={500}
+                  placeholder="https://… (defaults to the product image)"
+                  style={inp}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12 }}>
+              <label style={lbl}>SEO description</label>
+              <textarea
+                name="seo_description"
+                defaultValue={product?.seo_description ?? ''}
+                rows={2}
+                maxLength={220}
+                placeholder="One-paragraph pitch with the keyword + COD/Pakistan signal."
+                style={{ ...inp, fontFamily: 'inherit' }}
+              />
+              <div style={hint}>Auto-default: short_description / description / generic. ≤160 chars ideal.</div>
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <label style={lbl}>Key benefits</label>
+              <textarea
+                name="key_benefits"
+                defaultValue={product?.key_benefits ? JSON.stringify(product.key_benefits, null, 2) : ''}
+                rows={5}
+                placeholder={`JSON array of {icon?, text}. e.g.\n[\n  {"icon":"✨","text":"Brightens in 7 days"},\n  {"icon":"💧","text":"Hyaluronic acid + ceramides"}\n]`}
+                style={{ ...inp, fontFamily: 'monospace', fontSize: '0.75rem' }}
+              />
+              <div style={hint}>Rendered as the benefit bar at the top of the PDP. JSON array.</div>
+            </div>
+
+            <div style={{ marginTop: 16 }}>
+              <label style={lbl}>FAQ</label>
+              <textarea
+                name="faq"
+                defaultValue={product?.faq ? JSON.stringify(product.faq, null, 2) : ''}
+                rows={7}
+                placeholder={`JSON array of {q, a}. e.g.\n[\n  {"q":"Is it suitable for oily skin?","a":"Yes — non-comedogenic."},\n  {"q":"How long does delivery take?","a":"2-4 working days nationwide."}\n]`}
+                style={{ ...inp, fontFamily: 'monospace', fontSize: '0.75rem' }}
+              />
+              <div style={hint}>Powers the FAQ section on the PDP + the FAQPage schema for rich-result eligibility.</div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
+              <div>
+                <label style={lbl}>Usage tips</label>
+                <textarea
+                  name="usage_tips"
+                  defaultValue={product?.usage_tips ?? ''}
+                  rows={4}
+                  placeholder="Care tips, layering advice, or seasonal notes."
+                  style={{ ...inp, fontFamily: 'inherit' }}
+                />
+              </div>
+              <div>
+                <label style={lbl}>Social proof</label>
+                <textarea
+                  name="social_proof"
+                  defaultValue={product?.social_proof ?? ''}
+                  rows={4}
+                  maxLength={500}
+                  placeholder='e.g. "Featured in Vogue Pakistan, July 2025."'
+                  style={{ ...inp, fontFamily: 'inherit' }}
+                />
+              </div>
             </div>
           </div>
 

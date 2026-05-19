@@ -8,7 +8,7 @@ import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
-import { pageMeta, jsonLd, productLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd } from '@/lib/seo';
 import { isEnabled } from '@/lib/flags';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
@@ -20,13 +20,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // Use the dedupe-aware composer so WP imports that already prefix the
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
   const displayName = brandPlusName(product.brand, product.name);
-  const title = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
-  const description = `Buy ${displayName} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`;
+  const autoTitle = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
+  const autoDescription = product.short_description?.trim()
+    ?? (product.description?.trim().slice(0, 160) || `Buy ${displayName} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`);
+  // Migration 081: admin-controlled overrides win when set; otherwise fall
+  // back to the auto-templated values so existing rows keep working.
+  const title = product.seo_title?.trim() || autoTitle;
+  const description = product.seo_description?.trim() || autoDescription;
+  const image = product.og_image_url?.trim() || product.image_url || undefined;
   return pageMeta({
     title,
     description,
     path: `/product/${product.slug}`,
-    image: product.image_url ?? undefined,
+    image,
     type: 'product',
     keywords: [product.brand, stripBrandPrefix(product.brand, product.name), product.category, 'Pakistan', 'COD']
       .filter((s): s is string => Boolean(s)),
@@ -205,6 +211,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           ])),
         }}
       />
+      {/* Migration 081: FAQPage schema for rich-result eligibility. Only
+          emitted when admin has set a non-empty FAQ array. */}
+      {Array.isArray(product.faq) && product.faq.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLd(faqLd(product.faq.map(f => ({ question: f.q, answer: f.a })))),
+          }}
+        />
+      )}
       <PDPPage
         product={product}
         relatedProducts={crossSells}

@@ -64,6 +64,89 @@ conflating two different events into one enum value is corrosive.
 
 ---
 
+## 2026-05-19 — PDP content + SEO fields + missing-price backfill
+
+Two related additions for the product page.
+
+**Migration 081 — PDP content + SEO fields.** Adds seven admin-editable
+columns to `public.products`:
+
+- `seo_title`, `seo_description`, `og_image_url` — optional overrides
+  for the meta-tag templates. Falls back to brand-plus-name /
+  short_description / image_url when null.
+- `key_benefits` (JSONB array of `{icon?, text}`) — rendered as a
+  scannable benefit-card bar near the top of the PDP. Keyword-rich,
+  high-conversion.
+- `faq` (JSONB array of `{q, a}`) — powers a new accordion below
+  the gallery split AND emits FAQPage JSON-LD for Google rich-result
+  eligibility.
+- `usage_tips` — long-form text rendered as an additional
+  accordion section under "How to Use" / "Ingredients".
+- `social_proof` — short testimonial / press quote, rendered as a
+  callout block under the main description.
+
+CHECK constraints enforce that `key_benefits` and `faq` are JSONB
+arrays. Storage cost is negligible; both arrays are tiny per row.
+
+**Code wiring:**
+
+- `Product` type extended with the seven fields + two small
+  `ProductKeyBenefit` / `ProductFaqItem` interfaces.
+- `productInputSchema` (`src/lib/validators.ts`) extended with
+  JSON-string transforms for `key_benefits` / `faq` (the admin form
+  posts them as JSON textareas — the transform parses + validates
+  the shape). Empty string normalises to null.
+- `ProductForm` adds a "Content & SEO" section with inputs for
+  every new field. The two JSON arrays use monospace textareas with
+  inline help text and example payloads.
+- `app/product/[slug]/page.tsx`'s `generateMetadata` honours
+  `seo_title` / `seo_description` / `og_image_url` overrides before
+  falling back to auto-templating. FAQPage JSON-LD is emitted when
+  `faq` is set.
+- `PDPPage` renders the new sections in order: benefits → description
+  → social_proof → existing accordion (now including a new "Usage
+  Tips" panel from `usage_tips`) → FAQ accordion.
+
+**Migration 082 — backfill missing prices.** Researched Pakistan-
+market prices for the 22 SKUs that landed at `price=0` from the WP
+import. Sources: Daraz, Beauty Station, DiscountStore, Makeup City,
+Vegas.pk, Pehnawa Wear, dvago, etc. For each SKU picked the median
+of ≥2 listings as `original_price`, then applied a ~50% promo
+discount as `price` to fit Yellow Pink's standing 40-60% off
+positioning. Own-label supplements (Energy Boost) fell back to a
+class estimate. Guarded by `WHERE price IS NULL OR price = 0` so
+re-running won't overwrite a hand-edited price.
+
+Examples:
+- Anastasia Beverly Hills Highlighter Glow Seeker — PKR 7,250 (was PKR 14,500)
+- Dior Blush Rosy Glow — PKR 11,500 (was PKR 22,999)
+- Huda Beauty Icon Liquid Lipstick — PKR 7,350 (was PKR 14,700)
+- NARS Light Reflecting Foundation — PKR 7,500 (was PKR 14,963)
+- Tarte Shape Tape Concealer — PKR 3,450 (was PKR 6,900)
+
+**Verification gate (all green):**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+- `npm run build`     — succeeds; PDP route still in the manifest
+
+**Operational follow-ups (for the merchant):**
+- Eyeball each backfilled price before customers start landing on
+  the storefront — Pakistani retail prices fluctuate +/- 20% and the
+  median was a research best-guess, not a vendor quote.
+- Start populating `key_benefits`, `faq`, `usage_tips` on the
+  best-traffic SKUs first (the bestsellers / featured products from
+  migration 076) — those will see the SEO + conversion lift soonest.
+
+**Lesson:** Schema fields that map cleanly to schema.org / Google
+rich-result types (FAQPage, AggregateRating, BreadcrumbList) compound
+their value the moment they exist — the rendering work is the same
+whether you have 1 or 109 products, and Google indexes the
+structured-data either way. Spend the marginal hour on the JSON-LD
+emitter; the SEO returns dwarf the dev cost.
+
+---
+
 ## 2026-05-19 — TCS courier: pre-issued bearer token path
 
 TCS Envio emailed Tanya (`TANYAZAFAR@HOTMAIL.COM`) a long-lived JWT

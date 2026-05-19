@@ -395,15 +395,52 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </div>
             )}
 
+            {/* Migration 081 — key benefits bar (admin-curated). High-leverage
+                content block: scannable in 2 seconds, keyword-rich, and the
+                emoji icons are pure design without hitting the bundle. */}
+            {Array.isArray(product.key_benefits) && product.key_benefits.length > 0 && (
+              <ul style={{
+                listStyle: 'none', padding: 0, margin: '0 0 24px',
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10,
+              }}>
+                {product.key_benefits.map((b, i) => (
+                  <li key={i} style={{
+                    padding: '10px 14px', background: 'var(--paper2, #faf6ee)', borderRadius: 8,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    fontSize: '0.8125rem', color: 'var(--ink-700)', lineHeight: 1.4,
+                  }}>
+                    {b.icon && <span aria-hidden="true" style={{ fontSize: '1.15rem', flex: '0 0 auto' }}>{b.icon}</span>}
+                    <span>{b.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             {product.description && (
               <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 440 }}>
                 {product.description}
               </p>
             )}
+
+            {/* Migration 081 — short testimonial / press quote, rendered as a
+                paper2 callout so it reads as social signal rather than body
+                copy. */}
+            {product.social_proof && (
+              <blockquote style={{
+                margin: '0 0 24px', padding: '14px 18px',
+                background: 'var(--paper2, #faf6ee)', borderLeft: '3px solid var(--brand-pink, #C5286A)',
+                borderRadius: 6,
+                fontSize: '0.875rem', fontStyle: 'italic', color: 'var(--ink-700)', lineHeight: 1.5,
+              }}>
+                {product.social_proof}
+              </blockquote>
+            )}
+
             <hr className="hairline" style={{ marginBottom: 0 }} />
             {([
               product.how_to_use ? { key: 'use', title: 'How to Use', content: product.how_to_use } : null,
               product.ingredients ? { key: 'ingredients', title: 'Ingredients', content: product.ingredients } : null,
+              product.usage_tips ? { key: 'tips', title: 'Usage Tips', content: product.usage_tips } : null,
               { key: 'shipping', title: 'Shipping & Returns', content: SHIPPING_CONTENT },
             ] as Array<{ key: string; title: string; content: string } | null>)
               .filter(Boolean)
@@ -517,6 +554,37 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           </div>
         </div>
       </section>
+
+      {/* Migration 081 — FAQ section. Renders below the gallery split so the
+          accordion is the first thing the visitor sees after deciding to
+          scroll past the buy-bar. FAQPage schema is emitted by the route
+          (see app/product/[slug]/page.tsx) so the rich-result is paired
+          with visible content. */}
+      {Array.isArray(product.faq) && product.faq.length > 0 && (
+        <section style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
+          <div className="container" style={{ maxWidth: 760 }}>
+            <Overline style={{ display: 'block', marginBottom: 16 }}>Frequently asked</Overline>
+            <h2 className="display-l" style={{ fontSize: '1.75rem', marginBottom: 24 }}>Questions about this product</h2>
+            <div style={{ borderTop: '1px solid var(--line)' }}>
+              {product.faq.map((f, i) => (
+                <details key={i} style={{ borderBottom: '1px solid var(--line)', padding: '14px 0' }}>
+                  <summary style={{
+                    cursor: 'pointer', listStyle: 'none',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16,
+                    fontFamily: 'var(--font-ui)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--ink-900)',
+                  }}>
+                    <span>{f.q}</span>
+                    <span aria-hidden="true" style={{ flex: '0 0 auto', fontSize: '0.75rem', color: 'var(--ink-500, #6b7280)' }}>▼</span>
+                  </summary>
+                  <div className="body-text" style={{ marginTop: 10, color: 'var(--ink-700)', whiteSpace: 'pre-wrap' }}>
+                    {f.a}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {relatedProducts.length > 0 && (
         <section style={{ padding: '64px 0' }}>
