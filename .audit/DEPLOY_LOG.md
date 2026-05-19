@@ -6,6 +6,31 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Resend domain verified (handled by user)
+
+**Action:** User completed Resend domain verification end-to-end:
+- Added `yellowpink.pk` as a sending domain in Resend
+- Pasted SPF + DKIM (+ DMARC) TXT records at the registrar
+- Confirmed `verified` status in Resend dashboard
+
+`EMAIL_FROM="Yellow Pink <orders@yellowpink.pk>"` and `RESEND_API_KEY`
+are set in Vercel env vars.
+
+**Smoke test to consider:** trigger one transactional email path
+(newsletter signup, order placement, or staff invite) and confirm
+landing at the test inbox + check that SPF + DKIM pass headers
+(in Gmail: "Show original" → look for `SPF: PASS` and `DKIM: PASS`
+under the Resend signing domain).
+
+**Lesson:** A "verified" badge in Resend only means the records were
+detected at lookup time — it does NOT guarantee the records still
+resolve correctly tomorrow if the registrar rotates nameservers or
+the TXT records get edited. Set up a one-line Sentry alert for the
+specific Resend "domain unverified" failure mode so we hear about it
+before customers report missing order emails.
+
+---
+
 ## 2026-05-19 — WP → Supabase migration: 6 runs to get clean
 
 **Goal:** complete the partial WP import (266 products + 64 blog posts
