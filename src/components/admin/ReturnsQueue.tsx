@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { approveReturn, rejectReturn } from '@/app/account/orders/returns/actions';
+import { approveReturn, rejectReturn, markReturnReceived } from '@/app/account/orders/returns/actions';
 import { useToast } from '@/components/admin/Toast';
 
 interface ReturnRow {
@@ -96,6 +96,28 @@ export function ReturnsQueue({ rows, orderMap }: {
             {r.admin_note && (
               <div style={{ marginTop: 10, padding: '8px 12px', background: '#f9fafb', borderRadius: 6, fontSize: '0.75rem', color: '#374151' }}>
                 <strong>Admin note:</strong> {r.admin_note}
+              </div>
+            )}
+
+            {r.status === 'approved' && (
+              <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+                {/* "Mark as received" restocks the items via the inventory
+                    ledger (record_stock_change reason='return'). This is the
+                    bridge that closes the place_order → return loop. */}
+                <button
+                  onClick={() => {
+                    if (!window.confirm('Mark this return as received and restock the items?')) return;
+                    startTransition(async () => {
+                      const res = await markReturnReceived(r.id);
+                      if ('success' in res && res.success) toast('Return marked received — stock restored', 'success');
+                      else toast(('error' in res && res.error) ? res.error : 'Failed', 'error');
+                    });
+                  }}
+                  disabled={acting}
+                  style={{ padding: '6px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Mark as received & restock
+                </button>
               </div>
             )}
 
