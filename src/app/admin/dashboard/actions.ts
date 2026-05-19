@@ -279,14 +279,11 @@ async function notifyAdmin(supabase: PermissiveSupabase, input: NotifyInput): Pr
   });
 }
 
-// ─── Public action ──────────────────────────────────────────────────────────
-export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string[] }> {
-  // Auth gate: this action makes outbound calls to PostHog + Sentry (burning
-  // quota) and writes to analytics_cache + admin_notifications via service
-  // role. Without a check, an unauthenticated caller could DOS our metrics
-  // and our inbox. Only staff with `analytics_refresh` (or owners) may run it.
-  const session = await assertPermission('analytics_refresh');
-
+// ─── Core refresh (no auth) ─────────────────────────────────────────────────
+// Pure data-refresh path. Both the staff-facing server action and the
+// CRON_SECRET-gated cron route call this. Auth/audit/revalidate is the
+// caller's responsibility.
+export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: string[] }> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -301,15 +298,28 @@ export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string
     .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
     .map(r => String(r.reason instanceof Error ? r.reason.message : r.reason));
 
+  return { ok: errors.length === 0, errors };
+}
+
+// ─── Public action ──────────────────────────────────────────────────────────
+export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string[] }> {
+  // Auth gate: this action makes outbound calls to PostHog + Sentry (burning
+  // quota) and writes to analytics_cache + admin_notifications via service
+  // role. Without a check, an unauthenticated caller could DOS our metrics
+  // and our inbox. Only staff with `analytics_refresh` (or owners) may run it.
+  const session = await assertPermission('analytics_refresh');
+
+  const { ok, errors } = await refreshAnalyticsCore();
+
   void logAudit(session, {
     action: 'analytics.refresh',
     entity: 'analytics_cache',
-    diff: { ok: errors.length === 0, errors },
+    diff: { ok, errors },
   });
 
   revalidatePath('/admin/dashboard');
 
-  return errors.length ? { ok: false, errors } : { ok: true };
+  return ok ? { ok: true } : { ok: false, errors };
 }
 
 // Re-exported so the SentryWidget can build "Open Sentry →" link without

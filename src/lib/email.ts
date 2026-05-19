@@ -13,6 +13,7 @@
 // ============================================================================
 
 import { Resend } from 'resend';
+import * as Sentry from '@sentry/nextjs';
 import { log } from './logger';
 import { brandPlusName } from './product-display';
 
@@ -96,22 +97,65 @@ function shell(inner: string, opts: ShellOpts = {}): string {
 </div>`.trim();
 }
 
+// The Resend SDK's `emails.send` returns `{ data, error }` and only throws on
+// transport/network failures. Validation errors — including the "domain not
+// verified" / "invalid from address" failure modes — arrive on `result.error`
+// and were silently swallowed by the old try/catch. We now surface every
+// failure to Sentry with stable tags so the alert rule for
+// `tags[resend_domain_unverified]:true` can fire before customers report
+// missing order emails.
+function fromDomain(from: string): string {
+  const angled = from.match(/<[^@]+@([^>]+)>/);
+  if (angled) return angled[1];
+  const bare = from.match(/@([^\s]+)/);
+  return bare ? bare[1] : 'unknown';
+}
+
 async function send(opts: { to: string | string[]; subject: string; html: string; replyTo?: string }) {
   if (!resend) {
     log.warn('email.skip', { reason: 'RESEND_API_KEY not set', to: opts.to, subject: opts.subject });
     return;
   }
   try {
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: FROM,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
       replyTo: opts.replyTo,
     });
-    log.info('email.sent', { to: opts.to, subject: opts.subject });
+    if (result.error) {
+      const errName = result.error.name;
+      const errMsg = result.error.message ?? '';
+      // The Resend API uses several distinct error names for the
+      // "from-domain isn't verified" condition; collapse them into a single
+      // tag so the alert filter stays simple.
+      const domainUnverified =
+        errName === 'invalid_from_address' ||
+        /not\s+verified|unverified|domain/i.test(errMsg);
+      log.error('email.send_failed', {
+        to: opts.to, subject: opts.subject, errName, errMsg,
+        statusCode: result.error.statusCode,
+      });
+      Sentry.captureMessage(`Resend ${errName}: ${errMsg}`, {
+        level: 'error',
+        tags: {
+          email_send_failed: 'true',
+          resend_error_name: errName,
+          resend_domain_unverified: domainUnverified ? 'true' : 'false',
+          from_domain: fromDomain(FROM),
+        },
+        extra: { to: opts.to, subject: opts.subject, statusCode: result.error.statusCode },
+      });
+      return;
+    }
+    log.info('email.sent', { to: opts.to, subject: opts.subject, id: result.data?.id });
   } catch (err) {
     log.error('email.send_failed', { to: opts.to, subject: opts.subject, err });
+    Sentry.captureException(err, {
+      tags: { email_send_failed: 'true', resend_error_name: 'transport_error', from_domain: fromDomain(FROM) },
+      extra: { to: opts.to, subject: opts.subject },
+    });
   }
 }
 

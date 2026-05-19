@@ -6,6 +6,108 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Resend failure visibility + cron-side analytics refresh
+
+**Goal:** close out two operational gaps surfaced after PR #3 merged:
+
+1. The "Resend domain unverified" failure mode the prior DEPLOY_LOG entry
+   flagged as needing a Sentry alert had no actual capture path. The
+   email send wrapper was using a try/catch around `resend.emails.send()`,
+   but the Resend SDK returns `{ data, error }` on validation errors
+   rather than throwing — so domain-unverification (and the rest of the
+   `RESEND_ERROR_CODE_KEY` set) was silently logged-nothing-to-Sentry.
+
+2. The `analytics_cache` rows that feed the admin dashboard widgets
+   (PostHog + Sentry) only refreshed when staff hit the in-app
+   "Refresh Analytics" button. If nobody opened the dashboard for a
+   day, the widget timestamps lagged by a day. Today's smoke test caught
+   the Sentry row at `2026-05-18 11:22` — stale.
+
+**Code shipped:**
+
+- `src/lib/email.ts`
+  - Replaced the no-op try/catch with a check on `result.error`. On any
+    Resend validation failure we now `Sentry.captureMessage` with stable
+    tags:
+    - `email_send_failed: 'true'`
+    - `resend_error_name: <error.name>`
+    - `resend_domain_unverified: 'true' | 'false'` — collapses
+      `invalid_from_address` + any message containing "not verified" /
+      "unverified" / "domain" into one alertable tag.
+    - `from_domain: <parsed from EMAIL_FROM>`
+  - Transport-level throws (network failures) still get caught and
+    captured via `Sentry.captureException` with the same tag set.
+  - Successful sends log the Resend message ID so we can correlate
+    Vercel logs with Resend's dashboard.
+
+- `src/app/admin/dashboard/actions.ts`
+  - Extracted `refreshAnalyticsCore()` — pure data refresh (PostHog +
+    Sentry), no auth/audit/revalidate. Public `refreshAnalytics()`
+    server action keeps the `assertPermission('analytics_refresh')`
+    gate, calls core, then audit-logs and revalidates the dashboard
+    path as before.
+
+- `src/app/api/cron/analytics-refresh/route.ts` (new)
+  - CRON_SECRET-gated route, calls `refreshAnalyticsCore()`.
+  - Returns 200 if both PostHog + Sentry refresh succeed, 207 if either
+    fails (mirrors the daily-cron fan-out's multi-status pattern).
+
+- `src/app/api/cron/daily/route.ts`
+  - Added `/api/cron/analytics-refresh` to the sequential fan-out.
+    Daily cron now runs four jobs: abandoned-cart, back-in-stock,
+    courier-sync, analytics-refresh.
+  - No `vercel.json` change needed — still one cron entry, still under
+    the Hobby plan's 2-entry / daily-or-less cap.
+
+**Operational ops (manual, by the user):**
+
+- **Vercel env vars** still needed for `analytics-refresh` to actually
+  populate the Sentry row in cron context:
+  - `SENTRY_AUTH_TOKEN` — Sentry → Settings → Auth Tokens → scopes
+    `project:read` + `event:read`.
+  - `POSTHOG_PERSONAL_API_KEY` — already in `.env.local` as
+    `phx_yQ8i…`, mirror it to Vercel.
+  Without them, the cron's analytics-refresh sub-job returns 207 (the
+  daily cron's overall result will be 207 instead of 200, and each
+  refresh helper throws "X not configured" which `Promise.allSettled`
+  collects as a soft error). PostHog already works locally because
+  `refresh-analytics-local.mjs` reads from `.env.local`.
+
+- **Sentry alert rule** to wire up against the new tags
+  (Sentry → Alerts → Create alert rule):
+  - **Critical** — `tags[resend_domain_unverified]:true`. Customers'
+    order emails are silently dropping; page someone immediately.
+  - **Warning** — `tags[email_send_failed]:true AND !tags[resend_domain_unverified]:true`.
+    Other Resend validation/transport failures — bad recipient,
+    quota, transient API issue.
+
+**Smoke test:**
+- `node --env-file=.env.local /tmp/smoke-resend.mjs` against
+  sooviaan@gmail.com — `sent → delivered` in ~4 s. Email ID
+  `34d06698-93e6-4290-b03c-2a910cd70471`. Confirms `yellowpink.pk`
+  Resend domain is verified and the API key is live.
+- Refreshed `analytics_cache['sentry']` directly via Supabase MCP +
+  Sentry MCP to bring the row's `updated_at` to today. Sentry
+  unresolved issue count is 0 (production is genuinely clean).
+
+**Verification gate:**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 78/78 pass
+- `npm run build`     — succeeds, `/api/cron/analytics-refresh`
+  appears as a dynamic route in the build manifest
+
+**Lesson:** When a third-party SDK returns `{ data, error }` rather
+than throwing, every try/catch around it is a false comfort — the
+catch block fires on network errors only, and every validation /
+quota / auth failure becomes invisible. Same trap as Supabase's
+`{ data, error }` PostgrestResponse: assume return-shape, not throw,
+unless the SDK docs are explicit. For SDKs you can't change, audit
+once per upgrade and convert to result-checking; for monitoring,
+add a tagged capture so even the silent failures are alertable.
+
+---
+
 ## 2026-05-19 — Supabase performance round 2: RLS auth.uid() initplan + FK covering indexes
 
 **Goal:** finish what migration 073 started — the security ERRORs were
