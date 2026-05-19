@@ -10,6 +10,7 @@ import { BackInStockForm } from '@/components/pdp/BackInStockForm';
 import { track } from '@/lib/analytics';
 import { stripBrandPrefix } from '@/lib/product-display';
 import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
+import { BenefitIcon } from '@/components/ui/BenefitIcon';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 const SHIPPING_CONTENT = 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.';
@@ -440,7 +441,14 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                     display: 'flex', alignItems: 'center', gap: 10,
                     fontSize: '0.8125rem', color: 'var(--ink-700)', lineHeight: 1.4,
                   }}>
-                    {b.icon && <span aria-hidden="true" style={{ fontSize: '1.15rem', flex: '0 0 auto' }}>{b.icon}</span>}
+                    {b.icon && (
+                      <span aria-hidden="true" style={{
+                        flex: '0 0 auto', display: 'inline-flex', alignItems: 'center',
+                        color: 'var(--brand-pink-text, #C5286A)',
+                      }}>
+                        <BenefitIcon name={b.icon} size={18} />
+                      </span>
+                    )}
                     <span>{b.text}</span>
                   </li>
                 ))}
