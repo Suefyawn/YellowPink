@@ -47,4 +47,22 @@ describe('brandPlusName', () => {
     expect(brandPlusName('CeraVe', 'Moisturising Cream'))
       .toBe('CeraVe Moisturising Cream');
   });
+
+  // Regression: launch-readiness audit found `og:title = "Argivital
+  // Argivital"` on the Argivital PDP because the row has brand === name.
+  it('does NOT double the brand when name IS the brand', () => {
+    expect(brandPlusName('Argivital', 'Argivital')).toBe('Argivital');
+    expect(brandPlusName('argivital', 'Argivital')).toBe('argivital');
+    expect(brandPlusName('PIXI', 'PIXI')).toBe('PIXI');
+  });
+
+  it('handles null / empty brand', () => {
+    expect(brandPlusName(null, 'Anti-Melasma Cream')).toBe('Anti-Melasma Cream');
+    expect(brandPlusName(undefined, 'Anti-Melasma Cream')).toBe('Anti-Melasma Cream');
+    expect(brandPlusName('', 'Anti-Melasma Cream')).toBe('Anti-Melasma Cream');
+  });
+
+  it('handles empty name with non-empty brand', () => {
+    expect(brandPlusName('NARS', '')).toBe('NARS');
+  });
 });
