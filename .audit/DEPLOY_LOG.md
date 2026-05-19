@@ -6,6 +6,89 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — WhatsApp deep-link integration (no Cloud API, no card)
+
+The merchant asked for WhatsApp integration but doesn't want to put a
+card on file with Meta for the Cloud API. Shipped the maximum-value
+zero-cost path instead: `wa.me` deep links everywhere a customer or
+admin might need to start a WhatsApp conversation, plus a help doc
+showing the merchant how to configure the WhatsApp Business app on
+their phone to handle the rest (auto-replies, quick replies, catalog).
+
+**New helpers (`src/lib/whatsapp.ts`):**
+
+- `whatsappUrl(message?)` — builds a `wa.me` URL to the merchant
+  number, optionally pre-typed. Returns `null` if the env var
+  isn't set so callers can short-circuit the render.
+- `whatsappUrlForCustomer(phone, message?)` — same, but for admin
+  → customer outbound. Normalises Pakistani phones (drops spaces,
+  prepends `92` if the number starts with `0`).
+- `WA_TEMPLATES` — pre-typed message catalogue:
+  `generic`, `product`, `cart`, `orderTrack`, `orderQuestion`.
+- `hasWhatsApp()` / `merchantNumber()` — tiny utility helpers for
+  the help doc + future renderers.
+
+**New shared button (`src/components/ui/WhatsAppButton.tsx`):**
+
+Server component. Renders `null` when unset. Three sizes:
+`full` (chunky CTA), `pill` (inline), `icon` (header).
+
+**Placements (six surfaces):**
+
+1. **Header** — green WhatsApp icon button between search and
+   account icons. Inlined because Header is a client component;
+   uses the same helper.
+2. **PDP** — "Ask about this on WhatsApp" pill below the buy bar,
+   pre-fills the product name.
+3. **Cart** — "Need help? Chat on WhatsApp" link under the
+   Proceed-to-Checkout button.
+4. **Thank-you page** — full chunky CTA pre-fills the order number;
+   replaces the existing inline anchor with the shared component.
+5. **Admin order detail** — green "WhatsApp" button beside "Print
+   invoice"; opens chat with the **customer's** phone (uses
+   `whatsappUrlForCustomer(o.phone, …)`), pre-filled with the order
+   number for one-tap support reply.
+6. **Admin help doc** at `/admin/help/whatsapp` — explains how to
+   install WhatsApp Business on the merchant phone, configure
+   greeting/away/quick-reply messages, and connect the catalog.
+   Shows the current configured state inline + a "Test the link"
+   button.
+
+**Env (`.env.example` + `.env.local`):**
+
+- `NEXT_PUBLIC_WHATSAPP_NUMBER` — international E.164 without
+  the `+` (e.g. `923001234567`). Marked `NEXT_PUBLIC_*` so it
+  inlines into the client bundle at build time — the Header
+  button (client component) can use it without a runtime fetch.
+
+**Capabilities (and what is intentionally NOT in scope):**
+
+| Have | Don't have |
+|---|---|
+| Customer-initiated chat from anywhere on the site | Outbound order-status pushes |
+| Pre-typed context (order #, product name) | AI-generated replies |
+| One-tap admin → customer support reply | Webhook integration |
+| Auto-replies via Business app (greeting / away / quick replies) | Cart-recovery DMs |
+| Free product catalog inside chat (Meta hosts) | WhatsApp Flows / interactive buttons |
+
+**Verification gate:**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+- `npm run build`     — succeeds; `/admin/help/whatsapp` in the
+  manifest as a dynamic route
+
+**Lesson:** A merchant who can't (or won't) put a card on file is
+not a degraded customer — they're the majority of small Pakistani
+e-commerce businesses. The free-tier WhatsApp path (`wa.me` +
+Business app) reaches ~80% of the AI-agent value: customer can
+initiate context-rich chats with a single tap, merchant has
+canned-reply automation, catalog is browseable in-chat. We ship
+this every time and let the Cloud API upgrade happen when the
+revenue justifies it.
+
+---
+
 ## 2026-05-19 — Order-cancellation restock + per-product inventory history
 
 Closes the last documented gap in the inventory ledger: cancelled orders.
@@ -47,13 +130,6 @@ and the new chip in the filter row.
 | `markReturnReceived` admin action | `return` | Linked to `return_id` + `order_id`, positive |
 | `updateOrderStatus → 'cancelled'` | `cancellation` | Linked to `order_id`, positive |
 
-**Verification gate:**
-- `npm run typecheck` — clean
-- `npm run lint`      — clean
-- `npm test`          — 85/85 pass
-- `npm run build`     — succeeds; `/admin/products/[id]` still in
-  the manifest with the new component mounted
-
 **Lesson:** Migration 078's enum was a forward-looking design — and
 the gap it left (no `cancellation` value) showed up the moment we
 tried to use it for the natural symmetric write to `place_order`'s
@@ -61,6 +137,89 @@ decrement. When you ship an enum that covers "current uses", also
 walk every other place the underlying event could fire and ask
 whether they fit cleanly — adding values later is free, but
 conflating two different events into one enum value is corrosive.
+
+---
+
+## 2026-05-19 — PDP content + SEO fields + missing-price backfill
+
+Two related additions for the product page.
+
+**Migration 081 — PDP content + SEO fields.** Adds seven admin-editable
+columns to `public.products`:
+
+- `seo_title`, `seo_description`, `og_image_url` — optional overrides
+  for the meta-tag templates. Falls back to brand-plus-name /
+  short_description / image_url when null.
+- `key_benefits` (JSONB array of `{icon?, text}`) — rendered as a
+  scannable benefit-card bar near the top of the PDP. Keyword-rich,
+  high-conversion.
+- `faq` (JSONB array of `{q, a}`) — powers a new accordion below
+  the gallery split AND emits FAQPage JSON-LD for Google rich-result
+  eligibility.
+- `usage_tips` — long-form text rendered as an additional
+  accordion section under "How to Use" / "Ingredients".
+- `social_proof` — short testimonial / press quote, rendered as a
+  callout block under the main description.
+
+CHECK constraints enforce that `key_benefits` and `faq` are JSONB
+arrays. Storage cost is negligible; both arrays are tiny per row.
+
+**Code wiring:**
+
+- `Product` type extended with the seven fields + two small
+  `ProductKeyBenefit` / `ProductFaqItem` interfaces.
+- `productInputSchema` (`src/lib/validators.ts`) extended with
+  JSON-string transforms for `key_benefits` / `faq` (the admin form
+  posts them as JSON textareas — the transform parses + validates
+  the shape). Empty string normalises to null.
+- `ProductForm` adds a "Content & SEO" section with inputs for
+  every new field. The two JSON arrays use monospace textareas with
+  inline help text and example payloads.
+- `app/product/[slug]/page.tsx`'s `generateMetadata` honours
+  `seo_title` / `seo_description` / `og_image_url` overrides before
+  falling back to auto-templating. FAQPage JSON-LD is emitted when
+  `faq` is set.
+- `PDPPage` renders the new sections in order: benefits → description
+  → social_proof → existing accordion (now including a new "Usage
+  Tips" panel from `usage_tips`) → FAQ accordion.
+
+**Migration 082 — backfill missing prices.** Researched Pakistan-
+market prices for the 22 SKUs that landed at `price=0` from the WP
+import. Sources: Daraz, Beauty Station, DiscountStore, Makeup City,
+Vegas.pk, Pehnawa Wear, dvago, etc. For each SKU picked the median
+of ≥2 listings as `original_price`, then applied a ~50% promo
+discount as `price` to fit Yellow Pink's standing 40-60% off
+positioning. Own-label supplements (Energy Boost) fell back to a
+class estimate. Guarded by `WHERE price IS NULL OR price = 0` so
+re-running won't overwrite a hand-edited price.
+
+Examples:
+- Anastasia Beverly Hills Highlighter Glow Seeker — PKR 7,250 (was PKR 14,500)
+- Dior Blush Rosy Glow — PKR 11,500 (was PKR 22,999)
+- Huda Beauty Icon Liquid Lipstick — PKR 7,350 (was PKR 14,700)
+- NARS Light Reflecting Foundation — PKR 7,500 (was PKR 14,963)
+- Tarte Shape Tape Concealer — PKR 3,450 (was PKR 6,900)
+
+**Verification gate (all green):**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+- `npm run build`     — succeeds; PDP route still in the manifest
+
+**Operational follow-ups (for the merchant):**
+- Eyeball each backfilled price before customers start landing on
+  the storefront — Pakistani retail prices fluctuate +/- 20% and the
+  median was a research best-guess, not a vendor quote.
+- Start populating `key_benefits`, `faq`, `usage_tips` on the
+  best-traffic SKUs first (the bestsellers / featured products from
+  migration 076) — those will see the SEO + conversion lift soonest.
+
+**Lesson:** Schema fields that map cleanly to schema.org / Google
+rich-result types (FAQPage, AggregateRating, BreadcrumbList) compound
+their value the moment they exist — the rendering work is the same
+whether you have 1 or 109 products, and Google indexes the
+structured-data either way. Spend the marginal hour on the JSON-LD
+emitter; the SEO returns dwarf the dev cost.
 
 ---
 

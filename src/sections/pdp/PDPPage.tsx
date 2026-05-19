@@ -9,6 +9,7 @@ import { useCart } from '@/context/CartContext';
 import { BackInStockForm } from '@/components/pdp/BackInStockForm';
 import { track } from '@/lib/analytics';
 import { stripBrandPrefix } from '@/lib/product-display';
+import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 const SHIPPING_CONTENT = 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.';
@@ -395,15 +396,82 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </div>
             )}
 
+            {/* WhatsApp CTA — pre-fills the merchant chat with this product's
+                name so any "do you have shade X?" / "is this authentic?"
+                question lands with full context. Hides if the env var
+                isn't set. */}
+            {(() => {
+              const href = waUrl(WA_T.product(product.name));
+              if (!href) return null;
+              return (
+                <div style={{ marginBottom: 24 }}>
+                  <a
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 8,
+                      background: 'transparent', color: '#128C7E',
+                      textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
+                      border: '1px solid #25D366', borderRadius: 999,
+                      padding: '8px 16px',
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                    </svg>
+                    Ask about this on WhatsApp
+                  </a>
+                </div>
+              );
+            })()}
+
+            {/* Migration 081 — key benefits bar (admin-curated). High-leverage
+                content block: scannable in 2 seconds, keyword-rich, and the
+                emoji icons are pure design without hitting the bundle. */}
+            {Array.isArray(product.key_benefits) && product.key_benefits.length > 0 && (
+              <ul style={{
+                listStyle: 'none', padding: 0, margin: '0 0 24px',
+                display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10,
+              }}>
+                {product.key_benefits.map((b, i) => (
+                  <li key={i} style={{
+                    padding: '10px 14px', background: 'var(--paper2, #faf6ee)', borderRadius: 8,
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    fontSize: '0.8125rem', color: 'var(--ink-700)', lineHeight: 1.4,
+                  }}>
+                    {b.icon && <span aria-hidden="true" style={{ fontSize: '1.15rem', flex: '0 0 auto' }}>{b.icon}</span>}
+                    <span>{b.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+
             {product.description && (
               <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 440 }}>
                 {product.description}
               </p>
             )}
+
+            {/* Migration 081 — short testimonial / press quote, rendered as a
+                paper2 callout so it reads as social signal rather than body
+                copy. */}
+            {product.social_proof && (
+              <blockquote style={{
+                margin: '0 0 24px', padding: '14px 18px',
+                background: 'var(--paper2, #faf6ee)', borderLeft: '3px solid var(--brand-pink, #C5286A)',
+                borderRadius: 6,
+                fontSize: '0.875rem', fontStyle: 'italic', color: 'var(--ink-700)', lineHeight: 1.5,
+              }}>
+                {product.social_proof}
+              </blockquote>
+            )}
+
             <hr className="hairline" style={{ marginBottom: 0 }} />
             {([
               product.how_to_use ? { key: 'use', title: 'How to Use', content: product.how_to_use } : null,
               product.ingredients ? { key: 'ingredients', title: 'Ingredients', content: product.ingredients } : null,
+              product.usage_tips ? { key: 'tips', title: 'Usage Tips', content: product.usage_tips } : null,
               { key: 'shipping', title: 'Shipping & Returns', content: SHIPPING_CONTENT },
             ] as Array<{ key: string; title: string; content: string } | null>)
               .filter(Boolean)
@@ -517,6 +585,37 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           </div>
         </div>
       </section>
+
+      {/* Migration 081 — FAQ section. Renders below the gallery split so the
+          accordion is the first thing the visitor sees after deciding to
+          scroll past the buy-bar. FAQPage schema is emitted by the route
+          (see app/product/[slug]/page.tsx) so the rich-result is paired
+          with visible content. */}
+      {Array.isArray(product.faq) && product.faq.length > 0 && (
+        <section style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
+          <div className="container" style={{ maxWidth: 760 }}>
+            <Overline style={{ display: 'block', marginBottom: 16 }}>Frequently asked</Overline>
+            <h2 className="display-l" style={{ fontSize: '1.75rem', marginBottom: 24 }}>Questions about this product</h2>
+            <div style={{ borderTop: '1px solid var(--line)' }}>
+              {product.faq.map((f, i) => (
+                <details key={i} style={{ borderBottom: '1px solid var(--line)', padding: '14px 0' }}>
+                  <summary style={{
+                    cursor: 'pointer', listStyle: 'none',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16,
+                    fontFamily: 'var(--font-ui)', fontSize: '0.9375rem', fontWeight: 600, color: 'var(--ink-900)',
+                  }}>
+                    <span>{f.q}</span>
+                    <span aria-hidden="true" style={{ flex: '0 0 auto', fontSize: '0.75rem', color: 'var(--ink-500, #6b7280)' }}>▼</span>
+                  </summary>
+                  <div className="body-text" style={{ marginTop: 10, color: 'var(--ink-700)', whiteSpace: 'pre-wrap' }}>
+                    {f.a}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {relatedProducts.length > 0 && (
         <section style={{ padding: '64px 0' }}>

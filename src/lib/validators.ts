@@ -8,6 +8,7 @@
 // ============================================================================
 
 import { z } from 'zod';
+import type { ProductKeyBenefit, ProductFaqItem } from '@/types';
 
 // ─── Primitives ─────────────────────────────────────────────────────────────
 export const slugSchema = z.string()
@@ -51,6 +52,61 @@ export const productInputSchema = z.object({
   short_description: z.string().max(1000).optional().nullable(),
   how_to_use:     z.string().max(8000).optional().nullable(),
   ingredients:    z.string().max(8000).optional().nullable(),
+  // Migration 081 — admin-controlled SEO + content fields. Empty string
+  // from the form normalises to null at the DB level.
+  seo_title:        z.string().trim().max(120).transform(s => s || null).nullable().optional(),
+  seo_description: z.string().trim().max(220).transform(s => s || null).nullable().optional(),
+  og_image_url:    z.string().trim().max(500).transform(s => s || null).nullable().optional(),
+  usage_tips:      z.string().max(8000).optional().nullable(),
+  social_proof:    z.string().trim().max(500).transform(s => s || null).nullable().optional(),
+  // key_benefits and faq come in as JSON strings from a textarea and need
+  // shape validation. Empty string normalises to null.
+  key_benefits: z.string()
+    .transform((s, ctx) => {
+      const trimmed = s?.trim() ?? '';
+      if (!trimmed) return null;
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (!Array.isArray(parsed)) throw new Error('not an array');
+        for (const item of parsed) {
+          if (!item || typeof item !== 'object' || typeof item.text !== 'string') {
+            throw new Error('each item needs a `text` string');
+          }
+        }
+        return parsed as ProductKeyBenefit[];
+      } catch (e) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `key_benefits must be a JSON array of {icon?, text} — ${(e as Error).message}`,
+        });
+        return z.NEVER;
+      }
+    })
+    .nullable()
+    .optional(),
+  faq: z.string()
+    .transform((s, ctx) => {
+      const trimmed = s?.trim() ?? '';
+      if (!trimmed) return null;
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (!Array.isArray(parsed)) throw new Error('not an array');
+        for (const item of parsed) {
+          if (!item || typeof item !== 'object' || typeof item.q !== 'string' || typeof item.a !== 'string') {
+            throw new Error('each item needs `q` and `a` strings');
+          }
+        }
+        return parsed as ProductFaqItem[];
+      } catch (e) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: `faq must be a JSON array of {q, a} — ${(e as Error).message}`,
+        });
+        return z.NEVER;
+      }
+    })
+    .nullable()
+    .optional(),
 });
 export type ProductInput = z.infer<typeof productInputSchema>;
 

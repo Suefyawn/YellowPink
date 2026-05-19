@@ -61,6 +61,25 @@ export interface Product {
   weight_grams?: number | null;
   wp_product_id?: number | null;
   created_at?: string;
+  // Migration 081 — admin-controlled SEO + content fields.
+  seo_title?: string | null;
+  seo_description?: string | null;
+  og_image_url?: string | null;
+  key_benefits?: ProductKeyBenefit[] | null;
+  faq?: ProductFaqItem[] | null;
+  usage_tips?: string | null;
+  social_proof?: string | null;
+}
+
+export interface ProductKeyBenefit {
+  /** Optional unicode/emoji glyph rendered before the text. */
+  icon?: string;
+  text: string;
+}
+
+export interface ProductFaqItem {
+  q: string;
+  a: string;
 }
 
 export interface Category {
