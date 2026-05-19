@@ -1,4 +1,5 @@
 import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
+import { AdminIcon } from '@/components/ui/AdminIcon';
 
 interface EventRow { event: string; count: number; uniques: number; }
 interface ReferrerRow { source: string; visitors: number; }
@@ -22,8 +23,9 @@ export async function TopEventsWidget() {
     <div style={cardStyle}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <div>
-          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
-            ⚡ Top events &amp; sources
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: '#C5286A', display: 'inline-flex' }}><AdminIcon name="bolt" size={16} /></span>
+            Top events &amp; sources
           </h2>
           <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
             Last 7 days{events ? ` · refreshed ${timeAgoShort(events.updatedAt)}` : ''}
