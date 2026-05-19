@@ -5,16 +5,38 @@ import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useSearch } from '@/context/SearchContext';
-import { supabase, isDemo } from '@/lib/supabase';
+// IMPORTANT: import the BROWSER client (memoised singleton) not
+// `supabase` from '@/lib/supabase'. The server-side export creates a
+// second GoTrueClient in the browser bundle and produces the
+// "Multiple GoTrueClient instances detected" console warning — Supabase
+// flags this as "may produce undefined behavior" under concurrent use.
+// `isDemo` is fine to import because it's just a boolean derived from
+// env vars and doesn't construct anything.
+import { isDemo } from '@/lib/supabase';
+import { getBrowserClient } from '@/lib/supabase-browser';
 import { DEMO_PRODUCTS } from '@/lib/demo-data';
 import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { brandPlusName } from '@/lib/product-display';
 import type { Product } from '@/types';
 
-const TRENDING = ['CeraVe', 'Rhode Lip Tint', 'Melasma Cream', 'NARS Foundation', 'Tarte Concealer'];
-const POPULAR_CATS = ['Skincare', 'Lip Tints', 'Foundations', 'Sunscreen', 'Wellness'];
+// Fallbacks when the server didn't pass anything (demo mode, network blip,
+// or this component mounted in isolation). The wrapper at
+// SearchOverlayWrapper.tsx normally resolves these from real catalog data.
+const TRENDING_FALLBACK = ['CeraVe', 'NARS', 'Kiko Milano', 'PIXI', 'Rhode'];
+const CATEGORIES_FALLBACK = ['Skincare', 'Lip Tints', 'Foundations', 'Sunscreen', 'Wellness'];
 
-export function SearchOverlay() {
+interface SearchOverlayProps {
+  /** Server-fetched top brands (top 5 by in-stock product count). */
+  trending?: string[];
+  /** Server-fetched top categories (top 5 by in-stock product count). */
+  categories?: string[];
+}
+
+export function SearchOverlay({ trending, categories }: SearchOverlayProps = {}) {
+  // Treat empty arrays as "use fallback" so a transient empty list doesn't
+  // leave a blank trending block.
+  const TRENDING = trending && trending.length > 0 ? trending : TRENDING_FALLBACK;
+  const POPULAR_CATS = categories && categories.length > 0 ? categories : CATEGORIES_FALLBACK;
   const { searchOpen, setSearchOpen } = useSearch();
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
@@ -50,7 +72,7 @@ export function SearchOverlay() {
       return;
     }
     const handle = setTimeout(() => {
-      supabase.rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
+      getBrowserClient().rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
         setProducts((data ?? []) as Product[]);
       });
     }, 200);

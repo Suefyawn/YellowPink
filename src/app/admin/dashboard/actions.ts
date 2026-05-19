@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { assertPermission } from '@/lib/admin-auth';
+import { logAudit } from '@/lib/audit';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
@@ -284,7 +285,7 @@ export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string
   // quota) and writes to analytics_cache + admin_notifications via service
   // role. Without a check, an unauthenticated caller could DOS our metrics
   // and our inbox. Only staff with `analytics_refresh` (or owners) may run it.
-  await assertPermission('analytics_refresh');
+  const session = await assertPermission('analytics_refresh');
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -299,6 +300,12 @@ export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
     .map(r => String(r.reason instanceof Error ? r.reason.message : r.reason));
+
+  void logAudit(session, {
+    action: 'analytics.refresh',
+    entity: 'analytics_cache',
+    diff: { ok: errors.length === 0, errors },
+  });
 
   revalidatePath('/admin/dashboard');
 
