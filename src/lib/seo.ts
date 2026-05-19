@@ -306,6 +306,55 @@ export function breadcrumbLd(items: { name: string; path: string }[]) {
   };
 }
 
+/**
+ * ItemList for collection / index pages. Google uses this to associate
+ * the listed URLs with the parent page and surface site-link grids.
+ * Pass a header name (e.g. "Bestsellers" / "Skincare products") + the
+ * items in display order; each item maps to a Product schema only when
+ * we have the brand/name/price tuple, otherwise we emit a lean
+ * ListItem with `url` + `name`.
+ */
+export function itemListLd(
+  name: string,
+  items: Array<{
+    name: string;
+    path: string;
+    image?: string | null;
+    price?: number;
+    priceCurrency?: string;
+    brand?: string | null;
+  }>,
+) {
+  const elements = items.map((it, i) => {
+    const base: Record<string, unknown> = {
+      '@type': 'ListItem',
+      position: i + 1,
+      url: absoluteUrl(it.path),
+      name: it.name,
+    };
+    if (it.image || it.price !== undefined || it.brand) {
+      base.item = {
+        '@type': 'Product',
+        name: it.name,
+        url: absoluteUrl(it.path),
+        ...(it.image ? { image: it.image } : {}),
+        ...(it.brand ? { brand: { '@type': 'Brand', name: it.brand } } : {}),
+        ...(it.price !== undefined
+          ? { offers: { '@type': 'Offer', price: it.price, priceCurrency: it.priceCurrency ?? 'PKR' } }
+          : {}),
+      };
+    }
+    return base;
+  });
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name,
+    numberOfItems: items.length,
+    itemListElement: elements,
+  };
+}
+
 // LocalBusiness / Store schema for Pakistan — Google uses this for Knowledge
 // Panel + Maps placement. We're a digital-first storefront serving the whole
 // country, so areaServed is national and we don't claim a single brick-and-

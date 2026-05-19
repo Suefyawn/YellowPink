@@ -10,8 +10,26 @@
 export const dynamic = 'force-dynamic';
 
 import type { Metadata, Viewport } from 'next';
+import { Fraunces, Inter } from 'next/font/google';
 import '@/styles/globals.css';
 import { Providers } from '@/context/Providers';
+
+// next/font/google self-hosts the woff2 + emits preload links automatically.
+// CSS bridges via the `variable` option — globals.css reads
+// --font-display / --font-ui and applies them to .display-*, .h*, body.
+const fontDisplay = Fraunces({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-display',
+  display: 'swap',
+});
+const fontUI = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-ui',
+  display: 'swap',
+});
 import { SiteChrome } from '@/components/layout/SiteChrome';
 import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
 import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
@@ -70,7 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     loadPopularCategories(),
   ]);
   return (
-    <html lang="en">
+    <html lang="en" className={`${fontDisplay.variable} ${fontUI.variable}`}>
       <head>
         {/* Site-wide JSON-LD: Organization + WebSite (sitelinks search box) +
             OnlineStore (PK localisation — currency, payment methods, area

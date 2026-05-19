@@ -14,6 +14,13 @@ interface Props {
   priority?: boolean;
   /** Optional label (brand / initial) used in the gradient placeholder. */
   label?: string | null;
+  /** Fixed-size mode: when both are set, render `<Image width height>`
+   *  instead of `<Image fill>`. Use for thumbnails so Next's image
+   *  optimizer only generates srcSet candidates near the requested size
+   *  (the default `fill` mode emits all deviceSizes up to 1920w, which
+   *  is wasted bandwidth for an 80px-wide thumb). */
+  width?: number;
+  height?: number;
 }
 
 const DEFAULT_SIZES = '(max-width: 600px) 50vw, (max-width: 1024px) 33vw, 320px';
@@ -36,10 +43,27 @@ function initialsOf(label: string): string {
   return (words[0][0] + words[1][0]).toUpperCase();
 }
 
-export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES, priority = false, label }: Props) {
+export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES, priority = false, label, width, height }: Props) {
   const [errored, setErrored] = useState(false);
 
   if (src && !errored) {
+    // Fixed-size mode for thumbnails — Next emits a tight srcSet around
+    // the requested dimensions instead of the full deviceSizes ladder.
+    if (width && height) {
+      return (
+        <Image
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          priority={priority}
+          style={{ objectFit: 'cover', width: '100%', height: '100%', ...style }}
+          className={className}
+          onError={() => setErrored(true)}
+          unoptimized={src.startsWith('data:')}
+        />
+      );
+    }
     return (
       <span style={{ position: 'relative', display: 'block', width: '100%', height: '100%', ...style }} className={className}>
         <Image

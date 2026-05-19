@@ -1,5 +1,9 @@
 /* Yellow Pink — Design Tokens & Global Styles */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap');
+/* Fonts (Fraunces + Inter) are loaded via next/font/google in
+   src/app/layout.tsx — Next self-hosts the woff2, emits preload
+   links, and exposes the family via --font-display / --font-ui CSS
+   variables. The old `@import url('https://fonts.googleapis.com/...')`
+   here was render-blocking and added a third-party origin. */
 
 :root {
   --ink-900: #0A0A0A;
