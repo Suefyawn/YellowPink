@@ -19,9 +19,12 @@ export function WishlistPage() {
   const [loading, setLoading] = useState(wishlist.length > 0);
   const [copied, setCopied] = useState(false);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  // Fetch wishlist product details whenever the wishlist ids change.
+  // setState-in-effect is intentional: wishlist is persisted to localStorage
+  // (external store) and the product rows come from a network round-trip.
   useEffect(() => {
     if (wishlist.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProducts([]);
       setLoading(false);
       return;

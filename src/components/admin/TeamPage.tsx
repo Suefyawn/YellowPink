@@ -451,7 +451,7 @@ export function TeamPage({ staff }: { staff: Staff[] }) {
           <div style={{ padding: '60px 32px', textAlign: 'center', color: '#9ca3af' }}>
             <div style={{ fontSize: '2rem', marginBottom: 12 }}>⬡</div>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>No staff members yet</div>
-            <div style={{ fontSize: '0.875rem' }}>Click "Add Staff Member" to get started</div>
+            <div style={{ fontSize: '0.875rem' }}>Click &quot;Add Staff Member&quot; to get started</div>
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>

@@ -6,7 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { productInputSchema } from '@/lib/validators';
 
-interface CsvRow extends Record<string, string> {}
+type CsvRow = Record<string, string>;
 
 function toSlug(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

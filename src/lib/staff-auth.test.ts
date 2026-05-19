@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
 import { hashPassword, verifyPassword } from './staff-auth';
 
 describe('staff password hashing', () => {
@@ -12,7 +13,6 @@ describe('staff password hashing', () => {
   it('returns a new hash when verifying a legacy SHA-256 hash', () => {
     // Mirror the legacy hash construction in staff-auth.ts:legacySha256.
     // (Salt + password + secret, SHA-256, hex.)
-    const { createHash } = require('crypto') as typeof import('crypto');
     const salt = 'abc123';
     const password = 'legacy-pass';
     const legacyHash = createHash('sha256')

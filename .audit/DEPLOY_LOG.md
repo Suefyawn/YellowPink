@@ -6,6 +6,93 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Production-ready polish pass: Supabase advisor cleanup + Next 16 lint compliance
+
+**Goal:** ship the project past the last remaining Database Linter
+findings and clear every ESLint error so the codebase passes Next 16's
+React Compiler rules with no eslint-disable-bandages on legitimate
+bugs.
+
+**Migration shipped — `20260525_073_security_hardening.sql` (applied):**
+
+- Dropped wide-open admin write/update/delete policies on
+  `public.products`, `public.blog_posts`, `public.orders` (all granted
+  to the **`anon`** role with `USING true`). These were vestigial from
+  an early RLS pattern that pre-dated the service-role admin client;
+  the admin client bypasses RLS, so the policies were attack surface
+  only. Verified via `pg_policies` after the drop.
+- Dropped `anyone can insert orders` (any `public` user could INSERT) —
+  `place_order` is the only sanctioned write path (SECURITY DEFINER).
+- Dropped duplicate read / insert policies (`public read products`
+  duplicated `products_read_all`; `reviews_insert_any` /
+  `reviews_read_approved` duplicated their counterparts;
+  `service role full access` on `analytics_cache` duplicated
+  `analytics_cache_service_all`).
+- Converted `v_customer_segments` and `v_orders_revenue` views from
+  SECURITY DEFINER to `security_invoker = on` — these are read by
+  staff via `supabaseAdmin()`, so DEFINER buy-in was accidental.
+- Pinned `search_path = public, pg_temp` on the four functions the
+  linter flagged (`set_updated_at`, `touch_updated_at`,
+  `decrement_stock`, `notify_order_confirmation`). Defense in depth
+  against schema-shadowing attacks.
+
+**Advisor delta:** 2 ERROR-level findings → 0; 11 `rls_policy_always_true`
+WARNs → 1 (the one remaining is the intentional anon-INSERT path for
+newsletter signup, which is server-side rate-limited).
+
+**Lint pass:** 38 errors + 17 warnings → 0. Highlights:
+
+- Converted `CollectionPage`'s `useRef(readInitial()).current` pattern
+  to `useState(readInitial)` — the URL-hydrated initial snapshot now
+  lives in state (one-time mount initializer) instead of a ref, which
+  satisfies the React Compiler's `react-hooks/refs` rule and is the
+  documented Next 16 pattern.
+- Resolved a real `Cannot access variable before declared` bug in
+  `NewsletterModal.tsx` — `useEscapeKey(open, () => close())` was
+  reading `close` before its `const` declaration. Moved the function
+  above the hook calls and inlined the reference.
+- Cleaned up stale `eslint-disable-next-line no-console` directives on
+  three files (the no-console rule isn't part of Next 16's config).
+- Removed unused imports (`Link` in `RecentlyViewed`, `CollectionPage`;
+  `lookupByWpId` in WP-import variations), unused vars (`_a`,
+  `setImageUrl`, `wpTermLookup`, `supabase`), and the
+  empty-interface anti-pattern in `admin/products/import/actions.ts`.
+- Escaped 9 unescaped apostrophe/quote entities in JSX.
+- Marked 2 `prefer-const` violations (`productMap`, `optionMap`).
+- For genuine "subscribe to external system" patterns (CartContext
+  hydration from localStorage, WishlistPage / RecentlyViewed product
+  fetches, SearchOverlay typeahead, Header route-change reset) added
+  `eslint-disable-next-line react-hooks/set-state-in-effect` with a
+  one-line explanation of *why* the rule's exception applies. No
+  bandages over real bugs — every disable comment is a known-good
+  external-store sync.
+
+**Test fix:** `staff-auth.test.ts` was failing because
+`tests/setup.ts` exported `STAFF_SESSION_SECRET='test-secret'`
+(11 chars) — under the 16-char floor in `session-secret.ts` — so the
+runtime silently fell back to the dev fallback while the test computed
+its legacy SHA-256 with the literal `'test-secret'`. Bumped the test
+secret to `'test-secret-at-least-16-chars-long'`.
+
+Also dropped the `require('crypto')` style import (no-require-imports
+rule) in favour of `import { createHash } from 'node:crypto'`.
+
+**Verification gate (all green):**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean (0 errors, 0 warnings)
+- `npm test`          — 78/78 pass
+- `npm run build`     — succeeds
+
+**Lesson:** Database Linter findings stack up *fast* if you don't
+re-run the advisor between migrations. The wide-open `admin write
+products` policies were technically dead (service_role bypasses RLS
+anyway, so writes worked even without them) but the linter still
+flagged them as ERRORs — easy to overlook because the app behaved
+correctly. Audit the advisor every time you ship a migration, even if
+the surface area looks identical.
+
+---
+
 ## 2026-05-19 — Resend + PostHog API keys verified, analytics_cache seeded
 
 **Resend** — API key `re_J7Pq…` verified:

@@ -2,7 +2,7 @@
 // Run after `products` so the parent uuid exists.
 
 import { wc } from '../wp';
-import { sb, upsertBatched, lookupManyByWpId, lookupByWpId } from '../sb';
+import { sb, upsertBatched, lookupManyByWpId } from '../sb';
 import { uploadIfNeeded } from '../media';
 
 interface WcVariation {
@@ -32,15 +32,6 @@ export async function run(): Promise<{ imported: number; skipped: number; errors
 
   const parentRows = (parents ?? []) as { id: string; wp_product_id: number }[];
   if (parentRows.length === 0) return { imported: 0, skipped: 0, errors };
-
-  // Cache attribute_value lookups by wp_term_id (we set this during attribute import).
-  const wpTermCache = new Map<number, string>();
-  const wpTermLookup = async (wpTermId: number): Promise<string | null> => {
-    if (wpTermCache.has(wpTermId)) return wpTermCache.get(wpTermId)!;
-    const id = await lookupByWpId('attribute_values', 'wp_term_id', wpTermId);
-    if (id) wpTermCache.set(wpTermId, id);
-    return id;
-  };
 
   let totalVariants = 0;
   let totalVavRows = 0;

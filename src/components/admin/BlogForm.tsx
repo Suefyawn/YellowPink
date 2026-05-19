@@ -31,7 +31,7 @@ export function BlogForm({ post }: { post?: BlogPost }) {
 
   const [title, setTitle] = useState(post?.title ?? '');
   const [slug, setSlug] = useState(post?.slug ?? '');
-  const [imageUrl, setImageUrl] = useState(post?.image_url ?? '');
+  const [imageUrl] = useState(post?.image_url ?? '');
 
   return (
     <div style={{ padding: '32px 36px' }}>

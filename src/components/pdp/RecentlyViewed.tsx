@@ -5,7 +5,6 @@
 // product ids the user looked at.
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { getBrowserClient } from '@/lib/supabase-browser';
@@ -33,13 +32,19 @@ export function RecentlyViewed({ currentProductId }: { currentProductId: string 
   const [otherProducts, setOtherProducts] = useState<Product[]>([]);
 
   // Record + then load the previous N (excluding current).
+  // setState-in-effect is intentional: localStorage is an external store
+  // and the fetched rows arrive asynchronously.
   useEffect(() => {
     const existing = loadIds().filter(id => id !== currentProductId);
     const updated  = [currentProductId, ...existing].slice(0, MAX_ITEMS);
     saveIds(updated);
 
     const toFetch = existing.slice(0, DISPLAY);
-    if (toFetch.length === 0) { setOtherProducts([]); return; }
+    if (toFetch.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setOtherProducts([]);
+      return;
+    }
 
     let cancelled = false;
     (async () => {

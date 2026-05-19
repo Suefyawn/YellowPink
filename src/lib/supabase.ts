@@ -57,7 +57,6 @@ async function safe<T>(
     // Don't spam the demo client with errors — demo mode is opt-in for offline
     // rendering and the placeholder URL deliberately can't be reached.
     if (!isDemo) {
-      // eslint-disable-next-line no-console
       console.warn(`[supabase] ${label} failed; falling back. ${(err as Error).message}`);
     }
     return fallback;

@@ -78,7 +78,8 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
   const [pointsRedeemInput, setPointsRedeemInput] = useState<number | ''>('');
   const [pointsRedeem, setPointsRedeem]     = useState(0);
 
-  // Pre-fill referral code from ?ref= or localStorage.
+  // Pre-fill referral code from ?ref= or localStorage. setState-in-effect
+  // is intentional: the URL + localStorage are external sources.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const sp = new URLSearchParams(window.location.search);
@@ -86,12 +87,19 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
     const stored  = window.localStorage.getItem('yp_ref');
     const code    = fromUrl ?? stored ?? '';
     if (fromUrl) window.localStorage.setItem('yp_ref', fromUrl);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (code) setRefCodeInput(code);
   }, []);
 
-  // Pull loyalty balance for signed-in users.
+  // Pull loyalty balance for signed-in users — the Supabase query is an
+  // external system, so syncing the result into React state is the
+  // documented exception to the no-setState-in-effect rule.
   useEffect(() => {
-    if (!user) { setLoyalty(null); return; }
+    if (!user) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setLoyalty(null);
+      return;
+    }
     const sb = getBrowserClient();
     sb.from('loyalty_accounts').select('*').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => setLoyalty(data as LoyaltyAccount | null));

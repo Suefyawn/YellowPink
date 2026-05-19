@@ -19,6 +19,10 @@ export function AddToCartToast() {
   const { addCounter, lastAdded } = useCart();
   const [toasts, setToasts] = useState<Toast[]>([]);
 
+  // Subscribe to addCounter from CartContext (the external store) and queue
+  // a toast row whenever it increments. The setState here is the canonical
+  // "subscribe to external system" pattern the React Compiler rule documents
+  // as the exception — addCounter is not derivable from props.
   useEffect(() => {
     // addCounter starts at 0 and only increments when addToCart is called.
     // Anything below 1 means we're still in the initial mount / hydration
@@ -26,6 +30,7 @@ export function AddToCartToast() {
     if (addCounter < 1 || !lastAdded) return;
     const id = Date.now();
     const label = brandPlusName(lastAdded.brand ?? '', lastAdded.name);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setToasts(t => [...t, { id, label }]);
     const handle = setTimeout(
       () => setToasts(t => t.filter(x => x.id !== id)),

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
@@ -81,9 +80,11 @@ export function CollectionPage({
       sale:  sp.get('sale') === '1',
     };
   };
-  // Mount-time only — useState initialiser. Subsequent navigations are
-  // handled by re-rendering the page server-side, so this is correct.
-  const initialState = useRef(readInitial()).current;
+  // Mount-time only — useState initialiser runs once on mount. Subsequent
+  // navigations are handled by re-rendering the page server-side, so this is
+  // correct. Storing the URL-hydrated snapshot in state (not a ref) is
+  // important: it satisfies the React Compiler's "no refs in render" rule.
+  const [initialState] = useState(readInitial);
 
   const [activeCategory, setActiveCategory] = useState<string>(initialState.cat);
   const [activeSubcategory, setActiveSubcategory] = useState<string | null>(initialState.sub);
@@ -187,8 +188,12 @@ export function CollectionPage({
   }
 
   // Reset paging when *any* filter / sort / category / query changes.
+  // Page state isn't derivable (it's user-driven within a filter set), so
+  // resetting it on filter change has to happen in an effect.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, q]);
   // Brand list rebuilds per-category; drop any selections that no longer apply.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setSelectedBrands(new Set()); }, [activeCategory]);
 
   // ─── URL persistence ─────────────────────────────────────────────────────

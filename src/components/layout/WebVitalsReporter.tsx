@@ -30,7 +30,6 @@ export function WebVitalsReporter() {
     // Dev console is always-on — pure developer signal, no PII leaves the
     // browser. Production reporting is gated on consent.
     if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
       console.debug('[vitals]', metric.name, Math.round(metric.value), metric.rating);
       return;
     }

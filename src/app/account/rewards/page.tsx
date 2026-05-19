@@ -105,7 +105,7 @@ export default function RewardsPage() {
         <div style={{ padding: 24, background: 'white', borderRadius: 12, border: '1px solid var(--line)', marginBottom: 24 }}>
           <h2 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 700 }}>Refer friends, earn 500 pts each</h2>
           <p style={{ margin: '0 0 16px', color: 'var(--ink-700)', fontSize: '0.875rem' }}>
-            Share your code with a friend. They get 10% off their first order; you get 500 points when it's delivered.
+            Share your code with a friend. They get 10% off their first order; you get 500 points when it&apos;s delivered.
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '12px 16px', background: 'var(--paper2)', borderRadius: 8, border: '1px solid var(--line)' }}>
             <div style={{ flex: 1, fontFamily: 'monospace', fontWeight: 700, color: 'var(--ink-900)' }}>{referralCode}</div>

@@ -48,7 +48,7 @@ function ReturnForm() {
     return (
       <div style={{ padding: 48, textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500 }}>Not eligible</h1>
-        <p style={{ color: 'var(--ink-700)', marginBottom: 16 }}>This order isn't delivered yet, so we can't accept a return for it.</p>
+        <p style={{ color: 'var(--ink-700)', marginBottom: 16 }}>This order isn&apos;t delivered yet, so we can&apos;t accept a return for it.</p>
         <Link href="/account/orders" style={{ color: 'var(--brand-pink-text)' }}>Back to orders</Link>
       </div>
     );
@@ -57,7 +57,7 @@ function ReturnForm() {
     return (
       <div style={{ padding: 48, textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 500, marginBottom: 12 }}>Return request submitted</h1>
-        <p style={{ color: 'var(--ink-700)', marginBottom: 24 }}>We'll review it and email you within 48 hours.</p>
+        <p style={{ color: 'var(--ink-700)', marginBottom: 24 }}>We&apos;ll review it and email you within 48 hours.</p>
         <Link href="/account/orders" style={{ padding: '10px 18px', background: 'var(--brand-pink-cta)', color: 'white', borderRadius: 8, textDecoration: 'none', fontWeight: 600 }}>
           Back to orders
         </Link>
@@ -139,7 +139,7 @@ function ReturnForm() {
           {submitting ? 'Submitting…' : 'Submit return request'}
         </button>
         <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--ink-500)', textAlign: 'center' }}>
-          We'll email you within 48 hours with next steps.
+          We&apos;ll email you within 48 hours with next steps.
         </p>
       </div>
     </div>

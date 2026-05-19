@@ -20,8 +20,11 @@ export function ConsentBanner() {
   const [analytics, setAnalytics] = useState(true);
   const [marketing, setMarketing] = useState(true);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  // Mount-time gate so we don't render the banner during SSR — the consent
+  // state lives in document.cookie (external), and only the client side
+  // knows whether to surface the banner.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
     // Wait a beat so we don't compete with the page load animation.
     const t = setTimeout(() => {
