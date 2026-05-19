@@ -11,8 +11,21 @@
 //
 // Required env vars (set in Vercel + .env.local):
 //   TCS_BASE_URL          — pick prod or dev
-//   TCS_CLIENT_ID         — provided by TCS at onboarding
-//   TCS_CLIENT_SECRET     — provided by TCS at onboarding
+//
+// Auth (one of these two modes is required):
+//   A) Pre-issued bearer token mode (recommended; what TCS Envio's
+//      "Bearer Token for API Access" email gives you):
+//        TCS_BEARER_TOKEN  — the long-lived JWT TCS issued for your account
+//      The token carries `clientid` + `services` claims and expires after
+//      ~3 years. The adapter uses it directly and skips /auth/api/auth.
+//
+//   B) Legacy OAuth mode (only if your TCS contact gave you a client
+//      id + secret pair instead of a pre-issued token):
+//        TCS_CLIENT_ID
+//        TCS_CLIENT_SECRET
+//      The adapter hits /auth/api/auth on first call and caches the
+//      resulting short-lived token.
+//
 //   TCS_TCS_ACCOUNT       — your TCS account number (the "tcsaccount" field
 //                           in every booking; sometimes called "shipper account")
 //   TCS_COST_CENTER_CODE  — assigned by TCS, required on every booking
@@ -40,10 +53,9 @@ import type {
 } from './types';
 import { normaliseCourierStatus } from './status-mapper';
 
-const REQUIRED_VARS = [
+// Non-auth fields required regardless of which auth mode is in use.
+const REQUIRED_NON_AUTH_VARS = [
   'TCS_BASE_URL',
-  'TCS_CLIENT_ID',
-  'TCS_CLIENT_SECRET',
   'TCS_TCS_ACCOUNT',
   'TCS_COST_CENTER_CODE',
   'TCS_SHIPPER_NAME',
@@ -57,8 +69,17 @@ function env(key: string): string | undefined {
   return process.env[key];
 }
 
+function hasPreIssuedToken(): boolean {
+  return Boolean(env('TCS_BEARER_TOKEN'));
+}
+
+function hasOauthCredentials(): boolean {
+  return Boolean(env('TCS_CLIENT_ID') && env('TCS_CLIENT_SECRET'));
+}
+
 function isConfigured(): boolean {
-  return REQUIRED_VARS.every(k => Boolean(env(k)));
+  if (!REQUIRED_NON_AUTH_VARS.every(k => Boolean(env(k)))) return false;
+  return hasPreIssuedToken() || hasOauthCredentials();
 }
 
 // ─── Bearer-token cache ────────────────────────────────────────────────────
@@ -69,6 +90,14 @@ let cachedToken: { value: string; expiresAt: number } | null = null;
 const TOKEN_GRACE_SEC = 60;
 
 async function getBearerToken(): Promise<Result<string>> {
+  // Mode A — pre-issued token. Skip the auth round-trip; TCS gives us
+  // a JWT good for ~3 years on the account's services list. We don't
+  // try to decode the `exp` claim here — if TCS rejects an expired
+  // token, the per-call endpoints surface the 401 in their own
+  // Result<…> error path.
+  const preIssued = env('TCS_BEARER_TOKEN');
+  if (preIssued) return preIssued;
+
   const now = Math.floor(Date.now() / 1000);
   if (cachedToken && cachedToken.expiresAt > now + TOKEN_GRACE_SEC) {
     return cachedToken.value;

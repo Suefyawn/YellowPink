@@ -6,6 +6,74 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — TCS courier: pre-issued bearer token path
+
+TCS Envio emailed Tanya (`TANYAZAFAR@HOTMAIL.COM`) a long-lived JWT
+("Bearer Token for API Access — TCS Envio") on 2026-05-19 6:15 pm.
+The adapter was built for the OAuth-style flow
+(`clientid` + `clientsecret` → `/auth/api/auth` round-trip → short-lived
+access token), but what TCS actually provisioned was a pre-issued JWT
+valid until 2029-05-19. Decoded claims: `clientid=215628692`, `services`
+list (103, 155, 161, 164, 225, 247, …), iss `connect.tcscourier.com`,
+nbf 1779196527, exp 1865596527.
+
+**Adapter change (`src/lib/couriers/tcs.ts`):**
+
+- Added a `TCS_BEARER_TOKEN` env var that takes precedence over the
+  OAuth flow. When set, `getBearerToken()` returns it directly — no
+  round-trip, no cache invalidation, no expiry tracking on our side
+  (TCS's gateway returns 401 if it ever needs replacement, and the
+  per-call result paths surface that to the caller).
+- Split `REQUIRED_VARS` into `REQUIRED_NON_AUTH_VARS` + an auth-mode
+  check. `isConfigured()` now passes when either:
+   - `TCS_BEARER_TOKEN` is set, OR
+   - both `TCS_CLIENT_ID` + `TCS_CLIENT_SECRET` are set.
+- Header doc-comment rewritten to describe both modes and which env
+  vars belong to each.
+
+**Env (`.env.local`):**
+
+- `TCS_BASE_URL=https://ociconnect.tcscourier.com` (prod).
+- `TCS_BEARER_TOKEN=<the JWT from the email>`.
+- Placeholder lines for `TCS_TCS_ACCOUNT`, `TCS_COST_CENTER_CODE`,
+  `TCS_SHIPPER_ADDRESS`, `TCS_SHIPPER_MOBILE` — still need real values
+  from the TCS account manager before bookings will work.
+  `isConfigured()` returns false until they're filled, so the
+  ShipmentBookingForm falls back to the manual tracking-number entry.
+- `TCS_SHIPPER_NAME=Yellow Pink`, `TCS_SHIPPER_CITY_CODE=KHI`,
+  `TCS_SHIPPER_CITY_NAME=Karachi`, `TCS_SERVICE_CODE=O` (overnight) —
+  sensible defaults.
+
+**Smoke probe:** `node --env-file=.env.local` POST to a deliberately
+non-existent path returned `502 Bad Gateway` from `openresty` —
+confirms we reached TCS's edge with the bearer (the 502 is just
+upstream-not-found for the wrong path I picked; real booking calls hit
+`/ecom/api/booking/create` which the adapter already targets).
+
+**Operational follow-ups (manual, by the user):**
+
+- Mirror `TCS_BASE_URL`, `TCS_BEARER_TOKEN`, and the rest of the
+  `TCS_*` vars to Vercel env vars (Production + Preview).
+- Fill in `TCS_TCS_ACCOUNT`, `TCS_COST_CENTER_CODE`,
+  `TCS_SHIPPER_ADDRESS`, `TCS_SHIPPER_MOBILE` once TCS confirms them.
+- Pin a Vercel cron reminder ~30 days before 2029-05-19 to rotate
+  the JWT (TCS provides a fresh one on request).
+
+**Verification gate:**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+
+**Lesson:** Don't bake the auth mode into the only path. The
+original adapter assumed every customer would go through the
+client-id/secret OAuth flow because that's what the API user manual
+documents — but TCS Envio Pakistan provisions pre-issued JWTs for
+COD-API customers as the default. A 5-line "if env, skip auth"
+fork was all the integration needed; without it, our merchant
+would have had to chase a clientsecret that doesn't exist.
+
+---
+
 ## 2026-05-19 — Wire place_order + return-received through the inventory ledger
 
 Closes the loop opened by migration 078. The ledger now carries every
