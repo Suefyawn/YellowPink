@@ -25,7 +25,7 @@ export function AddToCartToast() {
     // window and have nothing real to announce.
     if (addCounter < 1 || !lastAdded) return;
     const id = Date.now();
-    const label = brandPlusName(lastAdded.brand, lastAdded.name);
+    const label = brandPlusName(lastAdded.brand ?? '', lastAdded.name);
     setToasts(t => [...t, { id, label }]);
     const handle = setTimeout(
       () => setToasts(t => t.filter(x => x.id !== id)),
