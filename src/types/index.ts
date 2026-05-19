@@ -164,6 +164,7 @@ export interface BlogPost {
   body?: string;
   image_url?: string;
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface CartItem extends Product {

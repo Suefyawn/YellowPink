@@ -105,7 +105,9 @@ export function organizationLd() {
     '@type': 'Organization',
     name: SITE_NAME,
     url: SITE_URL,
-    logo: absoluteUrl('/icon.svg'),
+    // Google explicitly recommends raster (PNG/JPG, ≥112×112) for
+    // Organization.logo; SVG gets flagged in Rich Results Test.
+    logo: absoluteUrl('/icon-192.png'),
     sameAs: [
       'https://instagram.com/yellowpink.pk',
     ],
@@ -191,6 +193,11 @@ export function productLd(
     returnFees: 'https://schema.org/FreeReturn',
   };
 
+  // Google increasingly wants priceValidUntil on Offer / AggregateOffer.
+  // Use a 12-month forward window; the page itself revalidates often
+  // enough that this stays roughly accurate.
+  const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
   const offers = variantPrices.length > 1 && lowPrice !== highPrice
     ? {
         '@type': 'AggregateOffer',
@@ -199,6 +206,7 @@ export function productLd(
         lowPrice,
         highPrice,
         offerCount: enabledVariants.length,
+        priceValidUntil,
         availability: anyVariantInStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
@@ -211,6 +219,7 @@ export function productLd(
         url: absoluteUrl(`/product/${product.slug}`),
         priceCurrency: 'PKR',
         price: product.price,
+        priceValidUntil,
         availability: anyVariantInStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
@@ -268,12 +277,17 @@ export function articleLd(post: BlogPost) {
     description: post.excerpt,
     image: post.image_url ?? undefined,
     datePublished: post.date,
-    dateModified: post.date,
+    // Use updated_at when the row has been edited; falls back to date so
+    // Google has a meaningful "Last updated" signal instead of identical
+    // dates either side. The DB column exists (used by the blog sitemap)
+    // even though the type previously omitted it.
+    dateModified: post.updated_at ?? post.date,
     author: { '@type': 'Organization', name: SITE_NAME },
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,
-      logo: { '@type': 'ImageObject', url: absoluteUrl('/icon.svg') },
+      // Raster logo per Google's Article schema requirements.
+      logo: { '@type': 'ImageObject', url: absoluteUrl('/icon-192.png'), width: 192, height: 192 },
     },
     mainEntityOfPage: absoluteUrl(`/blog/${post.slug}`),
   };
@@ -304,11 +318,14 @@ export function localBusinessLd() {
     '@id': absoluteUrl('/#store'),
     name: SITE_NAME,
     url: SITE_URL,
-    logo: absoluteUrl('/icon.svg'),
-    image: absoluteUrl('/icon.svg'),
+    // Raster logo per Google guidance — Rich Results Test warns on SVG.
+    logo: absoluteUrl('/icon-192.png'),
+    image: absoluteUrl('/icon-192.png'),
     description:
       'Imported beauty, skincare and wellness products delivered across Pakistan with cash-on-delivery.',
-    priceRange: 'PKR',
+    // priceRange should be free-form ($–$$$$ or a currency range) — bare
+    // 'PKR' is ignored. Set a meaningful range covering most of the catalog.
+    priceRange: 'PKR 500–PKR 25,000',
     currenciesAccepted: 'PKR',
     paymentAccepted: 'Cash on Delivery, JazzCash, Easypaisa',
     areaServed: {
@@ -375,7 +392,7 @@ export function pageArticleLd(input: {
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,
-      logo: { '@type': 'ImageObject', url: absoluteUrl('/icon.svg') },
+      logo: { '@type': 'ImageObject', url: absoluteUrl('/icon-192.png'), width: 192, height: 192 },
     },
     mainEntityOfPage: absoluteUrl(input.path),
   };
