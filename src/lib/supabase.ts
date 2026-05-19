@@ -16,6 +16,28 @@ const supabaseAnonKey = envKey || 'demo-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+// ─── Service-role client (server-only) ──────────────────────────────────────
+// Use for sensitive tables that have RLS enabled with service-role-only
+// policies (`staff_members`, `audit_log`, `analytics_*`). NEVER import from a
+// `'use client'` file — the service-role key would leak into the JS bundle.
+//
+// Lazy getter so a client-bundled import of this module doesn't trip the
+// missing-env-var path at module-evaluation time. Throws on first call if
+// the key really is missing at runtime on the server.
+let _admin: ReturnType<typeof createClient> | null = null;
+export function supabaseAdmin() {
+  if (_admin) return _admin;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) {
+    if (isDemo) return supabase;
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is required for admin operations');
+  }
+  _admin = createClient(supabaseUrl, key, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  return _admin;
+}
+
 // ─── Resilience layer ───────────────────────────────────────────────────────
 // Every public storefront getter routes through this so a missing-table or
 // RLS-denied error returns the demo fallback instead of throwing — that way a

@@ -1,4 +1,9 @@
-export const dynamic = 'force-dynamic';
+// `dynamic = 'force-dynamic'` was removed 2026-05-24 (audit P0-7). It was
+// neutralising every per-page `revalidate` and pinning home/shop/PDP/blog to
+// a per-request render even though the upstream Supabase data only needs
+// minute-level freshness. Per-route opt-in remains via each page's own
+// `dynamic`/`revalidate` export (admin pages still set `force-dynamic`
+// because they call cookies()/auth).
 
 import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';

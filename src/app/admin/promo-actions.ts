@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { supabase } from '@/lib/supabase';
+import { assertPermission } from '@/lib/admin-auth';
 
 // Admin server actions for the promo CMS. Every action revalidates the root
 // layout (which renders the bars) AND the admin list, so the merchant sees
@@ -38,6 +39,7 @@ function bust() {
 }
 
 export async function createPromo(formData: FormData) {
+  await assertPermission('promos');
   const parsed = PromoSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   await supabase.from('promos').insert(emptyToNull({
@@ -50,6 +52,7 @@ export async function createPromo(formData: FormData) {
 }
 
 export async function updatePromo(id: string, formData: FormData) {
+  await assertPermission('promos');
   const parsed = PromoSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   await supabase.from('promos').update(emptyToNull({
@@ -62,11 +65,13 @@ export async function updatePromo(id: string, formData: FormData) {
 }
 
 export async function togglePromo(id: string, enabled: boolean) {
+  await assertPermission('promos');
   await supabase.from('promos').update({ enabled }).eq('id', id);
   bust();
 }
 
 export async function deletePromo(formData: FormData) {
+  await assertPermission('promos');
   const id = formData.get('id') as string;
   await supabase.from('promos').delete().eq('id', id);
   bust();

@@ -2,8 +2,10 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabase } from '@/lib/supabase';
+import { assertPermission } from '@/lib/admin-auth';
 
 export async function createCoupon(formData: FormData) {
+  await assertPermission('coupons');
   const code = (formData.get('code') as string).trim().toUpperCase();
   const type = formData.get('type') as 'percent' | 'fixed';
   const value = Number(formData.get('value'));
@@ -20,12 +22,14 @@ export async function createCoupon(formData: FormData) {
 }
 
 export async function deleteCoupon(formData: FormData) {
+  await assertPermission('coupons');
   const id = formData.get('id') as string;
   await supabase.from('coupons').delete().eq('id', id);
   revalidatePath('/admin/coupons');
 }
 
 export async function toggleCoupon(id: string, active: boolean) {
+  await assertPermission('coupons');
   await supabase.from('coupons').update({ active }).eq('id', id);
   revalidatePath('/admin/coupons');
 }

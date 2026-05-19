@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession, hashPassword, generateTempPassword, verifyPassword, upgradeStaffHash } from '@/lib/staff-auth';
 import { sendStaffTempPasswordEmail } from '@/lib/email';
 import type { Permission } from '@/lib/permissions';
@@ -27,7 +27,7 @@ export async function createStaffMember(
   const tempPassword = generateTempPassword();
   const hash = hashPassword(tempPassword); // scrypt now self-salts
 
-  const { error } = await supabase.from('staff_members').insert({
+  const { error } = await supabaseAdmin().from('staff_members').insert({
     email, name,
     permissions,
     password_hash: hash,
@@ -57,7 +57,7 @@ export async function updateStaffPermissions(
   const name = (formData.get('name') as string).trim();
   const permissions = (formData.getAll('permissions') as Permission[]);
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin()
     .from('staff_members')
     .update({ name, permissions })
     .eq('id', id);
@@ -73,7 +73,7 @@ export async function toggleStaffActive(formData: FormData): Promise<void> {
   const id = formData.get('id') as string;
   const isActive = formData.get('is_active') === 'true';
 
-  await supabase
+  await supabaseAdmin()
     .from('staff_members')
     .update({ is_active: !isActive })
     .eq('id', id);
@@ -91,7 +91,7 @@ export async function resetStaffPassword(
   const tempPassword = generateTempPassword();
   const hash = hashPassword(tempPassword);
 
-  const { data: staff, error } = await supabase
+  const { data: staff, error } = await supabaseAdmin()
     .from('staff_members')
     .update({ password_hash: hash, password_salt: '' })
     .eq('id', id)
@@ -110,7 +110,7 @@ export async function deleteStaffMember(formData: FormData): Promise<void> {
   await assertOwner();
 
   const id = formData.get('id') as string;
-  await supabase.from('staff_members').delete().eq('id', id);
+  await supabaseAdmin().from('staff_members').delete().eq('id', id);
   revalidatePath('/admin/team');
 }
 
@@ -130,7 +130,7 @@ export async function changeMyPassword(
   if (next.length < 8) return { error: 'New password must be at least 8 characters' };
   if (next !== confirm) return { error: 'Passwords do not match' };
 
-  const { data } = await supabase
+  const { data } = await supabaseAdmin()
     .from('staff_members')
     .select('password_hash, password_salt')
     .eq('id', session.id)

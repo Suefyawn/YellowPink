@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const { data: order } = await sb
     .from('orders')
-    .select('id, email, first_name, total, items, order_number')
+    .select('id, email, first_name, total, items, order_number, status')
     .eq('order_number', verification.orderNumber)
     .single();
 
@@ -49,9 +49,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL(`/checkout?error=signature`, req.url), 303);
   }
 
+  // P0-3: amount-tamper defence — gateway must report what we billed.
+  const orderPaisa = Math.round(Number(order.total) * 100);
+  const gatewayPaisa = Math.round(verification.amountPkr * 100);
+  if (orderPaisa !== gatewayPaisa) {
+    await sb.from('payments').update({
+      status: 'failed',
+      error_message: `amount mismatch: order=${orderPaisa}p, gateway=${gatewayPaisa}p`,
+    }).eq('gateway', 'easypaisa').eq('order_id', order.id);
+    return NextResponse.redirect(new URL(`/checkout?error=payment_failed&order=${encodeURIComponent(order.order_number)}`, req.url), 303);
+  }
+
   if (verification.status === 'succeeded') {
-    await sb.from('orders').update({ status: 'pending' }).eq('id', order.id);
-    if (order.email) {
+    // P0-4: idempotent transition — only flip if still waiting.
+    await sb.from('orders').update({ status: 'pending' })
+      .eq('id', order.id)
+      .eq('status', 'payment_pending');
+    const firstTransition = order.status === 'payment_pending';
+    if (firstTransition && order.email) {
       const items = (order.items as CartItem[]) ?? [];
       await Promise.all([
         sendPaymentReceivedEmail({
@@ -77,7 +92,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL(`/thank-you?order=${encodeURIComponent(order.order_number)}`, req.url), 303);
   }
 
-  await sb.from('orders').update({ status: 'payment_failed' }).eq('id', order.id);
+  // P0-4: idempotent failure transition.
+  await sb.from('orders').update({ status: 'payment_failed' })
+    .eq('id', order.id)
+    .eq('status', 'payment_pending');
   return NextResponse.redirect(new URL(`/checkout?error=payment_failed&order=${encodeURIComponent(order.order_number)}`, req.url), 303);
 }
 

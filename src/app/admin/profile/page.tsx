@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getStaffSession } from '@/lib/staff-auth';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { ProfilePage } from '@/components/admin/ProfilePage';
 
 export const metadata = { title: 'My Profile — Admin' };
@@ -10,7 +10,7 @@ export default async function Page() {
   if (!session) redirect('/admin');
   if (session.isOwner) redirect('/admin/dashboard'); // owner has no profile page
 
-  const { data } = await supabase
+  const { data } = await supabaseAdmin()
     .from('staff_members')
     .select('totp_enabled')
     .eq('id', session.id)

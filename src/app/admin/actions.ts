@@ -1,9 +1,10 @@
 'use server';
 
+import { createHash } from 'crypto';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import {
   hashPassword, verifyPassword, upgradeStaffHash,
   setStaffCookie, clearStaffCookie,
@@ -58,7 +59,7 @@ export async function loginStaff(
   const totpCode = (formData.get('totp') as string | null)?.trim() ?? '';
   if (!email || !password) return { error: 'Email and password are required' };
 
-  const { data } = await supabase
+  const { data } = await supabaseAdmin()
     .from('staff_members')
     .select('id, password_hash, password_salt, is_active, totp_enabled, totp_secret, backup_codes')
     .eq('email', email)
@@ -80,12 +81,19 @@ export async function loginStaff(
     let codeIsBackup = false;
     let backupCodes = (data.backup_codes as string[]) ?? [];
     if (!codeIsTotp) {
+      // Backup codes are stored as SHA-256(lowercased, whitespace-stripped)
+      // since the 2fa-actions enrollment switch. Compute the hash of the
+      // submitted code and look it up in the stored hash list. Old plaintext
+      // codes from before the switch will fail to match — staff will have to
+      // re-enroll once. Hash strings are 64-char lowercase hex so they can't
+      // collide with the old 8-char hex plaintext.
       const cleaned = totpCode.replace(/\s+/g, '').toLowerCase();
-      const idx = backupCodes.findIndex(c => c.toLowerCase() === cleaned);
+      const submittedHash = createHash('sha256').update(cleaned).digest('hex');
+      const idx = backupCodes.findIndex(c => c === submittedHash);
       if (idx >= 0) {
         codeIsBackup = true;
         backupCodes = backupCodes.filter((_, i) => i !== idx);
-        await supabase.from('staff_members').update({ backup_codes: backupCodes }).eq('id', data.id);
+        await supabaseAdmin().from('staff_members').update({ backup_codes: backupCodes }).eq('id', data.id);
       }
     }
     if (!codeIsTotp && !codeIsBackup) return { error: 'Invalid 2FA code' };

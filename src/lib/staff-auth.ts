@@ -1,6 +1,6 @@
 import { randomBytes, createHmac, scryptSync, timingSafeEqual, createHash } from 'crypto';
 import { cookies } from 'next/headers';
-import { supabase } from './supabase';
+import { supabaseAdmin } from './supabase';
 import type { StaffSession, Permission } from './permissions';
 
 const STAFF_COOKIE = 'staff_session';
@@ -149,7 +149,7 @@ export async function getStaffSession(): Promise<StaffSession | null> {
   const staffId = verifyToken(token);
   if (!staffId) return null;
 
-  const { data } = await supabase
+  const { data } = await supabaseAdmin()
     .from('staff_members')
     .select('id, email, name, permissions, is_active')
     .eq('id', staffId)
@@ -168,7 +168,7 @@ export async function getStaffSession(): Promise<StaffSession | null> {
 
 // ─── Helpers used by login flow to upgrade SHA-256 → scrypt on first login ──
 export async function upgradeStaffHash(staffId: string, newHash: string): Promise<void> {
-  await supabase
+  await supabaseAdmin()
     .from('staff_members')
     .update({ password_hash: newHash, password_salt: '' })
     .eq('id', staffId);

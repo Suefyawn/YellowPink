@@ -1,4 +1,7 @@
-export const dynamic = 'force-dynamic';
+// 5-min ISR — featured products / new arrivals / hero copy change at most
+// every few hours, and the global cache header in next.config.ts already
+// puts a CDN in front. Was `force-dynamic` before the 2026-05-24 audit.
+export const revalidate = 300;
 
 import { getProductsByTag, getProductsByCategoryAndTag, getSiteSettings } from '@/lib/supabase';
 import { HeroSection } from '@/sections/home/HeroSection';

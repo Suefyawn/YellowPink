@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
 
   const { data: order } = await sb
     .from('orders')
-    .select('id, email, first_name, total, items, order_number')
+    .select('id, email, first_name, total, items, order_number, status')
     .eq('order_number', verification.orderNumber)
     .single();
 
@@ -52,10 +52,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL('/checkout?error=order_missing', req.url), 303);
   }
 
-  if (verification.status === 'succeeded') {
-    await sb.from('orders').update({ status: 'pending' }).eq('id', order.id);
+  // P0-3: assert the gateway charged exactly what the order expects. Without
+  // this, a tampered cart that submitted a low total (caught by place_order
+  // since the 065 migration but worth defending in depth) or a replayed
+  // callback from a partially-paid order would mark the wrong order as paid.
+  // Compare in paisa to dodge float drift.
+  const orderPaisa = Math.round(Number(order.total) * 100);
+  const gatewayPaisa = Math.round(verification.amountPkr * 100);
+  if (orderPaisa !== gatewayPaisa) {
+    await sb.from('payments').update({
+      status: 'failed',
+      error_message: `amount mismatch: order=${orderPaisa}p, gateway=${gatewayPaisa}p`,
+    }).eq('gateway', 'jazzcash').eq('txn_ref', verification.txnRef);
+    return NextResponse.redirect(new URL(`/checkout?error=payment_failed&order=${encodeURIComponent(order.order_number)}`, req.url), 303);
+  }
 
-    if (order.email) {
+  if (verification.status === 'succeeded') {
+    // P0-4: idempotent state transition. A replayed callback (or one arriving
+    // after a refund/cancel) must not flip a non-payment_pending order back
+    // to pending. The WHERE clause is the lock.
+    await sb.from('orders').update({ status: 'pending' })
+      .eq('id', order.id)
+      .eq('status', 'payment_pending');
+
+    // If the order already moved past payment_pending (success replay), the
+    // UPDATE was a no-op — still redirect to thank-you so the user lands
+    // somewhere sensible. Only send confirmation emails on the FIRST
+    // transition (status was still payment_pending when we loaded it).
+    const firstTransition = order.status === 'payment_pending';
+
+    if (firstTransition && order.email) {
       const items = (order.items as CartItem[]) ?? [];
       await Promise.all([
         sendPaymentReceivedEmail({
@@ -81,7 +107,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL(`/thank-you?order=${encodeURIComponent(order.order_number)}`, req.url), 303);
   }
 
-  await sb.from('orders').update({ status: 'payment_failed' }).eq('id', order.id);
+  // P0-4: only flip to payment_failed if we were still waiting. Don't
+  // resurrect a fulfilled order from a late failure callback.
+  await sb.from('orders').update({ status: 'payment_failed' })
+    .eq('id', order.id)
+    .eq('status', 'payment_pending');
   return NextResponse.redirect(new URL(`/checkout?error=payment_failed&order=${encodeURIComponent(order.order_number)}`, req.url), 303);
 }
 

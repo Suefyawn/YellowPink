@@ -1,4 +1,7 @@
-export const dynamic = 'force-dynamic';
+// 5-min ISR. Search/filter params still bypass the cache because Next keys
+// the ISR slot on (path + searchParams). Was `force-dynamic` before the
+// 2026-05-24 audit.
+export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import { getProducts, isDemo } from '@/lib/supabase';
