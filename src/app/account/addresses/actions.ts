@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { addressSchema, parseForm, firstError } from '@/lib/validators';
 
@@ -88,36 +89,44 @@ export async function updateAddress(
   return { success: true };
 }
 
-export async function deleteAddress(formData: FormData): Promise<{ error?: string } | void> {
+// Return type kept as Promise<void> so these can be used directly with
+// <form action={…}>. Errors surface through redirect(`?error=…`) which
+// the page can read from searchParams.
+export async function deleteAddress(formData: FormData): Promise<void> {
   const id = formData.get('id');
   if (typeof id !== 'string') return;
   const sb = await authedClient();
   const { error } = await sb.from('addresses').delete().eq('id', id);
-  if (error) return { error: error.message };
+  if (error) {
+    redirect(`/account/addresses?error=${encodeURIComponent('Could not delete address: ' + error.message)}`);
+  }
   revalidatePath('/account/addresses');
 }
 
-// Flip the `is_default` flag on one address — clearing the previous default
-// first so the user always has exactly one. If the clear+set isn't atomic
-// in two updates, the second-half failure can leave zero defaults — so we
-// SET the new default FIRST, then clear all others except the new one.
-// Worst-case interruption now leaves two defaults briefly, never zero.
-export async function setDefaultAddress(formData: FormData): Promise<{ error?: string } | void> {
+// Flip the `is_default` flag on one address. SET the new default FIRST,
+// then clear every other default for this user. Worst-case interruption
+// now leaves two defaults briefly, never zero (the old reverse order
+// could leave the user with no default at all).
+export async function setDefaultAddress(formData: FormData): Promise<void> {
   const id = formData.get('id');
   if (typeof id !== 'string') return;
   const sb = await authedClient();
   const { data: user } = await sb.auth.getUser();
-  if (!user.user) return { error: 'Not signed in.' };
+  if (!user.user) {
+    redirect('/login?next=/account/addresses');
+  }
 
-  // Set the new default first.
   const { error: setErr } = await sb
     .from('addresses').update({ is_default: true } as never)
     .eq('id', id).eq('user_id', user.user.id);
-  if (setErr) return { error: setErr.message };
-  // Then clear every other default for this user.
+  if (setErr) {
+    redirect(`/account/addresses?error=${encodeURIComponent('Could not set default: ' + setErr.message)}`);
+  }
   const { error: clrErr } = await sb
     .from('addresses').update({ is_default: false } as never)
     .eq('user_id', user.user.id).eq('is_default', true).neq('id', id);
-  if (clrErr) return { error: clrErr.message };
+  if (clrErr) {
+    redirect(`/account/addresses?error=${encodeURIComponent('Default set, but couldn\'t clear previous: ' + clrErr.message)}`);
+  }
   revalidatePath('/account/addresses');
 }
