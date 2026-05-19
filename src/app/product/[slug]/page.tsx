@@ -28,7 +28,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     path: `/product/${product.slug}`,
     image: product.image_url ?? undefined,
     type: 'product',
-    keywords: [product.brand, stripBrandPrefix(product.brand, product.name), product.category, 'Pakistan', 'COD'],
+    keywords: [product.brand, stripBrandPrefix(product.brand, product.name), product.category, 'Pakistan', 'COD']
+      .filter((s): s is string => Boolean(s)),
   });
 }
 

@@ -59,8 +59,8 @@ export function ProductForm({ product }: { product?: Product }) {
           {/* Row 1 */}
           <div className="adm-form-brand" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
             <div style={fieldWrap}>
-              <label style={lbl}>Brand *</label>
-              <input name="brand" required defaultValue={product?.brand} style={inp} placeholder="e.g. CeraVe" />
+              <label style={lbl}>Brand</label>
+              <input name="brand" defaultValue={product?.brand ?? ''} style={inp} placeholder="e.g. CeraVe (leave blank for own-label products)" />
             </div>
             <div style={fieldWrap}>
               <label style={lbl}>Product Name *</label>

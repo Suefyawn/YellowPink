@@ -228,7 +228,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
       payload: {
         product_id:   product.id,
         product_name: product.name,
-        brand:        product.brand,
+        brand:        product.brand ?? undefined,
         category:     product.category,
         price:        product.price,
         currency:     'PKR',
@@ -331,7 +331,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
 
       <div className="container" style={{ borderTop: '1px solid var(--line)' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, padding: '40px 0' }} className="pdp-grid">
-          <Gallery images={galleryToShow} alt={`${product.brand} ${displayName}`} fallback={product.image_url} brandLabel={product.brand} />
+          <Gallery images={galleryToShow} alt={`${product.brand ?? ''} ${displayName}`.trim()} fallback={product.image_url} brandLabel={product.brand ?? undefined} />
 
           <div>
             <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>{product.brand}</Overline>

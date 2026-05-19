@@ -232,7 +232,7 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
       payload: {
         value: total, currency: 'PKR',
         items: cartItems.map(i => ({
-          product_id: i.id, product_name: i.name, brand: i.brand,
+          product_id: i.id, product_name: i.name, brand: i.brand ?? undefined,
           category: i.category, variant: i.variant_label ?? i.variant,
           price: i.price, qty: i.qty, currency: 'PKR',
         })),
@@ -304,7 +304,7 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
         province: formData.province || undefined,
         total,
         items: cartItems.map(i => ({
-          name: i.name, qty: i.qty, price: i.price, brand: i.brand, variant: i.variant,
+          name: i.name, qty: i.qty, price: i.price, brand: i.brand ?? undefined, variant: i.variant,
         })),
         pay_method: payMethod,
       });
@@ -314,7 +314,7 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
           transaction_id: orderNumber,
           value: total, currency: 'PKR',
           items: cartItems.map(i => ({
-            product_id: i.id, product_name: i.name, brand: i.brand,
+            product_id: i.id, product_name: i.name, brand: i.brand ?? undefined,
             category: i.category, variant: i.variant_label ?? i.variant,
             price: i.price, qty: i.qty, currency: 'PKR',
           })),

@@ -21,6 +21,7 @@ const NAV: NavItem[] = [
   { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
   { href: '/admin/analytics', label: 'Analytics', icon: '◐', permission: 'analytics' },
   { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products' },
+  { href: '/admin/inventory', label: 'Inventory', icon: '⧉', permission: 'products' },
   { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders' },
   { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'returns' },
   { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers' },

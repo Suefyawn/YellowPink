@@ -12,7 +12,7 @@
  * (case-insensitive, whitespace-tolerant). Returns the trimmed name —
  * if the name doesn't start with the brand, returns the name unchanged.
  */
-export function stripBrandPrefix(brand: string, name: string): string {
+export function stripBrandPrefix(brand: string | null | undefined, name: string): string {
   if (!brand || !name) return (name ?? '').trim();
   const trimmedBrand = brand.trim();
   const trimmedName = name.trim();
@@ -44,7 +44,7 @@ export function stripBrandPrefix(brand: string, name: string): string {
  * "Brand Name" composer that avoids duplication. Use anywhere we want a
  * combined display string (alt text, schema.org name, SERP title).
  */
-export function brandPlusName(brand: string, name: string): string {
+export function brandPlusName(brand: string | null | undefined, name: string): string {
   const safeName = stripBrandPrefix(brand, name);
   if (!brand) return safeName;
   if (!safeName) return brand;

@@ -36,7 +36,10 @@ export type ProductStatus = 'draft' | 'published' | 'archived';
 
 export interface Product {
   id: string;
-  brand: string;
+  /** Canonical brand name, e.g. "CeraVe" / "PIXI" / "NARS". NULL for own-label
+   *  Pakistani supplements that don't have a consumer-facing brand. Migration
+   *  077 dropped the NOT NULL constraint on the DB column. */
+  brand: string | null;
   name: string;
   variant?: string;
   price: number;
