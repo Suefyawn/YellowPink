@@ -6,6 +6,64 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Order-cancellation restock + per-product inventory history
+
+Closes the last documented gap in the inventory ledger: cancelled orders.
+
+**Migration 080.** Adds `'cancellation'` to the `inventory_reason`
+enum. Existing values (`import`, `order`, `return`, `restock`,
+`adjustment`, `damage`, `transfer`) didn't carry a clean meaning for
+an order that was placed-then-cancelled. Using `'return'` for it
+would have polluted the trail when a real return happens later;
+`'restock'` would have lost the link to the order_id.
+
+**`updateOrderStatus` cancellation restock.** When an order
+transitions from any non-cancelled status to `cancelled`, the items
+are pushed back into stock via `record_stock_change` (positive
+`qty_delta`, `reason='cancellation'`, `order_id` linked). Idempotent
+via the `before.status !== 'cancelled' && status === 'cancelled'`
+guard, so a "cancelled → cancelled" no-op submit doesn't double-credit.
+Mirrors `markReturnReceived` from the previous PR: restock first,
+status flip happens via the same row-update.
+
+**`/admin/products/[id]` → inventory history.** Mounted a new
+`ProductInventoryHistory` server component under the variants
+section. Pulls the latest 25 ledger rows for the product (any
+variant), renders a compact timeline with reason chips, balance
+column, actor, and a deep-link to the order for `order` /
+`cancellation` / `return` rows. "View all →" link routes to
+`/admin/inventory?product=<id>` for the unfiltered list.
+
+The inventory page itself gets a `cancellation` chip color (violet)
+and the new chip in the filter row.
+
+**Every stock movement now sourced from the ledger:**
+
+| Source | Reason | Notes |
+|---|---|---|
+| Migration 078 backfill | `import` | One row per product + per variant at install time |
+| `/admin/inventory` manual form | `restock` / `adjustment` / `damage` | Owner / staff actor |
+| `place_order` RPC | `order` | Linked to `order_id`, negative |
+| `markReturnReceived` admin action | `return` | Linked to `return_id` + `order_id`, positive |
+| `updateOrderStatus → 'cancelled'` | `cancellation` | Linked to `order_id`, positive |
+
+**Verification gate:**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+- `npm run build`     — succeeds; `/admin/products/[id]` still in
+  the manifest with the new component mounted
+
+**Lesson:** Migration 078's enum was a forward-looking design — and
+the gap it left (no `cancellation` value) showed up the moment we
+tried to use it for the natural symmetric write to `place_order`'s
+decrement. When you ship an enum that covers "current uses", also
+walk every other place the underlying event could fire and ask
+whether they fit cleanly — adding values later is free, but
+conflating two different events into one enum value is corrosive.
+
+---
+
 ## 2026-05-19 — TCS courier: pre-issued bearer token path
 
 TCS Envio emailed Tanya (`TANYAZAFAR@HOTMAIL.COM`) a long-lived JWT

@@ -247,12 +247,13 @@ export async function updateOrderStatus(
   const tracking_number = (formData.get('tracking_number') as string) || null;
   const courier = (formData.get('courier') as string) || null;
 
-  // Read current state so we can detect transitions and email the customer.
-  // Both reads and writes need the service role under the post-070 RLS.
+  // Read current state so we can detect transitions, email the customer,
+  // and (for cancellation) restock the items. Both reads and writes need
+  // the service role under the post-070 RLS.
   const admin = supabaseAdmin();
   const { data: before } = await admin
     .from('orders')
-    .select('status, email, first_name, order_number')
+    .select('status, email, first_name, order_number, items')
     .eq('id', id)
     .single();
 
@@ -261,6 +262,33 @@ export async function updateOrderStatus(
     .update({ status, tracking_number, courier })
     .eq('id', id);
   if (error) return { error: error.message };
+
+  // Cancellation restock: when an order moves from a non-cancelled state
+  // to cancelled, push the items back into stock via the inventory ledger.
+  // place_order debited the stock at order-creation time (migration 079);
+  // this is the symmetric credit. We use reason='cancellation' (migration
+  // 080) so the trail in /admin/inventory distinguishes it from a real
+  // customer return. Idempotency: only fires on the transition, not on a
+  // no-op "cancelled → cancelled" submit.
+  if (before && before.status !== 'cancelled' && status === 'cancelled') {
+    const session = await getStaffSessionForActions();
+    const items = (before.items ?? []) as Array<{ id: string; qty: number; variant_id?: string | null }>;
+    for (const it of items) {
+      if (!it?.id || !it.qty || it.qty <= 0) continue;
+      await admin.rpc('record_stock_change' as never, {
+        p_product_id:  it.id,
+        p_variant_id:  it.variant_id ?? null,
+        p_qty_delta:   it.qty,
+        p_reason:      'cancellation',
+        p_order_id:    id,
+        p_return_id:   null,
+        p_actor_kind:  session?.isOwner ? 'owner' : session ? 'staff' : 'system',
+        p_actor_email: session?.email ?? null,
+        p_note:        `Restock from order cancellation ${before.order_number ?? id.slice(0, 8)}`,
+      } as never);
+    }
+    revalidatePath('/admin/inventory');
+  }
 
   // Fire-and-forget transition emails. The status trigger logs the change to
   // order_events; here we only handle the customer-facing notification.
