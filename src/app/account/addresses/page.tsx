@@ -114,7 +114,7 @@ export default function AddressesPage() {
                         type="submit"
                         style={{
                           background: 'none', border: 'none', cursor: 'pointer',
-                          color: 'var(--brand-pink)', fontWeight: 600,
+                          color: 'var(--brand-pink-text)', fontWeight: 600,
                           fontSize: '0.8125rem', padding: 0,
                         }}
                       >

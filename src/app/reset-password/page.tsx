@@ -75,7 +75,7 @@ export default function ResetPasswordPage() {
           <p style={{ color: '#6b7280', fontSize: '0.9375rem' }}>Verifying reset link…</p>
           <p style={{ marginTop: 16, color: '#9ca3af', fontSize: '0.8125rem' }}>
             If nothing happens, your link may have expired.{' '}
-            <Link href="/forgot-password" style={{ color: 'var(--brand-pink)', fontWeight: 600 }}>Request a new one</Link>.
+            <Link href="/forgot-password" style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>Request a new one</Link>.
           </p>
         </div>
       </div>

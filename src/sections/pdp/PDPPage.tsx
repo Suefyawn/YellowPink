@@ -345,7 +345,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
               <span className="tabular-nums" style={{ fontSize: '1.5rem', fontWeight: 600 }}>PKR {displayPrice.toLocaleString()}</span>
               {displayOriginal && displayOriginal > displayPrice && (
-                <span className="tabular-nums" style={{ textDecoration: 'line-through', color: 'var(--brand-pink)', fontSize: '1rem' }}>
+                <span className="tabular-nums" style={{ textDecoration: 'line-through', color: 'var(--brand-pink-text)', fontSize: '1rem' }}>
                   PKR {displayOriginal.toLocaleString()}
                 </span>
               )}
@@ -524,9 +524,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             <Overline style={{ display: 'block', marginBottom: 32 }}>Pairs With</Overline>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
               {relatedProducts.map((p) => (
-                <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <ProductTile product={p} />
-                </Link>
+                <ProductTile key={p.id} product={p} />
               ))}
             </div>
           </div>

@@ -61,9 +61,7 @@ export function RecentlyViewed({ currentProductId }: { currentProductId: string 
         <Overline style={{ display: 'block', marginBottom: 24 }}>Recently Viewed</Overline>
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${DISPLAY}, 1fr)`, gap: 'var(--gutter)' }} className="product-grid">
           {otherProducts.map(p => (
-            <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <ProductTile product={p} />
-            </Link>
+            <ProductTile key={p.id} product={p} />
           ))}
         </div>
       </div>

@@ -387,7 +387,7 @@ export function CollectionPage({
               {activeFilterCount > 0 && (
                 <button onClick={clearFilters} style={{
                   background: 'none', border: 'none', cursor: 'pointer',
-                  fontSize: '0.75rem', color: 'var(--brand-pink)', fontWeight: 600,
+                  fontSize: '0.75rem', color: 'var(--brand-pink-text)', fontWeight: 600,
                   fontFamily: 'var(--font-ui)',
                 }}>
                   Clear all
@@ -587,9 +587,7 @@ export function CollectionPage({
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
             {paginated.map((p) => (
-              <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <ProductTile product={p} />
-              </Link>
+              <ProductTile key={p.id} product={p} />
             ))}
           </div>
           {filtered.length === 0 && (
@@ -608,7 +606,7 @@ export function CollectionPage({
                   borderRadius: '50%',
                   background: 'linear-gradient(135deg, #FDE7F0 0%, #FFF8E1 100%)',
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: '1.5rem', color: 'var(--brand-pink)',
+                  fontSize: '1.5rem', color: 'var(--brand-pink-text)',
                 }}
               >○</div>
               <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 8px' }}>

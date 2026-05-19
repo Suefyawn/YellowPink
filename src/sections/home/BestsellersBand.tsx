@@ -21,9 +21,7 @@ export function BestsellersBand({ products }: { products: Product[] }) {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid-3">
             {items.map((p) => (
-              <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <ProductTile product={p} />
-              </Link>
+              <ProductTile key={p.id} product={p} />
             ))}
           </div>
         </div>

@@ -179,7 +179,7 @@ export function RealResults() {
             style={{ fontSize: '2.5rem', marginBottom: 6, maxWidth: 720, letterSpacing: '-0.025em' }}
           >
             Real shoppers. Real results.<br />
-            <em style={{ color: 'var(--brand-pink)', fontStyle: 'italic' }}>Loved across Pakistan.</em>
+            <em style={{ color: 'var(--brand-pink-text)', fontStyle: 'italic' }}>Loved across Pakistan.</em>
           </h2>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 600, marginBottom: 36, fontSize: '1.0625rem' }}>
             Verified buyers from Karachi, Lahore, and Islamabad. No paid reviews, no influencer copy-paste.

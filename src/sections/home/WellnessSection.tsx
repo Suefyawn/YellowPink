@@ -65,9 +65,7 @@ export function WellnessSection({ products }: { products: Product[] }) {
               </div>
             </div>
             {wellnessProducts.map((p) => (
-              <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <ProductTile product={p} />
-              </Link>
+              <ProductTile key={p.id} product={p} />
             ))}
           </div>
 

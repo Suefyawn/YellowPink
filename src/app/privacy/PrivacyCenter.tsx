@@ -82,7 +82,7 @@ function Toggle({ label, description, checked, onChange, disabled }: {
       <input
         id={id} type="checkbox" checked={checked} disabled={disabled}
         onChange={e => onChange?.(e.target.checked)}
-        style={{ marginTop: 4, accentColor: 'var(--brand-pink)', width: 18, height: 18, cursor: disabled ? 'default' : 'pointer' }}
+        style={{ marginTop: 4, accentcolor: 'var(--brand-pink-text)', width: 18, height: 18, cursor: disabled ? 'default' : 'pointer' }}
       />
       <label htmlFor={id} style={{ flex: 1, cursor: disabled ? 'default' : 'pointer' }}>
         <div style={{ fontWeight: 600, fontSize: '0.875rem', color: 'var(--ink-900)' }}>{label}</div>

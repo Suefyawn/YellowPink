@@ -130,7 +130,7 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
             <div className="small-text" style={{ marginBottom: 8, color: 'var(--ink-700)' }}>
               {progress >= 1
                 ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>You qualify for free shipping!</span>
-                : <>PKR {(FREE_SHIPPING - total).toLocaleString()} away from <span style={{ color: 'var(--brand-pink)', fontWeight: 600 }}>FREE</span> shipping</>
+                : <>PKR {(FREE_SHIPPING - total).toLocaleString()} away from <span style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>FREE</span> shipping</>
               }
             </div>
             <div style={{ height: 4, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', maxWidth: 400 }}>

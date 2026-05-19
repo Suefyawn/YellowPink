@@ -93,7 +93,7 @@ export default function LoginPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 5 }}>
               <label htmlFor="login-password" style={{ ...lbl, marginBottom: 0 }}>Password</label>
               {mode === 'login' && (
-                <Link href="/forgot-password" style={{ fontSize: '0.75rem', color: 'var(--brand-pink)', textDecoration: 'none' }}>
+                <Link href="/forgot-password" style={{ fontSize: '0.75rem', color: 'var(--brand-pink-text)', textDecoration: 'none' }}>
                   Forgot password?
                 </Link>
               )}
@@ -141,13 +141,13 @@ export default function LoginPage() {
         <div style={{ marginTop: 24, textAlign: 'center', fontSize: '0.875rem', color: '#6b7280' }}>
           {mode === 'login' ? (
             <>Don&apos;t have an account?{' '}
-              <button onClick={() => { setMode('signup'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: 'var(--brand-pink)', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}>
+              <button onClick={() => { setMode('signup'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: 'var(--brand-pink-text)', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}>
                 Sign up
               </button>
             </>
           ) : (
             <>Already have an account?{' '}
-              <button onClick={() => { setMode('login'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: 'var(--brand-pink)', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}>
+              <button onClick={() => { setMode('login'); setError(''); setMessage(''); }} style={{ background: 'none', border: 'none', color: 'var(--brand-pink-text)', fontWeight: 600, cursor: 'pointer', fontSize: '0.875rem' }}>
                 Sign in
               </button>
             </>

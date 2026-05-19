@@ -55,7 +55,7 @@ export default function ForgotPasswordPage() {
             <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.6 }}>
               We&apos;ve sent a password reset link to <strong>{email}</strong>. It may take a minute to arrive.
             </p>
-            <Link href="/login" style={{ color: 'var(--brand-pink)', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none' }}>
+            <Link href="/login" style={{ color: 'var(--brand-pink-text)', fontWeight: 600, fontSize: '0.875rem', textDecoration: 'none' }}>
               ← Back to sign in
             </Link>
           </div>

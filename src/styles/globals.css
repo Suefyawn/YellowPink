@@ -15,6 +15,14 @@
   --paper2: #F2EDE2;
   --brand-yellow: #F7C948;
   --brand-pink: #E8487F;
+  /* WCAG-safe variant of --brand-pink for use as TEXT on light surfaces.
+   * --brand-pink #E8487F sits at 3.42:1 on --paper / 3.39:1 on white — fails
+   * 1.4.3 for normal body text. This darker tone clears 4.5:1 on both
+   * --paper and white while still reading as the same brand colour at a
+   * glance. Use --brand-pink for fills / borders / decoration; use
+   * --brand-pink-text for any text or icon-button label that lives on a
+   * light background. */
+  --brand-pink-text: #C5286A;
   --line: rgba(26,26,26,0.10);
   --success: #2D6A4F;
   --error: #9B2C2C;

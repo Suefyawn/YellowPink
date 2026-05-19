@@ -14,7 +14,7 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
   return (
     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '64px 24px' }}>
       <div style={{ textAlign: 'center', maxWidth: 480 }}>
-        <div style={{ fontFamily: 'var(--font-display)', fontSize: '5rem', fontWeight: 500, color: 'var(--brand-pink)', lineHeight: 1, marginBottom: 16 }}>
+        <div style={{ fontFamily: 'var(--font-display)', fontSize: '5rem', fontWeight: 500, color: 'var(--brand-pink-text)', lineHeight: 1, marginBottom: 16 }}>
           Oops
         </div>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: 'var(--ink-900)', margin: '0 0 12px' }}>

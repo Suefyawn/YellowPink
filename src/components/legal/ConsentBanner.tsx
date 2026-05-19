@@ -121,7 +121,7 @@ function Row({ label, description, checked, onChange, disabled }: {
       <input
         id={id} type="checkbox" checked={checked} disabled={disabled}
         onChange={e => onChange?.(e.target.checked)}
-        style={{ marginTop: 3, accentColor: 'var(--brand-pink)' }}
+        style={{ marginTop: 3, accentcolor: 'var(--brand-pink-text)' }}
       />
       <label htmlFor={id} style={{ flex: 1, cursor: disabled ? 'default' : 'pointer' }}>
         <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: 'var(--ink-900)' }}>{label}</div>

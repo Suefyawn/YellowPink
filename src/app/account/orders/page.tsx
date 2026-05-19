@@ -147,7 +147,7 @@ export default function AccountOrdersPage() {
                       </table>
                       <div style={{ borderTop: '1px solid var(--line)', paddingTop: 10, marginTop: 8, display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '0.9375rem' }}>
                         <span>Total</span>
-                        <span style={{ color: 'var(--brand-pink)' }}>{fmt(o.total)}</span>
+                        <span style={{ color: 'var(--brand-pink-text)' }}>{fmt(o.total)}</span>
                       </div>
 
                       {status === 'delivered' && o.id && (

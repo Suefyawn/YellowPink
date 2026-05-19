@@ -129,7 +129,7 @@ export default function RewardsPage() {
             {EARN_RULES.map(r => (
               <div key={r.reason} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
                 <span style={{ fontSize: '0.875rem', color: 'var(--ink-700)' }}>{r.description}</span>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--brand-pink)', whiteSpace: 'nowrap' }}>{r.label}</span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--brand-pink-text)', whiteSpace: 'nowrap' }}>{r.label}</span>
               </div>
             ))}
           </div>

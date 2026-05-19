@@ -224,7 +224,7 @@ export default function TrackPage() {
 
         <div style={{ marginTop: 40, textAlign: 'center', fontSize: '0.875rem', color: 'var(--ink-500)' }}>
           Have an account?{' '}
-          <Link href="/account/orders" style={{ color: 'var(--brand-pink)', fontWeight: 600, textDecoration: 'none' }}>
+          <Link href="/account/orders" style={{ color: 'var(--brand-pink-text)', fontWeight: 600, textDecoration: 'none' }}>
             View all your orders →
           </Link>
         </div>

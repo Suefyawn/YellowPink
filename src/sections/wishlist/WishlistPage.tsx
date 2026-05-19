@@ -101,7 +101,7 @@ export function WishlistPage() {
               borderRadius: '50%',
               background: 'linear-gradient(135deg, #FDE7F0 0%, #FFF8E1 100%)',
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '2.25rem', color: 'var(--brand-pink)',
+              fontSize: '2.25rem', color: 'var(--brand-pink-text)',
             }}
           >♡</div>
           <h1 className="display-l" style={{ fontSize: '2rem', margin: '0 0 12px' }}>
@@ -192,9 +192,7 @@ export function WishlistPage() {
             className="product-grid"
           >
             {products.map(p => (
-              <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <ProductTile product={p} />
-              </Link>
+              <ProductTile key={p.id} product={p} />
             ))}
           </div>
         </div>

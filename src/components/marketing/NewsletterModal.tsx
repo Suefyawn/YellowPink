@@ -137,7 +137,7 @@ export function NewsletterModal() {
           }}
         >×</button>
 
-        <div style={{ marginBottom: 16, fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--brand-pink)' }}>
+        <div style={{ marginBottom: 16, fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', color: 'var(--brand-pink-text)' }}>
           Inside Yellow Pink
         </div>
         <h2

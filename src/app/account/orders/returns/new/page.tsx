@@ -49,7 +49,7 @@ function ReturnForm() {
       <div style={{ padding: 48, textAlign: 'center', maxWidth: 520, margin: '0 auto' }}>
         <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500 }}>Not eligible</h1>
         <p style={{ color: 'var(--ink-700)', marginBottom: 16 }}>This order isn't delivered yet, so we can't accept a return for it.</p>
-        <Link href="/account/orders" style={{ color: 'var(--brand-pink)' }}>Back to orders</Link>
+        <Link href="/account/orders" style={{ color: 'var(--brand-pink-text)' }}>Back to orders</Link>
       </div>
     );
   }

@@ -89,7 +89,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
               margin: '0 auto',
             }}
           >
-            <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--brand-pink)' }}>
+            <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--brand-pink-text)' }}>
               Stay in the loop
             </Overline>
             <p className="small-text" style={{ marginBottom: 12, color: 'var(--ink-700)' }}>

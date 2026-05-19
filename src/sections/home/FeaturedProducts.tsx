@@ -13,9 +13,7 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
           {products.slice(0, 4).map((p) => (
-            <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-              <ProductTile product={p} />
-            </Link>
+            <ProductTile key={p.id} product={p} />
           ))}
         </div>
       </div>

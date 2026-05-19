@@ -95,7 +95,7 @@ export function MiniCart() {
                   <circle cx="18.5" cy="18.5" r="2.5" />
                 </svg>
                 <span>
-                  Spend <span className="tabular-nums" style={{ fontWeight: 600, color: 'var(--ink-900)' }}>PKR {(FREE_SHIPPING - total).toLocaleString()}</span> more for <span style={{ fontWeight: 600, color: 'var(--brand-pink)' }}>free shipping</span>
+                  Spend <span className="tabular-nums" style={{ fontWeight: 600, color: 'var(--ink-900)' }}>PKR {(FREE_SHIPPING - total).toLocaleString()}</span> more for <span style={{ fontWeight: 600, color: 'var(--brand-pink-text)' }}>free shipping</span>
                 </span>
               </>
             )}
@@ -150,7 +150,7 @@ export function MiniCart() {
           ))}
           {cartItems.length > 0 && (
             <div style={{ marginTop: 16, padding: 12, background: 'var(--paper2)', borderRadius: 'var(--radius-card)', border: '1px solid var(--line)' }}>
-              <Overline style={{ color: 'var(--brand-pink)', display: 'block', marginBottom: 4, fontSize: '0.625rem' }}>Add a Free Sample</Overline>
+              <Overline style={{ color: 'var(--brand-pink-text)', display: 'block', marginBottom: 4, fontSize: '0.625rem' }}>Add a Free Sample</Overline>
               <div className="small-text">Get a complimentary skincare sample with your order.</div>
             </div>
           )}

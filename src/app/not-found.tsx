@@ -103,9 +103,7 @@ export default async function NotFound() {
               style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }}
             >
               {products.map(p => (
-                <Link key={p.id} href={`/product/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <ProductTile product={p} />
-                </Link>
+                <ProductTile key={p.id} product={p} />
               ))}
             </div>
           </div>
