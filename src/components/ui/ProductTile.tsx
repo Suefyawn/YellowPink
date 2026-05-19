@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Overline } from './Overline';
 import { ProductImage } from './ProductImage';
+import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { brandPlusName } from '@/lib/product-display';
 import type { Product } from '@/types';
@@ -21,9 +23,42 @@ interface ProductTileProps {
 // wishlist button (Enter → toggle). No nested-focusable HTML.
 export function ProductTile({ product }: ProductTileProps) {
   const [hovered, setHovered] = useState(false);
+  const [added, setAdded] = useState(false);
+  const router = useRouter();
+  const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlist();
-  const { id, slug, brand, name, variant, price, original_price } = product;
+  const { id, slug, brand, name, variant, price, original_price, kind, stock } = product;
   const wishlisted = isWishlisted(id);
+
+  // Quick-add UX matrix:
+  //  • Variable products  → "Choose options" routes to PDP (variant pick needed).
+  //  • Out of stock       → "Sold out" disabled badge, no action.
+  //  • Simple + in stock  → "+ Add to cart" calls addToCart(product, qty: 1).
+  //
+  // The button overlays the bottom of the image; opacity-0 on desktop until
+  // hover (or button focus), always visible on mobile. addCounter on the
+  // existing AddToCartToast surfaces the post-add confirmation.
+  const isVariable = kind === 'variable';
+  const soldOut = typeof stock === 'number' && stock <= 0;
+  const handleQuickAdd = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (soldOut) return;
+    if (isVariable) {
+      router.push(`/product/${slug}`);
+      return;
+    }
+    addToCart({ ...product, qty: 1 });
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1400);
+  };
+  const quickAddLabel = soldOut
+    ? 'Sold out'
+    : added
+      ? 'Added ✓'
+      : isVariable
+        ? 'Choose options'
+        : '+ Add to cart';
 
   return (
     <div
@@ -65,6 +100,43 @@ export function ProductTile({ product }: ProductTileProps) {
               fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
             }}>Sale</span>
           )}
+          {/* Quick-add overlay — opacity-0 on desktop until tile hover (or
+              button focus), always visible on mobile via the `quick-add-btn`
+              CSS class. Sits inside the image container so it absolutes
+              against the image bounds, not the whole card. */}
+          <button
+            type="button"
+            className="quick-add-btn"
+            onClick={handleQuickAdd}
+            disabled={soldOut}
+            aria-label={
+              soldOut
+                ? `${name} is sold out`
+                : isVariable
+                  ? `Choose options for ${name}`
+                  : `Add ${name} to cart`
+            }
+            style={{
+              position: 'absolute',
+              left: 8, right: 8, bottom: 8,
+              padding: '9px 12px',
+              background: soldOut
+                ? 'rgba(243, 244, 246, 0.95)'
+                : added
+                  ? 'var(--success, #16a34a)'
+                  : 'var(--ink-900)',
+              color: soldOut ? 'var(--ink-500, #6b7280)' : '#fff',
+              border: 'none', borderRadius: 'var(--radius-pill)',
+              fontSize: '0.8125rem', fontWeight: 600, letterSpacing: '0.01em',
+              cursor: soldOut ? 'not-allowed' : 'pointer',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+              opacity: hovered || added ? 1 : 0,
+              transform: hovered || added ? 'translateY(0)' : 'translateY(6px)',
+              transition: 'opacity 180ms ease-out, transform 180ms ease-out, background 200ms',
+            }}
+          >
+            {quickAddLabel}
+          </button>
         </div>
         {/* Brand line — slightly larger (12px) and tighter than the default
             overline (11px) so it actually identifies the brand at a glance
