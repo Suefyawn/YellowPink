@@ -6,6 +6,91 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Supabase performance round 2: RLS auth.uid() initplan + FK covering indexes
+
+**Goal:** finish what migration 073 started — the security ERRORs were
+gone, but the Database Linter still surfaced **21 `auth_rls_initplan`**
+findings (per-row `auth.uid()` evaluation), **9 `unindexed_foreign_keys`**,
+and **3 `multiple_permissive_policies`** (legacy `users * own profile`
+duplicates of `profiles_*_own`). All three are linear-cost as the
+tables grow.
+
+**Migration shipped — `20260525_074_rls_initplan_perf.sql` (applied):**
+
+- Re-wrote every RLS policy that referenced `auth.uid()` to
+  `(select auth.uid())`. Postgres lifts the subselect to an InitPlan
+  and evaluates the JWT lookup once per query instead of once per
+  scanned row. 21 policies rewritten across `addresses`,
+  `coupon_redemptions`, `loyalty_ledger`, `loyalty_redemptions`,
+  `order_events`, `orders`, `payments`, `product_reviews`, `profiles`,
+  `return_requests`, `shipments`, `shipment_events`.
+- Dropped the 3 `users_*_own_profile` policies — exact duplicates of
+  `profiles_*_own` (same `auth.uid() = id` predicate). The linter was
+  rolling them into the policy union per query, doubling planning
+  cost.
+
+**Migration shipped — `20260525_075_fk_covering_indexes.sql` (applied):**
+
+- Added BTREE indexes on 10 unindexed foreign-key columns:
+  `abandoned_carts(user_id)`, `coupon_redemptions(order_id)`,
+  `coupon_redemptions(user_id)`, `gift_card_transactions(order_id)`,
+  `gift_cards(issued_by_user)`, `loyalty_ledger(order_id)`,
+  `products(tax_class_id)`, `province_zones(zone_id)`,
+  `shipping_rates(zone_id)`, `stock_subscriptions(variant_id)`.
+- All ten parent tables are small today (≤ a few hundred rows), so
+  the write-amplification cost is negligible. Without the indexes,
+  any JOIN or `ON DELETE CASCADE` against the parent forces a full
+  child-table scan — that's the cost that grows with traffic.
+
+**Advisor delta (`get_advisors` before/after both migrations):**
+
+| Check | Before | After |
+|---|---|---|
+| `auth_rls_initplan` (WARN) | 21 | **0** |
+| `unindexed_foreign_keys` (INFO) | 9 | **0** |
+| `multiple_permissive_policies` (WARN) | 3 | **0** |
+| `security` ERROR-level | 0 | 0 (closed in 073) |
+
+**Remaining advisor findings (intentional, documented):**
+
+- 41 + 41 `anon/authenticated_security_definer_function_executable`
+  WARNs — the storefront RPCs (`place_order`, `lookup_order`,
+  `lookup_coupon`, `redeem_gift_card`, `redeem_loyalty_points`,
+  `validate_*`) need to be EXECUTE-able by anon/authenticated; they
+  enforce their own checks inside the function body. This is the
+  whole point of `SECURITY DEFINER` — bypass RLS once, do the
+  validation in SQL.
+- 1 `rls_policy_always_true` — the newsletter-signup anon INSERT,
+  protected by server-side rate limiting + Cloudflare Turnstile.
+- 1 `auth_leaked_password_protection` — Supabase Auth dashboard
+  toggle for the Have-I-Been-Pwned check; flip it in the
+  dashboard when convenient.
+- 1 `public_bucket_allows_listing` on the product-images bucket —
+  every image URL is referenced by a row in `product_images`; the
+  listing privilege is needed by the CDN edge worker.
+- 3 `extension_in_public` (pg_trgm, citext, uuid-ossp) — they were
+  installed into `public` by Supabase's defaults; moving them to a
+  separate schema would require rewriting every dependent function
+  and CREATE INDEX. Acceptable as-is.
+- 10 INFO `rls_enabled_no_policy` — service-role-only tables
+  (`audit_log`, `email_log`, `staff_audit`, etc.). RLS is enabled
+  to lock them down; no policies = no non-service-role read paths.
+- 48 INFO `unused_index` — most are stat-reset-clean; the ten new
+  FK covering indexes from 075 are unused **right now** by design
+  (no traffic yet), but the cost of a missing FK index materialises
+  the moment a parent row is deleted with cascades. Keep.
+
+**Lesson:** Postgres's RLS planner inlines `auth.uid()` per row
+unless you wrap it in a subselect. On a 50-row table that's noise;
+on a 50 000-row `orders` table it's a 50 000-call function-call hit
+on every page load. The fix is mechanical — `(select auth.uid())`
+everywhere — but the lint check existed and we shipped 73 migrations
+before noticing. Re-run `get_advisors` after **every** migration that
+touches RLS, not only after migrations that flagged something
+yesterday.
+
+---
+
 ## 2026-05-19 — Production-ready polish pass: Supabase advisor cleanup + Next 16 lint compliance
 
 **Goal:** ship the project past the last remaining Database Linter
