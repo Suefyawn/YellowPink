@@ -32,11 +32,35 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   if (!post) notFound();
 
   const relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 2);
-  const relatedProducts: Product[] = allProducts.filter(p => {
-    if (post.category === 'Wellness') return p.category === 'Wellness';
-    if (post.category === 'Skincare') return p.category === 'Skincare';
-    return p.category === 'Makeup';
+
+  // Related-products matching by taxon. Blog categories ("Bone Health",
+  // "Fertility Support", "Men Health", etc.) don't map 1:1 to product
+  // categories ("Bone Health" is shared; "Skincare" matches; everything
+  // else needs a heuristic). Wellness-ish blog category → wellness
+  // taxon products; everything else → category-string contains. Always
+  // fall back to a random sample from the catalog so the rail never
+  // goes empty on a niche post.
+  const { categoriesForTaxon } = await import('@/lib/category-taxonomy');
+  const wellnessCats = categoriesForTaxon('wellness') ?? [];
+  const beautyCats = [
+    ...(categoriesForTaxon('makeup') ?? []),
+    ...(categoriesForTaxon('skincare') ?? []),
+  ];
+  const blogCat = (post.category ?? '').toLowerCase();
+  const isWellness = /health|wellness|fertility|sleep|immun|bone|nutrition|men |women |female/.test(blogCat);
+  const isBeauty = /skin|makeup|beauty|lip|cheek|highlight|brush|foundation/.test(blogCat);
+  let relatedProducts: Product[] = allProducts.filter(p => {
+    if (isWellness) return wellnessCats.includes(p.category);
+    if (isBeauty)   return beautyCats.includes(p.category);
+    return false;
   }).slice(0, 3);
+  if (relatedProducts.length === 0) {
+    // Fallback: a few featured/bestseller products so the section
+    // always has something on niche / Uncategorized posts.
+    relatedProducts = allProducts
+      .filter(p => p.is_featured || p.is_bestseller)
+      .slice(0, 3);
+  }
 
   return (
     <main className="fade-in">

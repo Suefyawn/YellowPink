@@ -1,17 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import type { BlogPost } from '@/types';
 
-const FILTERS = ['All', 'Skincare', 'Makeup', 'Wellness'];
+const POSTS_PER_PAGE = 12;
 
 export function BlogPage({ posts }: { posts: BlogPost[] }) {
+  // Filters are derived from the actual post categories, sorted by
+  // frequency. The old hardcoded ['Skincare','Makeup','Wellness'] list
+  // didn't match any real category (real values: "Bone Health",
+  // "Fertility Support", "Men Health", etc.) so every non-"All" tab
+  // showed zero posts.
+  const filters = useMemo<string[]>(() => {
+    const counts = new Map<string, number>();
+    for (const p of posts) {
+      if (!p.category) continue;
+      counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
+    }
+    // Keep only categories with 2+ posts so the filter rail doesn't
+    // explode into a long single-post-per-category list.
+    return ['All', ...[...counts.entries()]
+      .filter(([, n]) => n >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat]) => cat)];
+  }, [posts]);
+
   const [activeFilter, setActiveFilter] = useState('All');
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+
   const featured = posts.find(p => p.featured);
-  const filtered = activeFilter === 'All' ? posts : posts.filter(p => p.category === activeFilter);
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return posts.filter(p => {
+      if (activeFilter !== 'All' && p.category !== activeFilter) return false;
+      if (!q) return true;
+      const hay = `${p.title} ${p.excerpt ?? ''} ${p.category ?? ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [posts, activeFilter, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / POSTS_PER_PAGE));
+  const safePage = Math.min(Math.max(page, 1), totalPages);
+  const paginated = filtered.slice((safePage - 1) * POSTS_PER_PAGE, safePage * POSTS_PER_PAGE);
 
   return (
     <div>
@@ -54,26 +88,54 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
 
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
-          <div style={{ display: 'flex', gap: 12, marginBottom: 40 }}>
-            {FILTERS.map(f => (
-              <button key={f} onClick={() => setActiveFilter(f)} style={{
-                padding: '8px 16px', borderRadius: 'var(--radius-pill)',
-                border: '1px solid ' + (activeFilter === f ? 'var(--ink-900)' : 'var(--line)'),
-                background: activeFilter === f ? 'var(--ink-900)' : 'transparent',
-                color: activeFilter === f ? 'var(--paper)' : 'var(--ink-700)',
-                fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 500,
-                cursor: 'pointer', transition: 'all 150ms ease-out',
-              }}>{f}</button>
-            ))}
+          {/* Search + filter rail */}
+          <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+            <input
+              type="search"
+              value={query}
+              onChange={e => { setQuery(e.target.value); setPage(1); }}
+              placeholder="Search the journal — try “PCOS”, “retinol”…"
+              aria-label="Search blog posts"
+              style={{
+                flex: '1 1 280px', maxWidth: 420, minWidth: 220,
+                padding: '10px 14px', border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.875rem', fontFamily: 'var(--font-ui)', background: 'var(--paper2, #faf6ee)',
+                outline: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              {filters.map(f => (
+                <button key={f} onClick={() => { setActiveFilter(f); setPage(1); }} className="blog-filter-chip" style={{
+                  padding: '8px 14px', borderRadius: 'var(--radius-pill)',
+                  border: '1px solid ' + (activeFilter === f ? 'var(--ink-900)' : 'var(--line)'),
+                  background: activeFilter === f ? 'var(--ink-900)' : 'transparent',
+                  color: activeFilter === f ? 'var(--paper)' : 'var(--ink-700)',
+                  fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 500,
+                  cursor: 'pointer', transition: 'all 150ms ease-out',
+                }}>{f}</button>
+              ))}
+            </div>
           </div>
+
+          {paginated.length === 0 ? (
+            <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--ink-500)' }}>
+              <p className="body-text" style={{ marginBottom: 6 }}>No posts match that filter.</p>
+              <button
+                onClick={() => { setActiveFilter('All'); setQuery(''); }}
+                style={{ background: 'none', border: 'none', color: 'var(--brand-pink-text)', cursor: 'pointer', fontWeight: 600 }}
+              >
+                Clear search
+              </button>
+            </div>
+          ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="blog-grid">
-            {filtered.map((post) => (
-              <Link key={post.id} href={`/blog/${post.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+            {paginated.map((post) => (
+              <Link key={post.id} href={`/blog/${post.slug}`} className="blog-tile" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <article style={{ cursor: 'pointer' }}>
-                  <div style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden', marginBottom: 16, transition: 'transform 200ms ease-out' }}
-                    onMouseEnter={e => (e.currentTarget.style.transform = 'translateY(-2px)')}
-                    onMouseLeave={e => (e.currentTarget.style.transform = 'translateY(0)')}
-                  >
+                  {/* Hover lift handled in CSS (.blog-tile:hover .blog-tile-img) instead
+                      of JS onMouseEnter — the old version was a React Compiler
+                      anti-pattern (mutating DOM in event handlers). */}
+                  <div className="blog-tile-img" style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden', marginBottom: 16, transition: 'transform 200ms ease-out' }}>
                     <ProductImage src={post.image_url} alt={post.title} sizes="(max-width: 700px) 100vw, 33vw" />
                   </div>
                   <Overline style={{ color: 'var(--ink-500)', display: 'block', marginBottom: 6 }}>{post.category}</Overline>
@@ -88,8 +150,55 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
               </Link>
             ))}
           </div>
+          )}
+
+          {totalPages > 1 && (
+            <nav
+              aria-label="Blog pagination"
+              style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 32 }}
+            >
+              <button
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={safePage <= 1}
+                aria-label="Previous page"
+                style={pageBtnStyle(false)}
+              >
+                ←
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  aria-current={p === safePage ? 'page' : undefined}
+                  aria-label={`Page ${p}`}
+                  style={pageBtnStyle(p === safePage)}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={safePage >= totalPages}
+                aria-label="Next page"
+                style={pageBtnStyle(false)}
+              >
+                →
+              </button>
+            </nav>
+          )}
         </div>
       </section>
     </div>
   );
+}
+
+function pageBtnStyle(active: boolean): React.CSSProperties {
+  return {
+    minWidth: 36, height: 36, padding: '0 10px',
+    border: '1px solid ' + (active ? 'var(--ink-900)' : 'var(--line)'),
+    background: active ? 'var(--ink-900)' : 'transparent',
+    color: active ? 'var(--paper)' : 'var(--ink-700)',
+    borderRadius: 8, fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 600,
+    cursor: 'pointer',
+  };
 }

@@ -373,6 +373,14 @@ a.underline,
   }
 }
 
+/* Blog tile hover lift — replaces JS onMouseEnter/Leave from BlogPage.
+   Compiler-clean (no DOM mutation in event handlers) and stays smooth
+   on touch devices via the @media (hover) gate. */
+.blog-tile .blog-tile-img { transition: transform 200ms ease-out, box-shadow 200ms ease-out; }
+@media (hover: hover) {
+  .blog-tile:hover .blog-tile-img { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(26, 26, 26, 0.08); }
+}
+
 @media (max-width: 600px) {
   .product-grid, .cat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .blog-grid { grid-template-columns: 1fr !important; }
