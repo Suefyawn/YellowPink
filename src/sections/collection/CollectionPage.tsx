@@ -656,16 +656,17 @@ export function CollectionPage({
             </div>
           )}
           {totalPages > 1 && (
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 48 }}>
+            <nav aria-label="Product pages" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 48 }}>
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
+                aria-label="Previous page"
                 style={{
                   padding: '8px 14px', background: 'none', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
                   fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', cursor: page === 1 ? 'default' : 'pointer',
                   color: page === 1 ? 'var(--ink-400)' : 'var(--ink-900)', transition: 'all 150ms',
                 }}
-              >←</button>
+              ><span aria-hidden="true">←</span></button>
               {(() => {
                 const pages: (number | '…')[] = [];
                 if (totalPages <= 7) {
@@ -684,6 +685,8 @@ export function CollectionPage({
                     <button
                       key={p}
                       onClick={() => setPage(p as number)}
+                      aria-label={`Page ${p}`}
+                      aria-current={page === p ? 'page' : undefined}
                       style={{
                         padding: '8px 12px', border: '1px solid', borderRadius: 'var(--radius-card)',
                         borderColor: page === p ? 'var(--ink-900)' : 'var(--line)',
@@ -698,13 +701,14 @@ export function CollectionPage({
               <button
                 onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
+                aria-label="Next page"
                 style={{
                   padding: '8px 14px', background: 'none', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
                   fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', cursor: page === totalPages ? 'default' : 'pointer',
                   color: page === totalPages ? 'var(--ink-400)' : 'var(--ink-900)', transition: 'all 150ms',
                 }}
-              >→</button>
-            </div>
+              ><span aria-hidden="true">→</span></button>
+            </nav>
           )}
             </div> {/* close product grid column */}
         </div>

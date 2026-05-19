@@ -25,7 +25,7 @@
 // when degraded so monitoring tools can poll the body for nuance instead of
 // flipping at the status code level.
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isDemo } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
@@ -57,7 +57,26 @@ interface TableCheck {
   error?: string;
 }
 
-export async function GET() {
+// P2 audit fix: the endpoint enumerates env-var presence + row counts on
+// every table including staff_members and audit_log — useful intelligence
+// for an attacker mapping the deployment. Gate behind a shared secret
+// passed as `?key=` or `Authorization: Bearer …`. The legacy unauth path
+// is still allowed in non-production so local debugging stays fast.
+function authorize(req: NextRequest): boolean {
+  if (process.env.VERCEL_ENV !== 'production' && process.env.NODE_ENV !== 'production') {
+    return true;
+  }
+  const expected = process.env.HEALTH_CHECK_SECRET ?? process.env.CRON_SECRET;
+  if (!expected) return false;
+  const fromHeader = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  const fromQuery = new URL(req.url).searchParams.get('key');
+  return fromHeader === expected || fromQuery === expected;
+}
+
+export async function GET(req: NextRequest) {
+  if (!authorize(req)) {
+    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  }
   const checks: Record<string, unknown> = {
     supabase_url: Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
     supabase_anon_key: Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
