@@ -88,6 +88,13 @@ body {
   textarea {
     font-size: 16px !important;
   }
+  /* Touch devices have no `hover` state — keep the quick-add button on the
+   * shop tile always visible instead of waiting for an event that never
+   * fires. The opacity-0 inline style on desktop is overridden here. */
+  .quick-add-btn {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
 }
 
 /* Modern reset: links never underline by default; bring it back via .underline
