@@ -6,6 +6,89 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — WhatsApp deep-link integration (no Cloud API, no card)
+
+The merchant asked for WhatsApp integration but doesn't want to put a
+card on file with Meta for the Cloud API. Shipped the maximum-value
+zero-cost path instead: `wa.me` deep links everywhere a customer or
+admin might need to start a WhatsApp conversation, plus a help doc
+showing the merchant how to configure the WhatsApp Business app on
+their phone to handle the rest (auto-replies, quick replies, catalog).
+
+**New helpers (`src/lib/whatsapp.ts`):**
+
+- `whatsappUrl(message?)` — builds a `wa.me` URL to the merchant
+  number, optionally pre-typed. Returns `null` if the env var
+  isn't set so callers can short-circuit the render.
+- `whatsappUrlForCustomer(phone, message?)` — same, but for admin
+  → customer outbound. Normalises Pakistani phones (drops spaces,
+  prepends `92` if the number starts with `0`).
+- `WA_TEMPLATES` — pre-typed message catalogue:
+  `generic`, `product`, `cart`, `orderTrack`, `orderQuestion`.
+- `hasWhatsApp()` / `merchantNumber()` — tiny utility helpers for
+  the help doc + future renderers.
+
+**New shared button (`src/components/ui/WhatsAppButton.tsx`):**
+
+Server component. Renders `null` when unset. Three sizes:
+`full` (chunky CTA), `pill` (inline), `icon` (header).
+
+**Placements (six surfaces):**
+
+1. **Header** — green WhatsApp icon button between search and
+   account icons. Inlined because Header is a client component;
+   uses the same helper.
+2. **PDP** — "Ask about this on WhatsApp" pill below the buy bar,
+   pre-fills the product name.
+3. **Cart** — "Need help? Chat on WhatsApp" link under the
+   Proceed-to-Checkout button.
+4. **Thank-you page** — full chunky CTA pre-fills the order number;
+   replaces the existing inline anchor with the shared component.
+5. **Admin order detail** — green "WhatsApp" button beside "Print
+   invoice"; opens chat with the **customer's** phone (uses
+   `whatsappUrlForCustomer(o.phone, …)`), pre-filled with the order
+   number for one-tap support reply.
+6. **Admin help doc** at `/admin/help/whatsapp` — explains how to
+   install WhatsApp Business on the merchant phone, configure
+   greeting/away/quick-reply messages, and connect the catalog.
+   Shows the current configured state inline + a "Test the link"
+   button.
+
+**Env (`.env.example` + `.env.local`):**
+
+- `NEXT_PUBLIC_WHATSAPP_NUMBER` — international E.164 without
+  the `+` (e.g. `923001234567`). Marked `NEXT_PUBLIC_*` so it
+  inlines into the client bundle at build time — the Header
+  button (client component) can use it without a runtime fetch.
+
+**Capabilities (and what is intentionally NOT in scope):**
+
+| Have | Don't have |
+|---|---|
+| Customer-initiated chat from anywhere on the site | Outbound order-status pushes |
+| Pre-typed context (order #, product name) | AI-generated replies |
+| One-tap admin → customer support reply | Webhook integration |
+| Auto-replies via Business app (greeting / away / quick replies) | Cart-recovery DMs |
+| Free product catalog inside chat (Meta hosts) | WhatsApp Flows / interactive buttons |
+
+**Verification gate:**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+- `npm run build`     — succeeds; `/admin/help/whatsapp` in the
+  manifest as a dynamic route
+
+**Lesson:** A merchant who can't (or won't) put a card on file is
+not a degraded customer — they're the majority of small Pakistani
+e-commerce businesses. The free-tier WhatsApp path (`wa.me` +
+Business app) reaches ~80% of the AI-agent value: customer can
+initiate context-rich chats with a single tap, merchant has
+canned-reply automation, catalog is browseable in-chat. We ship
+this every time and let the Cloud API upgrade happen when the
+revenue justifies it.
+
+---
+
 ## 2026-05-19 — Order-cancellation restock + per-product inventory history
 
 Closes the last documented gap in the inventory ledger: cancelled orders.
@@ -46,13 +129,6 @@ and the new chip in the filter row.
 | `place_order` RPC | `order` | Linked to `order_id`, negative |
 | `markReturnReceived` admin action | `return` | Linked to `return_id` + `order_id`, positive |
 | `updateOrderStatus → 'cancelled'` | `cancellation` | Linked to `order_id`, positive |
-
-**Verification gate:**
-- `npm run typecheck` — clean
-- `npm run lint`      — clean
-- `npm test`          — 85/85 pass
-- `npm run build`     — succeeds; `/admin/products/[id]` still in
-  the manifest with the new component mounted
 
 **Lesson:** Migration 078's enum was a forward-looking design — and
 the gap it left (no `cancellation` value) showed up the moment we
