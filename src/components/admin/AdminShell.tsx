@@ -19,7 +19,21 @@ export function AdminShell({
   notifications?: Notification[];
 }) {
   const [open, setOpen] = useState(false);
+  // `isMobile` is read after mount via matchMedia. We start at `false` so
+  // SSR + the first client render agree (the inline `aria-hidden` previously
+  // referenced `window` directly, producing a hydration mismatch on every
+  // mobile load). The next effect tick flips it correctly.
+  const [isMobile, setIsMobile] = useState(false);
   const drawerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(max-width: 767px)');
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
 
   // Drawer behaves as a modal sheet on mobile only — body scroll lock +
   // focus trap kick in alongside the slide-in. Desktop ignores them.
@@ -169,7 +183,7 @@ export function AdminShell({
         role={open ? 'dialog' : undefined}
         aria-modal={open ? 'true' : undefined}
         aria-label="Admin navigation"
-        aria-hidden={typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches && !open ? 'true' : undefined}
+        aria-hidden={isMobile && !open ? 'true' : undefined}
       >
         <AdminSidebar session={session} onClose={() => setOpen(false)} pendingOrderCount={pendingOrderCount} />
       </div>

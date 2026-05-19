@@ -52,9 +52,13 @@ function CatTile({ label, href, img, color }: typeof CATS[0]) {
         )}
         <div style={{
           position: 'absolute', inset: 0,
+          /* Stronger floor on the gradient so the label stays readable
+             over a light-image tile (e.g. the pearly-peach Lip+Cheek
+             thumbnail). At 0.42 the contrast dropped to ~2.4:1 on the
+             lightest images; 0.62 lifts it past 4.5:1 with white text. */
           background: hovered
-            ? 'linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.1) 100%)'
-            : 'linear-gradient(to top, rgba(0,0,0,0.42) 0%, transparent 55%)',
+            ? 'linear-gradient(to top, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.12) 100%)'
+            : 'linear-gradient(to top, rgba(0,0,0,0.62) 0%, transparent 55%)',
           transition: 'background 300ms ease-out',
           display: 'flex', alignItems: 'flex-end', padding: 14,
         }}>

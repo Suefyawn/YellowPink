@@ -88,16 +88,17 @@ function PayMethodRow({ name, checked, label, desc }: { name: string; checked: b
   );
 }
 
-export default async function SettingsPage({ searchParams }: { searchParams: { saved?: string; error?: string } }) {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('settings')) {
     redirect('/admin/dashboard');
   }
 
-  const s = await getSiteSettings();
+  // Next 16: `searchParams` is now a Promise. Awaiting both in parallel.
+  const [s, sp] = await Promise.all([getSiteSettings(), searchParams]);
   const g = (key: string, fallback = '') => s[key] ?? fallback;
-  const saved = searchParams.saved === '1';
-  const saveError = searchParams.error;
+  const saved = sp.saved === '1';
+  const saveError = sp.error;
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 780 }}>

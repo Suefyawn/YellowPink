@@ -129,7 +129,7 @@ export function MiniCart() {
                 <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} sizes="64px" />
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>
+                <Overline style={{ color: 'var(--ink-500)', fontSize: '0.6875rem', display: 'block', letterSpacing: '0.12em' }}>{item.brand}</Overline>
                 <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 2 }}>{item.name}</div>
                 {(item.variant_label ?? item.variant) && (
                   <div className="small-text" style={{ fontSize: '0.6875rem', color: 'var(--ink-500)' }}>
