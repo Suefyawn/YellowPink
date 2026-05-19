@@ -5,6 +5,7 @@ import type { Product } from '@/types';
 
 export function BestsellersBand({ products }: { products: Product[] }) {
   const items = products.slice(0, 3);
+  if (items.length === 0) return null;
   return (
     <section style={{ background: 'var(--paper2)', padding: 'var(--section-gap) 0', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
       <div className="container">

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
 
@@ -43,7 +43,7 @@ export async function createPromo(formData: FormData) {
   const session = await assertPermission('promos');
   const parsed = PromoSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
-  const { data: created } = await supabase.from('promos').insert(emptyToNull({
+  const { data: created } = await supabaseAdmin().from('promos').insert(emptyToNull({
     ...parsed.data,
     show_countdown: parsed.data.show_countdown ?? false,
     enabled: parsed.data.enabled ?? true,
@@ -60,7 +60,7 @@ export async function updatePromo(id: string, formData: FormData) {
   const session = await assertPermission('promos');
   const parsed = PromoSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
-  await supabase.from('promos').update(emptyToNull({
+  await supabaseAdmin().from('promos').update(emptyToNull({
     ...parsed.data,
     show_countdown: parsed.data.show_countdown ?? false,
     enabled: parsed.data.enabled ?? false,
@@ -75,7 +75,7 @@ export async function updatePromo(id: string, formData: FormData) {
 
 export async function togglePromo(id: string, enabled: boolean) {
   const session = await assertPermission('promos');
-  await supabase.from('promos').update({ enabled }).eq('id', id);
+  await supabaseAdmin().from('promos').update({ enabled }).eq('id', id);
   void logAudit(session, {
     action: enabled ? 'promo.enable' : 'promo.disable',
     entity: 'promos', entity_id: id,
@@ -86,8 +86,8 @@ export async function togglePromo(id: string, enabled: boolean) {
 export async function deletePromo(formData: FormData) {
   const session = await assertPermission('promos');
   const id = formData.get('id') as string;
-  const { data: target } = await supabase.from('promos').select('headline').eq('id', id).single();
-  await supabase.from('promos').delete().eq('id', id);
+  const { data: target } = await supabaseAdmin().from('promos').select('headline').eq('id', id).single();
+  await supabaseAdmin().from('promos').delete().eq('id', id);
   void logAudit(session, {
     action: 'promo.delete', entity: 'promos', entity_id: id,
     diff: { headline: target?.headline },

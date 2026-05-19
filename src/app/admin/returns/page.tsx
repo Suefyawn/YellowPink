@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { ReturnsQueue } from '@/components/admin/ReturnsQueue';
@@ -30,7 +30,11 @@ export default async function ReturnsPage() {
     return <NoAccess section="Returns" />;
   }
 
-  const { data } = await supabase
+  // return_requests anon-SELECT is scoped to user_id = auth.uid(); admin
+  // moderation needs to see all. orders is fully RLS-locked. Both reads
+  // need the service role.
+  const admin = supabaseAdmin();
+  const { data } = await admin
     .from('return_requests')
     .select('id, order_id, user_id, email, reason, items, status, refund_amount, refund_method, admin_note, created_at')
     .order('created_at', { ascending: false })
@@ -40,7 +44,7 @@ export default async function ReturnsPage() {
 
   // Pull order numbers for display.
   const orderIds = Array.from(new Set(rows.map(r => r.order_id)));
-  const { data: orderRows } = await supabase
+  const { data: orderRows } = await admin
     .from('orders').select('id, order_number, first_name, last_name, total').in('id', orderIds.length ? orderIds : ['00000000-0000-0000-0000-000000000000']);
   const orderMap = new Map<string, { order_number: string; first_name: string; last_name: string; total: number }>();
   for (const o of (orderRows ?? []) as Array<{ id: string; order_number: string; first_name: string; last_name: string; total: number }>) {

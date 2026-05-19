@@ -125,18 +125,24 @@ async function resolveCategoryFromSlug(slug: string | undefined, categories: Cat
   return hit?.name ?? null;
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string }> }) {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string }> }) {
   const [products, categories, facetData] = await Promise.all([
     getProducts(),
     loadCategories(),
     loadFacetData(),
   ]);
-  const { category, subcategory, cat } = await searchParams;
+  const { category, subcategory, cat, taxon, on_sale } = await searchParams;
 
   // Resolve ?cat=<slug> (used by WP redirects) into a display category name.
   const initialCategory =
     category ??
     (cat ? (await resolveCategoryFromSlug(cat, categories)) ?? cat : 'All');
+
+  // Resolve ?taxon=makeup into the macro-bucket category set so the
+  // CollectionPage can multi-filter. We resolve here so the server-rendered
+  // header reflects the right active category from the first paint.
+  const { findTaxon } = await import('@/lib/category-taxonomy');
+  const taxonObj = findTaxon(taxon);
 
   return (
     <main className="fade-in">
@@ -147,6 +153,9 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         productValueMap={facetData.productValueMap}
         initialCategory={initialCategory}
         initialSubcategory={subcategory ?? null}
+        initialTaxon={taxonObj?.key ?? null}
+        initialTaxonCategories={taxonObj ? [...taxonObj.categories] : null}
+        initialOnSaleOnly={on_sale === '1'}
       />
     </main>
   );

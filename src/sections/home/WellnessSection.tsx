@@ -16,6 +16,7 @@ const PILLARS = [
 
 export function WellnessSection({ products }: { products: Product[] }) {
   const wellnessProducts = products.slice(0, 3);
+  if (wellnessProducts.length === 0) return null;
   return (
     <section style={{ padding: 'var(--section-gap) 0' }}>
       <div className="container">

@@ -38,6 +38,14 @@ interface Props {
   productValueMap?: Record<string, string[]>;
   initialCategory?: string;
   initialSubcategory?: string | null;
+  /** Taxon key from the URL (?taxon=makeup) — used to restrict the catalogue to a
+   *  multi-category group instead of a single value. */
+  initialTaxon?: string | null;
+  /** The exact category values belonging to the active taxon. When non-null,
+   *  this overrides activeCategory for the product-scope filter. */
+  initialTaxonCategories?: string[] | null;
+  /** Optional pre-applied "on sale" filter, set by `?on_sale=1`. */
+  initialOnSaleOnly?: boolean;
 }
 
 export function CollectionPage({
@@ -47,6 +55,9 @@ export function CollectionPage({
   productValueMap = {},
   initialCategory = 'All',
   initialSubcategory = null,
+  initialTaxon = null,
+  initialTaxonCategories = null,
+  initialOnSaleOnly = false,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -77,7 +88,10 @@ export function CollectionPage({
       min: min ? Number(min) : ('' as number | ''),
       max: max ? Number(max) : ('' as number | ''),
       stock: sp.get('stock') === '1',
-      sale:  sp.get('sale') === '1',
+      // ?on_sale=1 (canonical) and ?sale=1 (legacy chip state) both seed
+      // the on-sale filter. initialOnSaleOnly comes from the server when
+      // the URL had ?on_sale=1, so it wins regardless of chip state.
+      sale:  sp.get('sale') === '1' || sp.get('on_sale') === '1' || initialOnSaleOnly,
     };
   };
   // Mount-time only — useState initialiser runs once on mount. Subsequent
@@ -94,9 +108,16 @@ export function CollectionPage({
   // ─── Facets (price / brand / in-stock / on-sale) ─────────────────────────
   // Brand list + price bounds come from the *category-scoped* product set so
   // they make sense as the user navigates between tabs.
-  const categoryScoped = useMemo(() =>
-    products.filter(p => activeCategory === 'All' || p.category === activeCategory)
-  , [products, activeCategory]);
+  //
+  // Taxon mode takes precedence: when the URL had ?taxon=makeup, we
+  // restrict to the taxon's category set and ignore the per-category
+  // navigation (the user can still drill down via subcategory).
+  const categoryScoped = useMemo(() => {
+    if (initialTaxonCategories && initialTaxonCategories.length > 0) {
+      return products.filter(p => initialTaxonCategories.includes(p.category));
+    }
+    return products.filter(p => activeCategory === 'All' || p.category === activeCategory);
+  }, [products, activeCategory, initialTaxonCategories]);
 
   const allBrands = useMemo(() =>
     Array.from(new Set(categoryScoped.map(p => p.brand).filter(Boolean))).sort()
@@ -268,7 +289,15 @@ export function CollectionPage({
       const hay = `${p.brand} ${p.name} ${p.category ?? ''} ${p.subcategory ?? ''} ${p.variant ?? ''}`.toLowerCase();
       if (!hay.includes(qLower)) return false;
     }
-    if (activeCategory !== 'All' && p.category !== activeCategory) return false;
+    // In taxon mode, replace the single-category filter with a multi-category
+    // membership test against the taxon's children. This way the page renders
+    // the right intersection (e.g. all Makeup categories) and a sub-category
+    // pick still narrows from there.
+    if (initialTaxonCategories && initialTaxonCategories.length > 0) {
+      if (!initialTaxonCategories.includes(p.category)) return false;
+    } else if (activeCategory !== 'All' && p.category !== activeCategory) {
+      return false;
+    }
     if (activeSubcategory && p.subcategory !== activeSubcategory) return false;
     if (selectedBrands.size > 0 && !selectedBrands.has(p.brand)) return false;
     if (priceMin !== '' && p.price < priceMin) return false;
@@ -306,7 +335,14 @@ export function CollectionPage({
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const subcats = activeCategory !== 'All' ? childrenByParentName[activeCategory] ?? [] : [];
-  const pageTitle = activeSubcategory ?? (activeCategory === 'All' ? 'All Products' : activeCategory);
+  // In taxon mode the title uses the taxon label (Makeup / Wellness / etc.)
+  // instead of "All Products" — gives the visitor an immediate "you are in
+  // the Makeup section" cue that the previous nav lacked.
+  const taxonLabel = initialTaxon
+    ? initialTaxon.charAt(0).toUpperCase() + initialTaxon.slice(1)
+    : null;
+  const pageTitle = activeSubcategory
+    ?? (taxonLabel ?? (activeCategory === 'All' ? 'All Products' : activeCategory));
 
   return (
     <div>

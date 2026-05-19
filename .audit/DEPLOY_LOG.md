@@ -6,6 +6,140 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Empty homepage + missing orders + dead audit log (the RLS-hardening blast radius)
+
+**Symptom triplet, all reported by the user in one session:**
+
+1. "The homepage isn't rendering any products in the featured collections. The
+   navigation is weird. When opened, there's no products on any."
+2. "I don't see any orders in admin dashboard."
+3. "Then I don't see anything at all in audit log. It's supposed to be activity
+   log I think and it should be logging everything."
+
+**Diagnosis (the common thread):**
+
+The production-ready audit pass (migrations 064 / 067 / 070) tightened RLS on
+`staff_members`, `coupons`, `orders`, `coupon_redemptions`, `audit_log`,
+`admin_notifications`, `abandoned_carts`, `gift_cards`, `gift_card_transactions`,
+`newsletter_subscribers`, and `stock_subscriptions` — removing the wide-open
+anon SELECT policies that previously made admin reads work via the anon
+key. The audit also documented that "every admin read [was] rewired to
+`supabaseAdmin()`" — but that rewire was partial. The session traced the
+gap by grepping every admin server file:
+
+| File | Table touched | Status before |
+|---|---|---|
+| `src/lib/audit.ts` | `audit_log` (INSERT) | **0 rows written ever** — anon insert silently failed, empty try/catch swallowed the error |
+| `src/app/admin/orders/page.tsx` | `orders` (SELECT) | Order list rendered empty |
+| `src/app/admin/orders/[id]/page.tsx` | `orders`, `shipments` | 404 on every order click |
+| `src/app/admin/dashboard/page.tsx` | `orders` (SELECT) | Recent orders + 30-day chart empty |
+| `src/app/admin/layout.tsx` | `orders`, `admin_notifications` | Pending-order badge stuck at 0; bell empty |
+| `src/app/admin/audit/page.tsx` | `audit_log` (SELECT) | "No audit events yet" forever |
+| `src/app/admin/coupons/page.tsx` + `coupon-actions.ts` | `coupons` | Coupons list empty; create/delete/toggle silently failed |
+| `src/app/admin/reviews/page.tsx` + `reviews/actions.ts` | `product_reviews` | Pending reviews invisible; the anon SELECT policy filters to `approved=true` |
+| `src/app/admin/returns/page.tsx` | `return_requests`, `orders` | Returns queue empty |
+| `src/app/admin/users/[id]/page.tsx` | `orders` | Customer order history empty |
+| `src/app/admin/notifications-actions.ts` | `admin_notifications` (UPDATE) | Mark-read silently no-op'd |
+| `src/app/admin/shipment-actions.ts` | `shipments`, `orders` | Shipment booking silently no-op'd |
+| `src/app/admin/promo-actions.ts` | `promos` (writes) | Promo create/update/delete silently no-op'd |
+| `src/app/admin/bulk-product-actions.ts` | `products` writes | Bulk publish/archive/delete silently no-op'd |
+| `src/app/admin/variant-actions.ts` | `product_variants`, `variant_attribute_values` | Variant create/update silently no-op'd |
+| `src/app/admin/actions.ts` | `products`, `blog_posts`, `orders` | Product/blog mutations + order status updates silently failed |
+
+Fix is the same everywhere: replace `import { supabase }` with
+`import { supabaseAdmin }` and route every `.from(...)`/`.rpc(...)` call
+through it. Service role bypasses RLS — the right credential for an
+internal admin write that doesn't belong to a Supabase Auth user (admin
+sessions use the staff-cookie path, not Supabase Auth).
+
+**`lib/audit.ts` deserves special call-out** — it's a best-effort fire-and-forget
+helper, so the previous anon-INSERT failures were caught and discarded by
+the empty `catch { }` block. The empty try/catch turned a real bug into
+"audit_log has 0 rows forever". The fix flips to `supabaseAdmin()` and
+keeps the same fire-and-forget contract; the table will now actually
+populate.
+
+**Homepage emptiness (separate root cause):**
+
+- `getProductsByTag('Bestseller')` and `getProductsByTag('Sale')` both
+  returned 0 rows because **0/109 products had the `tag` column
+  populated**. The WP-import wrote product tags into the
+  `product_categories` join table, not the flat `tag` column the
+  homepage helper was filtering on.
+- `getProductsByCategoryAndTag('Wellness')` returned 0 because no row
+  has `category='Wellness'` — the real categories from the import are
+  "Human Health" (23), "Women's Health" (12), "Bone Health" (3),
+  "Immune Support" (3), "Brain Health" (2), etc.
+- 26 product rows still carried `&amp;`, `&#39;`, `&quot;`, `&rsquo;`
+  etc. HTML entities from the WC REST payload.
+
+**Migration 076 (`20260525_076_homepage_data_hygiene.sql`, applied):**
+
+- Adds `is_featured` + `is_bestseller` boolean columns (default false) +
+  partial indexes scoped to the flagged rows.
+- Decodes the 6 HTML entities we found in `category`/`subcategory`/
+  `name`/`brand`/`description`/`short_description`.
+- Backfills `is_bestseller=true` for 8 picks across the major categories
+  (one per category, sorted by % discount + stock).
+- Backfills `is_featured=true` for 5 visually striking landing-page picks
+  (different rank from the bestseller set so the two rails don't
+  overlap).
+
+After migration: 8 bestsellers, 5 featured, 0 HTML entities left, 79
+sale-eligible products.
+
+**New storefront helpers (`src/lib/supabase.ts`):**
+
+- `getBestsellers(limit)` — `is_bestseller=true` first, then backfills from
+  highest-stock published products so the rail never goes empty.
+- `getFeatured(limit)` — `is_featured=true` first, backfills from newest
+  published.
+- `getOnSale(limit)` — `original_price IS NOT NULL AND original_price > price`,
+  sorted by deepest discount.
+- `getProductsByTaxon(taxonOrCategory, limit)` — resolves a taxon slug
+  ("makeup"/"wellness"/"bundles") into its category set and queries
+  `category IN (…)`. Used by the homepage Wellness rail and the new nav.
+
+**Top-level nav restructure (`src/lib/category-taxonomy.ts` + `Header.tsx`):**
+
+- New `TAXONS` taxonomy groups the 14 fine-grained categories into 4
+  top-level macro-buckets: Makeup, Skincare, Wellness, Bundles.
+- Each taxon links to `/shop?taxon=<key>`. The shop page resolves the
+  taxon to its child categories and passes the set into `CollectionPage`,
+  which now supports multi-category filtering (previously it took only
+  one `activeCategory` string and did `===` matching).
+- Added "Sale" + "All" + "Blog" siblings to the nav.
+
+**Other touch-ups:**
+
+- `src/sections/home/CategoryTiles.tsx` links updated from
+  `?category=Makeup&subcategory=Lip+%26+Cheek+Tints` (zero hits) to real
+  category names like `?category=Lip+%26+Cheek+Tints`.
+- `src/sections/home/{FeaturedProducts,NewArrivals,BestsellersBand,WellnessSection}`
+  added `if (products.length === 0) return null` so an empty data layer
+  doesn't render a broken-looking "header + empty grid" — that was the
+  user-visible "no products on any" symptom.
+
+**Verification gate (all green):**
+- `npm run typecheck` — clean
+- `npm run lint` — clean
+- `npm test` — 85/85 pass
+- `npm run build` — succeeds
+- Database: `is_bestseller=8`, `is_featured=5`, `html_entities_left=0`,
+  `on_sale=79`. `audit_log` will start populating the moment any admin
+  action runs.
+
+**Lesson:** A hardening migration without an immediate audit of every
+caller is half-done. The audit pass tightened RLS in 064/067/070 and
+updated *some* callers, but a `grep -rn "from '@/lib/supabase'"` across
+`src/app/admin/**` would have surfaced every stale read/write in 5
+seconds. The empty `catch { }` in `lib/audit.ts` is a structural anti-
+pattern — best-effort doesn't mean "silently swallow"; it means "log
+and continue". A `console.warn` or even an `if (error) console.warn`
+would have made this discoverable months ago.
+
+---
+
 ## 2026-05-19 — Resend failure visibility + cron-side analytics refresh
 
 **Goal:** close out two operational gaps surfaced after PR #3 merged:

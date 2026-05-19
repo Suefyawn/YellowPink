@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { getAdapter } from '@/lib/couriers';
@@ -31,7 +31,7 @@ export async function createShipment(
   const weightRaw = formData.get('weight_grams');
   const weight_grams = typeof weightRaw === 'string' && weightRaw ? Number(weightRaw) : null;
 
-  const { data, error } = await supabase.from('shipments').insert({
+  const { data, error } = await supabaseAdmin().from('shipments').insert({
     order_id,
     courier,
     tracking_number: tracking_number.trim(),
@@ -83,7 +83,7 @@ export async function bookShipment(
   }
 
   // Pull the order so we can give the courier the consignee + line items.
-  const { data: order, error: orderErr } = await supabase
+  const { data: order, error: orderErr } = await supabaseAdmin()
     .from('orders')
     .select('order_number, total, first_name, last_name, phone, email, address, city, province, zip, items')
     .eq('id', order_id)
@@ -141,7 +141,7 @@ export async function bookShipment(
   // Persist the shipment row. The shipments_sync_order trigger (see
   // 20260521_040_shipments.sql) mirrors tracking_number + courier onto
   // orders for the /track + /account UI.
-  const { data: shipment, error: insErr } = await supabase
+  const { data: shipment, error: insErr } = await supabaseAdmin()
     .from('shipments')
     .insert({
       order_id,
@@ -179,7 +179,7 @@ export async function cancelShipment(
   const shipment_id = formData.get('shipment_id');
   if (typeof shipment_id !== 'string' || !shipment_id) return { error: 'shipment_id required' };
 
-  const { data: shipment, error: lookupErr } = await supabase
+  const { data: shipment, error: lookupErr } = await supabaseAdmin()
     .from('shipments')
     .select('id, order_id, courier, tracking_number, status')
     .eq('id', shipment_id)
@@ -202,7 +202,7 @@ export async function cancelShipment(
     }
   }
 
-  const { error: updErr } = await supabase
+  const { error: updErr } = await supabaseAdmin()
     .from('shipments')
     .update({ status: 'cancelled' })
     .eq('id', shipment_id);

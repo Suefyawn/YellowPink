@@ -3,7 +3,13 @@
 // puts a CDN in front. Was `force-dynamic` before the 2026-05-24 audit.
 export const revalidate = 300;
 
-import { getProductsByTag, getProductsByCategoryAndTag, getSiteSettings } from '@/lib/supabase';
+import {
+  getBestsellers,
+  getFeatured,
+  getOnSale,
+  getProductsByTaxon,
+  getSiteSettings,
+} from '@/lib/supabase';
 import { HeroSection } from '@/sections/home/HeroSection';
 import { TrustBar } from '@/sections/home/TrustBar';
 import { FeaturedProducts } from '@/sections/home/FeaturedProducts';
@@ -16,10 +22,16 @@ import { RealResults } from '@/sections/home/RealResults';
 import { PressStrip } from '@/sections/home/PressStrip';
 
 export default async function HomePage() {
-  const [bestsellers, saleProducts, wellnessProducts, settings] = await Promise.all([
-    getProductsByTag('Bestseller', 8),
-    getProductsByTag('Sale', 4),
-    getProductsByCategoryAndTag('Wellness', 3),
+  // Pull each rail in parallel. The new helpers all fall back to a stock-
+  // /recency-ordered slice of the live catalog if their flag-based query
+  // returns fewer rows than requested, so empty sections shouldn't happen
+  // once the catalog has any products. Migration 076 backfilled
+  // is_featured + is_bestseller; the queries respect those first.
+  const [featured, bestsellers, saleProducts, wellnessProducts, settings] = await Promise.all([
+    getFeatured(6),
+    getBestsellers(8),
+    getOnSale(4),
+    getProductsByTaxon('wellness', 3),
     getSiteSettings(),
   ]);
 
@@ -39,10 +51,10 @@ export default async function HomePage() {
     <main className="fade-in">
       <HeroSection settings={heroSettings} />
       <TrustBar />
-      <FeaturedProducts products={bestsellers.slice(0, 4)} />
+      <FeaturedProducts products={featured.length ? featured.slice(0, 4) : bestsellers.slice(0, 4)} />
       <EditorialDuo />
       <NewArrivals products={saleProducts} />
-      <BestsellersBand products={bestsellers.slice(4, 7)} />
+      <BestsellersBand products={bestsellers.slice(0, 4)} />
       <WellnessSection products={wellnessProducts} />
       <CategoryTiles />
       <RealResults />

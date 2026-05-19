@@ -4,7 +4,7 @@ import { createHash, timingSafeEqual } from 'crypto';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
-import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import {
   hashPassword, verifyPassword, upgradeStaffHash,
   setStaffCookie, clearStaffCookie,
@@ -132,7 +132,7 @@ export async function createProduct(
   const session = await getStaffSessionForActions();
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { data, error } = await supabase.from('products').insert(parsed.data).select('id').single();
+  const { data, error } = await supabaseAdmin().from('products').insert(parsed.data).select('id').single();
   if (error) return { error: error.message };
   await logAudit(session, { action: 'product.create', entity: 'product', entity_id: data?.id as string | undefined, diff: parsed.data });
   revalidatePath('/admin/products');
@@ -148,8 +148,8 @@ export async function updateProduct(
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   // Snapshot the prior state for the audit diff.
-  const { data: before } = await supabase.from('products').select('*').eq('id', id).maybeSingle();
-  const { error } = await supabase.from('products').update(parsed.data).eq('id', id);
+  const { data: before } = await supabaseAdmin().from('products').select('*').eq('id', id).maybeSingle();
+  const { error } = await supabaseAdmin().from('products').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
   await logAudit(session, { action: 'product.update', entity: 'product', entity_id: id, diff: { before, after: parsed.data } });
   revalidatePath('/admin/products');
@@ -159,7 +159,7 @@ export async function updateProduct(
 export async function deleteProduct(formData: FormData) {
   const session = await getStaffSessionForActions();
   const id = formData.get('id') as string;
-  const { error } = await supabase.from('products').delete().eq('id', id);
+  const { error } = await supabaseAdmin().from('products').delete().eq('id', id);
   if (error) {
     // Surface via query string. Index page reads ?error= and shows a toast.
     redirect(`/admin/products?error=${encodeURIComponent(error.message)}`);
@@ -190,7 +190,7 @@ export async function createBlogPost(
 
   const parsed = parseForm(blogPostInputSchema, normalized);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { error } = await supabase.from('blog_posts').insert(parsed.data);
+  const { error } = await supabaseAdmin().from('blog_posts').insert(parsed.data);
   if (error) return { error: error.message };
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
@@ -208,7 +208,7 @@ export async function updateBlogPost(
 
   const parsed = parseForm(blogPostInputSchema, normalized);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { error } = await supabase.from('blog_posts').update(parsed.data).eq('id', id);
+  const { error } = await supabaseAdmin().from('blog_posts').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
@@ -216,7 +216,7 @@ export async function updateBlogPost(
 
 export async function deleteBlogPost(formData: FormData) {
   const id = formData.get('id') as string;
-  const { error } = await supabase.from('blog_posts').delete().eq('id', id);
+  const { error } = await supabaseAdmin().from('blog_posts').delete().eq('id', id);
   if (error) {
     redirect(`/admin/blog?error=${encodeURIComponent(error.message)}`);
   }
@@ -227,7 +227,9 @@ export async function deleteBlogPost(formData: FormData) {
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus): Promise<{ error?: string; count?: number }> {
-  const { error, count } = await supabase
+  // orders RLS bars anon writes; service role is required for admin
+  // mutations.
+  const { error, count } = await supabaseAdmin()
     .from('orders')
     .update({ status }, { count: 'exact' })
     .in('id', ids);
@@ -246,13 +248,15 @@ export async function updateOrderStatus(
   const courier = (formData.get('courier') as string) || null;
 
   // Read current state so we can detect transitions and email the customer.
-  const { data: before } = await supabase
+  // Both reads and writes need the service role under the post-070 RLS.
+  const admin = supabaseAdmin();
+  const { data: before } = await admin
     .from('orders')
     .select('status, email, first_name, order_number')
     .eq('id', id)
     .single();
 
-  const { error } = await supabase
+  const { error } = await admin
     .from('orders')
     .update({ status, tracking_number, courier })
     .eq('id', id);

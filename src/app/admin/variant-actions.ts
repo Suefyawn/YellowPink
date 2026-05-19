@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { variantInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
@@ -24,7 +24,7 @@ export async function createVariant(
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   // Insert the variant row first, then the option links.
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin()
     .from('product_variants')
     .insert(parsed.data)
     .select('id, product_id')
@@ -50,7 +50,7 @@ export async function updateVariant(
   const parsed = parseForm(variantInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
-  const { error } = await supabase
+  const { error } = await supabaseAdmin()
     .from('product_variants')
     .update({
       sku:              parsed.data.sku || null,
@@ -79,7 +79,7 @@ export async function deleteVariant(formData: FormData): Promise<void> {
   const id = formData.get('id');
   const productId = formData.get('product_id');
   if (typeof id !== 'string' || typeof productId !== 'string') return;
-  await supabase.from('product_variants').delete().eq('id', id);
+  await supabaseAdmin().from('product_variants').delete().eq('id', id);
   void logAudit(session, {
     action: 'variant.delete', entity: 'product_variants', entity_id: id,
     diff: { product_id: productId },
@@ -97,8 +97,8 @@ async function syncVariantOptions(variantId: string, formData: FormData): Promis
     if (typeof val !== 'string' || !val) continue;
     optionRows.push({ variant_id: variantId, attribute_value_id: val });
   }
-  await supabase.from('variant_attribute_values').delete().eq('variant_id', variantId);
+  await supabaseAdmin().from('variant_attribute_values').delete().eq('variant_id', variantId);
   if (optionRows.length) {
-    await supabase.from('variant_attribute_values').insert(optionRows);
+    await supabaseAdmin().from('variant_attribute_values').insert(optionRows);
   }
 }

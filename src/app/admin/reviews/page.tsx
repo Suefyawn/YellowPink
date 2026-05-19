@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { brandPlusName } from '@/lib/product-display';
@@ -25,13 +25,17 @@ export default async function ReviewsPage() {
     return <NoAccess section="Reviews" />;
   }
 
-  const { data: pending } = await supabase
+  // product_reviews anon SELECT policy filters to approved=true, so the
+  // public client never sees pending reviews. Service role bypasses
+  // the policy and is the right credential for moderation.
+  const admin = supabaseAdmin();
+  const { data: pending } = await admin
     .from('product_reviews')
     .select('id, author_name, rating, body, created_at, approved, product_id, products(name, brand)')
     .eq('approved', false)
     .order('created_at', { ascending: false });
 
-  const { data: approved } = await supabase
+  const { data: approved } = await admin
     .from('product_reviews')
     .select('id, author_name, rating, body, created_at, approved, product_id, products(name, brand)')
     .eq('approved', true)

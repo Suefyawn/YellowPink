@@ -108,18 +108,104 @@ export async function getProductsByCategory(category: string): Promise<Product[]
   }, category === 'All' ? DEMO_PRODUCTS : DEMO_PRODUCTS.filter(p => p.category === category));
 }
 
-export async function getProductsByTag(tag: string, limit = 8): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.filter(p => p.tag === tag).slice(0, limit);
-  return safe('getProductsByTag', async () => {
+/** Editorial bestsellers, flagged by `is_bestseller=true`. Falls back to
+ *  the highest-stock published products if the flag hasn't been seeded yet
+ *  — homepage rails should never go empty. */
+export async function getBestsellers(limit = 8): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getBestsellers', async () => {
+    const { data: flagged } = await supabase
+      .from('products')
+      .select('*')
+      .eq('is_bestseller', true)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (flagged && flagged.length >= limit) return flagged as Product[];
+    // Backfill from healthy-stock catalog so the rail still renders pre-curation.
+    const fill = limit - (flagged?.length ?? 0);
+    const { data: rest } = await supabase
+      .from('products')
+      .select('*')
+      .eq('status', 'published')
+      .gt('stock', 0)
+      .order('stock', { ascending: false })
+      .limit(fill + (flagged?.length ?? 0));
+    const flaggedIds = new Set((flagged ?? []).map(p => p.id));
+    const merged = [
+      ...(flagged ?? []),
+      ...(rest ?? []).filter(p => !flaggedIds.has(p.id)),
+    ];
+    return merged.slice(0, limit) as Product[];
+  }, DEMO_PRODUCTS.slice(0, limit));
+}
+
+/** Featured picks for the homepage hero/editorial slots, flagged by
+ *  `is_featured=true`. Same fallback as bestsellers. */
+export async function getFeatured(limit = 6): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getFeatured', async () => {
+    const { data: flagged } = await supabase
+      .from('products')
+      .select('*')
+      .eq('is_featured', true)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (flagged && flagged.length >= limit) return flagged as Product[];
+    const fill = limit - (flagged?.length ?? 0);
+    const { data: rest } = await supabase
+      .from('products')
+      .select('*')
+      .eq('status', 'published')
+      .gt('stock', 0)
+      .order('created_at', { ascending: false })
+      .limit(fill + (flagged?.length ?? 0));
+    const flaggedIds = new Set((flagged ?? []).map(p => p.id));
+    const merged = [
+      ...(flagged ?? []),
+      ...(rest ?? []).filter(p => !flaggedIds.has(p.id)),
+    ];
+    return merged.slice(0, limit) as Product[];
+  }, DEMO_PRODUCTS.slice(0, limit));
+}
+
+/** Products on sale = `original_price > price`. Sorted by discount % so the
+ *  deepest deals lead. */
+export async function getOnSale(limit = 8): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.filter(p => p.original_price && p.original_price > p.price).slice(0, limit);
+  return safe('getOnSale', async () => {
     const { data, error } = await supabase
       .from('products')
       .select('*')
-      .eq('tag', tag)
-      .order('id')
+      .not('original_price', 'is', null)
+      .order('original_price', { ascending: false })
+      .limit(limit * 4);
+    if (error) throw error;
+    return (data ?? [])
+      .filter((p: { price: number; original_price: number | null }) =>
+        p.original_price !== null && p.original_price > p.price)
+      .slice(0, limit) as Product[];
+  }, DEMO_PRODUCTS.slice(0, limit));
+}
+
+/** Resolve a taxon slug ("makeup" / "wellness" / etc.) or a single-category
+ *  name into a product list. Returns []  if the taxon is unknown so the home
+ *  sections render their empty-state, not their full catalog. */
+export async function getProductsByTaxon(taxonOrCategory: string, limit = 8): Promise<Product[]> {
+  const { categoriesForTaxon } = await import('./category-taxonomy');
+  const taxonCats = categoriesForTaxon(taxonOrCategory);
+  const cats = taxonCats ?? [taxonOrCategory];
+  if (isDemo) return DEMO_PRODUCTS.filter(p => cats.includes(p.category)).slice(0, limit);
+  return safe('getProductsByTaxon', async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .in('category', cats as string[])
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
     return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.filter(p => p.tag === tag).slice(0, limit));
+  }, DEMO_PRODUCTS.filter(p => cats.includes(p.category)).slice(0, limit));
 }
 
 export async function getProductsByCategoryAndTag(category: string, limit = 4): Promise<Product[]> {
