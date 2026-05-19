@@ -6,6 +6,93 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Wire place_order + return-received through the inventory ledger
+
+Closes the loop opened by migration 078. The ledger now carries every
+stock movement, not just the import backfill and manual adjustments.
+
+**Migration 079 — `place_order` → ledger.**
+
+The order RPC used to end with an inline
+`update products set stock = stock - qty` loop that bypassed both the
+older `decrement_stock` helper and the new `record_stock_change` RPC
+from 078. Replaced with a `record_stock_change` call per line item,
+inside the same transaction so atomicity is preserved. Each ledger
+row carries:
+
+- `reason = 'order'`
+- `order_id` = the just-inserted `v_order.id` (the
+  `/admin/inventory` page links these to the order detail)
+- `actor_kind = 'customer'` when the order has a `user_id`, else
+  `'system'` for guest checkouts
+- `actor_email` from the order
+- `variant_id` derived from `items[i].variant_id` (NULL for
+  unvariated SKUs)
+
+**Return-received transition — new admin action.**
+
+The schema supported `return_requests.status ∈ {pending, approved,
+rejected, received, refunded, cancelled}` but no code path advanced
+returns past `approved`. Added `markReturnReceived(id)` in
+`src/app/account/orders/returns/actions.ts`:
+
+1. Verifies the return is in `approved`.
+2. Loops over `items[]` calling `record_stock_change` with
+   `reason='return'`, `order_id`, `return_id` set, positive
+   `qty_delta`. Restock happens BEFORE the status flip so a
+   downstream failure doesn't leave a received-but-not-restocked
+   return.
+3. Flips status → `'received'` and writes a `return.received`
+   audit row.
+
+`ReturnsQueue` shows a blue "Mark as received & restock" button for
+approved returns (sits next to the existing Approve / Reject flow for
+pending ones).
+
+**Drive-by RLS fix.** `approveReturn` and `rejectReturn` in
+`src/app/account/orders/returns/actions.ts` were still using the
+anon `supabase` client. My PR-#6 sweep targeted
+`src/app/admin/**`; this file lives under
+`src/app/account/orders/returns/` so the grep missed it. Returns
+admin actions on production have been silently no-op'ing for the
+same reason as the broader admin sweep. Switched to
+`supabaseAdmin()`.
+
+**What this completes.**
+
+Every stock-mutating path now writes to `inventory_ledger`:
+
+| Source | Reason | Notes |
+|---|---|---|
+| Migration 078 backfill | `import` | One row per product + per variant at install time |
+| `/admin/inventory` manual form | `restock` / `adjustment` / `damage` | Owner / staff actor |
+| `place_order` RPC | `order` | Linked to `order_id`, qty is negative |
+| `markReturnReceived` admin action | `return` | Linked to `return_id` + `order_id`, qty is positive |
+
+Future-flagged: when an order is cancelled and the customer was
+refunded, the items should be restocked the same way. Today
+`updateOrderStatus → 'cancelled'` doesn't touch stock — that's a
+known gap, not in this PR.
+
+**Verification gate (all green):**
+- `npm run typecheck` — clean
+- `npm run lint`      — clean
+- `npm test`          — 85/85 pass
+- `npm run build`     — succeeds
+- Migration 079 applied via MCP without errors (the inline smoke
+  test failed at the unrelated `notify_order_confirmation` trigger
+  whose Edge Function URL isn't set in the MCP session — it works
+  fine from a real Vercel request where `app.supabase_url` is set).
+
+**Lesson:** Migration 078 introduced a clean ledger primitive but
+shipped without wiring the biggest writer (`place_order`) to it.
+A new primitive is only as useful as its biggest call site. Worth
+asking up front: *which callers will I migrate in the same PR?*
+Otherwise the value sits dormant until a follow-up — exactly the
+shape this DEPLOY_LOG keeps recording.
+
+---
+
 ## 2026-05-19 — Brand data quality + inventory ledger
 
 Two structural follow-ups after the homepage/admin RLS pass.
