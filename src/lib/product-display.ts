@@ -43,10 +43,33 @@ export function stripBrandPrefix(brand: string | null | undefined, name: string)
 /**
  * "Brand Name" composer that avoids duplication. Use anywhere we want a
  * combined display string (alt text, schema.org name, SERP title).
+ *
+ * Three modes:
+ *   • No brand              → return the name as-is.
+ *   • Name IS the brand     → return just `brand` (avoids "Argivital
+ *                             Argivital" — the bug that motivated this
+ *                             helper's strict equality guard).
+ *   • Name starts with brand → strip the prefix, then re-prepend so the
+ *                             casing is canonical ("CeraVe Hydrating
+ *                             Cleanser" even if the row had "cerave
+ *                             Hydrating Cleanser").
+ *   • Otherwise              → `brand name`.
  */
 export function brandPlusName(brand: string | null | undefined, name: string): string {
+  if (!brand) return (name ?? '').trim();
+  const trimmedBrand = brand.trim();
+  const trimmedName = name.trim();
+  if (!trimmedName) return trimmedBrand;
+
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  if (normalize(trimmedBrand) === normalize(trimmedName)) {
+    // The product name IS the brand — return one copy, not "X X".
+    return trimmedBrand;
+  }
+
   const safeName = stripBrandPrefix(brand, name);
-  if (!brand) return safeName;
-  if (!safeName) return brand;
-  return `${brand} ${safeName}`;
+  if (!safeName || normalize(safeName) === normalize(trimmedBrand)) {
+    return trimmedBrand;
+  }
+  return `${trimmedBrand} ${safeName}`;
 }

@@ -63,15 +63,25 @@ async function safe<T>(
   }
 }
 
+// Tile-projection for collection / listing pages — narrow on purpose so
+// the inline RSC payload that ships every Product to the client doesn't
+// carry per-row description / how_to_use / ingredients / key_benefits /
+// faq strings. P0-3 finding in the 2026-05-19 launch audit: /shop was
+// shipping ~277KB of inline JSON, the bulk of it long-form fields no
+// tile reads. Switching from select('*') saves ~400KB on /shop and
+// /shop?taxon=*.
+const PRODUCT_TILE_COLUMNS =
+  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, image_url, is_bestseller, is_featured, status, created_at';
+
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;
   return safe('getProducts', async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(PRODUCT_TILE_COLUMNS)
       .order('id');
     if (error) throw error;
-    return (data ?? []) as Product[];
+    return (data ?? []) as unknown as Product[];
   }, DEMO_PRODUCTS);
 }
 
@@ -100,7 +110,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 export async function getProductsByCategory(category: string): Promise<Product[]> {
   if (isDemo) return category === 'All' ? DEMO_PRODUCTS : DEMO_PRODUCTS.filter(p => p.category === category);
   return safe('getProductsByCategory', async () => {
-    const query = supabase.from('products').select('*').order('id');
+    const query = supabase.from('products').select(PRODUCT_TILE_COLUMNS).order('id');
     if (category !== 'All') query.eq('category', category);
     const { data, error } = await query;
     if (error) throw error;
@@ -116,7 +126,7 @@ export async function getBestsellers(limit = 8): Promise<Product[]> {
   return safe('getBestsellers', async () => {
     const { data: flagged } = await supabase
       .from('products')
-      .select('*')
+      .select(PRODUCT_TILE_COLUMNS)
       .eq('is_bestseller', true)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -125,7 +135,7 @@ export async function getBestsellers(limit = 8): Promise<Product[]> {
     const fill = limit - (flagged?.length ?? 0);
     const { data: rest } = await supabase
       .from('products')
-      .select('*')
+      .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
       .gt('stock', 0)
       .order('stock', { ascending: false })
@@ -146,7 +156,7 @@ export async function getFeatured(limit = 6): Promise<Product[]> {
   return safe('getFeatured', async () => {
     const { data: flagged } = await supabase
       .from('products')
-      .select('*')
+      .select(PRODUCT_TILE_COLUMNS)
       .eq('is_featured', true)
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -154,7 +164,7 @@ export async function getFeatured(limit = 6): Promise<Product[]> {
     const fill = limit - (flagged?.length ?? 0);
     const { data: rest } = await supabase
       .from('products')
-      .select('*')
+      .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
       .gt('stock', 0)
       .order('created_at', { ascending: false })
@@ -175,7 +185,7 @@ export async function getOnSale(limit = 8): Promise<Product[]> {
   return safe('getOnSale', async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(PRODUCT_TILE_COLUMNS)
       .not('original_price', 'is', null)
       .order('original_price', { ascending: false })
       .limit(limit * 4);
@@ -198,7 +208,7 @@ export async function getProductsByTaxon(taxonOrCategory: string, limit = 8): Pr
   return safe('getProductsByTaxon', async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(PRODUCT_TILE_COLUMNS)
       .in('category', cats as string[])
       .eq('status', 'published')
       .order('created_at', { ascending: false })
@@ -213,7 +223,7 @@ export async function getProductsByCategoryAndTag(category: string, limit = 4): 
   return safe('getProductsByCategoryAndTag', async () => {
     const { data, error } = await supabase
       .from('products')
-      .select('*')
+      .select(PRODUCT_TILE_COLUMNS)
       .eq('category', category)
       .order('id')
       .limit(limit);
@@ -222,15 +232,23 @@ export async function getProductsByCategoryAndTag(category: string, limit = 4): 
   }, DEMO_PRODUCTS.filter(p => p.category === category).slice(0, limit));
 }
 
+// Tile-projection for the blog index. P0-2 finding in the 2026-05-19
+// launch audit: /blog was shipping 1.95 MB of HTML, ~1.76 MB of which
+// was the full WP body of every post embedded in the RSC payload — the
+// tile component only renders title / excerpt / image / category /
+// date. Narrowing the select cuts /blog from ~2 MB to ~150 KB.
+const BLOG_TILE_COLUMNS =
+  'id, slug, title, excerpt, category, date, read_time, featured, image_url, updated_at';
+
 export async function getBlogPosts(): Promise<BlogPost[]> {
   if (isDemo) return DEMO_BLOG_POSTS;
   return safe('getBlogPosts', async () => {
     const { data, error } = await supabase
       .from('blog_posts')
-      .select('*')
+      .select(BLOG_TILE_COLUMNS)
       .order('date', { ascending: false });
     if (error) throw error;
-    return (data ?? []) as BlogPost[];
+    return (data ?? []) as unknown as BlogPost[];
   }, DEMO_BLOG_POSTS);
 }
 

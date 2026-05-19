@@ -1,13 +1,10 @@
-// `dynamic = 'force-dynamic'` is restored here after a failed attempt to
-// rely on per-page opt-in. The root layout renders the PostHog provider,
-// whose PageViewTracker uses useSearchParams() — and prerender chokes on
-// that on every user-scoped page (/_not-found, /account/*, …) without a
-// Suspense boundary high enough in the tree. Wrapping every consumer in
-// Suspense would also work, but force-dynamic at the layout is the
-// smaller, safer surface for a launch. The audit perf finding (P0-7) is
-// re-queued for a follow-up that splits the PostHog provider into a
-// suspended client island.
-export const dynamic = 'force-dynamic';
+// `dynamic = 'force-dynamic'` was previously set here to dodge the
+// useSearchParams() inside PageViewTracker prerendering on user-scoped
+// pages. That tracker is now wrapped in <Suspense> inside
+// `src/components/analytics/PostHogProvider.tsx`, so the layout can
+// stay edge-cacheable and per-page `revalidate = N` rules in
+// `next.config.ts` actually take effect. Removing the override was the
+// P0-1 finding in the 2026-05-19 launch-readiness audit.
 
 import type { Metadata, Viewport } from 'next';
 import '@/styles/globals.css';

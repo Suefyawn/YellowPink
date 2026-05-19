@@ -1,4 +1,5 @@
 'use client';
+import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnnouncementBar } from './AnnouncementBar';
 import { PromoBanner } from './PromoBanner';
@@ -76,7 +77,14 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
         />
       )}
 
-      <Header />
+      {/* Header reads useSearchParams() to highlight the active nav item;
+          without a Suspense boundary, static prerender bails on every
+          route that doesn't itself opt out. Wrapping here lets routes
+          like /forgot-password / /reset-password / /track / /login
+          prerender cleanly while Header still hydrates on the client. */}
+      <Suspense fallback={null}>
+        <Header />
+      </Suspense>
       {children}
       <Footer />
       <MiniCart />
