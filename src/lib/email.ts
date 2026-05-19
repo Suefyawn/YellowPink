@@ -104,7 +104,7 @@ function shell(inner: string, opts: ShellOpts = {}): string {
 // failure to Sentry with stable tags so the alert rule for
 // `tags[resend_domain_unverified]:true` can fire before customers report
 // missing order emails.
-function fromDomain(from: string): string {
+export function fromDomain(from: string): string {
   const angled = from.match(/<[^@]+@([^>]+)>/);
   if (angled) return angled[1];
   const bare = from.match(/@([^\s]+)/);
