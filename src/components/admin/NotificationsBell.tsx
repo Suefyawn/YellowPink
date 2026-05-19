@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { markNotificationRead, markAllNotificationsRead } from '@/app/admin/notifications-actions';
+import { AdminIcon, type AdminIconName } from '@/components/ui/AdminIcon';
 
 interface Notification {
   id: string;
@@ -14,11 +15,18 @@ interface Notification {
   created_at: string;
 }
 
+// Geometric symbols (◎ ⚠ ✕ ↩ ★ ⬡) render in the current text font and
+// match the admin's monochrome aesthetic. The picture-emoji entries that
+// used to live here (🐛 / 📈 / 📉) drift colour and weight across devices,
+// so we render those three through AdminIcon by SVG name instead.
 const KIND_ICON: Record<string, string> = {
   new_order: '◎', low_stock: '⚠', payment_failed: '✕',
   return_request: '↩', new_review: '★', staff_added: '⬡',
-  // Analytics monitors (see refreshAnalytics in src/app/admin/dashboard/actions.ts)
-  sentry_issue: '🐛', posthog_spike: '📈', posthog_drop: '📉',
+};
+const KIND_SVG: Record<string, AdminIconName> = {
+  sentry_issue: 'bug',
+  posthog_spike: 'trend-up',
+  posthog_drop: 'trend-down',
 };
 
 export function NotificationsBell({ notifications }: { notifications: Notification[] }) {
@@ -32,10 +40,12 @@ export function NotificationsBell({ notifications }: { notifications: Notificati
         aria-label={`Notifications (${unread.length} unread)`}
         style={{
           position: 'relative', background: 'transparent', border: 'none',
-          color: '#9ca3af', cursor: 'pointer', padding: 6, fontSize: '1.25rem', lineHeight: 1,
+          color: '#9ca3af', cursor: 'pointer',
+          padding: 6, lineHeight: 0,
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
         }}
       >
-        🔔
+        <AdminIcon name="bell" size={22} />
         {unread.length > 0 && (
           <span style={{
             position: 'absolute', top: 0, right: 0,
@@ -90,7 +100,11 @@ export function NotificationsBell({ notifications }: { notifications: Notificati
                       background: n.read ? 'white' : '#fdf2f8',
                     }}
                   >
-                    <span style={{ fontSize: '1rem', color: '#C5286A', flexShrink: 0 }}>{KIND_ICON[n.kind] ?? '•'}</span>
+                    <span style={{ fontSize: '1rem', color: '#C5286A', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>
+                      {KIND_SVG[n.kind]
+                        ? <AdminIcon name={KIND_SVG[n.kind]} size={16} />
+                        : (KIND_ICON[n.kind] ?? '•')}
+                    </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</div>
                       {n.body && <div style={{ fontSize: '0.75rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</div>}

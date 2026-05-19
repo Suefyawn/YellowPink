@@ -1,4 +1,5 @@
 import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
+import { AdminIcon } from '@/components/ui/AdminIcon';
 
 interface FunnelStep {
   label: string;
@@ -89,8 +90,9 @@ function Header({ updatedAt }: { updatedAt: string | null }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
-          🛒 Conversion funnel
+        <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ color: '#C5286A', display: 'inline-flex' }}><AdminIcon name="cart" size={16} /></span>
+          Conversion funnel
         </h2>
         <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
           Last 7 days{updatedAt ? ` · refreshed ${timeAgoShort(updatedAt)}` : ''}
