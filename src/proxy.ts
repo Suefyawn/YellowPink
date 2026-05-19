@@ -104,22 +104,24 @@ async function resolveRedirect(pathname: string): Promise<string | null> {
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // ─── Admin auth gate (unchanged) ──────────────────────────────────────────
+  // ─── Admin auth gate ──────────────────────────────────────────────────────
+  // The legacy admin_session cookie is HMAC-signed (see lib/signed-cookie.ts);
+  // we verify the signature + age here in Edge. A staff_session cookie is
+  // also accepted; its body verification happens at the page layer because
+  // it needs the DB-backed staff_members lookup that Edge can't do cheaply.
   if (pathname === '/admin') return NextResponse.next();
   if (pathname.startsWith('/admin/')) {
     const session = request.cookies.get('admin_session')?.value;
     const staff   = request.cookies.get('staff_session')?.value;
     const pass    = process.env.ADMIN_PASSWORD;
-    if (!pass && !staff) {
-      return NextResponse.redirect(new URL('/admin', request.url));
+    let ownerOk = false;
+    if (pass && session) {
+      const { verify, OWNER_COOKIE_TTL_SEC } = await import('@/lib/signed-cookie');
+      const { STAFF_SESSION_SECRET } = await import('@/lib/session-secret');
+      const payload = await verify(session, STAFF_SESSION_SECRET(), OWNER_COOKIE_TTL_SEC);
+      ownerOk = payload?.sub === 'owner';
     }
-    if (pass) {
-      const expected = Buffer.from(pass).toString('base64');
-      // Either the legacy owner cookie or a staff session is accepted.
-      if (session !== expected && !staff) {
-        return NextResponse.redirect(new URL('/admin', request.url));
-      }
-    } else if (!staff) {
+    if (!ownerOk && !staff) {
       return NextResponse.redirect(new URL('/admin', request.url));
     }
   }

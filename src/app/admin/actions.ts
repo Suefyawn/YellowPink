@@ -1,6 +1,6 @@
 'use server';
 
-import { createHash } from 'crypto';
+import { createHash, timingSafeEqual } from 'crypto';
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
@@ -35,12 +35,25 @@ export async function loginAdmin(
   const password = formData.get('password') as string;
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected) return { error: 'Admin access is not configured. Set ADMIN_PASSWORD environment variable.' };
-  if (password !== expected) return { error: 'Incorrect password' };
+  // Constant-time compare on equal-length inputs only.
+  const a = Buffer.from(password);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
+    return { error: 'Incorrect password' };
+  }
+  // P1 audit fix: cookie value is now an HMAC-signed payload with a
+  // timestamp instead of base64(password). Anyone who reads the cookie
+  // can no longer recover the password, and an old leaked cookie expires
+  // server-side after 7 days regardless of when the client gives it back.
+  const { sign, OWNER_COOKIE_NAME, OWNER_COOKIE_TTL_SEC } = await import('@/lib/signed-cookie');
+  const { STAFF_SESSION_SECRET } = await import('@/lib/session-secret');
+  const token = await sign({ sub: 'owner' }, STAFF_SESSION_SECRET());
   const store = await cookies();
-  store.set('admin_session', Buffer.from(expected).toString('base64'), {
+  store.set(OWNER_COOKIE_NAME, token, {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 60 * 60 * 24 * 7,
+    // Always secure — even on Vercel previews this rides HTTPS.
+    secure: true,
+    maxAge: OWNER_COOKIE_TTL_SEC,
     path: '/',
     sameSite: 'lax',
   });

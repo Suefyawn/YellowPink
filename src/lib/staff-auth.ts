@@ -3,17 +3,10 @@ import { cookies } from 'next/headers';
 import { supabaseAdmin } from './supabase';
 import type { StaffSession, Permission } from './permissions';
 
+import { STAFF_SESSION_SECRET } from './session-secret';
+
 const STAFF_COOKIE = 'staff_session';
-// P1: in production, refuse to start without a real signing secret.
-// Outside production we keep a constant fallback so dev/test don't break.
-const SECRET = (() => {
-  const v = process.env.STAFF_SESSION_SECRET;
-  if (v && v.length >= 16) return v;
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
-    throw new Error('STAFF_SESSION_SECRET must be set (≥16 chars) in production');
-  }
-  return 'yp-staff-dev-secret-NOT-FOR-PROD';
-})();
+const SECRET = STAFF_SESSION_SECRET();
 const SESSION_TTL_MS = 10 * 60 * 60 * 1000; // 10h
 
 // ─── Password hashing ────────────────────────────────────────────────────────
@@ -140,14 +133,14 @@ export async function getStaffSession(): Promise<StaffSession | null> {
   const store = await cookies();
 
   // Owner session (legacy single-password auth — kept until full migration to
-  // staff_members). The owner password is checked in actions.ts:loginAdmin.
+  // staff_members). The owner password is checked in actions.ts:loginAdmin,
+  // which writes an HMAC-signed cookie via signed-cookie.ts. We just verify.
   const adminCookie = store.get('admin_session')?.value;
   const adminPass = process.env.ADMIN_PASSWORD;
   if (adminPass && adminCookie) {
-    const expected = Buffer.from(adminPass).toString('base64');
-    const a = Buffer.from(adminCookie);
-    const b = Buffer.from(expected);
-    if (a.length === b.length && timingSafeEqual(a, b)) {
+    const { verify, OWNER_COOKIE_TTL_SEC } = await import('./signed-cookie');
+    const payload = await verify(adminCookie, SECRET, OWNER_COOKIE_TTL_SEC);
+    if (payload?.sub === 'owner') {
       return { id: 'owner', email: 'owner', name: 'Owner', permissions: [], isOwner: true };
     }
   }
