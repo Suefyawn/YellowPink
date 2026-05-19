@@ -195,7 +195,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>[];
 
   return (
-    <main className="fade-in">
+    // minHeight: 100vh — guarantees the PDP block fills the viewport before
+    // the gallery image decodes. Without it, on mobile between SSR delivery
+    // and image-decode, the main column can be shorter than the screen and
+    // the Footer (next in DOM) flashes above the fold. Pair with the same
+    // min-height on loading.tsx so the skeleton swap is also shift-free.
+    <main className="fade-in" style={{ minHeight: '100vh' }}>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(productLd(product, reviews, variantData.variants)) }}

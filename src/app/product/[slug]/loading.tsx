@@ -2,10 +2,19 @@ import { Skeleton } from '@/components/ui/Skeleton';
 
 // PDP streaming fallback. Gallery + details layout mirrors PDPPage's grid so
 // the layout doesn't shift when the real data arrives.
+//
+// The `minHeight: 100vh` on <main> is critical for mobile: without it, the
+// skeleton block can briefly be shorter than the viewport (between route
+// transition and image decode), which lets the Footer (next in the DOM)
+// flash into view above the fold. With min-height set, the footer always
+// sits below the fold while the page is loading. Aspect-ratio on the
+// gallery placeholder is `4/5` to match the real PDPPage gallery — same
+// reason: same height through skeleton → real-content swap means zero
+// layout shift.
 
 export default function Loading() {
   return (
-    <main className="fade-in">
+    <main className="fade-in" style={{ minHeight: '100vh' }}>
       <section style={{ padding: '32px 0' }}>
         <div
           className="container pdp-grid"
@@ -22,7 +31,7 @@ export default function Loading() {
               className="skeleton"
               style={{
                 width: '100%',
-                aspectRatio: '1',
+                aspectRatio: '4/5',
                 borderRadius: 'var(--radius-card)',
                 marginBottom: 12,
               }}
