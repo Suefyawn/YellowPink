@@ -6,6 +6,41 @@ ops journal. New entries go to the top.
 
 ---
 
+## 2026-05-19 — Resend + PostHog API keys verified, analytics_cache seeded
+
+**Resend** — API key `re_J7Pq…` verified:
+- `GET /domains` shows `yellowpink.pk` with `status: "verified"`, region
+  `ap-northeast-1`, sending enabled.
+
+**PostHog** — personal API key `phx_yQ8i…` verified:
+- HogQL probe `SELECT 1 AS ok` returned `[[1]]`.
+- One-off populate via `scripts/refresh-analytics-local.mjs` wrote
+  `analytics_cache['posthog']`:
+  - pageviews: 254
+  - uniqueUsers: 8
+  - sessions: 19
+  - trend: 2 days (May 18: 94, May 19: 160)
+- Dashboard PostHog widget will show real numbers on next render
+  instead of the empty-state hint.
+
+`scripts/refresh-analytics-local.mjs` — small Node ESM helper that
+calls the same PostHog + Sentry endpoints as the in-app
+`refreshAnalytics()` server action, but skips the auth gate so it
+works from the developer's machine using `.env.local`. Useful when
+Vercel env vars aren't yet set but you want to seed the cache.
+
+**Reminder for the user:** mirror these two keys into Vercel env
+vars so the in-app Refresh Analytics button works (or hand me a
+Vercel token and I'll set them):
+- `RESEND_API_KEY=re_J7Pq…`
+- `POSTHOG_PERSONAL_API_KEY=phx_yQ8i…`
+
+The Sentry widget is still empty because `SENTRY_AUTH_TOKEN` isn't
+set locally. Once that lands (Sentry → Settings → Auth Tokens), the
+same helper script populates `analytics_cache['sentry']`.
+
+---
+
 ## 2026-05-19 — Resend domain verified (handled by user)
 
 **Action:** User completed Resend domain verification end-to-end:
