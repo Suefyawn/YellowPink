@@ -4,7 +4,16 @@ import { supabaseAdmin } from './supabase';
 import type { StaffSession, Permission } from './permissions';
 
 const STAFF_COOKIE = 'staff_session';
-const SECRET = process.env.STAFF_SESSION_SECRET ?? 'yp-staff-dev-secret';
+// P1: in production, refuse to start without a real signing secret.
+// Outside production we keep a constant fallback so dev/test don't break.
+const SECRET = (() => {
+  const v = process.env.STAFF_SESSION_SECRET;
+  if (v && v.length >= 16) return v;
+  if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
+    throw new Error('STAFF_SESSION_SECRET must be set (≥16 chars) in production');
+  }
+  return 'yp-staff-dev-secret-NOT-FOR-PROD';
+})();
 const SESSION_TTL_MS = 10 * 60 * 60 * 1000; // 10h
 
 // ─── Password hashing ────────────────────────────────────────────────────────

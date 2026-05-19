@@ -56,8 +56,19 @@ export async function submitReview(
     verified = Boolean(data);
   }
 
+  // P1: only accept photo URLs from our own Supabase Storage bucket. Without
+  // this restriction an attacker could submit reviews whose photo URLs point
+  // at attacker-controlled hosts, embedding them on PDPs after approval.
+  // Storage base URL is derived from the project's public URL so this is
+  // resilient to a project change.
+  const supabaseHost = (process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').replace(/^https?:\/\//, '');
+  const allowedPrefix = supabaseHost ? `https://${supabaseHost}/storage/v1/object/public/` : null;
   const photoUrls: string[] = ((parsed.data.photo_urls ?? '') as string)
-    .split(',').map((s: string) => s.trim()).filter((s: string) => /^https?:\/\//i.test(s));
+    .split(',')
+    .map((s: string) => s.trim())
+    .filter((s: string) => /^https?:\/\//i.test(s))
+    .filter((s: string) => !allowedPrefix || s.startsWith(allowedPrefix))
+    .slice(0, 6); // hard cap on photos per review
 
   const { error } = await supabase.from('product_reviews').insert({
     product_id:        parsed.data.product_id,

@@ -20,8 +20,9 @@ interface SubRow {
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://yellowpink.pk';
 
 async function authorize(req: NextRequest): Promise<boolean> {
+  // P1: fail closed if CRON_SECRET isn't set (previously fell open in dev).
   const expected = process.env.CRON_SECRET;
-  if (!expected) return process.env.NODE_ENV !== 'production';
+  if (!expected) return false;
   return req.headers.get('authorization') === `Bearer ${expected}`;
 }
 

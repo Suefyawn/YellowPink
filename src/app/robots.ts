@@ -26,6 +26,11 @@ export default function robots(): MetadataRoute.Robots {
           '/login',
           '/forgot-password',
           '/reset-password',
+          // P1 audit fixes — user-scoped or utility-only pages should not
+          // be in indexes either.
+          '/cart',
+          '/wishlist',
+          '/track',
         ],
       },
     ],

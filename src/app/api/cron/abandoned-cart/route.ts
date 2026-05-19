@@ -48,9 +48,12 @@ function nextTier(now: number, c: AbandonedCart): 1 | 2 | 3 | null {
 
 async function authorize(req: NextRequest): Promise<boolean> {
   // Vercel Cron sends a Bearer token equal to CRON_SECRET.
-  // Allow local/manual triggering when CRON_SECRET isn't set (dev only).
+  // P1: fail closed if the secret isn't set, regardless of environment.
+  // The previous fall-open-in-dev branch also fired on Vercel preview
+  // deployments and self-hosted setups that forgot the env var, letting
+  // anyone trigger mass emails. Local dev: set CRON_SECRET in .env.local.
   const expected = process.env.CRON_SECRET;
-  if (!expected) return process.env.NODE_ENV !== 'production';
+  if (!expected) return false;
   return req.headers.get('authorization') === `Bearer ${expected}`;
 }
 

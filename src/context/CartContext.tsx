@@ -58,14 +58,24 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // of the same product results in two cart lines.
       const variantId = product.variant_id ?? null;
       const existing = prev.findIndex(i => i.id === product.id && (i.variant_id ?? null) === variantId);
+      // P1: clamp qty against available stock. `product.stock` is the live
+      // value from the PDP/grid props; treat undefined as unlimited (some
+      // demo items have no stock field). The RPC has authoritative truth
+      // and will still reject overshoot, but stopping at the UI saves a
+      // round-trip and a confusing toast.
+      const stockCap = typeof product.stock === 'number' ? product.stock : Infinity;
+      const requested = product.qty ?? 1;
       if (existing >= 0) {
+        const current = prev[existing].qty;
+        const next = Math.min(current + requested, stockCap);
+        if (next === current) return prev; // already at cap — silently ignore
         const updated = [...prev];
-        updated[existing] = { ...updated[existing], qty: updated[existing].qty + (product.qty ?? 1) };
+        updated[existing] = { ...updated[existing], qty: next };
         return updated;
       }
       return [...prev, {
         ...product,
-        qty: product.qty ?? 1,
+        qty: Math.min(requested, stockCap),
         variant_id: variantId,
         variant_label: product.variant_label ?? null,
       }];
@@ -92,7 +102,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const updateQty = (idx: number, delta: number) =>
     setCartItems(prev => {
       const updated = [...prev];
-      updated[idx] = { ...updated[idx], qty: Math.max(1, updated[idx].qty + delta) };
+      const item = updated[idx];
+      // P1: clamp upper bound against stock if known. Lower bound stays 1
+      // (use removeFromCart to clear the line). The cart item carries the
+      // stock value snapshotted at add-time — fresh enough for the qty
+      // stepper; the RPC re-validates at submit.
+      const stockCap = typeof item.stock === 'number' ? item.stock : Infinity;
+      const next = Math.min(stockCap, Math.max(1, item.qty + delta));
+      updated[idx] = { ...item, qty: next };
       return updated;
     });
 

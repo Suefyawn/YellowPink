@@ -32,8 +32,11 @@ interface Payload {
 }
 
 function authorize(req: NextRequest): boolean {
+  // P1: fail closed if COURIER_WEBHOOK_SECRET isn't set. Unauthenticated
+  // delivery events would otherwise let anyone trip the loyalty-points
+  // trigger that pays out on first 'delivered' status.
   const expected = process.env.COURIER_WEBHOOK_SECRET;
-  if (!expected) return process.env.NODE_ENV !== 'production';
+  if (!expected) return false;
   return req.headers.get('authorization') === `Bearer ${expected}`;
 }
 
