@@ -12,8 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test",
-    "wp-import": "tsx scripts/wp-import/run.ts"
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.53.1",
