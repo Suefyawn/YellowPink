@@ -10,7 +10,6 @@ const PH_PROJECT_ID = 429225;
 const PH_BASE       = 'https://us.posthog.com';
 const SENTRY_ORG    = 'trellee';
 const SENTRY_PROJECT = 'yellowpink';
-const SENTRY_PROJECT_URL = `https://${SENTRY_ORG}.sentry.io/projects/${SENTRY_PROJECT}/`;
 
 // `createClient` without explicit generics returns a client whose `.from()`
 // inference treats every table as `never`, so .upsert / .insert payloads
@@ -320,10 +319,4 @@ export async function refreshAnalytics(): Promise<{ ok: boolean; errors?: string
   revalidatePath('/admin/dashboard');
 
   return ok ? { ok: true } : { ok: false, errors };
-}
-
-// Re-exported so the SentryWidget can build "Open Sentry →" link without
-// duplicating the org/project constants.
-export async function getSentryProjectUrl(): Promise<string> {
-  return SENTRY_PROJECT_URL;
 }
