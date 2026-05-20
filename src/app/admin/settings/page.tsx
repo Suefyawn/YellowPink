@@ -59,6 +59,7 @@ const SECTIONS = [
   { id: 'loyalty',       label: 'Loyalty' },
   { id: 'brand-colors',  label: 'Brand colors' },
   { id: 'announcement',  label: 'Announcement' },
+  { id: 'sale',          label: 'Sale' },
   { id: 'promo-banner',  label: 'Promo banner' },
   { id: 'hero',          label: 'Homepage hero' },
 ];
@@ -326,6 +327,42 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <label style={lbl}>Background Color</label>
               <ColorPicker name="announcement_color" value={g('announcement_color', '#111827')} label="Bar background" />
             </div>
+          </div>
+        </Card>
+
+        {/* ── Sale ─────────────────────────────────────────── */}
+        <Card id="sale">
+          {section('Sale', 'The central on/off switch for a store-wide sale. When active, the homepage shows a featured Sale Collection of every discounted product. Put a product on sale by setting its Original Price above its Price (or use the bulk price tool on the Products page).')}
+          <Divider />
+          <div style={{ display: 'grid', gap: 14 }}>
+            <div>
+              <label style={lbl}>Sale Active</label>
+              <Toggle name="sale_active" checked={g('sale_active') === 'true'} />
+            </div>
+            <div>
+              <label style={lbl}>Sale Title</label>
+              <input name="sale_title" defaultValue={g('sale_title', 'On Sale Now')} style={inp}
+                placeholder="e.g. Summer Sale" />
+            </div>
+            <div>
+              <label style={lbl}>Subtitle</label>
+              <input name="sale_subtitle" defaultValue={g('sale_subtitle')} style={inp}
+                placeholder="e.g. Limited-time prices across beauty & wellness" />
+            </div>
+            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={lbl}>Button Text</label>
+                <input name="sale_cta_text" defaultValue={g('sale_cta_text', 'Shop the Sale')} style={inp} />
+              </div>
+              <div>
+                <label style={lbl}>Button URL</label>
+                <input name="sale_cta_url" defaultValue={g('sale_cta_url', '/shop?sale=1')} style={inp}
+                  placeholder="/shop?sale=1" />
+              </div>
+            </div>
+            <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af' }}>
+              The homepage Sale Collection appears only while this is active and at least one product is discounted.
+            </p>
           </div>
         </Card>
 

@@ -20,7 +20,7 @@ import { HeroSection } from '@/sections/home/HeroSection';
 import { TrustBar } from '@/sections/home/TrustBar';
 import { FeaturedProducts } from '@/sections/home/FeaturedProducts';
 import { EditorialDuo } from '@/sections/home/EditorialDuo';
-import { NewArrivals } from '@/sections/home/NewArrivals';
+import { SaleCollection } from '@/sections/home/SaleCollection';
 import { BestsellersBand } from '@/sections/home/BestsellersBand';
 import { WellnessSection } from '@/sections/home/WellnessSection';
 import { CategoryTiles } from '@/sections/home/CategoryTiles';
@@ -36,11 +36,15 @@ export default async function HomePage() {
   const [featured, bestsellers, saleProducts, wellnessProducts, settings, categoryImages] = await Promise.all([
     getFeatured(6),
     getBestsellers(8),
-    getOnSale(4),
+    getOnSale(8),
     getProductsByTaxon('wellness', 4),
     getSiteSettings(),
     getCategoryTileImages([...MAKEUP_TILE_CATS, ...WELLNESS_TILE_CATS]),
   ]);
+
+  // The featured sale collection is shown only while a sale is switched on
+  // in Admin → Settings → Sale (the central on/off switch).
+  const saleActive = settings.sale_active === 'true';
 
   const tile = (label: string) => ({
     label,
@@ -70,7 +74,15 @@ export default async function HomePage() {
       <TrustBar />
       <FeaturedProducts products={featured.length ? featured.slice(0, 4) : bestsellers.slice(0, 4)} />
       <EditorialDuo />
-      <NewArrivals products={saleProducts} />
+      {saleActive && (
+        <SaleCollection
+          products={saleProducts}
+          title={settings.sale_title || 'On Sale Now'}
+          subtitle={settings.sale_subtitle}
+          ctaText={settings.sale_cta_text || 'Shop the Sale'}
+          ctaUrl={settings.sale_cta_url || '/shop?sale=1'}
+        />
+      )}
       <BestsellersBand products={bestsellers.slice(0, 4)} />
       <WellnessSection products={wellnessProducts} />
       <CategoryTiles groups={categoryGroups} />
