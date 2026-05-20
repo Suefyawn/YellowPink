@@ -44,7 +44,13 @@ export const productInputSchema = z.object({
   original_price: positiveNumber.optional().nullable(),
   category:       z.string().trim().min(1, 'Category is required').max(80),
   subcategory:    z.string().trim().max(120).optional().nullable(),
-  tag:            z.enum(['New','Sale','Bestseller','Featured','Limited']).optional().nullable(),
+  // The admin form always submits `tag`, as '' when no tag is chosen.
+  // Preprocess '' / null / undefined → null so the enum doesn't reject the
+  // empty option — otherwise saving a product with no tag fails.
+  tag:            z.preprocess(
+                    v => (v === '' || v == null ? null : v),
+                    z.enum(['New','Sale','Bestseller','Featured','Limited']).nullable(),
+                  ),
   slug:           slugSchema,
   stock:          positiveInt,
   image_url:      httpsUrlSchema.optional().or(z.literal('')).nullable(),
