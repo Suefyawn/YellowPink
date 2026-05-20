@@ -1363,6 +1363,38 @@ visible to the user instead of swallowed in a background send.
 
 ---
 
+## 2026-05-20 — Subscribe & Save for wellness SKUs (migration 088)
+
+Wellness supplements are consumables — customers run out and reorder
+on a cadence — but the store had no mechanism to bring them back.
+
+- Migration 088 adds `reorder_subscriptions` (per-user RLS, four
+  policies) plus the `SUBSCRIBE10` coupon (10% off, min PKR 1,500).
+- **Why this is a *reminder*, not auto-billing:** the storefront has
+  no card-on-file — payments are COD / JazzCash / Easypaisa. True
+  recurring charges aren't possible on the free stack, so a
+  subscription is a recurring reorder *reminder* with a standing
+  discount code instead.
+- **Why it's decoupled from `place_order`:** a subscription is
+  created by an explicit opt-in on the wellness PDP, not a cart flag.
+  Nothing touches the security-critical order/pricing RPC — the cart,
+  checkout, and `place_order` are entirely unchanged.
+- The reorder reminder rides the existing daily cron as a fifth job
+  (`/api/cron/subscription-reorder`) — no new `vercel.json` cron
+  entry, so the Hobby 2-cron cap is respected.
+- `email` is denormalized onto each row (same approach as
+  `abandoned_carts`) so the cron sends without per-row auth-schema
+  lookups.
+- Customers manage / pause / cancel from `/account/subscriptions`;
+  RLS guarantees a customer only ever touches their own rows.
+
+Lesson: when a feature *looks* like it belongs in checkout, check
+whether it actually needs the order. Modelling Subscribe & Save as a
+standalone "remind me" record kept the whole feature clear of the
+`place_order` security boundary.
+
+---
+
 ## How to use this log
 
 - **Add an entry whenever production-affecting work happens** —

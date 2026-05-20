@@ -7,6 +7,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { useCart } from '@/context/CartContext';
 import { BackInStockForm } from '@/components/pdp/BackInStockForm';
+import { SubscribeAndSave } from '@/components/pdp/SubscribeAndSave';
 import { track } from '@/lib/analytics';
 import { stripBrandPrefix } from '@/lib/product-display';
 import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
@@ -30,6 +31,8 @@ interface Props {
   attributes?: AttributeWithValues[];
   gallery?: ProductImageT[];
   backInStockEnabled?: boolean;
+  /** True for wellness consumables — enables the Subscribe & Save opt-in. */
+  subscribeEligible?: boolean;
 }
 
 // ─── Variant picker ─────────────────────────────────────────────────────────
@@ -217,7 +220,7 @@ function Gallery({
 }
 
 // ─── PDPPage ───────────────────────────────────────────────────────────────
-export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], backInStockEnabled = true }: Props) {
+export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], backInStockEnabled = true, subscribeEligible = false }: Props) {
   const [qty, setQty] = useState(1);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
@@ -413,6 +416,16 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             {outOfStock && backInStockEnabled && (
               <div style={{ marginBottom: 24 }}>
                 <BackInStockForm productId={product.id} variantId={activeVariant?.id ?? null} />
+              </div>
+            )}
+
+            {subscribeEligible && (
+              <div style={{ marginBottom: 24 }}>
+                <SubscribeAndSave
+                  productId={product.id}
+                  variantId={activeVariant?.id ?? null}
+                  productName={displayName}
+                />
               </div>
             )}
 
