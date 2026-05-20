@@ -43,13 +43,16 @@ export function NewsletterSignup({
           fontSize: '0.8125rem',
           color: isLight ? 'var(--success)' : 'var(--paper)',
           fontFamily: 'var(--font-ui)',
-          padding: '10px 12px',
+          padding: '12px 14px',
           background: isLight ? '#f0fdf4' : 'rgba(45,106,79,0.18)',
           border: isLight ? '1px solid #bbf7d0' : '1px solid rgba(45,106,79,0.4)',
           borderRadius: 'var(--radius-card)',
+          lineHeight: 1.5,
         }}
       >
-        Thanks — we&apos;ll keep you in the loop.
+        Thanks — you&apos;re on the list. Use code{' '}
+        <strong style={{ letterSpacing: '0.04em' }}>WELCOME10</strong> for 10% off
+        your first order over PKR 1,500.
       </div>
     );
   }

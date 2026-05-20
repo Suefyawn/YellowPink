@@ -369,6 +369,13 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
       <li style="margin-bottom:6px">New drops, restock alerts, and a tightly-edited offer or two.</li>
       <li style="margin-bottom:6px">Pakistan-specific routine tips from our editorial team.</li>
     </ul>
+    <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 24px">
+      <tr><td style="background:${PAPER};border:1px dashed ${BRAND_PINK};border-radius:10px;padding:20px 24px;text-align:center">
+        <p style="margin:0 0 6px;color:${MUTED};font-size:12px;letter-spacing:0.08em;text-transform:uppercase">A little welcome gift</p>
+        <p style="margin:0 0 4px;color:${INK};font-size:26px;font-weight:700;letter-spacing:0.06em;font-family:'Courier New',monospace">WELCOME10</p>
+        <p style="margin:0;color:${INK_700};font-size:13px">10% off your first order over PKR 1,500. Apply it at checkout.</p>
+      </td></tr>
+    </table>
     <p style="margin:0 0 24px;color:${INK_700}">
       Curious what we've already written? <a href="${SITE_URL}/blog" style="color:${BRAND_PINK};font-weight:600">Read the edit →</a>
     </p>

@@ -1335,6 +1335,34 @@ SEO, error-handling/code-quality). Findings filed at
 
 ---
 
+## 2026-05-20 — WELCOME10 newsletter coupon (migration 087)
+
+Newsletter signups had no incentive — the welcome email set
+expectations but offered nothing, and the modal's only hook was
+"insider deals" with no concrete offer.
+
+- Migration 087 seeds a single shared `WELCOME10` coupon: 10% off,
+  `discount_type='percent'`, `min_order=1500`,
+  `usage_limit_per_user=1`. Idempotent — `WHERE NOT EXISTS` guard so
+  re-running is safe.
+- **Why one shared code, not per-user mint:** per-user codes mean the
+  email send path has to write to `coupons` first, which couples the
+  fire-and-forget welcome email to a DB write that can fail silently.
+  A shared code keeps the send path pure; abuse is capped at the
+  redemption layer by `usage_limit_per_user=1` (already enforced by
+  `lib/coupon-validation.ts`).
+- `sendNewsletterWelcomeEmail` now renders a dashed-border code block
+  with `WELCOME10` and the "10% off over PKR 1,500" terms.
+- `NewsletterSignup` success state and the `NewsletterModal` headline
+  surface the offer too — the discount is visible the moment a
+  visitor signs up, not only in the email.
+
+Lesson: keep fire-and-forget side effects (emails) free of DB writes.
+Push enforcement to the redemption boundary where a failure is
+visible to the user instead of swallowed in a background send.
+
+---
+
 ## How to use this log
 
 - **Add an entry whenever production-affecting work happens** —
