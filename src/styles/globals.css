@@ -512,6 +512,10 @@ a.underline,
 @media (min-width: 768px) and (max-width: 1024px) {
   .adm-sidebar { width: 200px !important; }
   .adm-main { margin-left: 200px !important; }
+  /* The 200px sidebar leaves a narrow content column on tablets — drop the
+   * stat-card grids to 3-up so the dashboard / analytics KPI cards don't
+   * cram (the inline styles set 4–5 columns for desktop). */
+  .adm-stat-grid { grid-template-columns: repeat(3, 1fr) !important; }
 }
 @media (max-width: 767px) {
   .adm-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }

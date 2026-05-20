@@ -86,19 +86,38 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 28 }}>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Analytics</h1>
           <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-            Time window: last {window} days · <Link href="/admin/analytics?days=7" style={{ color: '#C5286A' }}>7d</Link> · <Link href="/admin/analytics?days=30" style={{ color: '#C5286A' }}>30d</Link> · <Link href="/admin/analytics?days=90" style={{ color: '#C5286A' }}>90d</Link> · <Link href="/admin/analytics?days=365" style={{ color: '#C5286A' }}>1y</Link>
+            Showing the last {window} days
           </p>
+        </div>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {[{ d: 7, l: '7 days' }, { d: 30, l: '30 days' }, { d: 90, l: '90 days' }, { d: 365, l: '1 year' }].map(opt => {
+            const active = window === opt.d;
+            return (
+              <Link
+                key={opt.d}
+                href={`/admin/analytics?days=${opt.d}`}
+                style={{
+                  padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
+                  textDecoration: 'none',
+                  background: active ? '#C5286A' : '#f3f4f6',
+                  color: active ? 'white' : '#6b7280',
+                }}
+              >
+                {opt.l}
+              </Link>
+            );
+          })}
         </div>
       </div>
 
       {/* KPIs */}
       <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 28 }}>
         {kpiCards.map(k => (
-          <div key={k.label} style={{ background: 'white', borderRadius: 10, padding: '18px 20px', border: '1px solid #e5e7eb' }}>
+          <div key={k.label} style={{ background: 'white', borderRadius: 10, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
             <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>
             {k.sub && <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 4 }}>{k.sub}</div>}
@@ -107,7 +126,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
       </div>
 
       {/* Revenue chart */}
-      <div style={{ background: 'white', borderRadius: 10, padding: '24px', border: '1px solid #e5e7eb', marginBottom: 28 }}>
+      <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 28 }}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.875rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
           Revenue · last {window} days
         </h2>
@@ -116,7 +135,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
         {/* Orders by status */}
-        <div style={{ background: 'white', borderRadius: 10, padding: '24px', border: '1px solid #e5e7eb' }}>
+        <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
           <h2 style={{ margin: '0 0 16px', fontSize: '0.875rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Orders by status
           </h2>
@@ -138,7 +157,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         </div>
 
         {/* RFM segments */}
-        <div style={{ background: 'white', borderRadius: 10, padding: '24px', border: '1px solid #e5e7eb' }}>
+        <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
           <h2 style={{ margin: '0 0 16px', fontSize: '0.875rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Customer segments · last 12 months
           </h2>
@@ -168,7 +187,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
         {/* Top products */}
-        <div style={{ background: 'white', borderRadius: 10, padding: '24px', border: '1px solid #e5e7eb' }}>
+        <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
           <h2 style={{ margin: '0 0 16px', fontSize: '0.875rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Top products · last {window} days
           </h2>
@@ -207,7 +226,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         </div>
 
         {/* Cohort retention heat-map */}
-        <div style={{ background: 'white', borderRadius: 10, padding: '24px', border: '1px solid #e5e7eb' }}>
+        <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
           <h2 style={{ margin: '0 0 6px', fontSize: '0.875rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Cohort retention · last 6 months
           </h2>

@@ -111,10 +111,10 @@ export default async function DashboardPage() {
   const ordersToFulfill = (statusCounts.pending ?? 0) + (statusCounts.processing ?? 0);
 
   const stats = [
-    { label: 'Revenue · last 30 days', value: fmt(revenue30d), icon: '₨', color: '#10b981', href: '/admin/analytics', isRevenue: true },
-    { label: 'Orders to fulfill', value: ordersToFulfill, icon: '◎', color: '#C5286A', href: '/admin/orders', isRevenue: false },
-    { label: 'New customers · 30 days', value: newCustomerCount ?? 0, icon: '◉', color: '#6366f1', href: '/admin/users', isRevenue: false },
-    { label: 'Low stock items', value: lowStockCount ?? 0, icon: '⧉', color: '#f59e0b', href: '/admin/inventory', isRevenue: false },
+    { label: 'Revenue · last 30 days', value: fmt(revenue30d), icon: '₨', color: '#10b981', href: '/admin/analytics' },
+    { label: 'Orders to fulfill', value: ordersToFulfill, icon: '◎', color: '#C5286A', href: '/admin/orders' },
+    { label: 'New customers · 30 days', value: newCustomerCount ?? 0, icon: '◉', color: '#6366f1', href: '/admin/users' },
+    { label: 'Low stock items', value: lowStockCount ?? 0, icon: '⧉', color: '#f59e0b', href: '/admin/inventory' },
   ];
 
   return (
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
                 fontSize: '1rem', color: s.color,
               }}>{s.icon}</span>
             </div>
-            <div style={{ fontSize: s.isRevenue ? '1.375rem' : '1.875rem', fontWeight: 700, color: '#111827' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
               {s.value}
             </div>
           </Link>
