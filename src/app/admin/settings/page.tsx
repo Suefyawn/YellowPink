@@ -43,13 +43,25 @@ function ColorPicker({ name, value, label }: { name: string; value: string; labe
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function Card({ id, children }: { id?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px', marginBottom: 24 }}>
+    <div id={id} style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px', marginBottom: 24, scrollMarginTop: 24 }}>
       {children}
     </div>
   );
 }
+
+// Section index — drives the jump-nav and ids the cards anchor to.
+const SECTIONS = [
+  { id: 'store-info',    label: 'Store info' },
+  { id: 'shipping-tax',  label: 'Shipping & tax' },
+  { id: 'payments',      label: 'Payments' },
+  { id: 'loyalty',       label: 'Loyalty' },
+  { id: 'brand-colors',  label: 'Brand colors' },
+  { id: 'announcement',  label: 'Announcement' },
+  { id: 'promo-banner',  label: 'Promo banner' },
+  { id: 'hero',          label: 'Homepage hero' },
+];
 
 function Divider() {
   return <div style={{ height: 1, background: '#f3f4f6', margin: '20px 0' }} />;
@@ -103,9 +115,27 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 780 }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Site Settings</h1>
-      <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>
+      <p style={{ margin: '0 0 16px', color: '#6b7280', fontSize: '0.875rem' }}>
         Control the store appearance, promotional banners, and seasonal campaigns.
       </p>
+
+      {/* Jump-nav — anchor links to each section so the owner doesn't have to
+          scroll the whole form to reach, say, the Loyalty settings. */}
+      <nav aria-label="Settings sections" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
+        {SECTIONS.map(sec => (
+          <a
+            key={sec.id}
+            href={`#${sec.id}`}
+            style={{
+              padding: '5px 12px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600,
+              background: '#f3f4f6', color: '#374151', textDecoration: 'none',
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            {sec.label}
+          </a>
+        ))}
+      </nav>
 
       {saved && (
         <div style={{
@@ -129,7 +159,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <form action={saveSettings}>
 
         {/* ── Store Info ─────────────────────────────────── */}
-        <Card>
+        <Card id="store-info">
           {section('Store Info', 'Shown in email footers, structured data, and on the contact page.')}
           <Divider />
           <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -155,7 +185,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Card>
 
         {/* ── Shipping & Tax ─────────────────────────────── */}
-        <Card>
+        <Card id="shipping-tax">
           {section('Shipping & Tax', 'Default rates that fall back when no per-zone rule applies. Per-zone rates live in shipping_zones / shipping_rates.')}
           <Divider />
           <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -179,7 +209,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Card>
 
         {/* ── Payment Methods ─────────────────────────────── */}
-        <Card>
+        <Card id="payments">
           {section('Payment Methods', 'Which payment options the customer sees at checkout. Unticked methods disappear from the picker entirely. Default: all on.')}
           <Divider />
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -227,7 +257,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Card>
 
         {/* ── Loyalty ─────────────────────────────────────── */}
-        <Card>
+        <Card id="loyalty">
           {section('Loyalty Program', 'How points are earned and redeemed. Triggers in Postgres read these on every order/review/signup.')}
           <Divider />
           <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
@@ -259,7 +289,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Card>
 
         {/* ── Brand colors ───────────────────────────────── */}
-        <Card>
+        <Card id="brand-colors">
           {section('Brand Colors', 'Used by emails and storefront accents. CSS variables in globals.css are the source of truth for the storefront; these copies are for email + future theming.')}
           <Divider />
           <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
@@ -279,7 +309,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Card>
 
         {/* ── Announcement Bar ─────────────────────────────── */}
-        <Card>
+        <Card id="announcement">
           {section('Announcement Bar', 'The thin bar at the very top of every page.')}
           <Divider />
           <div style={{ display: 'grid', gap: 14 }}>
@@ -300,7 +330,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Card>
 
         {/* ── Promotional Banner ───────────────────────────── */}
-        <Card>
+        <Card id="promo-banner">
           {section('Promotional Banner', 'Full-width sale/event banner shown below the header. Use this for Eid, summer sales, launches, etc.')}
           <Divider />
           <div style={{ display: 'grid', gap: 14 }}>
@@ -379,7 +409,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Card>
 
         {/* ── Hero Section ─────────────────────────────────── */}
-        <Card>
+        <Card id="hero">
           {section('Homepage Hero', 'The large split-panel banner at the top of the home page.')}
           <Divider />
           <div style={{ display: 'grid', gap: 14 }}>
@@ -434,8 +464,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           </div>
         </Card>
 
-        {/* ── Submit ───────────────────────────────────────── */}
-        <div style={{ display: 'flex', gap: 12 }}>
+        {/* Sticky save bar — pins to the bottom of the viewport so Save is
+            always reachable on this long form, instead of buried at the end. */}
+        <div style={{
+          position: 'sticky', bottom: 0, marginTop: 8,
+          padding: '14px 16px',
+          background: 'rgba(255,255,255,0.94)',
+          backdropFilter: 'saturate(140%) blur(8px)',
+          WebkitBackdropFilter: 'saturate(140%) blur(8px)',
+          borderTop: '1px solid #e5e7eb', borderRadius: 10,
+          display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
+          boxShadow: '0 -6px 18px rgba(0,0,0,0.05)',
+        }}>
           <button type="submit" style={{
             padding: '11px 28px', background: '#111827', color: 'white',
             border: 'none', borderRadius: 8, fontWeight: 700, fontSize: '0.9375rem',
@@ -443,7 +483,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           }}>
             Save All Settings
           </button>
-          <p style={{ margin: 0, alignSelf: 'center', fontSize: '0.8125rem', color: '#9ca3af' }}>
+          <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
             Changes apply immediately to the live site.
           </p>
         </div>
