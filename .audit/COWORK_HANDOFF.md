@@ -52,13 +52,21 @@ Verify each still holds end to end.
 - **Search "serum" → 0 results** — genuine catalogue gap, correct empty
   state.
 
-## 2. New features to test
+## 2. New features / reworks to test
 
 - **Order confirmation → vendor dispatch** (PR #64) — Admin → **Vendors**
   (add a supplier); on an order, "Mark customer-confirmed" then pick a
   vendor and "Send on WhatsApp" (prefilled order details).
 - **Checkout** (PR #70) — gift-card and referral fields are intentionally
   removed; only the Coupon field + loyalty points remain.
+- **Product edit form revamp** (PR #75) — grouped into titled sections;
+  "Key benefits" and "FAQ" are now add/remove row editors (no more raw
+  JSON). Verify: adding/removing rows saves, and an existing product's
+  benefits/FAQ pre-load into the editors.
+- **Header** (PR #73) — mega-menu stays open when moving to the dropdown;
+  a wishlist heart icon now reaches `/wishlist`; the header stays sticky
+  on scroll while the announcement bar scrolls away.
+- **Homepage trust bar** (PR #74) — four distinct relevant icons.
 
 ## 3. DB migrations applied to the live database
 
@@ -66,12 +74,14 @@ Verify each still holds end to end.
 Treatments rename · `103` analytics_rfm_segments rebuilt on
 v_customer_segments. (Plus `099`–`100` from the round-1 finish.)
 
-## 4. Config still on the owner (not code)
+## 4. Config (Vercel env vars)
 
-- Set `NEXT_PUBLIC_SITE_URL` in Vercel to the production domain — proper fix
-  for email/og-image absolute URLs (a fallback is in place).
-- WhatsApp business number is read from `NEXT_PUBLIC_WHATSAPP_NUMBER`
-  (already set) — verify storefront WhatsApp buttons open +92 300 4374577.
+- `POSTHOG_PERSONAL_API_KEY` + `SENTRY_AUTH_TOKEN` — **set by the owner**;
+  the dashboard "Refresh analytics" + the PostHog/Sentry widgets need them.
+- `NEXT_PUBLIC_WHATSAPP_NUMBER` — set; verify WhatsApp buttons open
+  +92 300 4374577.
+- `NEXT_PUBLIC_SITE_URL` — **still recommended**: set to the production
+  domain so email/og-image absolute URLs use it (a fallback works without).
 
 ## 5. Deliberately deferred
 
@@ -86,6 +96,13 @@ v_customer_segments. (Plus `099`–`100` from the round-1 finish.)
 
 Items the owner spotted between formal QA rounds.
 
+- **Trust-bar icons** (PR #74) — four relevant icons instead of one glyph.
+- **Header — mega-menu hover** (PR #73) — dropdown no longer closes before
+  you can click an item.
+- **Header — nav alignment** (PR #73) — Sale/Blog sit level with the rest.
+- **Header — wishlist link** (PR #73) — a heart icon now reaches `/wishlist`.
+- **Header — sticky** (PR #73) — `body` overflow fix so the header pins.
+- **Product edit form** (PR #75) — sectioned layout + JSON-free editors.
 - **Footer delivery copy** (PR #71) — "Karachi · Lahore · Islamabad" →
   "Delivering nationwide across Pakistan" (site footer + email footer).
 - **PDP hero image height** (PR #71) — squared on desktop; `4/5` on phone.
