@@ -31,13 +31,13 @@ export default async function ReviewsPage() {
   const admin = supabaseAdmin();
   const { data: pending } = await admin
     .from('product_reviews')
-    .select('id, author_name, rating, body, created_at, approved, product_id, products(name, brand)')
+    .select('id, author_name, rating, body, created_at, approved, product_id, photo_urls, verified_purchase, products(name, brand)')
     .eq('approved', false)
     .order('created_at', { ascending: false });
 
   const { data: approved } = await admin
     .from('product_reviews')
-    .select('id, author_name, rating, body, created_at, approved, product_id, products(name, brand)')
+    .select('id, author_name, rating, body, created_at, approved, product_id, photo_urls, verified_purchase, products(name, brand)')
     .eq('approved', true)
     .order('created_at', { ascending: false })
     .limit(20);
@@ -49,6 +49,8 @@ export default async function ReviewsPage() {
     body: string;
     created_at: string;
     approved: boolean;
+    photo_urls: string[] | null;
+    verified_purchase: boolean;
     products: { name: string; brand: string }[] | null;
   };
 
@@ -64,15 +66,34 @@ export default async function ReviewsPage() {
     return (
       <div style={rowStyle}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
             <Stars rating={r.rating} />
             <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827' }}>{r.author_name}</span>
+            {r.verified_purchase && (
+              <span style={{ background: '#f0fdf4', color: '#16a34a', borderRadius: 20, padding: '2px 8px', fontSize: '0.6875rem', fontWeight: 700 }}>
+                Verified purchase
+              </span>
+            )}
             <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{fmtDate(r.created_at)}</span>
           </div>
           <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>
             {r.products?.[0] ? brandPlusName(r.products[0].brand, r.products[0].name) : '—'}
           </div>
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>{r.body}</p>
+          {r.photo_urls && r.photo_urls.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+              {r.photo_urls.map((url, i) => (
+                <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`Review photo ${i + 1}`}
+                    style={{ width: 64, height: 64, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb' }}
+                  />
+                </a>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           {showApprove && (
