@@ -364,6 +364,24 @@ export interface Payment {
   created_at: string;
 }
 
+export type ReorderSubscriptionStatus = 'active' | 'paused' | 'cancelled';
+
+// "Subscribe & Save" — a recurring reorder *reminder* for consumable
+// wellness products. Not auto-billing; see migration 088.
+export interface ReorderSubscription {
+  id: string;
+  user_id: string;
+  email: string;
+  product_id: string;
+  variant_id: string | null;
+  interval_days: number;
+  status: ReorderSubscriptionStatus;
+  next_reminder_at: string;
+  last_reminded_at: string | null;
+  reminder_count: number;
+  created_at: string;
+}
+
 export interface ProductReview {
   id: string;
   product_id: string;

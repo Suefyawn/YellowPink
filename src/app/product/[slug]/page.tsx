@@ -11,6 +11,7 @@ import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtToget
 import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd } from '@/lib/seo';
 import { isEnabled } from '@/lib/flags';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
+import { taxonForCategory } from '@/lib/category-taxonomy';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -233,6 +234,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         attributes={variantData.attributes}
         gallery={gallery}
         backInStockEnabled={backInStockEnabled}
+        subscribeEligible={taxonForCategory(product.category)?.key === 'wellness'}
       />
       <FrequentlyBoughtTogether anchor={product} suggestions={fbt} />
       <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} />
