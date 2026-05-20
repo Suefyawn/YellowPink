@@ -33,25 +33,29 @@ function Stars({ rating, size = 16 }: { rating: number; size?: number }) {
   );
 }
 
+// 1-to-5 star rating input. Stars render left-to-right 1…5; clicking the
+// Nth star records rating N. Fill is driven by React state (hover OR the
+// chosen rating), so it lights cumulatively 1…N. The old version rendered
+// the stars reversed ([5,4,3,2,1]) and walked the wrong DOM siblings, so a
+// 5-star click was saved as a 1-star review.
 function StarPicker({ name }: { name: string }) {
+  const [rating, setRating] = useState(0);
+  const [hover, setHover] = useState(0);
+  const active = hover || rating;
   return (
-    <div style={{ display: 'flex', gap: 4 }}>
-      {[5, 4, 3, 2, 1].map(v => (
-        <label key={v} style={{ cursor: 'pointer', fontSize: 0 }}>
-          <input type="radio" name={name} value={v} required style={{ position: 'absolute', opacity: 0, width: 0 }} />
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="#e5e7eb"
+    <div style={{ display: 'flex', gap: 4 }} onMouseLeave={() => setHover(0)}>
+      {[1, 2, 3, 4, 5].map(v => (
+        <label key={v} style={{ cursor: 'pointer', lineHeight: 0 }} onMouseEnter={() => setHover(v)}>
+          <input
+            type="radio" name={name} value={v} required
+            onChange={() => setRating(v)}
+            style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+          />
+          <svg width="28" height="28" viewBox="0 0 24 24"
+            fill={v <= active ? '#F7C948' : '#e5e7eb'}
             style={{ display: 'block', transition: 'fill 0.1s' }}
-            onMouseEnter={e => {
-              let el: Element | null = e.currentTarget;
-              while (el) { (el as SVGElement).style.fill = '#F7C948'; el = el.nextElementSibling; }
-              el = e.currentTarget.previousElementSibling;
-              while (el) { (el as SVGElement).style.fill = '#F7C948'; el = el.previousElementSibling; }
-            }}
-            onMouseLeave={e => {
-              const parent = e.currentTarget.parentElement?.parentElement;
-              if (!parent) return;
-              parent.querySelectorAll('svg').forEach(s => { (s as SVGElement).style.fill = '#e5e7eb'; });
-            }}
+            role="img"
+            aria-label={`${v} star${v > 1 ? 's' : ''}`}
           >
             <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
           </svg>
