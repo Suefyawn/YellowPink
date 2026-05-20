@@ -31,8 +31,25 @@ export default async function CouponsPage() {
   }
   // coupons RLS (migration 070) drops anon SELECT — admin reads need
   // the service role.
-  const { data } = await supabaseAdmin().from('coupons').select('*').order('created_at', { ascending: false });
+  const admin = supabaseAdmin();
+  const [{ data }, { data: orderRows }] = await Promise.all([
+    admin.from('coupons').select('*').order('created_at', { ascending: false }),
+    admin.from('orders').select('coupon_code, discount_amount').not('coupon_code', 'is', null).neq('status', 'cancelled'),
+  ]);
   const coupons = (data ?? []) as Coupon[];
+
+  // Real redemption impact, aggregated from orders (ground truth) and keyed
+  // by uppercased code so casing differences collapse together.
+  const impact = new Map<string, { orders: number; discount: number }>();
+  for (const row of (orderRows ?? []) as Array<{ coupon_code: string | null; discount_amount: number | null }>) {
+    if (!row.coupon_code) continue;
+    const key = row.coupon_code.toUpperCase();
+    const cur = impact.get(key) ?? { orders: 0, discount: 0 };
+    cur.orders += 1;
+    cur.discount += row.discount_amount ?? 0;
+    impact.set(key, cur);
+  }
+  const totalDiscount = [...impact.values()].reduce((s, v) => s + v.discount, 0);
 
   const inp: React.CSSProperties = {
     padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 7,
@@ -44,7 +61,10 @@ export default async function CouponsPage() {
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Coupons</h1>
-          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>{coupons.length} coupon{coupons.length !== 1 ? 's' : ''}</p>
+          <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
+            {coupons.length} coupon{coupons.length !== 1 ? 's' : ''}
+            {totalDiscount > 0 && ` · PKR ${totalDiscount.toLocaleString()} given in discounts`}
+          </p>
         </div>
       </div>
 
@@ -96,7 +116,7 @@ export default async function CouponsPage() {
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                {['Code', 'Discount', 'Min Order', 'Used', 'Expires', 'Status', ''].map(h => (
+                {['Code', 'Discount', 'Min Order', 'Used', 'Discount given', 'Expires', 'Status', ''].map(h => (
                   <th scope="col" key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                 ))}
               </tr>
@@ -122,6 +142,14 @@ export default async function CouponsPage() {
                     <td data-label="Used" style={{ padding: '12px 16px', fontSize: '0.875rem', color: isMaxed ? '#ea580c' : '#6b7280', fontWeight: isMaxed ? 600 : 400 }}>
                       {c.used_count}
                       {c.max_uses ? <span style={{ color: '#9ca3af' }}> / {c.max_uses}</span> : ''}
+                    </td>
+                    <td data-label="Discount given" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                      {(() => {
+                        const imp = impact.get(c.code.toUpperCase());
+                        return imp && imp.discount > 0
+                          ? <span><strong>PKR {imp.discount.toLocaleString()}</strong><span style={{ color: '#9ca3af' }}> · {imp.orders} order{imp.orders !== 1 ? 's' : ''}</span></span>
+                          : <span style={{ color: '#9ca3af' }}>—</span>;
+                      })()}
                     </td>
                     <td data-label="Expires" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: isExpired ? '#dc2626' : '#6b7280', fontWeight: isExpired ? 600 : 400 }}>
                       {c.expires_at ? fmtDate(c.expires_at) : '—'}
