@@ -1,38 +1,15 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabase as authedClient } from '@/lib/supabase-server';
 import { supabase } from '@/lib/supabase';
 import { taxonForCategory } from '@/lib/category-taxonomy';
 import { SUBSCRIPTION_INTERVALS } from '@/lib/subscriptions';
 
 const DAY_MS = 86_400_000;
 
-// An authenticated Supabase client — reconstructs the user's session from
-// the sb-*-auth-token cookie so RLS on reorder_subscriptions applies.
-// (Same pattern as src/app/account/addresses/actions.ts.)
-async function authedClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const sb = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const store = await cookies();
-  const sessionCookie = store.getAll().find(c => /^sb-.+-auth-token$/.test(c.name));
-  if (sessionCookie) {
-    try {
-      const parsed = JSON.parse(sessionCookie.value);
-      const access = parsed?.access_token;
-      const refresh = parsed?.refresh_token;
-      if (access && refresh) {
-        await sb.auth.setSession({ access_token: access, refresh_token: refresh });
-      }
-    } catch { /* malformed cookie — fall through, RLS will reject writes */ }
-  }
-  return sb;
-}
+// authedClient() is the @supabase/ssr server client — reads the customer's
+// session from cookies so RLS on reorder_subscriptions applies.
 
 function nextReminderIso(intervalDays: number): string {
   return new Date(Date.now() + intervalDays * DAY_MS).toISOString();

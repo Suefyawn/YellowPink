@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
 // ============================================================================
 // Middleware. Lives at src/proxy.ts (this Next.js build's renamed middleware
@@ -127,60 +128,36 @@ export async function proxy(request: NextRequest) {
   }
 
   // ─── Customer-account auth gate ───────────────────────────────────────────
-  // Previously this only checked cookie presence — an attacker on a sibling
-  // subdomain could plant any cookie of that shape and bypass the gate. RLS
-  // would still protect the data at the page layer, but the metadata leak
-  // ("you have an account") and the rendered shell were undesirable.
-  //
-  // Now we decode the Supabase access-token JWT body and check the `exp`
-  // claim. We don't verify the signature in Edge (that would require the
-  // project's JWT secret or a round-trip to Supabase); the page-layer
-  // `supabase.auth.getUser()` does the cryptographic verification on every
-  // request. This middleware is a fast pre-filter for UX.
+  // The session lives in cookies written by the @supabase/ssr browser client.
+  // We build a server client over the request cookies and call getUser(),
+  // which cryptographically verifies the token (and refreshes it if near
+  // expiry, writing the new cookies onto the response). No hand-rolled JWT
+  // decode — that couldn't read @supabase/ssr's chunked cookie format, which
+  // is what bounced every signed-in customer back to /login.
   if (pathname.startsWith('/account')) {
-    const sbCookie = [...request.cookies.getAll()].find(c =>
-      (c.name.includes('auth-token') || c.name.includes('sb-')) && c.name.endsWith('-auth-token')
-    );
-    if (!sbCookie) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-    // Supabase stores the cookie as either a JSON-serialized session or a
-    // base64 envelope. Try both shapes; if we can't extract an unexpired JWT,
-    // fall back to redirect.
-    let ok = false;
-    try {
-      const raw = decodeURIComponent(sbCookie.value);
-      // Strip a leading "base64-" tag if Supabase v2 added it.
-      const stripped = raw.startsWith('base64-') ? atob(raw.slice('base64-'.length)) : raw;
-      // Either a JSON {access_token, expires_at} or just the JWT.
-      let accessToken: string | null = null;
-      let expiresAt: number | null = null;
-      try {
-        const parsed = JSON.parse(stripped);
-        if (Array.isArray(parsed)) {
-          // legacy [access_token, refresh_token, _provider_token, _provider_refresh_token, _user]
-          accessToken = parsed[0];
-        } else if (parsed && typeof parsed === 'object') {
-          accessToken = parsed.access_token ?? null;
-          expiresAt = typeof parsed.expires_at === 'number' ? parsed.expires_at : null;
-        }
-      } catch {
-        // Not JSON — assume the cookie value IS the JWT.
-        accessToken = stripped;
+    const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const sbKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    // Demo / unconfigured: skip the gate, the client-side check still guards.
+    if (sbUrl && sbKey) {
+      let res = NextResponse.next({ request });
+      const supabase = createServerClient(sbUrl, sbKey, {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            for (const { name, value } of cookiesToSet) request.cookies.set(name, value);
+            res = NextResponse.next({ request });
+            for (const { name, value, options } of cookiesToSet) res.cookies.set(name, value, options);
+          },
+        },
+      });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return NextResponse.redirect(new URL('/login', request.url));
       }
-      // Decode JWT payload (no signature check — page layer enforces).
-      if (accessToken && accessToken.split('.').length === 3) {
-        const payloadB64 = accessToken.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-        const pad = '='.repeat((4 - (payloadB64.length % 4)) % 4);
-        const payload = JSON.parse(atob(payloadB64 + pad));
-        const exp = expiresAt ?? payload.exp;
-        if (typeof exp === 'number' && exp * 1000 > Date.now()) ok = true;
-      }
-    } catch {
-      ok = false;
-    }
-    if (!ok) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      // Authenticated — return the response carrying any refreshed cookies.
+      return res;
     }
   }
 

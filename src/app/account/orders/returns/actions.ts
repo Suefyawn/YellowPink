@@ -1,29 +1,14 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { cookies, headers } from 'next/headers';
-import { createClient } from '@supabase/supabase-js';
+import { headers } from 'next/headers';
+import { createServerSupabase as authedClient } from '@/lib/supabase-server';
 import { reviewLimiter, ipFromHeaders } from '@/lib/ratelimit';
 
 interface ReturnItem { product_id: string; qty: number; name: string; price: number }
 
-async function authedClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const sb = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
-
-  const store = await cookies();
-  const sessionCookie = store.getAll().find(c => /^sb-.+-auth-token$/.test(c.name));
-  if (sessionCookie) {
-    try {
-      const parsed = JSON.parse(sessionCookie.value);
-      const access  = parsed?.access_token;
-      const refresh = parsed?.refresh_token;
-      if (access && refresh) await sb.auth.setSession({ access_token: access, refresh_token: refresh });
-    } catch { /* fall through */ }
-  }
-  return sb;
-}
+// authedClient() is the @supabase/ssr server client — reads the customer's
+// session from cookies so RLS on order returns applies.
 
 export async function requestReturn(args: {
   order_id: string;
