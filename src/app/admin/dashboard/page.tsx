@@ -6,10 +6,6 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
 import { SentryWidget } from '@/components/admin/SentryWidget';
-import { PostHogWidget } from '@/components/admin/PostHogWidget';
-import { ConversionFunnelWidget } from '@/components/admin/ConversionFunnelWidget';
-import { TopPagesWidget } from '@/components/admin/TopPagesWidget';
-import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
@@ -42,7 +38,6 @@ export default async function DashboardPage() {
     return <NoAccess section="Dashboard" />;
   }
   const canOverview = !session || can(session, 'analytics');
-  const canTraffic  = !session || can(session, 'analytics_traffic');
   const canErrors   = !session || can(session, 'analytics_errors');
   const canRefresh  = !session || can(session, 'analytics_refresh');
   // Server components render once per request — pulling the "now" once
@@ -259,19 +254,9 @@ export default async function DashboardPage() {
       )}
       {/* ── /Overview block ────────────────────────────────────────────── */}
 
-      {/* ── Traffic block (gated on `analytics_traffic`) ───────────────── */}
-      {canTraffic && (
-        <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 20, marginBottom: 20 }} className="adm-analytics-grid">
-            <ConversionFunnelWidget />
-            <PostHogWidget />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }} className="adm-analytics-grid">
-            <TopPagesWidget />
-            <TopEventsWidget />
-          </div>
-        </>
-      )}
+      {/* Traffic widgets (funnel / PostHog / top pages / top events) now
+          live on the Analytics page — the dashboard stays focused on
+          today's actionable numbers. */}
 
       {/* ── Error monitoring (gated on `analytics_errors`) ─────────────── */}
       {canErrors && (

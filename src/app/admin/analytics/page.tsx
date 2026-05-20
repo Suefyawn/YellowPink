@@ -5,6 +5,11 @@ import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
+import { PostHogWidget } from '@/components/admin/PostHogWidget';
+import { ConversionFunnelWidget } from '@/components/admin/ConversionFunnelWidget';
+import { TopPagesWidget } from '@/components/admin/TopPagesWidget';
+import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
+import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { OrderStatus } from '@/types';
 
@@ -33,6 +38,8 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   if (session && !session.isOwner && !session.permissions.includes('analytics')) {
     return <NoAccess section="Analytics" />;
   }
+
+  const canTraffic = !session || can(session, 'analytics_traffic');
 
   const { days } = await searchParams;
   const window = Math.max(1, Math.min(365, Number(days ?? '30')));
@@ -132,6 +139,21 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         </h2>
         <RevenueChart days={chartData} />
       </div>
+
+      {/* Traffic — moved here from the dashboard so it stays focused on
+          today's actionable numbers. Gated on the analytics_traffic perm. */}
+      {canTraffic && (
+        <>
+          <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 28 }}>
+            <ConversionFunnelWidget />
+            <PostHogWidget />
+          </div>
+          <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+            <TopPagesWidget />
+            <TopEventsWidget />
+          </div>
+        </>
+      )}
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
         {/* Orders by status */}
