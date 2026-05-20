@@ -1423,6 +1423,41 @@ the email that asks.
 
 ---
 
+## 2026-05-20 — Activity log: audit_log → full system feed (migration 090)
+
+`audit_log` only ever captured staff writes (via `lib/audit.ts`). The
+owner wanted one feed of *everything* — customer signups, orders,
+reviews, subscriptions, newsletter joins, status changes — to track
+the user journey.
+
+- Migration 090 widens `audit_log.actor_kind` to allow `'customer'`
+  and adds database **triggers** (`tg_log_activity`) on `orders`,
+  `order_events`, `profiles`, `product_reviews`,
+  `reorder_subscriptions`, and `newsletter_subscribers`.
+- **Why triggers, not code instrumentation:** a trigger fires no
+  matter which route / RPC / cron made the write, so the feed can't
+  silently drift when a code path changes later. The old approach
+  (manual `logAudit` calls) only ever covered the admin UI.
+- The trigger body is wrapped in an exception guard — orders are
+  inserted inside the `place_order` SECURITY DEFINER function, so a
+  failing activity insert there would roll back the checkout. It must
+  never throw.
+- Migration backfills historical rows (orders, signups, reviews,
+  status changes) from existing data, guarded by `NOT EXISTS` so
+  re-running is a no-op. First load showed 145 events.
+- `/admin/audit` reworked into "Activity log" — actor filter chips,
+  action search, friendly event labels. Sidebar renamed to match.
+
+Also added `.audit/COWORK_TEST_PLAN.md` — a full storefront + admin
+test script for the Cowork browser agent, with an admin-usefulness
+audit and a cleanup pass.
+
+Lesson: if you want to log "everything", log it at the database, not
+in the application. App-layer logging only covers the paths you
+remembered to instrument.
+
+---
+
 ## How to use this log
 
 - **Add an entry whenever production-affecting work happens** —
