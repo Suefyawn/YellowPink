@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
@@ -52,7 +52,9 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
   const topIds = top.map(t => t.product_id);
   const productMap = new Map<string, { brand: string; name: string; slug: string }>();
   if (topIds.length) {
-    const { data: prods } = await supabase.from('products').select('id, brand, name, slug').in('id', topIds);
+    // Service-role read: top sellers can be archived/draft products, which
+    // the anon client's RLS would hide — leaving a raw UUID in the table.
+    const { data: prods } = await supabaseAdmin().from('products').select('id, brand, name, slug').in('id', topIds);
     for (const p of (prods ?? []) as Array<{ id: string; brand: string; name: string; slug: string }>) {
       productMap.set(p.id, { brand: p.brand, name: p.name, slug: p.slug });
     }
@@ -189,7 +191,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
                           {p.brand} {p.name}
                         </Link>
                       ) : (
-                        <span style={{ color: '#9ca3af', fontFamily: 'monospace', fontSize: '0.75rem' }}>{t.product_id.slice(0, 8)}…</span>
+                        <span style={{ color: '#9ca3af', fontSize: '0.8125rem', fontStyle: 'italic' }}>Unknown product (deleted)</span>
                       )}
                     </td>
                     <td style={{ padding: '8px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{t.units}</td>
