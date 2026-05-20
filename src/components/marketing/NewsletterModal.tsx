@@ -146,10 +146,10 @@ export function NewsletterModal() {
           className="display-l"
           style={{ fontSize: '1.75rem', margin: '0 0 10px', lineHeight: 1.15 }}
         >
-          New drops &amp; insider deals
+          10% off your first order
         </h2>
         <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 20, fontSize: '0.9375rem' }}>
-          One thoughtful email a fortnight — new arrivals, restocks, and Pakistan-specific routine tips.
+          Sign up and we&apos;ll send a welcome code, plus one thoughtful email a fortnight — new arrivals, restocks, and Pakistan-specific routine tips.
         </p>
         <NewsletterSignup source="modal" variant="light" ctaLabel="Sign up" />
         <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--ink-500)' }}>
