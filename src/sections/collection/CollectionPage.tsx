@@ -5,7 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
-import type { Product, Category, ProductAttribute, AttributeValue } from '@/types';
+import { TAXONS, findTaxon, taxonForCategory } from '@/lib/category-taxonomy';
+import type { Product, ProductAttribute, AttributeValue } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
   values: AttributeValue[];
@@ -13,50 +14,41 @@ interface AttributeWithValues extends ProductAttribute {
 
 const PAGE_SIZE = 48;
 
-// Fallback used when the categories table is empty (pre-WP-import installs).
-const FALLBACK_TOP = ['All', 'Makeup', 'Skincare', 'Wellness'];
-const FALLBACK_SUB: Record<string, string[]> = {
-  Makeup: ['Lip & Cheek Tints', 'Highlighters', 'Skin Makeup', 'Concealers', 'Contour Sticks', 'Foundations', 'Eyeshadow', 'Brushes'],
-  Skincare: ['Skincare', 'Moisturizers', 'Hair Care'],
-  Wellness: ['Health & Wellness', 'Human Health', 'Bone Health', 'Brain Health', 'Immune Support', 'Female Fertility & Reproductive Health', 'Digestive Health & Weight Management', 'Heart & Cardiovascular', 'Energy & Performance', 'Combo Packs', 'Pediatric Health', 'Sleep & Relaxation', 'Electrolyte Balance'],
-};
+// Top-level shop tabs are the 4 taxons, with "All" first. The sub-category
+// chips below are the active taxon's leaf categories — filtered down to the
+// ones that actually have products (see `subcats`) so the row can never
+// surface an empty category.
+const TOP_CATEGORY_NAMES = ['All', ...TAXONS.map(t => t.label)];
 
 const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   All: 'Imported, authentic, and tested for Pakistani skin. Every product earns its place.',
   Makeup: 'Authentic imported makeup from the world\'s best brands, available in Pakistan.',
   Skincare: 'Science-backed skincare formulas that actually work on Pakistani skin.',
   Wellness: 'Clinical-grade nutraceuticals for fertility, immunity, and daily vitality.',
+  Bundles: 'Curated combos and value packs — more of what you love, for less.',
 };
 
 type SortKey = 'featured' | 'price-low' | 'price-high' | 'name';
 
 interface Props {
   products: Product[];
-  categories?: Category[];
   attributes?: AttributeWithValues[];
   /** Map of product_id → list of attribute_value_ids that the product's variants cover. */
   productValueMap?: Record<string, string[]>;
+  /** Initial top tab — a taxon label ("Makeup") or "All". */
   initialCategory?: string;
+  /** Initial leaf-category chip (one of the 18 product categories). */
   initialSubcategory?: string | null;
-  /** Taxon key from the URL (?taxon=makeup) — used to restrict the catalogue to a
-   *  multi-category group instead of a single value. */
-  initialTaxon?: string | null;
-  /** The exact category values belonging to the active taxon. When non-null,
-   *  this overrides activeCategory for the product-scope filter. */
-  initialTaxonCategories?: string[] | null;
   /** Optional pre-applied "on sale" filter, set by `?on_sale=1`. */
   initialOnSaleOnly?: boolean;
 }
 
 export function CollectionPage({
   products,
-  categories = [],
   attributes = [],
   productValueMap = {},
   initialCategory = 'All',
   initialSubcategory = null,
-  initialTaxon = null,
-  initialTaxonCategories = null,
   initialOnSaleOnly = false,
 }: Props) {
   const router = useRouter();
@@ -70,8 +62,32 @@ export function CollectionPage({
     // we read here, the canonical names are in place. We still fall through
     // to the short forms as a belt-and-braces safety net (e.g. if someone
     // disables middleware during local dev).
-    const cat = sp.get('category') ?? sp.get('cat') ?? initialCategory;
-    const sub = sp.get('subcategory') ?? sp.get('sub') ?? initialSubcategory ?? null;
+    //
+    // Resolve whatever the URL carries — ?taxon=, ?category= (which may be a
+    // taxon OR a leaf), ?subcategory= — into a (top tab, leaf chip) pair.
+    // The top tab is always a taxon label; the chip is always a leaf.
+    const { cat, sub } = (() => {
+      const taxonParam = sp.get('taxon');
+      const catParam = sp.get('category') ?? sp.get('cat')
+        ?? (initialCategory !== 'All' ? initialCategory : null);
+      const subParam = sp.get('subcategory') ?? sp.get('sub') ?? initialSubcategory ?? null;
+      let topLabel = 'All';
+      let leaf: string | null = null;
+      const taxon = findTaxon(taxonParam) ?? findTaxon(catParam);
+      if (taxon) {
+        topLabel = taxon.label;
+      } else if (catParam) {
+        // catParam is a leaf category — map it back to its owning taxon.
+        const owner = taxonForCategory(catParam);
+        if (owner) { topLabel = owner.label; leaf = catParam; }
+      }
+      if (subParam) {
+        leaf = subParam;
+        const owner = taxonForCategory(subParam);
+        if (owner) topLabel = owner.label;
+      }
+      return { cat: topLabel, sub: leaf };
+    })();
     const sort = (sp.get('sort') as SortKey | null) ?? 'featured';
     const pageNum = Math.max(1, Number(sp.get('page') ?? '1'));
     const brands = sp.get('brand')?.split(',').filter(Boolean) ?? [];
@@ -106,18 +122,13 @@ export function CollectionPage({
   const [page, setPage] = useState(initialState.pageNum);
 
   // ─── Facets (price / brand / in-stock / on-sale) ─────────────────────────
-  // Brand list + price bounds come from the *category-scoped* product set so
-  // they make sense as the user navigates between tabs.
-  //
-  // Taxon mode takes precedence: when the URL had ?taxon=makeup, we
-  // restrict to the taxon's category set and ignore the per-category
-  // navigation (the user can still drill down via subcategory).
+  // Brand list + price bounds come from the taxon-scoped product set so they
+  // make sense as the user navigates between top tabs. "All" → whole catalog.
   const categoryScoped = useMemo(() => {
-    if (initialTaxonCategories && initialTaxonCategories.length > 0) {
-      return products.filter(p => initialTaxonCategories.includes(p.category));
-    }
-    return products.filter(p => activeCategory === 'All' || p.category === activeCategory);
-  }, [products, activeCategory, initialTaxonCategories]);
+    const t = findTaxon(activeCategory);
+    if (!t) return products;
+    return products.filter(p => t.categories.includes(p.category));
+  }, [products, activeCategory]);
 
   const allBrands = useMemo<string[]>(() =>
     Array.from(
@@ -253,31 +264,13 @@ export function CollectionPage({
     (inStockOnly ? 1 : 0) +
     (onSaleOnly ? 1 : 0);
 
-  // Build the top-level and children category lists from the DB when present,
-  // otherwise fall back to the hardcoded constants for pre-import installs.
-  // When the DB has top-level categories but no children yet (e.g. demo data),
-  // merge in FALLBACK_SUB for top names we recognise so the subcategory chip
-  // row still has something to show.
-  const { topCategoryNames, childrenByParentName } = useMemo(() => {
-    if (categories.length === 0) {
-      return {
-        topCategoryNames: FALLBACK_TOP,
-        childrenByParentName: FALLBACK_SUB,
-      };
-    }
-    const tops = categories.filter(c => c.parent_id == null);
-    const childByParent: Record<string, string[]> = {};
-    for (const top of tops) {
-      const dbChildren = categories.filter(c => c.parent_id === top.id).map(c => c.name);
-      childByParent[top.name] = dbChildren.length > 0
-        ? dbChildren
-        : (FALLBACK_SUB[top.name] ?? []);
-    }
-    return {
-      topCategoryNames: ['All', ...tops.map(t => t.name)],
-      childrenByParentName: childByParent,
-    };
-  }, [categories]);
+  // Leaf categories that actually have at least one product. The sub-category
+  // chip row is built from this set so it can never show an empty category —
+  // it stays correct automatically as the catalogue changes.
+  const populatedLeaves = useMemo(
+    () => new Set(products.map(p => p.category)),
+    [products],
+  );
 
   function handleTopCategory(cat: string) {
     setActiveCategory(cat);
@@ -298,22 +291,21 @@ export function CollectionPage({
   // for the catalogue size we run — if it ever gets too big we'll swap in
   // the `search_products` RPC (pg_trgm) the typeahead overlay already uses.
   const qLower = q.trim().toLowerCase();
+  const activeTaxon = findTaxon(activeCategory);
 
   let filtered = products.filter(p => {
     if (qLower) {
-      const hay = `${p.brand} ${p.name} ${p.category ?? ''} ${p.subcategory ?? ''} ${p.variant ?? ''}`.toLowerCase();
+      const hay = `${p.brand} ${p.name} ${p.category ?? ''} ${p.variant ?? ''}`.toLowerCase();
       if (!hay.includes(qLower)) return false;
     }
-    // In taxon mode, replace the single-category filter with a multi-category
-    // membership test against the taxon's children. This way the page renders
-    // the right intersection (e.g. all Makeup categories) and a sub-category
-    // pick still narrows from there.
-    if (initialTaxonCategories && initialTaxonCategories.length > 0) {
-      if (!initialTaxonCategories.includes(p.category)) return false;
-    } else if (activeCategory !== 'All' && p.category !== activeCategory) {
+    // Category scope: an active leaf chip narrows to that exact leaf
+    // category; otherwise the active taxon narrows to its leaf set; the
+    // "All" tab applies no category filter at all.
+    if (activeSubcategory) {
+      if (p.category !== activeSubcategory) return false;
+    } else if (activeTaxon && !activeTaxon.categories.includes(p.category)) {
       return false;
     }
-    if (activeSubcategory && p.subcategory !== activeSubcategory) return false;
     if (selectedBrands.size > 0 && (!p.brand || !selectedBrands.has(p.brand))) return false;
     if (priceMin !== '' && p.price < priceMin) return false;
     if (priceMax !== '' && p.price > priceMax) return false;
@@ -349,15 +341,13 @@ export function CollectionPage({
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const subcats = activeCategory !== 'All' ? childrenByParentName[activeCategory] ?? [] : [];
-  // In taxon mode the title uses the taxon label (Makeup / Wellness / etc.)
-  // instead of "All Products" — gives the visitor an immediate "you are in
-  // the Makeup section" cue that the previous nav lacked.
-  const taxonLabel = initialTaxon
-    ? initialTaxon.charAt(0).toUpperCase() + initialTaxon.slice(1)
-    : null;
+  // Sub-category chips = the active taxon's leaf categories, filtered to the
+  // ones that actually have products so the row never shows an empty chip.
+  const subcats = activeTaxon
+    ? activeTaxon.categories.filter(leaf => populatedLeaves.has(leaf))
+    : [];
   const pageTitle = activeSubcategory
-    ?? (taxonLabel ?? (activeCategory === 'All' ? 'All Products' : activeCategory));
+    ?? (activeCategory === 'All' ? 'All Products' : activeCategory);
 
   return (
     <div>
@@ -369,7 +359,7 @@ export function CollectionPage({
             {CATEGORY_DESCRIPTIONS[activeCategory] ?? CATEGORY_DESCRIPTIONS.All}
           </p>
           <div style={{ display: 'flex', gap: 0, overflowX: 'auto', marginBottom: -1 }}>
-            {topCategoryNames.map(cat => (
+            {TOP_CATEGORY_NAMES.map(cat => (
               <button key={cat} onClick={() => handleTopCategory(cat)} style={{
                 padding: '12px 20px', background: 'none', border: 'none', cursor: 'pointer',
                 fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 600,
@@ -694,7 +684,7 @@ export function CollectionPage({
                     style={{ fontSize: '0.75rem' }}
                   >Clear all filters</button>
                 )}
-                {topCategoryNames
+                {TOP_CATEGORY_NAMES
                   .filter(c => c !== 'All' && c !== activeCategory)
                   .slice(0, 3)
                   .map(c => (

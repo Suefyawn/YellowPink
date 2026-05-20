@@ -6,10 +6,9 @@ export const revalidate = 300;
 import type { Metadata } from 'next';
 import { getProducts, isDemo } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
-import { DEMO_CATEGORIES } from '@/lib/demo-data';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
-import type { Category, ProductAttribute, AttributeValue } from '@/types';
+import type { ProductAttribute, AttributeValue } from '@/types';
 
 export interface AttributeWithValues extends ProductAttribute {
   values: AttributeValue[];
@@ -108,35 +107,16 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   });
 }
 
-async function loadCategories(): Promise<Category[]> {
-  if (isDemo) return DEMO_CATEGORIES;
-  // All categories; CollectionPage groups by parent_id client-side.
-  const { data } = await supabase
-    .from('categories')
-    .select('id, parent_id, slug, name, description, image_url, sort_order, wp_term_id')
-    .order('sort_order')
-    .order('name');
-  return (data ?? []) as Category[];
-}
-
-async function resolveCategoryFromSlug(slug: string | undefined, categories: Category[]): Promise<string | null> {
-  if (!slug) return null;
-  const hit = categories.find(c => c.slug.toLowerCase() === slug.toLowerCase());
-  return hit?.name ?? null;
-}
-
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string }> }) {
-  const [products, categories, facetData] = await Promise.all([
+  const [products, facetData] = await Promise.all([
     getProducts(),
-    loadCategories(),
     loadFacetData(),
   ]);
   const { category, subcategory, cat, taxon, on_sale } = await searchParams;
 
-  // Resolve ?cat=<slug> (used by WP redirects) into a display category name.
-  const initialCategory =
-    category ??
-    (cat ? (await resolveCategoryFromSlug(cat, categories)) ?? cat : 'All');
+  // ?category= is canonical; ?cat= is a legacy WP param the proxy already
+  // 301s across. CollectionPage resolves the value (taxon or leaf) itself.
+  const initialCategory = category ?? cat ?? 'All';
 
   // Resolve ?taxon=makeup into the macro-bucket category set so the
   // CollectionPage can multi-filter. We resolve here so the server-rendered
@@ -186,13 +166,10 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       />
       <CollectionPage
         products={products}
-        categories={categories}
         attributes={facetData.attributes}
         productValueMap={facetData.productValueMap}
         initialCategory={initialCategory}
         initialSubcategory={subcategory ?? null}
-        initialTaxon={taxonObj?.key ?? null}
-        initialTaxonCategories={taxonObj ? [...taxonObj.categories] : null}
         initialOnSaleOnly={on_sale === '1'}
       />
     </main>
