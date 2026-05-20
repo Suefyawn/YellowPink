@@ -230,6 +230,24 @@ export interface Order {
   /** Set by the review-requests cron once the post-delivery review email
    *  has been sent. NULL/undefined = not yet asked. */
   review_request_sent_at?: string | null;
+  /** Set when staff mark the customer as having confirmed the order
+   *  (typically over WhatsApp). NULL = not yet confirmed. */
+  confirmed_at?: string | null;
+  /** Vendor this order was dispatched to for fulfilment. */
+  vendor_id?: string | null;
+  /** Set when staff forward the order to the assigned vendor. */
+  vendor_sent_at?: string | null;
+}
+
+/** A supplier the store dispatches confirmed orders to (over WhatsApp). */
+export interface Vendor {
+  id: string;
+  name: string;
+  /** WhatsApp number — any format; normalised when building the wa.me link. */
+  phone: string;
+  notes?: string | null;
+  active: boolean;
+  created_at?: string;
 }
 
 export interface OrderEvent {

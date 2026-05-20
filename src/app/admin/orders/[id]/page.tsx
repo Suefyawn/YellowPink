@@ -6,6 +6,8 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { OrderStatusForm } from '@/components/admin/OrderStatusForm';
 import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
 import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
+import { VendorDispatch } from '@/components/admin/VendorDispatch';
+import { setOrderConfirmed } from '@/app/admin/vendor-actions';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { configuredAdapterIds } from '@/lib/couriers';
@@ -65,6 +67,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .order('created_at', { ascending: true });
   const events = (eventRows ?? []) as OrderEventRow[];
 
+  // Active vendors for the dispatch picker.
+  const { data: vendorRows } = await supabaseAdmin()
+    .from('vendors')
+    .select('id, name, phone')
+    .eq('active', true)
+    .order('name');
+  const vendors = (vendorRows ?? []) as Array<{ id: string; name: string; phone: string }>;
+
   // Customer history block — lifetime orders + total spend for the same
   // (user_id OR phone OR email). Cheap query — admin-only view, no caching
   // needed. Excludes the current order from "previous" + "ltv" so the
@@ -98,6 +108,20 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const dl: React.CSSProperties = { display: 'grid', gridTemplateColumns: '140px 1fr', gap: '10px 16px', margin: 0 };
   const dt: React.CSSProperties = { fontSize: '0.8125rem', color: '#6b7280', fontWeight: 500 };
   const dd: React.CSSProperties = { fontSize: '0.875rem', color: '#111827', margin: 0 };
+
+  // Prefilled WhatsApp message the owner forwards to the chosen vendor.
+  const vendorMessage = [
+    `Yellow Pink — Order ${o.order_number}`,
+    '',
+    ...items.map(it => `• ${it.qty}× ${brandPlusName(it.brand, it.name)}${it.variant ? ` (${it.variant})` : ''}`),
+    '',
+    'Deliver to:',
+    `${o.first_name} ${o.last_name}`,
+    `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
+    `Phone: ${o.phone}`,
+    '',
+    `Total: ${fmt(o.total)} · ${payLabel[o.pay_method] ?? o.pay_method}`,
+  ].join('\n');
 
   return (
     <div style={{ padding: '32px 36px' }}>
@@ -225,6 +249,55 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div style={{ marginTop: 8, fontSize: '0.8125rem', color: '#6b7280' }}>
             Payment: <strong style={{ color: '#374151' }}>{payLabel[o.pay_method] ?? o.pay_method}</strong>
           </div>
+        </div>
+      </div>
+
+      {/* Confirmation & vendor dispatch */}
+      <div style={{ ...section, marginBottom: 20 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Confirmation &amp; vendor</h2>
+        <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Confirm the order with the customer on WhatsApp (button at the top), mark it confirmed here, then forward it to a vendor.
+        </p>
+        <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          {/* Customer confirmation */}
+          <div>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Customer confirmation</div>
+            {o.confirmed_at ? (
+              <div>
+                <span style={{
+                  display: 'inline-block', padding: '4px 10px', borderRadius: 6,
+                  background: '#f0fdf4', color: '#16a34a', fontSize: '0.8125rem', fontWeight: 600,
+                }}>
+                  ✓ Confirmed {fmtDate(o.confirmed_at)}
+                </span>
+                <form action={setOrderConfirmed.bind(null, o.id!, false)} style={{ marginTop: 8 }}>
+                  <button type="submit" style={{
+                    padding: '6px 12px', background: 'transparent', border: '1px solid #d1d5db',
+                    borderRadius: 6, color: '#6b7280', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                  }}>
+                    Mark unconfirmed
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <form action={setOrderConfirmed.bind(null, o.id!, true)}>
+                <button type="submit" style={{
+                  padding: '9px 16px', background: '#C5286A', color: 'white', border: 'none',
+                  borderRadius: 7, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+                }}>
+                  Mark customer-confirmed
+                </button>
+              </form>
+            )}
+          </div>
+          {/* Vendor dispatch */}
+          <VendorDispatch
+            orderId={o.id!}
+            vendors={vendors}
+            currentVendorId={o.vendor_id ?? null}
+            vendorSentAt={o.vendor_sent_at ?? null}
+            message={vendorMessage}
+          />
         </div>
       </div>
 
