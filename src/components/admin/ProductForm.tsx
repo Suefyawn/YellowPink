@@ -3,13 +3,8 @@ import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { createProduct, updateProduct } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
+import { TAXONS } from '@/lib/category-taxonomy';
 import type { Product } from '@/types';
-
-const SUBCATEGORIES: Record<string, string[]> = {
-  Makeup: ['Lip & Cheek Tints', 'Highlighters', 'Skin Makeup', 'Concealers', 'Contour Sticks', 'Foundations', 'Eyeshadow', 'Brushes', 'Budget Bundles'],
-  Skincare: ['Skincare', 'Moisturizers', 'Hair Care', 'Sunscreens'],
-  Wellness: ['Health & Wellness', 'Human Health', 'Bone Health', 'Brain Health', 'Immune Support', 'Female Fertility & Reproductive Health', 'Digestive Health & Weight Management', 'Heart & Cardiovascular', 'Energy & Performance', 'Combo Packs', 'Pediatric Health', 'Sleep & Relaxation', 'Electrolyte Balance', 'Immunity & Wellness'],
-};
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -35,7 +30,6 @@ export function ProductForm({ product }: { product?: Product }) {
 
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
-  const [category, setCategory] = useState(product?.category ?? '');
 
   return (
     <div style={{ padding: '32px 36px' }}>
@@ -107,22 +101,17 @@ export function ProductForm({ product }: { product?: Product }) {
           </div>
 
           {/* Row 3 */}
-          <div className="adm-form-4col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
+          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div style={fieldWrap}>
               <label style={lbl}>Category *</label>
-              <select name="category" required value={category} onChange={e => setCategory(e.target.value)} style={inp}>
-                <option value="">— Select —</option>
-                <option value="Makeup">Makeup</option>
-                <option value="Skincare">Skincare</option>
-                <option value="Wellness">Wellness</option>
-              </select>
-            </div>
-            <div style={fieldWrap}>
-              <label style={lbl}>Subcategory</label>
-              <select name="subcategory" defaultValue={product?.subcategory ?? ''} style={inp}>
-                <option value="">— None —</option>
-                {(SUBCATEGORIES[category] ?? []).map(s => (
-                  <option key={s} value={s}>{s}</option>
+              <select name="category" required defaultValue={product?.category ?? ''} style={inp}>
+                <option value="" disabled>— Select —</option>
+                {TAXONS.map(t => (
+                  <optgroup key={t.key} label={t.label}>
+                    {t.categories.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
