@@ -1484,6 +1484,34 @@ shed load, shed the right thing — marketing yields, orders never do.
 
 ---
 
+## 2026-05-20 — P0: checkout was failing for every customer (migration 092)
+
+Cowork QA found the store could not take a single order. `place_order`
+aborted with:
+`null value in column "url" of relation "http_request_queue" violates
+not-null constraint`.
+
+Root cause: the `on_order_created` AFTER INSERT trigger on `orders` ran
+`notify_order_confirmation()`, which called
+`net.http_post(url := current_setting('app.supabase_url', true) || '…')`.
+The `app.supabase_url` GUC is unset, so `current_setting(…, true)`
+returned NULL, the URL concatenated to NULL, and pg_net's
+`http_request_queue.url` is NOT NULL — the enqueue aborted the entire
+checkout transaction.
+
+Fix (migration 092): dropped the trigger and function outright. It was
+redundant — the checkout server action already sends the customer
+confirmation and owner notification via Resend
+(`src/app/checkout/actions.ts`). The DB-trigger → edge-function path
+was a second, unmonitored email mechanism that nobody needed.
+
+Lesson: `current_setting(name, true)` silently returns NULL for an
+unset GUC. Concatenated into a NOT NULL column inside a trigger, that
+turns a missing config value into a hard outage of the most important
+flow in the store. Don't build critical-path triggers on optional GUCs.
+
+---
+
 ## How to use this log
 
 - **Add an entry whenever production-affecting work happens** —
