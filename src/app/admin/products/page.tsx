@@ -15,19 +15,30 @@ const PAGE_SIZE = 25;
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; tag?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ category?: string; tag?: string; q?: string; page?: string; sort?: string }>;
 }) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('products')) {
     return <NoAccess section="Products" />;
   }
-  const { category, tag, q, page: pageParam } = await searchParams;
+  const { category, tag, q, page: pageParam, sort } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
+  // Sort options mirror the dropdown in ProductsFilter.
+  const SORT_MAP: Record<string, { col: string; asc: boolean }> = {
+    newest:     { col: 'created_at', asc: false },
+    name:       { col: 'name',       asc: true },
+    price_high: { col: 'price',      asc: false },
+    price_low:  { col: 'price',      asc: true },
+    stock_low:  { col: 'stock',      asc: true },
+    stock_high: { col: 'stock',      asc: false },
+  };
+  const order = SORT_MAP[sort ?? 'newest'] ?? SORT_MAP.newest;
+
   let countQuery = supabase.from('products').select('*', { count: 'exact', head: true });
-  let dataQuery = supabase.from('products').select('*').order('created_at', { ascending: false }).range(from, to);
+  let dataQuery = supabase.from('products').select('*').order(order.col, { ascending: order.asc }).range(from, to);
 
   if (category && category !== 'All') {
     countQuery = countQuery.eq('category', category);
