@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
@@ -221,7 +221,26 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const [qty, setQty] = useState(1);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
+  // Sticky mobile buy-bar: shown once the in-page buy panel scrolls out of
+  // view so the Add-to-Cart action is always one tap away on a phone.
+  const buyPanelRef = useRef<HTMLDivElement | null>(null);
+  const [showStickyBar, setShowStickyBar] = useState(false);
   const { addToCart } = useCart();
+
+  // Observe the in-page buy panel; surface the sticky bar only after it has
+  // scrolled off the top of the viewport (not before the user reaches it).
+  useEffect(() => {
+    const el = buyPanelRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+      },
+      { threshold: 0 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   // view_item analytics — fires once per product visit.
   useEffect(() => {
@@ -372,7 +391,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               />
             )}
 
-            <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+            <div ref={buyPanelRef} style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)' }}>
                 <button type="button" aria-label="Decrease quantity" onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>−</button>
                 <span aria-live="polite" style={{ width: 32, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
@@ -637,6 +656,60 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           </div>
         </section>
       )}
+
+      {/* Sticky mobile buy-bar — fixed to the bottom of the viewport once the
+          in-page buy panel scrolls off the top. Mobile-only via the
+          `pdp-sticky-bar` CSS class (display:none ≥768px). Reuses the same
+          qty + handleAdd as the in-page panel so state stays in sync. */}
+      <div
+        className="pdp-sticky-bar"
+        aria-hidden={!showStickyBar}
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 90,
+          background: 'rgba(250,246,238,0.97)',
+          backdropFilter: 'saturate(140%) blur(8px)',
+          WebkitBackdropFilter: 'saturate(140%) blur(8px)',
+          borderTop: '1px solid var(--line)',
+          boxShadow: '0 -6px 18px rgba(0,0,0,0.06)',
+          padding: '10px var(--side)',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+          display: 'flex', alignItems: 'center', gap: 12,
+          transform: showStickyBar ? 'translateY(0)' : 'translateY(110%)',
+          transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
+          pointerEvents: showStickyBar ? 'auto' : 'none',
+        }}
+      >
+        <div style={{ minWidth: 0, flex: '0 1 auto' }}>
+          <div style={{
+            fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-900)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>{displayName}</div>
+          <div className="tabular-nums" style={{ fontSize: '0.875rem', fontWeight: 700 }}>
+            PKR {displayPrice.toLocaleString()}
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', flexShrink: 0 }}>
+          <button type="button" aria-label="Decrease quantity" onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 34, height: 40, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>−</button>
+          <span aria-live="polite" style={{ width: 26, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
+          <button type="button" aria-label="Increase quantity" onClick={() => setQty(qty + 1)} style={{ width: 34, height: 40, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>+</button>
+        </div>
+        <button
+          onClick={handleAdd}
+          disabled={ctaDisabled}
+          className="btn-primary"
+          style={{
+            flex: 1, minWidth: 0, padding: '12px 16px',
+            background: ctaDisabled ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink-cta)',
+            cursor: ctaDisabled ? 'not-allowed' : 'pointer',
+            transition: 'background 100ms ease-out',
+          }}
+        >
+          {outOfStock ? 'Out of Stock'
+            : variants.length > 0 && !allAttrsSelected ? 'Select options'
+            : addedFlash ? 'Added ✓'
+            : 'Add to Cart'}
+        </button>
+      </div>
     </div>
   );
 }
