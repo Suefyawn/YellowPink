@@ -5,6 +5,14 @@ import { useCallback, useRef, useTransition } from 'react';
 
 const CATEGORIES = ['All', 'Makeup', 'Skincare', 'Wellness'];
 const TAGS = ['All', 'New', 'Sale', 'Bestseller', 'Featured', 'Limited'];
+const SORTS: { value: string; label: string }[] = [
+  { value: 'newest',     label: 'Newest first' },
+  { value: 'name',       label: 'Name A–Z' },
+  { value: 'price_high', label: 'Price: high to low' },
+  { value: 'price_low',  label: 'Price: low to high' },
+  { value: 'stock_low',  label: 'Stock: low to high' },
+  { value: 'stock_high', label: 'Stock: high to low' },
+];
 
 export function ProductsFilter({ total }: { total: number }) {
   const router = useRouter();
@@ -13,6 +21,7 @@ export function ProductsFilter({ total }: { total: number }) {
   const category = params.get('category') ?? 'All';
   const tag = params.get('tag') ?? 'All';
   const q = params.get('q') ?? '';
+  const sort = params.get('sort') ?? 'newest';
 
   const push = useCallback((next: URLSearchParams) => {
     startTransition(() => router.push(`/admin/products?${next.toString()}`));
@@ -21,6 +30,13 @@ export function ProductsFilter({ total }: { total: number }) {
   const setParam = (key: string, value: string) => {
     const next = new URLSearchParams(params.toString());
     if (value === 'All') { next.delete(key); } else { next.set(key, value); }
+    next.delete('page');
+    push(next);
+  };
+
+  const setSort = (value: string) => {
+    const next = new URLSearchParams(params.toString());
+    if (value === 'newest') { next.delete('sort'); } else { next.set('sort', value); }
     next.delete('page');
     push(next);
   };
@@ -77,7 +93,20 @@ export function ProductsFilter({ total }: { total: number }) {
             Clear ✕
           </button>
         )}
-        <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
+        <label style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: '#6b7280' }}>
+          Sort
+          <select
+            value={sort}
+            onChange={e => setSort(e.target.value)}
+            style={{
+              padding: '6px 10px', border: '1px solid #d1d5db', borderRadius: 8,
+              fontSize: '0.8125rem', color: '#111827', background: 'white', cursor: 'pointer',
+            }}
+          >
+            {SORTS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </label>
+        <span style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>
           {total} product{total !== 1 ? 's' : ''}
         </span>
       </div>
