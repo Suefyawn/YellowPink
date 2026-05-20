@@ -17,11 +17,14 @@ import * as Sentry from '@sentry/nextjs';
 import { log } from './logger';
 import { brandPlusName } from './product-display';
 import { supabaseAdmin } from './supabase';
+import { SITE_URL } from './seo';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
 const FROM = process.env.EMAIL_FROM ?? 'Yellow Pink Orders <orders@yellowpink.pk>';
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://yellowpink.pk';
+// SITE_URL is shared with the SEO helpers (lib/seo) so the logo image and
+// every link in an email resolve to the same live origin. A broken logo in
+// the inbox was the old local fallback pointing at the legacy WP domain.
 // Resend free tier is 100 emails/day. Batch/marketing mail stops claiming
 // slots at this cap so transactional order emails keep their headroom.
 const RESEND_DAILY_BATCH_CAP = 90;

@@ -8,10 +8,15 @@ import type { Product, BlogPost, ProductReview, ProductVariant } from '@/types';
 import { brandPlusName } from '@/lib/product-display';
 
 const _vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+// Resolution order: explicit NEXT_PUBLIC_SITE_URL (set this once a custom
+// domain is live) → Vercel's production URL → the current live deployment.
+// The final fallback must be a real, reachable origin: og:image and the
+// email logo are absolute URLs, so a stale default (the old WP domain)
+// renders them broken.
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ??
   (_vercelUrl ? (_vercelUrl.startsWith('http') ? _vercelUrl : `https://${_vercelUrl}`) : null) ??
-  'https://yellowpink.pk';
+  'https://yellow-pink.vercel.app';
 
 export const SITE_NAME = 'Yellow Pink';
 
