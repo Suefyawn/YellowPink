@@ -136,7 +136,11 @@ function ZoomableImage({ src, alt, label, fallback }: { src: string | null; alt:
   };
   return (
     <div
+      className="pdp-hero"
       style={{
+        // 4/5 portrait on phones (full-bleed, reads well). On the desktop
+        // 2-column layout that ratio made a ~575px-tall image — globals.css
+        // overrides .pdp-hero to a 1/1 square above 900px.
         flex: 1, aspectRatio: '4/5',
         borderRadius: 'var(--radius-card)', overflow: 'hidden',
         background: 'var(--paper2)',

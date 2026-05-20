@@ -95,7 +95,7 @@ function shell(inner: string, opts: ShellOpts = {}): string {
     </div>
     <div style="padding:28px;line-height:1.55;font-size:15px;color:${INK_700}">${inner}</div>
     <div style="padding:18px 28px 22px;border-top:1px solid ${LINE};color:${MUTED};font-size:12px;line-height:1.6">
-      <strong style="color:${INK}">Yellow Pink</strong> · Karachi · Lahore · Islamabad<br/>
+      <strong style="color:${INK}">Yellow Pink</strong> · Delivering nationwide across Pakistan<br/>
       <a href="${SITE_URL}" style="color:${MUTED};text-decoration:underline">${SITE_URL.replace(/^https?:\/\//, '')}</a> ·
       <a href="${SITE_URL}/track" style="color:${MUTED};text-decoration:underline">Track an order</a> ·
       <a href="${SITE_URL}/page/contact" style="color:${MUTED};text-decoration:underline">Contact us</a>${unsubscribeFooter(opts.marketingRecipient)}
