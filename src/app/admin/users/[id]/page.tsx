@@ -17,15 +17,55 @@ const statusColors: Record<string, string> = {
 
 const payLabel: Record<string, string> = { cod: 'COD', card: 'Card', bank: 'Bank' };
 
+interface ActivityRow {
+  id: string;
+  action: string;
+  entity: string | null;
+  entity_id: string | null;
+  diff: Record<string, unknown> | null;
+  created_at: string;
+}
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  'order.placed':         'Placed an order',
+  'order.status_changed': 'Order status changed',
+  'customer.signup':      'Created their account',
+  'review.submitted':     'Submitted a review',
+  'subscription.created': 'Subscribed to a product',
+  'newsletter.signup':    'Joined the newsletter',
+};
+
+function activityLabel(action: string): string {
+  return ACTIVITY_LABELS[action] ?? action.replace(/[._]/g, ' ');
+}
+
+function activityDetail(a: ActivityRow): string {
+  const d = a.diff ?? {};
+  if (a.action === 'order.placed') {
+    return `${String(d.order_number ?? '')} · PKR ${Number(d.total ?? 0).toLocaleString()}`;
+  }
+  if (a.action === 'order.status_changed') return `${String(d.from ?? '')} → ${String(d.to ?? '')}`;
+  if (a.action === 'review.submitted') return `${String(d.rating ?? '?')}★ rating`;
+  if (a.action === 'subscription.created') return `every ${String(d.interval_days ?? '?')} days`;
+  return '';
+}
+
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   // orders is RLS-locked; the `get_admin_user` RPC already uses
   // SECURITY DEFINER but route via service-role for consistency.
   const admin = supabaseAdmin();
-  const [{ data: userData }, { data: orders }] = await Promise.all([
+  const [{ data: userData }, { data: orders }, { data: activity }] = await Promise.all([
     admin.rpc('get_admin_user' as never, { p_id: id } as never),
     admin.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
+    // The customer's own journey — activity_log rows where they are the actor
+    // (signup, orders, reviews, subscriptions). See migration 090.
+    admin.from('audit_log')
+      .select('id, action, entity, entity_id, diff, created_at')
+      .eq('actor_id', id)
+      .order('created_at', { ascending: false })
+      .limit(50),
   ]);
 
   // get_admin_user RETURNS TABLE — a set-returning RPC, so `.rpc()` yields an
@@ -34,6 +74,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   if (!user) notFound();
 
   const orderList = (orders ?? []) as Order[];
+  const activityRows = (activity ?? []) as ActivityRow[];
   const totalSpend = orderList.reduce((s, o) => s + o.total, 0);
   const deliveredCount = orderList.filter(o => o.status === 'delivered').length;
 
@@ -174,6 +215,36 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             </table>
           )}
         </div>
+      </div>
+
+      {/* Activity timeline — the customer's journey */}
+      <div style={{ ...section, marginTop: 20 }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
+          Activity timeline
+        </h2>
+        {activityRows.length === 0 ? (
+          <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+            No recorded activity yet.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {activityRows.map((a, i) => {
+              const detail = activityDetail(a);
+              return (
+                <div key={a.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                  <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#C5286A', marginTop: 6, flexShrink: 0 }} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>{activityLabel(a.action)}</div>
+                    {detail && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{detail}</div>}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>
+                    {fmtDateTime(a.created_at)}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
