@@ -97,6 +97,13 @@ body {
   }
 }
 
+/* The PDP sticky buy-bar is a mobile-only affordance — desktop keeps the
+ * Add-to-Cart button visible in the right column without needing it. Hidden
+ * above 768px so it never overlaps the desktop layout. */
+@media (min-width: 769px) {
+  .pdp-sticky-bar { display: none !important; }
+}
+
 /* Modern reset: links never underline by default; bring it back via .underline
  * (e.g. for inline body-text links like the cart "Forgot password?" links).
  * Buttons styled as links keep clean type. */
