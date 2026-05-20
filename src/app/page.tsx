@@ -10,6 +10,7 @@ import {
   getProductsByTaxon,
   getSiteSettings,
   getCategoryTileImages,
+  getBlogPosts,
 } from '@/lib/supabase';
 
 // Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
@@ -25,6 +26,7 @@ import { BestsellersBand } from '@/sections/home/BestsellersBand';
 import { WellnessSection } from '@/sections/home/WellnessSection';
 import { CategoryTiles } from '@/sections/home/CategoryTiles';
 import { RealResults } from '@/sections/home/RealResults';
+import { JournalSection } from '@/sections/home/JournalSection';
 import { PressStrip } from '@/sections/home/PressStrip';
 
 export default async function HomePage() {
@@ -33,13 +35,14 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, bestsellers, saleProducts, wellnessProducts, settings, categoryImages] = await Promise.all([
+  const [featured, bestsellers, saleProducts, wellnessProducts, settings, categoryImages, blogPosts] = await Promise.all([
     getFeatured(6),
     getBestsellers(8),
     getOnSale(8),
     getProductsByTaxon('wellness', 4),
     getSiteSettings(),
     getCategoryTileImages([...MAKEUP_TILE_CATS, ...WELLNESS_TILE_CATS]),
+    getBlogPosts(),
   ]);
 
   // The featured sale collection is shown only while a sale is switched on
@@ -87,6 +90,7 @@ export default async function HomePage() {
       <WellnessSection products={wellnessProducts} />
       <CategoryTiles groups={categoryGroups} />
       <RealResults />
+      <JournalSection posts={blogPosts} />
       <PressStrip />
     </main>
   );
