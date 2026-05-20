@@ -181,7 +181,7 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
         {/* RFM segments */}
         <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
           <h2 style={{ margin: '0 0 16px', fontSize: '0.875rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Customer segments · last 12 months
+            Customer segments
           </h2>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
