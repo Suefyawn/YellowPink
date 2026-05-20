@@ -4,6 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { brandPlusName } from '@/lib/product-display';
+import { DeleteButton } from '@/components/admin/DeleteButton';
 import { approveReview, deleteReview } from './actions';
 
 const fmtDate = (s: string) =>
@@ -105,13 +106,7 @@ export default async function ReviewsPage() {
               }}>Approve</button>
             </form>
           )}
-          <form action={deleteReview}>
-            <input type="hidden" name="id" value={r.id} />
-            <button type="submit" style={{
-              padding: '6px 14px', background: '#fef2f2', color: '#ef4444',
-              border: '1px solid #fecaca', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-            }}>Delete</button>
-          </form>
+          <DeleteButton id={r.id} action={deleteReview} confirmMsg={`Delete the review by ${r.author_name}?`} />
         </div>
       </div>
     );
