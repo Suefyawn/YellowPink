@@ -337,7 +337,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
     setTimeout(() => setAddedFlash(false), 400);
   };
 
-  const outOfStock = displayStock === 0;
+  // Untracked products (inventory managed externally) are always sellable —
+  // their stock count is meaningless, so a 0 must not disable the buy button.
+  const outOfStock = product.track_inventory !== false && displayStock === 0;
   const ctaDisabled = outOfStock || (variants.length > 0 && !activeVariant);
 
   // WP imports often include the brand inside the name (e.g. brand="Kiko Milano",
@@ -404,7 +406,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             <div style={{ marginBottom: 20 }}>
               {outOfStock ? (
                 <span style={{ display: 'inline-block', padding: '3px 10px', background: '#fef2f2', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>Out of Stock</span>
-              ) : displayStock <= 5 ? (
+              ) : product.track_inventory !== false && displayStock <= 5 ? (
                 <span style={{ display: 'inline-block', padding: '3px 10px', background: '#fffbeb', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#d97706' }}>Only {displayStock} left</span>
               ) : (
                 <span style={{ display: 'inline-block', padding: '3px 10px', background: '#f0fdf4', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#16a34a' }}>In Stock</span>

@@ -50,6 +50,9 @@ export interface Product {
   tag?: string;
   slug: string;
   stock: number;
+  /** When false, inventory is managed externally (e.g. a third-party vendor):
+   *  the product is always sellable and its stock count is not tracked. */
+  track_inventory?: boolean;
   image_url?: string;
   description?: string;
   short_description?: string;

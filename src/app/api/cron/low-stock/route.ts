@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
   const { data, error } = await sb
     .from('products')
     .select('name, brand, stock, slug')
+    .eq('track_inventory', true)
     .lte('stock', LOW_STOCK_THRESHOLD)
     .order('stock', { ascending: true })
     .limit(100);

@@ -167,7 +167,9 @@ export function productLd(
   const variantPrices = enabledVariants.map(v => v.price);
   const lowPrice = variantPrices.length ? Math.min(...variantPrices) : product.price;
   const highPrice = variantPrices.length ? Math.max(...variantPrices) : product.price;
-  const anyVariantInStock = enabledVariants.some(v => v.stock > 0) || product.stock > 0;
+  // Untracked products (inventory managed externally) are always available.
+  const anyVariantInStock = product.track_inventory === false
+    || enabledVariants.some(v => v.stock > 0) || product.stock > 0;
 
   // Shipping + return policies — these qualify the listing for richer
   // free-shipping / 30-day-returns annotations in Google Shopping.

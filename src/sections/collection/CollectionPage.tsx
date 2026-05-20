@@ -311,7 +311,7 @@ export function CollectionPage({
     if (selectedBrands.size > 0 && (!p.brand || !selectedBrands.has(p.brand))) return false;
     if (priceMin !== '' && p.price < priceMin) return false;
     if (priceMax !== '' && p.price > priceMax) return false;
-    if (inStockOnly && p.stock <= 0) return false;
+    if (inStockOnly && p.track_inventory !== false && p.stock <= 0) return false;
     if (onSaleOnly && !(p.original_price && p.original_price > p.price)) return false;
     if (selectedValueIds.size > 0) {
       const productValues = productValueMap[p.id] ?? [];
