@@ -75,6 +75,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .order('name');
   const vendors = (vendorRows ?? []) as Array<{ id: string; name: string; phone: string }>;
 
+  // Vendor settlement (margin / payout) for this order, if it has been
+  // dispatched to a vendor.
+  const { data: settlementRow } = await supabaseAdmin()
+    .from('vendor_settlements')
+    .select('gross_amount, vendor_cost, our_margin, amount_due, due_to, status')
+    .eq('order_id', id)
+    .maybeSingle();
+
   // Customer history block — lifetime orders + total spend for the same
   // (user_id OR phone OR email). Cheap query — admin-only view, no caching
   // needed. Excludes the current order from "previous" + "ltv" so the
@@ -300,6 +308,38 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             message={vendorMessage}
           />
         </div>
+        {settlementRow && (
+          <div style={{
+            marginTop: 16, padding: '12px 14px', borderRadius: 8,
+            background: '#f9fafb', border: '1px solid #e5e7eb',
+            display: 'flex', flexWrap: 'wrap', gap: 20, fontSize: '0.8125rem',
+          }}>
+            <div>
+              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Vendor cost</div>
+              <div style={{ fontWeight: 600, color: '#111827' }}>PKR {Math.round(settlementRow.vendor_cost).toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Our margin</div>
+              <div style={{ fontWeight: 700, color: '#16a34a' }}>PKR {Math.round(settlementRow.our_margin).toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>
+                {settlementRow.due_to === 'us' ? 'Vendor pays you' : 'You pay vendor'}
+              </div>
+              <div style={{ fontWeight: 700, color: settlementRow.due_to === 'us' ? '#16a34a' : '#dc2626' }}>
+                PKR {Math.round(settlementRow.amount_due).toLocaleString()}
+                <span style={{ fontWeight: 600, color: '#9ca3af', marginLeft: 6 }}>
+                  · {settlementRow.status === 'settled' ? 'settled' : 'pending'}
+                </span>
+              </div>
+            </div>
+            <div style={{ alignSelf: 'center', marginLeft: 'auto' }}>
+              <Link href="/admin/vendors" style={{ color: '#C5286A', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600 }}>
+                Manage payouts →
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>

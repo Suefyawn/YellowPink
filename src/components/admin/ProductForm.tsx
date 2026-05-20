@@ -5,7 +5,7 @@ import { createProduct, updateProduct } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
 import { KeyBenefitsEditor, FaqEditor } from './ProductContentEditors';
 import { TAXONS } from '@/lib/category-taxonomy';
-import type { Product } from '@/types';
+import type { Product, Vendor } from '@/types';
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -45,13 +45,31 @@ function Section({ title, desc, first, children }: {
   );
 }
 
-export function ProductForm({ product }: { product?: Product }) {
+export function ProductForm({ product, vendors = [] }: { product?: Product; vendors?: Vendor[] }) {
   const isEdit = Boolean(product);
   const boundAction = isEdit ? updateProduct.bind(null, product!.id) : createProduct;
   const [state, action, pending] = useActionState(boundAction, null);
 
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
+  // Tracked so the vendor margin readout updates as the owner edits.
+  const [price, setPrice] = useState<number>(product?.price ?? 0);
+  const [vendorId, setVendorId] = useState(product?.vendor_id ?? '');
+  const [vendorCost, setVendorCost] = useState(product?.vendor_cost != null ? String(product.vendor_cost) : '');
+
+  // Margin preview: explicit per-product cost wins; otherwise derive the cost
+  // from the selected vendor's commission %.
+  const selectedVendor = vendors.find(v => v.id === vendorId) ?? null;
+  const costNum = vendorCost.trim() !== '' ? Number(vendorCost) : null;
+  let marginInfo: { cost: number; margin: number; basis: string } | null = null;
+  if (vendorId && price > 0) {
+    if (costNum != null && Number.isFinite(costNum)) {
+      marginInfo = { cost: costNum, margin: price - costNum, basis: 'per-product cost' };
+    } else if (selectedVendor?.commission_pct != null) {
+      const margin = price * (selectedVendor.commission_pct / 100);
+      marginInfo = { cost: price - margin, margin, basis: `${selectedVendor.commission_pct}% commission` };
+    }
+  }
 
   return (
     <div style={{ padding: '32px 36px' }}>
@@ -141,7 +159,8 @@ export function ProductForm({ product }: { product?: Product }) {
             <div style={{ ...row3, marginBottom: 0 }}>
               <div style={fieldWrap}>
                 <label style={lbl}>Price (PKR) *</label>
-                <input name="price" type="number" required min={0} defaultValue={product?.price} style={inp} placeholder="2400" />
+                <input name="price" type="number" required min={0} defaultValue={product?.price} style={inp} placeholder="2400"
+                  onChange={e => setPrice(Number(e.target.value) || 0)} />
               </div>
               <div style={fieldWrap}>
                 <label style={lbl}>Original Price (PKR)</label>
@@ -153,6 +172,58 @@ export function ProductForm({ product }: { product?: Product }) {
                 <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
               </div>
             </div>
+          </Section>
+
+          {/* ── Vendor & sourcing ──────────────────────────────────────── */}
+          <Section title="Vendor & sourcing" desc="Link the product to a supplier to track cost, margin and payouts.">
+            <div style={row2}>
+              <div style={fieldWrap}>
+                <label style={lbl}>Vendor</label>
+                <select name="vendor_id" value={vendorId} onChange={e => setVendorId(e.target.value)} style={inp}>
+                  <option value="">— None (own stock) —</option>
+                  {vendors.map(v => (
+                    <option key={v.id} value={v.id}>
+                      {v.name}{v.commission_pct != null ? ` · ${v.commission_pct}% commission` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div style={fieldWrap}>
+                <label style={lbl}>Vendor cost (PKR)</label>
+                <input
+                  name="vendor_cost" type="number" min={0} step="0.01"
+                  value={vendorCost} onChange={e => setVendorCost(e.target.value)}
+                  style={inp} placeholder="Leave blank to use the vendor's commission %"
+                  disabled={!vendorId}
+                />
+                <span style={hint}>What you pay the vendor per unit. Overrides the commission %.</span>
+              </div>
+            </div>
+            {vendorId && (
+              <div style={{
+                marginTop: 4, padding: '12px 14px', borderRadius: 8,
+                background: marginInfo ? '#f0fdf4' : '#fffbeb',
+                border: `1px solid ${marginInfo ? '#bbf7d0' : '#fde68a'}`,
+                fontSize: '0.8125rem',
+              }}>
+                {marginInfo ? (
+                  <>
+                    <strong style={{ color: '#16a34a' }}>
+                      Margin: PKR {Math.round(marginInfo.margin).toLocaleString()}
+                    </strong>
+                    <span style={{ color: '#6b7280' }}>
+                      {' '}· cost PKR {Math.round(marginInfo.cost).toLocaleString()}
+                      {price > 0 ? ` · ${Math.round((marginInfo.margin / price) * 100)}% of price` : ''}
+                      {' '}({marginInfo.basis})
+                    </span>
+                  </>
+                ) : (
+                  <span style={{ color: '#92400e' }}>
+                    Set a vendor cost above, or a commission % on the vendor, to see the margin.
+                  </span>
+                )}
+              </div>
+            )}
           </Section>
 
           {/* ── Link / slug ────────────────────────────────────────────── */}

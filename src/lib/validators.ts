@@ -53,6 +53,16 @@ export const productInputSchema = z.object({
                   ),
   slug:           slugSchema,
   stock:          positiveInt,
+  // Sourcing vendor + per-unit cost. The form submits '' for "no vendor" and
+  // an empty cost; both normalise to null.
+  vendor_id:      z.preprocess(
+                    v => (v === '' || v == null ? null : v),
+                    z.string().uuid().nullable(),
+                  ),
+  vendor_cost:    z.preprocess(
+                    v => (v === '' || v == null ? null : v),
+                    positiveNumber.nullable(),
+                  ),
   image_url:      httpsUrlSchema.optional().or(z.literal('')).nullable(),
   description:    z.string().max(8000).optional().nullable(),
   short_description: z.string().max(1000).optional().nullable(),
