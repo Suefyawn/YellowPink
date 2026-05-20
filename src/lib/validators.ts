@@ -53,6 +53,13 @@ export const productInputSchema = z.object({
                   ),
   slug:           slugSchema,
   stock:          positiveInt,
+  // Inventory tracking toggle. The product form always submits 'true'/'false'
+  // via a hidden input; a missing value (e.g. an older form or import) keeps
+  // the tracked default.
+  track_inventory: z.preprocess(
+                    v => (v == null ? true : v === 'true' || v === true || v === 'on'),
+                    z.boolean(),
+                  ),
   image_url:      httpsUrlSchema.optional().or(z.literal('')).nullable(),
   description:    z.string().max(8000).optional().nullable(),
   short_description: z.string().max(1000).optional().nullable(),

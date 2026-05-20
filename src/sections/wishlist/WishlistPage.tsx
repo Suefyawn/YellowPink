@@ -43,7 +43,7 @@ export function WishlistPage() {
   // Totals shown above the grid — both number-of-items and rolling sum so the
   // visitor sees the wishlist as a real basket-in-waiting.
   const summary = useMemo(() => {
-    const inStock = products.filter(p => p.stock > 0);
+    const inStock = products.filter(p => p.track_inventory === false || p.stock > 0);
     const total = inStock.reduce((s, p) => s + p.price, 0);
     return { count: products.length, inStock: inStock.length, total };
   }, [products]);
@@ -51,7 +51,7 @@ export function WishlistPage() {
   const addAllToCart = () => {
     let moved = 0;
     for (const p of products) {
-      if (p.stock <= 0) continue;
+      if (p.track_inventory !== false && p.stock <= 0) continue;
       // CartContext.addToCart accepts a Product directly; qty defaults to 1.
       addToCart(p);
       moved++;

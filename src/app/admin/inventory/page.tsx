@@ -21,7 +21,7 @@ interface LedgerRow {
   created_at: string;
 }
 
-interface ProductLite { id: string; name: string; brand: string | null; stock: number }
+interface ProductLite { id: string; name: string; brand: string | null; stock: number; track_inventory?: boolean }
 interface OrderLite { id: string; order_number: string }
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -69,11 +69,15 @@ export default async function InventoryPage({
   // 109 SKUs today — well under any sane limit.
   const [{ data: ledgerData }, { data: productData }] = await Promise.all([
     ledgerQuery,
-    admin.from('products').select('id, name, brand, stock').order('name'),
+    admin.from('products').select('id, name, brand, stock, track_inventory').order('name'),
   ]);
   const rows = (ledgerData ?? []) as LedgerRow[];
-  const products = (productData ?? []) as ProductLite[];
-  const productMap = new Map<string, ProductLite>(products.map(p => [p.id, p]));
+  const allProducts = (productData ?? []) as ProductLite[];
+  const productMap = new Map<string, ProductLite>(allProducts.map(p => [p.id, p]));
+  // Only tracked products belong on the inventory screen — untracked products
+  // have their stock managed by an external vendor, so there is nothing here
+  // to count or adjust.
+  const products = allProducts.filter(p => p.track_inventory !== false);
 
   // Stock overview — buckets + the lowest-first sorted list.
   const outOfStock = products.filter(p => p.stock <= 0);
