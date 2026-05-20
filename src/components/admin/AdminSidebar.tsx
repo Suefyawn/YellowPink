@@ -32,7 +32,6 @@ const NAV: NavItem[] = [
   { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'reviews' },
   { href: '/admin/audit',     label: 'Activity log', icon: '◉', ownerOnly: true },
   { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
-  { href: '/admin/import',    label: 'WP import', icon: '⇥', ownerOnly: true },
   { href: '/admin/settings',  label: 'Settings',  icon: '⚙', permission: 'settings' },
 ];
 
