@@ -14,7 +14,7 @@ import {
 
 // Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
-const MAKEUP_TILE_CATS = ['Lip & Cheek Tints', 'Highlighters', 'Face Makeup', 'Skincare'];
+const MAKEUP_TILE_CATS = ['Lip & Cheek Tints', 'Highlighters', 'Face Makeup', 'Cleansers & Treatments'];
 const WELLNESS_TILE_CATS = ["Women's Health", "Men's Health", 'Immunity', 'Bone & Joint'];
 import { HeroSection } from '@/sections/home/HeroSection';
 import { TrustBar } from '@/sections/home/TrustBar';

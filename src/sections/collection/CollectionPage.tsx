@@ -278,12 +278,14 @@ export function CollectionPage({
   }
 
   // Pagination clicks must scroll back to the top of the catalogue.
-  // `router.replace(..., { scroll: false })` above suppresses Next's own
-  // scroll restoration, so a page-2 click from the bottom of the grid
-  // would otherwise leave the viewport stranded mid-scroll.
+  // `router.replace(..., { scroll: false })` suppresses Next's own scroll
+  // restoration, so we scroll explicitly. Deferred one frame so it runs
+  // after the new page's tiles commit, and INSTANT (not smooth) — a smooth
+  // scroll gets aborted by the layout shift as the fresh tiles render,
+  // which left the viewport stranded at the foot of the previous page.
   function goToPage(next: number) {
     setPage(next);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    requestAnimationFrame(() => window.scrollTo({ top: 0 }));
   }
 
   // Free-text query is matched case-insensitively against brand + name +

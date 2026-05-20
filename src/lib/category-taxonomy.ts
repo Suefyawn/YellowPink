@@ -42,7 +42,7 @@ export const TAXONS: readonly Taxon[] = [
     label: 'Skincare',
     tagline: 'Cleanse, treat & protect',
     categories: [
-      'Skincare',
+      'Cleansers & Treatments',
       'Moisturizers',
       'Hair Care',
     ],
