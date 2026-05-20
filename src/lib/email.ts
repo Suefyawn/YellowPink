@@ -16,11 +16,15 @@ import { Resend } from 'resend';
 import * as Sentry from '@sentry/nextjs';
 import { log } from './logger';
 import { brandPlusName } from './product-display';
+import { supabaseAdmin } from './supabase';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
 const FROM = process.env.EMAIL_FROM ?? 'Yellow Pink Orders <orders@yellowpink.pk>';
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://yellowpink.pk';
+// Resend free tier is 100 emails/day. Batch/marketing mail stops claiming
+// slots at this cap so transactional order emails keep their headroom.
+const RESEND_DAILY_BATCH_CAP = 90;
 const BRAND_PINK = '#E8487F';
 const BRAND_YELLOW = '#F7C948';
 const PAPER = '#FAF6EE';
@@ -111,10 +115,33 @@ export function fromDomain(from: string): string {
   return bare ? bare[1] : 'unknown';
 }
 
-async function send(opts: { to: string | string[]; subject: string; html: string; replyTo?: string }) {
+async function send(opts: {
+  to: string | string[];
+  subject: string;
+  html: string;
+  replyTo?: string;
+  /** 'batch' mail (cron digests, marketing) yields once the daily Resend
+   *  free-tier budget is nearly spent. Defaults to 'transactional', which
+   *  always sends — order confirmations must never be dropped. */
+  kind?: 'transactional' | 'batch';
+}) {
   if (!resend) {
     log.warn('email.skip', { reason: 'RESEND_API_KEY not set', to: opts.to, subject: opts.subject });
     return;
+  }
+  // Free-tier guard: claim a slot in today's send budget. Fails open — a
+  // quota-check error must never block an email from going out.
+  try {
+    const { data: allowed } = await supabaseAdmin().rpc('claim_email_send' as never, {
+      p_kind: opts.kind ?? 'transactional',
+      p_cap: RESEND_DAILY_BATCH_CAP,
+    } as never);
+    if (allowed === false) {
+      log.warn('email.skipped_quota', { to: opts.to, subject: opts.subject });
+      return;
+    }
+  } catch {
+    /* fail open */
   }
   try {
     const result = await resend.emails.send({
@@ -285,7 +312,7 @@ export async function sendWelcomeEmail(args: { email: string; first_name?: strin
     <h2 style="margin:0 0 12px;font-size:18px">Welcome to Yellow Pink${args.first_name ? `, ${escapeHtml(args.first_name)}` : ''}</h2>
     <p>We're glad you're here. Take a look at <a href="${SITE_URL}/shop" style="color:${BRAND_PINK}">what's new</a>, or <a href="${SITE_URL}/blog" style="color:${BRAND_PINK}">read our edit</a> for routines and reviews.</p>
   `, { marketingRecipient: args.email });
-  await send({ to: args.email, subject: 'Welcome to Yellow Pink', html });
+  await send({ to: args.email, subject: 'Welcome to Yellow Pink', html, kind: 'batch' });
 }
 
 // ─── 8. Staff: temp password ────────────────────────────────────────────────
@@ -333,6 +360,7 @@ export async function sendAbandonedCartEmail(args: {
       ? `Still thinking it over? Your cart's waiting`
       : `You left some things in your cart`,
     html,
+    kind: 'batch',
   });
 }
 
@@ -353,7 +381,7 @@ export async function sendBackInStockEmail(args: {
     </p>
     <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Stock moves fast — finish your order soon if you don't want to miss it.</p>
   `);
-  await send({ to: args.email, subject: `Back in stock: ${args.product_name}`, html });
+  await send({ to: args.email, subject: `Back in stock: ${args.product_name}`, html, kind: 'batch' });
 }
 
 // ─── 11.5. Customer: newsletter welcome ─────────────────────────────────────
@@ -391,6 +419,7 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
     to: args.email,
     subject: 'Welcome to Yellow Pink — your fortnightly edit starts here',
     html,
+    kind: 'batch',
   });
 }
 
@@ -428,6 +457,7 @@ export async function sendReorderReminderEmail(args: {
     to: args.email,
     subject: `Time to reorder ${args.product_name}`,
     html,
+    kind: 'batch',
   });
 }
 
@@ -470,6 +500,7 @@ export async function sendReviewRequestEmail(args: {
     to: args.email,
     subject: `How was your order ${args.order_number}?`,
     html,
+    kind: 'batch',
   });
 }
 
@@ -486,5 +517,5 @@ export async function sendLowStockAlertEmail(args: { products: { name: string; b
     <table style="width:100%;border-collapse:collapse;margin-top:12px">${rows}</table>
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/products" style="color:${BRAND_PINK};font-weight:600">→ Restock now</a></p>
   `);
-  await send({ to: OWNER_EMAIL, subject: `Low stock — ${args.products.length} item${args.products.length === 1 ? '' : 's'}`, html });
+  await send({ to: OWNER_EMAIL, subject: `Low stock — ${args.products.length} item${args.products.length === 1 ? '' : 's'}`, html, kind: 'batch' });
 }

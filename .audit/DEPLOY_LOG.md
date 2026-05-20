@@ -1458,6 +1458,32 @@ remembered to instrument.
 
 ---
 
+## 2026-05-20 — Resend free-tier email quota guard (migration 091)
+
+The store must stay on the Resend free tier (100 emails/day). Nothing
+enforced that — the daily cron's batch jobs (review requests, reorder
+reminders, abandoned-cart drips, low-stock, newsletter, welcome) could
+grow to crowd the cap, and Resend silently rejects overflow. The email
+most likely to be lost that way is a transactional *order confirmation*.
+
+- Migration 091 adds `email_quota` (a per-day send counter) and the
+  `claim_email_send(kind, cap)` SECURITY DEFINER RPC.
+- The central `send()` helper now claims a slot before every send.
+  `send()` gained a `kind` param: **transactional** mail (order
+  lifecycle, payment, staff access) always sends; **batch** mail (the
+  seven cron/marketing senders) is refused once the day's count hits
+  the cap (90, leaving headroom under the 100 limit).
+- **Fails open:** any error in the quota check is swallowed and the
+  send proceeds — a counter glitch must never block a real email.
+- The RPC takes `FOR UPDATE` on the day row so concurrent cron sends
+  count correctly.
+
+Lesson: a free-tier limit you're not measuring is a limit you'll blow
+silently. Meter at the single chokepoint (`send()`), and when you must
+shed load, shed the right thing — marketing yields, orders never do.
+
+---
+
 ## How to use this log
 
 - **Add an entry whenever production-affecting work happens** —
