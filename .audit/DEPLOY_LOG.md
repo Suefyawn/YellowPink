@@ -1395,6 +1395,34 @@ standalone "remind me" record kept the whole feature clear of the
 
 ---
 
+## 2026-05-20 — Post-delivery review requests (migration 089)
+
+`product_reviews` and the PDP `ReviewsSection` have existed for a
+while, but nothing ever *asked* a customer to review — so reviews
+trickled in. This adds the missing request loop.
+
+- Migration 089 adds `orders.review_request_sent_at` — a once-per-
+  order guard, nothing more.
+- New daily-cron job (`/api/cron/review-requests`, the sixth) finds
+  orders delivered **3–30 days ago** and emails the customer a
+  review nudge that links each purchased product straight to its PDP
+  review form (`/product/<slug>#reviews`).
+- **Why the delivery date comes from `order_events`, not `orders`:**
+  there is no `delivered_at` column on `orders`; the delivery
+  timestamp is the `order_events` row with `to_status='delivered'`.
+  Verified 1:1 — all 31 delivered orders have a matching event.
+- **Why the 3–30 day window:** 3 days gives the customer time to
+  actually try the product; the 30-day ceiling stops the first cron
+  run from spamming "how was it?" at months-old orders.
+- Rides the existing daily cron — no new `vercel.json` entry, so the
+  Hobby 2-cron cap still holds.
+
+Lesson: a feature can be 90% built and still deliver nothing. The
+reviews table, form, and display all existed — the missing 10% was
+the email that asks.
+
+---
+
 ## How to use this log
 
 - **Add an entry whenever production-affecting work happens** —

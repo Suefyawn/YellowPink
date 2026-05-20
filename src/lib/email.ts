@@ -431,6 +431,48 @@ export async function sendReorderReminderEmail(args: {
   });
 }
 
+// ─── 11.7. Customer: post-delivery review request ──────────────────────────
+// Fired by the daily cron a few days after an order is delivered. Asks the
+// customer to review what they bought, linking each product straight to its
+// PDP review form.
+export async function sendReviewRequestEmail(args: {
+  email: string;
+  first_name?: string;
+  order_number: string;
+  products: { name: string; slug: string; image_url?: string | null }[];
+}): Promise<void> {
+  if (args.products.length === 0) return;
+
+  const rows = args.products.map(p => `
+    <tr>
+      <td style="padding:8px 12px 8px 0;width:56px">
+        ${p.image_url
+          ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}" width="56" height="56" style="border-radius:8px;border:1px solid #e5e7eb;object-fit:cover"/>`
+          : ''}
+      </td>
+      <td style="padding:8px 0;font-size:14px;color:${INK}">${escapeHtml(p.name)}</td>
+      <td style="padding:8px 0;text-align:right">
+        <a href="${SITE_URL}/product/${encodeURIComponent(p.slug)}#reviews"
+           style="color:${BRAND_PINK};font-weight:600;font-size:13px;text-decoration:none;white-space:nowrap">Write a review →</a>
+      </td>
+    </tr>`).join('');
+
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">How did it go?</h2>
+    <p style="margin:0 0 14px">Hi ${escapeHtml(args.first_name ?? 'there')} — your order <strong>${escapeHtml(args.order_number)}</strong> landed a few days ago, so you've had a chance to try it out.</p>
+    <p style="margin:0 0 18px">A quick, honest review helps other shoppers in Pakistan choose well — and it only takes a minute.</p>
+    <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 8px">${rows}</table>
+    <p style="margin:22px 0 0;color:${MUTED};font-size:12px;line-height:1.5">
+      Approved reviews earn loyalty points — a small thank-you for sharing.
+    </p>
+  `, { marketingRecipient: args.email });
+  await send({
+    to: args.email,
+    subject: `How was your order ${args.order_number}?`,
+    html,
+  });
+}
+
 // ─── 11. Owner: low-stock alert (background job) ────────────────────────────
 export async function sendLowStockAlertEmail(args: { products: { name: string; brand: string; stock: number; slug: string }[] }) {
   if (!args.products.length) return;
