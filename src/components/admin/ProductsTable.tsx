@@ -14,6 +14,12 @@ import type { Product } from '@/types';
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const TAGS = ['New', 'Sale', 'Bestseller', 'Featured', 'Limited'];
 
+const STATUS_BADGE: Record<string, { bg: string; fg: string; label: string }> = {
+  published: { bg: '#f0fdf4', fg: '#16a34a', label: 'Published' },
+  draft:     { bg: '#f3f4f6', fg: '#6b7280', label: 'Draft' },
+  archived:  { bg: '#fef2f2', fg: '#dc2626', label: 'Archived' },
+};
+
 export function ProductsTable({ products }: { products: Product[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
@@ -51,7 +57,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                 <th scope="col" style={{ padding: '11px 12px', width: 30 }}>
                   <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all products" />
                 </th>
-                {['Brand / Name', 'Price', 'Stock', 'Category', 'Tag', 'Actions'].map(h => (
+                {['Brand / Name', 'Price', 'Stock', 'Status', 'Category', 'Tag', 'Actions'].map(h => (
                   <th scope="col" key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -92,6 +98,20 @@ export function ProductsTable({ products }: { products: Product[] }) {
                       }}>
                         {outOfStock ? '✕ Out of stock' : lowStock ? `⚠ ${p.stock} left` : `✓ ${p.stock}`}
                       </span>
+                    </td>
+                    <td data-label="Status" style={{ padding: '12px 16px' }}>
+                      {(() => {
+                        const badge = STATUS_BADGE[p.status ?? 'published'] ?? STATUS_BADGE.published;
+                        return (
+                          <span style={{
+                            display: 'inline-block', padding: '2px 10px', borderRadius: 20,
+                            fontSize: '0.75rem', fontWeight: 600,
+                            background: badge.bg, color: badge.fg,
+                          }}>
+                            {badge.label}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td data-label="Category" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>
                       <div>{p.category}</div>
