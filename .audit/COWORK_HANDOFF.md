@@ -67,12 +67,23 @@ Verify each still holds end to end.
   a wishlist heart icon now reaches `/wishlist`; the header stays sticky
   on scroll while the announcement bar scrolls away.
 - **Homepage trust bar** (PR #74) — four distinct relevant icons.
+- **Settings page UX** (PR #79) — a jump-nav of section pills at the top
+  and a sticky save bar at the bottom. Verify the pills scroll to their
+  cards and the save bar stays visible while scrolling.
+- **Invoice printing** (PR #77) — printing an order now outputs only a
+  branded invoice card (parcel-ready), not the whole admin page.
+- **Product copy** (PR #82, #83) — `how_to_use` is form-correct for 30
+  wellness products (a syrup/drops/effervescent no longer says "swallow a
+  tablet"); `short_description` has no leftover `&#…;` HTML entities and
+  the Energy Boost blurb matches the real product.
 
 ## 3. DB migrations applied to the live database
 
 `101` vendors + order confirmation columns · `102` Skincare→Cleansers &
 Treatments rename · `103` analytics_rfm_segments rebuilt on
-v_customer_segments. (Plus `099`–`100` from the round-1 finish.)
+v_customer_segments · `104` product `how_to_use` rewrite · `105` product
+`short_description` entity cleanup. (Plus `099`–`100` from the round-1
+finish.)
 
 ## 4. Config (Vercel env vars)
 
@@ -96,6 +107,15 @@ v_customer_segments. (Plus `099`–`100` from the round-1 finish.)
 
 Items the owner spotted between formal QA rounds.
 
+- **Product short descriptions** (PR #83) — decoded leftover WordPress HTML
+  entities in 21 products; rewrote the OCR-garbled Energy Boost blurb.
+- **Product how-to-use** (PR #82) — rewrote 30 wellness products that had
+  generic "take one tablet" text regardless of the real form.
+- **PDP image steady on accordion open** (PR #81) — the gallery image no
+  longer grows/shrinks when the how-to-use/ingredients accordions toggle.
+- **Settings page UX** (PR #79) — section jump-nav + sticky save bar.
+- **Invoice printing** (PR #77) — prints only a branded, parcel-ready
+  invoice card, not the whole order page.
 - **Trust-bar icons** (PR #74) — four relevant icons instead of one glyph.
 - **Header — mega-menu hover** (PR #73) — dropdown no longer closes before
   you can click an item.
