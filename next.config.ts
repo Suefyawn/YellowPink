@@ -51,9 +51,6 @@ const nextConfig: NextConfig = {
       // Common CDNs people host product imagery on.
       { protocol: 'https' as const, hostname: 'images.unsplash.com' },
       { protocol: 'https' as const, hostname: 'res.cloudinary.com' },
-      // Shopify CDN — products imported from the vendor catalogue (nbsons.com)
-      // keep their vendor-hosted product photos until they are re-uploaded.
-      { protocol: 'https' as const, hostname: 'cdn.shopify.com' },
     ],
   },
   // Edge compression.
