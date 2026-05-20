@@ -65,7 +65,12 @@
 
 *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
-html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+/* `overflow-x: clip` on the root kills any horizontal page scroll —
+ * including from off-screen position:fixed drawers (mini-cart, shop filter
+ * rail) which `body { overflow-x: hidden }` cannot clip because fixed
+ * elements escape the body. `clip` (not `hidden`) is used so the root never
+ * becomes a scroll container, keeping `position: sticky` working. */
+html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; overflow-x: clip; }
 
 body {
   font-family: var(--font-ui);
@@ -521,6 +526,8 @@ a.underline,
   .adm-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .adm-analytics-grid { grid-template-columns: 1fr !important; }
   .adm-two-col { grid-template-columns: 1fr !important; }
+  /* PDP "Why Yellow Pink" trust cards: 4-up cramps badly on a phone. */
+  .trust-grid { grid-template-columns: repeat(2, 1fr) !important; }
 }
 
 /* FAQ accordion chevron: rotate + into × when the <details> is open. */
