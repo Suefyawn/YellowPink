@@ -11,22 +11,31 @@ import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBo
 import { TAXONS } from '@/lib/category-taxonomy';
 import { whatsappUrl, WA_TEMPLATES } from '@/lib/whatsapp';
 
-// Nav is driven by the central taxonomy so editorial changes don't require
-// touching the header. The previous hardcoded list ("Makeup" /
-// "Skincare" / "Wellness") linked to category values that didn't exist in
-// the WP-imported catalog — e.g. /shop?category=Makeup matched zero rows
-// because the real values are "Lip & Cheek Tints" / "Highlighters" etc.
-// The shop page now expands a taxon key into its category set.
-const NAV_ITEMS = [
-  ...TAXONS.map(t => ({ label: t.label, href: `/shop?taxon=${t.key}` })),
-  { label: 'Sale',     href: '/shop?on_sale=1' },
-  { label: 'All',      href: '/shop' },
-  { label: 'Blog',     href: '/blog' },
+// Desktop nav: each taxon (Makeup / Skincare / Wellness / Bundles) opens a
+// mega-menu dropdown of its categories; the flat items are plain links.
+// Driven by the central taxonomy so editorial changes don't touch the header.
+const FLAT_ITEMS = [
+  { label: 'Sale', href: '/shop?on_sale=1' },
+  { label: 'Blog', href: '/blog' },
 ];
+
+function navLinkStyle(active: boolean): React.CSSProperties {
+  return {
+    background: 'none', border: 'none', cursor: 'pointer',
+    fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
+    fontWeight: active ? 600 : 500,
+    color: active ? 'var(--ink-900)' : 'var(--ink-700)',
+    letterSpacing: '0.02em', padding: '4px 0', textDecoration: 'none',
+    borderBottom: active ? '2px solid var(--brand-pink)' : '2px solid transparent',
+    transition: 'color 150ms', whiteSpace: 'nowrap',
+  };
+}
 
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  const [openMenu, setOpenMenu] = useState<string | null>(null);       // desktop mega-menu
+  const [openSection, setOpenSection] = useState<string | null>(null); // mobile expandable section
   const drawerRef = useRef<HTMLDivElement | null>(null);
   // Mobile-menu modal behaviour: lock body scroll, trap focus inside the
   // drawer, close on Escape. Without scroll-lock the page underneath
@@ -92,28 +101,69 @@ export function Header() {
           <LogoWordmark />
         </Link>
 
-        <nav style={{ display: 'flex', gap: 32, alignItems: 'center' }} className="desktop-nav" aria-label="Primary">
-          {NAV_ITEMS.map(item => {
+        <nav style={{ display: 'flex', gap: 26, alignItems: 'center' }} className="desktop-nav" aria-label="Primary">
+          {TAXONS.map(t => {
+            const curCat = searchParams.get('category');
+            const active = searchParams.get('taxon') === t.key
+              || (!!curCat && t.categories.includes(curCat));
+            const open = openMenu === t.key;
+            return (
+              <div
+                key={t.key}
+                style={{ position: 'relative' }}
+                onMouseEnter={() => setOpenMenu(t.key)}
+                onMouseLeave={() => setOpenMenu(null)}
+              >
+                <Link
+                  href={`/shop?taxon=${t.key}`}
+                  aria-current={active ? 'page' : undefined}
+                  aria-expanded={open}
+                  onFocus={() => setOpenMenu(t.key)}
+                  style={navLinkStyle(active)}
+                >{t.label}</Link>
+                {open && (
+                  <div
+                    style={{
+                      position: 'absolute', top: 'calc(100% + 10px)', left: 0,
+                      minWidth: 220, padding: 8, zIndex: 200,
+                      background: 'var(--paper)', border: '1px solid var(--line)',
+                      borderRadius: 'var(--radius-card)', boxShadow: '0 14px 36px rgba(0,0,0,0.13)',
+                    }}
+                  >
+                    <Link
+                      href={`/shop?taxon=${t.key}`}
+                      style={{
+                        display: 'block', padding: '8px 12px', textDecoration: 'none',
+                        fontFamily: 'var(--font-ui)', fontSize: '0.75rem', fontWeight: 700,
+                        letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--brand-pink-text)',
+                      }}
+                    >All {t.label}</Link>
+                    {t.categories.map(cat => (
+                      <Link
+                        key={cat}
+                        href={`/shop?category=${encodeURIComponent(cat)}`}
+                        style={{
+                          display: 'block', padding: '9px 12px', borderRadius: 8,
+                          textDecoration: 'none', fontFamily: 'var(--font-ui)',
+                          fontSize: '0.875rem', color: 'var(--ink-700)',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--paper2)'; e.currentTarget.style.color = 'var(--ink-900)'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-700)'; }}
+                      >{cat}</Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {FLAT_ITEMS.map(item => {
             const active = isActiveLink(item.href);
             return (
               <Link
                 key={item.label}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                style={{
-                  background: 'none', border: 'none', cursor: 'pointer',
-                  fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
-                  fontWeight: active ? 600 : 500,
-                  color: active ? 'var(--ink-900)' : 'var(--ink-700)',
-                  letterSpacing: '0.02em',
-                  padding: '4px 0', textDecoration: 'none',
-                  // Subtle pink underline on the active item — keeps the rest
-                  // of the nav uncluttered while making the current page legible.
-                  borderBottom: active ? '2px solid var(--brand-pink)' : '2px solid transparent',
-                  transition: 'color 150ms',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--ink-900)')}
-                onMouseLeave={e => (e.currentTarget.style.color = active ? 'var(--ink-900)' : 'var(--ink-700)')}
+                style={navLinkStyle(active)}
               >{item.label}</Link>
             );
           })}
@@ -293,7 +343,59 @@ export function Header() {
         </div>
 
         <nav aria-label="Mobile primary" style={{ padding: '8px var(--side) 24px', display: 'flex', flexDirection: 'column' }}>
-          {NAV_ITEMS.map((item, i) => {
+          {TAXONS.map(t => {
+            const expanded = openSection === t.key;
+            return (
+              <div key={t.key} style={{ borderBottom: '1px solid var(--line)' }}>
+                <button
+                  type="button"
+                  onClick={() => setOpenSection(expanded ? null : t.key)}
+                  aria-expanded={expanded}
+                  tabIndex={mobileMenu ? 0 : -1}
+                  style={{
+                    width: '100%', background: 'none', border: 'none', cursor: 'pointer',
+                    fontFamily: 'var(--font-ui)', fontSize: '1.0625rem', fontWeight: 600,
+                    color: 'var(--ink-900)', display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', padding: '18px 4px', minHeight: 52,
+                  }}
+                >
+                  {t.label}
+                  <span aria-hidden="true" style={{
+                    fontSize: '1.25rem', color: 'var(--ink-500)',
+                    transform: expanded ? 'rotate(45deg)' : 'rotate(0)',
+                    transition: 'transform 180ms ease-out', lineHeight: 1,
+                  }}>+</span>
+                </button>
+                {expanded && (
+                  <div style={{ paddingBottom: 10 }}>
+                    <Link
+                      href={`/shop?taxon=${t.key}`}
+                      onClick={() => setMobileMenu(false)}
+                      tabIndex={mobileMenu ? 0 : -1}
+                      style={{
+                        display: 'block', padding: '10px 16px', textDecoration: 'none',
+                        fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 700,
+                        letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--brand-pink-text)',
+                      }}
+                    >All {t.label}</Link>
+                    {t.categories.map(cat => (
+                      <Link
+                        key={cat}
+                        href={`/shop?category=${encodeURIComponent(cat)}`}
+                        onClick={() => setMobileMenu(false)}
+                        tabIndex={mobileMenu ? 0 : -1}
+                        style={{
+                          display: 'block', padding: '11px 16px', textDecoration: 'none',
+                          fontFamily: 'var(--font-ui)', fontSize: '0.9375rem', color: 'var(--ink-700)',
+                        }}
+                      >{cat}</Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {FLAT_ITEMS.map(item => {
             const active = isActiveLink(item.href);
             return (
               <Link
@@ -308,7 +410,7 @@ export function Header() {
                   color: active ? 'var(--brand-pink)' : 'var(--ink-900)',
                   display: 'flex', alignItems: 'center',
                   padding: '18px 4px', minHeight: 52,
-                  borderBottom: i < NAV_ITEMS.length - 1 ? '1px solid var(--line)' : 'none',
+                  borderBottom: '1px solid var(--line)',
                 }}
               >{item.label}</Link>
             );

@@ -247,3 +247,24 @@ export async function getSiteSettings(): Promise<Record<string, string>> {
     return Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]));
   }, DEMO_SITE_SETTINGS);
 }
+
+/** One representative product image per category — for the homepage
+ *  category tiles. Avoids hardcoded (and stale) image URLs: each tile
+ *  shows a real in-stock product from that category. */
+export async function getCategoryTileImages(categories: string[]): Promise<Record<string, string>> {
+  if (isDemo || categories.length === 0) return {};
+  return safe('getCategoryTileImages', async () => {
+    const { data } = await supabase
+      .from('products')
+      .select('category, image_url, stock')
+      .in('category', categories)
+      .eq('status', 'published')
+      .not('image_url', 'is', null)
+      .order('stock', { ascending: false });
+    const map: Record<string, string> = {};
+    for (const row of (data ?? []) as { category: string; image_url: string | null }[]) {
+      if (row.image_url && !map[row.category]) map[row.category] = row.image_url;
+    }
+    return map;
+  }, {});
+}
