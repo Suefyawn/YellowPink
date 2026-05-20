@@ -104,7 +104,7 @@ export function Footer() {
             </p>
             <address style={{ fontStyle: 'normal' }}>
               <p className="small-text" style={{ color: 'rgba(250,246,238,0.5)', fontSize: '0.75rem' }}>
-                Karachi · Lahore · Islamabad<br />
+                Delivering nationwide across Pakistan<br />
                 Cash on Delivery available
               </p>
             </address>
