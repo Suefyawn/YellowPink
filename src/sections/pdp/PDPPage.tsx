@@ -376,7 +376,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             width — without it a long product name forced the grid wider than
             the viewport. maxWidth caps the image column so the gallery isn't
             a ~700px monster on a wide desktop. */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto' }} className="pdp-grid">
+        {/* alignItems:start so the gallery cell sizes to the image and does
+            NOT stretch to the row height — otherwise opening an accordion in
+            the right column grows the row and the aspect-ratio image scales
+            up/down with it. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto', alignItems: 'start' }} className="pdp-grid">
           <Gallery images={galleryToShow} alt={`${product.brand ?? ''} ${displayName}`.trim()} fallback={product.image_url} brandLabel={product.brand ?? undefined} />
 
           <div style={{ minWidth: 0 }}>
