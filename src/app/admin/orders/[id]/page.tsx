@@ -9,7 +9,21 @@ import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { configuredAdapterIds } from '@/lib/couriers';
+import { ORDER_STATUS_LABELS } from '@/types';
 import type { Order, CartItem, OrderStatus } from '@/types';
+
+interface OrderEventRow {
+  id: string;
+  from_status: OrderStatus | null;
+  to_status: OrderStatus;
+  note: string | null;
+  actor_kind: string | null;
+  created_at: string;
+}
+
+function statusLabel(s: OrderStatus | null): string {
+  return s ? (ORDER_STATUS_LABELS[s] ?? s) : '';
+}
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -42,6 +56,14 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .limit(1)
     .maybeSingle();
   const apiAdapters = configuredAdapterIds();
+
+  // Status history — every transition this order went through, oldest first.
+  const { data: eventRows } = await supabaseAdmin()
+    .from('order_events')
+    .select('id, from_status, to_status, note, actor_kind, created_at')
+    .eq('order_id', id)
+    .order('created_at', { ascending: true });
+  const events = (eventRows ?? []) as OrderEventRow[];
 
   // Customer history block — lifetime orders + total spend for the same
   // (user_id OR phone OR email). Cheap query — admin-only view, no caching
@@ -211,19 +233,26 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <div style={section}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
             <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Customer</h2>
-            {customerStats && customerStats.count > 1 && (
-              <span
-                title={customerStats.first ? `First ordered ${new Date(customerStats.first).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}` : undefined}
-                style={{
-                  fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05em',
-                  textTransform: 'uppercase',
-                  padding: '3px 9px', borderRadius: 20,
-                  background: '#fdf2f8', color: '#9d174d', border: '1px solid #fbcfe8',
-                }}
-              >
-                Repeat · {customerStats.count} orders
-              </span>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {customerStats && customerStats.count > 1 && (
+                <span
+                  title={customerStats.first ? `First ordered ${new Date(customerStats.first).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}` : undefined}
+                  style={{
+                    fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05em',
+                    textTransform: 'uppercase',
+                    padding: '3px 9px', borderRadius: 20,
+                    background: '#fdf2f8', color: '#9d174d', border: '1px solid #fbcfe8',
+                  }}
+                >
+                  Repeat · {customerStats.count} orders
+                </span>
+              )}
+              {o.user_id && (
+                <Link href={`/admin/users/${o.user_id}`} style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}>
+                  View profile →
+                </Link>
+              )}
+            </div>
           </div>
           <dl style={dl}>
             <dt style={dt}>Name</dt>
@@ -299,6 +328,38 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             status: shipmentRow.status as string,
           } : null}
         />
+      </div>
+
+      {/* Order timeline — full status history from order_events */}
+      <div style={{ ...section, marginBottom: 20 }}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order timeline</h2>
+        {events.length === 0 ? (
+          <div style={{ padding: '20px 0', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+            No status history recorded yet.
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {events.map((e, i) => (
+              <div key={e.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColors[e.to_status] ?? '#6b7280', marginTop: 6, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>
+                    {e.from_status
+                      ? `${statusLabel(e.from_status)} → ${statusLabel(e.to_status)}`
+                      : `Order created — ${statusLabel(e.to_status)}`}
+                  </div>
+                  {e.note && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{e.note}</div>}
+                </div>
+                {e.actor_kind && (
+                  <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', alignSelf: 'flex-start', marginTop: 2 }}>
+                    {e.actor_kind}
+                  </span>
+                )}
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{fmtDate(e.created_at)}</div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
