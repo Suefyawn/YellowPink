@@ -6,13 +6,12 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useSearch } from '@/context/SearchContext';
 // IMPORTANT: import the BROWSER client (memoised singleton) not
-// `supabase` from '@/lib/supabase'. The server-side export creates a
-// second GoTrueClient in the browser bundle and produces the
-// "Multiple GoTrueClient instances detected" console warning — Supabase
-// flags this as "may produce undefined behavior" under concurrent use.
-// `isDemo` is fine to import because it's just a boolean derived from
-// env vars and doesn't construct anything.
-import { isDemo } from '@/lib/supabase';
+// `supabase` from '@/lib/supabase'. That module's `createClient` call
+// constructs a second GoTrueClient in the browser bundle, which collides
+// with the @supabase/ssr cookie client and makes signed-in customers look
+// logged-out. `isDemo` comes from its own `createClient`-free module so
+// importing it can't drag that client in.
+import { isDemo } from '@/lib/is-demo';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { DEMO_PRODUCTS } from '@/lib/demo-data';
 import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
