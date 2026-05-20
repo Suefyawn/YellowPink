@@ -1,36 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createClient } from '@supabase/supabase-js';
+import { createServerSupabase as authedClient } from '@/lib/supabase-server';
 import { addressSchema, parseForm, firstError } from '@/lib/validators';
 
-// We need an authenticated Supabase client to leverage RLS on `addresses`
-// (each row is gated on auth.uid() = user_id). The Supabase JS auth cookies
-// are stored in the browser; on the server we have to reconstruct them.
-async function authedClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-  const sb = createClient(url, key, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-
-  const store = await cookies();
-  // Supabase v2 stores the session in cookies named sb-<ref>-auth-token.
-  const sessionCookie = store.getAll().find(c => /^sb-.+-auth-token$/.test(c.name));
-  if (sessionCookie) {
-    try {
-      const parsed = JSON.parse(sessionCookie.value);
-      const access  = parsed?.access_token;
-      const refresh = parsed?.refresh_token;
-      if (access && refresh) {
-        await sb.auth.setSession({ access_token: access, refresh_token: refresh });
-      }
-    } catch { /* malformed cookie — fall through, RLS will reject writes */ }
-  }
-  return sb;
-}
+// authedClient() is the @supabase/ssr server client — it reads the customer's
+// session from cookies so RLS on `addresses` (auth.uid() = user_id) applies.
 
 export type AddressActionResult = { error: string } | { success: true } | null;
 
