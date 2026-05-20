@@ -255,10 +255,6 @@ export default async function AnalyticsPage({ searchParams }: { searchParams: Pr
           )}
         </div>
       </div>
-
-      <div style={{ display: 'flex', justifyContent: 'flex-end', fontSize: '0.75rem', color: '#9ca3af' }}>
-        Powered by analytics_* RPCs in supabase/migrations/20260519_023_analytics_views.sql.
-      </div>
     </div>
   );
 }
