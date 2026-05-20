@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 
@@ -28,7 +28,10 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
   const { segment } = await searchParams;
   const focus = segment ?? null;
 
-  let query = supabase.from('v_customer_segments').select('*').order('revenue', { ascending: false }).limit(500);
+  // v_customer_segments is built over orders, whose RLS blocks the anon
+  // client — read it through the service role (this page is staff-gated).
+  const admin = supabaseAdmin();
+  let query = admin.from('v_customer_segments').select('*').order('revenue', { ascending: false }).limit(500);
   if (focus) query = query.eq('segment', focus);
 
   const { data } = await query;
@@ -39,7 +42,7 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
   if (!focus) {
     summary = rows;
   } else {
-    const { data: all } = await supabase.from('v_customer_segments').select('segment, revenue').limit(50000);
+    const { data: all } = await admin.from('v_customer_segments').select('segment, revenue').limit(50000);
     summary = (all ?? []) as SegmentRow[];
   }
   const byKey = new Map<string, { customers: number; revenue: number }>();
