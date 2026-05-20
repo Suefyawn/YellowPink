@@ -1,20 +1,31 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Product, BlogPost } from '@/types';
 import { DEMO_PRODUCTS, DEMO_BLOG_POSTS, DEMO_SITE_SETTINGS } from './demo-data';
-
-const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+import { isDemo } from './is-demo';
 
 /** True when no Supabase env vars are configured. Storefront helpers fall
  *  back to stub data so the site renders for design / a11y review on a
- *  fresh clone without setting up Supabase. */
-export const isDemo = !envUrl || !envKey;
+ *  fresh clone without setting up Supabase. Re-exported from ./is-demo so
+ *  client components can read the flag without pulling this module (and its
+ *  `createClient` call) into the browser bundle. */
+export { isDemo };
+
+const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 // Placeholder URL/key so createClient doesn't throw on import in demo mode.
 const supabaseUrl = envUrl || 'https://demo.invalid';
 const supabaseAnonKey = envKey || 'demo-anon-key';
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Anonymous storefront read client. It NEVER manages a user session — the
+// logged-in customer session is owned exclusively by the @supabase/ssr
+// cookie client (lib/supabase-browser + lib/supabase-server). persistSession
+// / autoRefreshToken are off so that, even if this module is ever pulled
+// into the browser bundle, it can't construct a competing session store that
+// races the cookie client and makes signed-in customers look logged-out.
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: { persistSession: false, autoRefreshToken: false },
+});
 
 // ─── Service-role client (server-only) ──────────────────────────────────────
 // Use for sensitive tables that have RLS enabled with service-role-only
