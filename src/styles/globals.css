@@ -539,6 +539,53 @@ a.underline,
   .adm-two-col { grid-template-columns: 1fr !important; }
   /* PDP "Why Yellow Pink" trust cards: 4-up cramps badly on a phone. */
   .trust-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Reclaim horizontal room on phones — the 36px desktop gutter is too wide. */
+  .adm-page { padding: 20px 14px !important; }
+}
+
+/* Admin data tables → stacked cards on phones.
+ *
+ * The Orders, Products, Vendors, Users, Blog, Coupons, Segments, Audit and
+ * Team tables all carry `.adm-table-cards` and a `data-label` on every body
+ * cell. On a phone a 6–7 column table overflows the viewport; here each row
+ * collapses into a bordered card, the header row is hidden, and every cell
+ * shows its column name (from `data-label`) beside its value. */
+@media (max-width: 767px) {
+  .adm-table-cards { display: block; }
+  .adm-table-cards thead { display: none; }
+  .adm-table-cards tbody { display: block; }
+  .adm-table-cards tr {
+    display: block;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 10px;
+    margin: 0 0 10px;
+    padding: 4px 2px;
+    overflow: hidden;
+  }
+  .adm-table-cards td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 8px 14px !important;
+    border: none !important;
+    text-align: right;
+    white-space: normal !important;
+  }
+  .adm-table-cards td[data-label]::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    font-weight: 700;
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #9ca3af;
+    text-align: left;
+  }
+  /* Cells with no column label (row checkbox, the actions column). */
+  .adm-table-cards td:not([data-label]) { justify-content: flex-start; }
+  /* Un-truncate cell content that ellipsises in the desktop table. */
+  .adm-table-cards td div { white-space: normal !important; max-width: 100% !important; }
 }
 
 /* FAQ accordion chevron: rotate + into × when the <details> is open. */
