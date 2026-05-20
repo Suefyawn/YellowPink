@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { supabaseAdmin } from '@/lib/supabase';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { CouponEditModal } from '@/components/admin/CouponEditModal';
 import { createCoupon, deleteCoupon, toggleCoupon } from '@/app/admin/coupon-actions';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -167,7 +168,10 @@ export default async function CouponsPage() {
                       </form>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
-                      <DeleteButton id={c.id} action={deleteCoupon} confirmMsg={`Delete coupon "${c.code}"?`} />
+                      <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <CouponEditModal coupon={c} />
+                        <DeleteButton id={c.id} action={deleteCoupon} confirmMsg={`Delete coupon "${c.code}"?`} />
+                      </div>
                     </td>
                   </tr>
                 );
