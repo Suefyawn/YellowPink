@@ -53,6 +53,10 @@ export interface Product {
   /** When false, inventory is managed externally (e.g. a third-party vendor):
    *  the product is always sellable and its stock count is not tracked. */
   track_inventory?: boolean;
+  /** Sourcing vendor (nullable — own-stock products have none). */
+  vendor_id?: string | null;
+  /** Per-unit cost paid to the vendor; overrides the vendor's commission %. */
+  vendor_cost?: number | null;
   image_url?: string;
   description?: string;
   short_description?: string;
@@ -250,6 +254,26 @@ export interface Vendor {
   phone: string;
   notes?: string | null;
   active: boolean;
+  /** Default % of the sale price Yellow Pink keeps on this vendor's products. */
+  commission_pct?: number | null;
+  /** Who collects the customer payment, and therefore who owes whom. */
+  settlement_direction?: 'vendor_collects' | 'we_collect';
+  created_at?: string;
+}
+
+/** Financial split for one order dispatched to one vendor. */
+export interface VendorSettlement {
+  id: string;
+  order_id: string;
+  vendor_id: string;
+  gross_amount: number;
+  vendor_cost: number;
+  our_margin: number;
+  direction: 'vendor_collects' | 'we_collect';
+  amount_due: number;
+  due_to: 'us' | 'vendor';
+  status: 'pending' | 'settled';
+  settled_at?: string | null;
   created_at?: string;
 }
 
