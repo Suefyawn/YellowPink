@@ -4,12 +4,16 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useTransition } from 'react';
 
 const STATUSES = [
-  { value: 'all',        label: 'All' },
-  { value: 'pending',    label: 'Pending',    color: '#f59e0b' },
-  { value: 'processing', label: 'Processing', color: '#3b82f6' },
-  { value: 'shipped',    label: 'Shipped',    color: '#8b5cf6' },
-  { value: 'delivered',  label: 'Delivered',  color: '#10b981' },
-  { value: 'cancelled',  label: 'Cancelled',  color: '#ef4444' },
+  { value: 'all',             label: 'All' },
+  { value: 'payment_pending', label: 'Awaiting payment', color: '#d97706' },
+  { value: 'payment_failed',  label: 'Payment failed',   color: '#ef4444' },
+  { value: 'pending',         label: 'Pending',          color: '#f59e0b' },
+  { value: 'processing',      label: 'Processing',       color: '#3b82f6' },
+  { value: 'shipped',         label: 'Shipped',          color: '#8b5cf6' },
+  { value: 'delivered',       label: 'Delivered',        color: '#10b981' },
+  { value: 'cancelled',       label: 'Cancelled',        color: '#ef4444' },
+  { value: 'returned',        label: 'Returned',         color: '#6b7280' },
+  { value: 'refunded',        label: 'Refunded',         color: '#0891b2' },
 ];
 
 export function OrdersFilter({ total }: { total: number }) {
