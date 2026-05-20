@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { SectionDivider } from '@/components/ui/SectionDivider';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
@@ -15,7 +14,7 @@ const PILLARS = [
 ];
 
 export function WellnessSection({ products }: { products: Product[] }) {
-  const wellnessProducts = products.slice(0, 3);
+  const wellnessProducts = products.slice(0, 4);
   if (wellnessProducts.length === 0) return null;
   return (
     <section style={{ padding: 'var(--section-gap) 0' }}>
@@ -51,20 +50,7 @@ export function WellnessSection({ products }: { products: Product[] }) {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr repeat(3, 1fr)', gap: 'var(--gutter)', alignItems: 'center' }} className="wellness-grid">
-            <div style={{ aspectRatio: '3/4', borderRadius: 'var(--radius-card)', position: 'relative', overflow: 'hidden', background: 'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)' }}>
-              <Image
-                src="https://yellowpink.pk/wp-content/uploads/2026/01/Untitled-1-08.webp"
-                alt="Wellness supplements"
-                fill
-                // ¼ of grid on desktop, full-bleed on mobile (per .wellness-grid).
-                sizes="(max-width: 900px) 100vw, 25vw"
-                style={{ objectFit: 'cover' }}
-              />
-              <div style={{ position: 'absolute', top: 20, left: 20, background: 'var(--brand-yellow)', padding: '6px 12px', borderRadius: 'var(--radius-pill)' }}>
-                <span style={{ fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-900)' }}>New Category</span>
-              </div>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="wellness-grid">
             {wellnessProducts.map((p) => (
               <ProductTile key={p.id} product={p} />
             ))}

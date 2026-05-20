@@ -9,7 +9,13 @@ import {
   getOnSale,
   getProductsByTaxon,
   getSiteSettings,
+  getCategoryTileImages,
 } from '@/lib/supabase';
+
+// Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
+// equal billing for the "beauty, inside out" concept.
+const MAKEUP_TILE_CATS = ['Lip & Cheek Tints', 'Highlighters', 'Face Makeup', 'Skincare'];
+const WELLNESS_TILE_CATS = ["Women's Health", "Men's Health", 'Immunity', 'Bone & Joint'];
 import { HeroSection } from '@/sections/home/HeroSection';
 import { TrustBar } from '@/sections/home/TrustBar';
 import { FeaturedProducts } from '@/sections/home/FeaturedProducts';
@@ -27,13 +33,24 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, bestsellers, saleProducts, wellnessProducts, settings] = await Promise.all([
+  const [featured, bestsellers, saleProducts, wellnessProducts, settings, categoryImages] = await Promise.all([
     getFeatured(6),
     getBestsellers(8),
     getOnSale(4),
-    getProductsByTaxon('wellness', 3),
+    getProductsByTaxon('wellness', 4),
     getSiteSettings(),
+    getCategoryTileImages([...MAKEUP_TILE_CATS, ...WELLNESS_TILE_CATS]),
   ]);
+
+  const tile = (label: string) => ({
+    label,
+    href: `/shop?category=${encodeURIComponent(label)}`,
+    image: categoryImages[label],
+  });
+  const categoryGroups = [
+    { title: 'Makeup & Skincare', tiles: MAKEUP_TILE_CATS.map(tile) },
+    { title: 'Health & Wellness', tiles: WELLNESS_TILE_CATS.map(tile) },
+  ];
 
   const heroSettings = {
     overline: settings.hero_overline,
@@ -56,7 +73,7 @@ export default async function HomePage() {
       <NewArrivals products={saleProducts} />
       <BestsellersBand products={bestsellers.slice(0, 4)} />
       <WellnessSection products={wellnessProducts} />
-      <CategoryTiles />
+      <CategoryTiles groups={categoryGroups} />
       <RealResults />
       <PressStrip />
     </main>
