@@ -13,6 +13,18 @@ function today() {
   return new Date().toISOString().split('T')[0];
 }
 
+// Canonical blog taxonomy. Kept as a fixed dropdown (not free text) so the
+// category list can't drift back into the WP-import mess of near-duplicate
+// values — see migration 100. Add a new category here when one is needed.
+const BLOG_CATEGORIES = [
+  'Wellness',
+  "Women's Health",
+  "Men's Health",
+  'Fertility',
+  'Bone & Joint',
+  'Beauty & Skincare',
+] as const;
+
 const inp: React.CSSProperties = {
   width: '100%', padding: '9px 12px',
   border: '1px solid #d1d5db', borderRadius: 7,
@@ -84,7 +96,12 @@ export function BlogForm({ post }: { post?: BlogPost }) {
           <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div>
               <label style={lbl}>Category *</label>
-              <input name="category" required defaultValue={post?.category} style={inp} placeholder="e.g. Skincare" />
+              <select name="category" required defaultValue={post?.category ?? ''} style={inp}>
+                <option value="" disabled>Choose a category</option>
+                {BLOG_CATEGORIES.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
             </div>
             <div>
               <label style={lbl}>Date *</label>
