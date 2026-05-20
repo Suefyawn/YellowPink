@@ -124,14 +124,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   ].join('\n');
 
   return (
-    <div style={{ padding: '32px 36px' }}>
-      {/* Print styles */}
+    <div id="order-detail-page" style={{ padding: '32px 36px' }}>
+      {/* Print styles — printing this page outputs ONLY the invoice card.
+          Every other block is a direct child of #order-detail-page, so one
+          rule hides them all (and stays correct as sections are added). */}
       <style>{`
         @media print {
           .adm-sidebar, .adm-topbar, .adm-overlay, .no-print { display: none !important; }
           .adm-main { margin-left: 0 !important; background: white !important; }
+          #order-detail-page { padding: 0 !important; }
+          #order-detail-page > :not(#print-invoice) { display: none !important; }
           #print-invoice { display: block !important; }
-          .print-hide { display: none !important; }
         }
         #print-invoice { display: none; }
       `}</style>
@@ -198,18 +201,16 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
         </div>
-        <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32, marginBottom: 28 }}>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7280', marginBottom: 8 }}>Bill To</div>
-            <div style={{ fontWeight: 600 }}>{o.first_name} {o.last_name}</div>
-            <div style={{ fontSize: '0.875rem', color: '#374151', marginTop: 4 }}>{o.phone}</div>
-            {o.email && <div style={{ fontSize: '0.875rem', color: '#374151' }}>{o.email}</div>}
-          </div>
-          <div>
-            <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7280', marginBottom: 8 }}>Ship To</div>
-            <div style={{ fontSize: '0.875rem', color: '#374151' }}>{o.address}</div>
-            <div style={{ fontSize: '0.875rem', color: '#374151' }}>{o.city}{o.province ? `, ${o.province}` : ''}{o.zip ? ` ${o.zip}` : ''}</div>
-          </div>
+        {/* One clear recipient block — billing and shipping are the same
+            person here, and a courier reading the parcel wants name +
+            address + phone together and prominent. */}
+        <div style={{ marginBottom: 28 }}>
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#6b7280', marginBottom: 8 }}>Deliver To</div>
+          <div style={{ fontWeight: 700, fontSize: '1.0625rem', color: '#111827' }}>{o.first_name} {o.last_name}</div>
+          <div style={{ fontSize: '0.9375rem', color: '#374151', marginTop: 4 }}>{o.address}</div>
+          <div style={{ fontSize: '0.9375rem', color: '#374151' }}>{o.city}{o.province ? `, ${o.province}` : ''}{o.zip ? ` ${o.zip}` : ''}</div>
+          <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827', marginTop: 6 }}>{o.phone}</div>
+          {o.email && <div style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{o.email}</div>}
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 20 }}>
           <thead>
