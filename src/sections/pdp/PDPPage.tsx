@@ -354,7 +354,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   return (
     <div>
       <div className="container" style={{ padding: '16px var(--side)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <Link href="/" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', color: 'var(--ink-500)', textDecoration: 'none' }}>Home</Link>
           <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
           {midCrumb && (
