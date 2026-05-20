@@ -264,6 +264,15 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
     });
   }, [product.id, product.name, product.brand, product.category, product.price]);
 
+  // Pin every product page to the top. A client-side navigation from a
+  // scrolled-down homepage / collection page (common on mobile) can hand the
+  // PDP a stale scroll position, landing the viewport on the footer.
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.location.hash) {
+      window.scrollTo(0, 0);
+    }
+  }, [product.id]);
+
   // Default-select the first reachable value for every attribute (or none).
   const [selected, setSelected] = useState<Record<string, string>>(() => {
     const init: Record<string, string> = {};
