@@ -67,11 +67,14 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
     setCouponError('');
     setCouponLoading(true);
     const sb = getBrowserClient();
-    const { data, error } = await sb.from('coupons').select('*').eq('code', couponCode.trim().toUpperCase()).eq('active', true).single();
+    // coupons has RLS with no anon SELECT (migration 070) — go through the
+    // SECURITY DEFINER lookup_coupon RPC instead of reading the table.
+    const { data, error } = await sb.rpc('lookup_coupon' as never, { p_code: couponCode.trim() } as never);
     setCouponLoading(false);
-    if (error && error.code !== 'PGRST116') { setCouponError('Could not validate coupon. Try again.'); return; }
-    if (!data) { setCouponError('Invalid or inactive coupon code'); return; }
-    const c = data as Coupon;
+    if (error) { setCouponError('Could not validate coupon. Try again.'); return; }
+    const rows = (data ?? []) as Coupon[];
+    if (rows.length === 0) { setCouponError('Invalid or inactive coupon code'); return; }
+    const c = rows[0];
 
     // Cart is anonymous (no email field) — server still enforces per-user
     // caps + email restrictions at checkout. This is best-effort UX.
