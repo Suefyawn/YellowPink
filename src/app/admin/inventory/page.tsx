@@ -24,6 +24,8 @@ interface LedgerRow {
 interface ProductLite { id: string; name: string; brand: string | null; stock: number }
 interface OrderLite { id: string; order_number: string }
 
+const LOW_STOCK_THRESHOLD = 5;
+
 const reasonColors: Record<LedgerRow['reason'], { bg: string; fg: string }> = {
   import:       { bg: '#eef2ff', fg: '#3730a3' },
   order:        { bg: '#fce7f3', fg: '#9d174d' },
@@ -38,15 +40,21 @@ const reasonColors: Record<LedgerRow['reason'], { bg: string; fg: string }> = {
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 
+function stockBadge(stock: number): { label: string; bg: string; fg: string } {
+  if (stock <= 0) return { label: 'Out of stock', bg: '#fee2e2', fg: '#991b1b' };
+  if (stock <= LOW_STOCK_THRESHOLD) return { label: 'Low', bg: '#fef3c7', fg: '#92400e' };
+  return { label: 'In stock', bg: '#d1fae5', fg: '#065f46' };
+}
+
 export default async function InventoryPage({
   searchParams,
-}: { searchParams: Promise<{ product?: string; reason?: string; error?: string; ok?: string }> }) {
+}: { searchParams: Promise<{ product?: string; reason?: string; error?: string; ok?: string; view?: string }> }) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('products')) {
     return <NoAccess section="Inventory" />;
   }
 
-  const { product: productFilter, reason: reasonFilter, error: errMsg, ok: okMsg } = await searchParams;
+  const { product: productFilter, reason: reasonFilter, error: errMsg, ok: okMsg, view } = await searchParams;
   const admin = supabaseAdmin();
 
   let ledgerQuery = admin
@@ -67,6 +75,16 @@ export default async function InventoryPage({
   const products = (productData ?? []) as ProductLite[];
   const productMap = new Map<string, ProductLite>(products.map(p => [p.id, p]));
 
+  // Stock overview — buckets + the lowest-first sorted list.
+  const outOfStock = products.filter(p => p.stock <= 0);
+  const lowStock = products.filter(p => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD);
+  const healthyCount = products.length - outOfStock.length - lowStock.length;
+  // "Needs attention" is the default view; the owner can switch to the full list.
+  const showAll = view === 'all';
+  const stockList = [...products].sort((a, b) => a.stock - b.stock);
+  const attentionList = stockList.filter(p => p.stock <= LOW_STOCK_THRESHOLD);
+  const visibleStock = showAll ? stockList : attentionList;
+
   // Resolve order ids to order numbers for the rows that link to an order.
   const orderIds = Array.from(new Set(rows.map(r => r.order_id).filter((v): v is string => Boolean(v))));
   const { data: orderData } = orderIds.length
@@ -78,7 +96,7 @@ export default async function InventoryPage({
     <div style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 6px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Inventory</h1>
       <p style={{ margin: '0 0 24px', fontSize: '0.8125rem', color: '#6b7280' }}>
-        Permanent audit trail of every stock movement. Use the form below to log a manual adjustment — restocks, write-offs, corrections.
+        Current stock levels at a glance, plus a permanent audit trail of every movement.
       </p>
 
       {errMsg && (
@@ -88,7 +106,79 @@ export default async function InventoryPage({
         <div role="status" style={{ background: '#d1fae5', color: '#065f46', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>Stock updated.</div>
       )}
 
+      {/* ─── Stock summary ──────────────────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }} className="adm-stat-grid">
+        {[
+          { label: 'Out of stock', value: outOfStock.length, bg: '#fef2f2', fg: '#dc2626', bd: '#fecaca' },
+          { label: `Low stock (≤ ${LOW_STOCK_THRESHOLD})`, value: lowStock.length, bg: '#fffbeb', fg: '#d97706', bd: '#fde68a' },
+          { label: 'Healthy', value: healthyCount, bg: '#f0fdf4', fg: '#16a34a', bd: '#bbf7d0' },
+        ].map(s => (
+          <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.bd}`, borderRadius: 10, padding: '16px 20px' }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: s.fg }}>{s.label}</div>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', marginTop: 2 }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* ─── Stock levels table ─────────────────────────────────────────── */}
+      <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', marginBottom: 24 }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
+            {showAll ? 'All products' : 'Needs attention'}
+          </h2>
+          <div style={{ display: 'flex', gap: 8, fontSize: '0.8125rem' }}>
+            <Link href="/admin/inventory" style={chipLink(!showAll)}>Needs attention</Link>
+            <Link href="/admin/inventory?view=all" style={chipLink(showAll)}>All products</Link>
+          </div>
+        </div>
+        {visibleStock.length === 0 ? (
+          <div style={{ padding: 48, textAlign: 'center', color: '#16a34a', fontSize: '0.875rem', fontWeight: 600 }}>
+            Every product is in stock. Nothing needs restocking.
+          </div>
+        ) : (
+          <div style={{ maxHeight: 440, overflowY: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+              <thead>
+                <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                  {['Product', 'Stock', 'Status', ''].map(h => (
+                    <th scope="col" key={h} style={th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {visibleStock.map(p => {
+                  const badge = stockBadge(p.stock);
+                  return (
+                    <tr key={p.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                      <td style={td}>
+                        <Link href={`/admin/products/${p.id}`} style={{ color: '#111827', fontWeight: 500, textDecoration: 'none' }}>
+                          {brandPlusName(p.brand, p.name)}
+                        </Link>
+                      </td>
+                      <td style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: p.stock <= 0 ? '#991b1b' : p.stock <= LOW_STOCK_THRESHOLD ? '#92400e' : '#111827' }}>
+                        {p.stock}
+                      </td>
+                      <td style={td}>
+                        <span style={{ background: badge.bg, color: badge.fg, padding: '2px 8px', borderRadius: 6, fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                          {badge.label}
+                        </span>
+                      </td>
+                      <td style={{ ...td, textAlign: 'right' }}>
+                        <Link href={`/admin/products/${p.id}`} style={{ color: '#C5286A', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600 }}>
+                          Edit →
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
       {/* ─── Manual adjustment form ─────────────────────────────────────── */}
+      <h2 style={{ margin: '0 0 10px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Log a stock change</h2>
       <form
         action={adjustStock}
         style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 16, marginBottom: 24, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr auto', gap: 12, alignItems: 'end' }}
@@ -123,8 +213,11 @@ export default async function InventoryPage({
         <button type="submit" style={btn}>Log change</button>
       </form>
 
-      {/* ─── Filters ────────────────────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, fontSize: '0.8125rem' }}>
+      {/* ─── Movement history ───────────────────────────────────────────── */}
+      <h2 style={{ margin: '0 0 10px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Movement history</h2>
+
+      {/* Filters */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, fontSize: '0.8125rem', flexWrap: 'wrap' }}>
         <Link href="/admin/inventory" style={chipLink(!reasonFilter && !productFilter)}>All</Link>
         {(['order','return','cancellation','restock','adjustment','damage','import'] as const).map(r => (
           <Link key={r} href={`/admin/inventory?reason=${r}`} style={chipLink(reasonFilter === r)}>
@@ -133,7 +226,7 @@ export default async function InventoryPage({
         ))}
       </div>
 
-      {/* ─── Ledger table ───────────────────────────────────────────────── */}
+      {/* Ledger table */}
       <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
         {rows.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center', color: '#9ca3af' }}>No stock movements yet.</div>

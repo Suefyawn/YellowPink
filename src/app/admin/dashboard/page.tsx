@@ -58,24 +58,25 @@ export default async function DashboardPage() {
   // allow anon SELECT and can stay on the public client.
   const admin = supabaseAdmin();
   const [
-    { count: productCount },
     { data: recentOrders },
-    { count: blogCount },
     { data: kpisData },
     { data: lowStockProducts },
+    { count: lowStockCount },
+    { count: newCustomerCount },
     { data: recentOrdersForChart },
   ] = await Promise.all([
-    supabase.from('products').select('*', { count: 'exact', head: true }),
     admin.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
-    supabase.from('blog_posts').select('*', { count: 'exact', head: true }),
     // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
     // top products) in one SQL pass via dashboard_kpis() RPC. Previously
     // pulled every orders row + its JSONB items into Node and aggregated in
     // JS — would degrade linearly with order count.
     admin.rpc('dashboard_kpis' as never) as unknown as Promise<{ data: DashboardKpis | null }>,
-    // Cap low-stock to 50 so a long-tail catalog with many out-of-stock
-    // rows doesn't blow up the dashboard.
+    // Cap the low-stock list to 50 so a long-tail catalog with many
+    // out-of-stock rows doesn't blow up the dashboard; the card next to it
+    // shows the exact count.
     supabase.from('products').select('*').lte('stock', 5).order('stock', { ascending: true }).limit(50),
+    supabase.from('products').select('*', { count: 'exact', head: true }).lte('stock', 5),
+    admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     admin.from('orders').select('total, status, created_at').gte('created_at', thirtyDaysAgo).neq('status', 'cancelled'),
   ]);
 
@@ -98,18 +99,22 @@ export default async function DashboardPage() {
     total_revenue: 0, order_count: 0, status_counts: {}, top_products: [],
   };
   const orderCount = kpis.order_count;
-  const revenue = Number(kpis.total_revenue) || 0;
   const statusCounts = statusLabels.reduce<Record<string, number>>((acc, s) => {
     acc[s] = kpis.status_counts[s] ?? 0;
     return acc;
   }, {});
   const topProducts = kpis.top_products.map(p => ({ name: p.name, brand: p.brand, qty: p.qty }));
 
+  // Dashboard cards favour actionable, time-bounded numbers over all-time
+  // vanity totals — the things the owner checks each morning.
+  const revenue30d = chartDays.reduce((s, d) => s + d.revenue, 0);
+  const ordersToFulfill = (statusCounts.pending ?? 0) + (statusCounts.processing ?? 0);
+
   const stats = [
-    { label: 'Products', value: productCount ?? 0, icon: '◈', color: '#6366f1' },
-    { label: 'Orders', value: orderCount ?? 0, icon: '◎', color: '#C5286A' },
-    { label: 'Revenue (excl. cancelled)', value: fmt(revenue), icon: '₨', color: '#10b981', isRevenue: true },
-    { label: 'Blog Posts', value: blogCount ?? 0, icon: '✦', color: '#f59e0b' },
+    { label: 'Revenue · last 30 days', value: fmt(revenue30d), icon: '₨', color: '#10b981', href: '/admin/analytics', isRevenue: true },
+    { label: 'Orders to fulfill', value: ordersToFulfill, icon: '◎', color: '#C5286A', href: '/admin/orders', isRevenue: false },
+    { label: 'New customers · 30 days', value: newCustomerCount ?? 0, icon: '◉', color: '#6366f1', href: '/admin/users', isRevenue: false },
+    { label: 'Low stock items', value: lowStockCount ?? 0, icon: '⧉', color: '#f59e0b', href: '/admin/inventory', isRevenue: false },
   ];
 
   return (
@@ -130,10 +135,11 @@ export default async function DashboardPage() {
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 32 }} className="adm-stat-grid">
         {stats.map(s => (
-          <div key={s.label} style={{
+          <Link key={s.label} href={s.href} style={{
             background: 'white', borderRadius: 10, padding: '24px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
             display: 'flex', flexDirection: 'column', gap: 12,
+            textDecoration: 'none', color: 'inherit',
           }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500 }}>{s.label}</span>
@@ -147,7 +153,7 @@ export default async function DashboardPage() {
             <div style={{ fontSize: s.isRevenue ? '1.375rem' : '1.875rem', fontWeight: 700, color: '#111827' }}>
               {s.value}
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
