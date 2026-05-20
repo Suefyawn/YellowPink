@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import type { Product, BlogPost, Order } from '@/types';
+import type { Product, BlogPost } from '@/types';
 import { DEMO_PRODUCTS, DEMO_BLOG_POSTS, DEMO_SITE_SETTINGS } from './demo-data';
 
 const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -107,17 +107,6 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   }, DEMO_PRODUCTS.find(p => p.slug === slug) ?? null);
 }
 
-export async function getProductsByCategory(category: string): Promise<Product[]> {
-  if (isDemo) return category === 'All' ? DEMO_PRODUCTS : DEMO_PRODUCTS.filter(p => p.category === category);
-  return safe('getProductsByCategory', async () => {
-    const query = supabase.from('products').select(PRODUCT_TILE_COLUMNS).order('id');
-    if (category !== 'All') query.eq('category', category);
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data ?? []) as Product[];
-  }, category === 'All' ? DEMO_PRODUCTS : DEMO_PRODUCTS.filter(p => p.category === category));
-}
-
 /** Editorial bestsellers, flagged by `is_bestseller=true`. Falls back to
  *  the highest-stock published products if the flag hasn't been seeded yet
  *  — homepage rails should never go empty. */
@@ -218,20 +207,6 @@ export async function getProductsByTaxon(taxonOrCategory: string, limit = 8): Pr
   }, DEMO_PRODUCTS.filter(p => cats.includes(p.category)).slice(0, limit));
 }
 
-export async function getProductsByCategoryAndTag(category: string, limit = 4): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.filter(p => p.category === category).slice(0, limit);
-  return safe('getProductsByCategoryAndTag', async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select(PRODUCT_TILE_COLUMNS)
-      .eq('category', category)
-      .order('id')
-      .limit(limit);
-    if (error) throw error;
-    return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.filter(p => p.category === category).slice(0, limit));
-}
-
 // Tile-projection for the blog index. P0-2 finding in the 2026-05-19
 // launch audit: /blog was shipping 1.95 MB of HTML, ~1.76 MB of which
 // was the full WP body of every post embedded in the RSC payload — the
@@ -271,18 +246,4 @@ export async function getSiteSettings(): Promise<Record<string, string>> {
     const { data } = await supabase.from('site_settings').select('key, value');
     return Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]));
   }, DEMO_SITE_SETTINGS);
-}
-
-export async function updateSiteSetting(key: string, value: string): Promise<void> {
-  await supabase.from('site_settings').upsert({ key, value });
-}
-
-export async function createOrder(order: Omit<Order, 'id' | 'created_at'>): Promise<Order> {
-  const { data, error } = await supabase
-    .from('orders')
-    .insert(order)
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
 }
