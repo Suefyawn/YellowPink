@@ -284,6 +284,15 @@ export function CollectionPage({
     setActiveSubcategory(null);
   }
 
+  // Pagination clicks must scroll back to the top of the catalogue.
+  // `router.replace(..., { scroll: false })` above suppresses Next's own
+  // scroll restoration, so a page-2 click from the bottom of the grid
+  // would otherwise leave the viewport stranded mid-scroll.
+  function goToPage(next: number) {
+    setPage(next);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
   // Free-text query is matched case-insensitively against brand + name +
   // category + subcategory + variant. Cheap substring containment is fine
   // for the catalogue size we run — if it ever gets too big we'll swap in
@@ -711,7 +720,7 @@ export function CollectionPage({
           {totalPages > 1 && (
             <nav aria-label="Product pages" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 48 }}>
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => goToPage(Math.max(1, page - 1))}
                 disabled={page === 1}
                 aria-label="Previous page"
                 style={{
@@ -737,7 +746,7 @@ export function CollectionPage({
                   ) : (
                     <button
                       key={p}
-                      onClick={() => setPage(p as number)}
+                      onClick={() => goToPage(p as number)}
                       aria-label={`Page ${p}`}
                       aria-current={page === p ? 'page' : undefined}
                       style={{
@@ -752,7 +761,7 @@ export function CollectionPage({
                 );
               })()}
               <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => goToPage(Math.min(totalPages, page + 1))}
                 disabled={page === totalPages}
                 aria-label="Next page"
                 style={{

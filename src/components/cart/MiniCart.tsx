@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
@@ -125,12 +126,22 @@ export function MiniCart() {
             </div>
           ) : cartItems.map((item, i) => (
             <div key={i} style={{ display: 'flex', gap: 12, padding: '12px 0', borderBottom: '1px solid var(--line)' }}>
-              <div style={{ width: 64, height: 64, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
+              <Link
+                href={`/product/${item.slug}`}
+                onClick={() => setCartOpen(false)}
+                style={{ width: 64, height: 64, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)', display: 'block' }}
+              >
                 <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} sizes="64px" />
-              </div>
+              </Link>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Overline style={{ color: 'var(--ink-500)', fontSize: '0.6875rem', display: 'block', letterSpacing: '0.12em' }}>{item.brand}</Overline>
-                <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 2 }}>{item.name}</div>
+                <Link
+                  href={`/product/${item.slug}`}
+                  onClick={() => setCartOpen(false)}
+                  style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 2, display: 'block', color: 'var(--ink-900)', textDecoration: 'none' }}
+                >
+                  {item.name}
+                </Link>
                 {(item.variant_label ?? item.variant) && (
                   <div className="small-text" style={{ fontSize: '0.6875rem', color: 'var(--ink-500)' }}>
                     {item.variant_label ?? item.variant}
