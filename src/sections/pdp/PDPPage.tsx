@@ -368,14 +368,19 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
       </div>
 
       <div className="container" style={{ borderTop: '1px solid var(--line)' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, padding: '40px 0' }} className="pdp-grid">
+        {/* minmax(0,1fr) lets each column shrink below its content's intrinsic
+            width — without it a long product name forced the grid wider than
+            the viewport. maxWidth caps the image column so the gallery isn't
+            a ~700px monster on a wide desktop. */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto' }} className="pdp-grid">
           <Gallery images={galleryToShow} alt={`${product.brand ?? ''} ${displayName}`.trim()} fallback={product.image_url} brandLabel={product.brand ?? undefined} />
 
-          <div>
+          <div style={{ minWidth: 0 }}>
             <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>{product.brand}</Overline>
             <h1 style={{
               fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500,
               letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 8,
+              overflowWrap: 'break-word',
             }}>{displayName}</h1>
             {product.variant && variants.length === 0 && (
               <div className="body-text" style={{ color: 'var(--ink-500)', marginBottom: 16 }}>{product.variant}</div>
