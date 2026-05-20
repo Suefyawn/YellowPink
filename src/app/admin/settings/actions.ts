@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 
@@ -30,7 +30,9 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const pairs = Array.from(map.entries()).map(([key, value]) => ({ key, value }));
 
   if (pairs.length) {
-    const { error } = await supabase.from('site_settings').upsert(pairs, { onConflict: 'key' });
+    // site_settings RLS allows public SELECT only; writes must go through
+    // the service-role client (this action is owner-gated above).
+    const { error } = await supabaseAdmin().from('site_settings').upsert(pairs, { onConflict: 'key' });
     if (error) {
       redirect(`/admin/settings?error=${encodeURIComponent(error.message)}`);
     }
