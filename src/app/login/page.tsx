@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
+import { sendSignupWelcomeEmail } from './actions';
 
 type Mode = 'login' | 'signup';
 
@@ -41,8 +42,11 @@ export default function LoginPage() {
         // and resetting state would briefly flash the unstuck button.
         return;
       }
-      const { error } = await sb.auth.signUp({ email, password });
+      const { data, error } = await sb.auth.signUp({ email, password });
       if (error) { setError(error.message); return; }
+      // Fire-and-forget the branded welcome email. The server action
+      // re-verifies the id against the auth record before sending.
+      if (data.user) void sendSignupWelcomeEmail(data.user.id);
       setMessage('Account created! Check your email to confirm your address.');
     } catch (err) {
       // Offline / DNS / transient network — surface a message and unstick
