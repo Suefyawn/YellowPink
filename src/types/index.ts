@@ -227,6 +227,9 @@ export interface Order {
   legacy_wp_order_id?: number | null;
   legacy_wp_customer_id?: number | null;
   created_at?: string;
+  /** Set by the review-requests cron once the post-delivery review email
+   *  has been sent. NULL/undefined = not yet asked. */
+  review_request_sent_at?: string | null;
 }
 
 export interface OrderEvent {

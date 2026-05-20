@@ -182,7 +182,7 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true }: { p
   }, [reviews, sortBy]);
 
   return (
-    <section style={{ padding: 'var(--section-gap) 0', borderTop: '1px solid var(--line)' }}>
+    <section id="reviews" style={{ padding: 'var(--section-gap) 0', borderTop: '1px solid var(--line)', scrollMarginTop: 80 }}>
       <div className="container">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start' }} className="duo-grid">
 
