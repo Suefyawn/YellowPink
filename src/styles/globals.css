@@ -77,7 +77,11 @@ body {
   background: var(--paper);
   color: var(--ink-900);
   line-height: 1.5;
-  overflow-x: hidden;
+  /* `clip`, not `hidden`: `overflow-x: hidden` forces `overflow-y` to compute
+   * to `auto`, which turns <body> into a scroll container and stops the
+   * sticky <header> from pinning to the viewport. `clip` contains the same
+   * horizontal overflow without creating a scroll container. */
+  overflow-x: clip;
 }
 
 /* iOS Safari zooms in on focused inputs whose font-size is below 16 px.

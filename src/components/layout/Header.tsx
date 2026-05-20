@@ -21,6 +21,11 @@ const FLAT_ITEMS = [
 
 function navLinkStyle(active: boolean): React.CSSProperties {
   return {
+    // `inline-block` so the 4px vertical padding counts toward the box —
+    // taxon links are wrapped in a div, flat links aren't, and as plain
+    // inline anchors that padding was ignored only for the wrapped ones,
+    // leaving Sale/Blog sitting higher than the rest.
+    display: 'inline-block',
     background: 'none', border: 'none', cursor: 'pointer',
     fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
     fontWeight: active ? 600 : 500,
@@ -122,35 +127,40 @@ export function Header() {
                   style={navLinkStyle(active)}
                 >{t.label}</Link>
                 {open && (
-                  <div
-                    style={{
-                      position: 'absolute', top: 'calc(100% + 10px)', left: 0,
-                      minWidth: 220, padding: 8, zIndex: 200,
-                      background: 'var(--paper)', border: '1px solid var(--line)',
-                      borderRadius: 'var(--radius-card)', boxShadow: '0 14px 36px rgba(0,0,0,0.13)',
-                    }}
-                  >
-                    <Link
-                      href={`/shop?taxon=${t.key}`}
+                  // Outer wrapper sits flush against the link (top:100%) and
+                  // its transparent paddingTop bridges the visual gap — so the
+                  // cursor never crosses a dead zone that would fire mouseleave
+                  // and close the menu before a dropdown item can be clicked.
+                  <div style={{ position: 'absolute', top: '100%', left: 0, paddingTop: 10, zIndex: 200 }}>
+                    <div
                       style={{
-                        display: 'block', padding: '8px 12px', textDecoration: 'none',
-                        fontFamily: 'var(--font-ui)', fontSize: '0.75rem', fontWeight: 700,
-                        letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--brand-pink-text)',
+                        minWidth: 220, padding: 8,
+                        background: 'var(--paper)', border: '1px solid var(--line)',
+                        borderRadius: 'var(--radius-card)', boxShadow: '0 14px 36px rgba(0,0,0,0.13)',
                       }}
-                    >All {t.label}</Link>
-                    {t.categories.map(cat => (
+                    >
                       <Link
-                        key={cat}
-                        href={`/shop?category=${encodeURIComponent(cat)}`}
+                        href={`/shop?taxon=${t.key}`}
                         style={{
-                          display: 'block', padding: '9px 12px', borderRadius: 8,
-                          textDecoration: 'none', fontFamily: 'var(--font-ui)',
-                          fontSize: '0.875rem', color: 'var(--ink-700)',
+                          display: 'block', padding: '8px 12px', textDecoration: 'none',
+                          fontFamily: 'var(--font-ui)', fontSize: '0.75rem', fontWeight: 700,
+                          letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--brand-pink-text)',
                         }}
-                        onMouseEnter={e => { e.currentTarget.style.background = 'var(--paper2)'; e.currentTarget.style.color = 'var(--ink-900)'; }}
-                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-700)'; }}
-                      >{cat}</Link>
-                    ))}
+                      >All {t.label}</Link>
+                      {t.categories.map(cat => (
+                        <Link
+                          key={cat}
+                          href={`/shop?category=${encodeURIComponent(cat)}`}
+                          style={{
+                            display: 'block', padding: '9px 12px', borderRadius: 8,
+                            textDecoration: 'none', fontFamily: 'var(--font-ui)',
+                            fontSize: '0.875rem', color: 'var(--ink-700)',
+                          }}
+                          onMouseEnter={e => { e.currentTarget.style.background = 'var(--paper2)'; e.currentTarget.style.color = 'var(--ink-900)'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-700)'; }}
+                        >{cat}</Link>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
@@ -224,6 +234,20 @@ export function Header() {
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
               <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
+            </svg>
+          </Link>
+          <Link
+            href="/wishlist"
+            aria-label="My wishlist"
+            title="Wishlist"
+            style={{
+              color: 'var(--ink-700)', display: 'inline-flex',
+              alignItems: 'center', justifyContent: 'center',
+              width: 40, height: 40, borderRadius: 8,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
           </Link>
           <button onClick={() => setCartOpen(true)} aria-label={`Open cart, ${cartCount} item${cartCount === 1 ? '' : 's'}`} style={{
