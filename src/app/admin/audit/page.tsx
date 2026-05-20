@@ -35,6 +35,15 @@ function prettyAction(code: string): string {
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }
 
+// Where an entity row links to in the admin, when it has a detail page.
+function entityHref(entity: string | null, entityId: string | null): string | null {
+  if (!entity || !entityId) return null;
+  if (entity === 'order')    return `/admin/orders/${entityId}`;
+  if (entity === 'customer') return `/admin/users/${entityId}`;
+  if (entity === 'product')  return `/admin/products/${entityId}`;
+  return null;
+}
+
 const ACTOR_COLORS: Record<string, string> = {
   owner: '#C5286A', staff: '#3b82f6', customer: '#16a34a', system: '#6b7280',
 };
@@ -165,8 +174,15 @@ export default async function ActivityLogPage({
                   <td data-label="Event" style={{ padding: '10px 16px', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>
                     {prettyAction(r.action)}
                   </td>
-                  <td data-label="Entity" style={{ padding: '10px 16px', fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                    {r.entity ? `${r.entity}${r.entity_id ? ` ${r.entity_id.slice(0, 8)}…` : ''}` : '—'}
+                  <td data-label="Entity" style={{ padding: '10px 16px', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
+                    {(() => {
+                      if (!r.entity) return <span style={{ color: '#6b7280' }}>—</span>;
+                      const label = `${r.entity}${r.entity_id ? ` ${r.entity_id.slice(0, 8)}…` : ''}`;
+                      const href = entityHref(r.entity, r.entity_id);
+                      return href
+                        ? <Link href={href} style={{ color: '#C5286A', textDecoration: 'none' }}>{label}</Link>
+                        : <span style={{ color: '#6b7280' }}>{label}</span>;
+                    })()}
                   </td>
                   <td data-label="Details" style={{ padding: '10px 16px', fontSize: '0.6875rem', color: '#374151' }}>
                     {r.diff
