@@ -64,8 +64,9 @@ export function ProductsTable({ products }: { products: Product[] }) {
             </thead>
             <tbody>
               {products.map((p, i) => {
-                const lowStock = p.stock > 0 && p.stock <= 10;
-                const outOfStock = p.stock === 0;
+                const untracked = p.track_inventory === false;
+                const lowStock = !untracked && p.stock > 0 && p.stock <= 10;
+                const outOfStock = !untracked && p.stock === 0;
                 const checked = selected.has(p.id);
                 return (
                   <tr key={p.id} style={{
@@ -92,11 +93,11 @@ export function ProductsTable({ products }: { products: Product[] }) {
                       <span style={{
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                         padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
-                        background: outOfStock ? '#fef2f2' : lowStock ? '#fffbeb' : '#f0fdf4',
-                        color: outOfStock ? '#dc2626' : lowStock ? '#d97706' : '#16a34a',
-                        border: `1px solid ${outOfStock ? '#fecaca' : lowStock ? '#fde68a' : '#bbf7d0'}`,
+                        background: untracked ? '#f3f4f6' : outOfStock ? '#fef2f2' : lowStock ? '#fffbeb' : '#f0fdf4',
+                        color: untracked ? '#6b7280' : outOfStock ? '#dc2626' : lowStock ? '#d97706' : '#16a34a',
+                        border: `1px solid ${untracked ? '#e5e7eb' : outOfStock ? '#fecaca' : lowStock ? '#fde68a' : '#bbf7d0'}`,
                       }}>
-                        {outOfStock ? '✕ Out of stock' : lowStock ? `⚠ ${p.stock} left` : `✓ ${p.stock}`}
+                        {untracked ? 'Managed externally' : outOfStock ? '✕ Out of stock' : lowStock ? `⚠ ${p.stock} left` : `✓ ${p.stock}`}
                       </span>
                     </td>
                     <td data-label="Status" style={{ padding: '12px 16px' }}>

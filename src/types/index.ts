@@ -50,6 +50,9 @@ export interface Product {
   tag?: string;
   slug: string;
   stock: number;
+  /** When false, inventory is managed externally (e.g. a third-party vendor):
+   *  the product is always sellable and its stock count is not tracked. */
+  track_inventory?: boolean;
   /** Sourcing vendor (nullable — own-stock products have none). */
   vendor_id?: string | null;
   /** Per-unit cost paid to the vendor; overrides the vendor's commission %. */

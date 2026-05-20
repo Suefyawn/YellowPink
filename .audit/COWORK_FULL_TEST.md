@@ -69,6 +69,12 @@ errors and the network tab for failed requests throughout.
   breadcrumb has no empty segment.
 - Variants, image gallery/zoom, key benefits, FAQ, reviews section, related
   products, Subscribe & Save (wellness PDPs), sticky mobile buy-bar.
+- Opening/closing the how-to-use & ingredients accordions must **not**
+  resize the gallery image.
+- **Product copy** — open a few wellness PDPs (a syrup, drops, an
+  effervescent, a powder): "How to use" matches the real form (no "swallow
+  a tablet" on a syrup). No raw `&#…;` HTML entities anywhere in the
+  short/long description.
 
 ### A4. Cart & checkout
 - Mini-cart drawer: free-shipping progress bar; line items link to the PDP.
@@ -126,10 +132,12 @@ PASS / FAIL):
 
 - Signed-in customers reach `/account` (the P1) · email logo · no mobile
   horizontal scroll · `/shop` pagination scroll-to-top · no "Skincare"
-  chip clash · PDP gallery sized right · product-edit Category pre-fills ·
-  order-status dropdown stays in sync · Analytics segments match the
-  Segments page · invoice prints **only the invoice card** · header
-  mega-menu hover · trust-bar icons · settings jump-nav + sticky save.
+  chip clash · PDP gallery sized right · PDP image steady when accordions
+  toggle · product copy form-correct & free of `&#…;` entities ·
+  product-edit Category pre-fills · order-status dropdown stays in sync ·
+  Analytics segments match the Segments page · invoice prints **only the
+  invoice card** · header mega-menu hover · trust-bar icons · settings
+  jump-nav + sticky save.
 
 (Full list with PR references: `.audit/COWORK_HANDOFF.md`.)
 

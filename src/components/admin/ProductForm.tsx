@@ -52,6 +52,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
 
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
+  const [trackInv, setTrackInv] = useState(product?.track_inventory !== false);
   // Tracked so the vendor margin readout updates as the owner edits.
   const [price, setPrice] = useState<number>(product?.price ?? 0);
   const [vendorId, setVendorId] = useState(product?.vendor_id ?? '');
@@ -156,7 +157,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
 
           {/* ── Pricing & stock ────────────────────────────────────────── */}
           <Section title="Pricing & stock">
-            <div style={{ ...row3, marginBottom: 0 }}>
+            <div style={{ ...row3, marginBottom: 16 }}>
               <div style={fieldWrap}>
                 <label style={lbl}>Price (PKR) *</label>
                 <input name="price" type="number" required min={0} defaultValue={product?.price} style={inp} placeholder="2400"
@@ -168,10 +169,35 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
                 <span style={hint}>Set higher than price to show a strikethrough sale.</span>
               </div>
               <div style={fieldWrap}>
-                <label style={lbl}>Stock Quantity *</label>
-                <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
+                <label style={lbl}>Stock Quantity{trackInv ? ' *' : ''}</label>
+                {trackInv ? (
+                  <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
+                ) : (
+                  <>
+                    <input type="hidden" name="stock" value={product?.stock ?? 0} />
+                    <div style={{ ...inp, color: '#6b7280', background: '#f9fafb', display: 'flex', alignItems: 'center' }}>
+                      Managed externally
+                    </div>
+                  </>
+                )}
               </div>
             </div>
+            {/* Always submit track_inventory so an unchecked box reads as false. */}
+            <input type="hidden" name="track_inventory" value={trackInv ? 'true' : 'false'} />
+            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+              <input
+                type="checkbox"
+                checked={!trackInv}
+                onChange={e => setTrackInv(!e.target.checked)}
+                style={{ marginTop: 2, accentColor: '#C5286A' }}
+              />
+              <span>
+                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Inventory managed externally</span>
+                <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                  For products fulfilled by a third-party vendor. Yellow Pink won&apos;t track stock — the product stays sellable and orders never decrement its count.
+                </span>
+              </span>
+            </label>
           </Section>
 
           {/* ── Vendor & sourcing ──────────────────────────────────────── */}
