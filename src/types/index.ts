@@ -61,6 +61,9 @@ export interface Product {
   weight_grams?: number | null;
   wp_product_id?: number | null;
   created_at?: string;
+  // Migration 076 — homepage curation flags.
+  is_bestseller?: boolean | null;
+  is_featured?: boolean | null;
   // Migration 081 — admin-controlled SEO + content fields.
   seo_title?: string | null;
   seo_description?: string | null;

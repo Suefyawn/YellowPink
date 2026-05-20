@@ -4,6 +4,8 @@ import { ProductTile } from '@/components/ui/ProductTile';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { linkProductMentions } from '@/lib/link-product-mentions';
+import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
+import { BlogShareStrip } from './BlogShareStrip';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
@@ -32,7 +34,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.75rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 16 }}>{post.title}</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', fontSize: '1.0625rem', lineHeight: 1.6, marginBottom: 24 }}>{post.excerpt}</p>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 32, borderBottom: '1px solid var(--line)' }}>
+          <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 16 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>YP</span>
             </div>
@@ -41,6 +43,8 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
               <div className="small-text">{post.date}</div>
             </div>
           </div>
+          <BlogShareStrip title={post.title} path={`/blog/${post.slug}`} excerpt={post.excerpt} />
+          <div style={{ borderBottom: '1px solid var(--line)', marginTop: 16 }} />
         </div>
 
         <div className="container" style={{ maxWidth: 960, padding: '32px var(--side)' }}>
@@ -49,7 +53,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
           </div>
         </div>
 
-        <div className="container" style={{ maxWidth: 680, padding: '0 var(--side) 48px' }}>
+        <div className="container" style={{ maxWidth: 680, padding: '0 var(--side) 24px' }}>
           {post.body ? (
             <div
               className="blog-body"
@@ -61,6 +65,38 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
               No content yet.
             </p>
           )}
+
+          {/* Bottom-of-post share strip — catches the reader who finishes the
+              article and is most likely to share. The top one catches readers
+              who recognise the post by headline alone. */}
+          <BlogShareStrip title={post.title} path={`/blog/${post.slug}`} excerpt={post.excerpt} />
+        </div>
+
+        {/* Newsletter capture at the natural "I just read something good"
+            moment. Goes through the existing /api/newsletter pipeline so
+            opt-in + Resend welcome email + unsubscribe-token issuance all
+            stay consistent with the modal + footer surfaces. */}
+        <div className="container" style={{ maxWidth: 680, padding: '0 var(--side) 48px' }}>
+          <div
+            style={{
+              padding: '24px 28px',
+              background: 'var(--paper2, #faf6ee)',
+              border: '1px solid var(--line)',
+              borderRadius: 'var(--radius-card)',
+              textAlign: 'left',
+            }}
+          >
+            <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--brand-pink-text)' }}>
+              The fortnight edit
+            </Overline>
+            <h3 style={{ margin: '0 0 8px', fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 500, letterSpacing: '-0.01em' }}>
+              Liked this one? Get the next in your inbox.
+            </h3>
+            <p className="small-text" style={{ marginBottom: 14, color: 'var(--ink-700)', lineHeight: 1.55 }}>
+              One fortnightly note from the editors — new pieces, restocks, and the routines we&apos;re actually using. Unsubscribe any time.
+            </p>
+            <NewsletterSignup source="footer" variant="light" ctaLabel="Sign up" />
+          </div>
         </div>
 
         <hr className="hairline" />
