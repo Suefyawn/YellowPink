@@ -82,7 +82,7 @@ async function safe<T>(
 // tile reads. Switching from select('*') saves ~400KB on /shop and
 // /shop?taxon=*.
 const PRODUCT_TILE_COLUMNS =
-  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, image_url, is_bestseller, is_featured, status, created_at';
+  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, image_url, is_bestseller, is_featured, status, created_at';
 
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;
@@ -137,7 +137,7 @@ export async function getBestsellers(limit = 8): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
-      .gt('stock', 0)
+      .or('stock.gt.0,track_inventory.is.false')
       .order('stock', { ascending: false })
       .limit(fill + (flagged?.length ?? 0));
     const flaggedIds = new Set((flagged ?? []).map(p => p.id));
@@ -166,7 +166,7 @@ export async function getFeatured(limit = 6): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
-      .gt('stock', 0)
+      .or('stock.gt.0,track_inventory.is.false')
       .order('created_at', { ascending: false })
       .limit(fill + (flagged?.length ?? 0));
     const flaggedIds = new Set((flagged ?? []).map(p => p.id));

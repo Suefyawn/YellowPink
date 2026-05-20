@@ -77,7 +77,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // demo items have no stock field). The RPC has authoritative truth
       // and will still reject overshoot, but stopping at the UI saves a
       // round-trip and a confusing toast.
-      const stockCap = typeof product.stock === 'number' ? product.stock : Infinity;
+      // Untracked products (inventory managed externally) have no cap.
+      const stockCap = product.track_inventory === false || typeof product.stock !== 'number'
+        ? Infinity
+        : product.stock;
       const requested = product.qty ?? 1;
       if (existing >= 0) {
         const current = prev[existing].qty;
@@ -128,7 +131,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // (use removeFromCart to clear the line). The cart item carries the
       // stock value snapshotted at add-time — fresh enough for the qty
       // stepper; the RPC re-validates at submit.
-      const stockCap = typeof item.stock === 'number' ? item.stock : Infinity;
+      const stockCap = item.track_inventory === false || typeof item.stock !== 'number'
+        ? Infinity
+        : item.stock;
       const next = Math.min(stockCap, Math.max(1, item.qty + delta));
       updated[idx] = { ...item, qty: next };
       return updated;

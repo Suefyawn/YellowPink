@@ -69,8 +69,8 @@ export default async function DashboardPage() {
     // Cap the low-stock list to 50 so a long-tail catalog with many
     // out-of-stock rows doesn't blow up the dashboard; the card next to it
     // shows the exact count.
-    supabase.from('products').select('*').lte('stock', 5).order('stock', { ascending: true }).limit(50),
-    supabase.from('products').select('*', { count: 'exact', head: true }).lte('stock', 5),
+    supabase.from('products').select('*').eq('track_inventory', true).lte('stock', 5).order('stock', { ascending: true }).limit(50),
+    supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lte('stock', 5),
     admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     admin.from('orders').select('total, status, created_at').gte('created_at', thirtyDaysAgo).neq('status', 'cancelled'),
   ]);
