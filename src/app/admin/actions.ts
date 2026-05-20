@@ -244,8 +244,6 @@ export async function updateOrderStatus(
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
   const status = formData.get('status') as OrderStatus;
-  const tracking_number = (formData.get('tracking_number') as string) || null;
-  const courier = (formData.get('courier') as string) || null;
 
   // Read current state so we can detect transitions, email the customer,
   // and (for cancellation) restock the items. Both reads and writes need
@@ -253,13 +251,17 @@ export async function updateOrderStatus(
   const admin = supabaseAdmin();
   const { data: before } = await admin
     .from('orders')
-    .select('status, email, first_name, order_number, items')
+    .select('status, email, first_name, order_number, items, tracking_number, courier')
     .eq('id', id)
     .single();
 
+  // Tracking number + courier are owned exclusively by the Shipment
+  // section (the `shipments` table syncs them onto `orders` via trigger).
+  // This action only moves order status — writing tracking here would
+  // null out a booked shipment whenever the merchant changes status.
   const { error } = await admin
     .from('orders')
-    .update({ status, tracking_number, courier })
+    .update({ status })
     .eq('id', id);
   if (error) return { error: error.message };
 
@@ -300,7 +302,7 @@ export async function updateOrderStatus(
       order_number: before.order_number,
     };
     if (status === 'shipped') {
-      void sendShippedEmail({ ...args, tracking_number: tracking_number ?? undefined, courier: courier ?? undefined });
+      void sendShippedEmail({ ...args, tracking_number: before.tracking_number ?? undefined, courier: before.courier ?? undefined });
     } else if (status === 'delivered') {
       void sendDeliveredEmail(args);
     } else if (status === 'cancelled') {
