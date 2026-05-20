@@ -1,12 +1,12 @@
 'use client';
 
-import { useActionState, useEffect, useState } from 'react';
+import { useActionState, useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { createAddress, deleteAddress, setDefaultAddress } from './actions';
+import { createAddress, updateAddress, deleteAddress, setDefaultAddress } from './actions';
 import type { Address } from '@/types';
 
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
@@ -19,18 +19,112 @@ const inp: React.CSSProperties = {
 };
 const lbl: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 };
 
+// Shared create/edit form. `initial` non-null = edit mode (wired to
+// updateAddress); null = create mode. Keyed by the parent on the address id
+// so switching target gives a fresh useActionState.
+function AddressForm({
+  initial, onSaved, onCancel,
+}: {
+  initial: Address | null;
+  onSaved: () => void;
+  onCancel: () => void;
+}) {
+  const boundAction = initial ? updateAddress.bind(null, initial.id) : createAddress;
+  const [state, action, pending] = useActionState(boundAction, null);
+
+  useEffect(() => {
+    if (state && 'success' in state) onSaved();
+  }, [state, onSaved]);
+
+  return (
+    <div style={{ background: 'white', borderRadius: 12, padding: 24, border: '1px solid var(--line)' }}>
+      <h2 style={{ margin: '0 0 16px', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 500 }}>
+        {initial ? 'Edit address' : 'Add a new address'}
+      </h2>
+      {state && 'error' in state && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: '0.875rem' }}>
+          {state.error}
+        </div>
+      )}
+      <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div>
+          <label htmlFor="addr-label" style={lbl}>Label (e.g. Home, Office)</label>
+          <input id="addr-label" name="label" placeholder="Home" defaultValue={initial?.label ?? ''} style={inp} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label htmlFor="addr-fname" style={lbl}>First Name *</label>
+            <input id="addr-fname" name="first_name" autoComplete="given-name" required defaultValue={initial?.first_name ?? ''} style={inp} />
+          </div>
+          <div>
+            <label htmlFor="addr-lname" style={lbl}>Last Name *</label>
+            <input id="addr-lname" name="last_name" autoComplete="family-name" required defaultValue={initial?.last_name ?? ''} style={inp} />
+          </div>
+        </div>
+        <div>
+          <label htmlFor="addr-phone" style={lbl}>Phone *</label>
+          <input id="addr-phone" name="phone" type="tel" autoComplete="tel" required placeholder="+92 300 1234567" defaultValue={initial?.phone ?? ''} style={inp} />
+        </div>
+        <div>
+          <label htmlFor="addr-line1" style={lbl}>Address Line 1 *</label>
+          <input id="addr-line1" name="line1" autoComplete="address-line1" required style={inp} placeholder="House/flat, street" defaultValue={initial?.line1 ?? ''} />
+        </div>
+        <div>
+          <label htmlFor="addr-line2" style={lbl}>Address Line 2</label>
+          <input id="addr-line2" name="line2" autoComplete="address-line2" style={inp} placeholder="Area, landmark" defaultValue={initial?.line2 ?? ''} />
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+          <div>
+            <label htmlFor="addr-city" style={lbl}>City *</label>
+            <input id="addr-city" name="city" autoComplete="address-level2" required defaultValue={initial?.city ?? ''} style={inp} />
+          </div>
+          <div>
+            <label htmlFor="addr-province" style={lbl}>Province</label>
+            <select id="addr-province" name="province" autoComplete="address-level1" defaultValue={initial?.province ?? ''} style={inp}>
+              <option value="">Select</option>
+              {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="addr-zip" style={lbl}>Postal Code</label>
+            <input id="addr-zip" name="zip" autoComplete="postal-code" inputMode="numeric" defaultValue={initial?.zip ?? ''} style={inp} />
+          </div>
+        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--ink-700)' }}>
+          <input type="checkbox" name="is_default" defaultChecked={initial?.is_default ?? false} /> Make this my default shipping address
+        </label>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <button type="submit" disabled={pending} style={{
+            flex: 1, padding: 12, background: pending ? '#f9a8d4' : 'var(--brand-pink)',
+            color: 'white', border: 'none', borderRadius: 8,
+            fontSize: '0.9375rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
+          }}>
+            {pending ? 'Saving…' : initial ? 'Save changes' : 'Save address'}
+          </button>
+          <button type="button" onClick={onCancel} style={{
+            padding: '12px 20px', background: 'transparent', color: 'var(--ink-700)',
+            border: '1px solid var(--line)', borderRadius: 8, fontSize: '0.9375rem', fontWeight: 600, cursor: 'pointer',
+          }}>
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export default function AddressesPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [addresses, setAddresses] = useState<Address[] | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [state, action, pending] = useActionState(createAddress, null);
+  const [editing, setEditing] = useState<Address | null>(null);
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
   }, [user, loading, router]);
 
-  useEffect(() => {
+  const loadAddresses = useCallback(() => {
     if (!user) return;
     const sb = getBrowserClient();
     sb.from('addresses')
@@ -38,7 +132,25 @@ export default function AddressesPage() {
       .eq('user_id', user.id)
       .order('is_default', { ascending: false })
       .then(({ data }) => setAddresses((data ?? []) as Address[]));
-  }, [user, state]);
+  }, [user]);
+
+  useEffect(() => { loadAddresses(); }, [loadAddresses]);
+
+  const handleSaved = useCallback(() => {
+    setShowForm(false);
+    setEditing(null);
+    loadAddresses();
+  }, [loadAddresses]);
+
+  const handleCancel = useCallback(() => {
+    setShowForm(false);
+    setEditing(null);
+  }, []);
+
+  const startEdit = (addr: Address) => {
+    setShowForm(false);
+    setEditing(addr);
+  };
 
   if (loading || !user) {
     return (
@@ -61,6 +173,8 @@ export default function AddressesPage() {
     );
   }
 
+  const formOpen = showForm || editing !== null;
+
   return (
     <div className="container" style={{ padding: '48px var(--side)' }}>
       <div style={{ maxWidth: 720, margin: '0 auto' }}>
@@ -72,7 +186,7 @@ export default function AddressesPage() {
 
         {addresses == null && <p style={{ color: '#9ca3af' }}>Loading addresses…</p>}
 
-        {addresses && addresses.length === 0 && !showForm && (
+        {addresses && addresses.length === 0 && !formOpen && (
           <div style={{ background: 'white', border: '1px dashed var(--line)', borderRadius: 12, padding: 32, textAlign: 'center' }}>
             <p style={{ color: 'var(--ink-500)', margin: '0 0 16px' }}>No saved addresses yet.</p>
             <button onClick={() => setShowForm(true)} style={{
@@ -89,7 +203,8 @@ export default function AddressesPage() {
             {addresses.map(addr => (
               <div key={addr.id} style={{
                 background: 'white', borderRadius: 12, padding: 20,
-                border: addr.is_default ? '2px solid var(--brand-pink)' : '1px solid var(--line)',
+                border: editing?.id === addr.id ? '2px solid var(--brand-pink)'
+                  : addr.is_default ? '2px solid var(--brand-pink)' : '1px solid var(--line)',
                 position: 'relative',
               }}>
                 {addr.is_default && (
@@ -107,6 +222,17 @@ export default function AddressesPage() {
                   {addr.phone}
                 </div>
                 <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    onClick={() => startEdit(addr)}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      color: 'var(--brand-pink-text)', fontWeight: 600,
+                      fontSize: '0.8125rem', padding: 0,
+                    }}
+                  >
+                    Edit
+                  </button>
                   {!addr.is_default && (
                     <form action={setDefaultAddress}>
                       <input type="hidden" name="id" value={addr.id} />
@@ -147,80 +273,22 @@ export default function AddressesPage() {
           </div>
         )}
 
-        {addresses && (
-          <button onClick={() => setShowForm(s => !s)} style={{
-            padding: '10px 18px', background: showForm ? 'transparent' : 'var(--brand-pink)',
-            color: showForm ? 'var(--ink-700)' : 'white',
-            border: showForm ? '1px solid var(--line)' : 'none',
-            borderRadius: 8, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', marginBottom: 20,
+        {addresses && !formOpen && (
+          <button onClick={() => setShowForm(true)} style={{
+            padding: '10px 18px', background: 'var(--brand-pink)', color: 'white',
+            border: 'none', borderRadius: 8, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', marginBottom: 20,
           }}>
-            {showForm ? 'Cancel' : '+ Add another address'}
+            + Add another address
           </button>
         )}
 
-        {showForm && (
-          <div style={{ background: 'white', borderRadius: 12, padding: 24, border: '1px solid var(--line)' }}>
-            {state && 'error' in state && (
-              <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: '0.875rem' }}>
-                {state.error}
-              </div>
-            )}
-            <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label htmlFor="addr-label" style={lbl}>Label (e.g. Home, Office)</label>
-                <input id="addr-label" name="label" placeholder="Home" style={inp} />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label htmlFor="addr-fname" style={lbl}>First Name *</label>
-                  <input id="addr-fname" name="first_name" autoComplete="given-name" required style={inp} />
-                </div>
-                <div>
-                  <label htmlFor="addr-lname" style={lbl}>Last Name *</label>
-                  <input id="addr-lname" name="last_name" autoComplete="family-name" required style={inp} />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="addr-phone" style={lbl}>Phone *</label>
-                <input id="addr-phone" name="phone" type="tel" autoComplete="tel" required placeholder="+92 300 1234567" style={inp} />
-              </div>
-              <div>
-                <label htmlFor="addr-line1" style={lbl}>Address Line 1 *</label>
-                <input id="addr-line1" name="line1" autoComplete="address-line1" required style={inp} placeholder="House/flat, street" />
-              </div>
-              <div>
-                <label htmlFor="addr-line2" style={lbl}>Address Line 2</label>
-                <input id="addr-line2" name="line2" autoComplete="address-line2" style={inp} placeholder="Area, landmark" />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                <div>
-                  <label htmlFor="addr-city" style={lbl}>City *</label>
-                  <input id="addr-city" name="city" autoComplete="address-level2" required style={inp} />
-                </div>
-                <div>
-                  <label htmlFor="addr-province" style={lbl}>Province</label>
-                  <select id="addr-province" name="province" autoComplete="address-level1" style={inp}>
-                    <option value="">Select</option>
-                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="addr-zip" style={lbl}>Postal Code</label>
-                  <input id="addr-zip" name="zip" autoComplete="postal-code" inputMode="numeric" style={inp} />
-                </div>
-              </div>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--ink-700)' }}>
-                <input type="checkbox" name="is_default" /> Make this my default shipping address
-              </label>
-              <button type="submit" disabled={pending} style={{
-                padding: 12, background: pending ? '#f9a8d4' : 'var(--brand-pink)',
-                color: 'white', border: 'none', borderRadius: 8,
-                fontSize: '0.9375rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
-              }}>
-                {pending ? 'Saving…' : 'Save address'}
-              </button>
-            </form>
-          </div>
+        {formOpen && (
+          <AddressForm
+            key={editing?.id ?? 'new'}
+            initial={editing}
+            onSaved={handleSaved}
+            onCancel={handleCancel}
+          />
         )}
       </div>
     </div>
