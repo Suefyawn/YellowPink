@@ -3,6 +3,7 @@ import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { createProduct, updateProduct } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
+import { KeyBenefitsEditor, FaqEditor } from './ProductContentEditors';
 import { TAXONS } from '@/lib/category-taxonomy';
 import type { Product } from '@/types';
 
@@ -22,6 +23,27 @@ const lbl: React.CSSProperties = {
 };
 const fieldWrap: React.CSSProperties = { display: 'flex', flexDirection: 'column' };
 const hint: React.CSSProperties = { marginTop: 4, fontSize: '0.6875rem', color: '#6b7280' };
+const row2: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 };
+const row3: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 };
+
+// One titled block of the form. Sections are separated by a hairline so a
+// long product edit reads as grouped steps, not one undifferentiated wall.
+function Section({ title, desc, first, children }: {
+  title: string; desc?: string; first?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <section style={{
+      marginBottom: 24, paddingTop: first ? 0 : 24,
+      borderTop: first ? 'none' : '1px solid #f3f4f6',
+    }}>
+      <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#111827' }}>{title}</h2>
+      <p style={{ margin: '2px 0 16px', fontSize: '0.75rem', color: '#6b7280' }}>
+        {desc ?? ' '}
+      </p>
+      {children}
+    </section>
+  );
+}
 
 export function ProductForm({ product }: { product?: Product }) {
   const isEdit = Boolean(product);
@@ -43,7 +65,7 @@ export function ProductForm({ product }: { product?: Product }) {
         </h1>
       </div>
 
-      <div style={{ background: 'white', borderRadius: 10, padding: '28px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', maxWidth: 760 }}>
+      <div style={{ background: 'white', borderRadius: 10, padding: '28px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', maxWidth: 820 }}>
         {state?.error && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '10px 14px', marginBottom: 20, color: '#dc2626', fontSize: '0.875rem' }}>
             {state.error}
@@ -51,231 +73,189 @@ export function ProductForm({ product }: { product?: Product }) {
         )}
 
         <form action={action}>
-          {/* Row 1 */}
-          <div className="adm-form-brand" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
-            <div style={fieldWrap}>
-              <label style={lbl}>Brand</label>
-              <input name="brand" defaultValue={product?.brand ?? ''} style={inp} placeholder="e.g. CeraVe (leave blank for own-label products)" />
+          {/* ── Basics ─────────────────────────────────────────────────── */}
+          <Section title="Basics" first>
+            <div style={row2}>
+              <div style={fieldWrap}>
+                <label style={lbl}>Brand</label>
+                <input name="brand" defaultValue={product?.brand ?? ''} style={inp} placeholder="e.g. CeraVe — blank for own-label" />
+              </div>
+              <div style={fieldWrap}>
+                <label style={lbl}>Product Name *</label>
+                <input
+                  name="name" required
+                  value={name}
+                  onChange={e => { setName(e.target.value); if (!isEdit) setSlug(toSlug(e.target.value)); }}
+                  style={inp} placeholder="e.g. Moisturizing Cream"
+                />
+              </div>
             </div>
+
+            <div style={row2}>
+              <div style={fieldWrap}>
+                <label style={lbl}>Category *</label>
+                <select name="category" required defaultValue={product?.category ?? ''} style={inp}>
+                  <option value="" disabled>— Select —</option>
+                  {TAXONS.map(t => (
+                    <optgroup key={t.key} label={t.label}>
+                      {t.categories.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+              </div>
+              <div style={fieldWrap}>
+                <label style={lbl}>Tag</label>
+                <select name="tag" defaultValue={product?.tag ?? ''} style={inp}>
+                  <option value="">— None —</option>
+                  <option value="New">New</option>
+                  <option value="Sale">Sale</option>
+                  <option value="Bestseller">Bestseller</option>
+                  <option value="Featured">Featured</option>
+                  <option value="Limited">Limited</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ ...row2, marginBottom: 0 }}>
+              <div style={fieldWrap}>
+                <label style={lbl}>Variant</label>
+                <input name="variant" defaultValue={product?.variant ?? ''} style={inp} placeholder="e.g. 250ml" />
+              </div>
+              <div style={fieldWrap}>
+                <label style={lbl}>Type</label>
+                <select name="kind" defaultValue={product?.kind ?? 'simple'} style={inp}>
+                  <option value="simple">Simple (single SKU)</option>
+                  <option value="variable">Variable (with variants)</option>
+                  <option value="bundle">Bundle / grouped</option>
+                  <option value="external">External</option>
+                </select>
+                <span style={hint}>Variable products manage stock per variant.</span>
+              </div>
+            </div>
+          </Section>
+
+          {/* ── Pricing & stock ────────────────────────────────────────── */}
+          <Section title="Pricing & stock">
+            <div style={{ ...row3, marginBottom: 0 }}>
+              <div style={fieldWrap}>
+                <label style={lbl}>Price (PKR) *</label>
+                <input name="price" type="number" required min={0} defaultValue={product?.price} style={inp} placeholder="2400" />
+              </div>
+              <div style={fieldWrap}>
+                <label style={lbl}>Original Price (PKR)</label>
+                <input name="original_price" type="number" min={0} defaultValue={product?.original_price ?? ''} style={inp} placeholder="3000" />
+                <span style={hint}>Set higher than price to show a strikethrough sale.</span>
+              </div>
+              <div style={fieldWrap}>
+                <label style={lbl}>Stock Quantity *</label>
+                <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
+              </div>
+            </div>
+          </Section>
+
+          {/* ── Link / slug ────────────────────────────────────────────── */}
+          <Section title="Page link" desc="The product's URL slug.">
             <div style={fieldWrap}>
-              <label style={lbl}>Product Name *</label>
               <input
-                name="name" required
-                value={name}
-                onChange={e => { setName(e.target.value); if (!isEdit) setSlug(toSlug(e.target.value)); }}
-                style={inp} placeholder="e.g. Moisturizing Cream"
+                name="slug" required
+                value={slug}
+                onChange={e => setSlug(e.target.value)}
+                style={{ ...inp, fontFamily: 'monospace', fontSize: '0.8125rem' }}
+                placeholder="product-url-slug"
               />
-            </div>
-          </div>
-
-          {/* Row 2 */}
-          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
-            <div style={fieldWrap}>
-              <label style={lbl}>Variant</label>
-              <input name="variant" defaultValue={product?.variant ?? ''} style={inp} placeholder="e.g. 250ml" />
-            </div>
-            <div style={fieldWrap}>
-              <label style={lbl}>Price (PKR) *</label>
-              <input name="price" type="number" required min={0} defaultValue={product?.price} style={inp} placeholder="2400" />
-            </div>
-            <div style={fieldWrap}>
-              <label style={lbl}>Original Price (PKR)</label>
-              <input name="original_price" type="number" min={0} defaultValue={product?.original_price ?? ''} style={inp} placeholder="3000" />
-            </div>
-          </div>
-
-          {/* Row 2.5 — product kind */}
-          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
-            <div style={fieldWrap}>
-              <label style={lbl}>Type</label>
-              <select name="kind" defaultValue={product?.kind ?? 'simple'} style={inp}>
-                <option value="simple">Simple (single SKU)</option>
-                <option value="variable">Variable (with variants)</option>
-                <option value="bundle">Bundle / grouped</option>
-                <option value="external">External</option>
-              </select>
-              <span style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 4 }}>
-                Variable products manage stock per variant below.
+              <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4 }}>
+                /product/{slug || 'product-slug'}
               </span>
             </div>
-          </div>
+          </Section>
 
-          {/* Row 3 */}
-          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
-            <div style={fieldWrap}>
-              <label style={lbl}>Category *</label>
-              <select name="category" required defaultValue={product?.category ?? ''} style={inp}>
-                <option value="" disabled>— Select —</option>
-                {TAXONS.map(t => (
-                  <optgroup key={t.key} label={t.label}>
-                    {t.categories.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-            <div style={fieldWrap}>
-              <label style={lbl}>Tag</label>
-              <select name="tag" defaultValue={product?.tag ?? ''} style={inp}>
-                <option value="">— None —</option>
-                <option value="New">New</option>
-                <option value="Sale">Sale</option>
-                <option value="Bestseller">Bestseller</option>
-                <option value="Featured">Featured</option>
-                <option value="Limited">Limited</option>
-              </select>
-            </div>
-            <div style={fieldWrap}>
-              <label style={lbl}>Stock Quantity *</label>
-              <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
-            </div>
-          </div>
+          {/* ── Image ──────────────────────────────────────────────────── */}
+          <Section title="Product image">
+            <ImageUpload name="image_url" currentUrl={product?.image_url} label="" aspect={1} />
+          </Section>
 
-          {/* Slug */}
-          <div style={{ ...fieldWrap, marginBottom: 16 }}>
-            <label style={lbl}>URL Slug *</label>
-            <input
-              name="slug" required
-              value={slug}
-              onChange={e => setSlug(e.target.value)}
-              style={{ ...inp, fontFamily: 'monospace', fontSize: '0.8125rem' }}
-              placeholder="product-url-slug"
-            />
-            <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4 }}>
-              /product/{slug || 'product-slug'}
-            </span>
-          </div>
-
-          {/* Image Upload */}
-          <div style={{ ...fieldWrap, marginBottom: 16 }}>
-            <ImageUpload name="image_url" currentUrl={product?.image_url} label="Product Image" aspect={1} />
-          </div>
-
-          {/* Content fields */}
-          <div style={{ ...fieldWrap, marginBottom: 16 }}>
-            <label style={lbl}>Description</label>
-            <textarea name="description" defaultValue={product?.description ?? ''} rows={3}
-              style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
-              placeholder="Short product description shown on the product page…" />
-          </div>
-          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-            <div style={fieldWrap}>
-              <label style={lbl}>How to Use</label>
-              <textarea name="how_to_use" defaultValue={product?.how_to_use ?? ''} rows={4}
+          {/* ── Product-page content ───────────────────────────────────── */}
+          <Section title="Product-page content" desc="Shown on the customer-facing product page. All optional.">
+            <div style={{ ...fieldWrap, marginBottom: 16 }}>
+              <label style={lbl}>Description</label>
+              <textarea name="description" defaultValue={product?.description ?? ''} rows={3}
                 style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
-                placeholder="Application instructions…" />
-            </div>
-            <div style={fieldWrap}>
-              <label style={lbl}>Ingredients</label>
-              <textarea name="ingredients" defaultValue={product?.ingredients ?? ''} rows={4}
-                style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
-                placeholder="Aqua, Glycerin, Niacinamide…" />
+                placeholder="Short product description shown on the product page…" />
             </div>
 
-            {/* ── Migration 081: PDP content + SEO fields ─────────────────── */}
-            <div style={{ marginTop: 12, paddingTop: 18, borderTop: '1px dashed #e5e7eb' }}>
-              <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 700, color: '#111827' }}>Content & SEO</h2>
-              <p style={{ margin: '0 0 14px', fontSize: '0.75rem', color: '#6b7280' }}>
-                Everything below is optional. Leave blank to fall back to auto-generated values.
-              </p>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <div>
-                <label style={lbl}>SEO title</label>
-                <input
-                  name="seo_title"
-                  type="text"
-                  defaultValue={product?.seo_title ?? ''}
-                  maxLength={120}
-                  placeholder='e.g. "CeraVe Hydrating Cleanser — Buy in Pakistan (COD)"'
-                  style={inp}
-                />
-                <div style={hint}>Auto-default: brand + name. ≤60 chars ideal.</div>
+            <div style={row2}>
+              <div style={fieldWrap}>
+                <label style={lbl}>How to Use</label>
+                <textarea name="how_to_use" defaultValue={product?.how_to_use ?? ''} rows={4}
+                  style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
+                  placeholder="Application instructions…" />
               </div>
-              <div>
-                <label style={lbl}>OG image URL</label>
-                <input
-                  name="og_image_url"
-                  type="url"
-                  defaultValue={product?.og_image_url ?? ''}
-                  maxLength={500}
-                  placeholder="https://… (defaults to the product image)"
-                  style={inp}
-                />
+              <div style={fieldWrap}>
+                <label style={lbl}>Ingredients</label>
+                <textarea name="ingredients" defaultValue={product?.ingredients ?? ''} rows={4}
+                  style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
+                  placeholder="Aqua, Glycerin, Niacinamide…" />
               </div>
             </div>
 
-            <div style={{ marginTop: 12 }}>
-              <label style={lbl}>SEO description</label>
-              <textarea
-                name="seo_description"
-                defaultValue={product?.seo_description ?? ''}
-                rows={2}
-                maxLength={220}
-                placeholder="One-paragraph pitch with the keyword + COD/Pakistan signal."
-                style={{ ...inp, fontFamily: 'inherit' }}
-              />
-              <div style={hint}>Auto-default: short_description / description / generic. ≤160 chars ideal.</div>
-            </div>
-
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginBottom: 16 }}>
               <label style={lbl}>Key benefits</label>
-              <textarea
-                name="key_benefits"
-                defaultValue={product?.key_benefits ? JSON.stringify(product.key_benefits, null, 2) : ''}
-                rows={5}
-                placeholder={`JSON array of {icon?, text}. icon names: shield, leaf, sparkle, droplet, pulse, flower, bottle, heart, bolt, sun, moon, dna, flame.\n[\n  {"icon":"sparkle","text":"Brightens in 7 days"},\n  {"icon":"droplet","text":"Hyaluronic acid + ceramides"}\n]`}
-                style={{ ...inp, fontFamily: 'monospace', fontSize: '0.75rem' }}
-              />
-              <div style={hint}>Rendered as the benefit bar at the top of the PDP. JSON array.</div>
+              <KeyBenefitsEditor name="key_benefits" initial={product?.key_benefits} />
             </div>
 
-            <div style={{ marginTop: 16 }}>
+            <div style={{ marginBottom: 16 }}>
               <label style={lbl}>FAQ</label>
-              <textarea
-                name="faq"
-                defaultValue={product?.faq ? JSON.stringify(product.faq, null, 2) : ''}
-                rows={7}
-                placeholder={`JSON array of {q, a}. e.g.\n[\n  {"q":"Is it suitable for oily skin?","a":"Yes — non-comedogenic."},\n  {"q":"How long does delivery take?","a":"2-4 working days nationwide."}\n]`}
-                style={{ ...inp, fontFamily: 'monospace', fontSize: '0.75rem' }}
-              />
-              <div style={hint}>Powers the FAQ section on the PDP + the FAQPage schema for rich-result eligibility.</div>
+              <FaqEditor name="faq" initial={product?.faq} />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
-              <div>
+            <div style={{ ...row2, marginBottom: 0 }}>
+              <div style={fieldWrap}>
                 <label style={lbl}>Usage tips</label>
-                <textarea
-                  name="usage_tips"
-                  defaultValue={product?.usage_tips ?? ''}
-                  rows={4}
-                  placeholder="Care tips, layering advice, or seasonal notes."
-                  style={{ ...inp, fontFamily: 'inherit' }}
-                />
+                <textarea name="usage_tips" defaultValue={product?.usage_tips ?? ''} rows={4}
+                  style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
+                  placeholder="Care tips, layering advice, or seasonal notes." />
               </div>
-              <div>
+              <div style={fieldWrap}>
                 <label style={lbl}>Social proof</label>
-                <textarea
-                  name="social_proof"
-                  defaultValue={product?.social_proof ?? ''}
-                  rows={4}
-                  maxLength={500}
-                  placeholder='e.g. "Featured in Vogue Pakistan, July 2025."'
-                  style={{ ...inp, fontFamily: 'inherit' }}
-                />
+                <textarea name="social_proof" defaultValue={product?.social_proof ?? ''} rows={4} maxLength={500}
+                  style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
+                  placeholder={'e.g. "Featured in Vogue Pakistan, July 2025."'} />
               </div>
             </div>
-          </div>
+          </Section>
+
+          {/* ── Search & social (SEO) ──────────────────────────────────── */}
+          <Section title="Search & social" desc="Leave blank to fall back to auto-generated values.">
+            <div style={row2}>
+              <div style={fieldWrap}>
+                <label style={lbl}>SEO title</label>
+                <input name="seo_title" type="text" defaultValue={product?.seo_title ?? ''} maxLength={120}
+                  placeholder='e.g. "CeraVe Hydrating Cleanser — Buy in Pakistan"' style={inp} />
+                <span style={hint}>Auto-default: brand + name. ≤60 chars ideal.</span>
+              </div>
+              <div style={fieldWrap}>
+                <label style={lbl}>OG image URL</label>
+                <input name="og_image_url" type="url" defaultValue={product?.og_image_url ?? ''} maxLength={500}
+                  placeholder="https://… (defaults to the product image)" style={inp} />
+              </div>
+            </div>
+            <div style={fieldWrap}>
+              <label style={lbl}>SEO description</label>
+              <textarea name="seo_description" defaultValue={product?.seo_description ?? ''} rows={2} maxLength={220}
+                style={{ ...inp, resize: 'vertical', fontFamily: 'inherit' }}
+                placeholder="One-paragraph pitch with the keyword + COD/Pakistan signal." />
+              <span style={hint}>Auto-default: description / generic. ≤160 chars ideal.</span>
+            </div>
+          </Section>
 
           {/* Sticky save bar — pins to the bottom of the viewport while the
-              admin scrolls long product edits. Falls back to flow on short
-              forms so it doesn't float in negative space. */}
+              admin scrolls long product edits. */}
           <div
             style={{
               position: 'sticky', bottom: 0,
-              marginTop: 20,
+              marginTop: 8,
               padding: '12px 16px',
               background: 'rgba(255,255,255,0.94)',
               backdropFilter: 'saturate(140%) blur(8px)',
