@@ -28,9 +28,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     admin.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
   ]);
 
-  if (!userData) notFound();
+  // get_admin_user RETURNS TABLE — a set-returning RPC, so `.rpc()` yields an
+  // array even for a single match. Take the first row.
+  const user = ((userData ?? []) as AdminUser[])[0];
+  if (!user) notFound();
 
-  const user = userData as AdminUser;
   const orderList = (orders ?? []) as Order[];
   const totalSpend = orderList.reduce((s, o) => s + o.total, 0);
   const deliveredCount = orderList.filter(o => o.status === 'delivered').length;
