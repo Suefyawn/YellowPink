@@ -184,17 +184,18 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
     setCouponError('');
     setCouponLoading(true);
     const sb = getBrowserClient();
-    const { data, error } = await sb.from('coupons').select('*').eq('code', couponCode.trim().toUpperCase()).eq('active', true).single();
+    // coupons has RLS with no anon SELECT (migration 070) — go through the
+    // SECURITY DEFINER lookup_coupon RPC instead of reading the table.
+    const { data, error } = await sb.rpc('lookup_coupon' as never, { p_code: couponCode.trim() } as never);
 
-    // Distinguish "row not found" (PGRST116) from real infra errors so the
-    // user gets a useful message instead of "invalid" for both.
-    if (error && error.code !== 'PGRST116') {
+    if (error) {
       setCouponLoading(false);
       setCouponError('Could not validate coupon. Try again.');
       return;
     }
-    if (!data) { setCouponLoading(false); setCouponError('Invalid or expired coupon code'); return; }
-    const c = data as Coupon;
+    const rows = (data ?? []) as Coupon[];
+    if (rows.length === 0) { setCouponLoading(false); setCouponError('Invalid or expired coupon code'); return; }
+    const c = rows[0];
 
     // Per-user usage cap — pull prior redemption count when we know the user.
     let perUserUsedCount: number | undefined;
