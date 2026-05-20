@@ -54,7 +54,10 @@ export function OrderStatusForm({ orderId, currentStatus }: {
         <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
           Order Status
         </label>
-        <select name="status" defaultValue={currentStatus} style={{ ...inp }}>
+        {/* key on currentStatus so the uncontrolled select re-mounts and
+            picks up the new defaultValue after a status change is saved —
+            otherwise the dropdown drifts out of sync with the order. */}
+        <select key={currentStatus} name="status" defaultValue={currentStatus} style={{ ...inp }}>
           {STATUSES.map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
