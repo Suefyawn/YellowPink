@@ -341,14 +341,28 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // h1 + breadcrumb crumb so we don't render "KIKO MILANO" twice in a row.
   const displayName = stripBrandPrefix(product.brand, product.name);
 
+  // Middle breadcrumb crumb: prefer the brand (linked to its filtered
+  // listing), fall back to the category. Products with neither get no
+  // middle crumb at all — previously a no-brand product rendered an
+  // empty "Home / / Name" segment.
+  const midCrumb = product.brand
+    ? { label: product.brand, href: `/shop?brand=${encodeURIComponent(product.brand)}` }
+    : product.category
+    ? { label: product.category, href: `/shop?category=${encodeURIComponent(product.category)}` }
+    : null;
+
   return (
     <div>
       <div className="container" style={{ padding: '16px var(--side)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Link href="/" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', color: 'var(--ink-500)', textDecoration: 'none' }}>Home</Link>
           <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
-          <Link href="/shop" style={{ fontSize: '0.8125rem', color: 'var(--ink-500)', textDecoration: 'none' }}>{product.brand}</Link>
-          <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
+          {midCrumb && (
+            <>
+              <Link href={midCrumb.href} style={{ fontSize: '0.8125rem', color: 'var(--ink-500)', textDecoration: 'none' }}>{midCrumb.label}</Link>
+              <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
+            </>
+          )}
           <span style={{ fontSize: '0.8125rem', color: 'var(--ink-900)' }}>{displayName}</span>
         </div>
       </div>

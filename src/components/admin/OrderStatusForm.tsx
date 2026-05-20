@@ -35,11 +35,9 @@ const inp: React.CSSProperties = {
   background: 'white', outline: 'none', boxSizing: 'border-box',
 };
 
-export function OrderStatusForm({ orderId, currentStatus, currentTracking, currentCourier }: {
+export function OrderStatusForm({ orderId, currentStatus }: {
   orderId: string;
   currentStatus: OrderStatus;
-  currentTracking: string | null;
-  currentCourier?: string | null;
 }) {
   const bound = updateOrderStatus.bind(null, orderId);
   const [state, action, pending] = useActionState(bound, null);
@@ -62,32 +60,9 @@ export function OrderStatusForm({ orderId, currentStatus, currentTracking, curre
           ))}
         </select>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
-        <div>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
-            Tracking Number
-          </label>
-          <input
-            name="tracking_number"
-            defaultValue={currentTracking ?? ''}
-            placeholder="e.g. 1234567"
-            style={inp}
-          />
-        </div>
-        <div>
-          <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
-            Courier
-          </label>
-          <select name="courier" defaultValue={currentCourier ?? ''} style={inp}>
-            <option value="">—</option>
-            <option value="TCS">TCS</option>
-            <option value="Leopards">Leopards</option>
-            <option value="M&P">M&P</option>
-            <option value="BlueEx">BlueEx</option>
-            <option value="Other">Other</option>
-          </select>
-        </div>
-      </div>
+      <p style={{ margin: 0, fontSize: '0.75rem', color: '#6b7280' }}>
+        Tracking number &amp; courier are managed in the Shipment section above.
+      </p>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <button
           type="submit"

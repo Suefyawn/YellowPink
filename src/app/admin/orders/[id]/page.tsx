@@ -369,7 +369,6 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <OrderStatusForm
             orderId={o.id!}
             currentStatus={currentStatus}
-            currentTracking={o.tracking_number ?? null}
           />
         </div>
 
