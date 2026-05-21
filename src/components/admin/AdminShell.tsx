@@ -79,14 +79,14 @@ export function AdminShell({
           .adm-table-cards thead { display: none; }
           .adm-table-cards, .adm-table-cards tbody { display: block; width: 100%; }
           .adm-table-cards tr {
-            display: block; background: white; border-radius: 10px;
-            padding: 12px 14px; margin-bottom: 10px;
+            display: block; background: white; border-radius: 12px;
+            padding: 6px 16px 10px; margin-bottom: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-            border: 1px solid #f3f4f6;
+            border: 1px solid #eef0f2;
           }
           .adm-table-cards td {
-            display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
-            padding: 8px 0 !important;
+            display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            padding: 9px 0 !important;
             border: none !important;
             font-size: 0.8125rem !important;
             text-align: right;
@@ -96,9 +96,9 @@ export function AdminShell({
           }
           .adm-table-cards td::before {
             content: attr(data-label);
-            font-weight: 600; color: #6b7280; font-size: 0.6875rem;
+            font-weight: 600; color: #9ca3af; font-size: 0.6875rem;
             text-transform: uppercase; letter-spacing: 0.05em;
-            text-align: left; flex-shrink: 0; padding-top: 2px;
+            text-align: left; flex-shrink: 0;
           }
           /* Cells without a data-label (usually the actions column) stay full-width. */
           .adm-table-cards td:not([data-label]) {
@@ -106,6 +106,46 @@ export function AdminShell({
           }
           .adm-table-cards td:not([data-label])::before {
             content: none;
+          }
+          /* ── Card hierarchy: lead with the headline fact ──
+           * The first identifying cell (order number / product name) becomes a
+           * full-width headline block at the top of the card, larger and with
+           * its label dropped — the rest stay compact label/value rows. */
+          .adm-table-cards td[data-label="Order #"],
+          .adm-table-cards td[data-label="Brand / Name"] {
+            display: block; text-align: left;
+            padding: 4px 0 11px !important;
+            margin-bottom: 3px;
+            border-top: none !important;
+            border-bottom: 1px solid #eef0f2 !important;
+          }
+          .adm-table-cards td[data-label="Order #"]::before,
+          .adm-table-cards td[data-label="Brand / Name"]::before {
+            content: none;
+          }
+          .adm-table-cards td[data-label="Order #"] a {
+            font-size: 1rem !important;
+          }
+          .adm-table-cards td[data-label="Brand / Name"] > div:nth-child(2) {
+            font-size: 0.9375rem !important;
+            white-space: normal !important;
+          }
+          /* ── Bigger touch targets on the per-card actions ── */
+          .adm-table-cards td a,
+          .adm-table-cards td button {
+            min-height: 40px;
+          }
+          .adm-table-cards td[data-label] a,
+          .adm-table-cards td[data-label] button {
+            min-height: 0;
+          }
+          .adm-table-cards td:not([data-label]) {
+            gap: 10px; padding-top: 12px !important;
+          }
+          .adm-table-cards td:not([data-label]) a,
+          .adm-table-cards td:not([data-label]) button {
+            display: inline-flex; align-items: center; justify-content: center;
+            min-height: 40px; padding-left: 16px; padding-right: 16px;
           }
         }
 
