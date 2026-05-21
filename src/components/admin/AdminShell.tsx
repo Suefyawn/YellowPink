@@ -69,6 +69,7 @@ export function AdminShell({
         .adm-overlay { display: none; }
         .adm-bottom-nav { display: none; }
         .adm-fab { display: none; }
+        .adm-orders-cards { display: none; }
         .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
         /* ─ Responsive table → card-stack utility ─
@@ -266,6 +267,32 @@ export function AdminShell({
             z-index: 44;
           }
           .adm-fab:active { transform: scale(0.94); }
+
+          /* ── Swipeable order cards ──
+           * The desktop table is hidden; orders render as cards. Each card is
+           * a native horizontal scroll-snap track — swiping left reveals a
+           * quick status-action panel. Native scroll, so it never fights
+           * vertical page scrolling. */
+          .adm-orders-table { display: none; }
+          .adm-orders-cards { display: block; }
+          .ord-swipe {
+            display: flex; overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch; scrollbar-width: none;
+            border: 1px solid #eef0f2; border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+            margin-bottom: 12px;
+          }
+          .ord-swipe::-webkit-scrollbar { display: none; }
+          .ord-swipe-face {
+            flex: 0 0 100%; scroll-snap-align: start;
+            padding: 13px 16px;
+          }
+          .ord-swipe-actions {
+            flex: 0 0 138px; scroll-snap-align: end;
+            display: flex; flex-direction: column;
+          }
+          .ord-swipe-actions button + button { border-top: 1px solid rgba(255,255,255,0.25); }
         }
       `}</style>
 
