@@ -65,12 +65,12 @@ export function ProductsFilter({ total }: { total: number }) {
   return (
     <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        <div className="adm-filter-pills" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {CATEGORIES.map(c => (
             <button key={c} onClick={() => setParam('category', c)} style={btnStyle(category === c)}>{c}</button>
           ))}
         </div>
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+        <div className="adm-filter-pills" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {TAGS.map(t => (
             <button key={t} onClick={() => setParam('tag', t)} style={btnStyle(tag === t)}>{t}</button>
           ))}

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { AdminSidebar } from './AdminSidebar';
+import { AdminBottomNav } from './AdminBottomNav';
 import { NotificationsBell } from './NotificationsBell';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import type { StaffSession } from '@/lib/permissions';
@@ -66,6 +67,7 @@ export function AdminShell({
         .adm-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 30; }
         .adm-topbar .menu-btn { display: none; }
         .adm-overlay { display: none; }
+        .adm-bottom-nav { display: none; }
         .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
         /* ─ Responsive table → card-stack utility ─
@@ -166,8 +168,50 @@ export function AdminShell({
           .adm-page-header > * { flex: 1 1 auto; }
 
           /* Sticky bulk-action bars need to hug the screen edge on phones,
-           * not the (now-zero) page padding. */
-          .adm-bulk-bar { margin: 12px -12px 0 !important; border-radius: 0 !important; flex-direction: column; align-items: stretch !important; gap: 8px !important; }
+           * not the (now-zero) page padding — and sit clear of the bottom nav. */
+          .adm-bulk-bar { margin: 12px -12px 0 !important; border-radius: 0 !important; flex-direction: column; align-items: stretch !important; gap: 8px !important; bottom: 56px !important; }
+          /* Sticky save bars (settings, product edit) lift above the nav too. */
+          .adm-sticky-actions { bottom: 56px !important; }
+
+          /* Filter pill rows — one horizontally-scrollable strip instead of
+           * wrapping to 2-3 stacked rows that eat vertical space. Bleeds to
+           * the screen edge so the last pill cues scrollability. */
+          .adm-filter-pills {
+            flex: 1 1 100% !important;
+            min-width: 0;
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            margin-left: -12px; margin-right: -12px;
+            padding: 2px 12px;
+          }
+          .adm-filter-pills::-webkit-scrollbar { display: none; }
+          .adm-filter-pills > * { flex: 0 0 auto; }
+
+          /* ─ Bottom navigation bar (mobile only) ─ */
+          .adm-main { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+          .adm-bottom-nav {
+            display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 45;
+            background: #111827; border-top: 1px solid #1f2937;
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+          }
+          .adm-bottom-nav-item {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 3px;
+            min-height: 56px; padding: 7px 2px;
+            background: none; border: none; cursor: pointer; font-family: inherit;
+            color: #9ca3af; font-size: 0.625rem; font-weight: 600;
+            text-decoration: none; letter-spacing: 0.01em;
+          }
+          .adm-bottom-nav-item.active { color: #f9a8d4; }
+          .adm-bottom-nav-icon { position: relative; font-size: 1.125rem; line-height: 1; }
+          .adm-bottom-nav-badge {
+            position: absolute; top: -7px; right: -11px;
+            min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px;
+            background: #ef4444; color: #fff; font-size: 0.5625rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+          }
         }
       `}</style>
 
@@ -222,6 +266,12 @@ export function AdminShell({
         </div>
         {children}
       </main>
+
+      <AdminBottomNav
+        session={session}
+        pendingOrderCount={pendingOrderCount}
+        onMore={() => setOpen(true)}
+      />
     </>
   );
 }

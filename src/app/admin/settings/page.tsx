@@ -513,7 +513,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
         {/* Sticky save bar — pins to the bottom of the viewport so Save is
             always reachable on this long form, instead of buried at the end. */}
-        <div style={{
+        <div className="adm-sticky-actions" style={{
           position: 'sticky', bottom: 0, marginTop: 8,
           padding: '14px 16px',
           background: 'rgba(255,255,255,0.94)',

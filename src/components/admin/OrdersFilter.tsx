@@ -50,7 +50,7 @@ export function OrdersFilter({ total }: { total: number }) {
 
   return (
     <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      <div className="adm-filter-pills" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         {STATUSES.map(s => {
           const isActive = status === s.value;
           const color = s.color;
