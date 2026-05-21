@@ -22,6 +22,7 @@ export type Permission =
   | 'blog'
   | 'promos'
   | 'reviews'
+  | 'newsletter'
 
   // ── Analytics & monitoring (split so a marketer can see traffic without
   //    seeing Sentry stack traces, and vice-versa) ──
@@ -35,7 +36,7 @@ export type Permission =
 
 export const ALL_PERMISSIONS: Permission[] = [
   'orders', 'products', 'customers', 'coupons', 'returns',
-  'blog', 'promos', 'reviews',
+  'blog', 'promos', 'reviews', 'newsletter',
   'analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh',
   'settings',
 ];
@@ -59,6 +60,7 @@ export const PERMISSION_META: Record<Permission, {
   blog:    { label: 'Blog',    icon: '✦', desc: 'Write and publish editorial posts.',                group: 'content' },
   promos:  { label: 'Promos',  icon: '✧', desc: 'Author top-bar + hero-strip campaigns.',           group: 'content' },
   reviews: { label: 'Reviews', icon: '★', desc: 'Moderate, reply to, and feature customer reviews.', group: 'content' },
+  newsletter: { label: 'Newsletter', icon: '✉', desc: 'Compose and send the email newsletter to subscribers.', group: 'content' },
 
   // Analytics
   analytics:           { label: 'Overview analytics', icon: '▣', desc: 'Revenue chart, orders-by-status, top products, low-stock alerts.', group: 'analytics' },
@@ -103,7 +105,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
     description: 'Full operational access — everything except platform settings.',
     permissions: [
       'orders', 'products', 'customers', 'coupons', 'returns',
-      'blog', 'promos', 'reviews',
+      'blog', 'promos', 'reviews', 'newsletter',
       'analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh',
     ],
   },
@@ -112,7 +114,7 @@ export const ROLE_TEMPLATES: RoleTemplate[] = [
     label: 'Marketer',
     description: 'Content, promos, coupons, and traffic insights — no orders or customer PII.',
     permissions: [
-      'blog', 'promos', 'reviews', 'coupons',
+      'blog', 'promos', 'reviews', 'newsletter', 'coupons',
       'analytics', 'analytics_traffic',
     ],
   },
