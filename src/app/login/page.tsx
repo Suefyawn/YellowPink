@@ -42,7 +42,13 @@ export default function LoginPage() {
         // and resetting state would briefly flash the unstuck button.
         return;
       }
-      const { data, error } = await sb.auth.signUp({ email, password });
+      // emailRedirectTo — where Supabase sends the user after they click the
+      // confirmation link. /auth/confirm exchanges the code for a session.
+      const { data, error } = await sb.auth.signUp({
+        email,
+        password,
+        options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
+      });
       if (error) { setError(error.message); return; }
       // Fire-and-forget the branded welcome email. The server action
       // re-verifies the id against the auth record before sending.
