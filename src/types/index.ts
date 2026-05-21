@@ -79,6 +79,10 @@ export interface Product {
   faq?: ProductFaqItem[] | null;
   usage_tips?: string | null;
   social_proof?: string | null;
+  /** Aggregate of approved product_reviews, maintained by a DB trigger.
+   *  `rating` is NULL when there are no approved reviews. */
+  rating?: number | null;
+  review_count?: number;
 }
 
 export interface ProductKeyBenefit {
