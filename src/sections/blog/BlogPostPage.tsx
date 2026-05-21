@@ -6,6 +6,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import { linkProductMentions } from '@/lib/link-product-mentions';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
+import { BlogToc, type TocHeading } from './BlogToc';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
@@ -14,7 +15,102 @@ interface BlogPostPageProps {
   relatedProducts: Product[];
 }
 
+function decodeEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/&hellip;/g, '…');
+}
+
+function slugify(text: string): string {
+  const base = text.toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+  return base || 'section';
+}
+
+// Pulls the <h2> headings out of the article body, gives each a stable id
+// (for anchor links) and returns the rewritten HTML plus the heading list
+// that feeds the table-of-contents rail.
+function extractHeadings(html: string): { html: string; headings: TocHeading[] } {
+  const headings: TocHeading[] = [];
+  const seen = new Set<string>();
+
+  const out = html.replace(/<h2(\s[^>]*)?>([\s\S]*?)<\/h2>/gi, (match, attrs: string | undefined, inner: string) => {
+    const text = decodeEntities(inner.replace(/<[^>]+>/g, '')).replace(/\s+/g, ' ').trim();
+    if (!text) return match;
+
+    let id = slugify(text);
+    if (seen.has(id)) {
+      let n = 2;
+      while (seen.has(`${id}-${n}`)) n++;
+      id = `${id}-${n}`;
+    }
+    seen.add(id);
+    headings.push({ id, text });
+
+    // Respect an id the CMS already set.
+    if (attrs && /\sid=/i.test(attrs)) return match;
+    return `<h2${attrs ?? ''} id="${id}">${inner}</h2>`;
+  });
+
+  return { html: out, headings };
+}
+
 export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPageProps) {
+  const { html: withIds, headings } = post.body
+    ? extractHeadings(sanitizeHtml(post.body))
+    : { html: '', headings: [] as TocHeading[] };
+  const bodyHtml = post.body ? linkProductMentions(withIds, relatedProducts) : '';
+  const showToc = headings.length >= 2;
+
+  const newsletterCard = (
+    <div
+      style={{
+        marginTop: 40,
+        padding: '24px 28px',
+        background: 'var(--paper2, #faf6ee)',
+        border: '1px solid var(--line)',
+        borderRadius: 'var(--radius-card)',
+        textAlign: 'left',
+      }}
+    >
+      <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--brand-pink-text)' }}>
+        The fortnight edit
+      </Overline>
+      <h3 style={{ margin: '0 0 8px', fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 500, letterSpacing: '-0.01em' }}>
+        Liked this one? Get the next in your inbox.
+      </h3>
+      <p className="small-text" style={{ marginBottom: 14, color: 'var(--ink-700)', lineHeight: 1.55 }}>
+        One fortnightly note from the editors — new pieces, restocks, and the routines we&apos;re actually using. Unsubscribe any time.
+      </p>
+      <NewsletterSignup source="footer" variant="light" ctaLabel="Sign up" />
+    </div>
+  );
+
+  const bodyInner = (
+    <div className="blog-article-main">
+      {post.body ? (
+        <div
+          className="blog-body"
+          style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}
+          dangerouslySetInnerHTML={{ __html: bodyHtml }}
+        />
+      ) : (
+        <p className="body-text" style={{ color: 'var(--ink-500)', fontStyle: 'italic' }}>
+          No content yet.
+        </p>
+      )}
+
+      {/* Bottom-of-post share strip — catches the reader who finishes the
+          article and is most likely to share. */}
+      <BlogShareStrip title={post.title} path={`/blog/${post.slug}`} excerpt={post.excerpt} />
+
+      {/* Newsletter capture at the natural "I just read something good"
+          moment. Goes through the existing /api/newsletter pipeline. */}
+      {newsletterCard}
+    </div>
+  );
+
   return (
     <div>
       <div className="container" style={{ padding: '16px var(--side)' }}>
@@ -26,14 +122,14 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
       </div>
 
       <article style={{ borderTop: '1px solid var(--line)' }}>
-        <div className="container" style={{ maxWidth: 800, padding: '48px var(--side) 0' }}>
+        <div className="container" style={{ maxWidth: 1120, padding: '48px var(--side) 0' }}>
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
             <Overline style={{ color: 'var(--ink-500)' }}>{post.category}</Overline>
             <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-500)' }} />
             <span className="small-text">{post.read_time}</span>
           </div>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.75rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 16 }}>{post.title}</h1>
-          <p className="body-text" style={{ color: 'var(--ink-700)', fontSize: '1.0625rem', lineHeight: 1.6, marginBottom: 24 }}>{post.excerpt}</p>
+          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.75rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 16, maxWidth: 880 }}>{post.title}</h1>
+          <p className="body-text" style={{ color: 'var(--ink-700)', fontSize: '1.0625rem', lineHeight: 1.6, marginBottom: 24, maxWidth: 720 }}>{post.excerpt}</p>
           <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 16 }}>
             <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>YP</span>
@@ -47,57 +143,22 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
           <div style={{ borderBottom: '1px solid var(--line)', marginTop: 16 }} />
         </div>
 
-        <div className="container" style={{ maxWidth: 960, padding: '32px var(--side)' }}>
+        <div className="container" style={{ maxWidth: 1120, padding: '32px var(--side)' }}>
           <div style={{ aspectRatio: '16/9', borderRadius: 'var(--radius-card)', overflow: 'hidden' }}>
-            <ProductImage src={post.image_url} alt={post.title} priority sizes="(max-width: 1024px) 100vw, 960px" />
+            <ProductImage src={post.image_url} alt={post.title} priority sizes="(max-width: 1180px) 100vw, 1120px" />
           </div>
         </div>
 
-        <div className="container" style={{ maxWidth: 680, padding: '0 var(--side) 24px' }}>
-          {post.body ? (
-            <div
-              className="blog-body"
-              style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}
-              dangerouslySetInnerHTML={{ __html: linkProductMentions(sanitizeHtml(post.body), relatedProducts) }}
-            />
-          ) : (
-            <p className="body-text" style={{ color: 'var(--ink-500)', fontStyle: 'italic' }}>
-              No content yet.
-            </p>
-          )}
-
-          {/* Bottom-of-post share strip — catches the reader who finishes the
-              article and is most likely to share. The top one catches readers
-              who recognise the post by headline alone. */}
-          <BlogShareStrip title={post.title} path={`/blog/${post.slug}`} excerpt={post.excerpt} />
-        </div>
-
-        {/* Newsletter capture at the natural "I just read something good"
-            moment. Goes through the existing /api/newsletter pipeline so
-            opt-in + Resend welcome email + unsubscribe-token issuance all
-            stay consistent with the modal + footer surfaces. */}
-        <div className="container" style={{ maxWidth: 680, padding: '0 var(--side) 48px' }}>
-          <div
-            style={{
-              padding: '24px 28px',
-              background: 'var(--paper2, #faf6ee)',
-              border: '1px solid var(--line)',
-              borderRadius: 'var(--radius-card)',
-              textAlign: 'left',
-            }}
-          >
-            <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--brand-pink-text)' }}>
-              The fortnight edit
-            </Overline>
-            <h3 style={{ margin: '0 0 8px', fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 500, letterSpacing: '-0.01em' }}>
-              Liked this one? Get the next in your inbox.
-            </h3>
-            <p className="small-text" style={{ marginBottom: 14, color: 'var(--ink-700)', lineHeight: 1.55 }}>
-              One fortnightly note from the editors — new pieces, restocks, and the routines we&apos;re actually using. Unsubscribe any time.
-            </p>
-            <NewsletterSignup source="footer" variant="light" ctaLabel="Sign up" />
+        {showToc ? (
+          <div className="container blog-article-grid" style={{ maxWidth: 1120, padding: '0 var(--side) 48px' }}>
+            <BlogToc headings={headings} />
+            {bodyInner}
           </div>
-        </div>
+        ) : (
+          <div className="container" style={{ maxWidth: 760, padding: '0 var(--side) 48px' }}>
+            {bodyInner}
+          </div>
+        )}
 
         <hr className="hairline" />
 

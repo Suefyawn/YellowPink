@@ -404,6 +404,49 @@ a.underline,
   .blog-tile:hover .blog-tile-img { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(26, 26, 26, 0.08); }
 }
 
+/* Blog article body: a sticky table-of-contents rail fills the left margin
+   on desktop so the long-form column isn't marooned in white space. The
+   rail collapses away below 1024px and the body re-centres. */
+.blog-article-grid {
+  display: grid;
+  grid-template-columns: 248px minmax(0, 720px);
+  gap: 64px;
+  justify-content: start;
+  align-items: start;
+}
+.blog-article-main { max-width: 720px; }
+.blog-toc { position: sticky; top: 96px; font-family: var(--font-ui); }
+.blog-toc-title {
+  margin: 0 0 12px;
+  font-size: 0.6875rem; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--ink-500);
+}
+.blog-toc ul {
+  list-style: none; margin: 0; padding: 0;
+  display: flex; flex-direction: column;
+  border-left: 2px solid var(--line);
+}
+.blog-toc a {
+  display: block; margin-left: -2px; padding: 7px 0 7px 16px;
+  border-left: 2px solid transparent;
+  font-size: 0.8125rem; line-height: 1.45;
+  color: var(--ink-500); text-decoration: none;
+  transition: color 150ms ease-out, border-color 150ms ease-out;
+}
+@media (hover: hover) { .blog-toc a:hover { color: var(--ink-900); } }
+.blog-toc a.is-active {
+  color: var(--brand-pink-text); font-weight: 600;
+  border-left-color: var(--brand-pink-cta);
+}
+/* Anchor jumps land clear of the sticky site header. */
+.blog-body h2 { scroll-margin-top: 96px; }
+@media (max-width: 1023px) {
+  .blog-article-grid { display: block; }
+  .blog-article-main { margin: 0 auto; }
+  .blog-toc { display: none; }
+}
+
 @media (max-width: 600px) {
   .product-grid, .cat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .blog-grid { grid-template-columns: 1fr !important; }
