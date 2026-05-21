@@ -68,6 +68,7 @@ export function AdminShell({
         .adm-topbar .menu-btn { display: none; }
         .adm-overlay { display: none; }
         .adm-bottom-nav { display: none; }
+        .adm-fab { display: none; }
         .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
         /* ─ Responsive table → card-stack utility ─
@@ -212,6 +213,19 @@ export function AdminShell({
             background: #ef4444; color: #fff; font-size: 0.5625rem; font-weight: 700;
             display: flex; align-items: center; justify-content: center;
           }
+
+          /* Floating action button — primary "create" action, clear of the
+           * bottom nav. */
+          .adm-fab {
+            display: flex; align-items: center; justify-content: center;
+            position: fixed; right: 16px;
+            bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+            width: 52px; height: 52px; border-radius: 50%;
+            background: #C5286A; color: #fff; text-decoration: none;
+            box-shadow: 0 6px 20px rgba(197, 40, 106, 0.42);
+            z-index: 44;
+          }
+          .adm-fab:active { transform: scale(0.94); }
         }
       `}</style>
 
