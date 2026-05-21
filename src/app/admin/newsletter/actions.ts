@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { can } from '@/lib/permissions';
@@ -66,13 +67,18 @@ export async function sendNewsletterCampaign(
     sentCount += results.filter(Boolean).length;
   }
 
-  await admin.from('newsletter_campaigns').insert({
+  // Always record the campaign — even a 0-sent (failed/skipped) run must
+  // leave a row in "Sent newsletters" so the send is never invisible.
+  const { error: campaignError } = await admin.from('newsletter_campaigns').insert({
     subject: parsed.data.subject,
     body: parsed.data.body,
     recipient_count: emails.length,
     sent_count: sentCount,
     sent_by: session?.email ?? null,
   });
+  if (campaignError) {
+    log.error('newsletter.campaign_record_failed', { error: campaignError.message });
+  }
 
   await logAudit(session, {
     action: 'newsletter.send',
@@ -80,6 +86,9 @@ export async function sendNewsletterCampaign(
     diff: { subject: parsed.data.subject, recipientCount: emails.length, sentCount },
   });
   log.info('newsletter.campaign_sent', { recipients: emails.length, sent: sentCount });
+
+  // Refresh the server-rendered "Sent newsletters" table.
+  revalidatePath('/admin/newsletter');
 
   return { ok: true, recipientCount: emails.length, sentCount };
 }
