@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ProductsTable } from '@/components/admin/ProductsTable';
 import { ProductsFilter } from '@/components/admin/ProductsFilter';
+import { ProductsFlash } from '@/components/admin/ProductsFlash';
 import { Pagination } from '@/components/admin/Pagination';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -15,13 +16,16 @@ const PAGE_SIZE = 25;
 export default async function ProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ category?: string; tag?: string; q?: string; page?: string; sort?: string }>;
+  searchParams: Promise<{
+    category?: string; tag?: string; q?: string; page?: string; sort?: string;
+    deleted?: string; archived?: string; error?: string;
+  }>;
 }) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('products')) {
     return <NoAccess section="Products" />;
   }
-  const { category, tag, q, page: pageParam, sort } = await searchParams;
+  const { category, tag, q, page: pageParam, sort, deleted, archived, error } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -82,6 +86,8 @@ export default async function ProductsPage({
       <Suspense fallback={null}>
         <ProductsFilter total={total} />
       </Suspense>
+
+      <ProductsFlash deleted={!!deleted} archived={!!archived} error={error} />
 
       <ProductsTable products={list} />
 

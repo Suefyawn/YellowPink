@@ -30,12 +30,31 @@ export async function bulkArchiveProducts(ids: string[]): Promise<void> {
   revalidatePath('/admin/products');
 }
 
-export async function bulkDeleteProducts(ids: string[]): Promise<void> {
+export async function bulkDeleteProducts(ids: string[]): Promise<{ deleted: number; archived: number }> {
   const session = await assertProducts();
-  if (ids.length === 0) return;
-  await supabaseAdmin().from('products').delete().in('id', ids);
-  await logAudit(session, { action: 'product.bulk_delete', entity: 'product', diff: { count: ids.length, ids } });
+  if (ids.length === 0) return { deleted: 0, archived: 0 };
+
+  // Products with order history are archived, not hard-deleted — see
+  // src/lib/product-archive.ts for why. The rest are deleted as requested.
+  const { productsWithOrderHistory } = await import('@/lib/product-archive');
+  const referenced = await productsWithOrderHistory(ids);
+  const toArchive = ids.filter(id => referenced.has(id));
+  const toDelete = ids.filter(id => !referenced.has(id));
+
+  const admin = supabaseAdmin();
+  if (toArchive.length > 0) {
+    await admin.from('products').update({ status: 'archived' }).in('id', toArchive);
+  }
+  if (toDelete.length > 0) {
+    await admin.from('products').delete().in('id', toDelete);
+  }
+  await logAudit(session, {
+    action: 'product.bulk_delete',
+    entity: 'product',
+    diff: { count: ids.length, deleted: toDelete, archived: toArchive },
+  });
   revalidatePath('/admin/products');
+  return { deleted: toDelete.length, archived: toArchive.length };
 }
 
 export async function bulkTagProducts(ids: string[], tag: string | null): Promise<void> {

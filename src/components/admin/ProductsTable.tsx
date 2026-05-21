@@ -43,6 +43,23 @@ export function ProductsTable({ products }: { products: Product[] }) {
     });
   };
 
+  const handleBulkDelete = () => {
+    if (selected.size === 0) return;
+    const n = selected.size;
+    if (!window.confirm(
+      `Delete ${n} product${n !== 1 ? 's' : ''}? Any with order history will be archived instead so reports stay intact.`,
+    )) return;
+    const ids = Array.from(selected);
+    startTransition(async () => {
+      const { deleted, archived } = await bulkDeleteProducts(ids);
+      setSelected(new Set());
+      const parts: string[] = [];
+      if (deleted) parts.push(`${deleted} deleted`);
+      if (archived) parts.push(`${archived} archived (had orders)`);
+      toast(parts.join(' · ') || 'No products changed', 'success');
+    });
+  };
+
   return (
     <>
       <div className="adm-table-scroll" style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
@@ -177,10 +194,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
             wrap(async () => { await bulkPriceAdjustProducts(Array.from(selected), n); }, `Price ${n >= 0 ? '+' : ''}${n}%`);
           }} disabled={pending} style={btn('#3b82f6')}>Adjust price…</button>
 
-          <button onClick={() => {
-            if (!window.confirm(`Delete ${selected.size} products? This can't be undone.`)) return;
-            wrap(() => bulkDeleteProducts(Array.from(selected)), 'Deleted');
-          }} disabled={pending} style={btn('#ef4444')}>Delete</button>
+          <button onClick={handleBulkDelete} disabled={pending} style={btn('#ef4444')}>Delete</button>
 
           <button onClick={() => setSelected(new Set())} style={{
             marginLeft: 'auto', padding: '5px 12px', borderRadius: 6,
