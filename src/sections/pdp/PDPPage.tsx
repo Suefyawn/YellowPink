@@ -611,7 +611,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 40px' }}>
             <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Why Yellow Pink</Overline>
             <h2 className="display-l" style={{ fontSize: '2.25rem', margin: '0 0 12px', letterSpacing: '-0.02em' }}>
-              Why this {product.category?.toLowerCase() ?? 'product'} earns a spot in your routine
+              Why this product earns a spot in your routine
             </h2>
             <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0 }}>
               Every product is tested for Pakistani skin and climate, sourced from authorised distributors, and shipped with cash-on-delivery nationwide.
