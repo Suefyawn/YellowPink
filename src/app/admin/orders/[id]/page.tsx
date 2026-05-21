@@ -121,7 +121,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const vendorMessage = [
     `Yellow Pink — Order ${o.order_number}`,
     '',
-    ...items.map(it => `• ${it.qty}× ${brandPlusName(it.brand, it.name)}${it.variant ? ` (${it.variant})` : ''}`),
+    ...items.map(it => {
+      const v = it.variant_label ?? it.variant;
+      return `• ${it.qty}× ${brandPlusName(it.brand, it.name)}${v ? ` (${v})` : ''}`;
+    }),
     '',
     'Deliver to:',
     `${o.first_name} ${o.last_name}`,
@@ -231,7 +234,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <tbody>
             {items.map((item, idx) => (
               <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '10px 0', fontSize: '0.875rem' }}>{brandPlusName(item.brand, item.name)}{item.variant ? ` — ${item.variant}` : ''}</td>
+                <td style={{ padding: '10px 0', fontSize: '0.875rem' }}>{brandPlusName(item.brand, item.name)}{(item.variant_label ?? item.variant) ? ` — ${item.variant_label ?? item.variant}` : ''}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', textAlign: 'right' }}>{fmt(item.price)}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', textAlign: 'right' }}>{item.qty}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', fontWeight: 600, textAlign: 'right' }}>{fmt(item.price * item.qty)}</td>
@@ -416,7 +419,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <tr key={i} style={{ borderBottom: '1px solid #f9fafb' }}>
                 <td style={{ padding: '10px 12px', fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>{item.name}</td>
                 <td style={{ padding: '10px 12px', fontSize: '0.8125rem', color: '#6b7280' }}>{item.brand}</td>
-                <td style={{ padding: '10px 12px', fontSize: '0.8125rem', color: '#6b7280' }}>{item.variant ?? '—'}</td>
+                <td style={{ padding: '10px 12px', fontSize: '0.8125rem', color: '#6b7280' }}>{item.variant_label ?? item.variant ?? '—'}</td>
                 <td style={{ padding: '10px 12px', fontSize: '0.875rem', color: '#374151' }}>{fmt(item.price)}</td>
                 <td style={{ padding: '10px 12px', fontSize: '0.875rem', color: '#374151' }}>{item.qty}</td>
                 <td style={{ padding: '10px 12px', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{fmt(item.price * item.qty)}</td>
