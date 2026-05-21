@@ -131,7 +131,7 @@ export function MiniCart() {
                 onClick={() => setCartOpen(false)}
                 style={{ width: 64, height: 64, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)', display: 'block' }}
               >
-                <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} sizes="64px" />
+                <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} width={64} height={64} />
               </Link>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <Overline style={{ color: 'var(--ink-500)', fontSize: '0.6875rem', display: 'block', letterSpacing: '0.12em' }}>{item.brand}</Overline>

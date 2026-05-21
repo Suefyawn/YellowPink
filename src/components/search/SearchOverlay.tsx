@@ -235,7 +235,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                         onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
                         <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
-                          <ProductImage src={p.image_url} alt={brandPlusName(p.brand, p.name)} sizes="48px" />
+                          <ProductImage src={p.image_url} alt={brandPlusName(p.brand, p.name)} width={48} height={48} />
                         </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{p.brand}</Overline>
