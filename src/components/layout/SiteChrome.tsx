@@ -9,6 +9,7 @@ import { MiniCart } from '@/components/cart/MiniCart';
 import { SearchOverlay } from '@/components/search/SearchOverlay';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import type { Promo } from '@/lib/promos';
+import { socialLinks } from '@/lib/socials';
 
 interface SiteChromeProps {
   children: React.ReactNode;
@@ -86,7 +87,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
         <Header />
       </Suspense>
       {children}
-      <Footer />
+      <Footer socials={socialLinks(settings)} />
       <MiniCart />
       <SearchOverlay trending={searchTrending} categories={searchCategories} />
       <KeyboardShortcuts />

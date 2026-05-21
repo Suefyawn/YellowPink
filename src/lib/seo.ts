@@ -104,26 +104,56 @@ export function jsonLd<T extends Record<string, unknown>>(obj: T): string {
   return JSON.stringify(obj, (_k, v) => (v === undefined ? undefined : v));
 }
 
-export function organizationLd() {
+// Stable @id for the publishing Organization. Other nodes (WebSite.publisher)
+// reference this rather than re-declaring the entity, which is the linked-data
+// pattern Google expects and avoids duplicate Organization nodes.
+export const ORGANIZATION_ID = absoluteUrl('/#organization');
+
+export interface OrgContact {
+  phone?: string;
+  email?: string;
+}
+
+// A ContactPoint is only meaningful with an actual contact method. Emitting
+// one with just `contactType` triggers "missing telephone" markup warnings,
+// so return undefined when neither phone nor email is configured.
+function contactPointLd(contact: OrgContact) {
+  const phone = contact.phone?.trim();
+  const email = contact.email?.trim();
+  if (!phone && !email) return undefined;
+  return [
+    {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      ...(phone ? { telephone: phone } : {}),
+      ...(email ? { email } : {}),
+      areaServed: 'PK',
+      availableLanguage: ['en', 'ur'],
+    },
+  ];
+}
+
+// The single canonical Organization node, rendered site-wide by the root
+// layout. `sameAs` is the merchant's social profiles and `contact` the
+// store phone/email — both owner-managed via admin Settings. Empty values
+// are omitted rather than emitted as null/empty (which markup validators
+// flag as errors).
+export function organizationLd(sameAs: string[] = [], contact: OrgContact = {}) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
+    '@id': ORGANIZATION_ID,
     name: SITE_NAME,
     url: SITE_URL,
     // Google explicitly recommends raster (PNG/JPG, ≥112×112) for
     // Organization.logo; SVG gets flagged in Rich Results Test.
     logo: absoluteUrl('/icon-192.png'),
-    sameAs: [
-      'https://instagram.com/yellowpink.pk',
-    ],
-    contactPoint: [
-      {
-        '@type': 'ContactPoint',
-        contactType: 'customer service',
-        areaServed: 'PK',
-        availableLanguage: ['en', 'ur'],
-      },
-    ],
+    image: absoluteUrl('/icon-192.png'),
+    description:
+      'Imported beauty, skincare and wellness products delivered across Pakistan with cash-on-delivery.',
+    areaServed: { '@type': 'Country', name: 'Pakistan' },
+    sameAs: sameAs.length ? sameAs : undefined,
+    contactPoint: contactPointLd(contact),
   };
 }
 
@@ -131,11 +161,18 @@ export function websiteLd() {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
+    '@id': absoluteUrl('/#website'),
     name: SITE_NAME,
     url: SITE_URL,
+    publisher: { '@id': ORGANIZATION_ID },
     potentialAction: {
       '@type': 'SearchAction',
-      target: `${SITE_URL}/shop?q={search_term_string}`,
+      // EntryPoint form — the current schema.org/Google recommendation;
+      // a bare string `target` is the legacy syntax.
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${SITE_URL}/shop?q={search_term_string}`,
+      },
       'query-input': 'required name=search_term_string',
     },
   };
@@ -260,8 +297,11 @@ export function productLd(
     description: product.description ?? undefined,
     image: product.image_url ?? undefined,
     sku: product.id,
-    brand: { '@type': 'Brand', name: product.brand },
-    category: product.category,
+    // Omit `brand` entirely when the product has none — emitting
+    // `{ name: null }` is an invalid-markup error. Many imported products
+    // (generic/local SKUs) legitimately have no brand.
+    brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+    category: product.category || undefined,
     offers,
     aggregateRating: avg
       ? {
@@ -359,52 +399,6 @@ export function itemListLd(
     name,
     numberOfItems: items.length,
     itemListElement: elements,
-  };
-}
-
-// LocalBusiness / Store schema for Pakistan — Google uses this for Knowledge
-// Panel + Maps placement. We're a digital-first storefront serving the whole
-// country, so areaServed is national and we don't claim a single brick-and-
-// mortar address. If the merchant later opens a physical pickup point, fill
-// `address` and switch `@type` to `Store`.
-export function localBusinessLd() {
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'OnlineStore',
-    '@id': absoluteUrl('/#store'),
-    name: SITE_NAME,
-    url: SITE_URL,
-    // Raster logo per Google guidance — Rich Results Test warns on SVG.
-    logo: absoluteUrl('/icon-192.png'),
-    image: absoluteUrl('/icon-192.png'),
-    description:
-      'Imported beauty, skincare and wellness products delivered across Pakistan with cash-on-delivery.',
-    // priceRange should be free-form ($–$$$$ or a currency range) — bare
-    // 'PKR' is ignored. Set a meaningful range covering most of the catalog.
-    priceRange: 'PKR 500–PKR 25,000',
-    currenciesAccepted: 'PKR',
-    paymentAccepted: 'Cash on Delivery, JazzCash, Easypaisa',
-    areaServed: {
-      '@type': 'Country',
-      name: 'Pakistan',
-    },
-    address: {
-      '@type': 'PostalAddress',
-      addressCountry: 'PK',
-    },
-    sameAs: [
-      'https://instagram.com/yellowpink.pk',
-      'https://facebook.com/yellowpinkpk',
-      'https://tiktok.com/@yellowpinkpk',
-    ],
-    contactPoint: [
-      {
-        '@type': 'ContactPoint',
-        contactType: 'customer service',
-        areaServed: 'PK',
-        availableLanguage: ['en', 'ur'],
-      },
-    ],
   };
 }
 
