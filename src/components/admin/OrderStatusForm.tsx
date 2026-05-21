@@ -2,19 +2,14 @@
 import { useActionState, useEffect } from 'react';
 import { updateOrderStatus } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
-import type { OrderStatus } from '@/types';
+import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types';
 
-const STATUSES: { value: OrderStatus; label: string }[] = [
-  { value: 'payment_pending', label: 'Awaiting payment' },
-  { value: 'payment_failed',  label: 'Payment failed' },
-  { value: 'pending',         label: 'Pending' },
-  { value: 'processing',      label: 'Processing' },
-  { value: 'shipped',         label: 'Shipped' },
-  { value: 'delivered',       label: 'Delivered' },
-  { value: 'cancelled',       label: 'Cancelled' },
-  { value: 'returned',        label: 'Returned' },
-  { value: 'refunded',        label: 'Refunded' },
-];
+// Drive the dropdown off the shared label map so it can't drift from the
+// timeline / Orders list / Analytics — those showed "Order received" /
+// "Preparing" while this select said "Pending" / "Processing".
+const STATUSES: { value: OrderStatus; label: string }[] =
+  (Object.keys(ORDER_STATUS_LABELS) as OrderStatus[])
+    .map(value => ({ value, label: ORDER_STATUS_LABELS[value] }));
 
 const statusColors: Record<OrderStatus, string> = {
   payment_pending: '#9ca3af',
@@ -92,9 +87,8 @@ export function OrderStatusForm({ orderId, currentStatus }: {
         <span style={{
           fontSize: '0.75rem', fontWeight: 600,
           color: statusColors[currentStatus] ?? '#374151',
-          textTransform: 'capitalize',
         }}>
-          {currentStatus}
+          {ORDER_STATUS_LABELS[currentStatus] ?? currentStatus}
         </span>
       </div>
     </form>
