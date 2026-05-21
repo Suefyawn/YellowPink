@@ -7,15 +7,24 @@ import type { Metadata } from 'next';
 import type { Product, BlogPost, ProductReview, ProductVariant } from '@/types';
 import { brandPlusName } from '@/lib/product-display';
 
-const _vercelUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 // Resolution order: explicit NEXT_PUBLIC_SITE_URL (set this once a custom
-// domain is live) → Vercel's production URL → the current live deployment.
-// The final fallback must be a real, reachable origin: og:image and the
-// email logo are absolute URLs, so a stale default (the old WP domain)
-// renders them broken.
+// domain is live) → Vercel's production URL → a safe default. The final
+// fallback must be a real, reachable origin: og:image and the email logo
+// are absolute URLs, so a stale default renders them broken.
+//
+// normalizeOrigin() guarantees a scheme. Both NEXT_PUBLIC_SITE_URL and
+// VERCEL_PROJECT_PRODUCTION_URL are routinely set as a bare host
+// ("www.yellowpink.pk") — and a scheme-less value makes `new URL()` throw,
+// which breaks the production build (metadataBase in app/layout.tsx).
+function normalizeOrigin(value: string | undefined | null): string | null {
+  const v = value?.trim().replace(/\/+$/, '');
+  if (!v) return null;
+  return /^https?:\/\//i.test(v) ? v : `https://${v}`;
+}
+
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ??
-  (_vercelUrl ? (_vercelUrl.startsWith('http') ? _vercelUrl : `https://${_vercelUrl}`) : null) ??
+  normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL) ??
+  normalizeOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
   'https://yellow-pink.vercel.app';
 
 export const SITE_NAME = 'Yellow Pink';
