@@ -227,6 +227,25 @@ export async function getProductsByTaxon(taxonOrCategory: string, limit = 8): Pr
   }, DEMO_PRODUCTS.filter(p => cats.includes(p.category)).slice(0, limit));
 }
 
+/** Products from a single brand — powers the "More from {brand}" rail on
+ *  the PDP. Published only; returns [] for a missing brand so the rail
+ *  collapses cleanly. */
+export async function getProductsByBrand(brand: string | null | undefined, limit = 8): Promise<Product[]> {
+  if (!brand) return [];
+  if (isDemo) return DEMO_PRODUCTS.filter(p => p.brand === brand).slice(0, limit);
+  return safe('getProductsByBrand', async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select(PRODUCT_TILE_COLUMNS)
+      .eq('brand', brand)
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []) as Product[];
+  }, []);
+}
+
 // Tile-projection for the blog index. P0-2 finding in the 2026-05-19
 // launch audit: /blog was shipping 1.95 MB of HTML, ~1.76 MB of which
 // was the full WP body of every post embedded in the RSC payload — the

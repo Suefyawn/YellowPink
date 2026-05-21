@@ -3,11 +3,12 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductBySlug, supabase, isDemo } from '@/lib/supabase';
+import { getProductBySlug, supabase, isDemo, getProductsByBrand, getProductsByTaxon } from '@/lib/supabase';
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
+import { MoreToExplore } from '@/components/pdp/MoreToExplore';
 import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd } from '@/lib/seo';
 import { isEnabled } from '@/lib/flags';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
@@ -178,7 +179,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     isEnabled('reviews_photos'),
   ]);
 
-  const [{ data: reviewRows }, variantData, gallery, crossSells, fbt] = await Promise.all([
+  const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts] = await Promise.all([
     isDemo
       ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>> })
       : supabase
@@ -191,6 +192,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     loadGallery(product.id),
     loadCrossSells(product.id, product.category),
     loadFrequentlyBoughtTogether(product.id),
+    getProductsByBrand(product.brand, 12),
+    getProductsByTaxon(product.category, 12),
   ]);
 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>[];
@@ -237,6 +240,13 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         subscribeEligible={taxonForCategory(product.category)?.key === 'wellness'}
       />
       <FrequentlyBoughtTogether anchor={product} suggestions={fbt} />
+      <MoreToExplore
+        brand={product.brand}
+        category={product.category}
+        brandProducts={brandProducts}
+        categoryProducts={categoryProducts}
+        excludeIds={[product.id, ...crossSells.map(p => p.id), ...fbt.map(p => p.id)]}
+      />
       <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} />
       <RecentlyViewed currentProductId={product.id} />
     </main>
