@@ -49,7 +49,7 @@ export function FrequentlyBoughtTogether({
               <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', minWidth: 140 }}>
                   <div style={{ position: 'relative', width: 120, height: 150, borderRadius: 'var(--radius-card)', overflow: 'hidden', background: 'var(--paper2)', border: '1px solid var(--line)' }}>
-                    <ProductImage src={p.image_url} alt={brandPlusName(p.brand, p.name)} sizes="120px" />
+                    <ProductImage src={p.image_url} alt={brandPlusName(p.brand, p.name)} width={120} height={150} />
                     <input
                       type="checkbox"
                       checked={Boolean(checked[p.id])}

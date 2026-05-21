@@ -93,7 +93,7 @@ export default function SubscriptionsPage() {
                   border: '1px solid var(--line)', display: 'flex', gap: 16, alignItems: 'flex-start',
                 }}>
                   <div style={{ width: 64, height: 64, flexShrink: 0, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--line)' }}>
-                    <ProductImage src={sub.products?.image_url ?? undefined} alt={name} sizes="64px" />
+                    <ProductImage src={sub.products?.image_url ?? undefined} alt={name} width={64} height={64} />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
