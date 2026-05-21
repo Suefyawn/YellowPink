@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { ProductsTable } from '@/components/admin/ProductsTable';
 import { ProductsFilter } from '@/components/admin/ProductsFilter';
 import { ProductsFlash } from '@/components/admin/ProductsFlash';
+import { AdminFab } from '@/components/admin/AdminFab';
 import { Pagination } from '@/components/admin/Pagination';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -94,6 +95,8 @@ export default async function ProductsPage({
       <Suspense fallback={null}>
         <Pagination total={total} pageSize={PAGE_SIZE} currentPage={page} basePath="/admin/products" />
       </Suspense>
+
+      <AdminFab href="/admin/products/new" label="New product" />
     </div>
   );
 }

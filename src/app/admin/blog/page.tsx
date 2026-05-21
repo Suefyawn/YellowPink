@@ -7,6 +7,7 @@ import { deleteBlogPost } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { BlogFilter } from '@/components/admin/BlogFilter';
 import { Pagination } from '@/components/admin/Pagination';
+import { AdminFab } from '@/components/admin/AdminFab';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import type { BlogPost } from '@/types';
@@ -126,6 +127,8 @@ export default async function BlogAdminPage({
       <Suspense fallback={null}>
         <Pagination total={total} pageSize={PAGE_SIZE} currentPage={page} basePath="/admin/blog" />
       </Suspense>
+
+      <AdminFab href="/admin/blog/new" label="New post" />
     </div>
   );
 }
