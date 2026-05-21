@@ -90,6 +90,11 @@ export async function getProducts(): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
+      // Storefront catalogue — published only. Draft products aren't live
+      // yet, and archived products (a soft-deleted product with order
+      // history) must drop off the storefront while keeping their row for
+      // Analytics + order detail.
+      .eq('status', 'published')
       .order('id');
     if (error) throw error;
     return (data ?? []) as unknown as Product[];
@@ -99,10 +104,13 @@ export async function getProducts(): Promise<Product[]> {
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (isDemo) return DEMO_PRODUCTS.find(p => p.slug === slug) ?? null;
   return safe('getProductBySlug', async () => {
+    // Published only — an archived/draft product has no live PDP; the page
+    // 404s on a null product (see product/[slug]/page.tsx).
     const { data } = await supabase
       .from('products')
       .select('*')
       .eq('slug', slug)
+      .eq('status', 'published')
       .single();
     if (data) return data as Product;
 
@@ -112,6 +120,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
       .from('products')
       .select('*')
       .ilike('slug', `%-${slug}`)
+      .eq('status', 'published')
       .limit(1)
       .single();
     return (fallback as Product | null) ?? null;
