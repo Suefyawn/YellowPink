@@ -173,6 +173,22 @@ export function AdminShell({
           /* Sticky save bars (settings, product edit) lift above the nav too. */
           .adm-sticky-actions { bottom: 56px !important; }
 
+          /* Filter pill rows — one horizontally-scrollable strip instead of
+           * wrapping to 2-3 stacked rows that eat vertical space. Bleeds to
+           * the screen edge so the last pill cues scrollability. */
+          .adm-filter-pills {
+            flex: 1 1 100% !important;
+            min-width: 0;
+            flex-wrap: nowrap !important;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            margin-left: -12px; margin-right: -12px;
+            padding: 2px 12px;
+          }
+          .adm-filter-pills::-webkit-scrollbar { display: none; }
+          .adm-filter-pills > * { flex: 0 0 auto; }
+
           /* ─ Bottom navigation bar (mobile only) ─ */
           .adm-main { padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
           .adm-bottom-nav {
