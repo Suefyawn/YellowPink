@@ -39,6 +39,14 @@ function navLinkStyle(active: boolean): React.CSSProperties {
 export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
+  // Hydration gate for the cart-count badge. The cart loads from
+  // localStorage in CartProvider's mount effect — and because Header sits
+  // inside a <Suspense> boundary in SiteChrome, its hydration is deferred
+  // until *after* that effect has already run. Reading cartCount directly
+  // would render "2 items" on the client while the server rendered "0",
+  // tripping a hydration mismatch. Gating on Header's own mount state keeps
+  // the first client render identical to the server, then updates.
+  const [mounted, setMounted] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);       // desktop mega-menu
   const [openSection, setOpenSection] = useState<string | null>(null); // mobile expandable section
   const drawerRef = useRef<HTMLDivElement | null>(null);
@@ -80,6 +88,11 @@ export function Header() {
     return () => window.removeEventListener('scroll', fn);
   }, []);
 
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMounted(true);
+  }, []);
+
   // Close the mobile menu whenever the route changes — otherwise a tap on a
   // nav item navigates but leaves the menu open underneath the new page.
   // The setState is intentional: pathname is from the routing system (an
@@ -89,6 +102,9 @@ export function Header() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenu(false);
   }, [pathname, searchParams]);
+
+  // Suppress the cart count until mounted — see the `mounted` state above.
+  const cartBadgeCount = mounted ? cartCount : 0;
 
   return (
     <header style={{
@@ -250,7 +266,7 @@ export function Header() {
               <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
             </svg>
           </Link>
-          <button onClick={() => setCartOpen(true)} aria-label={`Open cart, ${cartCount} item${cartCount === 1 ? '' : 's'}`} style={{
+          <button onClick={() => setCartOpen(true)} aria-label={`Open cart, ${cartBadgeCount} item${cartBadgeCount === 1 ? '' : 's'}`} style={{
             background: 'none', border: 'none', cursor: 'pointer', color: 'var(--ink-900)',
             display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
             width: 40, height: 40, borderRadius: 8, padding: 0, position: 'relative',
@@ -259,14 +275,14 @@ export function Header() {
               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
               <line x1="3" y1="6" x2="21" y2="6" /><path d="M16 10a4 4 0 01-8 0" />
             </svg>
-            {cartCount > 0 && (
+            {cartBadgeCount > 0 && (
               <span aria-hidden="true" style={{
                 position: 'absolute', top: -6, right: -8,
                 background: 'var(--brand-pink-cta)', color: '#fff',
                 width: 16, height: 16, borderRadius: '50%',
                 fontSize: '0.625rem', fontWeight: 700,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>{cartCount}</span>
+              }}>{cartBadgeCount}</span>
             )}
           </button>
           <button
