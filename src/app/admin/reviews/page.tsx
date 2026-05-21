@@ -52,7 +52,8 @@ export default async function ReviewsPage() {
     approved: boolean;
     photo_urls: string[] | null;
     verified_purchase: boolean;
-    products: { name: string; brand: string }[] | null;
+    // Supabase returns a to-one embed as an object; tolerate an array too.
+    products: { name: string; brand: string } | { name: string; brand: string }[] | null;
   };
 
   const pendingList = (pending ?? []) as unknown as ReviewRow[];
@@ -78,7 +79,10 @@ export default async function ReviewsPage() {
             <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{fmtDate(r.created_at)}</span>
           </div>
           <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>
-            {r.products?.[0] ? brandPlusName(r.products[0].brand, r.products[0].name) : '—'}
+            {(() => {
+              const p = Array.isArray(r.products) ? r.products[0] : r.products;
+              return p ? brandPlusName(p.brand, p.name) : '—';
+            })()}
           </div>
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>{r.body}</p>
           {r.photo_urls && r.photo_urls.length > 0 && (
