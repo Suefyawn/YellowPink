@@ -45,6 +45,10 @@ export async function saveSettings(formData: FormData): Promise<void> {
   });
 
   revalidatePath('/', 'layout');
+  // Explicit page-level revalidation of the homepage too — the sale toggle
+  // and other settings drive homepage sections, and the layout-level call
+  // alone has been unreliable at refreshing the index render.
+  revalidatePath('/', 'page');
   revalidatePath('/admin/settings');
   redirect('/admin/settings?saved=1');
 }

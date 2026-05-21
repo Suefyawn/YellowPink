@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { bulkUpdateOrderStatus } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
+import { ORDER_STATUS_LABELS } from '@/types';
 import type { Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -114,11 +115,11 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                 <td data-label="Status" style={{ padding: '12px 16px' }}>
                   <span style={{
                     display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-                    fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize',
+                    fontSize: '0.75rem', fontWeight: 600,
                     background: (statusColors[st] ?? '#6b7280') + '20',
                     color: statusColors[st] ?? '#6b7280',
                   }}>
-                    {st}
+                    {ORDER_STATUS_LABELS[st as OrderStatus] ?? st}
                   </span>
                 </td>
                 <td data-label="Payment" style={{ padding: '12px 16px' }}>
