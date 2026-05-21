@@ -5,6 +5,7 @@ import { LogoMark } from '@/components/ui/LogoMark';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
 import { Overline } from '@/components/ui/Overline';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
+import type { SocialLink } from '@/lib/socials';
 
 // Footer link list rendered with a consistent "overline-ish" treatment —
 // slightly tighter letter-spacing and weight than body text, so each
@@ -60,13 +61,7 @@ const HELP_LINKS = [
   { label: 'Privacy',      href: '/privacy' },
 ];
 
-const SOCIAL_LINKS = [
-  { label: 'Instagram', href: 'https://instagram.com/yellowpinkpk' },
-  { label: 'TikTok',    href: 'https://tiktok.com/@yellowpinkpk' },
-  { label: 'Facebook',  href: 'https://facebook.com/yellowpinkpk' },
-];
-
-export function Footer() {
+export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
   return (
     <footer
       role="contentinfo"
@@ -143,35 +138,37 @@ export function Footer() {
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
         }}>
           <span className="small-text" style={{ color: 'rgba(250,246,238,0.3)' }}>© {new Date().getFullYear()} Yellow Pink. All rights reserved.</span>
-          <div style={{ display: 'flex', gap: 8 }} aria-label="Social media">
-            {SOCIAL_LINKS.map(s => (
-              <a
-                key={s.label}
-                href={s.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`Yellow Pink on ${s.label}`}
-                style={{
-                  color: 'rgba(250,246,238,0.4)',
-                  textDecoration: 'none',
-                  fontSize: '0.6875rem',
-                  fontWeight: 600,
-                  letterSpacing: '0.12em',
-                  textTransform: 'uppercase',
-                  fontFamily: 'var(--font-ui)',
-                  // Pad to a comfortable tap target (~32+ px) and round so the
-                  // hover bg (if we add one later) reads as a chip not a slab.
-                  padding: '10px 12px',
-                  borderRadius: 6,
-                  minHeight: 36,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.color = 'var(--paper)')}
-                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,246,238,0.4)')}
-              >{s.label}</a>
-            ))}
-          </div>
+          {socials.length > 0 && (
+            <div style={{ display: 'flex', gap: 8 }} aria-label="Social media">
+              {socials.map(s => (
+                <a
+                  key={s.label}
+                  href={s.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Yellow Pink on ${s.label}`}
+                  style={{
+                    color: 'rgba(250,246,238,0.4)',
+                    textDecoration: 'none',
+                    fontSize: '0.6875rem',
+                    fontWeight: 600,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    fontFamily: 'var(--font-ui)',
+                    // Pad to a comfortable tap target (~32+ px) and round so the
+                    // hover bg (if we add one later) reads as a chip not a slab.
+                    padding: '10px 12px',
+                    borderRadius: 6,
+                    minHeight: 36,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.color = 'var(--paper)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,246,238,0.4)')}
+                >{s.label}</a>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </footer>

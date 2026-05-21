@@ -104,7 +104,10 @@ export function jsonLd<T extends Record<string, unknown>>(obj: T): string {
   return JSON.stringify(obj, (_k, v) => (v === undefined ? undefined : v));
 }
 
-export function organizationLd() {
+// `sameAs` is the merchant's social profiles, managed from admin Settings
+// (see lib/socials.ts). Empty when none are configured — the key is then
+// omitted entirely rather than emitted as an empty array.
+export function organizationLd(sameAs: string[] = []) {
   return {
     '@context': 'https://schema.org',
     '@type': 'Organization',
@@ -113,9 +116,7 @@ export function organizationLd() {
     // Google explicitly recommends raster (PNG/JPG, ≥112×112) for
     // Organization.logo; SVG gets flagged in Rich Results Test.
     logo: absoluteUrl('/icon-192.png'),
-    sameAs: [
-      'https://instagram.com/yellowpink.pk',
-    ],
+    sameAs: sameAs.length ? sameAs : undefined,
     contactPoint: [
       {
         '@type': 'ContactPoint',
@@ -367,7 +368,7 @@ export function itemListLd(
 // country, so areaServed is national and we don't claim a single brick-and-
 // mortar address. If the merchant later opens a physical pickup point, fill
 // `address` and switch `@type` to `Store`.
-export function localBusinessLd() {
+export function localBusinessLd(sameAs: string[] = []) {
   return {
     '@context': 'https://schema.org',
     '@type': 'OnlineStore',
@@ -392,11 +393,7 @@ export function localBusinessLd() {
       '@type': 'PostalAddress',
       addressCountry: 'PK',
     },
-    sameAs: [
-      'https://instagram.com/yellowpink.pk',
-      'https://facebook.com/yellowpinkpk',
-      'https://tiktok.com/@yellowpinkpk',
-    ],
+    sameAs: sameAs.length ? sameAs : undefined,
     contactPoint: [
       {
         '@type': 'ContactPoint',

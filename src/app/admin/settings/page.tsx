@@ -7,6 +7,7 @@ import { saveSettings } from './actions';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { BankAccountsEditor } from '@/components/admin/BankAccountsEditor';
 import { parseBankAccounts } from '@/lib/bank-accounts';
+import { SOCIAL_PLATFORMS } from '@/lib/socials';
 
 const inp: React.CSSProperties = {
   width: '100%', padding: '9px 12px', border: '1px solid #d1d5db',
@@ -56,6 +57,7 @@ function Card({ id, children }: { id?: string; children: React.ReactNode }) {
 // Section index — drives the jump-nav and ids the cards anchor to.
 const SECTIONS = [
   { id: 'store-info',    label: 'Store info' },
+  { id: 'social-media',  label: 'Social media' },
   { id: 'shipping-tax',  label: 'Shipping & tax' },
   { id: 'payments',      label: 'Payments' },
   { id: 'loyalty',       label: 'Loyalty' },
@@ -185,6 +187,34 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 placeholder="+92 300 1234567" />
             </div>
           </div>
+        </Card>
+
+        {/* ── Social Media ───────────────────────────────── */}
+        <Card id="social-media">
+          {section('Social Media', 'Links to your social profiles. They appear in the site footer and feed the structured-data (sameAs) Google reads. Leave a field blank to hide that link.')}
+          <Divider />
+          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            {SOCIAL_PLATFORMS.map(p => (
+              <div key={p.key}>
+                <label style={lbl}>{p.label}</label>
+                {/* type="text" (not "url") so a bare handle or scheme-less
+                    URL still submits — normalizeUrl() in lib/socials.ts adds
+                    https:// when missing. inputMode keeps the URL keyboard. */}
+                <input
+                  name={p.key}
+                  type="text"
+                  inputMode="url"
+                  defaultValue={g(p.key)}
+                  style={inp}
+                  placeholder={p.placeholder}
+                />
+              </div>
+            ))}
+          </div>
+          <p style={{ margin: '12px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+            Paste the full profile URL. WhatsApp shows in the footer only; the
+            rest also identify the store to search engines.
+          </p>
         </Card>
 
         {/* ── Shipping & Tax ─────────────────────────────── */}

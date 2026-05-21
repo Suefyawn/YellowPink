@@ -40,6 +40,7 @@ import { getSiteSettings } from '@/lib/supabase';
 import { getActivePromos, audienceFor } from '@/lib/promos';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd, localBusinessLd } from '@/lib/seo';
+import { socialSameAs } from '@/lib/socials';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -84,6 +85,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     loadTrendingBrands(),
     loadPopularCategories(),
   ]);
+  // Social profiles are owner-managed (admin Settings → Social Media); the
+  // JSON-LD `sameAs` arrays read from the same source as the footer.
+  const sameAs = socialSameAs(settings);
   return (
     <html lang="en" className={`${fontDisplay.variable} ${fontUI.variable}`}>
       <head>
@@ -94,7 +98,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             class of markup. */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLd(organizationLd()) }}
+          dangerouslySetInnerHTML={{ __html: jsonLd(organizationLd(sameAs)) }}
         />
         <script
           type="application/ld+json"
@@ -102,7 +106,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         />
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLd(localBusinessLd()) }}
+          dangerouslySetInnerHTML={{ __html: jsonLd(localBusinessLd(sameAs)) }}
         />
       </head>
       <body>
