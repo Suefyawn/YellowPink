@@ -45,6 +45,10 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
 
   const W7  = `timestamp >= now() - interval 7 day`;
   const PV  = `event = '$pageview'`;
+  // Exclude /admin from every panel — staff dashboard activity isn't
+  // storefront traffic. (before_send in PostHogProvider stops new admin
+  // events; this also drops any already in the 7-day window.)
+  const NOT_ADMIN = `NOT startsWith(coalesce(properties.\`$pathname\`, ''), '/admin')`;
 
   // Pull every panel in parallel so the refresh stays under ~2 s even when
   // PostHog is slow. The four "core" stats keep the existing 'posthog' cache
@@ -55,10 +59,10 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     funnelRows,
   ] = await Promise.all([
     // ── core stats
-    phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7}`),
-    phQuery(apiKey, `SELECT count(distinct distinct_id) FROM events WHERE ${PV} AND ${W7}`),
-    phQuery(apiKey, `SELECT count(distinct properties.\`$session_id\`) FROM events WHERE ${PV} AND ${W7}`),
-    phQuery(apiKey, `SELECT toString(toDate(timestamp)) as d, count() FROM events WHERE ${PV} AND ${W7} GROUP BY d ORDER BY d`),
+    phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
+    phQuery(apiKey, `SELECT count(distinct distinct_id) FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
+    phQuery(apiKey, `SELECT count(distinct properties.\`$session_id\`) FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
+    phQuery(apiKey, `SELECT toString(toDate(timestamp)) as d, count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} GROUP BY d ORDER BY d`),
 
     // ── top 10 pages (path + count + uniques)
     phQuery(apiKey, `
@@ -66,7 +70,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
              count() as views,
              count(distinct distinct_id) as uniques
       FROM events
-      WHERE ${PV} AND ${W7} AND properties.\`$pathname\` is not null
+      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND properties.\`$pathname\` is not null
       GROUP BY path
       ORDER BY views DESC
       LIMIT 10
@@ -76,7 +80,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     phQuery(apiKey, `
       SELECT event, count() as n, count(distinct distinct_id) as uniques
       FROM events
-      WHERE ${W7}
+      WHERE ${W7} AND ${NOT_ADMIN}
       GROUP BY event
       ORDER BY n DESC
       LIMIT 10
@@ -87,7 +91,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       SELECT coalesce(nullIf(properties.\`$initial_referring_domain\`, ''), 'direct') as src,
              count(distinct distinct_id) as visitors
       FROM events
-      WHERE ${PV} AND ${W7}
+      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
       GROUP BY src
       ORDER BY visitors DESC
       LIMIT 10
