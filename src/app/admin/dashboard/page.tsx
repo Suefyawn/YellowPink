@@ -9,7 +9,8 @@ import { SentryWidget } from '@/components/admin/SentryWidget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
-import type { Order, Product } from '@/types';
+import { ORDER_STATUS_LABELS } from '@/types';
+import type { Order, OrderStatus, Product } from '@/types';
 
 interface DashboardKpis {
   total_revenue: number;
@@ -217,7 +218,7 @@ export default async function DashboardPage() {
               return (
                 <div key={s}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: '0.8125rem', color: '#374151', textTransform: 'capitalize', fontWeight: 500 }}>{s}</span>
+                    <span style={{ fontSize: '0.8125rem', color: '#374151', fontWeight: 500 }}>{ORDER_STATUS_LABELS[s] ?? s}</span>
                     <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{count} ({pct}%)</span>
                   </div>
                   <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
@@ -309,11 +310,11 @@ export default async function DashboardPage() {
                     <td style={{ padding: '12px 16px' }}>
                       <span style={{
                         display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-                        fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize',
+                        fontSize: '0.75rem', fontWeight: 600,
                         background: (statusColors[status] ?? '#6b7280') + '20',
                         color: statusColors[status] ?? '#6b7280',
                       }}>
-                        {status}
+                        {ORDER_STATUS_LABELS[status as OrderStatus] ?? status}
                       </span>
                     </td>
                     <td style={{ padding: '12px 16px' }}>
