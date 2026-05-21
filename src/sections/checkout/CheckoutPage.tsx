@@ -63,7 +63,16 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   const [coupon, setCoupon] = useState<Coupon | null>(cartCoupon);
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
-  const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string }>({ rate: 200, free: false, label: 'Standard' });
+  // Optimistic first render from the default free-shipping threshold (₨2,500),
+  // so a qualifying cart shows FREE immediately instead of flashing "PKR 200"
+  // before calculateShipping resolves. The effect below corrects it against
+  // the real zone/rate config (and the customer's province).
+  const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string }>(() => {
+    const sub = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+    return sub >= 2500
+      ? { rate: 0, free: true, label: 'Standard' }
+      : { rate: 200, free: false, label: 'Standard' };
+  });
 
   // ─── Rewards: loyalty points ────────────────────────────────────────────
   // Gift-card and referral redemption are hidden from checkout until those
