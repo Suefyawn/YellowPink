@@ -29,6 +29,33 @@ const BULK_STATUSES: { value: OrderStatus; label: string; color: string }[] = [
   { value: 'cancelled',  label: 'Cancelled',  color: '#ef4444' },
 ];
 
+// Statuses offered in the per-card swipe panel — the forward fulfilment
+// progression. Cancellation stays on the order detail page (destructive).
+const QUICK_STATUSES: { value: OrderStatus; label: string; color: string }[] =
+  BULK_STATUSES.filter(s => s.value !== 'cancelled');
+
+function StatusBadge({ status }: { status: string }) {
+  return (
+    <span style={{
+      display: 'inline-block', padding: '3px 10px', borderRadius: 20,
+      fontSize: '0.75rem', fontWeight: 600,
+      background: (statusColors[status] ?? '#6b7280') + '20',
+      color: statusColors[status] ?? '#6b7280',
+    }}>
+      {ORDER_STATUS_LABELS[status as OrderStatus] ?? status}
+    </span>
+  );
+}
+
+function PayBadge({ method }: { method: string }) {
+  const badge = payBadge[method] ?? { bg: '#f3f4f6', color: '#374151', label: method };
+  return (
+    <span style={{ display: 'inline-block', padding: '3px 10px', background: badge.bg, color: badge.color, borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>
+      {badge.label}
+    </span>
+  );
+}
+
 export function OrdersTable({ orders }: { orders: Order[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
@@ -54,7 +81,22 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
         return;
       }
       setSelected(new Set());
-      toast(`${count} order${count !== 1 ? 's' : ''} marked as ${status}`, 'success');
+      toast(`${count} order${count !== 1 ? 's' : ''} marked as ${ORDER_STATUS_LABELS[status]}`, 'success');
+    });
+  };
+
+  // Per-card quick status change from the swipe panel. Closes the revealed
+  // panel by scrolling its card back to the start.
+  const quickStatus = (e: React.MouseEvent<HTMLButtonElement>, id: string, status: OrderStatus) => {
+    const card = e.currentTarget.closest('.ord-swipe');
+    card?.scrollTo({ left: 0, behavior: 'smooth' });
+    startTransition(async () => {
+      const result = await bulkUpdateOrderStatus([id], status);
+      if (result.error) {
+        toast(`Couldn't update order: ${result.error}`, 'error');
+        return;
+      }
+      toast(`Order marked as ${ORDER_STATUS_LABELS[status]}`, 'success');
     });
   };
 
@@ -68,7 +110,8 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
 
   return (
     <div style={{ position: 'relative' }}>
-      <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
+      {/* ── Desktop: table ── */}
+      <table className="adm-orders-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
             <th scope="col" style={{ padding: '11px 12px', width: 40, textAlign: 'center' }}>
@@ -87,7 +130,6 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
         </thead>
         <tbody>
           {orders.map((o, i) => {
-            const badge = payBadge[o.pay_method] ?? { bg: '#f3f4f6', color: '#374151', label: o.pay_method };
             const st = o.status ?? 'pending';
             const isSelected = selected.has(o.id!);
             return (
@@ -101,33 +143,20 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     style={{ cursor: 'pointer', accentColor: '#C5286A' }}
                   />
                 </td>
-                <td data-label="Order #" style={{ padding: '12px 16px' }}>
+                <td style={{ padding: '12px 16px' }}>
                   <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '0.875rem', color: '#C5286A', textDecoration: 'none', fontFamily: 'monospace' }}>
                     {o.order_number}
                   </Link>
                 </td>
-                <td data-label="Customer" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                   {o.first_name} {o.last_name}
                 </td>
-                <td data-label="Total" style={{ padding: '12px 16px', fontWeight: 700, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap' }}>
                   {fmt(o.total)}
                 </td>
-                <td data-label="Status" style={{ padding: '12px 16px' }}>
-                  <span style={{
-                    display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-                    fontSize: '0.75rem', fontWeight: 600,
-                    background: (statusColors[st] ?? '#6b7280') + '20',
-                    color: statusColors[st] ?? '#6b7280',
-                  }}>
-                    {ORDER_STATUS_LABELS[st as OrderStatus] ?? st}
-                  </span>
-                </td>
-                <td data-label="Payment" style={{ padding: '12px 16px' }}>
-                  <span style={{ display: 'inline-block', padding: '3px 10px', background: badge.bg, color: badge.color, borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>
-                    {badge.label}
-                  </span>
-                </td>
-                <td data-label="Date" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '12px 16px' }}><StatusBadge status={st} /></td>
+                <td style={{ padding: '12px 16px' }}><PayBadge method={o.pay_method} /></td>
+                <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                   {o.created_at ? fmtDate(o.created_at) : '—'}
                 </td>
               </tr>
@@ -135,6 +164,62 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
           })}
         </tbody>
       </table>
+
+      {/* ── Mobile: swipe cards. Swipe a card left to reveal quick status
+           actions; the card itself still links to the order detail. ── */}
+      <div className="adm-orders-cards">
+        {orders.map(o => {
+          const st = o.status ?? 'pending';
+          const isSelected = selected.has(o.id!);
+          return (
+            <div key={o.id} className="ord-swipe">
+              <div className="ord-swipe-face" style={{ background: isSelected ? '#fdf2f8' : 'white' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggle(o.id!)}
+                    aria-label={`Select order ${o.order_number}`}
+                    style={{ cursor: 'pointer', accentColor: '#C5286A', width: 18, height: 18, flexShrink: 0 }}
+                  />
+                  <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '1rem', color: '#C5286A', textDecoration: 'none', fontFamily: 'monospace' }}>
+                    {o.order_number}
+                  </Link>
+                  <span style={{ marginLeft: 'auto' }}><StatusBadge status={st} /></span>
+                </div>
+                <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 6 }}>
+                  {o.first_name} {o.last_name}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>{fmt(o.total)}</span>
+                  <PayBadge method={o.pay_method} />
+                  <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
+                    {o.created_at ? fmtDate(o.created_at) : '—'}
+                  </span>
+                </div>
+              </div>
+              <div className="ord-swipe-actions" aria-label="Quick status update">
+                {QUICK_STATUSES.map(s => (
+                  <button
+                    key={s.value}
+                    type="button"
+                    onClick={e => quickStatus(e, o.id!, s.value)}
+                    disabled={pending || st === s.value}
+                    style={{
+                      flex: 1, border: 'none', cursor: pending ? 'not-allowed' : 'pointer',
+                      background: s.color, color: '#fff',
+                      fontSize: '0.75rem', fontWeight: 700, lineHeight: 1.1,
+                      opacity: st === s.value ? 0.45 : 1,
+                    }}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
 
       {selected.size > 0 && (
         <div className="adm-bulk-bar" style={{
