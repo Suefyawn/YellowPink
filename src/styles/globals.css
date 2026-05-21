@@ -358,13 +358,6 @@ a.underline,
   .pdp-gallery-thumbs::-webkit-scrollbar { display: none; }
 }
 
-/* PDP hero image: 4/5 portrait is right on phones, but in the desktop
- * 2-column layout it rendered ~575px tall — too elongated. Square it up
- * above the .pdp-grid 2-column breakpoint. */
-@media (min-width: 901px) {
-  .pdp-hero { aspect-ratio: 1 / 1 !important; }
-}
-
 /* Frequently-bought-together: 2fr / 1fr stacks awkwardly on phones. Drop
  * to a single column so the product rail and the totals/CTA card each
  * get the full width. */
