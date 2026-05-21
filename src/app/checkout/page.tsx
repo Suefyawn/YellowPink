@@ -17,19 +17,22 @@ export default async function CheckoutRoute() {
   // fresh install or a row that isn't in site_settings yet still works.
   const settings = await getSiteSettings();
   const isEnabled = (key: string) => settings[key] !== 'false';
+  const bankAccounts = parseBankAccounts(settings.pay_bank_accounts);
   const enabledMethods: PayMethod[] = [
     isEnabled('pay_cod_enabled')       && 'cod',
     isEnabled('pay_jazzcash_enabled')  && 'jazzcash',
     isEnabled('pay_easypaisa_enabled') && 'easypaisa',
     isEnabled('pay_card_enabled')      && 'card',
-    isEnabled('pay_bank_enabled')      && 'bank',
+    // Bank Transfer is only offered once at least one account is configured —
+    // otherwise the customer reaches a dead end with nowhere to pay.
+    (isEnabled('pay_bank_enabled') && bankAccounts.length > 0) && 'bank',
   ].filter(Boolean) as PayMethod[];
 
   return (
     <main className="fade-in">
       <CheckoutPage
         enabledMethods={enabledMethods}
-        bankAccounts={parseBankAccounts(settings.pay_bank_accounts)}
+        bankAccounts={bankAccounts}
         bankNotes={settings.pay_bank_instructions ?? ''}
       />
     </main>
