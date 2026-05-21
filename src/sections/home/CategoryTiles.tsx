@@ -6,9 +6,9 @@ import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
 
 // "Shop by category" — two equal pillars: Makeup & Skincare (outer) and
-// Health & Wellness (inner). Tile images are passed in from the homepage,
-// each resolved to a real in-stock product image for that category, so
-// nothing is hardcoded or stale.
+// Health & Wellness (inner). Tile images are passed in from the homepage:
+// a curated editorial photo per category, all shot on a shared backdrop
+// so the grid reads as one cohesive set.
 
 export interface CategoryTile {
   label: string;
