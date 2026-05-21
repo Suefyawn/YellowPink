@@ -31,6 +31,7 @@ const NAV: NavItem[] = [
   { href: '/admin/promos',    label: 'Promos',    icon: '✧', permission: 'promos' },
   { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
   { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'reviews' },
+  { href: '/admin/newsletter', label: 'Newsletter', icon: '✉', permission: 'newsletter' },
   { href: '/admin/audit',     label: 'Activity log', icon: '◉', ownerOnly: true },
   { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
   { href: '/admin/settings',  label: 'Settings',  icon: '⚙', permission: 'settings' },

@@ -127,10 +127,10 @@ async function send(opts: {
    *  free-tier budget is nearly spent. Defaults to 'transactional', which
    *  always sends — order confirmations must never be dropped. */
   kind?: 'transactional' | 'batch';
-}) {
+}): Promise<boolean> {
   if (!resend) {
     log.warn('email.skip', { reason: 'RESEND_API_KEY not set', to: opts.to, subject: opts.subject });
-    return;
+    return false;
   }
   // Free-tier guard: claim a slot in today's send budget. Fails open — a
   // quota-check error must never block an email from going out.
@@ -141,7 +141,7 @@ async function send(opts: {
     } as never);
     if (allowed === false) {
       log.warn('email.skipped_quota', { to: opts.to, subject: opts.subject });
-      return;
+      return false;
     }
   } catch {
     /* fail open */
@@ -177,15 +177,17 @@ async function send(opts: {
         },
         extra: { to: opts.to, subject: opts.subject, statusCode: result.error.statusCode },
       });
-      return;
+      return false;
     }
     log.info('email.sent', { to: opts.to, subject: opts.subject, id: result.data?.id });
+    return true;
   } catch (err) {
     log.error('email.send_failed', { to: opts.to, subject: opts.subject, err });
     Sentry.captureException(err, {
       tags: { email_send_failed: 'true', resend_error_name: 'transport_error', from_domain: fromDomain(FROM) },
       extra: { to: opts.to, subject: opts.subject },
     });
+    return false;
   }
 }
 
@@ -424,6 +426,36 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
     html,
     kind: 'batch',
   });
+}
+
+// ─── 11.5b. Newsletter broadcast (admin-composed campaign) ──────────────────
+// Turns the merchant's plain-text newsletter body into branded HTML: blank
+// lines split paragraphs, bare URLs become links. One call per recipient so
+// the daily-cap guard in send() applies and addresses aren't leaked to each
+// other.
+function newsletterBodyToHtml(body: string): string {
+  return body
+    .trim()
+    .split(/\n\s*\n/)
+    .map(p => p.trim())
+    .filter(Boolean)
+    .map(p => {
+      const linked = escapeHtml(p).replace(
+        /(https?:\/\/[^\s<]+)/g,
+        url => `<a href="${url}" style="color:${BRAND_PINK};font-weight:600">${url}</a>`,
+      );
+      return `<p style="margin:0 0 14px;color:${INK_700};line-height:1.6">${linked.replace(/\n/g, '<br/>')}</p>`;
+    })
+    .join('');
+}
+
+export async function sendNewsletterBroadcastEmail(args: {
+  email: string;
+  subject: string;
+  body: string;
+}): Promise<boolean> {
+  const html = shell(newsletterBodyToHtml(args.body), { marketingRecipient: args.email });
+  return send({ to: args.email, subject: args.subject, html, kind: 'batch' });
 }
 
 // ─── 11.6. Customer: reorder reminder (Subscribe & Save) ────────────────────
