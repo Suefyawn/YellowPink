@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { CheckoutPage } from '@/sections/checkout/CheckoutPage';
 import { getSiteSettings } from '@/lib/supabase';
+import { parseBankAccounts } from '@/lib/bank-accounts';
 import type { PayMethod } from '@/types';
 
 // Cart→checkout pages must not be indexed (audit SEV-2). Also override the
@@ -26,7 +27,11 @@ export default async function CheckoutRoute() {
 
   return (
     <main className="fade-in">
-      <CheckoutPage enabledMethods={enabledMethods} bankInstructions={settings.pay_bank_instructions ?? ''} />
+      <CheckoutPage
+        enabledMethods={enabledMethods}
+        bankAccounts={parseBankAccounts(settings.pay_bank_accounts)}
+        bankNotes={settings.pay_bank_instructions ?? ''}
+      />
     </main>
   );
 }

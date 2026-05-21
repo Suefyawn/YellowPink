@@ -12,7 +12,8 @@ import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import { brandPlusName } from '@/lib/product-display';
 import { track } from '@/lib/analytics';
-import type { Coupon, PayMethod, LoyaltyAccount } from '@/types';
+import { BankAccountsList } from '@/components/checkout/BankAccountsList';
+import type { Coupon, PayMethod, LoyaltyAccount, BankAccount } from '@/types';
 
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
 
@@ -35,10 +36,11 @@ function makeOrderNumber() {
 // instructions to show on the thank-you page.
 interface CheckoutPageProps {
   enabledMethods?: PayMethod[];
-  bankInstructions?: string;
+  bankAccounts?: BankAccount[];
+  bankNotes?: string;
 }
 
-export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageProps = {}) {
+export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: CheckoutPageProps = {}) {
   const { cartItems, clearCart, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
   const router = useRouter();
@@ -53,9 +55,6 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
   // Default to the first enabled method so we never auto-select a hidden one.
   const defaultMethod: PayMethod = visiblePayMethods[0]?.[0] ?? 'cod';
   const [payMethod, setPayMethod] = useState<PayMethod>(defaultMethod);
-  // Stash bank instructions so we can pass them to the thank-you page after
-  // a successful bank-transfer order (used in postOrderDestination payload).
-  void bankInstructions;
   const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '', address: '', city: '', province: '', zip: '' });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
@@ -401,6 +400,11 @@ export function CheckoutPage({ enabledMethods, bankInstructions }: CheckoutPageP
                   </div>
                 </label>
               ))}
+              {payMethod === 'bank' && bankAccounts.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <BankAccountsList accounts={bankAccounts} notes={bankNotes} />
+                </div>
+              )}
             </div>
 
             <div style={{ background: 'var(--paper2)', borderRadius: 'var(--radius-card)', padding: 28, border: '1px solid var(--line)', alignSelf: 'start', position: 'sticky', top: 100 }}>

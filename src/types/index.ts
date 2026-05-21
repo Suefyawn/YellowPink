@@ -277,6 +277,19 @@ export interface VendorSettlement {
   created_at?: string;
 }
 
+/** A bank / mobile-wallet account customers transfer to for "Bank Transfer"
+ *  orders. Stored as a JSON array in site_settings (`pay_bank_accounts`). */
+export interface BankAccount {
+  /** Bank or wallet name — e.g. "Meezan Bank", "Easypaisa", "JazzCash". */
+  label: string;
+  /** Account holder name. */
+  title: string;
+  /** Account number, or the mobile number for a wallet. */
+  number: string;
+  /** IBAN — banks only; optional. */
+  iban?: string;
+}
+
 export interface OrderEvent {
   id: string;
   order_id: string;
