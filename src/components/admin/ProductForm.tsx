@@ -350,6 +350,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
           {/* Sticky save bar — pins to the bottom of the viewport while the
               admin scrolls long product edits. */}
           <div
+            className="adm-sticky-actions"
             style={{
               position: 'sticky', bottom: 0,
               marginTop: 8,
