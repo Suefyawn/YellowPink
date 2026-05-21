@@ -159,7 +159,27 @@ export async function updateProduct(
 export async function deleteProduct(formData: FormData) {
   const session = await getStaffSessionForActions();
   const id = formData.get('id') as string;
-  const { error } = await supabaseAdmin().from('products').delete().eq('id', id);
+  const admin = supabaseAdmin();
+
+  // A product that has ever appeared in a customer order is archived, not
+  // hard-deleted. Orders snapshot their line items as denormalised jsonb keyed
+  // by product id, and Analytics (Top Products) joins that id back to the
+  // products table for the display name. Deleting the row would leave
+  // "Unknown product (deleted)" entries and break the order detail view.
+  // Archiving keeps the row but hides it from the storefront via status.
+  const { productsWithOrderHistory } = await import('@/lib/product-archive');
+  const referenced = await productsWithOrderHistory([id]);
+  if (referenced.has(id)) {
+    const { error } = await admin.from('products').update({ status: 'archived' }).eq('id', id);
+    if (error) {
+      redirect(`/admin/products?error=${encodeURIComponent(error.message)}`);
+    }
+    await logAudit(session, { action: 'product.archive', entity: 'product', entity_id: id, diff: { reason: 'has_order_history' } });
+    revalidatePath('/admin/products');
+    redirect('/admin/products?archived=1');
+  }
+
+  const { error } = await admin.from('products').delete().eq('id', id);
   if (error) {
     // Surface via query string. Index page reads ?error= and shows a toast.
     redirect(`/admin/products?error=${encodeURIComponent(error.message)}`);
