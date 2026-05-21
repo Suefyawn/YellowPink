@@ -49,10 +49,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // the service role.
   const admin = supabaseAdmin();
   const [{ count: pendingOrderCount }, { data: rawNotifications }] = await Promise.all([
+    // Orders still needing fulfilment — pending OR processing. Matches the
+    // Dashboard's "Orders to fulfill" KPI so the two numbers agree.
     admin
       .from('orders')
       .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending'),
+      .in('status', ['pending', 'processing']),
     admin
       .from('admin_notifications')
       .select('id, kind, title, body, link, read, created_at')
