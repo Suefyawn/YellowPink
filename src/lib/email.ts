@@ -16,8 +16,10 @@ import { Resend } from 'resend';
 import * as Sentry from '@sentry/nextjs';
 import { log } from './logger';
 import { brandPlusName } from './product-display';
-import { supabaseAdmin } from './supabase';
+import { supabaseAdmin, getSiteSettings } from './supabase';
 import { SITE_URL } from './seo';
+import { parseBankAccounts } from './bank-accounts';
+import type { BankAccount } from '@/types';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
@@ -222,6 +224,29 @@ function renderItemsTable(items: OrderItemLine[]): string {
 </table>`;
 }
 
+// Bank / wallet accounts block — shown in the confirmation email for a
+// Bank Transfer order so the customer keeps the details after leaving the
+// site. Returns '' when there are no accounts configured.
+function renderBankBlock(accounts: BankAccount[], notes: string | undefined, orderNumber: string, total: number): string {
+  if (!accounts.length) return '';
+  return `
+<div style="margin:20px 0;padding:16px;background:${PAPER};border:1px solid ${LINE};border-radius:8px">
+  <p style="margin:0 0 4px;font-weight:700;font-size:14px;color:${INK}">Complete your payment</p>
+  <p style="margin:0 0 12px;font-size:13px;color:${INK_700};line-height:1.5">
+    Transfer ${money(total)} to any one account below, quoting <strong>${escapeHtml(orderNumber)}</strong>
+    as the payment reference, then send us the receipt on WhatsApp so we can confirm and ship your order.
+  </p>
+  ${accounts.map(a => `
+    <div style="margin:0 0 8px;padding:10px 12px;background:#ffffff;border:1px solid ${LINE};border-radius:6px">
+      <div style="font-weight:600;font-size:14px;color:${INK}">${escapeHtml(a.label)}</div>
+      ${a.title ? `<div style="font-size:13px;color:${MUTED}">Account title: ${escapeHtml(a.title)}</div>` : ''}
+      <div style="font-size:13px;color:${MUTED}">Account / number: <strong>${escapeHtml(a.number)}</strong></div>
+      ${a.iban ? `<div style="font-size:13px;color:${MUTED}">IBAN: ${escapeHtml(a.iban)}</div>` : ''}
+    </div>`).join('')}
+  ${notes && notes.trim() ? `<p style="margin:8px 0 0;font-size:13px;color:${MUTED}">${escapeHtml(notes)}</p>` : ''}
+</div>`;
+}
+
 // ─── 1. Internal: new order (for the merchant) ──────────────────────────────
 export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
   const html = shell(`
@@ -243,6 +268,18 @@ export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
 
 // ─── 2. Customer: order confirmation ────────────────────────────────────────
 export async function sendOrderConfirmationEmail(args: OrderSummary & { email: string }): Promise<void> {
+  // Bank Transfer orders carry the payment instructions + accounts so the
+  // customer has them on record once they've left the site.
+  let bankBlock = '';
+  if (args.pay_method === 'bank') {
+    const settings = await getSiteSettings();
+    bankBlock = renderBankBlock(
+      parseBankAccounts(settings.pay_bank_accounts),
+      settings.pay_bank_instructions,
+      args.order_number,
+      args.total,
+    );
+  }
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Thanks for your order, ${escapeHtml(args.first_name)}!</h2>
     <p style="margin:0 0 16px;color:${INK};line-height:1.5">
@@ -251,6 +288,7 @@ export async function sendOrderConfirmationEmail(args: OrderSummary & { email: s
     </p>
     ${renderItemsTable(args.items)}
     <p style="margin:8px 0 0;text-align:right;font-size:16px"><strong>Total: ${money(args.total)}</strong></p>
+    ${bankBlock}
     <p style="margin:20px 0 0">
       <a href="${SITE_URL}/track" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track your order</a>
     </p>
