@@ -28,6 +28,9 @@ const FROM = process.env.EMAIL_FROM ?? 'Yellow Pink Orders <orders@yellowpink.pk
 // Resend free tier is 100 emails/day. Batch/marketing mail stops claiming
 // slots at this cap so transactional order emails keep their headroom.
 const RESEND_DAILY_BATCH_CAP = 90;
+// Hard ceiling on a single Resend API call — keeps a stalled request from
+// hanging the caller (e.g. the newsletter send loop) forever.
+const SEND_TIMEOUT_MS = 12000;
 const BRAND_PINK = '#E8487F';
 const BRAND_YELLOW = '#F7C948';
 const PAPER = '#FAF6EE';
@@ -171,13 +174,24 @@ async function send(opts: {
     /* fail open */
   }
   try {
-    const result = await resend.emails.send({
+    // Cap the Resend call so a hung network request can't stall the caller
+    // indefinitely (a newsletter blast would otherwise freeze the admin UI).
+    const sendCall = resend.emails.send({
       from: FROM,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
       replyTo: opts.replyTo,
     });
+    // If the timeout wins the race, the original call still settles later —
+    // swallow a late rejection so it isn't flagged as unhandled.
+    sendCall.catch(() => {});
+    const result = await Promise.race([
+      sendCall,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Resend send timed out')), SEND_TIMEOUT_MS),
+      ),
+    ]);
     if (result.error) {
       const errName = result.error.name;
       const errMsg = result.error.message ?? '';
