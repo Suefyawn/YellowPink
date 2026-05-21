@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Overline } from './Overline';
 import { ProductImage } from './ProductImage';
+import { StarRating } from './StarRating';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { brandPlusName } from '@/lib/product-display';
@@ -27,7 +28,7 @@ export function ProductTile({ product }: ProductTileProps) {
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlist();
-  const { id, slug, brand, name, variant, price, original_price, kind, stock } = product;
+  const { id, slug, brand, name, variant, price, original_price, kind, stock, rating, review_count } = product;
   const wishlisted = isWishlisted(id);
 
   // Quick-add UX matrix:
@@ -156,6 +157,11 @@ export function ProductTile({ product }: ProductTileProps) {
           }} />
         </div>
         {variant && <div className="small-text" style={{ marginBottom: 4, display: 'block' }}>{variant}</div>}
+        {review_count != null && review_count > 0 && (
+          <div style={{ marginTop: 4 }}>
+            <StarRating rating={rating} count={review_count} size={12} />
+          </div>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
           <span className="tabular-nums" style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
             PKR {price.toLocaleString()}

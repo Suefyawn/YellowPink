@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
+import { StarRating } from '@/components/ui/StarRating';
 import { useCart } from '@/context/CartContext';
 import { BackInStockForm } from '@/components/pdp/BackInStockForm';
 import { SubscribeAndSave } from '@/components/pdp/SubscribeAndSave';
@@ -401,6 +402,15 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 8,
               overflowWrap: 'break-word',
             }}>{displayName}</h1>
+            {product.review_count != null && product.review_count > 0 && (
+              <a
+                href="#reviews"
+                style={{ display: 'inline-flex', marginBottom: 12, textDecoration: 'none' }}
+                aria-label={`${product.review_count} customer review${product.review_count === 1 ? '' : 's'} — read reviews`}
+              >
+                <StarRating rating={product.rating} count={product.review_count} size={15} />
+              </a>
+            )}
             {product.variant && variants.length === 0 && (
               <div className="body-text" style={{ color: 'var(--ink-500)', marginBottom: 16 }}>{product.variant}</div>
             )}
