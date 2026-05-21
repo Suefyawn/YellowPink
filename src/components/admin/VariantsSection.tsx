@@ -230,9 +230,9 @@ export function VariantsSection({
               </div>
               <div style={{ fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}>
                 PKR {v.price.toLocaleString()}
-                {v.compare_at_price && (
+                {(v.compare_at_price ?? 0) > v.price && (
                   <span style={{ marginLeft: 6, color: '#9ca3af', textDecoration: 'line-through', fontSize: '0.6875rem' }}>
-                    {v.compare_at_price.toLocaleString()}
+                    {(v.compare_at_price ?? 0).toLocaleString()}
                   </span>
                 )}
               </div>
