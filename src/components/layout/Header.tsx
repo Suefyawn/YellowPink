@@ -242,6 +242,7 @@ export function Header() {
           <Link
             href={user ? '/account' : '/login'}
             aria-label={user ? 'My account' : 'Sign in'}
+            className="header-icon-desktop-only"
             style={{
               color: 'var(--ink-700)', display: 'inline-flex',
               alignItems: 'center', justifyContent: 'center',
@@ -256,6 +257,7 @@ export function Header() {
             href="/wishlist"
             aria-label="My wishlist"
             title="Wishlist"
+            className="header-icon-desktop-only"
             style={{
               color: 'var(--ink-700)', display: 'inline-flex',
               alignItems: 'center', justifyContent: 'center',
@@ -473,6 +475,24 @@ export function Header() {
               <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" /><circle cx="12" cy="7" r="4" />
             </svg>
             {user ? 'My account' : 'Sign in / Create account'}
+          </Link>
+          {/* Wishlist — moved off the cramped header icon row into the drawer. */}
+          <Link
+            href="/wishlist"
+            onClick={() => setMobileMenu(false)}
+            tabIndex={mobileMenu ? 0 : -1}
+            style={{
+              marginTop: 10, padding: '16px 18px',
+              background: 'var(--paper2)', borderRadius: 'var(--radius-card)',
+              textDecoration: 'none', color: 'var(--ink-900)',
+              fontFamily: 'var(--font-ui)', fontSize: '0.9375rem', fontWeight: 600,
+              display: 'flex', alignItems: 'center', gap: 12, minHeight: 52,
+            }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+            My wishlist
           </Link>
         </nav>
       </div>
