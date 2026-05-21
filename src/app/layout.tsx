@@ -39,7 +39,7 @@ import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { getSiteSettings } from '@/lib/supabase';
 import { getActivePromos, audienceFor } from '@/lib/promos';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
-import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd, localBusinessLd } from '@/lib/seo';
+import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
 import { socialSameAs } from '@/lib/socials';
 
 export const metadata: Metadata = {
@@ -85,28 +85,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     loadTrendingBrands(),
     loadPopularCategories(),
   ]);
-  // Social profiles are owner-managed (admin Settings → Social Media); the
-  // JSON-LD `sameAs` arrays read from the same source as the footer.
+  // Social profiles + store contact are owner-managed (admin Settings); the
+  // JSON-LD reads from the same source as the footer.
   const sameAs = socialSameAs(settings);
+  const orgContact = { phone: settings.store_phone, email: settings.store_email };
   return (
     <html lang="en" className={`${fontDisplay.variable} ${fontUI.variable}`}>
       <head>
-        {/* Site-wide JSON-LD: Organization + WebSite (sitelinks search box) +
-            OnlineStore (PK localisation — currency, payment methods, area
-            served). All three render on every page; they are cheap and the
-            duplication-across-pages pattern is what Google expects for this
-            class of markup. */}
+        {/* Site-wide JSON-LD: a single Organization node (@id-referenced by
+            WebSite.publisher) plus WebSite for the sitelinks search box.
+            Both render on every page — the duplication-across-pages pattern
+            is what Google expects for this class of markup. */}
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLd(organizationLd(sameAs)) }}
+          dangerouslySetInnerHTML={{ __html: jsonLd(organizationLd(sameAs, orgContact)) }}
         />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: jsonLd(websiteLd()) }}
-        />
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: jsonLd(localBusinessLd(sameAs)) }}
         />
       </head>
       <body>
