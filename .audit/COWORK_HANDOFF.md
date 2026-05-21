@@ -76,14 +76,39 @@ Verify each still holds end to end.
   wellness products (a syrup/drops/effervescent no longer says "swallow a
   tablet"); `short_description` has no leftover `&#…;` HTML entities and
   the Energy Boost blurb matches the real product.
+- **Wellness content rebuild** (PR #86) — 44 wellness products' full
+  content (description, short description, ingredients, key benefits,
+  how-to-use) rebuilt from the authoritative vendor data.
+- **Inventory managed externally** (PR #87) — product-form toggle; such
+  products stay sellable, are excluded from low-stock + the Inventory
+  screen, and show a "Managed externally" badge.
+- **Homepage blog** (PR #88) — "From the Journal" rail of 3 recent posts.
+- **Centralized sale** (PR #89) — Admin → Settings → Sale switch drives a
+  featured Sale Collection band on the homepage (replaced the mis-labelled
+  "New Arrivals" section).
+- **Vendor cost / margin / payouts** (PR #90) — per-vendor commission % +
+  per-product cost + settlement direction; product form shows a live
+  margin; Vendors has a Payouts table; dispatching an order writes a
+  settlement row.
+- **Vendor product import** (PR #91, #94) — SimZee Zinc Syrup, Hydrating
+  Face Wash, Vitamin C Serum, Rooposh Feminine Wash, images self-hosted.
+- **Mobile admin tables** (PR #93) — admin list tables collapse to one
+  card per row on phones.
+- **Bank Transfer accounts** (PR #100) — a managed list of bank / wallet
+  accounts (Settings → Payments), shown at checkout, on the confirmation
+  page and in the confirmation email.
 
 ## 3. DB migrations applied to the live database
 
-`101` vendors + order confirmation columns · `102` Skincare→Cleansers &
-Treatments rename · `103` analytics_rfm_segments rebuilt on
-v_customer_segments · `104` product `how_to_use` rewrite · `105` product
-`short_description` entity cleanup. (Plus `099`–`100` from the round-1
-finish.)
+`101` vendors + order-confirmation columns · `102` Skincare→Cleansers &
+Treatments rename · `103` analytics_rfm_segments rebuild · `104`
+`how_to_use` rewrite · `105` `short_description` cleanup · `106` price
+sync from WordPress · `107` wellness content rebuild · `108`
+`track_inventory` column + `place_order` rewrite · `109` vendor
+margins/payouts (columns + `vendor_settlements`) · `110` import 4 vendor
+products · `111` re-host vendor images · `112` lock the `images` storage
+bucket · `113` Trimo-M price · `114` Flex-4 / Repro-M / Marixtizer prices.
+(Plus `099`–`100` from the round-1 finish.)
 
 ## 4. Config (Vercel env vars)
 
@@ -107,6 +132,20 @@ finish.)
 
 Items the owner spotted between formal QA rounds.
 
+- **Bank Transfer accounts** (PR #100) — multi bank/wallet account list
+  replaces the single instructions field; shown at checkout, on the
+  confirmation page and in the confirmation email.
+- **Vendor price parity** (PR #98, #99) — Trimo-M, Flex-4, Repro-M and
+  Marixtizer matched to nbsons.com pricing.
+- **PDP opens at the top** (PR #97) — a product no longer opens scrolled
+  to its footer after a tile tap from a scrolled-down page.
+- **Images storage hardening** (PR #94, #95, #96) — vendor product images
+  re-hosted on Supabase Storage; the `images` bucket locked to
+  service-role writes; the unused Shopify CDN host removed.
+- **Mobile admin tables** (PR #93) — Orders / Products / and the other
+  admin tables collapse to cards on phones.
+- **Price sync** (PR #85) — 20 products' prices corrected against the
+  live yellowpink.pk store.
 - **Product short descriptions** (PR #83) — decoded leftover WordPress HTML
   entities in 21 products; rewrote the OCR-garbled Energy Boost blurb.
 - **Product how-to-use** (PR #82) — rewrote 30 wellness products that had
