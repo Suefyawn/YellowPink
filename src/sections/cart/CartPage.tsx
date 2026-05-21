@@ -166,7 +166,9 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                     <div>
                       <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>
                       <div style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{item.name}</div>
-                      {item.variant && <div className="small-text">{item.variant}</div>}
+                      {(item.variant_label ?? item.variant) && (
+                        <div className="small-text">{item.variant_label ?? item.variant}</div>
+                      )}
                       <div className="tabular-nums small-text" style={{ marginTop: 2 }}>PKR {item.price.toLocaleString()}</div>
                     </div>
                   </div>
