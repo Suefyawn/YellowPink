@@ -4,6 +4,10 @@ import { Overline } from '@/components/ui/Overline';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { WhatsAppButton } from '@/components/ui/WhatsAppButton';
 import { WA_TEMPLATES } from '@/lib/whatsapp';
+import { getSiteSettings, supabaseAdmin } from '@/lib/supabase';
+import { parseBankAccounts } from '@/lib/bank-accounts';
+import { BankAccountsList } from '@/components/checkout/BankAccountsList';
+import type { BankAccount } from '@/types';
 
 // Order-confirmation page should never be indexed — leaks order_number
 // existence + lets crawlers guess valid IDs (audit SEV-2 + SEV-3).
@@ -15,6 +19,20 @@ export const metadata: Metadata = {
 export default async function ThankYouPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
   const { order } = await searchParams;
   const orderNumber = order ?? 'YP-??????';
+
+  // For a bank-transfer order, show the accounts to pay into. Look up the
+  // order's pay method (orders RLS blocks anon — service-role read).
+  let bankAccounts: BankAccount[] = [];
+  let bankNotes = '';
+  if (order) {
+    const { data: row } = await supabaseAdmin()
+      .from('orders').select('pay_method').eq('order_number', order).maybeSingle();
+    if (row?.pay_method === 'bank') {
+      const settings = await getSiteSettings();
+      bankAccounts = parseBankAccounts(settings.pay_bank_accounts);
+      bankNotes = settings.pay_bank_instructions ?? '';
+    }
+  }
 
   return (
     <main className="fade-in">
@@ -35,6 +53,12 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 32 }}>
             We&apos;ll send you a confirmation on WhatsApp with tracking details once your order ships. Delivery typically takes 2–4 business days.
           </p>
+
+          {bankAccounts.length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <BankAccountsList accounts={bankAccounts} notes={bankNotes} reference={orderNumber} />
+            </div>
+          )}
 
           <div style={{ background: 'var(--paper2)', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', padding: 24, marginBottom: 32, textAlign: 'left' }}>
             <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>What Happens Next</Overline>

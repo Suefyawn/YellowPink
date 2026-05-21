@@ -5,6 +5,8 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from './actions';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { BankAccountsEditor } from '@/components/admin/BankAccountsEditor';
+import { parseBankAccounts } from '@/lib/bank-accounts';
 
 const inp: React.CSSProperties = {
   width: '100%', padding: '9px 12px', border: '1px solid #d1d5db',
@@ -242,16 +244,24 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               name="pay_bank_enabled"
               checked={g('pay_bank_enabled', 'true') !== 'false'}
               label="Bank Transfer"
-              desc="Manual: customer transfers to your account, you confirm + ship. Fill in your bank details below so they appear on the thank-you page."
+              desc="Manual: the customer transfers to one of your accounts, then you confirm and ship. Add your accounts below — they show at checkout and on the order confirmation page."
             />
             <div style={{ marginTop: 8 }}>
-              <label style={lbl}>Bank transfer instructions (shown on thank-you page)</label>
+              <label style={lbl}>Bank &amp; wallet accounts</label>
+              <p style={{ margin: '0 0 8px', fontSize: '0.75rem', color: '#9ca3af' }}>
+                Add as many as you like — banks, Easypaisa, JazzCash. Every account shows to the
+                customer when they choose Bank Transfer.
+              </p>
+              <BankAccountsEditor name="pay_bank_accounts" initial={parseBankAccounts(g('pay_bank_accounts'))} />
+            </div>
+            <div style={{ marginTop: 4 }}>
+              <label style={lbl}>Additional notes (optional)</label>
               <textarea
                 name="pay_bank_instructions"
                 defaultValue={g('pay_bank_instructions', '')}
-                rows={3}
+                rows={2}
                 style={{ ...inp, fontFamily: 'inherit', resize: 'vertical' }}
-                placeholder="Account title: Yellow Pink&#10;Bank: Meezan Bank&#10;Account #: 0123456789&#10;IBAN: PK00 MEZN 0000 0123 4567 89"
+                placeholder="e.g. Send your transfer receipt to our WhatsApp to confirm the order."
               />
             </div>
           </div>
