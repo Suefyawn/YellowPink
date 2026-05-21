@@ -28,8 +28,18 @@ export default function AccountOrdersPage() {
     if (!loading && !user) { router.replace('/login'); return; }
     if (!user) return;
     const sb = getBrowserClient();
-    sb.from('orders').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
-      .then(({ data }) => { setOrders((data ?? []) as Order[]); setFetching(false); });
+    (async () => {
+      // Back-fill user_id onto any guest orders placed with this account's
+      // email so they appear in the history below. Idempotent — once the
+      // orders are claimed it matches zero rows.
+      await sb.rpc('claim_guest_orders' as never);
+      const { data } = await sb
+        .from('orders').select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      setOrders((data ?? []) as Order[]);
+      setFetching(false);
+    })();
   }, [user, loading, router]);
 
   if (loading || fetching) {
