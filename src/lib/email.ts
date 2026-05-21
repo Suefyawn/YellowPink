@@ -31,6 +31,11 @@ const RESEND_DAILY_BATCH_CAP = 90;
 // Hard ceiling on a single Resend API call — keeps a stalled request from
 // hanging the caller (e.g. the newsletter send loop) forever.
 const SEND_TIMEOUT_MS = 12000;
+// Hard ceiling on the best-effort Supabase calls in the send path (the
+// quota-claim RPC and the email_log insert). Without it, a stalled DB call
+// could hang an email send — and a newsletter blast — indefinitely, which
+// is exactly the admin-UI freeze the post-launch QA flagged.
+const DB_TIMEOUT_MS = 8000;
 const BRAND_PINK = '#E8487F';
 const BRAND_YELLOW = '#F7C948';
 const PAPER = '#FAF6EE';
@@ -45,6 +50,17 @@ const LINE = '#e5e7eb';
 const LOGO_URL = `${SITE_URL}/icon-192.png`;
 
 // ─── Primitives ─────────────────────────────────────────────────────────────
+// Race a promise against a timeout so a stalled call can't block the caller
+// forever. Used for the best-effort Supabase calls in the send path.
+function withTimeout<T>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out`)), ms),
+    ),
+  ]);
+}
+
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"']/g, c =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!)
@@ -130,14 +146,18 @@ async function recordEmailLog(
   extra: { resendId?: string | null; error?: string } = {},
 ): Promise<void> {
   try {
-    await supabaseAdmin().from('email_log').insert({
-      recipient: Array.isArray(opts.to) ? opts.to.join(', ') : opts.to,
-      subject: opts.subject,
-      kind: opts.kind ?? 'transactional',
-      status,
-      resend_id: extra.resendId ?? null,
-      error: extra.error ? extra.error.slice(0, 500) : null,
-    });
+    await withTimeout(
+      supabaseAdmin().from('email_log').insert({
+        recipient: Array.isArray(opts.to) ? opts.to.join(', ') : opts.to,
+        subject: opts.subject,
+        kind: opts.kind ?? 'transactional',
+        status,
+        resend_id: extra.resendId ?? null,
+        error: extra.error ? extra.error.slice(0, 500) : null,
+      }),
+      DB_TIMEOUT_MS,
+      'email_log insert',
+    );
   } catch {
     /* logging is best-effort */
   }
@@ -161,10 +181,14 @@ async function send(opts: {
   // Free-tier guard: claim a slot in today's send budget. Fails open — a
   // quota-check error must never block an email from going out.
   try {
-    const { data: allowed } = await supabaseAdmin().rpc('claim_email_send' as never, {
-      p_kind: opts.kind ?? 'transactional',
-      p_cap: RESEND_DAILY_BATCH_CAP,
-    } as never);
+    const { data: allowed } = await withTimeout(
+      supabaseAdmin().rpc('claim_email_send' as never, {
+        p_kind: opts.kind ?? 'transactional',
+        p_cap: RESEND_DAILY_BATCH_CAP,
+      } as never),
+      DB_TIMEOUT_MS,
+      'claim_email_send',
+    );
     if (allowed === false) {
       log.warn('email.skipped_quota', { to: opts.to, subject: opts.subject });
       await recordEmailLog(opts, 'skipped', { error: 'Daily send cap reached' });
