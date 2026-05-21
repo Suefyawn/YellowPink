@@ -59,8 +59,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  // The applied coupon lives in CartProvider (persisted to localStorage), so a
+  // coupon added on /cart survives the trip to checkout — including a refresh
+  // or full page load. `couponCode` is just the local text-input value.
   const [couponCode, setCouponCode] = useState(cartCoupon?.code ?? '');
-  const [coupon, setCoupon] = useState<Coupon | null>(cartCoupon);
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   // Optimistic first render from the default free-shipping threshold (₨2,500),
@@ -97,10 +99,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   }, [user]);
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const couponDiscount = coupon
-    ? coupon.type === 'percent'
-      ? Math.round(subtotal * coupon.value / 100)
-      : coupon.value
+  const couponDiscount = cartCoupon
+    ? cartCoupon.type === 'percent'
+      ? Math.round(subtotal * cartCoupon.value / 100)
+      : cartCoupon.value
     : 0;
   const discount = couponDiscount;
   const lineTotal = Math.max(0, subtotal - discount);
@@ -203,8 +205,8 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
       perUserUsedCount,
     });
     if (!verdict.ok) { setCouponError(verdict.error); return; }
-    setCoupon(c);
     setAppliedCoupon(c);
+    setCouponCode(c.code);
   };
 
   const handleSubmit = async () => {
@@ -251,7 +253,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
           items: cartItems,
           status: 'pending',
           user_id: user?.id || '',
-          coupon_code: coupon?.code || '',
+          coupon_code: cartCoupon?.code || '',
           discount_amount: discount,
         },
         gift_card_code:   null,
@@ -426,14 +428,16 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{item.name}</div>
-                    {item.variant && <div className="small-text" style={{ fontSize: '0.6875rem' }}>{item.variant}</div>}
+                    {(item.variant_label ?? item.variant) && (
+                      <div className="small-text" style={{ fontSize: '0.6875rem' }}>{item.variant_label ?? item.variant}</div>
+                    )}
                   </div>
                   <span className="tabular-nums" style={{ fontSize: '0.8125rem', fontWeight: 500, flexShrink: 0 }}>PKR {(item.price * item.qty).toLocaleString()}</span>
                 </div>
               ))}
               <hr className="hairline" style={{ margin: '16px 0' }} />
 
-              {!coupon ? (
+              {!cartCoupon ? (
                 <div style={{ marginBottom: 12 }}>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
@@ -455,9 +459,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
                   <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
-                    ✓ {coupon.code} {coupon.type === 'percent' ? `(${coupon.value}% off)` : `(PKR ${coupon.value} off)`}
+                    ✓ {cartCoupon.code} {cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
                   </span>
-                  <button type="button" aria-label="Remove coupon" onClick={() => { setCoupon(null); setCouponCode(''); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+                  <button type="button" aria-label="Remove coupon" onClick={() => { setCouponCode(''); setAppliedCoupon(null); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
                 </div>
               )}
 

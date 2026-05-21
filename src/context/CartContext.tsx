@@ -36,6 +36,7 @@ interface CartContextValue {
 const CartContext = createContext<CartContextValue | null>(null);
 
 const CART_KEY = 'yp_cart';
+const COUPON_KEY = 'yp_coupon';
 
 function loadCart(): CartItem[] {
   if (typeof window === 'undefined') return [];
@@ -44,6 +45,16 @@ function loadCart(): CartItem[] {
     return raw ? (JSON.parse(raw) as CartItem[]) : [];
   } catch {
     return [];
+  }
+}
+
+function loadCoupon(): Coupon | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(COUPON_KEY);
+    return raw ? (JSON.parse(raw) as Coupon) : null;
+  } catch {
+    return null;
   }
 }
 
@@ -58,13 +69,25 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // setState-in-effect is intentional: the cart is persisted in an external
   // store (localStorage) and we sync it into React state at mount.
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // The applied coupon is persisted alongside the cart so it survives a
+    // refresh or a full page load on the way from /cart to /checkout — the
+    // server still re-validates the code at order time.
+    /* eslint-disable react-hooks/set-state-in-effect */
     setCartItems(loadCart());
+    setAppliedCoupon(loadCoupon());
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, []);
 
   useEffect(() => {
     try { localStorage.setItem(CART_KEY, JSON.stringify(cartItems)); } catch { /* quota exceeded */ }
   }, [cartItems]);
+
+  useEffect(() => {
+    try {
+      if (appliedCoupon) localStorage.setItem(COUPON_KEY, JSON.stringify(appliedCoupon));
+      else localStorage.removeItem(COUPON_KEY);
+    } catch { /* quota exceeded */ }
+  }, [appliedCoupon]);
 
   const addToCart = (product: AddToCartInput) => {
     setCartItems(prev => {
