@@ -72,7 +72,11 @@ export default async function DashboardPage() {
     supabase.from('products').select('*').eq('track_inventory', true).lte('stock', 5).order('stock', { ascending: true }).limit(50),
     supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lte('stock', 5),
     admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
-    admin.from('orders').select('total, status, created_at').gte('created_at', thirtyDaysAgo).neq('status', 'cancelled'),
+    // Revenue series reads `v_orders_revenue` — the same view the Analytics
+    // page uses — so the two pages report an identical "Revenue · last 30
+    // days". The view excludes cancelled / payment_pending / payment_failed
+    // orders and zeroes refunds.
+    admin.from('v_orders_revenue').select('revenue, created_at').gte('created_at', thirtyDaysAgo),
   ]);
 
   // Build 30-day revenue series — reuse the `nowMs` we pinned above so the
@@ -82,9 +86,9 @@ export default async function DashboardPage() {
     const d = new Date(nowMs - i * 24 * 60 * 60 * 1000);
     dayMap[d.toISOString().slice(0, 10)] = 0;
   }
-  for (const o of (recentOrdersForChart ?? []) as Array<{ total: number; created_at: string }>) {
+  for (const o of (recentOrdersForChart ?? []) as Array<{ revenue: number; created_at: string }>) {
     const day = o.created_at.slice(0, 10);
-    if (day in dayMap) dayMap[day] += o.total;
+    if (day in dayMap) dayMap[day] += Number(o.revenue) || 0;
   }
   const chartDays = Object.entries(dayMap).map(([date, revenue]) => ({ date, revenue }));
 
