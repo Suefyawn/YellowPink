@@ -416,9 +416,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             )}
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
               <span className="tabular-nums" style={{ fontSize: '1.5rem', fontWeight: 600 }}>PKR {displayPrice.toLocaleString()}</span>
-              {displayOriginal && displayOriginal > displayPrice && (
+              {(displayOriginal ?? 0) > displayPrice && (
                 <span className="tabular-nums" style={{ textDecoration: 'line-through', color: 'var(--brand-pink-text)', fontSize: '1rem' }}>
-                  PKR {displayOriginal.toLocaleString()}
+                  PKR {(displayOriginal ?? 0).toLocaleString()}
                 </span>
               )}
             </div>

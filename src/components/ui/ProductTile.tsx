@@ -93,7 +93,7 @@ export function ProductTile({ product }: ProductTileProps) {
           }}>
             <ProductImage src={product.image_url} alt={brandPlusName(brand, name)} label={brand} />
           </div>
-          {original_price && (
+          {(original_price ?? 0) > price && (
             <span style={{
               position: 'absolute', top: 8, left: 8,
               background: 'var(--brand-yellow)', color: 'var(--ink-900)',
@@ -166,10 +166,10 @@ export function ProductTile({ product }: ProductTileProps) {
           <span className="tabular-nums" style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
             PKR {price.toLocaleString()}
           </span>
-          {original_price && (
+          {(original_price ?? 0) > price && (
             <span className="tabular-nums" style={{
               textDecoration: 'line-through', color: 'var(--brand-pink-text, var(--brand-pink))', fontSize: '0.8125rem',
-            }}>PKR {original_price.toLocaleString()}</span>
+            }}>PKR {(original_price ?? 0).toLocaleString()}</span>
           )}
         </div>
       </Link>

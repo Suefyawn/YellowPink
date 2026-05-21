@@ -100,9 +100,9 @@ export function ProductsTable({ products }: { products: Product[] }) {
                     </td>
                     <td data-label="Price" style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>
                       {fmt(p.price)}
-                      {p.original_price && (
+                      {(p.original_price ?? 0) > p.price && (
                         <div style={{ color: '#9ca3af', fontWeight: 400, textDecoration: 'line-through', fontSize: '0.75rem' }}>
-                          {fmt(p.original_price)}
+                          {fmt(p.original_price ?? 0)}
                         </div>
                       )}
                     </td>
