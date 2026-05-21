@@ -118,6 +118,28 @@ export function fromDomain(from: string): string {
   return bare ? bare[1] : 'unknown';
 }
 
+// Append a row to email_log for every send attempt. Best-effort — a logging
+// failure must never break (or slow to the point of failing) an email send.
+// `resend_id` ties the row to later Resend webhook events (delivered/opened).
+async function recordEmailLog(
+  opts: { to: string | string[]; subject: string; kind?: 'transactional' | 'batch' },
+  status: 'sent' | 'failed' | 'skipped',
+  extra: { resendId?: string | null; error?: string } = {},
+): Promise<void> {
+  try {
+    await supabaseAdmin().from('email_log').insert({
+      recipient: Array.isArray(opts.to) ? opts.to.join(', ') : opts.to,
+      subject: opts.subject,
+      kind: opts.kind ?? 'transactional',
+      status,
+      resend_id: extra.resendId ?? null,
+      error: extra.error ? extra.error.slice(0, 500) : null,
+    });
+  } catch {
+    /* logging is best-effort */
+  }
+}
+
 async function send(opts: {
   to: string | string[];
   subject: string;
@@ -130,6 +152,7 @@ async function send(opts: {
 }): Promise<boolean> {
   if (!resend) {
     log.warn('email.skip', { reason: 'RESEND_API_KEY not set', to: opts.to, subject: opts.subject });
+    await recordEmailLog(opts, 'skipped', { error: 'RESEND_API_KEY not set' });
     return false;
   }
   // Free-tier guard: claim a slot in today's send budget. Fails open — a
@@ -141,6 +164,7 @@ async function send(opts: {
     } as never);
     if (allowed === false) {
       log.warn('email.skipped_quota', { to: opts.to, subject: opts.subject });
+      await recordEmailLog(opts, 'skipped', { error: 'Daily send cap reached' });
       return false;
     }
   } catch {
@@ -177,9 +201,11 @@ async function send(opts: {
         },
         extra: { to: opts.to, subject: opts.subject, statusCode: result.error.statusCode },
       });
+      await recordEmailLog(opts, 'failed', { error: `${errName}: ${errMsg}` });
       return false;
     }
     log.info('email.sent', { to: opts.to, subject: opts.subject, id: result.data?.id });
+    await recordEmailLog(opts, 'sent', { resendId: result.data?.id });
     return true;
   } catch (err) {
     log.error('email.send_failed', { to: opts.to, subject: opts.subject, err });
@@ -187,6 +213,7 @@ async function send(opts: {
       tags: { email_send_failed: 'true', resend_error_name: 'transport_error', from_domain: fromDomain(FROM) },
       extra: { to: opts.to, subject: opts.subject },
     });
+    await recordEmailLog(opts, 'failed', { error: (err as Error).message });
     return false;
   }
 }
