@@ -8,6 +8,7 @@ import { getProducts, isDemo } from '@/lib/supabase';
 import { supabase } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { canonicalCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
 import type { ProductAttribute, AttributeValue } from '@/types';
 
 export interface AttributeWithValues extends ProductAttribute {
@@ -69,38 +70,52 @@ async function loadFacetData(): Promise<FacetData> {
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; q?: string }> }): Promise<Metadata> {
   const { category, subcategory, cat, q } = await searchParams;
-  const resolvedCategory = category ?? cat;
+  // Resolve ?category= (or the legacy ?cat=) to its canonical label, so the
+  // slug form (?category=combo-packs) and the label form (?category=Combo
+  // Packs) collapse onto ONE title + canonical URL instead of two duplicates.
+  const resolvedCategory = canonicalCategory(category ?? cat);
   // Sanitise free-text query before interpolating it into the title /
   // description / og:title (audit SEV-2: raw `<img onerror=…>` ended up in
   // og:title `content` attribute when query was malicious). Strip every
   // character that has structural meaning in HTML and clamp length.
   const rawQ = q?.trim() ?? '';
   const trimmedQ = rawQ ? rawQ.replace(/[<>"'&]/g, '').slice(0, 80) : '';
-  // Title: query > category > generic. Each variant gets a distinct,
-  // human-readable title (good for SERPs).
+  // Title: query > subcategory > category > generic. Each variant gets a
+  // distinct, human-readable title (good for SERPs).
   let title: string;
   if (trimmedQ)              title = `Search: ${trimmedQ}`;
   else if (subcategory)      title = `${subcategory} — Shop`;
-  else if (resolvedCategory && resolvedCategory !== 'All') title = `${resolvedCategory} — Shop`;
+  else if (resolvedCategory) title = `${resolvedCategory} — Shop`;
   else                        title = 'Shop All Products';
 
   // Canonical strategy:
-  //   • `/shop` (no params) and `/shop?category=Foo` (or `/shop?subcategory=Bar`)
-  //     are real index targets — each canonicalizes to itself.
+  //   • `/shop` and `/shop?category=Foo` (or `?subcategory=Bar`) are real
+  //     index targets — each canonicalizes to itself, with the category in
+  //     its canonical label form.
   //   • Free-text searches, brand/attr/price/stock filters, sort, and
   //     pagination are all variations of the same product set — they
   //     canonicalize back to `/shop` (or the matching category root).
   //     Keeps Google from indexing thousands of near-duplicate URLs.
   const canonicalParams = new URLSearchParams();
-  if (resolvedCategory && resolvedCategory !== 'All') canonicalParams.set('category', resolvedCategory);
+  if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
   if (subcategory) canonicalParams.set('subcategory', subcategory);
   const qs = canonicalParams.toString();
 
+  // Description: search > the category's own landing copy > generic. Reusing
+  // the per-category copy gives every category page a unique meta description
+  // instead of all of them sharing one line.
+  let description: string;
+  if (trimmedQ) {
+    description = `Search results for "${trimmedQ}" — imported skincare, makeup, and wellness products. COD nationwide in Pakistan.`;
+  } else if (resolvedCategory && CATEGORY_DESCRIPTIONS[resolvedCategory]) {
+    description = CATEGORY_DESCRIPTIONS[resolvedCategory];
+  } else {
+    description = 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.';
+  }
+
   return pageMeta({
     title,
-    description: trimmedQ
-      ? `Search results for "${trimmedQ}" — imported skincare, makeup, and wellness products. COD nationwide in Pakistan.`
-      : 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.',
+    description,
     path: `/shop${qs ? `?${qs}` : ''}`,
     // Block free-text searches from being indexed (they're infinite-state).
     noIndex: Boolean(trimmedQ),
@@ -156,10 +171,6 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             scopedProducts.map(p => ({
               name: p.name,
               path: `/product/${p.slug}`,
-              image: p.image_url ?? null,
-              price: p.price,
-              priceCurrency: 'PKR',
-              brand: p.brand,
             })),
           )),
         }}

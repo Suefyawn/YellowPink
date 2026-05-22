@@ -101,3 +101,75 @@ export function taxonForCategory(category: string | null | undefined): Taxon | n
   }
   return null;
 }
+
+// ── Category landing-page copy ──────────────────────────────────────────────
+// Intro copy shown on each Shop category/taxon page AND reused as that page's
+// meta description, so every category landing page has unique, indexable text
+// instead of all sharing one generic line. Keyed by taxon labels and by the
+// fine-grained leaf categories.
+export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
+  All: 'Imported, authentic, and tested for Pakistani skin. Every product earns its place.',
+
+  // ── Taxons ──
+  Makeup: 'Authentic imported makeup from the world\'s best brands, available in Pakistan.',
+  Skincare: 'Science-backed skincare formulas that actually work on Pakistani skin.',
+  Wellness: 'Clinical-grade nutraceuticals for fertility, immunity, and daily vitality.',
+  Bundles: 'Curated combos and value packs — more of what you love, for less.',
+
+  // ── Makeup leaves ──
+  'Lip & Cheek Tints': 'Multi-use tints that bring a natural flush to lips and cheeks — buildable, blendable colour in a single step.',
+  'Face Makeup': 'Foundations, concealers and complexion essentials for a smooth, true-to-tone base that lasts all day.',
+  'Eyes': 'Eyeshadows, liners and mascaras to define, deepen and finish any eye look.',
+  'Highlighters': 'Liquid and powder highlighters for a lit-from-within glow that flatters every skin tone.',
+  'Brushes & Tools': 'Makeup brushes, sponges and beauty tools for a smooth, professional finish at home.',
+
+  // ── Skincare leaves ──
+  'Cleansers & Treatments': 'Face washes, exfoliants and targeted treatments to cleanse, clear and renew your skin.',
+  'Moisturizers': 'Hydrating creams and lotions that soften, nourish and strengthen your skin barrier.',
+  'Hair Care': 'Shampoos, treatments and hair supplements for stronger, healthier hair from root to tip.',
+
+  // ── Wellness leaves ──
+  "Women's Health": 'Supplements formulated for women — fertility, prenatal nutrition, hormonal balance and everyday vitality.',
+  "Men's Health": "Targeted supplements for men's energy, stamina and everyday performance.",
+  'Immunity': "Vitamins, minerals and herbal supplements to support your body's everyday defences.",
+  'Bone & Joint': 'Calcium, collagen and joint-support supplements to help you stay mobile and strong.',
+  'Heart Health': 'Omega-3s and cardiovascular supplements that support a healthy, well-functioning heart.',
+  'Digestive & Gut': 'Probiotics and digestive supplements for a comfortable, balanced gut.',
+  'Cough & Respiratory': 'Syrups and lozenges to soothe coughs and support clear, easy breathing.',
+  'Kids': 'Gentle syrups and supplements made for growing children — easy to take, easy to trust.',
+
+  // ── Bundle leaves ──
+  'Combo Packs': 'Hand-picked product pairings that work better together — curated combos at a friendlier price.',
+  'Budget Bundles': 'Everyday favourites bundled into wallet-friendly value packs.',
+};
+
+/** Every fine-grained leaf category, flattened across all taxons. */
+export const ALL_CATEGORIES: readonly string[] = TAXONS.flatMap(t => t.categories);
+
+const slugifyCategory = (s: string) =>
+  s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+// Leaf category lookup keyed by both the lower-cased label and its slug
+// ("combo-packs"), so either URL form resolves to the canonical label.
+const CATEGORY_BY_KEY: Record<string, string> = Object.fromEntries(
+  ALL_CATEGORIES.flatMap(c => [
+    [c.toLowerCase(), c] as [string, string],
+    [slugifyCategory(c), c] as [string, string],
+  ]),
+);
+
+/**
+ * Resolve a `?category=` value — a canonical label ("Combo Packs"), a slug
+ * ("combo-packs"), or a taxon ("makeup" / "Makeup") — to its canonical display
+ * label. Returns null for "All" / unknown values. Collapsing the label-vs-slug
+ * variants onto one label keeps the Shop page's title + canonical URL stable,
+ * so the same category is not indexed under two competing URLs.
+ */
+export function canonicalCategory(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const v = value.trim();
+  if (!v || v.toLowerCase() === 'all') return null;
+  const taxon = findTaxon(v);
+  if (taxon) return taxon.label;
+  return CATEGORY_BY_KEY[v.toLowerCase()] ?? null;
+}

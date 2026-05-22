@@ -60,6 +60,15 @@ const nextConfig: NextConfig = {
   // dev resources by default; this is a dev-only allowlist (does NOT affect
   // production routing).
   allowedDevOrigins: ['127.0.0.1', 'localhost'],
+  // Permanent redirects. `/products/*` (plural) is a stray path — the real
+  // product route is the singular `/product/:slug`. A 308 keeps any inbound
+  // link or stale crawl pointed at the right URL instead of hitting a 404.
+  async redirects() {
+    return [
+      { source: '/products/:slug', destination: '/product/:slug', permanent: true },
+      { source: '/products', destination: '/shop', permanent: true },
+    ];
+  },
   // Security + caching response headers. Applied to every storefront response
   // so we get HSTS (closes the Semrush "No HSTS support" finding), a sensible
   // Referrer-Policy + Permissions-Policy, and a strong X-Content-Type-Options.
