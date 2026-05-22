@@ -372,42 +372,24 @@ export function breadcrumbLd(items: { name: string; path: string }[]) {
  */
 export function itemListLd(
   name: string,
-  items: Array<{
-    name: string;
-    path: string;
-    image?: string | null;
-    price?: number;
-    priceCurrency?: string;
-    brand?: string | null;
-  }>,
+  items: Array<{ name: string; path: string }>,
 ) {
-  const elements = items.map((it, i) => {
-    const base: Record<string, unknown> = {
-      '@type': 'ListItem',
-      position: i + 1,
-      url: absoluteUrl(it.path),
-      name: it.name,
-    };
-    if (it.image || it.price !== undefined || it.brand) {
-      base.item = {
-        '@type': 'Product',
-        name: it.name,
-        url: absoluteUrl(it.path),
-        ...(it.image ? { image: it.image } : {}),
-        ...(it.brand ? { brand: { '@type': 'Brand', name: it.brand } } : {}),
-        ...(it.price !== undefined
-          ? { offers: { '@type': 'Offer', price: it.price, priceCurrency: it.priceCurrency ?? 'PKR' } }
-          : {}),
-      };
-    }
-    return base;
-  });
+  // A summary-page ItemList: each entry is a ListItem pointing at its detail
+  // page via `url`. We deliberately do NOT embed partial Product objects —
+  // an incomplete Product (no offers/review/rating) is flagged as a markup
+  // error by validators, and a blog post is not a Product at all. The full
+  // Product schema lives on each PDP via `productLd`.
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name,
     numberOfItems: items.length,
-    itemListElement: elements,
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: absoluteUrl(it.path),
+      name: it.name,
+    })),
   };
 }
 

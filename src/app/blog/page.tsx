@@ -36,7 +36,6 @@ export default async function BlogListPage() {
             itemListPosts.map(p => ({
               name: p.title,
               path: `/blog/${p.slug}`,
-              image: p.image_url ?? null,
             })),
           )),
         }}
