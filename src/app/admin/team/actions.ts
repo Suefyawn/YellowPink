@@ -22,7 +22,10 @@ export async function createStaffMember(
 
   const email = (formData.get('email') as string).trim().toLowerCase();
   const name = (formData.get('name') as string).trim();
-  const permissions = (formData.getAll('permissions') as Permission[]);
+  const roleId = ((formData.get('role_id') as string) ?? '').trim();
+  // A staff member is either role-assigned (permissions inherited from the
+  // role) or "Custom" (its own permissions column) — never both.
+  const permissions = roleId ? [] : (formData.getAll('permissions') as Permission[]);
 
   if (!email || !name) return { error: 'Name and email are required' };
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'Invalid email address' };
@@ -35,6 +38,7 @@ export async function createStaffMember(
     .insert({
       email, name,
       permissions,
+      role_id: roleId || null,
       password_hash: hash,
       password_salt: '',                 // empty for scrypt rows
       is_active: true,
@@ -54,7 +58,7 @@ export async function createStaffMember(
     action: 'staff.create',
     entity: 'staff_members',
     entity_id: created?.id ?? null,
-    diff: { email, name, permissions },
+    diff: { email, name, permissions, role_id: roleId || null },
   });
 
   revalidatePath('/admin/team');
@@ -69,11 +73,12 @@ export async function updateStaffPermissions(
 
   const id = formData.get('id') as string;
   const name = (formData.get('name') as string).trim();
-  const permissions = (formData.getAll('permissions') as Permission[]);
+  const roleId = ((formData.get('role_id') as string) ?? '').trim();
+  const permissions = roleId ? [] : (formData.getAll('permissions') as Permission[]);
 
   const { error } = await supabaseAdmin()
     .from('staff_members')
-    .update({ name, permissions })
+    .update({ name, permissions, role_id: roleId || null })
     .eq('id', id);
 
   if (error) return { error: error.message };
@@ -81,7 +86,7 @@ export async function updateStaffPermissions(
     action: 'staff.update',
     entity: 'staff_members',
     entity_id: id,
-    diff: { name, permissions },
+    diff: { name, permissions, role_id: roleId || null },
   });
   revalidatePath('/admin/team');
   return null;

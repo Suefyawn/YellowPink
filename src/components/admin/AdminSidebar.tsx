@@ -97,7 +97,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
             {session.name}
           </div>
           <div style={{ color: session.isOwner ? '#f9a8d4' : '#a5b4fc', fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {session.isOwner ? 'Owner' : 'Manager'}
+            {session.isOwner ? 'Owner' : (session.roleName ?? 'Staff')}
           </div>
         </div>
       </div>

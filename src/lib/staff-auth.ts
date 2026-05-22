@@ -141,7 +141,7 @@ export async function getStaffSession(): Promise<StaffSession | null> {
     const { verify, OWNER_COOKIE_TTL_SEC } = await import('./signed-cookie');
     const payload = await verify(adminCookie, SECRET, OWNER_COOKIE_TTL_SEC);
     if (payload?.sub === 'owner') {
-      return { id: 'owner', email: 'owner', name: 'Owner', permissions: [], isOwner: true };
+      return { id: 'owner', email: 'owner', name: 'Owner', permissions: [], isOwner: true, roleId: null, roleName: null };
     }
   }
 
@@ -153,18 +153,25 @@ export async function getStaffSession(): Promise<StaffSession | null> {
 
   const { data } = await supabaseAdmin()
     .from('staff_members')
-    .select('id, email, name, permissions, is_active')
+    .select('id, email, name, permissions, is_active, role_id, roles(name, permissions)')
     .eq('id', staffId)
     .eq('is_active', true)
     .single();
 
   if (!data) return null;
+  // A staff member with an assigned role inherits that role's permission set,
+  // so editing the role updates everyone who holds it. A "Custom" staff member
+  // (role_id NULL) runs on its own permissions column instead.
+  const role = (Array.isArray(data.roles) ? data.roles[0] : data.roles) as
+    { name: string; permissions: string[] } | null | undefined;
   return {
     id: data.id,
     email: data.email,
     name: data.name,
-    permissions: (data.permissions as Permission[]) ?? [],
+    permissions: ((role ? role.permissions : data.permissions) ?? []) as Permission[],
     isOwner: false,
+    roleId: (data.role_id as string | null) ?? null,
+    roleName: role?.name ?? null,
   };
 }
 
