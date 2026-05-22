@@ -13,6 +13,8 @@ import { brandPlusName } from '@/lib/product-display';
 import { configuredAdapterIds } from '@/lib/couriers';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { Order, CartItem, OrderStatus } from '@/types';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 
 interface OrderEventRow {
   id: string;
@@ -38,6 +40,10 @@ const statusColors: Record<string, string> = {
 };
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('orders')) {
+    return <NoAccess section="Orders" />;
+  }
   const { id } = await params;
   const { data: order } = await supabaseAdmin().from('orders').select('*').eq('id', id).single();
   if (!order) notFound();

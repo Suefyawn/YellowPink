@@ -4,6 +4,8 @@ import { ProductForm } from '@/components/admin/ProductForm';
 import { VariantsSection } from '@/components/admin/VariantsSection';
 import { ProductInventoryHistory } from '@/components/admin/ProductInventoryHistory';
 import type { Product, ProductAttribute, AttributeValue, ProductVariant, Vendor } from '@/types';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 
 interface AttributeWithValues extends ProductAttribute {
   values: AttributeValue[];
@@ -56,6 +58,10 @@ async function loadAttributesAndVariants(productId: string): Promise<{
 }
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('products')) {
+    return <NoAccess section="Products" />;
+  }
   const { id } = await params;
   const { data: rawProduct } = await supabase.from('products').select('*').eq('id', id).single();
   if (!rawProduct) notFound();
