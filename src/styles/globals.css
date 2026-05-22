@@ -101,7 +101,9 @@
  * --paper, one per season. Kept at very low opacity so body-text contrast is
  * unaffected (the palette blocks above own legibility). Inline data-URIs mean
  * zero extra requests. These only apply while <html> carries a non-default
- * data-theme, which layout.tsx sets only when the seasonal toggle is on. */
+ * data-theme, which layout.tsx sets only when the seasonal toggle is on.
+ * Motif stroke/fill hexes are inlined in the data-URIs (SVG data-URIs can't
+ * read CSS vars) — keep them in sync with each season's --brand-pink-text. */
 :root[data-theme="eid"] body {
   /* 8-point khatam star (two overlaid squares) per 40px cell, with a small
    * dot at each cell corner — the corners tile into a dot at every grid

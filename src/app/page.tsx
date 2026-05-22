@@ -11,6 +11,7 @@ import {
   getSiteSettings,
   getBlogPosts,
 } from '@/lib/supabase';
+import { normalizeTheme } from '@/lib/themes';
 
 // Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -81,7 +82,11 @@ export default async function HomePage() {
   // Seasonal hero override — while the seasonal makeover is on, the homepage
   // hero uses the season_hero_* settings; any field left blank falls back to
   // the normal hero value. The secondary CTA + brand-logo row aren't seasonal.
-  const seasonOn = settings.season_active === 'true';
+  // Gated on a real (non-default) season too, so the hero stays in lockstep
+  // with the palette + motif — layout.tsx applies those only for a non-default
+  // theme, so "seasonal mode on + Default season" is a consistent no-op.
+  const seasonOn = settings.season_active === 'true'
+    && normalizeTheme(settings.active_theme) !== 'default';
   const heroField = (seasonKey: string, normalKey: string): string =>
     (seasonOn && settings[seasonKey]) || settings[normalKey] || '';
   const heroSettings = {
