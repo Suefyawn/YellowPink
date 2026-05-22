@@ -74,6 +74,10 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // slug form (?category=combo-packs) and the label form (?category=Combo
   // Packs) collapse onto ONE title + canonical URL instead of two duplicates.
   const resolvedCategory = canonicalCategory(category ?? cat);
+  // ?subcategory= is always a leaf category, so it gets the SAME slug-or-label
+  // normalisation — otherwise ?subcategory=combo-packs and ?subcategory=Combo
+  // Packs would render two different titles + canonicals for the same page.
+  const resolvedSubcategory = canonicalCategory(subcategory);
   // Sanitise free-text params before interpolating them into the title /
   // description / og:title (audit SEV-2: raw `<img onerror=…>` once ended up
   // in the og:title `content` attribute). Strip every character with
@@ -85,11 +89,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // Title: query > subcategory > category > brand > generic. Each variant
   // gets a distinct, human-readable title (good for SERPs).
   let title: string;
-  if (trimmedQ)              title = `Search: ${trimmedQ}`;
-  else if (subcategory)      title = `${subcategory} — Shop`;
-  else if (resolvedCategory) title = `${resolvedCategory} — Shop`;
-  else if (trimmedBrand)     title = `${trimmedBrand} — Shop`;
-  else                        title = 'Shop All Products';
+  if (trimmedQ)                 title = `Search: ${trimmedQ}`;
+  else if (resolvedSubcategory) title = `${resolvedSubcategory} — Shop`;
+  else if (resolvedCategory)    title = `${resolvedCategory} — Shop`;
+  else if (trimmedBrand)        title = `${trimmedBrand} — Shop`;
+  else                          title = 'Shop All Products';
 
   // Canonical strategy:
   //   • `/shop`, `/shop?category=Foo` (`?subcategory=Bar`) and a pure
@@ -101,15 +105,18 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   //     Google never indexes every brand×category permutation.
   const canonicalParams = new URLSearchParams();
   if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
-  if (subcategory) canonicalParams.set('subcategory', subcategory);
-  if (trimmedBrand && !resolvedCategory && !subcategory) canonicalParams.set('brand', trimmedBrand);
+  if (resolvedSubcategory) canonicalParams.set('subcategory', resolvedSubcategory);
+  if (trimmedBrand && !resolvedCategory && !resolvedSubcategory) canonicalParams.set('brand', trimmedBrand);
   const qs = canonicalParams.toString();
 
-  // Description: search > category landing copy > brand line > generic. Every
-  // category and brand page gets a unique description instead of sharing one.
+  // Description: search > subcategory copy > category landing copy > brand
+  // line > generic. Every category, subcategory and brand page gets its OWN
+  // description rather than silently inheriting its parent taxon's.
   let description: string;
   if (trimmedQ) {
     description = `Search results for "${trimmedQ}" — imported skincare, makeup, and wellness products. COD nationwide in Pakistan.`;
+  } else if (resolvedSubcategory && CATEGORY_DESCRIPTIONS[resolvedSubcategory]) {
+    description = CATEGORY_DESCRIPTIONS[resolvedSubcategory];
   } else if (resolvedCategory && CATEGORY_DESCRIPTIONS[resolvedCategory]) {
     description = CATEGORY_DESCRIPTIONS[resolvedCategory];
   } else if (trimmedBrand) {
