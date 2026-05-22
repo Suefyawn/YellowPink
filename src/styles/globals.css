@@ -384,6 +384,25 @@ a.underline,
   animation: skeleton-shimmer 1.4s linear infinite;
 }
 
+/* Admin loading skeletons (see components/admin/Skeleton). Neutral grey to
+ * match the admin shell's white cards and #e5e7eb / #f3f4f6 placeholders,
+ * rather than the cream storefront palette above. */
+.adm-skeleton {
+  background-color: #e5e7eb;
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.65) 50%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: skeleton-shimmer 1.4s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .adm-skeleton { animation: none; }
+}
+
 /* Stats strip in RealResults: 4 cols desktop → 2 cols tablet → stacks lower */
 @media (max-width: 900px) {
   .results-stats { grid-template-columns: repeat(2, 1fr) !important; row-gap: 20px !important; }
