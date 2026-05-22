@@ -7,6 +7,7 @@ import { linkProductMentions } from '@/lib/link-product-mentions';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
+import { absoluteUrl } from '@/lib/seo';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
@@ -103,7 +104,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
 
       {/* Bottom-of-post share strip — catches the reader who finishes the
           article and is most likely to share. */}
-      <BlogShareStrip title={post.title} path={`/blog/${post.slug}`} excerpt={post.excerpt} />
+      <BlogShareStrip title={post.title} url={absoluteUrl(`/blog/${post.slug}`)} excerpt={post.excerpt} />
 
       {/* Newsletter capture at the natural "I just read something good"
           moment. Goes through the existing /api/newsletter pipeline. */}
@@ -139,7 +140,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
               <div className="small-text">{post.date}</div>
             </div>
           </div>
-          <BlogShareStrip title={post.title} path={`/blog/${post.slug}`} excerpt={post.excerpt} />
+          <BlogShareStrip title={post.title} url={absoluteUrl(`/blog/${post.slug}`)} excerpt={post.excerpt} />
           <div style={{ borderBottom: '1px solid var(--line)', marginTop: 16 }} />
         </div>
 
