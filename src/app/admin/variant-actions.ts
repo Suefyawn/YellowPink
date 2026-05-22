@@ -8,7 +8,7 @@ import { logAudit } from '@/lib/audit';
 
 async function assertProducts() {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('products'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.edit'))) {
     throw new Error('Unauthorized');
   }
   return session;

@@ -41,9 +41,13 @@ const statusColors: Record<string, string> = {
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders')) {
+  if (session && !session.isOwner && !session.permissions.includes('orders.view')) {
     return <NoAccess section="Orders" />;
   }
+  // orders.edit gates the mutating widgets below (confirmation, vendor
+  // dispatch, shipment booking, status update). A view-only staffer still
+  // sees the full read-only order detail.
+  const canEdit = !session || session.isOwner || session.permissions.includes('orders.edit');
   const { id } = await params;
   const { data: order } = await supabaseAdmin().from('orders').select('*').eq('id', id).single();
   if (!order) notFound();
@@ -270,7 +274,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      {/* Confirmation & vendor dispatch */}
+      {/* Confirmation & vendor dispatch — edit-gated */}
+      {canEdit && (
       <div style={{ ...section, marginBottom: 20 }}>
         <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Confirmation &amp; vendor</h2>
         <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
@@ -350,6 +355,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
         )}
       </div>
+      )}
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
         {/* Customer */}
@@ -436,9 +442,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      {/* Shipment booking — sits above the status update because most
-          merchant workflows book a courier first, then mark the order
-          shipped. */}
+      {/* Shipment booking — edit-gated. Sits above the status update because
+          most merchant workflows book a courier first, then mark shipped. */}
+      {canEdit && (
       <div style={{ ...section, marginTop: 12 }}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipment</h2>
         <ShipmentBookingForm
@@ -452,6 +458,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           } : null}
         />
       </div>
+      )}
 
       {/* Order timeline — full status history from order_events */}
       <div style={{ ...section, marginBottom: 20 }}>
@@ -486,7 +493,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
-        {/* Order Status Management */}
+        {/* Order Status Management — edit-gated */}
+        {canEdit && (
         <div style={section}>
           <h2 style={{ margin: '0 0 20px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Update Order</h2>
           <OrderStatusForm
@@ -494,6 +502,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             currentStatus={currentStatus}
           />
         </div>
+        )}
 
         {/* Payment Summary */}
         <div style={section}>

@@ -9,7 +9,7 @@ import type { BookingInput } from '@/lib/couriers/types';
 
 async function assertOrders() {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('orders'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
     throw new Error('Unauthorized');
   }
   return session;
@@ -56,7 +56,7 @@ export async function createShipment(
 // ─── Book via courier API (currently TCS, more couriers as adapters ship) ─
 //
 // Flow:
-//   1. Validate session has 'orders' permission.
+//   1. Validate session has the 'orders.edit' permission.
 //   2. Look up the courier adapter; if not configured, return an error
 //      telling the merchant which env vars to set.
 //   3. Pull the order from Supabase so we have the consignee details.

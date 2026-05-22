@@ -26,7 +26,7 @@ export default async function ReturnsPage() {
   // backward-compat with existing staff who only have `orders`.
   if (session && !session.isOwner
       && !session.permissions.includes('returns')
-      && !session.permissions.includes('orders')) {
+      && !session.permissions.includes('orders.view')) {
     return <NoAccess section="Returns" />;
   }
 

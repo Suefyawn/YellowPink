@@ -16,7 +16,7 @@ import { logAudit } from '@/lib/audit';
 // and 'return' are driven by their respective flows (place_order RPC,
 // return-received transition) and not exposed in this form.
 export async function adjustStock(formData: FormData): Promise<void> {
-  const session = await assertPermission('products');
+  const session = await assertPermission('products.edit');
   const productId = (formData.get('product_id') as string) || null;
   const variantId = (formData.get('variant_id') as string) || null;
   const qtyDelta  = Number(formData.get('qty_delta') ?? 0);

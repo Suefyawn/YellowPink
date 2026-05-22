@@ -21,7 +21,7 @@ function parseDirection(raw: FormDataEntryValue | null): 'vendor_collects' | 'we
 }
 
 export async function createVendor(formData: FormData) {
-  const session = await assertPermission('orders');
+  const session = await assertPermission('orders.edit');
   const name  = (formData.get('name') as string)?.trim();
   const phone = (formData.get('phone') as string)?.trim();
   const notes = (formData.get('notes') as string)?.trim() || null;
@@ -45,7 +45,7 @@ export async function createVendor(formData: FormData) {
 
 /** Update a vendor's commission % and settlement direction. */
 export async function updateVendor(formData: FormData) {
-  const session = await assertPermission('orders');
+  const session = await assertPermission('orders.edit');
   const id = formData.get('id') as string;
   if (!id) return;
   const commission_pct = parseCommission(formData.get('commission_pct'));
@@ -62,7 +62,7 @@ export async function updateVendor(formData: FormData) {
 }
 
 export async function deleteVendor(formData: FormData) {
-  const session = await assertPermission('orders');
+  const session = await assertPermission('orders.delete');
   const id = formData.get('id') as string;
   const { data: target } = await supabaseAdmin().from('vendors').select('name').eq('id', id).single();
   await supabaseAdmin().from('vendors').delete().eq('id', id);
@@ -78,7 +78,7 @@ export async function deleteVendor(formData: FormData) {
 /** Toggle whether the customer has confirmed the order (typically over
  *  WhatsApp). Bound with the order id + target state by the order page. */
 export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
-  const session = await assertPermission('orders');
+  const session = await assertPermission('orders.edit');
   await supabaseAdmin()
     .from('orders')
     .update({ confirmed_at: confirmed ? new Date().toISOString() : null })
@@ -162,7 +162,7 @@ async function recomputeSettlement(orderId: string, vendorId: string) {
  *  itself is opened client-side; this persists the assignment + a "sent"
  *  timestamp, and writes the vendor settlement (margin / payout) row. */
 export async function dispatchOrderToVendor(orderId: string, vendorId: string) {
-  const session = await assertPermission('orders');
+  const session = await assertPermission('orders.edit');
   if (!vendorId) return;
   await supabaseAdmin()
     .from('orders')
@@ -179,7 +179,7 @@ export async function dispatchOrderToVendor(orderId: string, vendorId: string) {
 
 /** Mark a vendor settlement as paid/received. */
 export async function markSettlementSettled(formData: FormData) {
-  const session = await assertPermission('orders');
+  const session = await assertPermission('orders.edit');
   const id = formData.get('id') as string;
   if (!id) return;
   const settle = formData.get('settle') !== 'false';

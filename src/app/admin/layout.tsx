@@ -15,9 +15,9 @@ interface NotificationRow {
 //
 // `null` means anyone can see this kind.
 const KIND_PERMISSION: Record<string, Permission | null> = {
-  new_order:      'orders',
-  low_stock:      'products',
-  payment_failed: 'orders',
+  new_order:      'orders.view',
+  low_stock:      'products.view',
+  payment_failed: 'orders.view',
   return_request: 'returns',
   new_review:     'reviews',
   staff_added:    null,           // visible to all signed-in staff

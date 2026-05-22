@@ -16,9 +16,9 @@ interface NavSlot {
 
 const SLOTS: NavSlot[] = [
   { href: '/admin/dashboard', label: 'Home',     icon: '▣' },
-  { href: '/admin/orders',    label: 'Orders',   icon: '◎', permission: 'orders' },
-  { href: '/admin/products',  label: 'Products', icon: '◈', permission: 'products' },
-  { href: '/admin/inventory', label: 'Stock',    icon: '⧉', permission: 'products' },
+  { href: '/admin/orders',    label: 'Orders',   icon: '◎', permission: 'orders.view' },
+  { href: '/admin/products',  label: 'Products', icon: '◈', permission: 'products.view' },
+  { href: '/admin/inventory', label: 'Stock',    icon: '⧉', permission: 'products.view' },
 ];
 
 export function AdminBottomNav({

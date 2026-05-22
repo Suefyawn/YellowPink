@@ -21,7 +21,7 @@ const fmt = (n: number) => `PKR ${Math.round(n).toLocaleString()}`;
 
 export default async function SegmentsPage({ searchParams }: { searchParams: Promise<{ segment?: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('customers')) {
+  if (session && !session.isOwner && !session.permissions.includes('customers.view')) {
     return <NoAccess section="Customer segments" />;
   }
 

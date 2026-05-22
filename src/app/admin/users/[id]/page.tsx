@@ -54,7 +54,7 @@ function activityDetail(a: ActivityRow): string {
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('customers')) {
+  if (session && !session.isOwner && !session.permissions.includes('customers.view')) {
     return <NoAccess section="Customers" />;
   }
   const { id } = await params;
