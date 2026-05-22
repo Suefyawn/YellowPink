@@ -10,6 +10,7 @@ import {
   setStaffCookie, clearStaffCookie,
 } from '@/lib/staff-auth';
 import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
+import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
 import { verifyTotp } from '@/lib/totp';
@@ -129,7 +130,7 @@ export async function createProduct(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const session = await getStaffSessionForActions();
+  const session = await assertPermission('products');
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { data, error } = await supabaseAdmin().from('products').insert(parsed.data).select('id').single();
@@ -144,7 +145,7 @@ export async function updateProduct(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const session = await getStaffSessionForActions();
+  const session = await assertPermission('products');
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   // Snapshot the prior state for the audit diff.
@@ -157,7 +158,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(formData: FormData) {
-  const session = await getStaffSessionForActions();
+  const session = await assertPermission('products');
   const id = formData.get('id') as string;
   const admin = supabaseAdmin();
 
@@ -187,13 +188,6 @@ export async function deleteProduct(formData: FormData) {
   await logAudit(session, { action: 'product.delete', entity: 'product', entity_id: id });
   revalidatePath('/admin/products');
   redirect('/admin/products?deleted=1');
-}
-
-// Helper because we already import getStaffSession via staff-auth.
-async function getStaffSessionForActions() {
-  // Use the same staff-auth import already brought in.
-  const { getStaffSession } = await import('@/lib/staff-auth');
-  return getStaffSession();
 }
 
 // ─── Blog ─────────────────────────────────────────────────────────────────────
@@ -247,6 +241,7 @@ export async function deleteBlogPost(formData: FormData) {
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus): Promise<{ error?: string; count?: number }> {
+  await assertPermission('orders');
   // orders RLS bars anon writes; service role is required for admin
   // mutations.
   const { error, count } = await supabaseAdmin()
@@ -263,6 +258,7 @@ export async function updateOrderStatus(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertPermission('orders');
   const status = formData.get('status') as OrderStatus;
 
   // Read current state so we can detect transitions, email the customer,
@@ -293,7 +289,6 @@ export async function updateOrderStatus(
   // customer return. Idempotency: only fires on the transition, not on a
   // no-op "cancelled → cancelled" submit.
   if (before && before.status !== 'cancelled' && status === 'cancelled') {
-    const session = await getStaffSessionForActions();
     const items = (before.items ?? []) as Array<{ id: string; qty: number; variant_id?: string | null }>;
     for (const it of items) {
       if (!it?.id || !it.qty || it.qty <= 0) continue;
