@@ -27,7 +27,7 @@ const FROM = process.env.EMAIL_FROM ?? 'Yellow Pink Orders <orders@yellowpink.pk
 // the inbox was the old local fallback pointing at the legacy WP domain.
 // Resend free tier is 100 emails/day. Batch/marketing mail stops claiming
 // slots at this cap so transactional order emails keep their headroom.
-const RESEND_DAILY_BATCH_CAP = 90;
+export const RESEND_DAILY_BATCH_CAP = 90;
 // Hard ceiling on a single Resend API call — keeps a stalled request from
 // hanging the caller (e.g. the newsletter send loop) forever.
 const SEND_TIMEOUT_MS = 12000;

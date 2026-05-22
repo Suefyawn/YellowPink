@@ -1,9 +1,13 @@
 export const dynamic = 'force-dynamic';
+// The send action runs from this route — give it headroom over the platform
+// default so a campaign send is never killed mid-flight.
+export const maxDuration = 60;
 
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { NewsletterComposer } from '@/components/admin/NewsletterComposer';
+import { SubscriberList, type Subscriber } from '@/components/admin/SubscriberList';
 
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -26,7 +30,7 @@ export default async function NewsletterPage() {
   // newsletter_subscribers + newsletter_campaigns are RLS-locked to the
   // service role — staff-cookie auth needs supabaseAdmin() to read them.
   const admin = supabaseAdmin();
-  const [{ count: activeCount }, { data: campaignRows }] = await Promise.all([
+  const [{ count: activeCount }, { data: campaignRows }, { data: subscriberRows }] = await Promise.all([
     admin
       .from('newsletter_subscribers')
       .select('id', { count: 'exact', head: true })
@@ -36,10 +40,16 @@ export default async function NewsletterPage() {
       .select('id, subject, recipient_count, sent_count, sent_by, created_at')
       .order('created_at', { ascending: false })
       .limit(20),
+    admin
+      .from('newsletter_subscribers')
+      .select('id, email, source, unsubscribed_at, created_at')
+      .order('created_at', { ascending: false })
+      .limit(2000),
   ]);
 
   const activeSubscribers = activeCount ?? 0;
   const campaigns = (campaignRows ?? []) as CampaignRow[];
+  const subscribers = (subscriberRows ?? []) as Subscriber[];
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -50,6 +60,8 @@ export default async function NewsletterPage() {
       </p>
 
       <NewsletterComposer activeCount={activeSubscribers} />
+
+      <SubscriberList subscribers={subscribers} />
 
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6' }}>
