@@ -68,47 +68,52 @@ async function loadFacetData(): Promise<FacetData> {
   return { attributes, productValueMap };
 }
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; q?: string }> }): Promise<Metadata> {
-  const { category, subcategory, cat, q } = await searchParams;
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; q?: string; brand?: string }> }): Promise<Metadata> {
+  const { category, subcategory, cat, q, brand } = await searchParams;
   // Resolve ?category= (or the legacy ?cat=) to its canonical label, so the
   // slug form (?category=combo-packs) and the label form (?category=Combo
   // Packs) collapse onto ONE title + canonical URL instead of two duplicates.
   const resolvedCategory = canonicalCategory(category ?? cat);
-  // Sanitise free-text query before interpolating it into the title /
-  // description / og:title (audit SEV-2: raw `<img onerror=…>` ended up in
-  // og:title `content` attribute when query was malicious). Strip every
-  // character that has structural meaning in HTML and clamp length.
-  const rawQ = q?.trim() ?? '';
-  const trimmedQ = rawQ ? rawQ.replace(/[<>"'&]/g, '').slice(0, 80) : '';
-  // Title: query > subcategory > category > generic. Each variant gets a
-  // distinct, human-readable title (good for SERPs).
+  // Sanitise free-text params before interpolating them into the title /
+  // description / og:title (audit SEV-2: raw `<img onerror=…>` once ended up
+  // in the og:title `content` attribute). Strip every character with
+  // structural meaning in HTML and clamp length.
+  const clean = (s: string | undefined, max: number) =>
+    s?.trim() ? s.trim().replace(/[<>"'&]/g, '').slice(0, max) : '';
+  const trimmedQ = clean(q, 80);
+  const trimmedBrand = clean(brand, 60);
+  // Title: query > subcategory > category > brand > generic. Each variant
+  // gets a distinct, human-readable title (good for SERPs).
   let title: string;
   if (trimmedQ)              title = `Search: ${trimmedQ}`;
   else if (subcategory)      title = `${subcategory} — Shop`;
   else if (resolvedCategory) title = `${resolvedCategory} — Shop`;
+  else if (trimmedBrand)     title = `${trimmedBrand} — Shop`;
   else                        title = 'Shop All Products';
 
   // Canonical strategy:
-  //   • `/shop` and `/shop?category=Foo` (or `?subcategory=Bar`) are real
-  //     index targets — each canonicalizes to itself, with the category in
-  //     its canonical label form.
-  //   • Free-text searches, brand/attr/price/stock filters, sort, and
-  //     pagination are all variations of the same product set — they
-  //     canonicalize back to `/shop` (or the matching category root).
-  //     Keeps Google from indexing thousands of near-duplicate URLs.
+  //   • `/shop`, `/shop?category=Foo` (`?subcategory=Bar`) and a pure
+  //     `/shop?brand=Baz` are real index targets — each canonicalizes to
+  //     itself, with the category in its canonical label form.
+  //   • Free-text searches, attr/price/stock filters, sort, pagination, and
+  //     brand+category combos are variations of the same set — they
+  //     canonicalize back to `/shop` (or the matching category root), so
+  //     Google never indexes every brand×category permutation.
   const canonicalParams = new URLSearchParams();
   if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
   if (subcategory) canonicalParams.set('subcategory', subcategory);
+  if (trimmedBrand && !resolvedCategory && !subcategory) canonicalParams.set('brand', trimmedBrand);
   const qs = canonicalParams.toString();
 
-  // Description: search > the category's own landing copy > generic. Reusing
-  // the per-category copy gives every category page a unique meta description
-  // instead of all of them sharing one line.
+  // Description: search > category landing copy > brand line > generic. Every
+  // category and brand page gets a unique description instead of sharing one.
   let description: string;
   if (trimmedQ) {
     description = `Search results for "${trimmedQ}" — imported skincare, makeup, and wellness products. COD nationwide in Pakistan.`;
   } else if (resolvedCategory && CATEGORY_DESCRIPTIONS[resolvedCategory]) {
     description = CATEGORY_DESCRIPTIONS[resolvedCategory];
+  } else if (trimmedBrand) {
+    description = `Shop the ${trimmedBrand} range at Yellow Pink — 100% authentic, imported ${trimmedBrand}, with cash-on-delivery nationwide in Pakistan.`;
   } else {
     description = 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.';
   }

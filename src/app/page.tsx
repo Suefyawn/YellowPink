@@ -78,15 +78,21 @@ export default async function HomePage() {
     { title: 'Health & Wellness', tiles: WELLNESS_TILE_CATS.map(tile) },
   ];
 
+  // Seasonal hero override — while the seasonal makeover is on, the homepage
+  // hero uses the season_hero_* settings; any field left blank falls back to
+  // the normal hero value. The secondary CTA + brand-logo row aren't seasonal.
+  const seasonOn = settings.season_active === 'true';
+  const heroField = (seasonKey: string, normalKey: string): string =>
+    (seasonOn && settings[seasonKey]) || settings[normalKey] || '';
   const heroSettings = {
-    overline: settings.hero_overline,
-    headline: settings.hero_headline,
-    subline: settings.hero_subline,
-    cta1Text: settings.hero_cta1_text,
-    cta1Url: settings.hero_cta1_url,
+    overline: heroField('season_hero_overline', 'hero_overline'),
+    headline: heroField('season_hero_headline', 'hero_headline'),
+    subline: heroField('season_hero_subline', 'hero_subline'),
+    cta1Text: heroField('season_hero_cta1_text', 'hero_cta1_text'),
+    cta1Url: heroField('season_hero_cta1_url', 'hero_cta1_url'),
     cta2Text: settings.hero_cta2_text,
     cta2Url: settings.hero_cta2_url,
-    imageUrl: settings.hero_image_url,
+    imageUrl: heroField('season_hero_image_url', 'hero_image_url'),
     brands: settings.hero_brands ? settings.hero_brands.split(',').map(b => b.trim()) : [],
   };
 

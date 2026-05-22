@@ -93,7 +93,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html
       lang="en"
-      data-theme={normalizeTheme(settings.active_theme)}
+      // The seasonal makeover (palette + background motif) is gated by the
+      // season_active toggle in admin Settings — a pre-selected season stays
+      // dormant until the owner switches it on.
+      data-theme={settings.season_active === 'true' ? normalizeTheme(settings.active_theme) : 'default'}
       className={`${fontDisplay.variable} ${fontUI.variable}`}
     >
       <head>

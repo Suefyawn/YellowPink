@@ -340,7 +340,14 @@ export function CollectionPage({
   const subcats = activeTaxon
     ? activeTaxon.categories.filter(leaf => populatedLeaves.has(leaf))
     : [];
-  const pageTitle = activeSubcategory
+  // A single-brand view with no category filter is effectively that brand's
+  // landing page — show the brand name as the heading and a brand intro line
+  // (otherwise the page is the generic "All Products" with no copy of its own).
+  const singleBrand = selectedBrands.size === 1 && activeCategory === 'All' && !activeSubcategory
+    ? Array.from(selectedBrands)[0]
+    : null;
+  const pageTitle = singleBrand
+    ?? activeSubcategory
     ?? (activeCategory === 'All' ? 'All Products' : activeCategory);
 
   return (
@@ -350,9 +357,11 @@ export function CollectionPage({
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Shop</Overline>
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{pageTitle}</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 480, marginBottom: 32 }}>
-            {(activeSubcategory ? CATEGORY_DESCRIPTIONS[activeSubcategory] : undefined)
-              ?? CATEGORY_DESCRIPTIONS[activeCategory]
-              ?? CATEGORY_DESCRIPTIONS.All}
+            {singleBrand
+              ? `Explore the full ${singleBrand} range at Yellow Pink — 100% authentic, imported, with cash-on-delivery across Pakistan.`
+              : (activeSubcategory ? CATEGORY_DESCRIPTIONS[activeSubcategory] : undefined)
+                ?? CATEGORY_DESCRIPTIONS[activeCategory]
+                ?? CATEGORY_DESCRIPTIONS.All}
           </p>
           <div style={{ display: 'flex', gap: 0, overflowX: 'auto', marginBottom: -1 }}>
             {TOP_CATEGORY_NAMES.map(cat => (
