@@ -170,9 +170,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
           background: (statusColors[currentStatus] ?? '#6b7280') + '20',
           color: statusColors[currentStatus] ?? '#6b7280',
-          textTransform: 'capitalize',
         }}>
-          {currentStatus}
+          {statusLabel(currentStatus)}
         </span>
         {o.created_at && (
           <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 4 }}>{fmtDate(o.created_at)}</span>
@@ -217,8 +216,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.125rem' }}>{o.order_number}</div>
             <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>{o.created_at ? fmtDate(o.created_at) : ''}</div>
-            <div style={{ marginTop: 6, padding: '2px 10px', display: 'inline-block', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, textTransform: 'capitalize', background: (statusColors[currentStatus] ?? '#6b7280') + '25', color: statusColors[currentStatus] ?? '#6b7280' }}>
-              {currentStatus}
+            <div style={{ marginTop: 6, padding: '2px 10px', display: 'inline-block', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, background: (statusColors[currentStatus] ?? '#6b7280') + '25', color: statusColors[currentStatus] ?? '#6b7280' }}>
+              {statusLabel(currentStatus)}
             </div>
           </div>
         </div>

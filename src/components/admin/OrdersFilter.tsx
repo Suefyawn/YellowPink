@@ -2,19 +2,25 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useTransition } from 'react';
+import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types';
 
-const STATUSES = [
-  { value: 'all',             label: 'All' },
-  { value: 'payment_pending', label: 'Awaiting payment', color: '#d97706' },
-  { value: 'payment_failed',  label: 'Payment failed',   color: '#ef4444' },
-  { value: 'pending',         label: 'Pending',          color: '#f59e0b' },
-  { value: 'processing',      label: 'Processing',       color: '#3b82f6' },
-  { value: 'shipped',         label: 'Shipped',          color: '#8b5cf6' },
-  { value: 'delivered',       label: 'Delivered',        color: '#10b981' },
-  { value: 'cancelled',       label: 'Cancelled',        color: '#ef4444' },
-  { value: 'returned',        label: 'Returned',         color: '#6b7280' },
-  { value: 'refunded',        label: 'Refunded',         color: '#0891b2' },
+// Pill order + colour. Labels come from the shared ORDER_STATUS_LABELS map so
+// the filter can't drift from the Orders table and the order detail page.
+const STATUSES: { value: string; color?: string }[] = [
+  { value: 'all' },
+  { value: 'payment_pending', color: '#d97706' },
+  { value: 'payment_failed',  color: '#ef4444' },
+  { value: 'pending',         color: '#f59e0b' },
+  { value: 'processing',      color: '#3b82f6' },
+  { value: 'shipped',         color: '#8b5cf6' },
+  { value: 'delivered',       color: '#10b981' },
+  { value: 'cancelled',       color: '#ef4444' },
+  { value: 'returned',        color: '#6b7280' },
+  { value: 'refunded',        color: '#0891b2' },
 ];
+
+const statusLabel = (v: string) =>
+  v === 'all' ? 'All' : (ORDER_STATUS_LABELS[v as OrderStatus] ?? v);
 
 export function OrdersFilter({ total }: { total: number }) {
   const router = useRouter();
@@ -65,7 +71,7 @@ export function OrdersFilter({ total }: { total: number }) {
               outline: isActive && color ? `2px solid ${color}` : (isActive ? '2px solid #111827' : 'none'),
               outlineOffset: -2,
             }}>
-              {s.label}
+              {statusLabel(s.value)}
             </button>
           );
         })}
