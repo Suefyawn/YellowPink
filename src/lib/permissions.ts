@@ -1,14 +1,13 @@
 // ─── Permissions ─────────────────────────────────────────────────────────────
-// Fine-grained capability strings stored in `staff_members.permissions text[]`.
-// Owners implicitly hold every permission; managers hold whatever the owner
-// has granted them. Role templates (`ROLE_TEMPLATES`) bundle common sets so
-// the team UI doesn't have to click 10 checkboxes for an "Analyst".
+// Fine-grained capability strings. Owners implicitly hold every permission;
+// staff hold whatever the owner has granted them — either via an assigned role
+// (the `roles` table) or, for a "Custom" staff member, via their own
+// `staff_members.permissions text[]` column.
 //
 // Adding a permission:
 //   1. Append to the Permission union + ALL_PERMISSIONS
 //   2. Add an entry to PERMISSION_META (label, icon, group, description)
-//   3. Optionally add it to one or more ROLE_TEMPLATES bundles
-//   4. Use `can(session, 'new_perm')` at the call-site
+//   3. Use `can(session, 'new_perm')` at the call-site
 
 export type Permission =
   // ── Commerce ──
@@ -79,90 +78,18 @@ export const GROUP_META: Record<PermissionGroup, { label: string; desc: string }
   store:     { label: 'Store admin', desc: 'Configuration and platform settings.' },
 };
 
-// ─── Role templates ─────────────────────────────────────────────────────────
-// Named bundles you can apply with a single click in the team UI. After
-// applying a template you can still toggle individual permissions on/off,
-// so templates are a starting point, not a constraint.
-//
-// The keys are stable so you can store the chosen template on `staff_members`
-// later if we want to display it in the table. (Not stored today — perms are
-// the source of truth, the role is purely an authoring convenience.)
-
-export type RoleKey = 'owner' | 'manager' | 'marketer' | 'support' | 'inventory' | 'analyst' | 'custom';
-
-export interface RoleTemplate {
-  key: RoleKey;
-  label: string;
-  description: string;
-  /** Empty for `owner` (which is the isOwner flag, not perms) and `custom`. */
-  permissions: Permission[];
-}
-
-export const ROLE_TEMPLATES: RoleTemplate[] = [
-  {
-    key: 'manager',
-    label: 'Manager',
-    description: 'Full operational access — everything except platform settings.',
-    permissions: [
-      'orders', 'products', 'customers', 'coupons', 'returns',
-      'blog', 'promos', 'reviews', 'newsletter',
-      'analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh',
-    ],
-  },
-  {
-    key: 'marketer',
-    label: 'Marketer',
-    description: 'Content, promos, coupons, and traffic insights — no orders or customer PII.',
-    permissions: [
-      'blog', 'promos', 'reviews', 'newsletter', 'coupons',
-      'analytics', 'analytics_traffic',
-    ],
-  },
-  {
-    key: 'support',
-    label: 'Customer support',
-    description: 'Orders, customers, and returns — no editorial or catalog changes.',
-    permissions: ['orders', 'customers', 'returns'],
-  },
-  {
-    key: 'inventory',
-    label: 'Inventory',
-    description: 'Products only — catalog + stock management.',
-    permissions: ['products'],
-  },
-  {
-    key: 'analyst',
-    label: 'Analyst',
-    description: 'Read-only access to every analytics + monitoring surface.',
-    permissions: ['analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh'],
-  },
-  {
-    key: 'custom',
-    label: 'Custom',
-    description: 'No template — pick individual permissions below.',
-    permissions: [],
-  },
-];
-
-/** Find the role whose permission set exactly matches the input, if any.
- *  Used by the team UI to pre-select the dropdown when editing an existing row. */
-export function matchRole(permissions: Permission[]): RoleKey {
-  const set = new Set(permissions);
-  for (const r of ROLE_TEMPLATES) {
-    if (r.key === 'custom') continue;
-    if (r.permissions.length !== set.size) continue;
-    if (r.permissions.every(p => set.has(p))) return r.key;
-  }
-  return 'custom';
-}
-
 // ─── Session ────────────────────────────────────────────────────────────────
 export interface StaffSession {
   id: string;
   email: string;
   name: string;
+  /** Effective permissions — resolved from the assigned role, or the staff
+   *  member's own permissions column when they have no role ("Custom"). */
   permissions: Permission[];
   isOwner: boolean;
+  /** Assigned role, or null for the owner / a "Custom" staff member. */
+  roleId: string | null;
+  roleName: string | null;
 }
 
 export function can(session: StaffSession | null | undefined, permission: Permission): boolean {
