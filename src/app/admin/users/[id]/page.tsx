@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import type { Order, AdminUser, OrderStatus } from '@/types';
+import { getStaffSession } from '@/lib/staff-auth';
+import { NoAccess } from '@/components/admin/NoAccess';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -51,6 +53,10 @@ function activityDetail(a: ActivityRow): string {
 }
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('customers')) {
+    return <NoAccess section="Customers" />;
+  }
   const { id } = await params;
 
   // orders is RLS-locked; the `get_admin_user` RPC already uses
