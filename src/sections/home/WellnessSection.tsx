@@ -6,11 +6,13 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import type { Product } from '@/types';
 
+// `category` maps each pillar to a real wellness category value (see
+// category-taxonomy.ts) so the box links to its /shop?category= listing.
 const PILLARS = [
-  { label: "Women's Health", desc: 'Fertility, prenatal, hormonal balance' },
-  { label: "Men's Vitality", desc: 'Performance, stamina, reproductive health' },
-  { label: 'Immune Support', desc: 'Defense, zinc, daily wellness' },
-  { label: 'Bone & Joint', desc: 'Calcium D3, mobility, strength' },
+  { label: "Women's Health", desc: 'Fertility, prenatal, hormonal balance', category: "Women's Health" },
+  { label: "Men's Vitality", desc: 'Performance, stamina, reproductive health', category: "Men's Health" },
+  { label: 'Immune Support', desc: 'Defense, zinc, daily wellness', category: 'Immunity' },
+  { label: 'Bone & Joint', desc: 'Calcium D3, mobility, strength', category: 'Bone & Joint' },
 ];
 
 export function WellnessSection({ products }: { products: Product[] }) {
@@ -34,9 +36,10 @@ export function WellnessSection({ products }: { products: Product[] }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="duo-grid">
               {PILLARS.map((p) => (
-                <div key={p.label} style={{
+                <Link key={p.label} href={`/shop?category=${encodeURIComponent(p.category)}`} style={{
+                  display: 'block', textDecoration: 'none', color: 'inherit',
                   padding: 16, background: 'var(--paper2)', borderRadius: 'var(--radius-card)',
-                  border: '1px solid var(--line)', cursor: 'pointer',
+                  border: '1px solid var(--line)',
                   transition: 'border-color 180ms ease-out',
                 }}
                   onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--brand-yellow)')}
@@ -45,7 +48,7 @@ export function WellnessSection({ products }: { products: Product[] }) {
                   <div style={{ width: 24, height: 4, background: 'var(--brand-yellow)', borderRadius: 2, marginBottom: 10 }} />
                   <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 2 }}>{p.label}</div>
                   <div className="small-text" style={{ lineHeight: 1.4 }}>{p.desc}</div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
