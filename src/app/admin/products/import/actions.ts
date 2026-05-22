@@ -80,7 +80,7 @@ export interface ImportResult {
 
 export async function importProductsFromCsv(csvText: string): Promise<ImportResult> {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('products'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.edit'))) {
     return { parsed: 0, imported: 0, skipped: 0, errors: ['Unauthorized'] };
   }
 

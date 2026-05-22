@@ -27,7 +27,7 @@ const card: React.CSSProperties = {
 
 export default async function VendorsPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders')) {
+  if (session && !session.isOwner && !session.permissions.includes('orders.view')) {
     return <NoAccess section="Vendors" />;
   }
 

@@ -1,7 +1,7 @@
 import { randomBytes, createHmac, scryptSync, timingSafeEqual, createHash } from 'crypto';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from './supabase';
-import type { StaffSession, Permission } from './permissions';
+import { expandLegacyPermissions, type StaffSession } from './permissions';
 
 import { STAFF_SESSION_SECRET } from './session-secret';
 
@@ -168,7 +168,7 @@ export async function getStaffSession(): Promise<StaffSession | null> {
     id: data.id,
     email: data.email,
     name: data.name,
-    permissions: ((role ? role.permissions : data.permissions) ?? []) as Permission[],
+    permissions: expandLegacyPermissions((role ? role.permissions : data.permissions) ?? []),
     isOwner: false,
     roleId: (data.role_id as string | null) ?? null,
     roleName: role?.name ?? null,

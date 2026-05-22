@@ -4,10 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
+import type { Permission } from '@/lib/permissions';
 
-async function assertProducts() {
+async function assertProducts(action: 'edit' | 'delete' = 'edit') {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('products'))) {
+  const perm: Permission = action === 'delete' ? 'products.delete' : 'products.edit';
+  if (!session || (!session.isOwner && !session.permissions.includes(perm))) {
     throw new Error('Unauthorized');
   }
   return session;
@@ -31,7 +33,7 @@ export async function bulkArchiveProducts(ids: string[]): Promise<void> {
 }
 
 export async function bulkDeleteProducts(ids: string[]): Promise<{ deleted: number; archived: number }> {
-  const session = await assertProducts();
+  const session = await assertProducts('delete');
   if (ids.length === 0) return { deleted: 0, archived: 0 };
 
   // Products with order history are archived, not hard-deleted — see

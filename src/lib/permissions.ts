@@ -10,10 +10,18 @@
 //   3. Use `can(session, 'new_perm')` at the call-site
 
 export type Permission =
-  // ── Commerce ──
-  | 'orders'
-  | 'products'
-  | 'customers'
+  // ── Commerce — orders / products / customers are split into view·edit·delete
+  //    so e.g. a support agent can read orders without being able to refund or
+  //    cancel them. coupons / returns stay single per-resource permissions. ──
+  | 'orders.view'
+  | 'orders.edit'
+  | 'orders.delete'
+  | 'products.view'
+  | 'products.edit'
+  | 'products.delete'
+  | 'customers.view'
+  | 'customers.edit'
+  | 'customers.delete'
   | 'coupons'
   | 'returns'
 
@@ -34,7 +42,10 @@ export type Permission =
   | 'settings';             // store settings (shipping, tax, store info)
 
 export const ALL_PERMISSIONS: Permission[] = [
-  'orders', 'products', 'customers', 'coupons', 'returns',
+  'orders.view', 'orders.edit', 'orders.delete',
+  'products.view', 'products.edit', 'products.delete',
+  'customers.view', 'customers.edit', 'customers.delete',
+  'coupons', 'returns',
   'blog', 'promos', 'reviews', 'newsletter',
   'analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh',
   'settings',
@@ -49,9 +60,15 @@ export const PERMISSION_META: Record<Permission, {
   group: PermissionGroup;
 }> = {
   // Commerce
-  orders:    { label: 'Orders',     icon: '◎', desc: 'View, fulfil, and update customer orders.',    group: 'commerce' },
-  products:  { label: 'Products',   icon: '◈', desc: 'Create, edit, publish, and delete products.',  group: 'commerce' },
-  customers: { label: 'Customers',  icon: '◉', desc: 'View customer accounts + segment lists.',      group: 'commerce' },
+  'orders.view':     { label: 'Orders — View',     icon: '◎', desc: 'View customer orders and their details.',                          group: 'commerce' },
+  'orders.edit':     { label: 'Orders — Manage',   icon: '◎', desc: 'Update status, fulfil, confirm, and dispatch orders; manage vendors.', group: 'commerce' },
+  'orders.delete':   { label: 'Orders — Delete',   icon: '◎', desc: 'Delete vendor records and other order-related data.',               group: 'commerce' },
+  'products.view':   { label: 'Products — View',   icon: '◈', desc: 'Browse the product catalogue and stock levels.',                    group: 'commerce' },
+  'products.edit':   { label: 'Products — Edit',   icon: '◈', desc: 'Create and edit products, variants, and stock.',                     group: 'commerce' },
+  'products.delete': { label: 'Products — Delete', icon: '◈', desc: 'Delete products from the catalogue.',                                group: 'commerce' },
+  'customers.view':   { label: 'Customers — View',   icon: '◉', desc: 'View customer accounts and segment lists.',                        group: 'commerce' },
+  'customers.edit':   { label: 'Customers — Edit',   icon: '◉', desc: 'Edit customer account details.',                                   group: 'commerce' },
+  'customers.delete': { label: 'Customers — Delete', icon: '◉', desc: 'Delete customer accounts.',                                        group: 'commerce' },
   coupons:   { label: 'Coupons',    icon: '◇', desc: 'Issue and manage discount codes.',             group: 'commerce' },
   returns:   { label: 'Returns',    icon: '↩', desc: 'Approve / reject customer return requests.',   group: 'commerce' },
 
@@ -105,4 +122,26 @@ export function canAny(session: StaffSession | null | undefined, permissions: Pe
   if (!session) return false;
   if (session.isOwner) return true;
   return permissions.some(p => session.permissions.includes(p));
+}
+
+// ─── Legacy permission expansion ────────────────────────────────────────────
+// The single-resource grants 'orders' / 'products' / 'customers' predate the
+// view·edit·delete split. Until migration 125 has expanded every roles row and
+// staff_members row, a stored permission set may still carry one — getStaffSession
+// runs every set through expandLegacyPermissions on read, so the rest of the app
+// only ever sees split tokens. Safe to delete once 125 has run everywhere.
+const LEGACY_PERMISSION_MAP: Record<string, Permission[]> = {
+  orders:    ['orders.view', 'orders.edit', 'orders.delete'],
+  products:  ['products.view', 'products.edit', 'products.delete'],
+  customers: ['customers.view', 'customers.edit', 'customers.delete'],
+};
+
+export function expandLegacyPermissions(permissions: string[]): Permission[] {
+  const out = new Set<Permission>();
+  for (const p of permissions) {
+    const expanded = LEGACY_PERMISSION_MAP[p];
+    if (expanded) for (const e of expanded) out.add(e);
+    else out.add(p as Permission);
+  }
+  return [...out];
 }

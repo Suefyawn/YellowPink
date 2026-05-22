@@ -130,7 +130,7 @@ export async function createProduct(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const session = await assertPermission('products');
+  const session = await assertPermission('products.edit');
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { data, error } = await supabaseAdmin().from('products').insert(parsed.data).select('id').single();
@@ -145,7 +145,7 @@ export async function updateProduct(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
-  const session = await assertPermission('products');
+  const session = await assertPermission('products.edit');
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   // Snapshot the prior state for the audit diff.
@@ -158,7 +158,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(formData: FormData) {
-  const session = await assertPermission('products');
+  const session = await assertPermission('products.delete');
   const id = formData.get('id') as string;
   const admin = supabaseAdmin();
 
@@ -241,7 +241,7 @@ export async function deleteBlogPost(formData: FormData) {
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
 export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus): Promise<{ error?: string; count?: number }> {
-  await assertPermission('orders');
+  await assertPermission('orders.edit');
   // orders RLS bars anon writes; service role is required for admin
   // mutations.
   const { error, count } = await supabaseAdmin()
@@ -258,7 +258,7 @@ export async function updateOrderStatus(
   _prev: { error?: string; success?: boolean } | null,
   formData: FormData
 ): Promise<{ error?: string; success?: boolean }> {
-  const session = await assertPermission('orders');
+  const session = await assertPermission('orders.edit');
   const status = formData.get('status') as OrderStatus;
 
   // Read current state so we can detect transitions, email the customer,

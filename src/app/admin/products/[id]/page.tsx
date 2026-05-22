@@ -59,7 +59,7 @@ async function loadAttributesAndVariants(productId: string): Promise<{
 
 export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products')) {
+  if (session && !session.isOwner && !session.permissions.includes('products.edit')) {
     return <NoAccess section="Products" />;
   }
   const { id } = await params;

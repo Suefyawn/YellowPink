@@ -51,7 +51,7 @@ import { logAudit } from '@/lib/audit';
 
 async function assertOrders() {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('orders'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
     throw new Error('Unauthorized');
   }
   return session;
