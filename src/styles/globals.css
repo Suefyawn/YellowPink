@@ -97,6 +97,24 @@
   --brand-pink-cta: #A33D6E;
 }
 
+/* Seasonal background motifs — a faint, tiled SVG texture layered over
+ * --paper, one per season. Kept at very low opacity so body-text contrast is
+ * unaffected (the palette blocks above own legibility). Inline data-URIs mean
+ * zero extra requests. These only apply while <html> carries a non-default
+ * data-theme, which layout.tsx sets only when the seasonal toggle is on. */
+:root[data-theme="eid"] body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Cg fill='none' stroke='%23ae2766' stroke-width='1.1' opacity='0.07'%3E%3Crect x='12' y='12' width='20' height='20'/%3E%3Crect x='12' y='12' width='20' height='20' transform='rotate(45 22 22)'/%3E%3C/g%3E%3C/svg%3E");
+}
+:root[data-theme="sale"] body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M-2 2 L2 -2 M0 24 L24 0 M22 26 L26 22' stroke='%23d11148' stroke-width='2' opacity='0.05'/%3E%3C/svg%3E");
+}
+:root[data-theme="christmas"] body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='60' height='60'%3E%3Cg fill='%239e1528' opacity='0.06'%3E%3Ccircle cx='15' cy='12' r='2'/%3E%3Ccircle cx='44' cy='33' r='2.6'/%3E%3Ccircle cx='30' cy='52' r='1.6'/%3E%3C/g%3E%3C/svg%3E");
+}
+:root[data-theme="easter"] body {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cg fill='%23a33d6e' opacity='0.06'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Ccircle cx='36' cy='36' r='3'/%3E%3C/g%3E%3C/svg%3E");
+}
+
 @media (max-width: 768px) {
   :root {
     --side: 16px;
