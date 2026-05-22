@@ -71,6 +71,9 @@ export function AdminShell({
         .adm-fab { display: none; }
         .adm-orders-cards { display: none; }
         .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        /* Products list: desktop shows the table, the mobile card
+         * stack is hidden. The @media block below flips this for phones. */
+        .adm-products-cards { display: none; }
 
         /* ─ Responsive table → card-stack utility ─
          * Put .adm-table-cards on a <table>, add data-label="…" on each <td>,
@@ -293,6 +296,18 @@ export function AdminShell({
             display: flex; flex-direction: column;
           }
           .ord-swipe-actions button + button { border-top: 1px solid rgba(255,255,255,0.25); }
+
+          /* -- Products list: headline-led cards (mobile only) --
+           * The desktop table is hidden; each product renders as a card
+           * that leads with the product name, with price / stock / status
+           * as smaller secondary text. */
+          .adm-products-table { display: none; }
+          .adm-products-cards { display: block; }
+          .adm-product-card {
+            padding: 13px 14px; margin-bottom: 10px;
+            border: 1px solid #f3f4f6; border-radius: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+          }
         }
       `}</style>
 
