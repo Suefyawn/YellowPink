@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
-import { TAXONS, findTaxon, taxonForCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
+import { TAXONS, findTaxon, taxonForCategory, canonicalCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
 import type { Product, ProductAttribute, AttributeValue } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -69,14 +69,24 @@ export function CollectionPage({
       if (taxon) {
         topLabel = taxon.label;
       } else if (catParam) {
-        // catParam is a leaf category — map it back to its owning taxon.
-        const owner = taxonForCategory(catParam);
-        if (owner) { topLabel = owner.label; leaf = catParam; }
+        // catParam is a leaf category — normalise the slug/label form to its
+        // canonical label, then map it back to its owning taxon. Without the
+        // canonicalCategory() step a slug URL (?category=combo-packs) would
+        // never match a taxon's category list and the chip + product filter
+        // would silently come up empty.
+        const leafCat = canonicalCategory(catParam);
+        const owner = taxonForCategory(leafCat);
+        if (owner && leafCat) { topLabel = owner.label; leaf = leafCat; }
       }
       if (subParam) {
-        leaf = subParam;
-        const owner = taxonForCategory(subParam);
-        if (owner) topLabel = owner.label;
+        // Same canonicalisation for ?subcategory= — both URL forms collapse
+        // onto the one canonical leaf label.
+        const leafSub = canonicalCategory(subParam);
+        if (leafSub) {
+          leaf = leafSub;
+          const owner = taxonForCategory(leafSub);
+          if (owner) topLabel = owner.label;
+        }
       }
       return { cat: topLabel, sub: leaf };
     })();
