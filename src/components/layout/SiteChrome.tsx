@@ -8,6 +8,7 @@ import { Footer } from './Footer';
 import { MiniCart } from '@/components/cart/MiniCart';
 import { SearchOverlay } from '@/components/search/SearchOverlay';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
+import { ScrollToTop } from './ScrollToTop';
 import type { Promo } from '@/lib/promos';
 import { socialLinks } from '@/lib/socials';
 
@@ -42,6 +43,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
 
   return (
     <>
+      <ScrollToTop />
       {topBar ? (
         <AnnouncementBar
           text={topBar.headline}
