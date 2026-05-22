@@ -181,8 +181,8 @@ otherwise enter the courier and tracking number manually.
 **Step 4 — Move the order through its statuses.**
 Use the **Update Order** control to change the order's status as it progresses:
 
-- **Pending** → the order is placed and awaiting preparation.
-- **Processing** → you're packing/preparing it.
+- **Order received** → the order is placed and awaiting preparation.
+- **Preparing** → you're packing/preparing it.
 - **Shipped** → it's handed to the courier.
 - **Delivered** → the customer has received it.
 - **Cancelled** → the order won't be fulfilled.
@@ -255,11 +255,13 @@ are cached for speed).
 
 | Status | Meaning |
 |---|---|
-| Pending | Order placed, awaiting preparation. |
-| Processing | Being packed / prepared. |
+| Order received | Order placed, awaiting preparation. |
+| Preparing | Being packed / prepared. |
 | Shipped | Handed to the courier; customer emailed with tracking. |
 | Delivered | Received by the customer. |
 | Cancelled | Will not be fulfilled; stock is returned. |
+
+These are the labels shown throughout the admin (the order list, filters, the order page, and the customer's order history) — all driven from one shared set so they never disagree.
 
 ### Glossary
 

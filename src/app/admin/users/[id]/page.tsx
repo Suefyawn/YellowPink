@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
-import type { Order, AdminUser, OrderStatus } from '@/types';
+import { ORDER_STATUS_LABELS, type Order, type AdminUser, type OrderStatus } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 
@@ -190,11 +190,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                       <td style={{ padding: '10px 12px' }}>
                         <span style={{
                           display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-                          fontSize: '0.75rem', fontWeight: 600, textTransform: 'capitalize',
+                          fontSize: '0.75rem', fontWeight: 600,
                           background: (statusColors[status] ?? '#6b7280') + '20',
                           color: statusColors[status] ?? '#6b7280',
                         }}>
-                          {status}
+                          {ORDER_STATUS_LABELS[status] ?? status}
                         </span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>
