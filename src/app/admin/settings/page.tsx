@@ -333,7 +333,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
         {/* ── Seasonal theme ───────────────────────────────── */}
         <Card id="theme">
-          {section('Seasonal Theme', 'Switches the storefront colour palette for a season or campaign — Eid, a sale, Christmas, Easter. Applies site-wide as soon as you save.')}
+          {section('Seasonal Theme', 'Switches the storefront colour palette for a season or campaign — Eid, a sale, Christmas, Easter. Storefront pages are edge-cached, so a saved change reaches all visitors within a few minutes.')}
           <Divider />
           <div>
             <label style={lbl} htmlFor="set-active-theme">Active theme</label>
