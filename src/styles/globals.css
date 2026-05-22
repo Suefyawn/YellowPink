@@ -48,6 +48,55 @@
   --radius-pill: 8px;
 }
 
+/* ── Seasonal themes ──────────────────────────────────────────────────
+ * Applied via a `data-theme` attribute on <html>, set server-side in
+ * src/app/layout.tsx from the `active_theme` site setting. Registry +
+ * the admin picker live in src/lib/themes.ts.
+ *
+ * Each block overrides ONLY the brand palette — ink, spacing, radii and
+ * fonts stay constant so layout and text legibility never shift between
+ * themes. `--brand-pink` is the decorative tone (fills, pills, badges);
+ * `--brand-pink-text` / `--brand-pink-cta` are the darker tones that
+ * carry text / white-on-colour button labels — they are kept dark enough
+ * to clear WCAG AA on that theme's --paper. Tune the hex freely; keep
+ * that contrast. */
+
+:root[data-theme="eid"] {
+  --paper: #FBF6EA;
+  --paper2: #F1E8D4;
+  --brand-yellow: #D4A431;
+  --brand-pink: #D1417A;
+  --brand-pink-text: #AE2766;
+  --brand-pink-cta: #AE2766;
+}
+
+:root[data-theme="sale"] {
+  --paper: #FFFFFF;
+  --paper2: #F4F4F5;
+  --brand-yellow: #FFC400;
+  --brand-pink: #FF2D6F;
+  --brand-pink-text: #D11148;
+  --brand-pink-cta: #D11148;
+}
+
+:root[data-theme="christmas"] {
+  --paper: #FBF4EF;
+  --paper2: #EEE3DB;
+  --brand-yellow: #C99A3C;
+  --brand-pink: #C0203A;
+  --brand-pink-text: #9E1528;
+  --brand-pink-cta: #9E1528;
+}
+
+:root[data-theme="easter"] {
+  --paper: #FBF7F4;
+  --paper2: #EFE8F1;
+  --brand-yellow: #EFC65C;
+  --brand-pink: #E392B7;
+  --brand-pink-text: #A33D6E;
+  --brand-pink-cta: #A33D6E;
+}
+
 @media (max-width: 768px) {
   :root {
     --side: 16px;

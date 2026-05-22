@@ -37,6 +37,7 @@ import { NewsletterModal } from '@/components/marketing/NewsletterModal';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { getSiteSettings } from '@/lib/supabase';
+import { normalizeTheme } from '@/lib/themes';
 import { getActivePromos, audienceFor } from '@/lib/promos';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
@@ -90,7 +91,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const sameAs = socialSameAs(settings);
   const orgContact = { phone: settings.store_phone, email: settings.store_email };
   return (
-    <html lang="en" className={`${fontDisplay.variable} ${fontUI.variable}`}>
+    <html
+      lang="en"
+      data-theme={normalizeTheme(settings.active_theme)}
+      className={`${fontDisplay.variable} ${fontUI.variable}`}
+    >
       <head>
         {/* Site-wide JSON-LD: a single Organization node (@id-referenced by
             WebSite.publisher) plus WebSite for the sitelinks search box.

@@ -8,6 +8,7 @@ import { ImageUpload } from '@/components/admin/ImageUpload';
 import { BankAccountsEditor } from '@/components/admin/BankAccountsEditor';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { SOCIAL_PLATFORMS } from '@/lib/socials';
+import { STORE_THEMES, normalizeTheme } from '@/lib/themes';
 
 const inp: React.CSSProperties = {
   width: '100%', padding: '9px 12px', border: '1px solid #d1d5db',
@@ -61,6 +62,7 @@ const SECTIONS = [
   { id: 'shipping-tax',  label: 'Shipping & tax' },
   { id: 'payments',      label: 'Payments' },
   { id: 'loyalty',       label: 'Loyalty' },
+  { id: 'theme',         label: 'Seasonal theme' },
   { id: 'brand-colors',  label: 'Brand colors' },
   { id: 'announcement',  label: 'Announcement' },
   { id: 'sale',          label: 'Sale' },
@@ -326,6 +328,25 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <label style={lbl}>Referee discount (%)</label>
               <input name="loyalty_referral_discount_pct" type="number" min={0} max={100} defaultValue={g('loyalty_referral_discount_pct', '10')} style={inp} />
             </div>
+          </div>
+        </Card>
+
+        {/* ── Seasonal theme ───────────────────────────────── */}
+        <Card id="theme">
+          {section('Seasonal Theme', 'Switches the storefront colour palette for a season or campaign — Eid, a sale, Christmas, Easter. Applies site-wide as soon as you save.')}
+          <Divider />
+          <div>
+            <label style={lbl} htmlFor="set-active-theme">Active theme</label>
+            <select
+              id="set-active-theme"
+              name="active_theme"
+              defaultValue={normalizeTheme(g('active_theme'))}
+              style={inp}
+            >
+              {STORE_THEMES.map(t => (
+                <option key={t.key} value={t.key}>{t.label} — {t.hint}</option>
+              ))}
+            </select>
           </div>
         </Card>
 
