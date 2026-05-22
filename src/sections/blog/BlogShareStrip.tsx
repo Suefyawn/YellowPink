@@ -13,27 +13,27 @@ import { useEffect, useState } from 'react';
 
 interface Props {
   title: string;
-  /** Path on yellow-pink — e.g. "/blog/<slug>". The component prepends
-   *  window.location.origin at click-time. */
-  path: string;
+  /** Absolute, canonical URL of the post — e.g.
+   *  "https://www.yellowpink.pk/blog/<slug>". Must be absolute: Facebook's
+   *  sharer 500s on a relative `u=` param, and the link is server-rendered
+   *  so a relative path would ship to crawlers. The server caller builds it
+   *  with absoluteUrl(). */
+  url: string;
   excerpt?: string | null;
 }
 
-export function BlogShareStrip({ title, path, excerpt }: Props) {
+export function BlogShareStrip({ title, url, excerpt }: Props) {
   const [copied, setCopied] = useState(false);
-  // Resolve window-dependent values only after mount. Reading
-  // `window.location.origin` (and `navigator.share`) during render makes the
-  // server and the first client render disagree — the server has no window —
-  // which trips a hydration mismatch on the share links. `path` is a prop, so
-  // it is byte-identical on both sides; we upgrade to the absolute URL once
-  // mounted.
+  // navigator.share is browser-only — detect it after mount so the server
+  // render and the first client render agree (only the mount-gated "More"
+  // button depends on it). The share URL itself is a prop, so it is
+  // byte-identical on both sides and needs no mount gate.
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
-  const url = mounted ? window.location.origin + path : path;
   const text = excerpt ? `${title} — ${excerpt}` : title;
 
   const waHref = `https://wa.me/?text=${encodeURIComponent(`${text}\n\n${url}`)}`;
