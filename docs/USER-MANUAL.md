@@ -133,24 +133,43 @@ Go to `/admin`. There are two kinds of login:
 
 ### 3.2 The sections
 
-The left sidebar lists every area of the admin. Here's what each one is for:
+The left sidebar groups every area of the admin into five sections — **Insights**,
+**Sell**, **People**, **Marketing**, and **Store** — so related tools sit
+together. Here's what each link is for:
 
+**Insights**
 | Section | What it's for |
 |---|---|
 | **Dashboard** | At-a-glance health of the store — revenue, order counts by status, top products, low-stock alerts, recent orders. |
 | **Analytics** | Deeper performance data — revenue trends, and (if connected) website-traffic and error-monitoring widgets. |
+
+**Sell** — day-to-day commerce operations
+| Section | What it's for |
+|---|---|
+| **Orders** | Every order placed. Filter by status, search, and open an order to process it. |
 | **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, pricing, and descriptions. Bulk price tools and CSV import are here. |
 | **Inventory** | Stock levels. See low-stock items and adjust stock counts. |
-| **Orders** | Every order placed. Filter by status, search, and open an order to process it. |
 | **Vendors** | Your suppliers/fulfilment partners. Add vendors and track what you owe or are owed (settlements). |
 | **Returns** | Customer return requests awaiting your approval, and refund processing. |
+
+**People** — customers and incentives
+| Section | What it's for |
+|---|---|
 | **Customers** | Everyone who has an account — search the list and open a customer to see their orders, lifetime spend, and activity. |
 | **Segments** | Customer groupings (e.g. high-spenders) for targeting and analysis. |
 | **Coupons** | Discount codes — create, edit, set limits and expiry, and turn them on/off. |
+
+**Marketing** — content and campaigns
+| Section | What it's for |
+|---|---|
 | **Promos** | The promotional banner shown on the storefront — content, colours, and on/off. |
 | **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. |
 | **Reviews** | Moderate customer product reviews — approve them so they show publicly, or remove them. |
 | **Newsletter** | Write and send an email to your subscribers; see who's subscribed and past sends. |
+
+**Store** — admin internals
+| Section | What it's for |
+|---|---|
 | **Email log** | A record of every email the system has sent (order emails, newsletters, etc.). |
 | **Activity log** | An audit trail of admin actions — who changed what, and when. Owner only. |
 | **Team** | Staff accounts and their roles. Owner only. |
