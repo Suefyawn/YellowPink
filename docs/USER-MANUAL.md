@@ -9,7 +9,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 22 May 2026.*
+> *Last updated: 23 May 2026.*
 
 ---
 
@@ -255,13 +255,17 @@ are cached for speed).
 
 | Status | Meaning |
 |---|---|
-| Order received | Order placed, awaiting preparation. |
+| Awaiting payment | Card or bank-transfer order placed; we're waiting for payment to clear before preparation begins. |
+| Payment failed | Card or bank-transfer payment attempt failed; the order will not be prepared until payment succeeds or the customer is contacted. |
+| Order received | Order placed and paid (or COD); ready to start preparation. |
 | Preparing | Being packed / prepared. |
 | Shipped | Handed to the courier; customer emailed with tracking. |
 | Delivered | Received by the customer. |
 | Cancelled | Will not be fulfilled; stock is returned. |
+| Returned | Customer returned the order after delivery. |
+| Refunded | Money has been returned to the customer (typically follows Returned or Cancelled). |
 
-These are the labels shown throughout the admin (the order list, filters, the order page, and the customer's order history) — all driven from one shared set so they never disagree.
+These are the labels shown throughout the admin (the order list, filters, the order page, the quick-action buttons on a mobile order card, and the customer's order history) — all driven from one shared set so they never disagree.
 
 ### Glossary
 

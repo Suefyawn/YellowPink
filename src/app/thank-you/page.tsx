@@ -63,7 +63,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
           <div style={{ background: 'var(--paper2)', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', padding: 24, marginBottom: 32, textAlign: 'left' }}>
             <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>What Happens Next</Overline>
             {[
-              { step: '1', label: 'Order Processing', desc: "We're packing your items with care." },
+              { step: '1', label: 'Preparing', desc: "We're packing your items with care." },
               { step: '2', label: 'Shipped', desc: "You'll receive tracking via WhatsApp." },
               { step: '3', label: 'Delivered', desc: 'Pay on delivery (COD) or already paid.' },
             ].map((s, i) => (
