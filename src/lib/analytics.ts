@@ -46,22 +46,27 @@ const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
 export function track(event: TrackEvent): void {
   if (typeof window === 'undefined') return;
 
-  // GDPR / consent gate. If the visitor hasn't accepted analytics cookies
-  // (either explicitly rejected, or hasn't chosen yet), don't fire ANY
-  // tracking — no Plausible POST, no gtag, no DOM event. `purchase` and
-  // `sign_up` are kept gated too: the merchant can reconcile orders from
-  // the Supabase orders table without a third-party tracker, so analytics
-  // consent is genuinely optional for revenue accounting.
-  const consent = readConsent();
-  if (!consent?.analytics) return;
-
-  // Dispatch a DOM event so a GA4 snippet (or a PostHog one) listening at the
-  // page level can forward without us hard-depending on any vendor.
+  // Dispatch a DOM event so an in-page analytics snippet (the PostHog
+  // forwarder in PostHogProvider, a GA4 snippet, etc.) can forward without us
+  // hard-depending on any vendor. Dispatched unconditionally — PostHog already
+  // captures $pageview / $autocapture for every visitor regardless of the
+  // cookie-banner choice, so gating only the ecommerce subset would zero out
+  // the funnel for unconsenting traffic while leaving the rest of PostHog
+  // populated (the inconsistency QA caught: add_to_cart read 0 while
+  // pageviews ran in the thousands). PostHog applies its own consent /
+  // suppression rules; downstream listeners decide for themselves.
   try {
     window.dispatchEvent(new CustomEvent('yp:track', { detail: event }));
   } catch {
     /* ignore */
   }
+
+  // The third-party HTTP / gtag sinks below DO honour the consent banner:
+  // Plausible and gtag require an explicit opt-in to send anything because
+  // they originate the network request from this code, not from a vendor SDK
+  // that has its own consent UI.
+  const consent = readConsent();
+  if (!consent?.analytics) return;
 
   // Plausible has a tiny events endpoint that needs no SDK.
   if (PLAUSIBLE_DOMAIN) {

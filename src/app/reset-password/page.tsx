@@ -14,6 +14,23 @@ const inp: React.CSSProperties = {
 };
 const lbl: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 };
 
+// Map Supabase SDK / URL error strings to user-friendly copy. We never want to
+// render the raw SDK message (e.g. "PKCE code verifier not found in
+// storage… use @supabase/ssr") to end users — it's developer jargon that
+// suggests something is broken when in fact the link is just stale or being
+// opened on a different device. Log the raw message to console for debug.
+function friendlyLinkError(raw: string | null | undefined): string {
+  const text = (raw ?? '').toLowerCase();
+  if (raw) console.warn('[reset-password] link error:', raw);
+  if (text.includes('pkce') || text.includes('code verifier') || text.includes('different browser')) {
+    return 'Open this reset link in the same browser you requested it from. If you switched devices, request a new link.';
+  }
+  if (text.includes('expired') || text.includes('used') || text.includes('consumed')) {
+    return 'This reset link has expired or was already used. Request a new one to continue.';
+  }
+  return 'This reset link is invalid or has expired. Request a new one to continue.';
+}
+
 function ResetPasswordInner() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -63,14 +80,14 @@ function ResetPasswordInner() {
       const code = searchParams?.get('code') ?? null;
       const urlError = searchParams?.get('error_description') ?? searchParams?.get('error') ?? null;
       if (urlError) {
-        if (!cancelled) setLinkError(decodeURIComponent(urlError.replace(/\+/g, ' ')));
+        if (!cancelled) setLinkError(friendlyLinkError(decodeURIComponent(urlError.replace(/\+/g, ' '))));
         return;
       }
       if (code) {
         const { error } = await sb.auth.exchangeCodeForSession(code);
         if (cancelled) return;
         if (error) {
-          setLinkError(error.message || 'This reset link has expired or was already used.');
+          setLinkError(friendlyLinkError(error.message));
           return;
         }
         setReady(true);
