@@ -164,8 +164,8 @@ together. Here's what each link is for:
 |---|---|
 | **Promos** | The promotional banner shown on the storefront — content, colours, and on/off. |
 | **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. |
-| **Reviews** | Moderate customer product reviews — approve them so they show publicly, or remove them. |
-| **Newsletter** | Write and send an email to your subscribers; see who's subscribed and past sends. |
+| **Reviews** | Moderate customer reviews (approve, unapprove, edit, delete) and seed reviews yourself (migration / phoned-in feedback). |
+| **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |
 
 **Store** — admin internals
 | Section | What it's for |
