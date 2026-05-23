@@ -20,6 +20,24 @@ function PageViewTracker() {
   return null;
 }
 
+// Forward `yp:track` window events (dispatched by lib/analytics.ts) to
+// PostHog. lib/analytics stays vendor-neutral; PostHog gets the ecommerce
+// events (add_to_cart, begin_checkout, purchase, etc.) without lib/analytics
+// hard-importing posthog-js. Without this listener the funnel's add_to_cart
+// step reads 0 even though the storefront fires the event on every add.
+function YpTrackForwarder() {
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ name?: string; payload?: Record<string, unknown> }>).detail;
+      if (!detail?.name) return;
+      try { posthog.capture(detail.name, detail.payload); } catch { /* ignore */ }
+    };
+    window.addEventListener('yp:track', handler);
+    return () => window.removeEventListener('yp:track', handler);
+  }, []);
+  return null;
+}
+
 export function PHProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -51,6 +69,7 @@ export function PHProvider({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <PageViewTracker />
       </Suspense>
+      <YpTrackForwarder />
       {children}
     </PostHogProvider>
   );
