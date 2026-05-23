@@ -141,7 +141,7 @@ together. Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Dashboard** | At-a-glance health of the store — revenue, order counts by status, top products, low-stock alerts, recent orders. |
-| **Analytics** | Deeper performance data — revenue trends, and (if connected) website-traffic and error-monitoring widgets. |
+| **Analytics** | Deeper performance data — revenue trends, customer cohorts (RFM segments + retention), and (if connected) website-traffic widgets including top user journeys (which path sequences customers take through the site), funnel-by-traffic-source, a weekly-active-users curve, and inline links to PostHog session recordings to watch real visits. |
 
 **Sell** — day-to-day commerce operations
 | Section | What it's for |

@@ -57,6 +57,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     pvRows, uuRows, sessRows, trendRows,
     topPagesRows, topEventsRows, topReferrersRows,
     funnelRows,
+    journeyRows, funnelBySourceRows, retentionRows,
   ] = await Promise.all([
     // ── core stats
     phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
@@ -111,6 +112,54 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       FROM events
       WHERE ${W7}
     `),
+
+    // ── Top 15 user journeys (4-page sequences per session)
+    // Per-session, sort pageviews by timestamp and concat the first 4 paths.
+    // Group identical journeys together and rank by session count.
+    phQuery(apiKey, `
+      SELECT journey, count() as sessions
+      FROM (
+        SELECT
+          arrayStringConcat(
+            arraySlice(arraySort(groupArray((timestamp, properties.\`$pathname\`))), 1, 4).2,
+            ' → '
+          ) as journey
+        FROM events
+        WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND properties.\`$session_id\` IS NOT NULL
+        GROUP BY properties.\`$session_id\`
+      )
+      WHERE journey != ''
+      GROUP BY journey
+      ORDER BY sessions DESC
+      LIMIT 15
+    `),
+
+    // ── Funnel sliced by traffic source — top 8 sources by home view
+    phQuery(apiKey, `
+      SELECT
+        coalesce(nullIf(properties.\`$initial_referring_domain\`, ''), 'direct') as source,
+        countIf(event = '$pageview' AND properties.\`$pathname\` = '/')                    as home,
+        countIf(event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/')) as product,
+        countIf(event = 'add_to_cart')                                                     as cart,
+        countIf(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as checkout,
+        countIf(event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
+      FROM events
+      WHERE ${W7} AND ${NOT_ADMIN}
+      GROUP BY source
+      ORDER BY home DESC
+      LIMIT 8
+    `),
+
+    // ── 4-week active-user curve (weekly retention proxy)
+    phQuery(apiKey, `
+      SELECT
+        toString(toMonday(timestamp)) as week,
+        count(distinct distinct_id)   as users
+      FROM events
+      WHERE event = '$pageview' AND timestamp >= now() - interval 28 day AND ${NOT_ADMIN}
+      GROUP BY week
+      ORDER BY week
+    `),
   ]);
 
   // Build the shapes the widgets expect.
@@ -158,12 +207,60 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     }
   }
 
+  // ── Journey / funnel-by-source / retention reshape ────────────────────────
+  const journeys = journeyRows.map(([journey, sessions]) => ({
+    journey: String(journey),
+    sessions: Number(sessions),
+  }));
+
+  const funnelBySource = funnelBySourceRows.map(([source, home, product, cart, checkout, purchase]) => ({
+    source: String(source),
+    home: Number(home),
+    product: Number(product),
+    cart: Number(cart),
+    checkout: Number(checkout),
+    purchase: Number(purchase),
+  }));
+
+  const retention = retentionRows.map(([week, users]) => ({
+    week: String(week),
+    users: Number(users),
+  }));
+
+  // ── Latest session recordings (separate endpoint, not HogQL) ──────────────
+  // Best-effort: a failure here mustn't block the rest of the refresh.
+  let recordings: Array<{ id: string; startTime: string; durationSeconds: number; viewerUrl: string }> = [];
+  try {
+    const recRes = await fetch(
+      `${PH_BASE}/api/projects/${PH_PROJECT_ID}/session_recordings/?limit=10`,
+      {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        cache: 'no-store',
+      },
+    );
+    if (recRes.ok) {
+      const j = await recRes.json() as { results?: Array<{ id: string; start_time: string; recording_duration?: number }> };
+      recordings = (j.results ?? []).map(r => ({
+        id: r.id,
+        startTime: r.start_time,
+        durationSeconds: Math.round(r.recording_duration ?? 0),
+        viewerUrl: `${PH_BASE}/project/${PH_PROJECT_ID}/replay/${r.id}`,
+      }));
+    }
+  } catch {
+    /* keep recordings empty on failure */
+  }
+
   await Promise.all([
-    upsertCache(supabase, 'posthog',              core),
-    upsertCache(supabase, 'posthog_top_pages',    { items: topPages }),
-    upsertCache(supabase, 'posthog_top_events',   { items: topEvents }),
-    upsertCache(supabase, 'posthog_top_referrers',{ items: topReferrers }),
-    upsertCache(supabase, 'posthog_funnel',       funnel),
+    upsertCache(supabase, 'posthog',                 core),
+    upsertCache(supabase, 'posthog_top_pages',       { items: topPages }),
+    upsertCache(supabase, 'posthog_top_events',      { items: topEvents }),
+    upsertCache(supabase, 'posthog_top_referrers',   { items: topReferrers }),
+    upsertCache(supabase, 'posthog_funnel',          funnel),
+    upsertCache(supabase, 'posthog_journeys',        { items: journeys }),
+    upsertCache(supabase, 'posthog_funnel_by_source',{ items: funnelBySource }),
+    upsertCache(supabase, 'posthog_retention',       { items: retention }),
+    upsertCache(supabase, 'posthog_recordings',      { items: recordings }),
   ]);
 }
 

@@ -9,6 +9,10 @@ import { PostHogWidget } from '@/components/admin/PostHogWidget';
 import { ConversionFunnelWidget } from '@/components/admin/ConversionFunnelWidget';
 import { TopPagesWidget } from '@/components/admin/TopPagesWidget';
 import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
+import { UserJourneysWidget } from '@/components/admin/UserJourneysWidget';
+import { FunnelBySourceWidget } from '@/components/admin/FunnelBySourceWidget';
+import { RetentionWidget } from '@/components/admin/RetentionWidget';
+import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { OrderStatus } from '@/types';
@@ -261,6 +265,17 @@ export default async function AnalyticsPage({
               <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
                 <TopPagesWidget />
                 <TopEventsWidget />
+              </div>
+
+              {/* User-journey widgets — sessions, paths, funnel slices,
+                  retention curve, and PostHog session recordings. */}
+              <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 28 }}>
+                <UserJourneysWidget />
+                <RetentionWidget />
+              </div>
+              <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 28 }}>
+                <FunnelBySourceWidget />
+                <SessionRecordingsWidget />
               </div>
             </>
           )}
