@@ -141,7 +141,13 @@ export async function getStaffSession(): Promise<StaffSession | null> {
     const { verify, OWNER_COOKIE_TTL_SEC } = await import('./signed-cookie');
     const payload = await verify(adminCookie, SECRET, OWNER_COOKIE_TTL_SEC);
     if (payload?.sub === 'owner') {
-      return { id: 'owner', email: 'owner', name: 'Owner', permissions: [], isOwner: true, roleId: null, roleName: null };
+      // OWNER_EMAIL is the only identifying knob for the legacy single-password
+      // owner account (no real Auth user / email is collected at login). Using
+      // it for both id and email gives the audit log a meaningful actor instead
+      // of the literal string 'owner'. Falls back to 'owner' if the env var
+      // isn't set so a fresh deploy without OWNER_EMAIL still works.
+      const ownerEmail = process.env.OWNER_EMAIL?.trim() || 'owner';
+      return { id: ownerEmail, email: ownerEmail, name: 'Owner', permissions: [], isOwner: true, roleId: null, roleName: null };
     }
   }
 
