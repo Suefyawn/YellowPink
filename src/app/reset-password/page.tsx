@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
@@ -14,7 +14,7 @@ const inp: React.CSSProperties = {
 };
 const lbl: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 };
 
-export default function ResetPasswordPage() {
+function ResetPasswordInner() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -22,7 +22,9 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [linkError, setLinkError] = useState('');
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Live validation hints: surface mismatches as the user types instead of
   // waiting for submit. We only flag mismatch once the confirm field has
@@ -31,19 +33,73 @@ export default function ResetPasswordPage() {
   const mismatch = confirm.length > 0 && password !== confirm;
 
   useEffect(() => {
-    // Supabase redirects with #access_token=...&type=recovery in the hash.
-    // The browser client picks this up automatically via onAuthStateChange.
+    // Supabase has two recovery flows depending on @supabase/ssr / supabase-js
+    // version + project config:
+    //   1. Legacy implicit flow — redirects with `#access_token=...&type=recovery`
+    //      in the hash. supabase-js auto-detects on first load and fires
+    //      onAuthStateChange('PASSWORD_RECOVERY').
+    //   2. PKCE flow — redirects with `?code=...` in the query. The browser
+    //      client does NOT auto-exchange in all client constructions;
+    //      we have to call exchangeCodeForSession(code) explicitly.
+    //
+    // The page used to only listen for flow #1 and silently get stuck on
+    // "Verifying…" when flow #2 was in play (the actual case in production
+    // after the switch to @supabase/ssr). This effect handles both, and
+    // shows a real error after a timeout so users aren't stranded.
     const sb = getBrowserClient();
-    const { data: { subscription } } = sb.auth.onAuthStateChange((event) => {
-      if (event === 'PASSWORD_RECOVERY') {
+    let cancelled = false;
+
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event, session) => {
+      if (cancelled) return;
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
         setReady(true);
       }
     });
-    // Also check if we already have a session (PKCE code exchange flow).
-    sb.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
-    });
-    return () => subscription.unsubscribe();
+
+    (async () => {
+      // PKCE: an explicit ?code=... in the URL means we must exchange it
+      // ourselves. Do this first, then fall back to whatever state the
+      // client already settled into.
+      const code = searchParams?.get('code') ?? null;
+      const urlError = searchParams?.get('error_description') ?? searchParams?.get('error') ?? null;
+      if (urlError) {
+        if (!cancelled) setLinkError(decodeURIComponent(urlError.replace(/\+/g, ' ')));
+        return;
+      }
+      if (code) {
+        const { error } = await sb.auth.exchangeCodeForSession(code);
+        if (cancelled) return;
+        if (error) {
+          setLinkError(error.message || 'This reset link has expired or was already used.');
+          return;
+        }
+        setReady(true);
+        return;
+      }
+
+      // No code — fall back to existing session (covers implicit flow whose
+      // hash was already consumed by an earlier auto-detect).
+      const { data: { session } } = await sb.auth.getSession();
+      if (cancelled) return;
+      if (session) {
+        setReady(true);
+        return;
+      }
+
+      // Last resort: a small grace period for onAuthStateChange to fire if
+      // the hash flow is still settling, then surface a clear error rather
+      // than spinning forever.
+      setTimeout(() => {
+        if (!cancelled && !ready) {
+          setLinkError('This reset link is invalid or has expired. Request a new one to continue.');
+        }
+      }, 3000);
+    })();
+
+    return () => { cancelled = true; subscription.unsubscribe(); };
+    // searchParams is stable across renders; ready intentionally read via
+    // closure in the timeout so we don't re-run this whole flow.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,11 +128,24 @@ export default function ResetPasswordPage() {
           <Link href="/" style={{ textDecoration: 'none' }}><LogoWordmark /></Link>
         </div>
         <div style={{ width: '100%', maxWidth: 400, background: 'white', borderRadius: 16, padding: '36px 32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', textAlign: 'center' }}>
-          <p style={{ color: '#6b7280', fontSize: '0.9375rem' }}>Verifying reset link…</p>
-          <p style={{ marginTop: 16, color: '#9ca3af', fontSize: '0.8125rem' }}>
-            If nothing happens, your link may have expired.{' '}
-            <Link href="/forgot-password" style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>Request a new one</Link>.
-          </p>
+          {linkError ? (
+            <>
+              <div style={{ fontSize: '1.75rem', marginBottom: 12 }} aria-hidden>⚠️</div>
+              <h1 style={{ margin: '0 0 8px', fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>Can&apos;t open this link</h1>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: 16 }}>{linkError}</p>
+              <Link href="/forgot-password" style={{ display: 'inline-block', padding: '10px 18px', background: 'var(--brand-pink)', color: 'white', textDecoration: 'none', borderRadius: 8, fontSize: '0.875rem', fontWeight: 600 }}>
+                Request a new link
+              </Link>
+            </>
+          ) : (
+            <>
+              <p style={{ color: '#6b7280', fontSize: '0.9375rem' }}>Verifying reset link…</p>
+              <p style={{ marginTop: 16, color: '#9ca3af', fontSize: '0.8125rem' }}>
+                If nothing happens, your link may have expired.{' '}
+                <Link href="/forgot-password" style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>Request a new one</Link>.
+              </p>
+            </>
+          )}
         </div>
       </div>
     );
@@ -190,5 +259,25 @@ export default function ResetPasswordPage() {
         )}
       </div>
     </div>
+  );
+}
+
+// useSearchParams() forces this page into client-side rendering — Next 16
+// requires a Suspense boundary around it so the page can still be server-
+// prerendered (showing the shell until the params arrive on the client).
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', background: 'var(--cream)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px 16px' }}>
+        <div style={{ marginBottom: 32 }}>
+          <Link href="/" style={{ textDecoration: 'none' }}><LogoWordmark /></Link>
+        </div>
+        <div style={{ width: '100%', maxWidth: 400, background: 'white', borderRadius: 16, padding: '36px 32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', textAlign: 'center' }}>
+          <p style={{ color: '#6b7280', fontSize: '0.9375rem' }}>Loading…</p>
+        </div>
+      </div>
+    }>
+      <ResetPasswordInner />
+    </Suspense>
   );
 }
