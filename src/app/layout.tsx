@@ -28,6 +28,7 @@ const fontUI = Inter({
   display: 'swap',
 });
 import { SiteChrome } from '@/components/layout/SiteChrome';
+import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
 import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
 import { PWAInstallPrompt } from '@/components/layout/PWAInstallPrompt';
@@ -67,6 +68,14 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: SITE_URL,
+  },
+  // Backup verification meta tag. The DNS TXT (domain property) is the primary
+  // verification — this is harmless redundancy that also covers URL-prefix
+  // properties (e.g. www-subdomain) without a second DNS round-trip. Set
+  // GOOGLE_SITE_VERIFICATION in Vercel env to the content="" value Google
+  // gives you; leave blank to skip.
+  verification: {
+    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
   },
 };
 
@@ -118,6 +127,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <DemoBanner />
         <ConsentBanner />
         <NewsletterModal />
+        <GoogleAnalytics />
         <WebVitalsReporter />
         <ServiceWorkerRegister />
         <PWAInstallPrompt />

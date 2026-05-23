@@ -278,6 +278,54 @@ These are the labels shown throughout the admin (the order list, filters, the or
 - **Permission** — a capability that controls which admin sections a staff
   member can use.
 
+### Search Console, Analytics & Merchant Center
+
+Three Google products work together to give you traffic, conversion, and
+shopping data. They're one-time setups — once each is wired you don't touch
+them again.
+
+**Search Console (organic search visibility)**
+
+1. Open Search Console → *Add property* → **Domain** → enter `yellowpink.pk`,
+   follow the DNS TXT verification it gives you.
+2. Once verified, go to **Sitemaps**, paste `https://www.yellowpink.pk/sitemap.xml`,
+   click **Submit**. The status should change to *Success* within minutes.
+3. To speed up indexing of new products, use **URL Inspection** at the top:
+   paste any product URL → *Request indexing*. Google crawls it within a few
+   days instead of the usual few weeks.
+4. The dashboard's *Products* and *Merchant listings* tiles show counts of
+   pages Google has validated, not your full catalogue. Numbers grow as
+   Google crawls; the sitemap submission above is what drives that.
+
+**Google Analytics 4 (visitor behaviour)**
+
+1. In GA4, *Admin* → *Property* → *Data Streams* → *Add stream* → *Web*. Use
+   `https://www.yellowpink.pk` as the stream URL.
+2. Copy the *Measurement ID* (looks like `G-XXXXXXXXXX`).
+3. In Vercel → Project → Settings → Environment Variables, add
+   `NEXT_PUBLIC_GA_MEASUREMENT_ID` = `G-XXXXXXXXXX` for Production. Redeploy.
+4. Visit the storefront, accept analytics cookies on the banner, browse a few
+   pages. Within ~60s, GA4 → *Reports* → *Realtime* should show one user.
+5. (Recommended) link GA4 to Search Console: GA4 *Admin* → *Product links* →
+   *Search Console links* → *Link*. Lets GA4 show landing-page queries.
+
+The site already fires GA4's e-commerce events automatically — `view_item`,
+`add_to_cart`, `begin_checkout`, `purchase`, `search`, `sign_up` — so you'll
+see funnel and revenue data without any extra setup.
+
+**Google Merchant Center (free Shopping listings)**
+
+1. Sign up at merchants.google.com. Target country: Pakistan, currency: PKR.
+2. *Products* → *Feeds* → *Add primary feed* → choose **Scheduled fetch** →
+   feed URL `https://www.yellowpink.pk/feeds/google-merchant.xml` → daily.
+3. After the first fetch, Merchant Center will flag any items it can't accept
+   (usually missing images or descriptions). Fix those products' fields in
+   the admin Products page; the next daily fetch picks the corrections up.
+
+The feed is generated automatically from your published catalogue — any
+product you publish, change the price of, or take out of stock will reflect
+in Merchant Center within 24 hours of the next fetch.
+
 ### Who to contact
 
 For storefront or admin issues that this manual doesn't cover, contact the
