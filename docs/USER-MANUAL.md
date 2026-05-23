@@ -234,11 +234,11 @@ what — pick a page, edit, hit **Save changes** at the bottom.
 | **Store profile** (`/admin/settings/profile`) | Store name, currency, contact email and phone, and links to your social profiles (used in the footer and for search-engine data). |
 | **Branding & theme** (`/admin/settings/branding`) | Brand colours (pink, yellow, ink) and the **Seasonal Theme** — a one-switch makeover (palette, motif, hero) for Eid, Christmas, etc. |
 | **Homepage** (`/admin/settings/homepage`) | The big **Homepage Hero** (wording, buttons, image, brand logos), the store-wide **Sale** on/off switch, and the thin **Announcement Bar** at the top of every page. |
-| **Shipping & tax** (`/admin/settings/shipping`) | Default shipping rate, free-shipping threshold, tax rate. |
+| **Shipping & tax** (`/admin/settings/shipping`) | Default shipping rate (the fallback), tax rate, and per-zone overrides — add named zones (e.g. Karachi, Lahore, Remote) with their own rate, free-shipping threshold, and estimated delivery days. |
 | **Payments** (`/admin/settings/payments`) | Turn each payment method on or off, and manage the bank/wallet accounts shown to customers paying by transfer. |
 | **Loyalty** (`/admin/settings/loyalty`) | How customers earn and redeem loyalty points. |
 | **Notifications** (`/admin/settings/notifications`) | Add as many staff email addresses as you like and pick which alerts each one receives — **New orders** (every order, immediately) and **Low stock** (daily digest when items drop below 5 units). If nobody is configured for an event, the alert falls back to the `OWNER_EMAIL` env var so existing behaviour is unchanged. |
-| **Integrations** (`/admin/settings/integrations`) | Status overview for Google Analytics 4, Search Console, Merchant Center, PostHog, Sentry, and Resend. Live indicators land in the next update; for now this page documents which env vars each integration needs. |
+| **Integrations** (`/admin/settings/integrations`) | Live status for every third-party service the store uses — Resend (email), PostHog, Sentry, Upstash, JazzCash, Easypaisa, Search Console, WhatsApp. Each card shows whether its env vars are set and (for analytics services) when data last synced. Secret values are never displayed. |
 
 Saved changes apply to the storefront within a few minutes (storefront pages
 are cached for speed).
