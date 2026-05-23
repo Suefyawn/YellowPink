@@ -1,6 +1,7 @@
 'use server';
 
 import { headers } from 'next/headers';
+import { after } from 'next/server';
 import { z } from 'zod';
 import { supabase, isDemo } from '@/lib/supabase';
 import { newsletterLimiter, ipFromHeaders } from '@/lib/ratelimit';
@@ -56,7 +57,7 @@ export async function subscribeToNewsletter(
     log.info('newsletter.demo_subscribe', { email, source });
     // Even in demo mode, fire the welcome email — it's how the merchant
     // verifies the template + Resend wiring before going live.
-    void sendNewsletterWelcomeEmail({ email, source });
+    after(() => sendNewsletterWelcomeEmail({ email, source }));
     return { ok: true, email };
   }
 
@@ -80,9 +81,14 @@ export async function subscribeToNewsletter(
       log.error('newsletter.insert_failed', { error: error.message });
       return { ok: false, error: 'Something went wrong. Please try again.' };
     }
-    // Fresh signup — fire-and-forget the welcome email. We don't await so a
-    // Resend hiccup doesn't fail the signup itself (the row is already in).
-    void sendNewsletterWelcomeEmail({ email: normalisedEmail, source });
+    // Fresh signup — schedule the welcome email to fire after the response is
+    // sent. `after()` (Next 15+ stable) is needed instead of plain `void`
+    // because Vercel can terminate the lambda once the action returns, which
+    // was killing the post-Resend recordEmailLog write — emails arrived but
+    // no email_log row landed, leaving delivered_at unreachable for the
+    // webhook handler. `after()` guarantees the work runs to completion
+    // without blocking the user-facing response.
+    after(() => sendNewsletterWelcomeEmail({ email: normalisedEmail, source }));
     return { ok: true, email };
   } catch (err) {
     log.error('newsletter.unexpected', { error: (err as Error).message });
