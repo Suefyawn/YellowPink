@@ -25,11 +25,18 @@ const stateStyle: Record<string, React.CSSProperties> = {
   inactive: { background: '#f9fafb' },
 };
 
-export default async function CouponsPage() {
+export default async function CouponsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string; created?: string }>;
+}) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('coupons')) {
     return <NoAccess section="Coupons" />;
   }
+  const sp = (await searchParams) ?? {};
+  const feedbackError = sp.error;
+  const feedbackCreated = sp.created;
   // coupons RLS (migration 070) drops anon SELECT — admin reads need
   // the service role.
   const admin = supabaseAdmin();
@@ -68,6 +75,20 @@ export default async function CouponsPage() {
           </p>
         </div>
       </div>
+
+      {(feedbackError || feedbackCreated) && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: '0.875rem',
+            background: feedbackError ? '#fef2f2' : '#f0fdf4',
+            color: feedbackError ? '#991b1b' : '#166534',
+            border: `1px solid ${feedbackError ? '#fecaca' : '#bbf7d0'}`,
+          }}
+        >
+          {feedbackError ?? `Coupon "${feedbackCreated}" created.`}
+        </div>
+      )}
 
       {/* Create coupon form */}
       <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 24 }}>

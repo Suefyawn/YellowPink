@@ -5,6 +5,12 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { brandPlusName } from '@/lib/product-display';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import {
+  AddReviewToggle,
+  EditReviewButton,
+  UnapproveButton,
+  type ProductOption,
+} from '@/components/admin/ReviewAdminControls';
 import { approveReview, deleteReview } from './actions';
 
 const fmtDate = (s: string) =>
@@ -20,28 +26,40 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-export default async function ReviewsPage() {
+export default async function ReviewsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string; created?: string; updated?: string }>;
+}) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('reviews')) {
     return <NoAccess section="Reviews" />;
   }
+  const sp = (await searchParams) ?? {};
 
   // product_reviews anon SELECT policy filters to approved=true, so the
   // public client never sees pending reviews. Service role bypasses
   // the policy and is the right credential for moderation.
   const admin = supabaseAdmin();
-  const { data: pending } = await admin
-    .from('product_reviews')
-    .select('id, author_name, rating, body, created_at, approved, product_id, photo_urls, verified_purchase, products(name, brand)')
-    .eq('approved', false)
-    .order('created_at', { ascending: false });
-
-  const { data: approved } = await admin
-    .from('product_reviews')
-    .select('id, author_name, rating, body, created_at, approved, product_id, photo_urls, verified_purchase, products(name, brand)')
-    .eq('approved', true)
-    .order('created_at', { ascending: false })
-    .limit(20);
+  const [{ data: pending }, { data: approved }, { data: productRows }] = await Promise.all([
+    admin
+      .from('product_reviews')
+      .select('id, author_name, rating, body, created_at, approved, product_id, photo_urls, verified_purchase, products(name, brand)')
+      .eq('approved', false)
+      .order('created_at', { ascending: false }),
+    admin
+      .from('product_reviews')
+      .select('id, author_name, rating, body, created_at, approved, product_id, photo_urls, verified_purchase, products(name, brand)')
+      .eq('approved', true)
+      .order('created_at', { ascending: false })
+      .limit(20),
+    admin
+      .from('products')
+      .select('id, name, brand')
+      .eq('status', 'published')
+      .order('name', { ascending: true })
+      .limit(500),
+  ]);
 
   type ReviewRow = {
     id: string;
@@ -58,6 +76,7 @@ export default async function ReviewsPage() {
 
   const pendingList = (pending ?? []) as unknown as ReviewRow[];
   const approvedList = (approved ?? []) as unknown as ReviewRow[];
+  const products = (productRows ?? []) as ProductOption[];
 
   const rowStyle: React.CSSProperties = {
     borderTop: '1px solid #f3f4f6', padding: '16px 20px',
@@ -100,8 +119,8 @@ export default async function ReviewsPage() {
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
-          {showApprove && (
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {showApprove ? (
             <form action={approveReview}>
               <input type="hidden" name="id" value={r.id} />
               <button type="submit" style={{
@@ -109,12 +128,23 @@ export default async function ReviewsPage() {
                 border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
               }}>Approve</button>
             </form>
+          ) : (
+            <UnapproveButton id={r.id} />
           )}
+          <EditReviewButton id={r.id} authorName={r.author_name} rating={r.rating} body={r.body} />
           <DeleteButton id={r.id} action={deleteReview} confirmMsg={`Delete the review by ${r.author_name}?`} />
         </div>
       </div>
     );
   }
+
+  const feedback = sp.error
+    ? { kind: 'error' as const, text: sp.error }
+    : sp.created
+      ? { kind: 'ok' as const, text: 'Review added.' }
+      : sp.updated
+        ? { kind: 'ok' as const, text: 'Review updated.' }
+        : null;
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -122,6 +152,22 @@ export default async function ReviewsPage() {
       <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>
         Moderate customer product reviews before they appear on the site
       </p>
+
+      {feedback && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: '0.875rem',
+            background: feedback.kind === 'error' ? '#fef2f2' : '#f0fdf4',
+            color: feedback.kind === 'error' ? '#991b1b' : '#166534',
+            border: `1px solid ${feedback.kind === 'error' ? '#fecaca' : '#bbf7d0'}`,
+          }}
+        >
+          {feedback.text}
+        </div>
+      )}
+
+      <AddReviewToggle products={products} />
 
       {/* Pending */}
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 32, overflow: 'hidden' }}>
