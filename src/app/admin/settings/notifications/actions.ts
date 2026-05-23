@@ -43,9 +43,13 @@ export async function addRecipient(formData: FormData): Promise<void> {
   const email = parseEmail(formData);
   const events = parseEvents(formData);
 
-  const { error } = await supabaseAdmin()
+  // .select('id').single() so the audit row can carry entity_id — without it
+  // an audit reader has to grep diff.email to find which recipient was added.
+  const { data: created, error } = await supabaseAdmin()
     .from('notification_recipients')
-    .insert({ email, events, enabled: true });
+    .insert({ email, events, enabled: true })
+    .select('id')
+    .single();
 
   if (error) {
     // 23505 = unique_violation on the email constraint.
@@ -56,6 +60,7 @@ export async function addRecipient(formData: FormData): Promise<void> {
   void logAudit(session, {
     action: 'notification_recipient.create',
     entity: 'notification_recipients',
+    entity_id: created?.id ?? null,
     diff: { email, events },
   });
   ok();
@@ -87,10 +92,16 @@ export async function deleteRecipient(formData: FormData): Promise<void> {
   const id = formData.get('id') as string;
   if (!id) err('Missing recipient id.');
 
-  const { error } = await supabaseAdmin()
+  // .select('email').single() so the audit row records WHICH email was
+  // deleted, not just the (now-gone) row id. After delete the row is gone, so
+  // the only chance to capture the email is to ask Supabase to return the
+  // deleted row in the same statement.
+  const { data: deleted, error } = await supabaseAdmin()
     .from('notification_recipients')
     .delete()
-    .eq('id', id);
+    .eq('id', id)
+    .select('email')
+    .single();
 
   if (error) err(error.message);
 
@@ -98,6 +109,7 @@ export async function deleteRecipient(formData: FormData): Promise<void> {
     action: 'notification_recipient.delete',
     entity: 'notification_recipients',
     entity_id: id,
+    diff: { email: deleted?.email ?? null },
   });
   ok();
 }
