@@ -18,8 +18,13 @@ import { log } from './logger';
 import { brandPlusName } from './product-display';
 import { supabaseAdmin } from './supabase';
 import { SITE_URL } from './seo';
+import { getRecipientsForEvent } from './notification-recipients';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+// OWNER_EMAIL stays as the fallback recipient and as a reply-to address on
+// outgoing customer mail. Active fan-out for new-order + low-stock alerts
+// now goes through notification_recipients; this env var only kicks in when
+// nobody is configured (or the lookup fails).
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
 const FROM = process.env.EMAIL_FROM ?? 'Yellow Pink Orders <orders@yellowpink.pk>';
 // SITE_URL is shared with the SEO helpers (lib/seo) so the logo image and
@@ -301,8 +306,9 @@ export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
     <p style="margin:16px 0 0;text-align:right;font-size:16px"><strong>Total: ${money(order.total)}</strong></p>
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/orders" style="color:${BRAND_PINK};text-decoration:none;font-weight:600">→ Open in admin</a></p>
   `);
+  const recipients = await getRecipientsForEvent('order.new');
   await send({
-    to: OWNER_EMAIL,
+    to: recipients,
     subject: `New order ${order.order_number} — ${money(order.total)}`,
     html,
   });
@@ -617,5 +623,6 @@ export async function sendLowStockAlertEmail(args: { products: { name: string; b
     <table style="width:100%;border-collapse:collapse;margin-top:12px">${rows}</table>
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/products" style="color:${BRAND_PINK};font-weight:600">→ Restock now</a></p>
   `);
-  await send({ to: OWNER_EMAIL, subject: `Low stock — ${args.products.length} item${args.products.length === 1 ? '' : 's'}`, html, kind: 'batch' });
+  const recipients = await getRecipientsForEvent('inventory.low');
+  await send({ to: recipients, subject: `Low stock — ${args.products.length} item${args.products.length === 1 ? '' : 's'}`, html, kind: 'batch' });
 }
