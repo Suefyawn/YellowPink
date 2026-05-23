@@ -17,25 +17,37 @@ type NavItem = {
   ownerOnly?: boolean;
 };
 
-const NAV: NavItem[] = [
-  { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
-  { href: '/admin/analytics', label: 'Analytics', icon: '◐', permission: 'analytics' },
-  { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products.view' },
-  { href: '/admin/inventory', label: 'Inventory', icon: '⧉', permission: 'products.view' },
-  { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders.view' },
-  { href: '/admin/vendors',   label: 'Vendors',   icon: '▦', permission: 'orders.view' },
-  { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'returns' },
-  { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers.view' },
-  { href: '/admin/segments',  label: 'Segments',  icon: '◐', permission: 'customers.view' },
-  { href: '/admin/coupons',   label: 'Coupons',   icon: '◇', permission: 'coupons' },
-  { href: '/admin/promos',    label: 'Promos',    icon: '✧', permission: 'promos' },
-  { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
-  { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'reviews' },
-  { href: '/admin/newsletter', label: 'Newsletter', icon: '✉', permission: 'newsletter' },
-  { href: '/admin/emails',    label: 'Email log', icon: '❏', permission: 'settings' },
-  { href: '/admin/audit',     label: 'Activity log', icon: '◉', ownerOnly: true },
-  { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
-  { href: '/admin/settings',  label: 'Settings',  icon: '⚙', permission: 'settings' },
+type NavGroup = { label: string; items: NavItem[] };
+
+const GROUPS: NavGroup[] = [
+  { label: 'Insights', items: [
+    { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
+    { href: '/admin/analytics', label: 'Analytics', icon: '◐', permission: 'analytics' },
+  ]},
+  { label: 'Sell', items: [
+    { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders.view' },
+    { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products.view' },
+    { href: '/admin/inventory', label: 'Inventory', icon: '⧉', permission: 'products.view' },
+    { href: '/admin/vendors',   label: 'Vendors',   icon: '▦', permission: 'orders.view' },
+    { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'returns' },
+  ]},
+  { label: 'People', items: [
+    { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers.view' },
+    { href: '/admin/segments',  label: 'Segments',  icon: '◐', permission: 'customers.view' },
+    { href: '/admin/coupons',   label: 'Coupons',   icon: '◇', permission: 'coupons' },
+  ]},
+  { label: 'Marketing', items: [
+    { href: '/admin/promos',    label: 'Promos',    icon: '✧', permission: 'promos' },
+    { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
+    { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'reviews' },
+    { href: '/admin/newsletter', label: 'Newsletter', icon: '✉', permission: 'newsletter' },
+  ]},
+  { label: 'Store', items: [
+    { href: '/admin/emails',    label: 'Email log', icon: '❏', permission: 'settings' },
+    { href: '/admin/audit',     label: 'Activity log', icon: '◉', ownerOnly: true },
+    { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
+    { href: '/admin/settings',  label: 'Settings',  icon: '⚙', permission: 'settings' },
+  ]},
 ];
 
 function canSee(item: NavItem, session: StaffSession): boolean {
@@ -48,7 +60,9 @@ function canSee(item: NavItem, session: StaffSession): boolean {
 
 export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { session: StaffSession; onClose?: () => void; pendingOrderCount?: number }) {
   const pathname = usePathname();
-  const visibleNav = NAV.filter(item => canSee(item, session));
+  const visibleGroups = GROUPS
+    .map(g => ({ ...g, items: g.items.filter(item => canSee(item, session)) }))
+    .filter(g => g.items.length > 0);
 
   return (
     <aside id="admin-sidebar" style={{
@@ -104,41 +118,55 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
 
       {/* Nav */}
       <nav style={{ flex: 1, paddingTop: 8 }}>
-        {visibleNav.map(({ href, label, icon }) => {
-          const active = pathname === href || (href !== '/admin/dashboard' && pathname.startsWith(href));
-          const isOrders = href === '/admin/orders';
-          const badgeCount = isOrders && pendingOrderCount > 0 ? pendingOrderCount : 0;
-          return (
-            <Link key={href} href={href} onClick={onClose} style={{
-              display: 'flex', alignItems: 'center', gap: 12,
-              // 44 px min tap target for mobile phones — desktop still looks
-              // tight because the font size is 0.875rem so the row reads
-              // compactly.
-              padding: '12px 20px',
-              minHeight: 44,
-              color: active ? '#f9fafb' : '#9ca3af',
-              background: active ? 'rgba(249,168,212,0.1)' : 'transparent',
-              textDecoration: 'none', fontSize: '0.875rem',
-              fontWeight: active ? 600 : 400,
-              borderLeft: `3px solid ${active ? '#f472b6' : 'transparent'}`,
-              transition: 'all 0.15s',
+        {visibleGroups.map((group, groupIdx) => (
+          <div key={group.label} style={{ marginTop: groupIdx === 0 ? 0 : 12 }}>
+            <div style={{
+              padding: '8px 20px 4px',
+              color: '#6b7280',
+              fontSize: '0.6875rem',
+              fontWeight: 600,
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
             }}>
-              <span style={{ fontSize: '1rem', opacity: active ? 1 : 0.6 }}>{icon}</span>
-              <span style={{ flex: 1 }}>{label}</span>
-              {badgeCount > 0 && (
-                <span style={{
-                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                  minWidth: 20, height: 20, borderRadius: '50%',
-                  background: '#ef4444', color: '#ffffff',
-                  fontSize: '0.7rem', fontWeight: 700, lineHeight: 1,
-                  padding: '0 4px',
+              {group.label}
+            </div>
+            {group.items.map(({ href, label, icon }) => {
+              const active = pathname === href || (href !== '/admin/dashboard' && pathname.startsWith(href));
+              const isOrders = href === '/admin/orders';
+              const badgeCount = isOrders && pendingOrderCount > 0 ? pendingOrderCount : 0;
+              return (
+                <Link key={href} href={href} onClick={onClose} style={{
+                  display: 'flex', alignItems: 'center', gap: 12,
+                  // 44 px min tap target for mobile phones — desktop still looks
+                  // tight because the font size is 0.875rem so the row reads
+                  // compactly.
+                  padding: '12px 20px',
+                  minHeight: 44,
+                  color: active ? '#f9fafb' : '#9ca3af',
+                  background: active ? 'rgba(249,168,212,0.1)' : 'transparent',
+                  textDecoration: 'none', fontSize: '0.875rem',
+                  fontWeight: active ? 600 : 400,
+                  borderLeft: `3px solid ${active ? '#f472b6' : 'transparent'}`,
+                  transition: 'all 0.15s',
                 }}>
-                  {badgeCount > 99 ? '99+' : badgeCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
+                  <span style={{ fontSize: '1rem', opacity: active ? 1 : 0.6 }}>{icon}</span>
+                  <span style={{ flex: 1 }}>{label}</span>
+                  {badgeCount > 0 && (
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      minWidth: 20, height: 20, borderRadius: '50%',
+                      background: '#ef4444', color: '#ffffff',
+                      fontSize: '0.7rem', fontWeight: 700, lineHeight: 1,
+                      padding: '0 4px',
+                    }}>
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* Bottom links */}
