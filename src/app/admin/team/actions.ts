@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession, hashPassword, generateTempPassword, verifyPassword, upgradeStaffHash } from '@/lib/staff-auth';
 import { sendStaffTempPasswordEmail } from '@/lib/email';
@@ -52,7 +53,8 @@ export async function createStaffMember(
   }
 
   // Best-effort: email the temp password too (the UI still shows it in case Resend isn't configured).
-  void sendStaffTempPasswordEmail({ email, name, tempPassword });
+  // `after()` so the lambda doesn't get killed mid-send the moment we return.
+  after(() => sendStaffTempPasswordEmail({ email, name, tempPassword }));
 
   void logAudit(session, {
     action: 'staff.create',
@@ -133,7 +135,7 @@ export async function resetStaffPassword(
 
   if (error) return { error: error.message };
   if (staff?.email && staff?.name) {
-    void sendStaffTempPasswordEmail({ email: staff.email, name: staff.name, tempPassword });
+    after(() => sendStaffTempPasswordEmail({ email: staff.email, name: staff.name, tempPassword }));
   }
   void logAudit(session, {
     action: 'staff.reset_password',
