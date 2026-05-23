@@ -1,55 +1,176 @@
 export const dynamic = 'force-dynamic';
 
-import { SettingsPageHeader } from '@/components/admin/settings-controls';
+import { DeleteButton } from '@/components/admin/DeleteButton';
+import { SettingsPageHeader, StatusBanner } from '@/components/admin/settings-controls';
+import {
+  listAllRecipients, fallbackRecipientEmail, NOTIFICATION_EVENTS,
+  type NotificationRecipient, type NotificationEvent,
+} from '@/lib/notification-recipients';
+import { addRecipient, updateRecipient, deleteRecipient } from './actions';
 
-// Stub page — the multi-recipient notifications config (per-event opt-in)
-// lands in the next PR. Today the single recipient still comes from the
-// OWNER_EMAIL env var (src/lib/email.ts), so document that here so the
-// owner knows where to look until the UI exists.
+const inp: React.CSSProperties = {
+  width: '100%', padding: '9px 12px', border: '1px solid #d1d5db',
+  borderRadius: 8, fontSize: '0.875rem', color: '#111827',
+  outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+};
 
-export default function SettingsNotificationsPage() {
+function EventCheckboxes({ namePrefix = 'events', selected }: { namePrefix?: string; selected: NotificationEvent[] }) {
+  return (
+    <div style={{ display: 'grid', gap: 8 }}>
+      {NOTIFICATION_EVENTS.map(ev => (
+        <label key={ev.key} style={{
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+          padding: '10px 12px', borderRadius: 8,
+          background: '#fafafa', border: '1px solid #f3f4f6',
+          cursor: 'pointer',
+        }}>
+          <input
+            type="checkbox"
+            name={namePrefix}
+            value={ev.key}
+            defaultChecked={selected.includes(ev.key)}
+            style={{ marginTop: 3, width: 16, height: 16, accentColor: '#6366f1', cursor: 'pointer' }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{ev.label}</div>
+            <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, lineHeight: 1.5 }}>{ev.desc}</div>
+          </div>
+        </label>
+      ))}
+    </div>
+  );
+}
+
+function RecipientRow({ r }: { r: NotificationRecipient }) {
+  return (
+    <div style={{
+      background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+      padding: 20, marginBottom: 12,
+    }}>
+      <form action={updateRecipient.bind(null, r.id)} style={{ display: 'grid', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: '#fdf2f8', color: '#C5286A',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontWeight: 700, fontSize: '0.875rem', flexShrink: 0,
+            }}>
+              {r.email.charAt(0).toUpperCase()}
+            </div>
+            <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {r.email}
+            </div>
+          </div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer', flexShrink: 0 }}>
+            <input type="hidden" name="enabled" value="false" />
+            <input type="checkbox" name="enabled" value="true" defaultChecked={r.enabled}
+              style={{ width: 16, height: 16, accentColor: '#6366f1', cursor: 'pointer' }} />
+            <span style={{ fontSize: '0.8125rem', color: '#374151', fontWeight: 500 }}>
+              {r.enabled ? 'Active' : 'Paused'}
+            </span>
+          </label>
+        </div>
+
+        <EventCheckboxes selected={r.events} />
+
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          <button type="submit" style={{
+            padding: '8px 18px', background: '#111827', color: 'white',
+            border: 'none', borderRadius: 7, fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
+          }}>
+            Save
+          </button>
+          <DeleteButton id={r.id} action={deleteRecipient} confirmMsg={`Remove ${r.email} from notifications?`} />
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default async function SettingsNotificationsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
+  const [recipients, sp] = await Promise.all([listAllRecipients(), searchParams]);
+  const fallback = fallbackRecipientEmail();
+
   return (
     <>
       <SettingsPageHeader
         title="Notifications"
-        subtitle="Who receives the internal alerts the system sends — new orders, low stock, payment failures."
+        subtitle="Who receives the internal alerts the system sends — new orders, low stock. Each recipient picks which events they want."
       />
+      <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
 
+      {/* Fallback explainer */}
+      <div style={{
+        background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8,
+        padding: '12px 16px', marginBottom: 24, color: '#1e40af',
+        fontSize: '0.8125rem', lineHeight: 1.6,
+      }}>
+        <strong>Fallback:</strong> if nobody is configured for an event, the
+        alert goes to <code style={{ background: '#dbeafe', padding: '1px 6px', borderRadius: 4 }}>{fallback}</code> (the
+        <code style={{ background: '#dbeafe', padding: '1px 6px', borderRadius: 4 }}>OWNER_EMAIL</code> env var). Add a recipient
+        below to take over.
+      </div>
+
+      {/* Add new recipient */}
       <div style={{
         background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-        padding: '32px 28px', display: 'grid', gap: 16,
+        padding: 24, marginBottom: 24,
       }}>
-        <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8, alignSelf: 'flex-start',
-          padding: '4px 10px', borderRadius: 999,
-          background: '#fef3c7', color: '#92400e',
-          fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
-        }}>
-          Coming next
-        </div>
-
-        <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600, color: '#111827' }}>
-          Multi-recipient notifications
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
+          Add a recipient
         </h2>
-
-        <p style={{ margin: 0, fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
-          A per-event recipient list lands in the next update. You&apos;ll be
-          able to add as many staff email addresses as you like and pick which
-          alerts each one receives — new orders, low stock, payment failures,
-          and Sentry/PostHog admin alerts.
+        <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Each staff member gets one row. Pick the events they should receive.
         </p>
 
-        <div style={{
-          background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8,
-          padding: '16px 18px', fontSize: '0.8125rem', color: '#374151', lineHeight: 1.6,
-        }}>
-          <strong style={{ color: '#111827' }}>Until then:</strong> notifications go to
-          a single address controlled by the <code style={{ background: '#e5e7eb', padding: '1px 6px', borderRadius: 4 }}>OWNER_EMAIL</code> environment
-          variable. To change it, open the project on Vercel → <em>Project Settings</em> → <em>Environment Variables</em>,
-          edit <code style={{ background: '#e5e7eb', padding: '1px 6px', borderRadius: 4 }}>OWNER_EMAIL</code> for the
-          Production environment, then redeploy.
-        </div>
+        <form action={addRecipient} style={{ display: 'grid', gap: 14 }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
+              Email
+            </label>
+            <input
+              name="email"
+              type="email"
+              required
+              placeholder="ops@yellowpink.pk"
+              style={inp}
+            />
+          </div>
+
+          <div>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 8 }}>
+              Subscribe to
+            </div>
+            <EventCheckboxes selected={[]} />
+          </div>
+
+          <div>
+            <button type="submit" style={{
+              padding: '10px 22px', background: '#C5286A', color: 'white',
+              border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.875rem', cursor: 'pointer',
+            }}>
+              Add recipient
+            </button>
+          </div>
+        </form>
       </div>
+
+      {/* List of existing recipients */}
+      <h2 style={{ margin: '0 0 12px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
+        Recipients ({recipients.length})
+      </h2>
+
+      {recipients.length === 0 ? (
+        <div style={{
+          background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          padding: '40px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem',
+        }}>
+          No recipients yet — alerts go to the fallback address above.
+        </div>
+      ) : (
+        recipients.map(r => <RecipientRow key={r.id} r={r} />)
+      )}
     </>
   );
 }
