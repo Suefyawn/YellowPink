@@ -77,10 +77,18 @@ export default async function EmailLogPage({
   ]);
 
   const emails = (rows ?? []) as EmailRow[];
-  const stats = [
-    { label: 'Sent · 30 days',   value: sent30.count ?? 0 },
+  const sentCount = sent30.count ?? 0;
+  const openedCount = opened30.count ?? 0;
+  // Open rate over the same window — '—' when the denominator is zero so the
+  // card doesn't display 0% / NaN% before any mail has gone out. Stays '—'
+  // (with the explainer below) until the Resend webhook is delivering events;
+  // sentCount > 0 with openedCount = 0 most often means the webhook isn't wired.
+  const openRate = sentCount === 0 ? '—' : `${Math.round((openedCount / sentCount) * 1000) / 10}%`;
+  const stats: { label: string; value: number | string }[] = [
+    { label: 'Sent · 30 days',   value: sentCount },
     { label: 'Failed · 30 days', value: failed30.count ?? 0 },
-    { label: 'Opened · 30 days', value: opened30.count ?? 0 },
+    { label: 'Opened · 30 days', value: openedCount },
+    { label: 'Open rate · 30 days', value: openRate },
   ];
 
   return (

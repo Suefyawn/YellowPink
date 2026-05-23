@@ -24,8 +24,8 @@ interface IntegrationCheck {
 const INTEGRATIONS: IntegrationCheck[] = [
   {
     name: 'Resend (transactional email)',
-    purpose: 'Order confirmations, shipping updates, password resets, newsletter sends.',
-    envVars: ['RESEND_API_KEY', 'EMAIL_FROM'],
+    purpose: 'Order confirmations, shipping updates, password resets, newsletter sends. The webhook secret unlocks delivery/open/click tracking on the Email log.',
+    envVars: ['RESEND_API_KEY', 'EMAIL_FROM', 'RESEND_WEBHOOK_SECRET'],
     setupRef: 'src/lib/email.ts',
   },
   {
