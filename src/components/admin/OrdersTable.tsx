@@ -22,16 +22,19 @@ const statusColors: Record<string, string> = {
   delivered: '#10b981', cancelled: '#ef4444',
 };
 
-const BULK_STATUSES: { value: OrderStatus; label: string; color: string }[] = [
-  { value: 'processing', label: 'Processing', color: '#3b82f6' },
-  { value: 'shipped',    label: 'Shipped',    color: '#8b5cf6' },
-  { value: 'delivered',  label: 'Delivered',  color: '#10b981' },
-  { value: 'cancelled',  label: 'Cancelled',  color: '#ef4444' },
+// Labels come from ORDER_STATUS_LABELS so the bulk-action and swipe buttons
+// stay in lock-step with every other status surface (header badge, timeline,
+// filter pills, invoice). Defining a label here would let the two drift.
+const BULK_STATUSES: { value: OrderStatus; color: string }[] = [
+  { value: 'processing', color: '#3b82f6' },
+  { value: 'shipped',    color: '#8b5cf6' },
+  { value: 'delivered',  color: '#10b981' },
+  { value: 'cancelled',  color: '#ef4444' },
 ];
 
 // Statuses offered in the per-card swipe panel — the forward fulfilment
 // progression. Cancellation stays on the order detail page (destructive).
-const QUICK_STATUSES: { value: OrderStatus; label: string; color: string }[] =
+const QUICK_STATUSES: { value: OrderStatus; color: string }[] =
   BULK_STATUSES.filter(s => s.value !== 'cancelled');
 
 function StatusBadge({ status }: { status: string }) {
@@ -212,7 +215,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                       opacity: st === s.value ? 0.45 : 1,
                     }}
                   >
-                    {s.label}
+                    {ORDER_STATUS_LABELS[s.value]}
                   </button>
                 ))}
               </div>
@@ -239,7 +242,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
               background: s.color + '30', color: s.color,
               fontSize: '0.8125rem', fontWeight: 600, opacity: pending ? 0.6 : 1,
             }}>
-              {pending ? '…' : s.label}
+              {pending ? '…' : ORDER_STATUS_LABELS[s.value]}
             </button>
           ))}
           <button onClick={() => setSelected(new Set())} style={{
