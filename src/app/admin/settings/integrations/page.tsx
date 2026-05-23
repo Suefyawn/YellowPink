@@ -13,6 +13,11 @@ interface IntegrationCheck {
   /** Env vars required for the integration to work. Missing any one =
    *  the integration is considered "Not configured". */
   envVars: string[];
+  /** Env vars that are nice-to-have but not required — missing ones don't
+   *  affect the status badge. Used for fallback knobs that an upstream
+   *  service can already satisfy without the env var (e.g. a redundant SEO
+   *  verification meta tag when DNS verification is already done). */
+  optionalEnvVars?: string[];
   /** Optional analytics_cache key whose updated_at lets us show a freshness
    *  badge ("Last synced 12m ago"). */
   cacheKey?: string;
@@ -62,8 +67,9 @@ const INTEGRATIONS: IntegrationCheck[] = [
   },
   {
     name: 'Google Search Console',
-    purpose: 'Search-console site verification meta tag added to <head>.',
-    envVars: ['GOOGLE_SITE_VERIFICATION'],
+    purpose: 'Backup HTML meta-tag verification. Only needed for URL-prefix properties; Domain properties verify via DNS and don\'t need this.',
+    envVars: [],
+    optionalEnvVars: ['GOOGLE_SITE_VERIFICATION'],
     setupRef: 'docs/USER-MANUAL.md §7',
   },
   {
@@ -74,18 +80,31 @@ const INTEGRATIONS: IntegrationCheck[] = [
   },
 ];
 
+interface RenderedVar { name: string; present: boolean; optional: boolean }
+
 interface ResolvedIntegration extends IntegrationCheck {
   status: 'ok' | 'partial' | 'missing';
+  /** Only the missing *required* vars — drives the status badge. */
   missingVars: string[];
+  /** Required + optional vars merged into render-ready rows. */
+  renderedVars: RenderedVar[];
   lastSync: string | null;
 }
 
 async function resolve(integration: IntegrationCheck): Promise<ResolvedIntegration> {
   const missingVars = integration.envVars.filter(v => !process.env[v]);
+  // An integration with no required vars (e.g. one whose only knob is an
+  // optional fallback) is considered "ok" — there's nothing to configure for
+  // it to do its job.
   const status: 'ok' | 'partial' | 'missing' =
-    missingVars.length === 0 ? 'ok' :
+    integration.envVars.length === 0 || missingVars.length === 0 ? 'ok' :
     missingVars.length < integration.envVars.length ? 'partial' :
     'missing';
+
+  const renderedVars: RenderedVar[] = [
+    ...integration.envVars.map(name => ({ name, present: Boolean(process.env[name]), optional: false })),
+    ...(integration.optionalEnvVars ?? []).map(name => ({ name, present: Boolean(process.env[name]), optional: true })),
+  ];
 
   let lastSync: string | null = null;
   if (integration.cacheKey && status !== 'missing') {
@@ -93,7 +112,7 @@ async function resolve(integration: IntegrationCheck): Promise<ResolvedIntegrati
     if (cached) lastSync = cached.updatedAt;
   }
 
-  return { ...integration, status, missingVars, lastSync };
+  return { ...integration, status, missingVars, renderedVars, lastSync };
 }
 
 function StatusBadge({ status }: { status: 'ok' | 'partial' | 'missing' }) {
@@ -183,13 +202,21 @@ export default async function SettingsIntegrationsPage() {
               <div>
                 <div style={{ color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600, marginBottom: 4 }}>Env vars</div>
                 <div style={{ color: '#374151', lineHeight: 1.6 }}>
-                  {i.envVars.map(v => (
-                    <div key={v} style={{ fontFamily: 'monospace' }}>
-                      <span style={{ color: i.missingVars.includes(v) ? '#dc2626' : '#15803d' }}>
-                        {i.missingVars.includes(v) ? '✗' : '✓'}
-                      </span> {v}
-                    </div>
-                  ))}
+                  {i.renderedVars.length === 0 ? (
+                    <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>None required</div>
+                  ) : i.renderedVars.map(v => {
+                    // Missing-but-optional gets a muted tick mark, not a red ✗ —
+                    // it's a knob, not a gap.
+                    const colour = v.present ? '#15803d' : (v.optional ? '#9ca3af' : '#dc2626');
+                    return (
+                      <div key={v.name} style={{ fontFamily: 'monospace' }}>
+                        <span style={{ color: colour }}>{v.present ? '✓' : '✗'}</span> {v.name}
+                        {v.optional && (
+                          <span style={{ color: '#9ca3af', fontStyle: 'italic', fontFamily: 'inherit' }}> (optional)</span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
