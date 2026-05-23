@@ -20,10 +20,18 @@ export async function saveSettings(formData: FormData): Promise<void> {
   // binding inputs ($ACTION_ID_…, $ACTION_REF_…, etc.) that should never
   // end up in the site_settings table (audit SEV-2). The DB now also has
   // a CHECK constraint refusing these keys; this is belt-and-braces.
+  // `_redirect` is a meta field the sub-page sets so the action returns the
+  // owner to the page they submitted from, not always `/admin/settings`.
   const map = new Map<string, string>();
+  let redirectTarget = '/admin/settings';
   for (const [key, val] of formData.entries()) {
     if (typeof val !== 'string') continue;
     if (key.startsWith('$')) continue;
+    if (key === '_redirect') {
+      // Only allow paths under /admin/settings to prevent open-redirect.
+      if (val.startsWith('/admin/settings')) redirectTarget = val;
+      continue;
+    }
     map.set(key, val);
   }
 
@@ -34,7 +42,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
     // the service-role client (this action is owner-gated above).
     const { error } = await supabaseAdmin().from('site_settings').upsert(pairs, { onConflict: 'key' });
     if (error) {
-      redirect(`/admin/settings?error=${encodeURIComponent(error.message)}`);
+      redirect(`${redirectTarget}?error=${encodeURIComponent(error.message)}`);
     }
   }
 
@@ -49,6 +57,6 @@ export async function saveSettings(formData: FormData): Promise<void> {
   // and other settings drive homepage sections, and the layout-level call
   // alone has been unreliable at refreshing the index render.
   revalidatePath('/', 'page');
-  revalidatePath('/admin/settings');
-  redirect('/admin/settings?saved=1');
+  revalidatePath(redirectTarget);
+  redirect(`${redirectTarget}?saved=1`);
 }
