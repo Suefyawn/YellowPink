@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
+import { ga4Query, isGA4Configured } from '@/lib/ga4';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
@@ -282,6 +283,80 @@ async function notifyAdmin(supabase: PermissiveSupabase, input: NotifyInput): Pr
   });
 }
 
+// ─── refreshGA4 ─────────────────────────────────────────────────────────────
+// Pulls the two GA4 reports that complement PostHog: traffic channels (where
+// sessions come from, by Google's official attribution) and organic-search
+// landing pages with their conversion rate. PostHog already covers the
+// in-session funnel + top pages, so we don't duplicate those.
+async function refreshGA4(supabase: PermissiveSupabase): Promise<void> {
+  if (!isGA4Configured()) {
+    throw new Error('GA4 not configured (set GA4_PROPERTY_ID and GA4_SERVICE_ACCOUNT_JSON)');
+  }
+
+  const dateRanges = [{ startDate: '7daysAgo', endDate: 'today' }];
+
+  const [channels, landings] = await Promise.all([
+    // Sessions by Google's Default Channel Grouping (Organic Search, Direct,
+    // Referral, Organic Social, Email, Paid Search, …).
+    ga4Query({
+      dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'engagedSessions' },
+        { name: 'conversions' },
+      ],
+      dateRanges,
+      orderBys: [{ desc: true, metric: { metricName: 'sessions' } }],
+      limit: 10,
+    }),
+    // Organic-search landings with conversion rate — the GA4-unique view that
+    // PostHog can't replicate (PostHog doesn't see Search Console queries).
+    ga4Query({
+      dimensions: [{ name: 'landingPagePlusQueryString' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'conversions' },
+        { name: 'totalRevenue' },
+      ],
+      dateRanges,
+      dimensionFilter: {
+        filter: {
+          fieldName: 'sessionDefaultChannelGroup',
+          stringFilter: { matchType: 'EXACT', value: 'Organic Search' },
+        },
+      },
+      orderBys: [{ desc: true, metric: { metricName: 'sessions' } }],
+      limit: 10,
+    }),
+  ]);
+
+  const channelRows = (channels?.rows ?? []).map(r => ({
+    channel:         r.dimensionValues[0]?.value ?? '(other)',
+    sessions:        Number(r.metricValues[0]?.value ?? 0),
+    engagedSessions: Number(r.metricValues[1]?.value ?? 0),
+    conversions:     Number(r.metricValues[2]?.value ?? 0),
+  }));
+
+  const landingRows = (landings?.rows ?? []).map(r => {
+    const sessions    = Number(r.metricValues[0]?.value ?? 0);
+    const conversions = Number(r.metricValues[1]?.value ?? 0);
+    const revenue     = Number(r.metricValues[2]?.value ?? 0);
+    return {
+      path:      r.dimensionValues[0]?.value ?? '/',
+      sessions,
+      conversions,
+      revenue,
+      // Conversion rate as a 0…1 fraction; widget renders the %.
+      conversionRate: sessions > 0 ? conversions / sessions : 0,
+    };
+  });
+
+  await Promise.all([
+    upsertCache(supabase, 'ga4_channels', { items: channelRows }),
+    upsertCache(supabase, 'ga4_landings', { items: landingRows }),
+  ]);
+}
+
 // ─── Core refresh (no auth) ─────────────────────────────────────────────────
 // Pure data-refresh path. Both the staff-facing server action and the
 // CRON_SECRET-gated cron route call this. Auth/audit/revalidate is the
@@ -295,6 +370,10 @@ export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: str
   const results = await Promise.allSettled([
     refreshPostHog(supabase),
     refreshSentry(supabase),
+    // GA4 is optional — only enrolls when the env vars are set. The
+    // allSettled wrapper means a missing GA4 config doesn't break PostHog
+    // or Sentry refreshes.
+    refreshGA4(supabase),
   ]);
 
   const errors = results

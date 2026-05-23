@@ -313,6 +313,27 @@ The site already fires GA4's e-commerce events automatically — `view_item`,
 `add_to_cart`, `begin_checkout`, `purchase`, `search`, `sign_up` — so you'll
 see funnel and revenue data without any extra setup.
 
+**Pulling GA4 data into the admin dashboard (optional)**
+
+Two extra widgets on *Admin → Analytics → Customers* — *Traffic by channel*
+and *Organic search landings* — show GA4 data alongside PostHog. They need
+a service account so the server can call the GA4 Data API:
+
+1. In Google Cloud Console, create a service account (any project). Open
+   it → *Keys* → *Add key* → *JSON* → download the file.
+2. In GA4, *Admin* → *Property* → *Property access management* → add the
+   service account's email with the *Viewer* role.
+3. Find the *Property ID* (a number, not the `G-` measurement ID) in GA4
+   *Admin* → *Property* → *Property details*.
+4. In Vercel, set two env vars for Production:
+   - `GA4_PROPERTY_ID` — the numeric ID from step 3.
+   - `GA4_SERVICE_ACCOUNT_JSON` — paste the entire downloaded JSON file.
+5. Redeploy. On *Admin → Analytics*, click *Refresh analytics* — the GA4
+   widgets populate within a few seconds.
+
+The widgets refresh on the same cadence as the PostHog ones (the daily
+cron + the manual *Refresh analytics* button).
+
 **Google Merchant Center (free Shopping listings)**
 
 1. Sign up at merchants.google.com. Target country: Pakistan, currency: PKR.

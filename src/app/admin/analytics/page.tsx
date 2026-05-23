@@ -9,6 +9,8 @@ import { PostHogWidget } from '@/components/admin/PostHogWidget';
 import { ConversionFunnelWidget } from '@/components/admin/ConversionFunnelWidget';
 import { TopPagesWidget } from '@/components/admin/TopPagesWidget';
 import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
+import { GA4ChannelsWidget } from '@/components/admin/GA4ChannelsWidget';
+import { GA4LandingsWidget } from '@/components/admin/GA4LandingsWidget';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { OrderStatus } from '@/types';
@@ -261,6 +263,15 @@ export default async function AnalyticsPage({
               <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
                 <TopPagesWidget />
                 <TopEventsWidget />
+              </div>
+              {/* GA4 widgets — show Google's own attribution (channels) and the
+                  unique organic-search landings + conversion view that PostHog
+                  doesn't have. Both auto-fall-back to an empty state when GA4
+                  isn't configured, so they're safe to render before the owner
+                  sets the service-account env vars. */}
+              <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 16, marginBottom: 28 }}>
+                <GA4ChannelsWidget />
+                <GA4LandingsWidget />
               </div>
             </>
           )}
