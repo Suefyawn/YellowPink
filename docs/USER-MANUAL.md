@@ -244,27 +244,28 @@ role, and save. They receive a temporary password to sign in with and change.
 
 ## 6. Store settings
 
-**Settings** (`/admin/settings`) is one page divided into cards, with quick
-links at the top to jump to each:
+**Settings** (`/admin/settings`) splits into eight focused sub-pages, each
+reachable from the left rail. Open Settings and the rail shows where to go for
+what — pick a page, edit, hit **Save changes** at the bottom.
 
-- **Store Info** — store name, currency, contact email and phone.
-- **Social Media** — links to your social profiles (used in the footer and for
-  search-engine data).
-- **Shipping & Tax** — default shipping rate, free-shipping threshold, tax rate.
-- **Payments** — turn each payment method on or off, and manage the bank/wallet
-  accounts shown to customers paying by transfer.
-- **Loyalty** — how customers earn and redeem loyalty points.
-- **Seasonal Theme** — switch the storefront's colour palette for a season or
-  campaign.
-- **Brand Colours** — the core brand colours used across the site and emails.
-- **Announcement** — the thin message bar at the top of the storefront.
-- **Sale** — turn a store-wide sale on/off and set its homepage wording.
-- **Promo Banner** — the larger promotional banner below the header.
-- **Homepage Hero** — the big banner at the top of the home page: its wording,
-  buttons, image, and brand logos.
+| Sub-page | What it controls |
+|---|---|
+| **Store profile** (`/admin/settings/profile`) | Store name, currency, contact email and phone, and links to your social profiles (used in the footer and for search-engine data). |
+| **Branding & theme** (`/admin/settings/branding`) | Brand colours (pink, yellow, ink) and the **Seasonal Theme** — a one-switch makeover (palette, motif, hero) for Eid, Christmas, etc. |
+| **Homepage** (`/admin/settings/homepage`) | The big **Homepage Hero** (wording, buttons, image, brand logos), the store-wide **Sale** on/off switch, and the thin **Announcement Bar** at the top of every page. |
+| **Shipping & tax** (`/admin/settings/shipping`) | Default shipping rate, free-shipping threshold, tax rate. |
+| **Payments** (`/admin/settings/payments`) | Turn each payment method on or off, and manage the bank/wallet accounts shown to customers paying by transfer. |
+| **Loyalty** (`/admin/settings/loyalty`) | How customers earn and redeem loyalty points. |
+| **Notifications** (`/admin/settings/notifications`) | Who receives internal alerts (new orders, low stock, payment failures). Multi-recipient configuration is coming next; today the single recipient comes from the `OWNER_EMAIL` environment variable. |
+| **Integrations** (`/admin/settings/integrations`) | Status overview for Google Analytics 4, Search Console, Merchant Center, PostHog, Sentry, and Resend. Live indicators land in the next update; for now this page documents which env vars each integration needs. |
 
 Saved changes apply to the storefront within a few minutes (storefront pages
 are cached for speed).
+
+> **Note on promos.** Scheduled, audience-targeted promotional banners (the
+> top bar and the hero strip) are no longer in Settings — they live on the
+> dedicated **Promos** page (`/admin/promos`) where you can run multiple
+> campaigns at once with start/end dates and audience filters.
 
 ---
 
