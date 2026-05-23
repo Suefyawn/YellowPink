@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { Pagination } from '@/components/admin/Pagination';
 import { UsersFilter } from '@/components/admin/UsersFilter';
 import { getStaffSession } from '@/lib/staff-auth';
@@ -51,13 +51,14 @@ export default async function UsersPage({
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const sort: SortKey = SORT_KEYS.includes(sortParam as SortKey) ? (sortParam as SortKey) : 'recent';
 
-  // Two SECURITY DEFINER RPCs: the account list (get_admin_users, called via
-  // the anon client as it always has been) and per-customer order aggregates
-  // (get_customer_order_stats — service-role only, it carries revenue data).
-  // Merged here so the list shows customer value, not just account fields.
+  // Two SECURITY DEFINER RPCs, both called via the service-role client: the
+  // account list (get_admin_users — auth.users PII) and per-customer order
+  // aggregates (get_customer_order_stats — revenue data). Both are revoked
+  // from anon/authenticated by the security_revoke_anon_rpc migration.
+  const admin = supabaseAdmin();
   const [{ data: users }, { data: stats }] = await Promise.all([
-    supabase.rpc('get_admin_users' as never),
-    supabaseAdmin().rpc('get_customer_order_stats' as never),
+    admin.rpc('get_admin_users' as never),
+    admin.rpc('get_customer_order_stats' as never),
   ]);
 
   const statById = new Map<string, OrderStat>();

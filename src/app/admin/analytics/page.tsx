@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
@@ -28,7 +28,9 @@ interface RfmRow { segment: string; customers: number; total_revenue: number }
 interface CohortRow { cohort_month: string; month_offset: number; customers: number }
 
 async function rpc<T>(name: string, args: Record<string, unknown> = {}): Promise<T[]> {
-  const { data, error } = await supabase.rpc(name as never, args as never);
+  // Service-role client: every analytics_* RPC is revoked from anon/authenticated
+  // (the security_revoke_anon_rpc migration). They carry revenue/segment data.
+  const { data, error } = await supabaseAdmin().rpc(name as never, args as never);
   if (error) {
     const { log } = await import('@/lib/logger');
     log.warn('analytics.rpc_failed', { rpc: name, message: error.message });
