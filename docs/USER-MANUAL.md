@@ -256,7 +256,7 @@ what — pick a page, edit, hit **Save changes** at the bottom.
 | **Shipping & tax** (`/admin/settings/shipping`) | Default shipping rate, free-shipping threshold, tax rate. |
 | **Payments** (`/admin/settings/payments`) | Turn each payment method on or off, and manage the bank/wallet accounts shown to customers paying by transfer. |
 | **Loyalty** (`/admin/settings/loyalty`) | How customers earn and redeem loyalty points. |
-| **Notifications** (`/admin/settings/notifications`) | Who receives internal alerts (new orders, low stock, payment failures). Multi-recipient configuration is coming next; today the single recipient comes from the `OWNER_EMAIL` environment variable. |
+| **Notifications** (`/admin/settings/notifications`) | Add as many staff email addresses as you like and pick which alerts each one receives — **New orders** (every order, immediately) and **Low stock** (daily digest when items drop below 5 units). If nobody is configured for an event, the alert falls back to the `OWNER_EMAIL` env var so existing behaviour is unchanged. |
 | **Integrations** (`/admin/settings/integrations`) | Status overview for Google Analytics 4, Search Console, Merchant Center, PostHog, Sentry, and Resend. Live indicators land in the next update; for now this page documents which env vars each integration needs. |
 
 Saved changes apply to the storefront within a few minutes (storefront pages
