@@ -22,8 +22,21 @@ interface OrderStat {
   last_order_at: string | null;
 }
 
-// A customer account enriched with their order aggregates.
+interface GuestCustomer {
+  guest_key: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  order_count: number | string;
+  total_spent: number | string;
+  last_order_at: string | null;
+  first_order_at: string | null;
+}
+
+// A customer (registered account or guest buyer) enriched with order aggregates.
 interface CustomerRow extends AdminUser {
+  kind: 'registered' | 'guest';
   orderCount: number;
   totalSpent: number;
   lastOrderAt: string | null;
@@ -51,35 +64,57 @@ export default async function UsersPage({
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const sort: SortKey = SORT_KEYS.includes(sortParam as SortKey) ? (sortParam as SortKey) : 'recent';
 
-  // Two SECURITY DEFINER RPCs, both called via the service-role client: the
-  // account list (get_admin_users — auth.users PII) and per-customer order
-  // aggregates (get_customer_order_stats — revenue data). Both are revoked
-  // from anon/authenticated by the security_revoke_anon_rpc migration.
+  // Three SECURITY DEFINER RPCs, all called via the service-role client: the
+  // account list (get_admin_users — auth.users PII), per-account order
+  // aggregates (get_customer_order_stats — revenue data) and guest buyers
+  // derived from unclaimed orders (get_guest_customers). All are revoked from
+  // anon/authenticated by the security_revoke_anon_rpc migration.
   const admin = supabaseAdmin();
-  const [{ data: users }, { data: stats }] = await Promise.all([
+  const [{ data: users }, { data: stats }, { data: guests }] = await Promise.all([
     admin.rpc('get_admin_users' as never),
     admin.rpc('get_customer_order_stats' as never),
+    admin.rpc('get_guest_customers' as never),
   ]);
 
   const statById = new Map<string, OrderStat>();
   for (const st of (stats ?? []) as OrderStat[]) statById.set(st.user_id, st);
 
-  let list: CustomerRow[] = ((users ?? []) as AdminUser[]).map(u => {
+  const registered: CustomerRow[] = ((users ?? []) as AdminUser[]).map(u => {
     const st = statById.get(u.id);
     return {
       ...u,
+      kind: 'registered' as const,
       orderCount: st ? Number(st.order_count) : 0,
       totalSpent: st ? Number(st.total_spent) : 0,
       lastOrderAt: st?.last_order_at ?? null,
     };
   });
 
+  // Guests have no auth UUID; we address them by their identity key (email, or
+  // phone for the rare emailless order). The detail page understands the
+  // `guest:` prefix. `created_at` stands in for "joined" — their first order.
+  const guestRows: CustomerRow[] = ((guests ?? []) as GuestCustomer[]).map(g => ({
+    id: `guest:${encodeURIComponent(g.guest_key)}`,
+    kind: 'guest' as const,
+    email: g.email ?? '',
+    first_name: g.first_name,
+    last_name: g.last_name,
+    phone: g.phone,
+    created_at: g.first_order_at ?? g.last_order_at ?? new Date().toISOString(),
+    orderCount: Number(g.order_count),
+    totalSpent: Number(g.total_spent),
+    lastOrderAt: g.last_order_at,
+  }));
+
+  let list: CustomerRow[] = [...registered, ...guestRows];
+
   if (q) {
     const lower = q.toLowerCase();
     list = list.filter(u =>
       u.email?.toLowerCase().includes(lower) ||
       u.first_name?.toLowerCase().includes(lower) ||
-      u.last_name?.toLowerCase().includes(lower),
+      u.last_name?.toLowerCase().includes(lower) ||
+      u.phone?.toLowerCase().includes(lower),
     );
   }
 
@@ -94,13 +129,17 @@ export default async function UsersPage({
   });
 
   const total = list.length;
+  const guestCount = list.filter(u => u.kind === 'guest').length;
   const paginated = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Customers</h1>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{total} registered account{total !== 1 ? 's' : ''}</p>
+        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+          {total} customer{total !== 1 ? 's' : ''}
+          {guestCount > 0 && ` · ${guestCount} guest${guestCount !== 1 ? 's' : ''}`}
+        </p>
       </div>
 
       <Suspense fallback={null}>
@@ -127,11 +166,21 @@ export default async function UsersPage({
                 return (
                   <tr key={u.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
                     <td data-label="Customer" style={{ padding: '12px 16px' }}>
-                      <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
-                        {hasName ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : u.email}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                          {hasName ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : (u.email || u.phone || '—')}
+                        </span>
+                        <span style={{
+                          display: 'inline-block', padding: '1px 8px', borderRadius: 20,
+                          fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
+                          background: u.kind === 'guest' ? '#fef3c7' : '#e0f2fe',
+                          color: u.kind === 'guest' ? '#92400e' : '#075985',
+                        }}>
+                          {u.kind === 'guest' ? 'Guest' : 'Registered'}
+                        </span>
                       </div>
                       {hasName && (
-                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', wordBreak: 'break-word' }}>{u.email}</div>
+                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', wordBreak: 'break-word' }}>{u.email || u.phone}</div>
                       )}
                     </td>
                     <td data-label="Orders" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>

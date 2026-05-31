@@ -9,7 +9,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 23 May 2026.*
+> *Last updated: 31 May 2026.*
 
 ---
 
@@ -155,7 +155,7 @@ together. Here's what each link is for:
 **People** — customers and incentives
 | Section | What it's for |
 |---|---|
-| **Customers** | Everyone who has an account — search the list and open a customer to see their orders, lifetime spend, and activity. |
+| **Customers** | Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend. Guests are grouped by email (a guest's repeat orders show as one customer); if a guest later signs up with the same email, their orders move under that account automatically. |
 | **Segments** | Customer groupings (e.g. high-spenders) for targeting and analysis. |
 | **Coupons** | Discount codes — create, edit, set limits and expiry, and turn them on/off. |
 
