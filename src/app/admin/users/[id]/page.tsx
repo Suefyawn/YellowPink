@@ -64,16 +64,17 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   const admin = supabaseAdmin();
 
   // Guest buyers have no auth account; the Customers list addresses them with a
-  // `guest:<email>` (or `guest:phone:<phone>`) id. We resolve them straight off
+  // `guest-<base64url(identity)>` id, where identity is their email (or
+  // `phone:<phone>` for the rare emailless order). We resolve them straight off
   // their unclaimed orders and synthesise an account-shaped record.
-  const isGuest = id.startsWith('guest:');
+  const isGuest = id.startsWith('guest-');
 
   let user: AdminUser;
   let orderList: Order[];
   let activityRows: ActivityRow[] = [];
 
   if (isGuest) {
-    const key = id.slice('guest:'.length);
+    const key = Buffer.from(id.slice('guest-'.length), 'base64url').toString('utf8');
     const byPhone = key.startsWith('phone:');
     const ident = byPhone ? key.slice('phone:'.length) : key;
     const base = admin.from('orders').select('*').is('user_id', null).order('created_at', { ascending: false });
