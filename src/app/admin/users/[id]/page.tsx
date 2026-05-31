@@ -62,25 +62,55 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   // orders is RLS-locked; the `get_admin_user` RPC already uses
   // SECURITY DEFINER but route via service-role for consistency.
   const admin = supabaseAdmin();
-  const [{ data: userData }, { data: orders }, { data: activity }] = await Promise.all([
-    admin.rpc('get_admin_user' as never, { p_id: id } as never),
-    admin.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
-    // The customer's own journey — activity_log rows where they are the actor
-    // (signup, orders, reviews, subscriptions). See migration 090.
-    admin.from('audit_log')
-      .select('id, action, entity, entity_id, diff, created_at')
-      .eq('actor_id', id)
-      .order('created_at', { ascending: false })
-      .limit(50),
-  ]);
 
-  // get_admin_user RETURNS TABLE — a set-returning RPC, so `.rpc()` yields an
-  // array even for a single match. Take the first row.
-  const user = ((userData ?? []) as AdminUser[])[0];
-  if (!user) notFound();
+  // Guest buyers have no auth account; the Customers list addresses them with a
+  // `guest:<email>` (or `guest:phone:<phone>`) id. We resolve them straight off
+  // their unclaimed orders and synthesise an account-shaped record.
+  const isGuest = id.startsWith('guest:');
 
-  const orderList = (orders ?? []) as Order[];
-  const activityRows = (activity ?? []) as ActivityRow[];
+  let user: AdminUser;
+  let orderList: Order[];
+  let activityRows: ActivityRow[] = [];
+
+  if (isGuest) {
+    const key = id.slice('guest:'.length);
+    const byPhone = key.startsWith('phone:');
+    const ident = byPhone ? key.slice('phone:'.length) : key;
+    const base = admin.from('orders').select('*').is('user_id', null).order('created_at', { ascending: false });
+    const { data: gOrders } = byPhone ? await base.eq('phone', ident) : await base.ilike('email', ident);
+    orderList = (gOrders ?? []) as Order[];
+    if (orderList.length === 0) notFound();
+    const latest = orderList[0];
+    const earliest = orderList[orderList.length - 1];
+    user = {
+      id,
+      email: latest.email ?? '',
+      first_name: latest.first_name ?? null,
+      last_name: latest.last_name ?? null,
+      phone: latest.phone ?? null,
+      created_at: earliest.created_at ?? latest.created_at ?? new Date().toISOString(),
+    };
+  } else {
+    const [{ data: userData }, { data: orders }, { data: activity }] = await Promise.all([
+      admin.rpc('get_admin_user' as never, { p_id: id } as never),
+      admin.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
+      // The customer's own journey — activity_log rows where they are the actor
+      // (signup, orders, reviews, subscriptions). See migration 090.
+      admin.from('audit_log')
+        .select('id, action, entity, entity_id, diff, created_at')
+        .eq('actor_id', id)
+        .order('created_at', { ascending: false })
+        .limit(50),
+    ]);
+
+    // get_admin_user RETURNS TABLE — a set-returning RPC, so `.rpc()` yields an
+    // array even for a single match. Take the first row.
+    user = ((userData ?? []) as AdminUser[])[0];
+    if (!user) notFound();
+
+    orderList = (orders ?? []) as Order[];
+    activityRows = (activity ?? []) as ActivityRow[];
+  }
   const totalSpend = orderList.reduce((s, o) => s + o.total, 0);
   const deliveredCount = orderList.filter(o => o.status === 'delivered').length;
 
@@ -97,8 +127,16 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
           {user.first_name || user.last_name
             ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim()
-            : user.email}
+            : (user.email || user.phone)}
         </h1>
+        <span style={{
+          display: 'inline-block', padding: '2px 10px', borderRadius: 20,
+          fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
+          background: isGuest ? '#fef3c7' : '#e0f2fe',
+          color: isGuest ? '#92400e' : '#075985',
+        }}>
+          {isGuest ? 'Guest' : 'Registered'}
+        </span>
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, marginBottom: 20 }}>
@@ -110,14 +148,14 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               background: '#fdf2f8', display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: '1.5rem', marginBottom: 16,
             }}>
-              {(user.first_name?.[0] ?? user.email[0]).toUpperCase()}
+              {(user.first_name?.[0] ?? user.email?.[0] ?? user.phone?.[0] ?? '?').toUpperCase()}
             </div>
             <h2 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
               {user.first_name || user.last_name
                 ? `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim()
                 : '—'}
             </h2>
-            <p style={{ margin: '0 0 16px', fontSize: '0.875rem', color: '#6b7280' }}>{user.email}</p>
+            <p style={{ margin: '0 0 16px', fontSize: '0.875rem', color: '#6b7280' }}>{user.email || user.phone || '—'}</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#6b7280' }}>Phone</span>
