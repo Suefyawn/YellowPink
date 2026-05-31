@@ -91,6 +91,15 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
       phone: latest.phone ?? null,
       created_at: earliest.created_at ?? latest.created_at ?? new Date().toISOString(),
     };
+    // Guests have no auth UUID so audit_log is empty; derive activity from orders.
+    activityRows = orderList.map(o => ({
+      id: o.id ?? o.order_number,
+      action: 'order.placed',
+      entity: 'order',
+      entity_id: o.id ?? null,
+      diff: { order_number: o.order_number, total: o.total },
+      created_at: o.created_at ?? new Date().toISOString(),
+    }));
   } else {
     const [{ data: userData }, { data: orders }, { data: activity }] = await Promise.all([
       admin.rpc('get_admin_user' as never, { p_id: id } as never),
@@ -265,7 +274,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
       {/* Activity timeline — the customer's journey */}
       <div style={{ ...section, marginTop: 20 }}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
-          Activity timeline
+          {isGuest ? 'Order activity' : 'Activity timeline'}
         </h2>
         {activityRows.length === 0 ? (
           <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
