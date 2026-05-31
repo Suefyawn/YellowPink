@@ -91,10 +91,12 @@ export default async function UsersPage({
   });
 
   // Guests have no auth UUID; we address them by their identity key (email, or
-  // phone for the rare emailless order). The detail page understands the
-  // `guest:` prefix. `created_at` stands in for "joined" — their first order.
+  // phone for the rare emailless order), base64url-encoded into the id so the
+  // value is path-safe (a raw "guest:<email>" segment with a colon does not
+  // match the [id] route on Vercel). The detail page decodes the `guest-`
+  // prefix. `created_at` stands in for "joined" — their first order.
   const guestRows: CustomerRow[] = ((guests ?? []) as GuestCustomer[]).map(g => ({
-    id: `guest:${encodeURIComponent(g.guest_key)}`,
+    id: `guest-${Buffer.from(g.guest_key, 'utf8').toString('base64url')}`,
     kind: 'guest' as const,
     email: g.email ?? '',
     first_name: g.first_name,
