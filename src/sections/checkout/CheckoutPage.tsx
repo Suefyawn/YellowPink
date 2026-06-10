@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
@@ -97,6 +97,28 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     sb.from('loyalty_accounts').select('*').eq('user_id', user.id).maybeSingle()
       .then(({ data }) => setLoyalty(data as LoyaltyAccount | null));
   }, [user]);
+
+  // begin_checkout marks *reaching* checkout, not submitting it (GA4 spec).
+  // Firing on submit conflated "started checkout" with "completed checkout"
+  // and made the funnel skip this step for everyone who bailed (#193). Fires
+  // once per page visit, after the cart has hydrated from localStorage.
+  const beganCheckout = useRef(false);
+  useEffect(() => {
+    if (beganCheckout.current || cartItems.length === 0) return;
+    beganCheckout.current = true;
+    track({
+      name: 'begin_checkout',
+      payload: {
+        value: cartItems.reduce((s, i) => s + i.price * i.qty, 0),
+        currency: 'PKR',
+        items: cartItems.map(i => ({
+          product_id: i.id, product_name: i.name, brand: i.brand ?? undefined,
+          category: i.category, variant: i.variant_label ?? i.variant,
+          price: i.price, qty: i.qty, currency: 'PKR',
+        })),
+      },
+    });
+  }, [cartItems]);
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const couponDiscount = cartCoupon
@@ -217,18 +239,6 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
       setSubmitError('Too many checkout attempts. Please wait a minute and try again.');
       return;
     }
-
-    track({
-      name: 'begin_checkout',
-      payload: {
-        value: total, currency: 'PKR',
-        items: cartItems.map(i => ({
-          product_id: i.id, product_name: i.name, brand: i.brand ?? undefined,
-          category: i.category, variant: i.variant_label ?? i.variant,
-          price: i.price, qty: i.qty, currency: 'PKR',
-        })),
-      },
-    });
 
     setSubmitting(true);
     setSubmitError('');

@@ -57,12 +57,19 @@ async function loadAttributesAndVariants(productId: string): Promise<{
   return { attributes, variants: variantsWithOptions };
 }
 
-export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EditProductPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ error?: string }>;
+}) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('products.edit')) {
     return <NoAccess section="Products" />;
   }
   const { id } = await params;
+  const { error: feedbackError } = (await searchParams) ?? {};
   const { data: rawProduct } = await supabase.from('products').select('*').eq('id', id).single();
   if (!rawProduct) notFound();
   const product = rawProduct as Product;
@@ -73,6 +80,17 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
 
   return (
     <>
+      {feedbackError && (
+        <div
+          role="status"
+          style={{
+            margin: '24px 36px 0', padding: '10px 14px', borderRadius: 8, fontSize: '0.875rem',
+            background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca',
+          }}
+        >
+          {feedbackError}
+        </div>
+      )}
       <ProductForm product={product} vendors={(vendorData ?? []) as Vendor[]} />
       <div style={{ padding: '0 36px 32px' }}>
         <VariantsSection

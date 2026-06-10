@@ -1,10 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
+import { log } from '@/lib/logger';
 
 // Admin server actions for the promo CMS. Every action revalidates the root
 // layout (which renders the bars) AND the admin list, so the merchant sees
@@ -39,18 +41,30 @@ function bust() {
   revalidatePath('/', 'layout');
 }
 
+// Failed writes bounce back to the promos page with ?error=... so the admin
+// sees a banner instead of a silently unchanged list (issue #191).
+function bouncePromos(error: string): never {
+  redirect(`/admin/promos?error=${encodeURIComponent(error)}`);
+}
+
 export async function createPromo(formData: FormData) {
   const session = await assertPermission('promos');
   const parsed = PromoSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return;
-  const { data: created } = await supabaseAdmin().from('promos').insert(emptyToNull({
+  if (!parsed.success) {
+    bouncePromos(parsed.error.issues[0]?.message ?? 'Invalid promo fields.');
+  }
+  const { data: created, error } = await supabaseAdmin().from('promos').insert(emptyToNull({
     ...parsed.data,
     show_countdown: parsed.data.show_countdown ?? false,
     enabled: parsed.data.enabled ?? true,
     priority: parsed.data.priority ?? 0,
   })).select('id').single();
+  if (error || !created) {
+    log.error('promo.create_failed', { headline: parsed.data.headline, error: error?.message });
+    bouncePromos(error?.message ?? 'Could not create promo. Please try again.');
+  }
   void logAudit(session, {
-    action: 'promo.create', entity: 'promos', entity_id: created?.id ?? null,
+    action: 'promo.create', entity: 'promos', entity_id: created.id,
     diff: { headline: parsed.data.headline, position: parsed.data.position },
   });
   bust();
@@ -59,13 +73,19 @@ export async function createPromo(formData: FormData) {
 export async function updatePromo(id: string, formData: FormData) {
   const session = await assertPermission('promos');
   const parsed = PromoSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return;
-  await supabaseAdmin().from('promos').update(emptyToNull({
+  if (!parsed.success) {
+    bouncePromos(parsed.error.issues[0]?.message ?? 'Invalid promo fields.');
+  }
+  const { error } = await supabaseAdmin().from('promos').update(emptyToNull({
     ...parsed.data,
     show_countdown: parsed.data.show_countdown ?? false,
     enabled: parsed.data.enabled ?? false,
     priority: parsed.data.priority ?? 0,
   })).eq('id', id);
+  if (error) {
+    log.error('promo.update_failed', { id, error: error.message });
+    bouncePromos(`Could not update promo: ${error.message}`);
+  }
   void logAudit(session, {
     action: 'promo.update', entity: 'promos', entity_id: id,
     diff: { headline: parsed.data.headline, enabled: parsed.data.enabled ?? false },
@@ -75,7 +95,11 @@ export async function updatePromo(id: string, formData: FormData) {
 
 export async function togglePromo(id: string, enabled: boolean) {
   const session = await assertPermission('promos');
-  await supabaseAdmin().from('promos').update({ enabled }).eq('id', id);
+  const { error } = await supabaseAdmin().from('promos').update({ enabled }).eq('id', id);
+  if (error) {
+    log.error('promo.toggle_failed', { id, enabled, error: error.message });
+    bouncePromos(`Could not ${enabled ? 'enable' : 'disable'} promo: ${error.message}`);
+  }
   void logAudit(session, {
     action: enabled ? 'promo.enable' : 'promo.disable',
     entity: 'promos', entity_id: id,
@@ -87,7 +111,11 @@ export async function deletePromo(formData: FormData) {
   const session = await assertPermission('promos');
   const id = formData.get('id') as string;
   const { data: target } = await supabaseAdmin().from('promos').select('headline').eq('id', id).single();
-  await supabaseAdmin().from('promos').delete().eq('id', id);
+  const { error } = await supabaseAdmin().from('promos').delete().eq('id', id);
+  if (error) {
+    log.error('promo.delete_failed', { id, error: error.message });
+    bouncePromos(`Could not delete promo: ${error.message}`);
+  }
   void logAudit(session, {
     action: 'promo.delete', entity: 'promos', entity_id: id,
     diff: { headline: target?.headline },

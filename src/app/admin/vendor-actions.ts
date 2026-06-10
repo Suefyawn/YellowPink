@@ -1,11 +1,19 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
+import { log } from '@/lib/logger';
 
 // ─── Vendor CRUD ────────────────────────────────────────────────────────────
+
+// Failed writes bounce back to the vendors page with ?error=... so the admin
+// sees a banner instead of a silently unchanged list (issue #191).
+function bounceVendors(error: string): never {
+  redirect(`/admin/vendors?error=${encodeURIComponent(error)}`);
+}
 
 /** Parse the commission % field — blank → null, otherwise clamped 0–100. */
 function parseCommission(raw: FormDataEntryValue | null): number | null {
@@ -27,7 +35,7 @@ export async function createVendor(formData: FormData) {
   const notes = (formData.get('notes') as string)?.trim() || null;
   if (!name || !phone) return;
 
-  const { data: created } = await supabaseAdmin()
+  const { data: created, error } = await supabaseAdmin()
     .from('vendors')
     .insert({
       name, phone, notes,
@@ -36,8 +44,12 @@ export async function createVendor(formData: FormData) {
     })
     .select('id')
     .single();
+  if (error || !created) {
+    log.error('vendor.create_failed', { name, error: error?.message });
+    bounceVendors(error?.message ?? 'Could not create vendor. Please try again.');
+  }
   void logAudit(session, {
-    action: 'vendor.create', entity: 'vendors', entity_id: created?.id ?? null,
+    action: 'vendor.create', entity: 'vendors', entity_id: created.id,
     diff: { name, phone },
   });
   revalidatePath('/admin/vendors');
@@ -50,10 +62,14 @@ export async function updateVendor(formData: FormData) {
   if (!id) return;
   const commission_pct = parseCommission(formData.get('commission_pct'));
   const settlement_direction = parseDirection(formData.get('settlement_direction'));
-  await supabaseAdmin()
+  const { error } = await supabaseAdmin()
     .from('vendors')
     .update({ commission_pct, settlement_direction })
     .eq('id', id);
+  if (error) {
+    log.error('vendor.update_failed', { id, error: error.message });
+    bounceVendors(`Could not update vendor: ${error.message}`);
+  }
   void logAudit(session, {
     action: 'vendor.update', entity: 'vendors', entity_id: id,
     diff: { commission_pct, settlement_direction },
@@ -65,7 +81,15 @@ export async function deleteVendor(formData: FormData) {
   const session = await assertPermission('orders.delete');
   const id = formData.get('id') as string;
   const { data: target } = await supabaseAdmin().from('vendors').select('name').eq('id', id).single();
-  await supabaseAdmin().from('vendors').delete().eq('id', id);
+  const { error } = await supabaseAdmin().from('vendors').delete().eq('id', id);
+  if (error) {
+    log.error('vendor.delete_failed', { id, error: error.message });
+    // FK from vendor_settlements / products is the realistic failure here.
+    if ((error as { code?: string }).code === '23503') {
+      bounceVendors(`Cannot delete "${target?.name ?? 'vendor'}" — it still has linked orders, products or settlements.`);
+    }
+    bounceVendors(`Could not delete vendor: ${error.message}`);
+  }
   void logAudit(session, {
     action: 'vendor.delete', entity: 'vendors', entity_id: id,
     diff: { name: target?.name },
@@ -183,10 +207,14 @@ export async function markSettlementSettled(formData: FormData) {
   const id = formData.get('id') as string;
   if (!id) return;
   const settle = formData.get('settle') !== 'false';
-  await supabaseAdmin()
+  const { error } = await supabaseAdmin()
     .from('vendor_settlements')
     .update({ status: settle ? 'settled' : 'pending', settled_at: settle ? new Date().toISOString() : null })
     .eq('id', id);
+  if (error) {
+    log.error('vendor.settlement_update_failed', { id, settle, error: error.message });
+    bounceVendors(`Could not update settlement: ${error.message}`);
+  }
   void logAudit(session, {
     action: settle ? 'vendor.settlement_settled' : 'vendor.settlement_reopened',
     entity: 'vendor_settlements', entity_id: id,

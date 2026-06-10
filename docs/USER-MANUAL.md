@@ -9,7 +9,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 31 May 2026.*
+> *Last updated: 10 June 2026.*
 
 ---
 
@@ -174,6 +174,12 @@ together. Here's what each link is for:
 | **Activity log** | An audit trail of admin actions — who changed what, and when. Owner only. |
 | **Team** | Staff accounts and their roles. Owner only. |
 | **Settings** | Store-wide configuration — see [section 6](#6-store-settings). |
+
+> **If a save fails, you'll be told.** Across the admin (products, variants,
+> promos, vendors, coupons, and bulk product actions), a save or delete that
+> can't be completed shows a red banner or toast with the reason — the form
+> never just clears silently. If you see one of these messages repeatedly,
+> copy the text and share it with your developer.
 
 ---
 

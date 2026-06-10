@@ -3,8 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
+import { redirect } from 'next/navigation';
 import { variantInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
+import { log } from '@/lib/logger';
 
 async function assertProducts() {
   const session = await getStaffSession();
@@ -31,7 +33,8 @@ export async function createVariant(
     .single();
   if (error) return { error: error.message };
 
-  await syncVariantOptions(data.id as string, formData);
+  const optionsError = await syncVariantOptions(data.id as string, formData);
+  if (optionsError) return { error: optionsError };
 
   void logAudit(session, {
     action: 'variant.create', entity: 'product_variants', entity_id: data.id as string,
@@ -64,7 +67,8 @@ export async function updateVariant(
     .eq('id', variantId);
   if (error) return { error: error.message };
 
-  await syncVariantOptions(variantId, formData);
+  const optionsError = await syncVariantOptions(variantId, formData);
+  if (optionsError) return { error: optionsError };
 
   void logAudit(session, {
     action: 'variant.update', entity: 'product_variants', entity_id: variantId,
@@ -79,7 +83,11 @@ export async function deleteVariant(formData: FormData): Promise<void> {
   const id = formData.get('id');
   const productId = formData.get('product_id');
   if (typeof id !== 'string' || typeof productId !== 'string') return;
-  await supabaseAdmin().from('product_variants').delete().eq('id', id);
+  const { error } = await supabaseAdmin().from('product_variants').delete().eq('id', id);
+  if (error) {
+    log.error('variant.delete_failed', { id, error: error.message });
+    redirect(`/admin/products/${productId}?error=${encodeURIComponent(`Could not delete variant: ${error.message}`)}`);
+  }
   void logAudit(session, {
     action: 'variant.delete', entity: 'product_variants', entity_id: id,
     diff: { product_id: productId },
@@ -90,15 +98,25 @@ export async function deleteVariant(formData: FormData): Promise<void> {
 // ─── Variant attribute links ───────────────────────────────────────────────
 // FormData carries one option key per attribute: option__<attribute_id> = <value_id>.
 // We wipe the variant_attribute_values for this variant and re-insert.
-async function syncVariantOptions(variantId: string, formData: FormData): Promise<void> {
+// Returns an error message (for the caller to surface) or null on success.
+async function syncVariantOptions(variantId: string, formData: FormData): Promise<string | null> {
   const optionRows: { variant_id: string; attribute_value_id: string }[] = [];
   for (const [key, val] of formData.entries()) {
     if (!key.startsWith('option__')) continue;
     if (typeof val !== 'string' || !val) continue;
     optionRows.push({ variant_id: variantId, attribute_value_id: val });
   }
-  await supabaseAdmin().from('variant_attribute_values').delete().eq('variant_id', variantId);
-  if (optionRows.length) {
-    await supabaseAdmin().from('variant_attribute_values').insert(optionRows);
+  const { error: wipeError } = await supabaseAdmin().from('variant_attribute_values').delete().eq('variant_id', variantId);
+  if (wipeError) {
+    log.error('variant.options_wipe_failed', { variantId, error: wipeError.message });
+    return `Variant saved, but options could not be updated: ${wipeError.message}`;
   }
+  if (optionRows.length) {
+    const { error: insertError } = await supabaseAdmin().from('variant_attribute_values').insert(optionRows);
+    if (insertError) {
+      log.error('variant.options_insert_failed', { variantId, error: insertError.message });
+      return `Variant saved, but options could not be updated: ${insertError.message}`;
+    }
+  }
+  return null;
 }
