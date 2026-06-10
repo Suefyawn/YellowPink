@@ -7,6 +7,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
+import { track } from '@/lib/analytics';
 import { brandPlusName } from '@/lib/product-display';
 import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import type { CartItem, Coupon } from '@/types';
@@ -51,6 +52,27 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
   const [couponCode, setCouponCode] = useState(appliedCoupon?.code ?? '');
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
+
+  // view_cart fires once per cart-page visit (not on every qty change). The
+  // cart hydrates from localStorage after mount, so wait for the first render
+  // that actually has items before dispatching (#193).
+  const viewedCart = useRef(false);
+  useEffect(() => {
+    if (viewedCart.current || cartItems.length === 0) return;
+    viewedCart.current = true;
+    track({
+      name: 'view_cart',
+      payload: {
+        value: cartItems.reduce((s, i) => s + i.price * i.qty, 0),
+        currency: 'PKR',
+        items: cartItems.map(i => ({
+          product_id: i.id, product_name: i.name, brand: i.brand ?? undefined,
+          category: i.category, variant: i.variant_label ?? i.variant,
+          price: i.price, qty: i.qty, currency: 'PKR',
+        })),
+      },
+    });
+  }, [cartItems]);
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   const discount = appliedCoupon

@@ -13,6 +13,7 @@ import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
+import { log } from '@/lib/logger';
 import { verifyTotp } from '@/lib/totp';
 import type { OrderStatus } from '@/types';
 
@@ -56,7 +57,8 @@ export async function loginAdmin(
     secure: true,
     maxAge: OWNER_COOKIE_TTL_SEC,
     path: '/',
-    sameSite: 'lax',
+    // strict, matching the staff cookie — see setStaffCookie for rationale.
+    sameSite: 'strict',
   });
   redirect('/admin/dashboard');
 }
@@ -107,7 +109,14 @@ export async function loginStaff(
       if (idx >= 0) {
         codeIsBackup = true;
         backupCodes = backupCodes.filter((_, i) => i !== idx);
-        await supabaseAdmin().from('staff_members').update({ backup_codes: backupCodes }).eq('id', data.id);
+        const { error: burnError } = await supabaseAdmin()
+          .from('staff_members').update({ backup_codes: backupCodes }).eq('id', data.id);
+        if (burnError) {
+          // Refuse the login rather than let an unburned backup code be
+          // reused indefinitely (#191).
+          log.error('staff.backup_code_burn_failed', { staff_id: data.id, error: burnError.message });
+          return { error: 'Could not complete sign-in. Please try again.' };
+        }
       }
     }
     if (!codeIsTotp && !codeIsBackup) return { error: 'Invalid 2FA code' };

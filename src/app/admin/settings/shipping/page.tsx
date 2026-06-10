@@ -191,7 +191,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
       </details>
 
       <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-        Province-to-zone mapping is currently seeded to "Pakistan — Nationwide" for every province. Per-province mapping UI lands in a follow-up.
+        Province-to-zone mapping is currently seeded to &ldquo;Pakistan — Nationwide&rdquo; for every province. Per-province mapping UI lands in a follow-up.
       </p>
     </>
   );

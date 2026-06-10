@@ -9,7 +9,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 31 May 2026.*
+> *Last updated: 10 June 2026.*
 
 ---
 
@@ -51,7 +51,12 @@ customers and spot where an order is.
 
 - **Home page** — the landing page. It shows a hero banner, curated product
   rails (featured items, bestsellers, wellness picks), shop-by-category tiles,
-  the latest blog posts, and trust/press sections.
+  the latest blog posts, and trust/press sections. It also features **The
+  K-Beauty Edit** — a band showcasing products from curated Korean beauty
+  brands, linking to a pre-filtered Shop listing of those brands. The band
+  appears automatically once at least one product from a listed K-beauty
+  brand is published (the brand list is maintained by the development team),
+  and hides itself if none are live.
 - **Shop page** (`/shop`) — the full catalogue. Customers can filter by
   category, brand, and product attributes (shade, size, etc.), search by name,
   show only on-sale items, and sort by newest, price, or name. Results are
@@ -174,6 +179,12 @@ together. Here's what each link is for:
 | **Activity log** | An audit trail of admin actions — who changed what, and when. Owner only. |
 | **Team** | Staff accounts and their roles. Owner only. |
 | **Settings** | Store-wide configuration — see [section 6](#6-store-settings). |
+
+> **If a save fails, you'll be told.** Across the admin (products, variants,
+> promos, vendors, coupons, and bulk product actions), a save or delete that
+> can't be completed shows a red banner or toast with the reason — the form
+> never just clears silently. If you see one of these messages repeatedly,
+> copy the text and share it with your developer.
 
 ---
 

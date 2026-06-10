@@ -25,11 +25,16 @@ const card: React.CSSProperties = {
   background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden',
 };
 
-export default async function VendorsPage() {
+export default async function VendorsPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ error?: string }>;
+}) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('orders.view')) {
     return <NoAccess section="Vendors" />;
   }
+  const { error: feedbackError } = (await searchParams) ?? {};
 
   const admin = supabaseAdmin();
   // vendors / vendor_settlements RLS has no policy — admin reads need service role.
@@ -65,6 +70,18 @@ export default async function VendorsPage() {
         Suppliers you forward confirmed orders to. Set each vendor&apos;s commission and who
         collects payment; dispatching an order records the margin and payout.
       </p>
+
+      {feedbackError && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: '0.875rem',
+            background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca',
+          }}
+        >
+          {feedbackError}
+        </div>
+      )}
 
       {/* ── Add vendor ──────────────────────────────────────────────────── */}
       <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 24 }}>

@@ -104,7 +104,7 @@ function PromoFields({ promo }: { promo?: Promo }) {
 export default async function AdminPromosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string }>;
+  searchParams: Promise<{ edit?: string; error?: string }>;
 }) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('promos')) {
@@ -118,7 +118,7 @@ export default async function AdminPromosPage({
     .order('created_at', { ascending: false });
 
   const rows = (data ?? []) as Promo[];
-  const { edit } = await searchParams;
+  const { edit, error: feedbackError } = await searchParams;
   const editingPromo = edit ? rows.find(p => p.id === edit) ?? null : null;
 
   return (
@@ -131,6 +131,18 @@ export default async function AdminPromosPage({
           </p>
         </div>
       </div>
+
+      {feedbackError && (
+        <div
+          role="status"
+          style={{
+            marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: '0.875rem',
+            background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca',
+          }}
+        >
+          {feedbackError}
+        </div>
+      )}
 
       {editingPromo ? (
         /* Edit form */

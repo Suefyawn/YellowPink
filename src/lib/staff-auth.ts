@@ -118,7 +118,11 @@ export async function setStaffCookie(staffId: string): Promise<void> {
     secure: process.env.NODE_ENV === 'production',
     maxAge: SESSION_TTL_MS / 1000,
     path: '/',
-    sameSite: 'lax',
+    // strict: the admin cookie never rides a cross-site request, so a forged
+    // form on another origin can't carry an authenticated admin session. The
+    // cost (first navigation from an external link lands on the login page)
+    // is acceptable for an admin surface.
+    sameSite: 'strict',
   });
 }
 

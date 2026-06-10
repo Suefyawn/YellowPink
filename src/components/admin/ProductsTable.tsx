@@ -82,10 +82,14 @@ export function ProductsTable({ products }: { products: Product[] }) {
   });
   const toggleAll = () => setSelected(allSelected ? new Set() : new Set(products.map(p => p.id)));
 
-  const wrap = (fn: () => Promise<unknown>, label: string) => {
+  const wrap = (fn: () => Promise<{ error?: string } | void>, label: string) => {
     if (selected.size === 0) return;
     startTransition(async () => {
-      await fn();
+      const res = await fn();
+      if (res && res.error) {
+        toast(res.error, 'error');
+        return;
+      }
       const count = selected.size;
       setSelected(new Set());
       toast(`${label} (${count})`, 'success');
@@ -100,7 +104,11 @@ export function ProductsTable({ products }: { products: Product[] }) {
     )) return;
     const ids = Array.from(selected);
     startTransition(async () => {
-      const { deleted, archived } = await bulkDeleteProducts(ids);
+      const { deleted, archived, error } = await bulkDeleteProducts(ids);
+      if (error) {
+        toast(error, 'error');
+        return;
+      }
       setSelected(new Set());
       const parts: string[] = [];
       if (deleted) parts.push(`${deleted} deleted`);
@@ -291,7 +299,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
             if (v === null || v === '') return;
             const n = Number(v);
             if (!isFinite(n)) return;
-            wrap(async () => { await bulkPriceAdjustProducts(Array.from(selected), n); }, `Price ${n >= 0 ? '+' : ''}${n}%`);
+            wrap(() => bulkPriceAdjustProducts(Array.from(selected), n), `Price ${n >= 0 ? '+' : ''}${n}%`);
           }} disabled={pending} style={btn('#3b82f6')}>Adjust price&hellip;</button>
 
           <button onClick={handleBulkDelete} disabled={pending} style={btn('#ef4444')}>Delete</button>
