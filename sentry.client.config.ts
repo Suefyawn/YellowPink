@@ -1,8 +1,12 @@
 import * as Sentry from '@sentry/nextjs';
+import { scrubEvent } from './src/lib/sentry-scrub';
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   tracesSampleRate: 0.2,
+  // Redact customer emails / phone numbers from messages and breadcrumbs
+  // before they leave the browser.
+  beforeSend: (event) => scrubEvent(event),
   // Capture replays for 5% of sessions, 100% of sessions with errors.
   replaysSessionSampleRate: 0.05,
   replaysOnErrorSampleRate: 1.0,
@@ -21,8 +25,12 @@ if (typeof window !== 'undefined') {
   const start = () => {
     Sentry.addIntegration(
       Sentry.replayIntegration({
+        // Storefront text stays readable for UX debugging; inputs are masked
+        // by default. Admin screens render customer names/emails/orders as
+        // plain text, so mask everything under the admin shell.
         maskAllText: false,
         blockAllMedia: false,
+        mask: ['.adm-page', '[data-sentry-mask]'],
       }),
     );
   };

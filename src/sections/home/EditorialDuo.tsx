@@ -6,13 +6,21 @@ import { useState } from 'react';
 import { SectionDivider } from '@/components/ui/SectionDivider';
 import { Overline } from '@/components/ui/Overline';
 
+// Build the image URLs from the configured Supabase project rather than
+// hard-coding one project's hostname. With no Supabase env (demo mode) the
+// URL would fail next/image's remotePatterns check and 500 the whole
+// homepage — render the gradient fallback instead.
+const STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images`
+  : null;
+
 const CARDS = [
   {
     title: 'Treat Melasma',
     subtitle: 'Real Solutions',
     cta: 'Explore Treatments',
     href: '/shop?category=Skincare',
-    img: 'https://cngsjtthiexcfpjpcpsg.supabase.co/storage/v1/object/public/images/wp/1748-a696ff90.webp',
+    img: STORAGE_BASE ? `${STORAGE_BASE}/wp/1748-a696ff90.webp` : null,
     fallbackColor: '#e8f5e9',
     alt: 'Anti-melasma skincare products',
   },
@@ -21,7 +29,7 @@ const CARDS = [
     subtitle: 'Acne Care',
     cta: 'Shop Cleansers',
     href: '/shop?category=Skincare',
-    img: 'https://cngsjtthiexcfpjpcpsg.supabase.co/storage/v1/object/public/images/wp/1693-7ac9a5de.webp',
+    img: STORAGE_BASE ? `${STORAGE_BASE}/wp/1693-7ac9a5de.webp` : null,
     fallbackColor: '#fdf6e3',
     alt: 'Skincare moisturizer and sunscreen',
   },
@@ -38,7 +46,7 @@ function DuoCard({ title, subtitle, cta, href, img, alt, fallbackColor }: typeof
         style={{ position: 'relative', overflow: 'hidden', cursor: 'pointer' }}
       >
         <div style={{ overflow: 'hidden', borderRadius: 'var(--radius-card)', aspectRatio: '4/3', position: 'relative' }}>
-          {!imgFailed ? (
+          {img && !imgFailed ? (
             <Image
               src={img} alt={alt}
               fill

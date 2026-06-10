@@ -57,7 +57,8 @@ export async function loginAdmin(
     secure: true,
     maxAge: OWNER_COOKIE_TTL_SEC,
     path: '/',
-    sameSite: 'lax',
+    // strict, matching the staff cookie — see setStaffCookie for rationale.
+    sameSite: 'strict',
   });
   redirect('/admin/dashboard');
 }

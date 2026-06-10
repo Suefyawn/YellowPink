@@ -26,9 +26,19 @@ const PAY_METHODS: ReadonlyArray<[PayMethod, string, string]> = [
 ];
 
 function makeOrderNumber() {
-  // Add a 2-byte random suffix so two near-simultaneous clicks can't collide.
-  const rand = Math.random().toString(36).slice(2, 5).toUpperCase();
+  // Timestamp + 4 crypto-random chars. The DB has a UNIQUE constraint on
+  // order_number as the backstop; handleSubmit retries with a fresh number
+  // if two checkouts ever do collide.
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const bytes = new Uint8Array(4);
+  crypto.getRandomValues(bytes);
+  let rand = '';
+  for (const b of bytes) rand += alphabet[b % alphabet.length];
   return 'YP-' + Date.now().toString(36).slice(-5).toUpperCase() + rand;
+}
+
+function isDuplicateOrderNumber(message: string): boolean {
+  return message.includes('duplicate key') || message.includes('23505');
 }
 
 // Server-resolved props from /checkout/page.tsx — which payment methods
@@ -243,35 +253,44 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     setSubmitting(true);
     setSubmitError('');
     try {
-      const orderNumber = makeOrderNumber();
       const sb = getBrowserClient();
-      const { data, error } = await sb.rpc('place_order' as never, {
-        order_data: {
-          order_number: orderNumber,
-          email: formData.email || '',
-          first_name: formData.firstName,
-          last_name: formData.lastName,
-          phone: formData.phone.trim(),
-          address: formData.address,
-          city: formData.city,
-          province: formData.province || '',
-          zip: formData.zip || '',
-          pay_method: payMethod,
-          subtotal,
-          shipping,
-          total: beforeRewards,                  // pre-rewards order total — points decrement separately
-          items: cartItems,
-          status: 'pending',
-          user_id: user?.id || '',
-          coupon_code: cartCoupon?.code || '',
-          discount_amount: discount,
-        },
-        gift_card_code:   null,
-        points_redeem:    pointsCovers > 0 ? pointsCovers : null,
-        referred_by_code: null,
-      } as never);
-      if (error) throw new Error(error.message);
-      void data;
+      // Order numbers are client-generated; the DB UNIQUE constraint is the
+      // backstop. On the (rare) duplicate, retry with a fresh number instead
+      // of surfacing a raw constraint error to the customer.
+      let orderNumber = makeOrderNumber();
+      for (let attempt = 1; ; attempt++) {
+        const { error } = await sb.rpc('place_order' as never, {
+          order_data: {
+            order_number: orderNumber,
+            email: formData.email || '',
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            phone: formData.phone.trim(),
+            address: formData.address,
+            city: formData.city,
+            province: formData.province || '',
+            zip: formData.zip || '',
+            pay_method: payMethod,
+            subtotal,
+            shipping,
+            total: beforeRewards,                  // pre-rewards order total — points decrement separately
+            items: cartItems,
+            status: 'pending',
+            user_id: user?.id || '',
+            coupon_code: cartCoupon?.code || '',
+            discount_amount: discount,
+          },
+          gift_card_code:   null,
+          points_redeem:    pointsCovers > 0 ? pointsCovers : null,
+          referred_by_code: null,
+        } as never);
+        if (!error) break;
+        if (attempt < 3 && isDuplicateOrderNumber(error.message)) {
+          orderNumber = makeOrderNumber();
+          continue;
+        }
+        throw new Error(error.message);
+      }
 
       const dest = postOrderDestination(payMethod, orderNumber);
 
