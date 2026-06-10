@@ -8,9 +8,11 @@ import {
   getFeatured,
   getOnSale,
   getProductsByTaxon,
+  getProductsByBrands,
   getSiteSettings,
   getBlogPosts,
 } from '@/lib/supabase';
+import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
 
 // Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -44,6 +46,7 @@ import { EditorialDuo } from '@/sections/home/EditorialDuo';
 import { SaleCollection } from '@/sections/home/SaleCollection';
 import { BestsellersBand } from '@/sections/home/BestsellersBand';
 import { WellnessSection } from '@/sections/home/WellnessSection';
+import { KBeautySection } from '@/sections/home/KBeautySection';
 import { CategoryTiles } from '@/sections/home/CategoryTiles';
 import { RealResults } from '@/sections/home/RealResults';
 import { JournalSection } from '@/sections/home/JournalSection';
@@ -55,11 +58,12 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, bestsellers, saleProducts, wellnessProducts, settings, blogPosts] = await Promise.all([
+  const [featured, bestsellers, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts] = await Promise.all([
     getFeatured(6),
     getBestsellers(8),
     getOnSale(8),
     getProductsByTaxon('wellness', 4),
+    getProductsByBrands(K_BEAUTY_BRANDS, 3),
     getSiteSettings(),
     getBlogPosts(),
   ]);
@@ -101,6 +105,7 @@ export default async function HomePage() {
       <HeroSection settings={heroSettings} />
       <TrustBar />
       <FeaturedProducts products={featured.length ? featured.slice(0, 4) : bestsellers.slice(0, 4)} />
+      <KBeautySection products={kBeautyProducts} />
       <EditorialDuo />
       {saleActive && (
         <SaleCollection

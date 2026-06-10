@@ -51,7 +51,12 @@ customers and spot where an order is.
 
 - **Home page** — the landing page. It shows a hero banner, curated product
   rails (featured items, bestsellers, wellness picks), shop-by-category tiles,
-  the latest blog posts, and trust/press sections.
+  the latest blog posts, and trust/press sections. It also features **The
+  K-Beauty Edit** — a band showcasing products from curated Korean beauty
+  brands, linking to a pre-filtered Shop listing of those brands. The band
+  appears automatically once at least one product from a listed K-beauty
+  brand is published (the brand list is maintained by the development team),
+  and hides itself if none are live.
 - **Shop page** (`/shop`) — the full catalogue. Customers can filter by
   category, brand, and product attributes (shade, size, etc.), search by name,
   show only on-sale items, and sort by newest, price, or name. Results are

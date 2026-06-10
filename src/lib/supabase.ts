@@ -246,6 +246,26 @@ export async function getProductsByBrand(brand: string | null | undefined, limit
   }, []);
 }
 
+/** Products across a curated brand list — powers brand edits like the
+ *  homepage K-Beauty section (see lib/k-beauty.ts). Published only, newest
+ *  first. No catalog-wide fallback: an empty result hides the section, which
+ *  beats padding a "Korean beauty" rail with non-Korean products. */
+export async function getProductsByBrands(brands: readonly string[], limit = 4): Promise<Product[]> {
+  if (brands.length === 0) return [];
+  if (isDemo) return DEMO_PRODUCTS.filter(p => p.brand && brands.includes(p.brand)).slice(0, limit);
+  return safe('getProductsByBrands', async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select(PRODUCT_TILE_COLUMNS)
+      .in('brand', brands as string[])
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []) as Product[];
+  }, []);
+}
+
 // Tile-projection for the blog index. P0-2 finding in the 2026-05-19
 // launch audit: /blog was shipping 1.95 MB of HTML, ~1.76 MB of which
 // was the full WP body of every post embedded in the RSC payload — the
