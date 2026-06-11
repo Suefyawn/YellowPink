@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ProductTile } from '@/components/ui/ProductTile';
-import { K_BEAUTY_SHOP_URL } from '@/lib/k-beauty';
+import { K_BEAUTY_PAGE_URL } from '@/lib/k-beauty';
 import type { Product } from '@/types';
 
 // The three signature K-beauty claims, rendered as quiet chips between the
@@ -76,7 +76,7 @@ export function KBeautySection({ products }: { products: Product[] }) {
         </div>
 
         <div style={{ textAlign: 'center', marginTop: 32 }}>
-          <Link href={K_BEAUTY_SHOP_URL} className="btn-secondary">Shop the K-Beauty Edit</Link>
+          <Link href={K_BEAUTY_PAGE_URL} className="btn-secondary">Shop the K-Beauty Edit</Link>
         </div>
       </div>
     </section>

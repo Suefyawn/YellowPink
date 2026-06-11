@@ -15,6 +15,7 @@ import { whatsappUrl, WA_TEMPLATES } from '@/lib/whatsapp';
 // mega-menu dropdown of its categories; the flat items are plain links.
 // Driven by the central taxonomy so editorial changes don't touch the header.
 const FLAT_ITEMS = [
+  { label: 'K-Beauty', href: '/k-beauty' },
   { label: 'Sale', href: '/shop?on_sale=1' },
   { label: 'Blog', href: '/blog' },
 ];

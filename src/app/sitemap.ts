@@ -10,8 +10,9 @@ import { SITE_URL, absoluteUrl } from '@/lib/seo';
 // Robots-disallowed (utility / private) routes are deliberately excluded —
 // listing them would send a conflicting signal to crawlers.
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
-  { path: '/',     priority: 1.0, freq: 'daily' },
-  { path: '/shop', priority: 0.9, freq: 'daily' },
+  { path: '/',         priority: 1.0, freq: 'daily' },
+  { path: '/shop',     priority: 0.9, freq: 'daily' },
+  { path: '/k-beauty', priority: 0.8, freq: 'weekly' },
   { path: '/blog', priority: 0.7, freq: 'weekly' },
   { path: '/faq',  priority: 0.5, freq: 'monthly' },
 ];
