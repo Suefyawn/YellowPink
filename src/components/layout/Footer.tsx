@@ -43,6 +43,7 @@ const SHOP_LINKS = [
   { label: 'Makeup',       href: '/shop?taxon=makeup' },
   { label: 'Skincare',     href: '/shop?taxon=skincare' },
   { label: 'Wellness',     href: '/shop?taxon=wellness' },
+  { label: 'K-Beauty',     href: '/k-beauty' },
   { label: 'All Products', href: '/shop' },
 ];
 

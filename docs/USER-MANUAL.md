@@ -9,7 +9,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 10 June 2026.*
+> *Last updated: 11 June 2026.*
 
 ---
 
@@ -53,10 +53,17 @@ customers and spot where an order is.
   rails (featured items, bestsellers, wellness picks), shop-by-category tiles,
   the latest blog posts, and trust/press sections. It also features **The
   K-Beauty Edit** — a band showcasing products from curated Korean beauty
-  brands, linking to a pre-filtered Shop listing of those brands. The band
-  appears automatically once at least one product from a listed K-beauty
-  brand is published (the brand list is maintained by the development team),
-  and hides itself if none are live.
+  brands, linking to the K-Beauty collection page. The band appears
+  automatically once at least one product from a listed K-beauty brand is
+  published (the brand list is maintained by the development team), and hides
+  itself if none are live.
+- **K-Beauty page** (`/k-beauty`) — a dedicated collection page for the Korean
+  beauty range, reachable from the main menu and footer. It has its own hero,
+  spotlight cards for each Korean brand (linking to that brand's Shop
+  listing), a "why K-beauty" ritual explainer, the full product grid, and a
+  short FAQ. Products appear here automatically when they carry a brand from
+  the curated K-beauty list — there is nothing extra to configure per product
+  beyond setting its brand.
 - **Shop page** (`/shop`) — the full catalogue. Customers can filter by
   category, brand, and product attributes (shade, size, etc.), search by name,
   show only on-sale items, and sort by newest, price, or name. Results are
