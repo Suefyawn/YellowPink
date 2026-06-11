@@ -15,6 +15,7 @@
 export const K_BEAUTY_BRANDS: readonly string[] = [
   'Beauty of Joseon',
   'Glow Recipe',
+  'SKIN1004',
 ];
 
 /** Shop listing for the whole edit. CollectionPage treats `?brand=` as a
