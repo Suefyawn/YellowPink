@@ -63,7 +63,7 @@ export default async function HomePage() {
     getBestsellers(8),
     getOnSale(8),
     getProductsByTaxon('wellness', 4),
-    getProductsByBrands(K_BEAUTY_BRANDS, 3),
+    getProductsByBrands(K_BEAUTY_BRANDS, 4),
     getSiteSettings(),
     getBlogPosts(),
   ]);

@@ -16,7 +16,7 @@ const RITUALS = [
  *  has no published K-beauty products, so the section can ship ahead of the
  *  range growing. */
 export function KBeautySection({ products }: { products: Product[] }) {
-  const items = products.slice(0, 3);
+  const items = products.slice(0, 4);
   if (items.length === 0) return null;
   return (
     <section style={{
@@ -66,6 +66,9 @@ export function KBeautySection({ products }: { products: Product[] }) {
           ))}
         </div>
 
+        {/* product-grid-3 collapses to a scroll-snap slider on phones; with a
+            4th product the desktop grid widens but the mobile slider behaviour
+            is identical. */}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: 'var(--gutter)', maxWidth: items.length < 3 ? 720 : undefined, marginInline: 'auto' }} className="product-grid-3">
           {items.map((p) => (
             <ProductTile key={p.id} product={p} />
