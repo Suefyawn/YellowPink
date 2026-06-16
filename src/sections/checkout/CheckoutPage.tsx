@@ -12,6 +12,7 @@ import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import { brandPlusName } from '@/lib/product-display';
 import { track } from '@/lib/analytics';
+import { readAttribution } from '@/lib/attribution';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
 import type { Coupon, PayMethod, LoyaltyAccount, BankAccount } from '@/types';
 
@@ -279,6 +280,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
             user_id: user?.id || '',
             coupon_code: cartCoupon?.code || '',
             discount_amount: discount,
+            // Marketing attribution (UTM + first-touch landing/referrer) so the
+            // order can be credited to the ad channel that drove it (ROAS).
+            ...(readAttribution() ?? {}),
           },
           gift_card_code:   null,
           points_redeem:    pointsCovers > 0 ? pointsCovers : null,
