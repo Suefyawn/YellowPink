@@ -144,6 +144,34 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     `Total: ${fmt(o.total)} · ${payLabel[o.pay_method] ?? o.pay_method}`,
   ].join('\n');
 
+  // Prefilled WhatsApp message the merchant sends TO the customer to confirm
+  // their order (the green button in the top bar). Branded, professional, and
+  // self-contained: greeting, itemised order, total + payment method, delivery
+  // address, and a clear "reply to confirm" ask — so the customer can verify
+  // everything in one message. COD orders get a one-line pay-on-delivery note.
+  const customerMessage = [
+    `Hi ${o.first_name ?? 'there'}! 💛`,
+    '',
+    `Thank you for shopping with Yellow Pink. Here are the details of your order for confirmation:`,
+    '',
+    `Order ${o.order_number}`,
+    ...items.map(it => {
+      const v = it.variant_label ?? it.variant;
+      return `• ${it.qty}× ${brandPlusName(it.brand, it.name)}${v ? ` (${v})` : ''}`;
+    }),
+    '',
+    `Total: ${fmt(o.total)} (${payLabel[o.pay_method] ?? o.pay_method})`,
+    ...(o.pay_method === 'cod' ? ['Payable in cash when your parcel arrives.'] : []),
+    '',
+    `Delivery address:`,
+    `${o.first_name} ${o.last_name}`,
+    `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
+    '',
+    `Please reply to confirm these details are correct and we'll prepare your order for dispatch. If anything needs changing, just let us know here.`,
+    '',
+    `Thank you for choosing Yellow Pink 🌸`,
+  ].join('\n');
+
   return (
     <div id="order-detail-page" style={{ padding: '32px 36px' }}>
       {/* Print styles — printing this page outputs ONLY the invoice card.
@@ -180,7 +208,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {/* WhatsApp the customer — uses their phone, prefills the order
               number. One-tap support reply from the order page. */}
           {(() => {
-            const href = waUrlForCustomer(o.phone, `Hi ${o.first_name ?? ''}, this is Yellow Pink about order ${o.order_number}. `.trim());
+            const href = waUrlForCustomer(o.phone, customerMessage);
             if (!href) return null;
             return (
               <a

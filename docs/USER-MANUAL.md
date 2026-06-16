@@ -9,7 +9,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 11 June 2026.*
+> *Last updated: 16 June 2026.*
 
 ---
 
@@ -203,8 +203,10 @@ open the **order detail page**. From there:
 
 **Step 1 — Confirm with the customer.**
 Tap the **WhatsApp** button at the top of the order. It opens WhatsApp with a
-message to the customer pre-filled with their items, address, and total. Once
-they confirm, click **Mark customer-confirmed** to record it.
+branded confirmation message to the customer, pre-filled with their order
+number, itemised products, total and payment method, and delivery address, and
+it asks them to reply to confirm the details are correct. Once they confirm,
+click **Mark customer-confirmed** to record it.
 
 **Step 2 — Send it to a vendor (if you fulfil through one).**
 In the *Confirmation & vendor* section, pick a vendor. A ready-to-send WhatsApp
