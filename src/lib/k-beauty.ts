@@ -37,6 +37,41 @@ export const K_BEAUTY_BRAND_INFO: readonly KBeautyBrand[] = [
     tagline: 'Single-origin centella',
     blurb: 'Madagascar-grown centella asiatica, untouched by pollution, in calming ampoules that soothe redness and brighten sensitised skin.',
   },
+  {
+    name: 'Anua',
+    tagline: 'Gentle, effective actives',
+    blurb: 'Dermatologist-loved Korean skincare built on clean, targeted formulas — heartleaf, niacinamide and azelaic acid for clear, calm, even-toned skin.',
+  },
+  {
+    name: 'Medicube',
+    tagline: 'Derma-tech skincare',
+    blurb: 'Clinical-grade Korean skincare behind the viral PDRN, collagen and Zero-Pore lines — high-tech actives for visibly firmer, clearer skin.',
+  },
+  {
+    name: 'Axis-Y',
+    tagline: 'Clean glow chemistry',
+    blurb: 'Minimalist Korean formulas led by the cult Dark Spot Correcting Glow Serum — squalane and the 5-Heartwood complex for a healthy, dewy glow.',
+  },
+  {
+    name: 'Mixsoon',
+    tagline: 'Single-ingredient ritual',
+    blurb: 'The "skip-care" brand built on fermented soybean — pared-back, barrier-first essences and creams that hydrate and smooth without the clutter.',
+  },
+  {
+    name: "I'm From",
+    tagline: 'From nature, undiluted',
+    blurb: 'Korean skincare made from honest, single-source naturals — rice, mugwort and honey — for nourished, glass-skin radiance.',
+  },
+  {
+    name: 'Celimax',
+    tagline: 'Targeted problem-solvers',
+    blurb: 'Smart Korean treatments like the Retinal Shot booster — concentrated actives that firm, smooth and refine without the fuss.',
+  },
+  {
+    name: 'Dr.Althea',
+    tagline: 'Barrier-repair specialists',
+    blurb: 'Derma-care Korean skincare known for the 345 Relief Cream — panthenol, ceramides and madecassoside to calm and rebuild stressed skin.',
+  },
 ];
 
 export const K_BEAUTY_BRANDS: readonly string[] = K_BEAUTY_BRAND_INFO.map(b => b.name);

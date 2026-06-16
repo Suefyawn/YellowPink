@@ -48,6 +48,10 @@ const nextConfig: NextConfig = {
       // it explicitly so demo data renders without setting WP_IMAGE_HOST.
       ...(process.env.WP_IMAGE_HOST ? [{ protocol: 'https' as const, hostname: process.env.WP_IMAGE_HOST }] : []),
       { protocol: 'https' as const, hostname: 'yellowpink.pk' },
+      // Canonical production host. Product photos committed under /public are
+      // served from here and stored as absolute image_urls (they also feed
+      // OG/JSON-LD), so next/image must be allowed to optimise this host.
+      { protocol: 'https' as const, hostname: 'www.yellowpink.pk' },
       // Common CDNs people host product imagery on.
       { protocol: 'https' as const, hostname: 'images.unsplash.com' },
       { protocol: 'https' as const, hostname: 'res.cloudinary.com' },
