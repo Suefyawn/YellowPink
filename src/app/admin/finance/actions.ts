@@ -51,7 +51,7 @@ export async function deleteExpense(id: string): Promise<void> {
   if (error) {
     redirect('/admin/finance?err=' + encodeURIComponent(error.message));
   }
-  await logAudit(session, { action: 'expense.delete', entity: 'expense', entityId: id });
+  await logAudit(session, { action: 'expense.delete', entity: 'expense', entity_id:id });
   revalidatePath('/admin/finance');
   redirect('/admin/finance?ok=1');
 }
@@ -79,7 +79,7 @@ export async function setOrderCosts(orderId: string, formData: FormData): Promis
   if (error) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(error.message));
   }
-  await logAudit(session, { action: 'order.set_costs', entity: 'order', entityId: orderId, diff: { delivery_cost, payment_fee } });
+  await logAudit(session, { action: 'order.set_costs', entity: 'order', entity_id:orderId, diff: { delivery_cost, payment_fee } });
   revalidatePath(`/admin/orders/${orderId}`);
   redirect(`/admin/orders/${orderId}?costs=saved`);
 }

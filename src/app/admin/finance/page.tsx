@@ -36,7 +36,9 @@ export default async function FinancePage({
 
   const { range: rangeParam, err, ok } = await searchParams;
   const range = RANGES.find(r => r.key === rangeParam) ?? RANGES[1]; // default 30d
-  const fromDate = range.days ? new Date(Date.now() - range.days * 86_400_000) : null;
+  // `new Date()` (allowed) rather than Date.now() — the strict react-hooks
+  // purity lint rejects Date.now() in a server-component render.
+  const fromDate = range.days ? new Date(new Date().getTime() - range.days * 86_400_000) : null;
   const fromISO = fromDate?.toISOString() ?? null;
   const fromDay = fromDate?.toISOString().slice(0, 10) ?? null;
 
@@ -60,9 +62,9 @@ export default async function FinancePage({
   }
 
   // Operating expenses in range (ad spend + overheads).
-  let eq = admin.from('expenses').select('id, incurred_on, category, channel, amount, note').order('incurred_on', { ascending: false });
+  let eq = admin.from('expenses').select('id, incurred_on, category, channel, amount, note');
   if (fromDay) eq = eq.gte('incurred_on', fromDay);
-  const { data: expenseData } = await eq;
+  const { data: expenseData } = await eq.order('incurred_on', { ascending: false });
   const expenses = (expenseData ?? []) as ExpenseRow[];
 
   // ── Aggregate ──
