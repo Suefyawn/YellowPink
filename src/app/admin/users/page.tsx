@@ -45,24 +45,50 @@ interface CustomerRow extends AdminUser {
 const SORT_KEYS = ['recent', 'last_order', 'spent', 'orders', 'name'] as const;
 type SortKey = (typeof SORT_KEYS)[number];
 
+const TYPE_KEYS = ['all', 'registered', 'guest'] as const;
+type TypeKey = (typeof TYPE_KEYS)[number];
+
+const ACTIVITY_KEYS = ['all', 'repeat', 'one', 'none'] as const;
+type ActivityKey = (typeof ACTIVITY_KEYS)[number];
+
 function displayName(u: { first_name: string | null; last_name: string | null; email: string }): string {
   const n = `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim();
   return n || u.email;
 }
 
+function initials(u: CustomerRow): string {
+  const f = u.first_name?.trim()?.[0] ?? '';
+  const l = u.last_name?.trim()?.[0] ?? '';
+  const ini = (f + l).toUpperCase();
+  if (ini) return ini;
+  const fallback = (u.email || u.phone || '?').trim()[0];
+  return (fallback ?? '?').toUpperCase();
+}
+
+// Stable, muted avatar colour derived from the customer id so the same person
+// always renders the same swatch (purely decorative).
+const AVATAR_COLORS = ['#0369a1', '#9333ea', '#be185d', '#0f766e', '#b45309', '#4338ca', '#15803d', '#9f1239'];
+function avatarColor(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; sort?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string; type?: string; activity?: string }>;
 }) {
   const session = await getStaffSession();
   if (session && !session.isOwner && !session.permissions.includes('customers.view')) {
     return <NoAccess section="Customers" />;
   }
 
-  const { q, page: pageParam, sort: sortParam } = await searchParams;
+  const { q, page: pageParam, sort: sortParam, type: typeParam, activity: activityParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const sort: SortKey = SORT_KEYS.includes(sortParam as SortKey) ? (sortParam as SortKey) : 'recent';
+  const type: TypeKey = TYPE_KEYS.includes(typeParam as TypeKey) ? (typeParam as TypeKey) : 'all';
+  const activity: ActivityKey = ACTIVITY_KEYS.includes(activityParam as ActivityKey) ? (activityParam as ActivityKey) : 'all';
 
   // Three SECURITY DEFINER RPCs, all called via the service-role client: the
   // account list (get_admin_users — auth.users PII), per-account order
@@ -108,19 +134,50 @@ export default async function UsersPage({
     lastOrderAt: g.last_order_at,
   }));
 
-  let list: CustomerRow[] = [...registered, ...guestRows];
+  const all: CustomerRow[] = [...registered, ...guestRows];
 
-  if (q) {
-    const lower = q.toLowerCase();
+  // Overall stats (computed on the full set, before filters) for the summary
+  // cards. The cards double as one-click filters.
+  const totals = {
+    all: all.length,
+    registered: registered.length,
+    guests: guestRows.length,
+    repeat: all.filter(u => u.orderCount >= 2).length,
+    revenue: all.reduce((s, u) => s + u.totalSpent, 0),
+  };
+
+  // ── Filtering ──
+  let list = all;
+
+  if (type !== 'all') list = list.filter(u => u.kind === type);
+
+  if (activity !== 'all') {
     list = list.filter(u =>
-      u.email?.toLowerCase().includes(lower) ||
-      u.first_name?.toLowerCase().includes(lower) ||
-      u.last_name?.toLowerCase().includes(lower) ||
-      u.phone?.toLowerCase().includes(lower),
+      activity === 'repeat' ? u.orderCount >= 2 :
+      activity === 'one'    ? u.orderCount === 1 :
+      /* none */              u.orderCount === 0,
     );
   }
 
-  list.sort((a, b) => {
+  if (q) {
+    const lower = q.toLowerCase().trim();
+    const qDigits = lower.replace(/\D+/g, '');
+    list = list.filter(u => {
+      const textHit =
+        u.email?.toLowerCase().includes(lower) ||
+        u.first_name?.toLowerCase().includes(lower) ||
+        u.last_name?.toLowerCase().includes(lower) ||
+        `${u.first_name ?? ''} ${u.last_name ?? ''}`.toLowerCase().includes(lower) ||
+        u.phone?.toLowerCase().includes(lower);
+      // Phone numbers arrive in many shapes ("0300 123…", "+92300…") — also
+      // match on digits-only so a spaced/prefixed query still finds them.
+      const phoneHit = qDigits.length >= 3 && (u.phone ?? '').replace(/\D+/g, '').includes(qDigits);
+      return Boolean(textHit || phoneHit);
+    });
+  }
+
+  // ── Sorting ──
+  list = [...list].sort((a, b) => {
     switch (sort) {
       case 'spent':      return b.totalSpent - a.totalSpent;
       case 'orders':     return b.orderCount - a.orderCount;
@@ -131,17 +188,63 @@ export default async function UsersPage({
   });
 
   const total = list.length;
-  const guestCount = list.filter(u => u.kind === 'guest').length;
   const paginated = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const hasFilters = !!q || type !== 'all' || activity !== 'all' || sort !== 'recent';
+
+  // Build a href that preserves search + sort while setting type/activity —
+  // used by the clickable summary cards.
+  const cardHref = (next: { type?: TypeKey; activity?: ActivityKey }) => {
+    const p = new URLSearchParams();
+    if (q) p.set('q', q);
+    if (sort !== 'recent') p.set('sort', sort);
+    if (next.type && next.type !== 'all') p.set('type', next.type);
+    if (next.activity && next.activity !== 'all') p.set('activity', next.activity);
+    const s = p.toString();
+    return s ? `/admin/users?${s}` : '/admin/users';
+  };
+
+  const cards: { label: string; value: string; icon: string; color: string; href: string; active: boolean }[] = [
+    { label: 'All customers', value: totals.all.toLocaleString(), icon: '👥', color: '#0369a1',
+      href: cardHref({}), active: type === 'all' && activity === 'all' },
+    { label: 'Registered', value: totals.registered.toLocaleString(), icon: '🔑', color: '#075985',
+      href: cardHref({ type: 'registered' }), active: type === 'registered' },
+    { label: 'Guests', value: totals.guests.toLocaleString(), icon: '🛍️', color: '#b45309',
+      href: cardHref({ type: 'guest' }), active: type === 'guest' },
+    { label: 'Repeat buyers', value: totals.repeat.toLocaleString(), icon: '🔁', color: '#15803d',
+      href: cardHref({ activity: 'repeat' }), active: activity === 'repeat' },
+  ];
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Customers</h1>
         <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-          {total} customer{total !== 1 ? 's' : ''}
-          {guestCount > 0 && ` · ${guestCount} guest${guestCount !== 1 ? 's' : ''}`}
+          {totals.all.toLocaleString()} total · {fmtMoney(totals.revenue)} lifetime revenue
         </p>
+      </div>
+
+      {/* Summary cards — also act as quick filters. */}
+      <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        {cards.map(c => (
+          <Link key={c.label} href={c.href} style={{
+            background: 'white', borderRadius: 10, padding: '18px 20px',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            border: c.active ? `1.5px solid ${c.color}` : '1.5px solid transparent',
+            display: 'flex', flexDirection: 'column', gap: 10,
+            textDecoration: 'none', color: 'inherit',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span style={{ color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500 }}>{c.label}</span>
+              <span style={{
+                width: 32, height: 32, borderRadius: 8, background: c.color + '18',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem',
+              }}>{c.icon}</span>
+            </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
+              {c.value}
+            </div>
+          </Link>
+        ))}
       </div>
 
       <Suspense fallback={null}>
@@ -151,7 +254,14 @@ export default async function UsersPage({
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {paginated.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            {q ? `No customers matching "${q}"` : 'No customers have signed up yet'}
+            {hasFilters ? 'No customers match these filters.' : 'No customers yet.'}
+            {hasFilters && (
+              <div style={{ marginTop: 12 }}>
+                <Link href="/admin/users" style={{ color: '#0369a1', fontWeight: 600, textDecoration: 'none' }}>
+                  Clear filters
+                </Link>
+              </div>
+            )}
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -165,25 +275,35 @@ export default async function UsersPage({
             <tbody>
               {paginated.map((u, i) => {
                 const hasName = !!(u.first_name || u.last_name);
+                const name = hasName ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : (u.email || u.phone || '—');
+                const sub = hasName ? (u.email || u.phone) : null;
                 return (
                   <tr key={u.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
                     <td data-label="Customer" style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
-                          {hasName ? `${u.first_name ?? ''} ${u.last_name ?? ''}`.trim() : (u.email || u.phone || '—')}
-                        </span>
-                        <span style={{
-                          display: 'inline-block', padding: '1px 8px', borderRadius: 20,
-                          fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
-                          background: u.kind === 'guest' ? '#fef3c7' : '#e0f2fe',
-                          color: u.kind === 'guest' ? '#92400e' : '#075985',
-                        }}>
-                          {u.kind === 'guest' ? 'Guest' : 'Registered'}
-                        </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <span aria-hidden="true" style={{
+                          flexShrink: 0, width: 36, height: 36, borderRadius: '50%',
+                          background: avatarColor(u.id) + '1a', color: avatarColor(u.id),
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.8125rem', fontWeight: 700,
+                        }}>{initials(u)}</span>
+                        <div style={{ minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{name}</span>
+                            <span style={{
+                              display: 'inline-block', padding: '1px 8px', borderRadius: 20,
+                              fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
+                              background: u.kind === 'guest' ? '#fef3c7' : '#e0f2fe',
+                              color: u.kind === 'guest' ? '#92400e' : '#075985',
+                            }}>
+                              {u.kind === 'guest' ? 'Guest' : 'Registered'}
+                            </span>
+                          </div>
+                          {hasName && sub && (
+                            <div style={{ fontSize: '0.75rem', color: '#9ca3af', wordBreak: 'break-word' }}>{sub}</div>
+                          )}
+                        </div>
                       </div>
-                      {hasName && (
-                        <div style={{ fontSize: '0.75rem', color: '#9ca3af', wordBreak: 'break-word' }}>{u.email || u.phone}</div>
-                      )}
                     </td>
                     <td data-label="Orders" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {u.orderCount}
