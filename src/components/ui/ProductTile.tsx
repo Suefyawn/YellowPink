@@ -28,7 +28,7 @@ export function ProductTile({ product }: ProductTileProps) {
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlist();
-  const { id, slug, brand, name, variant, price, original_price, kind, stock, rating, review_count } = product;
+  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count } = product;
   const wishlisted = isWishlisted(id);
 
   // Quick-add UX matrix:
@@ -40,7 +40,10 @@ export function ProductTile({ product }: ProductTileProps) {
   // hover (or button focus), always visible on mobile. addCounter on the
   // existing AddToCartToast surfaces the post-add confirmation.
   const isVariable = kind === 'variable';
-  const soldOut = typeof stock === 'number' && stock <= 0;
+  // Products with inventory managed externally (track_inventory === false) are
+  // always purchasable regardless of the stored stock count, so they must never
+  // read as sold out. Only tracked products go sold-out at zero stock.
+  const soldOut = track_inventory !== false && typeof stock === 'number' && stock <= 0;
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
