@@ -151,6 +151,26 @@ body {
   overflow-x: clip;
 }
 
+/* ── Laptop / small-desktop scale-down (≈13–15" screens) ──────────────────
+ * The full design scale is tuned for large monitors — the content column
+ * caps at 1440px and the type/section rhythm is sized to fill it. On a
+ * typical 13–15" laptop (logical width ~1280–1536px) the layout renders at
+ * that same large scale with no intermediate step, so headings, buttons and
+ * section gaps read oversized. Stepping the root rem down a touch shrinks all
+ * rem-based type and Tailwind spacing proportionally, and tightening the px
+ * layout tokens stops sections from feeling cavernous — without affecting
+ * phones (≤768px, handled above) or large external monitors (>1536px, which
+ * keep the generous scale). Placed after the base html/body rules so it wins
+ * the cascade (media queries don't add specificity — source order decides). */
+@media (min-width: 1024px) and (max-width: 1536px) {
+  html { font-size: 15px; }
+  :root {
+    --section-gap: 76px;
+    --side: 28px;
+    --gutter: 20px;
+  }
+}
+
 /* iOS Safari zooms in on focused inputs whose font-size is below 16 px.
  * Pretty much every form on this site uses 14–15 px inline styles for
  * visual density, so the page jolts every time a customer taps an input
