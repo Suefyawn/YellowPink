@@ -248,6 +248,17 @@ export interface Order {
   vendor_id?: string | null;
   /** Set when staff forward the order to the assigned vendor. */
   vendor_sent_at?: string | null;
+  /** Per-order fulfilment costs (entered by staff) — feed the Finance P&L. */
+  delivery_cost?: number | null;
+  payment_fee?: number | null;
+  /** Marketing attribution captured at checkout (ads phase 3). */
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  utm_term?: string | null;
+  landing_page?: string | null;
+  referrer?: string | null;
 }
 
 /** A supplier the store dispatches confirmed orders to (over WhatsApp). */
