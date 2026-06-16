@@ -78,6 +78,12 @@ const INTEGRATIONS: IntegrationCheck[] = [
     envVars: ['NEXT_PUBLIC_WHATSAPP_NUMBER'],
     setupRef: 'docs/USER-MANUAL.md §3',
   },
+  {
+    name: 'Meta Pixel (Instagram/Facebook ads)',
+    purpose: 'Loads the Meta Pixel (marketing-consent gated) and tracks ViewContent/AddToCart/InitiateCheckout/Purchase so Instagram & Facebook ads can optimise and measure conversions.',
+    envVars: ['NEXT_PUBLIC_META_PIXEL_ID'],
+    setupRef: 'docs/USER-MANUAL.md §7',
+  },
 ];
 
 interface RenderedVar { name: string; present: boolean; optional: boolean }
