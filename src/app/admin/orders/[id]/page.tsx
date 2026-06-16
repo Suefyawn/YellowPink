@@ -145,14 +145,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   ].join('\n');
 
   // Prefilled WhatsApp message the merchant sends TO the customer to confirm
-  // their order (the green button in the top bar). Branded, professional, and
-  // self-contained: greeting, itemised order, total + payment method, delivery
-  // address, and a clear "reply to confirm" ask — so the customer can verify
-  // everything in one message. COD orders get a one-line pay-on-delivery note.
+  // their order (the green button in the top bar). Warm, branded, bilingual:
+  // the human lines (greeting / confirm ask / sign-off) are in roman Urdu the
+  // way PK shoppers chat, while the transactional details (order no, items,
+  // total, address) stay in clear English so amounts and address are never
+  // ambiguous. COD orders get a roman-Urdu pay-on-delivery note.
   const customerMessage = [
-    `Hi ${o.first_name ?? 'there'}! 💛`,
+    `Assalam-o-Alaikum${o.first_name ? ` ${o.first_name}` : ''}! 💛`,
     '',
-    `Thank you for shopping with Yellow Pink. Here are the details of your order for confirmation:`,
+    `Yellow Pink se shopping ka shukriya! 🎉 Neeche apne order ki tafseel confirm kar lein:`,
     '',
     `Order ${o.order_number}`,
     ...items.map(it => {
@@ -161,15 +162,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     }),
     '',
     `Total: ${fmt(o.total)} (${payLabel[o.pay_method] ?? o.pay_method})`,
-    ...(o.pay_method === 'cod' ? ['Payable in cash when your parcel arrives.'] : []),
+    ...(o.pay_method === 'cod' ? ['Parcel milne par cash adaa karein.'] : []),
     '',
     `Delivery address:`,
     `${o.first_name} ${o.last_name}`,
     `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
     '',
-    `Please reply to confirm these details are correct and we'll prepare your order for dispatch. If anything needs changing, just let us know here.`,
+    `Agar sab kuch theek hai to please reply kar ke confirm kar dein — hum aap ka order foran tayyar kar denge. Koi tabdeeli chahiye to yahin bata dein. 😊`,
     '',
-    `Thank you for choosing Yellow Pink 🌸`,
+    `Shukriya! 🌸 — Team Yellow Pink`,
   ].join('\n');
 
   return (
