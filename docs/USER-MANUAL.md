@@ -366,6 +366,39 @@ The feed is generated automatically from your published catalogue — any
 product you publish, change the price of, or take out of stock will reflect
 in Merchant Center within 24 hours of the next fetch.
 
+### Meta (Facebook & Instagram) and TikTok Shops
+
+Your catalogue is also published as a **Meta-format product feed** at
+`https://www.yellowpink.pk/feeds/meta-catalog.xml`. The same feed powers the
+Facebook Shop, the Instagram Shop, and catalog (Advantage+) ads — and TikTok's
+catalog too. It updates automatically from your published products, exactly
+like the Google feed.
+
+**Facebook & Instagram Shop (Meta Commerce Manager)**
+
+1. Go to **commerce.facebook.com** → create a **Catalog** (type: *E-commerce*)
+   for Yellow Pink, inside your Business account.
+2. **Catalog → Data sources → Add items → Use a data feed → Scheduled feed.**
+   Paste `https://www.yellowpink.pk/feeds/meta-catalog.xml`, set the currency to
+   **PKR** and a daily refresh. The first import lists your products; Meta flags
+   any it can't accept (usually a missing image) — fix those in admin Products.
+3. Connect the catalog to your **Facebook Page** and **Instagram professional
+   account** under **Commerce Manager → Shops** to open the Shop. (Instagram
+   Shopping needs Meta's account review — allow a few days.)
+4. Once live, you can tag products in posts/stories and run **catalog ads**
+   against the same feed.
+
+**TikTok**
+
+In **TikTok Ads Manager → Assets → Catalog**, create a catalog and add the same
+feed URL (`/feeds/meta-catalog.xml`) as a scheduled data feed — TikTok reads the
+same format. (A full TikTok *Shop* is a separate seller application; the catalog
+above is what you need for TikTok catalog ads.)
+
+> **Tracking your ads.** Conversion pixels (Meta/TikTok) and ad-spend/ROAS
+> reporting are set up separately — see your developer. Once a Meta Pixel ID is
+> added, Instagram/Facebook ads can optimise for and measure purchases.
+
 ### Who to contact
 
 For storefront or admin issues that this manual doesn't cover, contact the
