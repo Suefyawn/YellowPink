@@ -200,8 +200,16 @@ export async function proxy(request: NextRequest) {
   if (!isOwnedPath(pathname)) {
     const to = await resolveRedirect(pathname);
     if (to && to !== pathname) {
-      const target = new URL(to + (search ?? ''), request.url);
-      return NextResponse.redirect(target, 301);
+      // to_path already carries its own query (?category=… / ?taxon=…); only
+      // append the request's search when to_path has none, to avoid `??`.
+      const suffix = to.includes('?') ? '' : (search ?? '');
+      return NextResponse.redirect(new URL(to + suffix, request.url), 301);
+    }
+    // Fallback: any /product-category/<slug> not in the redirects table still
+    // lands on the shop category filter rather than 404.
+    const pc = pathname.match(/^\/product-category\/([^/]+)\/?$/);
+    if (pc) {
+      return NextResponse.redirect(new URL(`/shop?category=${encodeURIComponent(pc[1])}`, request.url), 301);
     }
   }
 
@@ -220,9 +228,12 @@ function wpPatternRedirect(pathname: string, params: URLSearchParams): string | 
   const blogPage = pathname.match(/^\/blog\/page\/(\d+)\/?$/);
   if (blogPage) return `/blog?page=${blogPage[1]}`;
 
-  // /category/<slug>/ + /product-category/<slug>/ + /brand/<slug>/
-  //   → /shop?category=<slug>
-  const cat = pathname.match(/^\/(?:product-category|category|brand)\/([^/]+)\/?$/);
+  // /category/<slug>/ + /brand/<slug>/ → /shop?category=<slug>.
+  // NOTE: /product-category/<slug> is deliberately NOT handled here — those old
+  // WordPress slugs don't match the new taxonomy (e.g. bone-health ≠ bone-joint),
+  // so they're resolved via the per-slug `redirects` table (correct targets),
+  // with a slug-passthrough fallback in the proxy for anything unmapped.
+  const cat = pathname.match(/^\/(?:category|brand)\/([^/]+)\/?$/);
   if (cat) return `/shop?category=${encodeURIComponent(cat[1])}`;
 
   // /author/<name>/<page?>/ → /blog (we don't have author archives)
