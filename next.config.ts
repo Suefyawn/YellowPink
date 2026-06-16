@@ -31,6 +31,16 @@ const nextConfig: NextConfig = {
   // Image optimisation: allow Supabase Storage + the WP source host (set
   // WP_IMAGE_HOST in env if your Woo images live somewhere else).
   images: {
+    // Vercel's Image Optimization (the /_next/image transformer) is metered;
+    // on the free plan we exhausted the monthly transformation quota, after
+    // which the optimizer returns HTTP 402 and any not-yet-cached image (e.g.
+    // newly added products) renders blank. Serve images unoptimized so they go
+    // straight from their source (Supabase Storage CDN + the small pre-built
+    // WebP photos in /public/catalog) with zero transformations and no quota
+    // dependency. width/height/sizes on each <Image> still drive layout and
+    // lazy-loading, so CLS is unaffected. remotePatterns below is kept for
+    // forward-compat if optimization is re-enabled on a paid plan.
+    unoptimized: true,
     formats: ['image/avif', 'image/webp'],
     // Tight breakpoint set so we don't generate dozens of derivatives per
     // image. Storefront tiles render at <= 480 px on phones, ~360 px in a
