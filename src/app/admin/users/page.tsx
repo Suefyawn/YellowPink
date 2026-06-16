@@ -214,13 +214,31 @@ export default async function UsersPage({
       href: cardHref({ activity: 'repeat' }), active: activity === 'repeat' },
   ];
 
+  // Export carries the active filters so the owner can download a targeted
+  // audience (e.g. repeat buyers) as a Custom-Audience CSV.
+  const exportParams = new URLSearchParams();
+  if (q) exportParams.set('q', q);
+  if (type !== 'all') exportParams.set('type', type);
+  if (activity !== 'all') exportParams.set('activity', activity);
+  const exportQs = exportParams.toString();
+  const exportHref = exportQs ? `/admin/users/export?${exportQs}` : '/admin/users/export';
+
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Customers</h1>
-        <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
-          {totals.all.toLocaleString()} total · {fmtMoney(totals.revenue)} lifetime revenue
-        </p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div>
+          <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Customers</h1>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+            {totals.all.toLocaleString()} total · {fmtMoney(totals.revenue)} lifetime revenue
+          </p>
+        </div>
+        <a href={exportHref} style={{
+          padding: '9px 16px', background: 'white', border: '1px solid #d1d5db', borderRadius: 8,
+          color: '#374151', textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600,
+          display: 'inline-flex', alignItems: 'center', gap: 6,
+        }} title="Download these customers as a CSV for Meta/TikTok custom audiences">
+          ↓ Export CSV
+        </a>
       </div>
 
       {/* Summary cards — also act as quick filters. */}

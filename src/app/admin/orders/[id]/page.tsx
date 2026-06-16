@@ -8,6 +8,7 @@ import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
 import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
 import { VendorDispatch } from '@/components/admin/VendorDispatch';
 import { setOrderConfirmed } from '@/app/admin/vendor-actions';
+import { setOrderCosts } from '@/app/admin/finance/actions';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { configuredAdapterIds } from '@/lib/couriers';
@@ -383,6 +384,27 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
         )}
       </div>
+      )}
+
+      {/* Order costs — what we paid to fulfil this order; feeds the Finance P&L. */}
+      {canEdit && (
+        <div style={{ ...section, marginBottom: 20 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order costs</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            Courier charge and payment-gateway fee for this order. Vendor cost is captured separately via the vendor settlement above; these feed the Finance profit &amp; loss.
+          </p>
+          <form action={setOrderCosts.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Delivery cost (PKR)<br />
+              <input type="number" name="delivery_cost" min="0" step="1" defaultValue={o.delivery_cost ?? ''}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
+            </label>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Payment fee (PKR)<br />
+              <input type="number" name="payment_fee" min="0" step="1" defaultValue={o.payment_fee ?? ''}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
+            </label>
+            <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save costs</button>
+          </form>
+        </div>
       )}
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>

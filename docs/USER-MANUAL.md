@@ -154,6 +154,7 @@ together. Here's what each link is for:
 |---|---|
 | **Dashboard** | At-a-glance health of the store — revenue, order counts by status, top products, low-stock alerts, recent orders. |
 | **Analytics** | Deeper performance data — revenue trends, customer cohorts (RFM segments + retention), and (if connected) website-traffic widgets including top user journeys (which path sequences customers take through the site), funnel-by-traffic-source, a weekly-active-users curve, and inline links to PostHog session recordings to watch real visits. |
+| **Finance** | Profit & loss for any period (7/30/90 days or all time): revenue from paid orders, minus vendor cost, delivery and payment-fee costs → gross profit, minus your logged expenses (ad spend + overheads) → **net profit and margin**. Also shows **ROAS** (return on ad spend) by traffic source. Log ad spend and overheads in the **Expenses** table here; enter each order's delivery and payment-fee cost on the order page (*Order costs*). |
 
 **Sell** — day-to-day commerce operations
 | Section | What it's for |
