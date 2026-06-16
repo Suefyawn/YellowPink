@@ -144,6 +144,35 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     `Total: ${fmt(o.total)} · ${payLabel[o.pay_method] ?? o.pay_method}`,
   ].join('\n');
 
+  // Prefilled WhatsApp message the merchant sends TO the customer to confirm
+  // their order (the green button in the top bar). Warm, branded, bilingual:
+  // the human lines (greeting / confirm ask / sign-off) are in roman Urdu the
+  // way PK shoppers chat, while the transactional details (order no, items,
+  // total, address) stay in clear English so amounts and address are never
+  // ambiguous. COD orders get a roman-Urdu pay-on-delivery note.
+  const customerMessage = [
+    `Assalam-o-Alaikum${o.first_name ? ` ${o.first_name}` : ''}! 💛`,
+    '',
+    `Yellow Pink se shopping ka shukriya! 🎉 Neeche apne order ki tafseel confirm kar lein:`,
+    '',
+    `Order ${o.order_number}`,
+    ...items.map(it => {
+      const v = it.variant_label ?? it.variant;
+      return `• ${it.qty}× ${brandPlusName(it.brand, it.name)}${v ? ` (${v})` : ''}`;
+    }),
+    '',
+    `Total: ${fmt(o.total)} (${payLabel[o.pay_method] ?? o.pay_method})`,
+    ...(o.pay_method === 'cod' ? ['Parcel milne par cash adaa karein.'] : []),
+    '',
+    `Delivery address:`,
+    `${o.first_name} ${o.last_name}`,
+    `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
+    '',
+    `Agar sab kuch theek hai to please reply kar ke confirm kar dein — hum aap ka order foran tayyar kar denge. Koi tabdeeli chahiye to yahin bata dein. 😊`,
+    '',
+    `Shukriya! 🌸 — Team Yellow Pink`,
+  ].join('\n');
+
   return (
     <div id="order-detail-page" style={{ padding: '32px 36px' }}>
       {/* Print styles — printing this page outputs ONLY the invoice card.
@@ -180,7 +209,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {/* WhatsApp the customer — uses their phone, prefills the order
               number. One-tap support reply from the order page. */}
           {(() => {
-            const href = waUrlForCustomer(o.phone, `Hi ${o.first_name ?? ''}, this is Yellow Pink about order ${o.order_number}. `.trim());
+            const href = waUrlForCustomer(o.phone, customerMessage);
             if (!href) return null;
             return (
               <a
