@@ -427,9 +427,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               </div>
 
               <hr className="hairline" style={{ margin: '32px 0' }} />
-              <Overline id="co-pay-label" style={{ display: 'block', marginBottom: 16 }}>Payment Method</Overline>
+              <Overline style={{ display: 'block', marginBottom: 16 }}>Payment Method</Overline>
               <style>{`.co-pay:focus-within { outline: 2px solid var(--brand-pink); outline-offset: 2px; border-radius: var(--radius-card); }`}</style>
-              <div role="radiogroup" aria-labelledby="co-pay-label">
+              <div role="radiogroup" aria-label="Payment method">
                 {visiblePayMethods.map(([key, label, desc]) => (
                   <label key={key} className="co-pay" style={{
                     display: 'flex', alignItems: 'flex-start', gap: 12, padding: '16px',
