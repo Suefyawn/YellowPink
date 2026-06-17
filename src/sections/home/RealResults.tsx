@@ -86,7 +86,7 @@ const ACCENT_STYLES: Record<Review['accent'], {
     cardBg:      'linear-gradient(160deg, #FDE7F0 0%, #FAF6EE 55%, #FFF1F8 100%)',
     cardBorder:  '1px solid rgba(232, 72, 127, 0.30)',
     quoteColor:  '#E8487F',
-    avatarBg:    '#E8487F',
+    avatarBg:    '#C5286A',
     avatarColor: '#FFFFFF',
     dot:         '#E8487F',
   },

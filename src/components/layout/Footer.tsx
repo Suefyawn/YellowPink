@@ -87,7 +87,7 @@ export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
             style={{
               display: 'inline-block',
               fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontStyle: 'italic',
-              color: 'rgba(250,246,238,0.2)',
+              color: 'rgba(250,246,238,0.55)',
             }}
           >
             {Array(6).fill('Yellow Pink Store Pakistan · ').join('')}
@@ -109,28 +109,28 @@ export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
           </div>
 
           <nav aria-label="Shop">
-            <Overline style={{ color: 'rgba(250,246,238,0.4)', display: 'block', marginBottom: 16 }}>Shop</Overline>
+            <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Shop</Overline>
             <ul style={{ padding: 0, margin: 0 }}>
               {SHOP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
             </ul>
           </nav>
 
           <nav aria-label="Company">
-            <Overline style={{ color: 'rgba(250,246,238,0.4)', display: 'block', marginBottom: 16 }}>Company</Overline>
+            <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Company</Overline>
             <ul style={{ padding: 0, margin: 0 }}>
               {COMPANY_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
             </ul>
           </nav>
 
           <nav aria-label="Help">
-            <Overline style={{ color: 'rgba(250,246,238,0.4)', display: 'block', marginBottom: 16 }}>Help</Overline>
+            <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Help</Overline>
             <ul style={{ padding: 0, margin: 0 }}>
               {HELP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
             </ul>
           </nav>
 
           <div>
-            <Overline style={{ color: 'rgba(250,246,238,0.4)', display: 'block', marginBottom: 16 }}>Newsletter</Overline>
+            <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Newsletter</Overline>
             <p className="small-text" style={{ color: 'rgba(250,246,238,0.55)', marginBottom: 12 }}>Sign up for health tips & exclusive offers.</p>
             <NewsletterSignup source="footer" variant="dark" />
           </div>
@@ -140,7 +140,7 @@ export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
           marginTop: 48, paddingTop: 24, borderTop: '1px solid rgba(250,246,238,0.08)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
         }}>
-          <span className="small-text" style={{ color: 'rgba(250,246,238,0.3)' }}>© {new Date().getFullYear()} Yellow Pink. All rights reserved.</span>
+          <span className="small-text" style={{ color: 'rgba(250,246,238,0.6)' }}>© {new Date().getFullYear()} Yellow Pink. All rights reserved.</span>
           {socials.length > 0 && (
             <div style={{ display: 'flex', gap: 8 }} aria-label="Social media">
               {socials.map(s => (
@@ -151,7 +151,7 @@ export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
                   rel="noopener noreferrer"
                   aria-label={`Yellow Pink on ${s.label}`}
                   style={{
-                    color: 'rgba(250,246,238,0.4)',
+                    color: 'rgba(250,246,238,0.6)',
                     textDecoration: 'none',
                     fontSize: '0.6875rem',
                     fontWeight: 600,
@@ -167,7 +167,7 @@ export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
                     alignItems: 'center',
                   }}
                   onMouseEnter={e => (e.currentTarget.style.color = 'var(--paper)')}
-                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,246,238,0.4)')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(250,246,238,0.6)')}
                 >{s.label}</a>
               ))}
             </div>

@@ -18,7 +18,7 @@ export function PressStrip() {
         .press-strip a {
           font-family: var(--font-ui); font-size: 0.75rem; font-weight: 600;
           letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap;
-          color: rgba(250,246,238,0.35); text-decoration: none; transition: color 160ms ease-out;
+          color: rgba(250,246,238,0.6); text-decoration: none; transition: color 160ms ease-out;
         }
         .press-strip a:hover { color: rgba(250,246,238,0.85); }
         @media (max-width: 768px) {
