@@ -44,6 +44,9 @@ export function ProductTile({ product }: ProductTileProps) {
   // always purchasable regardless of the stored stock count, so they must never
   // read as sold out. Only tracked products go sold-out at zero stock.
   const soldOut = track_inventory !== false && typeof stock === 'number' && stock <= 0;
+  // Low-stock urgency: only for tracked items with a known count between 1 and
+  // 5 (matches the PDP threshold). Externally-tracked items never show it.
+  const lowStock = track_inventory !== false && typeof stock === 'number' && stock > 0 && stock <= 5;
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -96,14 +99,29 @@ export function ProductTile({ product }: ProductTileProps) {
           }}>
             <ProductImage src={product.image_url} alt={brandPlusName(brand, name)} label={brand} />
           </div>
-          {(original_price ?? 0) > price && (
-            <span style={{
-              position: 'absolute', top: 8, left: 8,
-              background: 'var(--brand-yellow)', color: 'var(--ink-900)',
-              padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-              fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-            }}>Sale</span>
-          )}
+          {/* Top-left badge stack: "Sale" sits above a low-stock urgency pill
+              when the tracked item is running low (mirrors the PDP "Only N
+              left" threshold of ≤5). Stacked so they never overlap. */}
+          <div style={{
+            position: 'absolute', top: 8, left: 8, zIndex: 1,
+            display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
+          }}>
+            {(original_price ?? 0) > price && (
+              <span style={{
+                background: 'var(--brand-yellow)', color: 'var(--ink-900)',
+                padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}>Sale</span>
+            )}
+            {lowStock && (
+              <span style={{
+                background: 'rgba(255,255,255,0.95)', color: 'var(--ink-900)',
+                padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.02em',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.12)', whiteSpace: 'nowrap',
+              }}>Only {stock} left</span>
+            )}
+          </div>
           {/* Quick-add overlay — opacity-0 on desktop until tile hover (or
               button focus), always visible on mobile via the `quick-add-btn`
               CSS class. Sits inside the image container so it absolutes
