@@ -230,7 +230,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           }}
         />
       )}
+      {/* Keyed on the product id so a related-product click (product→product
+          navigation, which otherwise reuses this client component) remounts
+          PDPPage — resetting the variant picker and quantity to the new
+          product's defaults instead of carrying the previous selection. */}
       <PDPPage
+        key={product.id}
         product={product}
         relatedProducts={crossSells}
         variants={variantData.variants}

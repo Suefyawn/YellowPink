@@ -134,12 +134,12 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   });
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string }> }) {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string }> }) {
   const [products, facetData] = await Promise.all([
     getProducts(),
     loadFacetData(),
   ]);
-  const { category, subcategory, cat, taxon, on_sale } = await searchParams;
+  const { category, subcategory, cat, taxon, on_sale, q } = await searchParams;
 
   // ?category= is canonical; ?cat= is a legacy WP param the proxy already
   // 301s across. CollectionPage resolves the value (taxon or leaf) itself.
@@ -187,7 +187,15 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           )),
         }}
       />
+      {/* `key` on the destination params remounts CollectionPage on a genuine
+          listing change — switching taxon/category/subcategory, a ?q= search,
+          or ?on_sale=1 — so its URL-seeded state re-initialises. Client-side
+          navigation between two /shop?… URLs otherwise reuses the instance and
+          leaves the view stale until a hard refresh. The component writes its
+          OWN filter params (brand/price/sort/page) which are deliberately NOT
+          in this key, so applying filters never triggers a remount. */}
       <CollectionPage
+        key={`${taxon ?? ''}|${initialCategory}|${subcategory ?? ''}|${q ?? ''}|${on_sale ?? ''}`}
         products={products}
         attributes={facetData.attributes}
         productValueMap={facetData.productValueMap}
