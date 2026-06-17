@@ -112,10 +112,14 @@ export function CollectionPage({
       sale:  sp.get('sale') === '1' || sp.get('on_sale') === '1' || initialOnSaleOnly,
     };
   };
-  // Mount-time only — useState initialiser runs once on mount. Subsequent
-  // navigations are handled by re-rendering the page server-side, so this is
-  // correct. Storing the URL-hydrated snapshot in state (not a ref) is
-  // important: it satisfies the React Compiler's "no refs in render" rule.
+  // Mount-time only — the useState initialiser runs once. Navigating to a
+  // different listing (another taxon/category/subcategory, a ?q= search, or
+  // ?on_sale=1) remounts this component because shop/page.tsx keys it on those
+  // destination params, so the snapshot is always re-read for a new listing.
+  // Internal filter changes (brand/price/sort/page) don't change that key, so
+  // they keep working as in-place state updates. Storing the URL-hydrated
+  // snapshot in state (not a ref) satisfies the React Compiler's
+  // "no refs in render" rule.
   const [initialState] = useState(readInitial);
 
   const [activeCategory, setActiveCategory] = useState<string>(initialState.cat);

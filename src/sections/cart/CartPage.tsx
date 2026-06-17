@@ -296,7 +296,7 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                       marginTop: 12, padding: '10px 14px',
-                      background: 'transparent', color: '#128C7E',
+                      background: 'transparent', color: '#0f766e',
                       border: '1px solid #25D366', borderRadius: 999,
                       textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600,
                     }}
