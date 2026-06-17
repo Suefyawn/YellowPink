@@ -358,7 +358,6 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     border: `1px solid ${errors[key] ? 'var(--error)' : 'var(--line)'}`,
     borderRadius: 'var(--radius-card)', fontFamily: 'var(--font-ui)',
     fontSize: '0.875rem', color: 'var(--ink-900)', background: 'var(--paper)',
-    outline: 'none',
   });
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: 6 };
 
@@ -429,21 +428,30 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
 
               <hr className="hairline" style={{ margin: '32px 0' }} />
               <Overline style={{ display: 'block', marginBottom: 16 }}>Payment Method</Overline>
-              {visiblePayMethods.map(([key, label, desc]) => (
-                <label key={key} onClick={() => setPayMethod(key)} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 12, padding: '16px',
-                  border: '1px solid ' + (payMethod === key ? 'var(--ink-900)' : 'var(--line)'),
-                  borderRadius: 'var(--radius-card)', cursor: 'pointer',
-                  marginBottom: -1, background: payMethod === key ? 'var(--paper2)' : 'transparent',
-                  transition: 'all 150ms',
-                }}>
-                  <div style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 1, border: payMethod === key ? '5px solid var(--ink-900)' : '2px solid var(--line)', transition: 'border 150ms' }} />
-                  <div>
-                    <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>{label}</div>
-                    <div className="small-text">{desc}</div>
-                  </div>
-                </label>
-              ))}
+              <style>{`.co-pay:focus-within { outline: 2px solid var(--brand-pink); outline-offset: 2px; border-radius: var(--radius-card); }`}</style>
+              <div role="radiogroup" aria-label="Payment method">
+                {visiblePayMethods.map(([key, label, desc]) => (
+                  <label key={key} className="co-pay" style={{
+                    display: 'flex', alignItems: 'flex-start', gap: 12, padding: '16px',
+                    border: '1px solid ' + (payMethod === key ? 'var(--ink-900)' : 'var(--line)'),
+                    borderRadius: 'var(--radius-card)', cursor: 'pointer',
+                    marginBottom: -1, background: payMethod === key ? 'var(--paper2)' : 'transparent',
+                    transition: 'all 150ms',
+                  }}>
+                    <input
+                      type="radio" name="payMethod" value={key}
+                      checked={payMethod === key}
+                      onChange={() => setPayMethod(key)}
+                      style={{ position: 'absolute', width: 1, height: 1, opacity: 0, margin: 0 }}
+                    />
+                    <div aria-hidden="true" style={{ width: 18, height: 18, borderRadius: '50%', flexShrink: 0, marginTop: 1, border: payMethod === key ? '5px solid var(--ink-900)' : '2px solid var(--line)', transition: 'border 150ms' }} />
+                    <div>
+                      <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>{label}</div>
+                      <div className="small-text">{desc}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
               {payMethod === 'bank' && bankAccounts.length > 0 && (
                 <div style={{ marginTop: 16 }}>
                   <BankAccountsList accounts={bankAccounts} notes={bankNotes} />
@@ -478,16 +486,16 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
                       placeholder="Coupon code"
-                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', outline: 'none', background: 'white', fontFamily: 'monospace', textTransform: 'uppercase' }}
+                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', background: 'white', fontFamily: 'monospace', textTransform: 'uppercase' }}
                     />
-                    <button onClick={applyCoupon} disabled={couponLoading} style={{
+                    <button onClick={applyCoupon} disabled={couponLoading} aria-busy={couponLoading} style={{
                       padding: '8px 14px', background: '#111827', color: 'white', border: 'none',
                       borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: couponLoading ? 'not-allowed' : 'pointer',
                     }}>
-                      {couponLoading ? '…' : 'Apply'}
+                      {couponLoading ? 'Checking…' : 'Apply'}
                     </button>
                   </div>
-                  {couponError && <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--error)' }}>{couponError}</p>}
+                  {couponError && <p role="alert" style={{ margin: '4px 0 0', fontSize: '0.75rem', color: 'var(--error)' }}>{couponError}</p>}
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
@@ -514,9 +522,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                           setPointsRedeem(typeof n === 'number' ? n : 0);
                         }}
                         placeholder="0"
-                        style={{ width: 70, padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #fde68a', borderRadius: 4, outline: 'none', background: 'white', fontFamily: 'monospace' }}
+                        style={{ width: 70, padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #fde68a', borderRadius: 4, background: 'white', fontFamily: 'monospace' }}
                       />
-                      <button onClick={() => {
+                      <button aria-label="Use maximum available points" onClick={() => {
                         const max = Math.min(loyalty.points_balance, beforeRewards);
                         setPointsRedeemInput(max);
                         setPointsRedeem(max);
@@ -552,11 +560,11 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                 <span className="h3 tabular-nums">PKR {total.toLocaleString()}</span>
               </div>
               {submitError && (
-                <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: '0.8125rem' }}>
+                <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '10px 14px', marginBottom: 16, color: '#dc2626', fontSize: '0.8125rem' }}>
                   {submitError}
                 </div>
               )}
-              <button className="btn-primary" style={{ width: '100%' }} onClick={handleSubmit} disabled={submitting}>
+              <button className="btn-primary" style={{ width: '100%' }} onClick={handleSubmit} disabled={submitting} aria-busy={submitting}>
                 {submitting ? 'Placing Order…' : payMethod === 'jazzcash' || payMethod === 'easypaisa' ? `Continue to ${payMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa'} →` : 'Place Order'}
               </button>
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)' }}>Secure checkout · COD available</p>

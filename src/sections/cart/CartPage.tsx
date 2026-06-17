@@ -235,13 +235,14 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                       placeholder="Coupon code"
                       style={{
                         flex: 1, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8,
-                        fontSize: '0.875rem', fontFamily: 'monospace', background: 'white', outline: 'none',
+                        fontSize: '0.875rem', fontFamily: 'monospace', background: 'white',
                         color: 'var(--ink-900)', textTransform: 'uppercase',
                       }}
                     />
                     <button
                       onClick={applyCoupon}
                       disabled={couponLoading || !couponCode.trim()}
+                      aria-busy={couponLoading}
                       style={{
                         padding: '9px 14px', background: 'var(--ink-900)', color: 'white',
                         border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600,
@@ -250,12 +251,12 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {couponLoading ? '…' : 'Apply'}
+                      {couponLoading ? 'Checking…' : 'Apply'}
                     </button>
                   </div>
                 )}
                 {couponError && (
-                  <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#dc2626' }}>{couponError}</p>
+                  <p role="alert" style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#dc2626' }}>{couponError}</p>
                 )}
               </div>
 

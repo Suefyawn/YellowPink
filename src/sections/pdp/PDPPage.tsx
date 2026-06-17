@@ -78,6 +78,7 @@ function VariantPicker({
                       title={v.value}
                       disabled={!reachable && !active}
                       aria-label={v.value}
+                      aria-pressed={active}
                       style={{
                         width: 34, height: 34, borderRadius: '50%',
                         border: active ? '2px solid var(--ink-900)' : '2px solid var(--line)',
@@ -98,6 +99,7 @@ function VariantPicker({
                     type="button"
                     onClick={() => onChange({ ...selected, [attr.id]: v.id })}
                     disabled={!reachable && !active}
+                    aria-pressed={active}
                     style={{
                       padding: '8px 14px',
                       border: '1px solid ' + (active ? 'var(--ink-900)' : 'var(--line)'),
@@ -198,7 +200,7 @@ function Gallery({
     // gets the full width and the thumbnails sit underneath as a horizontal
     // strip — no more 64px sidebar stealing space on a phone.
     <div className="pdp-gallery" style={{ display: 'flex', gap: 12, flex: 1 }}>
-      <div className="pdp-gallery-thumbs" style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64, flexShrink: 0 }}>
+      <div className="pdp-gallery-thumbs" role="group" aria-label="Product images" style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64, flexShrink: 0 }}>
         {images.map(img => (
           <button
             key={img.id}
@@ -448,7 +450,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 <span aria-live="polite" style={{ width: 32, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
                 <button type="button" aria-label="Increase quantity" onClick={() => setQty(qty + 1)} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>+</button>
               </div>
-              <button onClick={handleAdd} disabled={ctaDisabled} className="btn-primary" style={{
+              <button onClick={handleAdd} disabled={ctaDisabled || addedFlash} className="btn-primary" style={{
                 flex: 1,
                 background: ctaDisabled ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink)',
                 transition: 'background 100ms ease-out',
@@ -724,7 +726,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           qty + handleAdd as the in-page panel so state stays in sync. */}
       <div
         className="pdp-sticky-bar"
-        aria-hidden={!showStickyBar}
+        inert={!showStickyBar}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 90,
           background: 'rgba(250,246,238,0.97)',
