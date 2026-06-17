@@ -277,7 +277,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   }, [product.id]);
 
   // Default-select the first reachable value for every attribute (or none).
-  const [selected, setSelected] = useState<Record<string, string>>(() => {
+  const computeDefaultSelected = (): Record<string, string> => {
     const init: Record<string, string> = {};
     if (variants.length > 0 && attributes.length > 0) {
       // Try to pick a fully-defining first variant.
@@ -288,7 +288,18 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
       }
     }
     return init;
-  });
+  };
+  const [selected, setSelected] = useState<Record<string, string>>(computeDefaultSelected);
+  // Re-default the variant picker (and quantity) when navigating product→
+  // product. Related-product links keep THIS component mounted — only the
+  // [slug] segment's data changes (same reason the scroll-to-top effect above
+  // keys on product.id) — so without this the picker would keep the previous
+  // product's selection, which resolves to no matching variant on the new one.
+  useEffect(() => {
+    setSelected(computeDefaultSelected());
+    setQty(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.id]);
 
   // Resolve the currently-matching variant (if all attributes have a selection).
   const activeVariant = useMemo(() => {

@@ -112,10 +112,11 @@ export function CollectionPage({
       sale:  sp.get('sale') === '1' || sp.get('on_sale') === '1' || initialOnSaleOnly,
     };
   };
-  // Mount-time only — useState initialiser runs once on mount. Subsequent
-  // navigations are handled by re-rendering the page server-side, so this is
-  // correct. Storing the URL-hydrated snapshot in state (not a ref) is
-  // important: it satisfies the React Compiler's "no refs in render" rule.
+  // Mount-time only — the useState initialiser runs once. Client-side
+  // navigations to another /shop?… URL reuse this instance, so they're
+  // re-synced by the "Re-hydrate on external navigation" effect below (a hard
+  // refresh remounts and re-runs this). Storing the URL-hydrated snapshot in
+  // state (not a ref) satisfies the React Compiler's "no refs in render" rule.
   const [initialState] = useState(readInitial);
 
   const [activeCategory, setActiveCategory] = useState<string>(initialState.cat);
@@ -159,6 +160,34 @@ export function CollectionPage({
   const [inStockOnly, setInStockOnly] = useState(initialState.stock);
   const [onSaleOnly, setOnSaleOnly] = useState(initialState.sale);
   const [q, setQ] = useState(initialState.q);
+
+  // ─── Re-hydrate on external (client-side) navigation ────────────────────
+  // Navigating to another /shop?… URL while this page is already open — e.g.
+  // tapping a different top-nav taxon, or the search overlay — REUSES this
+  // component instance, so the useState initialisers above never re-run. Left
+  // alone, the listing stays stuck on the previous view until a hard refresh
+  // (the URL updates, the products don't). Re-read the URL on every change and
+  // apply only the fields that actually differ. The writer effect below keeps
+  // the URL in sync with state, so our own updates round-trip back here as
+  // no-ops — this only does real work for genuinely external navigations, and
+  // never forms a loop. Depends on `searchParams` alone on purpose; the state
+  // values are read for comparison, not to re-trigger the effect.
+  useEffect(() => {
+    const next = readInitial();
+    const setEq = (a: Set<string>, b: Set<string>) => a.size === b.size && [...a].every(x => b.has(x));
+    if (next.cat !== activeCategory) setActiveCategory(next.cat);
+    if (next.sub !== activeSubcategory) setActiveSubcategory(next.sub);
+    if (next.q !== q) setQ(next.q);
+    if (next.sort !== sortBy) setSortBy(next.sort);
+    if (next.pageNum !== page) setPage(next.pageNum);
+    if (!setEq(next.brands, selectedBrands)) setSelectedBrands(next.brands);
+    if (!setEq(next.attrs, selectedValueIds)) setSelectedValueIds(next.attrs);
+    if (next.min !== priceMin) setPriceMin(next.min);
+    if (next.max !== priceMax) setPriceMax(next.max);
+    if (next.stock !== inStockOnly) setInStockOnly(next.stock);
+    if (next.sale !== onSaleOnly) setOnSaleOnly(next.sale);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   // Filter rail is collapsed by default so the catalogue shows immediately.
   // When open it's a fixed left-side slide-in panel on every viewport.
