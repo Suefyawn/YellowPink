@@ -233,21 +233,21 @@ export default async function FinancePage({
         {expenses.length === 0 ? (
           <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>No expenses logged in this period.</p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead><tr style={{ color: '#6b7280', textAlign: 'left', background: '#f9fafb' }}>
               {['Date', 'Category', 'Channel', 'Amount', 'Note', ''].map(h => <th key={h} style={{ padding: '8px 10px', fontWeight: 600 }}>{h}</th>)}
             </tr></thead>
             <tbody>
               {expenses.map(e => (
                 <tr key={e.id} style={{ borderTop: '1px solid #f3f4f6' }}>
-                  <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{fmtDate(e.incurred_on)}</td>
-                  <td style={{ padding: '8px 10px' }}>{e.category}</td>
-                  <td style={{ padding: '8px 10px', color: '#6b7280' }}>{e.channel ?? '—'}</td>
-                  <td style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(Number(e.amount))}</td>
-                  <td style={{ padding: '8px 10px', color: '#6b7280' }}>{e.note ?? ''}</td>
+                  <td data-label="Date" style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>{fmtDate(e.incurred_on)}</td>
+                  <td data-label="Category" style={{ padding: '8px 10px' }}>{e.category}</td>
+                  <td data-label="Channel" style={{ padding: '8px 10px', color: '#6b7280' }}>{e.channel ?? '—'}</td>
+                  <td data-label="Amount" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(Number(e.amount))}</td>
+                  <td data-label="Note" style={{ padding: '8px 10px', color: '#6b7280' }}>{e.note ?? ''}</td>
                   <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                     <form action={deleteExpense.bind(null, e.id)}>
-                      <button type="submit" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '0.8125rem' }} title="Delete">✕</button>
+                      <button type="submit" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '0.8125rem' }} title="Delete">✕ Delete</button>
                     </form>
                   </td>
                 </tr>
