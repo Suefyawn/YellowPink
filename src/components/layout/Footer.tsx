@@ -60,6 +60,8 @@ const HELP_LINKS = [
   { label: 'Returns',      href: '/page/returns' },
   { label: 'FAQ',          href: '/page/faq' },
   { label: 'Privacy',      href: '/privacy' },
+  { label: 'Terms',        href: '/page/terms-and-conditions' },
+  { label: 'Disclaimer',   href: '/page/disclaimer' },
 ];
 
 export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
