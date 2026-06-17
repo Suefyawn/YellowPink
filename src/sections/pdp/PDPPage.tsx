@@ -206,7 +206,7 @@ function Gallery({
             key={img.id}
             type="button"
             onClick={() => setActive(img.url)}
-            aria-label={img.alt ?? alt}
+            aria-label={img.alt || alt}
             aria-current={active === img.url ? 'true' : undefined}
             className="pdp-gallery-thumb"
             style={{
@@ -217,7 +217,7 @@ function Gallery({
               flexShrink: 0,
             }}
           >
-            <ProductImage src={img.url} alt={img.alt ?? alt} label={brandLabel} width={80} height={80} />
+            <ProductImage src={img.url} alt={img.alt || alt} label={brandLabel} width={80} height={80} />
           </button>
         ))}
       </div>
@@ -452,7 +452,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </div>
               <button onClick={handleAdd} disabled={ctaDisabled || addedFlash} className="btn-primary" style={{
                 flex: 1,
-                background: ctaDisabled ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink)',
+                background: ctaDisabled ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink-cta)',
                 transition: 'background 100ms ease-out',
                 cursor: ctaDisabled ? 'not-allowed' : 'pointer',
               }}>
