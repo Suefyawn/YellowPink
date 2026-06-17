@@ -79,7 +79,8 @@ customers and spot where an order is.
 
 - **Cart** — lists everything the customer has added, with quantities and a
   running total. They can change quantities, remove items, and enter a **coupon
-  code** for a discount.
+  code** for a discount. Below the items a **"You may also like"** row suggests
+  bestsellers (excluding what's already in the bag) to encourage add-ons.
 - **Checkout** — the customer enters their delivery details (name, phone, email,
   full address), sees the shipping cost, and chooses how to pay. A short
   reassurance strip (authentic products, cash on delivery, 7-day returns) sits

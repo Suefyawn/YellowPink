@@ -5,15 +5,16 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { ProductTile } from '@/components/ui/ProductTile';
 import { useCart } from '@/context/CartContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { track } from '@/lib/analytics';
 import { brandPlusName } from '@/lib/product-display';
 import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { FREE_SHIPPING_THRESHOLD as FREE_SHIPPING, DEFAULT_SHIPPING_RATE } from '@/lib/commerce';
-import type { CartItem, Coupon } from '@/types';
+import type { CartItem, Coupon, Product } from '@/types';
 
-export function CartPage({ restoreToken = null }: { restoreToken?: string | null }) {
+export function CartPage({ restoreToken = null, recommended = [] }: { restoreToken?: string | null; recommended?: Product[] }) {
   const { cartItems, removeFromCart, updateQty, appliedCoupon, setAppliedCoupon, addToCart } = useCart();
   const router = useRouter();
 
@@ -82,6 +83,9 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
   const total = Math.max(0, subtotal - discount);
   const progress = Math.min(total / FREE_SHIPPING, 1);
   const shipping = total >= FREE_SHIPPING ? 0 : DEFAULT_SHIPPING_RATE;
+  // "You may also like" — bestsellers minus whatever's already in the bag,
+  // capped at a single 4-up row.
+  const crossSell = recommended.filter(p => !cartItems.some(c => c.id === p.id)).slice(0, 4);
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -311,6 +315,17 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
           </div>
         </div>
       </section>
+
+      {crossSell.length > 0 && (
+        <section style={{ padding: '0 0 var(--section-gap)' }} aria-label="You may also like">
+          <div className="container">
+            <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>You may also like</Overline>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 24 }}>
+              {crossSell.map(p => <ProductTile key={p.id} product={p} />)}
+            </div>
+          </div>
+        </section>
+      )}
     </div>
   );
 }
