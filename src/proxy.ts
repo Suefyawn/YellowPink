@@ -254,8 +254,8 @@ function wpPatternRedirect(pathname: string, params: URLSearchParams): string | 
     '/faqs':             '/page/faq',
     '/faq':              '/page/faq',
     '/privacy-policy':   '/privacy',
-    '/terms':            '/page/terms',
-    '/terms-conditions': '/page/terms',
+    '/terms':            '/page/terms-and-conditions',
+    '/terms-conditions': '/page/terms-and-conditions',
   };
   const trimmed = pathname.replace(/\/$/, '') || '/';
   if (PAGE_SLUG_MAP[trimmed]) return PAGE_SLUG_MAP[trimmed];
