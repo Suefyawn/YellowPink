@@ -8,9 +8,10 @@
 // ============================================================================
 
 import { supabase } from './supabase';
+import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE } from './commerce';
 
-const DEFAULT_FREE_THRESHOLD = 2500;
-const DEFAULT_RATE = 200;
+const DEFAULT_FREE_THRESHOLD = FREE_SHIPPING_THRESHOLD;
+const DEFAULT_RATE = DEFAULT_SHIPPING_RATE;
 
 export interface ResolvedRate {
   rate: number;

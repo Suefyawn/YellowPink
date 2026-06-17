@@ -8,8 +8,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { brandPlusName } from '@/lib/product-display';
-
-const FREE_SHIPPING = 2500;
+import { FREE_SHIPPING_THRESHOLD as FREE_SHIPPING } from '@/lib/commerce';
 
 export function MiniCart() {
   const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty } = useCart();

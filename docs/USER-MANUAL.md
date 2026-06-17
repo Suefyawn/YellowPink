@@ -9,7 +9,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 16 June 2026.*
+> *Last updated: 17 June 2026.*
 
 ---
 
@@ -67,7 +67,9 @@ customers and spot where an order is.
 - **Shop page** (`/shop`) — the full catalogue. Customers can filter by
   category, brand, and product attributes (shade, size, etc.), search by name,
   show only on-sale items, and sort by newest, price, or name. Results are
-  paginated.
+  paginated. Product cards show a **Sale** badge when discounted and an **"Only
+  N left"** badge when stock is running low (5 or fewer remaining, for products
+  whose inventory the store tracks).
 - **Product page** — each product has its images, price (and the crossed-out
   original price if it's on sale), description, ingredients, how-to-use, key
   benefits, FAQs, and its customer star rating. If the product comes in
@@ -79,7 +81,11 @@ customers and spot where an order is.
   running total. They can change quantities, remove items, and enter a **coupon
   code** for a discount.
 - **Checkout** — the customer enters their delivery details (name, phone, email,
-  full address), sees the shipping cost, and chooses how to pay.
+  full address), sees the shipping cost, and chooses how to pay. A short
+  reassurance strip (authentic products, cash on delivery, 7-day returns) sits
+  by the **Place Order** button. The free-shipping threshold shoppers see in the
+  cart, mini-cart and checkout all come from one shared setting, so they always
+  agree.
 
 ### 2.3 Ways to pay
 

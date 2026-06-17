@@ -10,9 +10,8 @@ import { getBrowserClient } from '@/lib/supabase-browser';
 import { track } from '@/lib/analytics';
 import { brandPlusName } from '@/lib/product-display';
 import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
+import { FREE_SHIPPING_THRESHOLD as FREE_SHIPPING, DEFAULT_SHIPPING_RATE } from '@/lib/commerce';
 import type { CartItem, Coupon } from '@/types';
-
-const FREE_SHIPPING = 2500;
 
 export function CartPage({ restoreToken = null }: { restoreToken?: string | null }) {
   const { cartItems, removeFromCart, updateQty, appliedCoupon, setAppliedCoupon, addToCart } = useCart();
@@ -82,7 +81,7 @@ export function CartPage({ restoreToken = null }: { restoreToken?: string | null
     : 0;
   const total = Math.max(0, subtotal - discount);
   const progress = Math.min(total / FREE_SHIPPING, 1);
-  const shipping = total >= FREE_SHIPPING ? 0 : 200;
+  const shipping = total >= FREE_SHIPPING ? 0 : DEFAULT_SHIPPING_RATE;
 
   const applyCoupon = async () => {
     if (!couponCode.trim()) return;
