@@ -135,6 +135,8 @@ export function Header() {
                 style={{ position: 'relative' }}
                 onMouseEnter={() => setOpenMenu(t.key)}
                 onMouseLeave={() => setOpenMenu(null)}
+                onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpenMenu(null); }}
+                onKeyDown={e => { if (e.key === 'Escape') setOpenMenu(null); }}
               >
                 <Link
                   href={`/shop?taxon=${t.key}`}
@@ -394,6 +396,7 @@ export function Header() {
                   type="button"
                   onClick={() => setOpenSection(expanded ? null : t.key)}
                   aria-expanded={expanded}
+                  aria-controls={`mobile-nav-${t.key}`}
                   tabIndex={mobileMenu ? 0 : -1}
                   style={{
                     width: '100%', background: 'none', border: 'none', cursor: 'pointer',
@@ -410,7 +413,7 @@ export function Header() {
                   }}>+</span>
                 </button>
                 {expanded && (
-                  <div style={{ paddingBottom: 10 }}>
+                  <div id={`mobile-nav-${t.key}`} style={{ paddingBottom: 10 }}>
                     <Link
                       href={`/shop?taxon=${t.key}`}
                       onClick={() => setMobileMenu(false)}

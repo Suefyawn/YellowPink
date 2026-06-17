@@ -170,7 +170,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                 // mobile viewport (the Close button got cropped). The
                 // placeholder is also shorter now ("Search products…")
                 // so it doesn't get truncated at all on a 375 px screen.
-                flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent',
+                flex: 1, minWidth: 0, border: 'none', background: 'transparent',
                 fontFamily: 'var(--font-ui)', fontSize: '1.125rem', fontWeight: 400,
                 color: 'var(--ink-900)',
               }}
@@ -222,13 +222,12 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                   </Overline>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     {filtered.slice(0, 6).map((p) => (
-                      <div key={p.id}
+                      <button key={p.id}
+                        type="button"
                         onClick={() => goToProduct(p.slug)}
-                        role="link"
-                        tabIndex={0}
-                        onKeyDown={e => { if (e.key === 'Enter') goToProduct(p.slug); }}
                         style={{
-                          display: 'flex', alignItems: 'center', gap: 12,
+                          display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
+                          font: 'inherit', color: 'inherit', background: 'transparent', border: 'none',
                           padding: '12px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer',
                         }}
                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--paper2)')}
@@ -244,7 +243,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                         <span className="tabular-nums" style={{ fontWeight: 600, fontSize: '0.875rem', flexShrink: 0 }}>
                           PKR {p.price.toLocaleString()}
                         </span>
-                      </div>
+                      </button>
                     ))}
                   </div>
                   {/* "See all results" — full search page is the real source
