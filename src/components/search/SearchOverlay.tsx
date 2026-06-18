@@ -130,6 +130,9 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
         aria-modal={searchOpen}
         aria-label="Search"
         aria-hidden={!searchOpen}
+        // Inert while closed so the input + result links aren't focusable or
+        // exposed to assistive tech behind the rest of the page.
+        inert={!searchOpen}
         style={{
         position: 'fixed', top: 0, left: 0, right: 0,
         background: 'var(--paper)', zIndex: 301,
