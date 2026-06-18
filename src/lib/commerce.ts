@@ -18,3 +18,11 @@ export const RETURNS_WINDOW_DAYS = 7;
  *  Derive display copy from this so the figure tracks the threshold constant
  *  instead of being re-typed (and left stale) in each surface. */
 export const freeShippingLabel = () => `PKR ${FREE_SHIPPING_THRESHOLD.toLocaleString()}`;
+
+// Newsletter welcome offer. The live figures are read from the WELCOME10
+// coupon (see lib/offers.ts → getWelcomeOffer) so editing the coupon updates
+// the modal + welcome email copy. These are the fallbacks used when the row
+// can't be read, and must mirror migration 087's seed.
+export const WELCOME_CODE = 'WELCOME10';
+export const WELCOME_DISCOUNT_PCT = 10;
+export const WELCOME_MIN_ORDER = 1500;

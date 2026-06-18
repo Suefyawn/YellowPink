@@ -37,6 +37,7 @@ import { PWAInstallPrompt } from '@/components/layout/PWAInstallPrompt';
 import { DemoBanner } from '@/components/layout/DemoBanner';
 import { ConsentBanner } from '@/components/legal/ConsentBanner';
 import { NewsletterModal } from '@/components/marketing/NewsletterModal';
+import { getWelcomeOffer } from '@/lib/offers';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { getSiteSettings } from '@/lib/supabase';
@@ -86,7 +87,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [settings, promos, searchTrending, searchCategories] = await Promise.all([
+  const [settings, promos, searchTrending, searchCategories, welcomeOffer] = await Promise.all([
     getSiteSettings(),
     // TODO: read auth session + lifetime-order count to refine the audience.
     // For now everyone is treated as 'guest' so any null-audience or
@@ -96,6 +97,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     getActivePromos(audienceFor(false, false)),
     loadTrendingBrands(),
     loadPopularCategories(),
+    getWelcomeOffer(),
   ]);
   // Social profiles + store contact are owner-managed (admin Settings); the
   // JSON-LD reads from the same source as the footer.
@@ -128,7 +130,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <a href="#main" className="skip-link">Skip to main content</a>
         <DemoBanner />
         <ConsentBanner />
-        <NewsletterModal />
+        <NewsletterModal discountPct={welcomeOffer.pct} />
         <GoogleAnalytics />
         <MetaPixel />
         <AttributionCapture />
