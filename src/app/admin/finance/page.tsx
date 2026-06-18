@@ -3,10 +3,16 @@ export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { fmtPKR as fmt } from '@/lib/money';
 import { addExpense, deleteExpense } from './actions';
 
-const fmt = (n: number) => `PKR ${Math.round(n).toLocaleString()}`;
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+
+// Customer-facing labels for the order.pay_method enum.
+const PAY_METHOD_LABELS: Record<string, string> = {
+  cod: 'Cash on Delivery', card: 'Card', bank: 'Bank Transfer',
+  jazzcash: 'JazzCash', easypaisa: 'Easypaisa', gift_card: 'Gift card', unknown: 'Unknown',
+};
 
 const RANGES: { key: string; label: string; days: number | null }[] = [
   { key: '7d', label: '7 days', days: 7 },
@@ -20,7 +26,7 @@ const AD_CHANNELS = ['Meta', 'Instagram', 'Facebook', 'Google', 'TikTok', 'Other
 // Orders in these states never count as revenue.
 const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'refunded']);
 
-interface OrderRow { id: string; total: number | null; delivery_cost: number | null; payment_fee: number | null; utm_source: string | null; status: string | null; }
+interface OrderRow { id: string; order_number: string | null; created_at: string | null; pay_method: string | null; total: number | null; delivery_cost: number | null; payment_fee: number | null; utm_source: string | null; status: string | null; }
 interface SettlementRow { order_id: string; vendor_cost: number | null; }
 interface ExpenseRow { id: string; incurred_on: string; category: string; channel: string | null; amount: number | string; note: string | null; }
 
@@ -45,21 +51,24 @@ export default async function FinancePage({
   const admin = supabaseAdmin();
 
   // Orders in range.
-  let oq = admin.from('orders').select('id, total, delivery_cost, payment_fee, utm_source, status');
+  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status');
   if (fromISO) oq = oq.gte('created_at', fromISO);
   const { data: orderData } = await oq;
   const orders = ((orderData ?? []) as OrderRow[]).filter(o => !DEAD_STATES.has(o.status ?? ''));
   const orderIds = orders.map(o => o.id);
 
-  // Vendor cost (COGS) for those orders, from the settlements the vendor flow writes.
-  let cogs = 0;
+  // Vendor cost (COGS) per order, from the settlements the vendor flow writes.
+  // Kept per-order (not just a running total) so we can break profit down by
+  // payment method and per order below.
+  const cogsByOrder = new Map<string, number>();
   if (orderIds.length) {
     const { data: settle } = await admin.from('vendor_settlements').select('order_id, vendor_cost').in('order_id', orderIds);
     const activeSet = new Set(orderIds);
     for (const s of (settle ?? []) as SettlementRow[]) {
-      if (activeSet.has(s.order_id)) cogs += Number(s.vendor_cost ?? 0);
+      if (activeSet.has(s.order_id)) cogsByOrder.set(s.order_id, (cogsByOrder.get(s.order_id) ?? 0) + Number(s.vendor_cost ?? 0));
     }
   }
+  const cogs = [...cogsByOrder.values()].reduce((s, v) => s + v, 0);
 
   // Operating expenses in range (ad spend + overheads).
   let eq = admin.from('expenses').select('id, incurred_on, category, channel, amount, note');
@@ -100,6 +109,40 @@ export default async function FinancePage({
   }
   const attributedRevenue = [...bySource.values()].reduce((s, v) => s + v.revenue, 0);
   const blendedRoas = adSpend > 0 ? attributedRevenue / adSpend : null;
+
+  // Revenue & profit grouped by payment method. "Gross" here is after the
+  // per-order costs (COGS + delivery + fees) but before shared overheads
+  // (ads, salaries, rent…), which aren't attributable to a single method.
+  const byMethod = new Map<string, { orders: number; revenue: number; delivery: number; fees: number; cogs: number }>();
+  for (const o of orders) {
+    const m = o.pay_method ?? 'unknown';
+    const cur = byMethod.get(m) ?? { orders: 0, revenue: 0, delivery: 0, fees: 0, cogs: 0 };
+    cur.orders += 1;
+    cur.revenue += num(o.total);
+    cur.delivery += num(o.delivery_cost);
+    cur.fees += num(o.payment_fee);
+    cur.cogs += cogsByOrder.get(o.id) ?? 0;
+    byMethod.set(m, cur);
+  }
+  const methodRows = [...byMethod.entries()].map(([method, v]) => {
+    const costs = v.cogs + v.delivery + v.fees;
+    const gross = v.revenue - costs;
+    return { method, orders: v.orders, revenue: v.revenue, costs, gross, margin: v.revenue > 0 ? (gross / v.revenue) * 100 : 0 };
+  }).sort((a, b) => b.revenue - a.revenue);
+
+  // Per-order finance rows for the period (latest first, capped so the table
+  // stays readable on long ranges).
+  const ORDER_ROW_CAP = 100;
+  const orderRows = [...orders]
+    .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
+    .slice(0, ORDER_ROW_CAP)
+    .map(o => {
+      const oc = cogsByOrder.get(o.id) ?? 0;
+      const costs = oc + num(o.delivery_cost) + num(o.payment_fee);
+      const total = num(o.total);
+      const gross = total - costs;
+      return { id: o.id, order_number: o.order_number, created_at: o.created_at, method: o.pay_method ?? 'unknown', total, costs, gross, margin: total > 0 ? (gross / total) * 100 : 0 };
+    });
 
   const card: React.CSSProperties = { background: 'white', borderRadius: 10, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' };
   const profitColor = netProfit >= 0 ? '#15803d' : '#dc2626';
@@ -202,6 +245,71 @@ export default async function FinancePage({
             </table>
           )}
         </div>
+      </div>
+
+      {/* Revenue & profit by payment method */}
+      <div style={{ ...card, marginBottom: 24 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Revenue by payment method</h2>
+        <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Where the money comes in, and the gross profit per method (after vendor cost, delivery and payment fees; before shared overheads).
+        </p>
+        {methodRows.length === 0 ? (
+          <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>No orders in this period.</p>
+        ) : (
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <thead><tr style={{ color: '#6b7280', textAlign: 'left', background: '#f9fafb' }}>
+              {['Method', 'Orders', 'Revenue', 'Costs', 'Gross profit', 'Margin'].map((h, i) => (
+                <th key={h} style={{ padding: '8px 10px', fontWeight: 600, textAlign: i >= 1 ? 'right' : 'left' }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {methodRows.map(r => (
+                <tr key={r.method} style={{ borderTop: '1px solid #f3f4f6' }}>
+                  <td data-label="Method" style={{ padding: '8px 10px', color: '#374151', fontWeight: 600 }}>{PAY_METHOD_LABELS[r.method] ?? r.method}</td>
+                  <td data-label="Orders" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.orders}</td>
+                  <td data-label="Revenue" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(r.revenue)}</td>
+                  <td data-label="Costs" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c' }}>{r.costs > 0 ? `(${fmt(r.costs)})` : fmt(0)}</td>
+                  <td data-label="Gross profit" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.gross >= 0 ? '#15803d' : '#dc2626' }}>{fmt(r.gross)}</td>
+                  <td data-label="Margin" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{r.margin.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Per-order finance table */}
+      <div style={{ ...card, marginBottom: 24 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Orders in this period</h2>
+        <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Profit per order after recorded costs. {orders.length > ORDER_ROW_CAP ? `Showing the latest ${ORDER_ROW_CAP} of ${orders.length.toLocaleString()}.` : `${orders.length.toLocaleString()} order${orders.length === 1 ? '' : 's'}.`}
+        </p>
+        {orderRows.length === 0 ? (
+          <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>No orders in this period.</p>
+        ) : (
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <thead><tr style={{ color: '#6b7280', textAlign: 'left', background: '#f9fafb' }}>
+              {['Order', 'Date', 'Method', 'Total', 'Costs', 'Gross profit', 'Margin'].map((h, i) => (
+                <th key={h} style={{ padding: '8px 10px', fontWeight: 600, textAlign: i >= 3 ? 'right' : 'left' }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {orderRows.map(r => (
+                <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                  <td data-label="Order" style={{ padding: '8px 10px' }}>
+                    <a href={`/admin/orders/${r.id}`} style={{ color: '#C5286A', textDecoration: 'none', fontWeight: 600 }}>{r.order_number ?? r.id.slice(0, 8)}</a>
+                  </td>
+                  <td data-label="Date" style={{ padding: '8px 10px', whiteSpace: 'nowrap', color: '#6b7280' }}>{r.created_at ? fmtDate(r.created_at) : '—'}</td>
+                  <td data-label="Method" style={{ padding: '8px 10px', color: '#374151' }}>{PAY_METHOD_LABELS[r.method] ?? r.method}</td>
+                  <td data-label="Total" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(r.total)}</td>
+                  <td data-label="Costs" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c' }}>{r.costs > 0 ? `(${fmt(r.costs)})` : fmt(0)}</td>
+                  <td data-label="Gross profit" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.gross >= 0 ? '#15803d' : '#dc2626' }}>{fmt(r.gross)}</td>
+                  <td data-label="Margin" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{r.margin.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Expenses ledger */}

@@ -174,6 +174,24 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     `Shukriya! — Team Yellow Pink`,
   ].join('\n');
 
+  // Per-order profit: gross amount minus the costs recorded for this order.
+  // COGS comes from the vendor settlement (only present for dispatched
+  // orders); delivery + payment fee from the order-costs form. As accurate as
+  // what's been entered — own-stock orders with no costs read as full margin.
+  const ordCogs = settlementRow ? Number(settlementRow.vendor_cost ?? 0) : 0;
+  const ordDelivery = Number(o.delivery_cost ?? 0);
+  const ordFee = Number(o.payment_fee ?? 0);
+  const ordRevenue = Number(o.total ?? 0);
+  const ordNet = ordRevenue - ordCogs - ordDelivery - ordFee;
+  const ordMargin = ordRevenue > 0 ? (ordNet / ordRevenue) * 100 : 0;
+  const profitLines: { label: string; value: number; kind?: 'net' }[] = [
+    { label: 'Gross amount', value: ordRevenue },
+    { label: 'Vendor cost (COGS)', value: -ordCogs },
+    { label: 'Delivery cost', value: -ordDelivery },
+    { label: 'Payment fee', value: -ordFee },
+    { label: 'Net profit', value: ordNet, kind: 'net' },
+  ];
+
   return (
     <div id="order-detail-page" style={{ padding: '32px 36px' }}>
       {/* Print styles — printing this page outputs ONLY the invoice card.
@@ -406,6 +424,30 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </form>
         </div>
       )}
+
+      {/* Order profit — gross amount less the costs recorded for this order. */}
+      <div style={{ ...section, marginBottom: 20 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order profit</h2>
+        <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Based on the costs recorded for this order (vendor settlement, delivery, payment fee). Shared overheads like ads and salaries are accounted for in the Finance profit &amp; loss.
+        </p>
+        <table style={{ width: '100%', maxWidth: 360, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          <tbody>
+            {profitLines.map((l, i) => (
+              <tr key={i} style={{ borderTop: l.kind === 'net' ? '1px solid #e5e7eb' : 'none' }}>
+                <td style={{ padding: '7px 0', color: l.kind === 'net' ? '#111827' : '#374151', fontWeight: l.kind === 'net' ? 700 : 400 }}>{l.label}</td>
+                <td style={{ padding: '7px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: l.kind === 'net' ? 700 : 400, color: l.kind === 'net' ? (ordNet >= 0 ? '#15803d' : '#dc2626') : l.value < 0 ? '#b91c1c' : '#111827' }}>
+                  {l.value < 0 ? `(${fmt(-l.value)})` : fmt(l.value)}
+                </td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ padding: '7px 0', color: '#6b7280' }}>Margin</td>
+              <td style={{ padding: '7px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{ordMargin.toFixed(1)}%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
         {/* Customer */}
