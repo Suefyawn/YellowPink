@@ -26,7 +26,7 @@ const AD_CHANNELS = ['Meta', 'Instagram', 'Facebook', 'Google', 'TikTok', 'Other
 // Orders in these states never count as revenue.
 const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'refunded']);
 
-interface OrderRow { id: string; order_number: string | null; created_at: string | null; pay_method: string | null; total: number | null; delivery_cost: number | null; payment_fee: number | null; utm_source: string | null; status: string | null; }
+interface OrderRow { id: string; order_number: string | null; created_at: string | null; pay_method: string | null; total: number | null; delivery_cost: number | null; payment_fee: number | null; utm_source: string | null; status: string | null; payment_account: string | null; payment_received_at: string | null; }
 interface SettlementRow { order_id: string; vendor_cost: number | null; }
 interface ExpenseRow { id: string; incurred_on: string; category: string; channel: string | null; amount: number | string; note: string | null; }
 
@@ -51,7 +51,7 @@ export default async function FinancePage({
   const admin = supabaseAdmin();
 
   // Orders in range.
-  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status');
+  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at');
   if (fromISO) oq = oq.gte('created_at', fromISO);
   const { data: orderData } = await oq;
   const orders = ((orderData ?? []) as OrderRow[]).filter(o => !DEAD_STATES.has(o.status ?? ''));
@@ -129,6 +129,23 @@ export default async function FinancePage({
     const gross = v.revenue - costs;
     return { method, orders: v.orders, revenue: v.revenue, costs, gross, margin: v.revenue > 0 ? (gross / v.revenue) * 100 : 0 };
   }).sort((a, b) => b.revenue - a.revenue);
+
+  // Revenue grouped by the account staff reconciled the payment into. Orders
+  // with no recorded payment fall into "Unrecorded". `awaiting` counts non-COD
+  // orders still missing a recorded payment — the reconciliation to-do.
+  const byAccount = new Map<string, { orders: number; revenue: number }>();
+  let awaiting = 0;
+  for (const o of orders) {
+    if (o.pay_method !== 'cod' && !o.payment_received_at) awaiting += 1;
+    const key = o.payment_account?.trim() || 'Unrecorded';
+    const cur = byAccount.get(key) ?? { orders: 0, revenue: 0 };
+    cur.orders += 1;
+    cur.revenue += num(o.total);
+    byAccount.set(key, cur);
+  }
+  const accountRows = [...byAccount.entries()]
+    .map(([account, v]) => ({ account, orders: v.orders, revenue: v.revenue }))
+    .sort((a, b) => (a.account === 'Unrecorded' ? 1 : b.account === 'Unrecorded' ? -1 : b.revenue - a.revenue));
 
   // Per-order finance rows for the period (latest first, capped so the table
   // stays readable on long ranges).
@@ -271,6 +288,43 @@ export default async function FinancePage({
                   <td data-label="Costs" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c' }}>{r.costs > 0 ? `(${fmt(r.costs)})` : fmt(0)}</td>
                   <td data-label="Gross profit" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.gross >= 0 ? '#15803d' : '#dc2626' }}>{fmt(r.gross)}</td>
                   <td data-label="Margin" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{r.margin.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Revenue by reconciled account */}
+      <div style={{ ...card, marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Revenue by account</h2>
+            <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+              Where payments actually landed, as reconciled on each order. &quot;Unrecorded&quot; is anything not yet marked received (incl. COD collected on delivery).
+            </p>
+          </div>
+          {awaiting > 0 && (
+            <span style={{ padding: '4px 10px', borderRadius: 999, background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+              {awaiting} awaiting confirmation
+            </span>
+          )}
+        </div>
+        {accountRows.length === 0 ? (
+          <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>No orders in this period.</p>
+        ) : (
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <thead><tr style={{ color: '#6b7280', textAlign: 'left', background: '#f9fafb' }}>
+              {['Account', 'Orders', 'Revenue'].map((h, i) => (
+                <th key={h} style={{ padding: '8px 10px', fontWeight: 600, textAlign: i >= 1 ? 'right' : 'left' }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {accountRows.map(r => (
+                <tr key={r.account} style={{ borderTop: '1px solid #f3f4f6' }}>
+                  <td data-label="Account" style={{ padding: '8px 10px', color: r.account === 'Unrecorded' ? '#9ca3af' : '#374151', fontWeight: r.account === 'Unrecorded' ? 400 : 600 }}>{r.account}</td>
+                  <td data-label="Orders" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{r.orders}</td>
+                  <td data-label="Revenue" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(r.revenue)}</td>
                 </tr>
               ))}
             </tbody>

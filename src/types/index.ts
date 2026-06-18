@@ -251,6 +251,11 @@ export interface Order {
   /** Per-order fulfilment costs (entered by staff) — feed the Finance P&L. */
   delivery_cost?: number | null;
   payment_fee?: number | null;
+  /** Payment reconciliation (set by staff) — which configured account the
+   *  money landed in, when, and who confirmed it. Null = not yet recorded. */
+  payment_account?: string | null;
+  payment_received_at?: string | null;
+  payment_received_by?: string | null;
   /** Marketing attribution captured at checkout (ads phase 3). */
   utm_source?: string | null;
   utm_medium?: string | null;
