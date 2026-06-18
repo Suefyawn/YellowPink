@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NewsletterSignup } from './NewsletterSignup';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { readConsent } from '@/lib/consent';
+import { WELCOME_DISCOUNT_PCT } from '@/lib/commerce';
 
 // Newsletter modal — appears on either:
 //   1. Exit-intent (desktop only): mouse exits the top edge of the viewport
@@ -42,7 +43,7 @@ function shouldSuppress(): boolean {
   return false;
 }
 
-export function NewsletterModal() {
+export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discountPct?: number } = {}) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
@@ -146,7 +147,7 @@ export function NewsletterModal() {
           className="display-l"
           style={{ fontSize: '1.75rem', margin: '0 0 10px', lineHeight: 1.15 }}
         >
-          10% off your first order
+          {discountPct}% off your first order
         </h2>
         <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 20, fontSize: '0.9375rem' }}>
           Sign up and we&apos;ll send a welcome code, plus one thoughtful email a fortnight — new arrivals, restocks, and Pakistan-specific routine tips.
