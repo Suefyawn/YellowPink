@@ -83,3 +83,53 @@ export async function setOrderCosts(orderId: string, formData: FormData): Promis
   revalidatePath(`/admin/orders/${orderId}`);
   redirect(`/admin/orders/${orderId}?costs=saved`);
 }
+
+// Record that a payment was received against an order — which configured
+// account the money landed in, and when. Lets Finance reconcile bank/wallet
+// transfers and break revenue down by account. Gated on orders.edit.
+export async function recordPayment(orderId: string, formData: FormData): Promise<void> {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('orders.edit')) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Not authorized'));
+  }
+  const account = String(formData.get('payment_account') || '').trim();
+  if (!account) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Pick the account the payment landed in'));
+  }
+  // Optional date (defaults to now). A bare yyyy-mm-dd is fine — Postgres
+  // widens it to midnight of that day in the column's timezone.
+  const dateRaw = String(formData.get('received_on') || '').trim();
+  const received_at = dateRaw ? new Date(dateRaw).toISOString() : new Date().toISOString();
+  const by = session?.email ?? 'Owner';
+
+  const { error } = await supabaseAdmin()
+    .from('orders')
+    .update({ payment_account: account, payment_received_at: received_at, payment_received_by: by })
+    .eq('id', orderId);
+  if (error) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(error.message));
+  }
+  await logAudit(session, { action: 'order.record_payment', entity: 'order', entity_id: orderId, diff: { payment_account: account, received_at } });
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath('/admin/finance');
+  redirect(`/admin/orders/${orderId}?pay=recorded`);
+}
+
+// Undo a recorded payment (e.g. logged against the wrong account).
+export async function clearPayment(orderId: string): Promise<void> {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('orders.edit')) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Not authorized'));
+  }
+  const { error } = await supabaseAdmin()
+    .from('orders')
+    .update({ payment_account: null, payment_received_at: null, payment_received_by: null })
+    .eq('id', orderId);
+  if (error) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(error.message));
+  }
+  await logAudit(session, { action: 'order.clear_payment', entity: 'order', entity_id: orderId });
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath('/admin/finance');
+  redirect(`/admin/orders/${orderId}?pay=cleared`);
+}

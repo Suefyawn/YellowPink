@@ -2,13 +2,14 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, getSiteSettings } from '@/lib/supabase';
+import { parseBankAccounts } from '@/lib/bank-accounts';
 import { OrderStatusForm } from '@/components/admin/OrderStatusForm';
 import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
 import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
 import { VendorDispatch } from '@/components/admin/VendorDispatch';
 import { setOrderConfirmed } from '@/app/admin/vendor-actions';
-import { setOrderCosts } from '@/app/admin/finance/actions';
+import { setOrderCosts, recordPayment, clearPayment } from '@/app/admin/finance/actions';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { configuredAdapterIds } from '@/lib/couriers';
@@ -184,6 +185,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const ordRevenue = Number(o.total ?? 0);
   const ordNet = ordRevenue - ordCogs - ordDelivery - ordFee;
   const ordMargin = ordRevenue > 0 ? (ordNet / ordRevenue) * 100 : 0;
+  // Configured bank/wallet accounts (Settings → Payments) for the payment
+  // reconciliation picker, plus the implicit cash option.
+  const payAccountOptions = ['Cash on delivery', ...parseBankAccounts((await getSiteSettings())['pay_bank_accounts']).map(a => a.label)];
+
   const profitLines: { label: string; value: number; kind?: 'net' }[] = [
     { label: 'Gross amount', value: ordRevenue },
     { label: 'Vendor cost (COGS)', value: -ordCogs },
@@ -447,6 +452,59 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </tr>
           </tbody>
         </table>
+      </div>
+
+      {/* Payment received — manual reconciliation: which configured account the
+          money landed in, when, and who confirmed it. Feeds Finance → Revenue
+          by account. Reconciliation only; doesn't change the order status. */}
+      <div style={{ ...section, marginBottom: 20 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Payment received</h2>
+        <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Record which account this order&apos;s payment landed in. Accounts come from Settings → Payments. This is for reconciliation only and doesn&apos;t change the order status.
+        </p>
+        {o.payment_received_at ? (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, fontSize: '0.8125rem', marginBottom: canEdit ? 14 : 0 }}>
+              <div>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Account</div>
+                <div style={{ fontWeight: 600, color: '#111827' }}>{o.payment_account ?? '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Received</div>
+                <div style={{ fontWeight: 600, color: '#15803d' }}>{fmtDate(o.payment_received_at)}</div>
+              </div>
+              {o.payment_received_by && (
+                <div>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>By</div>
+                  <div style={{ color: '#374151' }}>{o.payment_received_by}</div>
+                </div>
+              )}
+            </div>
+            {canEdit && (
+              <form action={clearPayment.bind(null, o.id!)}>
+                <button type="submit" style={{ padding: '8px 14px', background: 'white', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
+                  Clear / re-record
+                </button>
+              </form>
+            )}
+          </>
+        ) : canEdit ? (
+          <form action={recordPayment.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Account<br />
+              <select name="payment_account" defaultValue={o.pay_method === 'cod' ? 'Cash on delivery' : (payAccountOptions[1] ?? 'Cash on delivery')}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', background: 'white', minWidth: 180 }}>
+                {payAccountOptions.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Received on<br />
+              <input type="date" name="received_on" defaultValue={new Date().toISOString().slice(0, 10)}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem' }} />
+            </label>
+            <button type="submit" style={{ padding: '9px 18px', background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Mark received</button>
+          </form>
+        ) : (
+          <p style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Not yet recorded.</p>
+        )}
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
