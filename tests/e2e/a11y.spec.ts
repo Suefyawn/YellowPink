@@ -12,8 +12,14 @@ import AxeBuilder from '@axe-core/playwright';
 const FUNNEL: { name: string; path: string }[] = [
   { name: 'home', path: '/' },
   { name: 'shop', path: '/shop' },
+  { name: 'shop category facet', path: '/shop?category=Skincare' },
   { name: 'product detail', path: '/product/demo-cerave-moisturising-cream' },
   { name: 'cart', path: '/cart' },
+  { name: 'blog index', path: '/blog' },
+  { name: 'blog post', path: '/blog/demo-routine-for-pakistani-summer' },
+  { name: 'login', path: '/login' },
+  { name: 'track order', path: '/track' },
+  { name: 'wishlist', path: '/wishlist' },
 ];
 
 const WCAG = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'];

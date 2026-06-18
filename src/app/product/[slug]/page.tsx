@@ -24,8 +24,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
   const displayName = brandPlusName(product.brand, product.name);
   const autoTitle = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
-  const autoDescription = product.short_description?.trim()
+  const baseDescription = product.short_description?.trim()
     ?? (product.description?.trim().slice(0, 160) || `Buy ${displayName} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`);
+  // Lead with the unique product name so near-identical shade variants that
+  // share one stock description (e.g. the Pixi blush sticks) don't collapse
+  // into duplicate meta descriptions.
+  const autoDescription = baseDescription.toLowerCase().startsWith(displayName.toLowerCase())
+    ? baseDescription
+    : `${displayName} — ${baseDescription}`;
   // Migration 081: admin-controlled overrides win when set; otherwise fall
   // back to the auto-templated values so existing rows keep working.
   const title = product.seo_title?.trim() || autoTitle;

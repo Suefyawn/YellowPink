@@ -31,7 +31,14 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   ]);
   if (!post) notFound();
 
-  const relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 2);
+  let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 2);
+  if (relatedPosts.length < 2) {
+    // Top up with other recent posts so every post links out to two others —
+    // keeps posts in thin categories from being near-orphaned internally
+    // (SEO audit: "pages with only one internal link").
+    const have = new Set([post.slug, ...relatedPosts.map(p => p.slug)]);
+    relatedPosts = [...relatedPosts, ...allPosts.filter(p => !have.has(p.slug)).slice(0, 2 - relatedPosts.length)];
+  }
 
   // Related-products matching by taxon. Blog categories ("Bone Health",
   // "Fertility Support", "Men Health", etc.) don't map 1:1 to product

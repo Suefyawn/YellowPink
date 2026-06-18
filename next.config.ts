@@ -84,6 +84,15 @@ const nextConfig: NextConfig = {
       // Policy content lives under /page/:slug; bare /returns is a common
       // inbound guess (and was 404ing), so alias it to the returns policy.
       { source: '/returns', destination: '/page/returns', permanent: true },
+      // Force apex → www as a PERMANENT (308) redirect. The platform default
+      // can be a temporary 307 (SEO audit: "temporary redirects"); this pins
+      // it at the app layer so link equity consolidates on the www host.
+      {
+        source: '/:path*',
+        has: [{ type: 'host', value: 'yellowpink.pk' }],
+        destination: 'https://www.yellowpink.pk/:path*',
+        permanent: true,
+      },
     ];
   },
   // Security + caching response headers. Applied to every storefront response
