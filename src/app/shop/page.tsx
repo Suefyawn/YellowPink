@@ -175,18 +175,24 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }}
       />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: jsonLd(itemListLd(
-            taxonObj?.label ?? (initialCategory !== 'All' ? initialCategory : 'All products'),
-            scopedProducts.map(p => ({
-              name: p.name,
-              path: `/product/${p.slug}`,
-            })),
-          )),
-        }}
-      />
+      {/* Only emit the ItemList when it actually has items. Taxon-level
+          category labels (e.g. ?category=Skincare) have no exact leaf-category
+          match server-side, which otherwise produced an empty ItemList — a
+          structured-data markup error flagged by SEO audits. */}
+      {scopedProducts.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLd(itemListLd(
+              taxonObj?.label ?? (initialCategory !== 'All' ? initialCategory : 'All products'),
+              scopedProducts.map(p => ({
+                name: p.name,
+                path: `/product/${p.slug}`,
+              })),
+            )),
+          }}
+        />
+      )}
       {/* `key` on the destination params remounts CollectionPage on a genuine
           listing change — switching taxon/category/subcategory, a ?q= search,
           or ?on_sale=1 — so its URL-seeded state re-initialises. Client-side
