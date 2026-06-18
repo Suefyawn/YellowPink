@@ -11,7 +11,7 @@ export function PrintInvoiceButton() {
         display: 'flex', alignItems: 'center', gap: 6,
       }}
     >
-      🖨 Print Invoice
+      Print Invoice
     </button>
   );
 }

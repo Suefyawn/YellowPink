@@ -352,7 +352,7 @@ export async function sendShippedEmail(args: { email: string; first_name: string
     ? `<p>Your tracking number: <strong style="font-family:monospace">${escapeHtml(args.tracking_number)}</strong>${args.courier ? ` (${escapeHtml(args.courier)})` : ''}</p>`
     : '';
   const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:18px">Your order is on its way 🚚</h2>
+    <h2 style="margin:0 0 12px;font-size:18px">Your order is on its way</h2>
     <p>Hi ${escapeHtml(args.first_name)} — your order <strong>${escapeHtml(args.order_number)}</strong> just shipped.</p>
     ${trackInfo}
     <p style="margin:20px 0 0">
@@ -365,7 +365,7 @@ export async function sendShippedEmail(args: { email: string; first_name: string
 // ─── 5. Customer: delivered ─────────────────────────────────────────────────
 export async function sendDeliveredEmail(args: { email: string; first_name: string; order_number: string }) {
   const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:18px">Delivered 🎉</h2>
+    <h2 style="margin:0 0 12px;font-size:18px">Delivered</h2>
     <p>Hi ${escapeHtml(args.first_name)} — your order <strong>${escapeHtml(args.order_number)}</strong> has been delivered. We hope you love it!</p>
     <p>Got a minute? <a href="${SITE_URL}/account/orders" style="color:${BRAND_PINK}">Leave a review</a> — it really helps other shoppers.</p>
   `);
@@ -469,7 +469,7 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
   const offer = await getWelcomeOffer();
   const minCopy = offer.minOrder > 0 ? ` over PKR ${offer.minOrder.toLocaleString()}` : '';
   const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">You're in 💌</h2>
+    <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">You're in</h2>
     <p style="margin:0 0 14px">Thanks for joining the Yellow Pink list. Here's what you can expect:</p>
     <ul style="margin:0 0 20px;padding-left:20px;color:${INK_700}">
       <li style="margin-bottom:6px"><strong>One email a fortnight</strong> — we never blast.</li>

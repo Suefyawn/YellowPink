@@ -171,8 +171,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
               <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg, var(--brand-yellow), var(--brand-pink))', borderRadius: 'var(--radius-pill)', transition: 'width 400ms ease-out' }} />
             </div>
             {estimatedDays && (
-              <div className="small-text" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, color: 'var(--ink-700)' }}>
-                <span aria-hidden="true">🚚</span>
+              <div className="small-text" style={{ marginTop: 12, color: 'var(--ink-700)' }}>
                 Estimated delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min}–{estimatedDays.max} working days</strong> · COD nationwide
               </div>
             )}

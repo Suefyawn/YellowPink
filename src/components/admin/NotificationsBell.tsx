@@ -17,8 +17,8 @@ interface Notification {
 
 // Geometric symbols (◎ ⚠ ✕ ↩ ★ ⬡) render in the current text font and
 // match the admin's monochrome aesthetic. The picture-emoji entries that
-// used to live here (🐛 / 📈 / 📉) drift colour and weight across devices,
-// so we render those three through AdminIcon by SVG name instead.
+// used to live here (bug / chart-up / chart-down) drift colour and weight
+// across devices, so we render those three through AdminIcon by SVG name.
 const KIND_ICON: Record<string, string> = {
   new_order: '◎', low_stock: '⚠', payment_failed: '✕',
   return_request: '↩', new_review: '★', staff_added: '⬡',

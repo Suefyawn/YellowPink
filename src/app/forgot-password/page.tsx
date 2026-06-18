@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
       <div style={{ width: '100%', maxWidth: 400, background: 'white', borderRadius: 16, padding: '36px 32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
         {sent ? (
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 16 }}>📬</div>
+            <div style={{ fontSize: '2rem', marginBottom: 16 }}>✉</div>
             <h1 style={{ margin: '0 0 8px', fontSize: '1.375rem', fontWeight: 700, color: '#111827' }}>Check your inbox</h1>
             <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: '0.875rem', lineHeight: 1.6 }}>
               We&apos;ve sent a password reset link to <strong>{email}</strong>. It may take a minute to arrive.

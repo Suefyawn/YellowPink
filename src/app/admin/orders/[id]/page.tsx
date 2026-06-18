@@ -152,9 +152,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // total, address) stay in clear English so amounts and address are never
   // ambiguous. COD orders get a roman-Urdu pay-on-delivery note.
   const customerMessage = [
-    `Assalam-o-Alaikum${o.first_name ? ` ${o.first_name}` : ''}! 💛`,
+    `Assalam-o-Alaikum${o.first_name ? ` ${o.first_name}` : ''}!`,
     '',
-    `Yellow Pink se shopping ka shukriya! 🎉 Neeche apne order ki tafseel confirm kar lein:`,
+    `Yellow Pink se shopping ka shukriya! Neeche apne order ki tafseel confirm kar lein:`,
     '',
     `Order ${o.order_number}`,
     ...items.map(it => {
@@ -169,9 +169,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     `${o.first_name} ${o.last_name}`,
     `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
     '',
-    `Agar sab kuch theek hai to please reply kar ke confirm kar dein — hum aap ka order foran tayyar kar denge. Koi tabdeeli chahiye to yahin bata dein. 😊`,
+    `Agar sab kuch theek hai to please reply kar ke confirm kar dein — hum aap ka order foran tayyar kar denge. Koi tabdeeli chahiye to yahin bata dein.`,
     '',
-    `Shukriya! 🌸 — Team Yellow Pink`,
+    `Shukriya! — Team Yellow Pink`,
   ].join('\n');
 
   return (
