@@ -204,13 +204,13 @@ export default async function UsersPage({
   };
 
   const cards: { label: string; value: string; icon: string; color: string; href: string; active: boolean }[] = [
-    { label: 'All customers', value: totals.all.toLocaleString(), icon: '👥', color: '#0369a1',
+    { label: 'All customers', value: totals.all.toLocaleString(), icon: '◎', color: '#0369a1',
       href: cardHref({}), active: type === 'all' && activity === 'all' },
-    { label: 'Registered', value: totals.registered.toLocaleString(), icon: '🔑', color: '#075985',
+    { label: 'Registered', value: totals.registered.toLocaleString(), icon: '⬡', color: '#075985',
       href: cardHref({ type: 'registered' }), active: type === 'registered' },
-    { label: 'Guests', value: totals.guests.toLocaleString(), icon: '🛍️', color: '#b45309',
+    { label: 'Guests', value: totals.guests.toLocaleString(), icon: '◇', color: '#b45309',
       href: cardHref({ type: 'guest' }), active: type === 'guest' },
-    { label: 'Repeat buyers', value: totals.repeat.toLocaleString(), icon: '🔁', color: '#15803d',
+    { label: 'Repeat buyers', value: totals.repeat.toLocaleString(), icon: '↻', color: '#15803d',
       href: cardHref({ activity: 'repeat' }), active: activity === 'repeat' },
   ];
 

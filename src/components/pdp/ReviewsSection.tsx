@@ -93,7 +93,7 @@ function HelpfulButton({ reviewId, initialCount }: { reviewId: string; initialCo
         cursor: voted ? 'default' : 'pointer',
       }}
     >
-      {voted ? '✓ Helpful' : '👍 Helpful'} {count > 0 && <span>({count})</span>}
+      {voted ? '✓ Helpful' : 'Helpful'} {count > 0 && <span>({count})</span>}
     </button>
   );
 }

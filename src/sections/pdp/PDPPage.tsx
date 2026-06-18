@@ -471,8 +471,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             </div>
 
             {!outOfStock && estimatedDays && (
-              <p className="small-text" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -8, marginBottom: 24, color: 'var(--ink-700)' }}>
-                <span aria-hidden="true">🚚</span>
+              <p className="small-text" style={{ marginTop: -8, marginBottom: 24, color: 'var(--ink-700)' }}>
                 Delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min}–{estimatedDays.max} working days</strong> · COD nationwide
               </p>
             )}

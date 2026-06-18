@@ -66,7 +66,7 @@ export function UsersFilter({ total }: { total: number }) {
         <span aria-hidden="true" style={{
           position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)',
           color: '#9ca3af', fontSize: '0.875rem', pointerEvents: 'none',
-        }}>🔍</span>
+        }}>⌕</span>
         <input
           defaultValue={q}
           onChange={e => setSearch(e.target.value)}

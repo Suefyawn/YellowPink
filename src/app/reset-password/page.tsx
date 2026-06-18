@@ -147,7 +147,7 @@ function ResetPasswordInner() {
         <div style={{ width: '100%', maxWidth: 400, background: 'white', borderRadius: 16, padding: '36px 32px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)', textAlign: 'center' }}>
           {linkError ? (
             <>
-              <div style={{ fontSize: '1.75rem', marginBottom: 12 }} aria-hidden>⚠️</div>
+              <div style={{ fontSize: '1.75rem', marginBottom: 12 }} aria-hidden>⚠</div>
               <h1 style={{ margin: '0 0 8px', fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>Can&apos;t open this link</h1>
               <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: 16 }}>{linkError}</p>
               <Link href="/forgot-password" style={{ display: 'inline-block', padding: '10px 18px', background: 'var(--brand-pink)', color: 'white', textDecoration: 'none', borderRadius: 8, fontSize: '0.875rem', fontWeight: 600 }}>

@@ -80,8 +80,8 @@ export const PERMISSION_META: Record<Permission, {
 
   // Analytics
   analytics:           { label: 'Overview analytics', icon: '▣', desc: 'Revenue chart, orders-by-status, top products, low-stock alerts.', group: 'analytics' },
-  analytics_traffic:   { label: 'Traffic insights',   icon: '📊', desc: 'PostHog stats: pageviews, conversion funnel, top pages, top events, referrers.', group: 'analytics' },
-  analytics_errors:    { label: 'Error monitoring',   icon: '🐛', desc: 'Sentry stats: error trend, unresolved issues, top affected URLs. Receives Sentry notifications.', group: 'analytics' },
+  analytics_traffic:   { label: 'Traffic insights',   icon: '▦', desc: 'PostHog stats: pageviews, conversion funnel, top pages, top events, referrers.', group: 'analytics' },
+  analytics_errors:    { label: 'Error monitoring',   icon: '⚠', desc: 'Sentry stats: error trend, unresolved issues, top affected URLs. Receives Sentry notifications.', group: 'analytics' },
   analytics_refresh:   { label: 'Refresh analytics',  icon: '⟳', desc: 'Trigger a manual PostHog + Sentry data refresh.', group: 'analytics' },
 
   // Store admin
