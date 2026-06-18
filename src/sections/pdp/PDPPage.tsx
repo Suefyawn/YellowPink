@@ -34,6 +34,9 @@ interface Props {
   backInStockEnabled?: boolean;
   /** True for wellness consumables — enables the Subscribe & Save opt-in. */
   subscribeEligible?: boolean;
+  /** Pre-address standard delivery estimate (working days), shown by the buy
+   *  panel. Null when no shipping zone configures an ETA. */
+  estimatedDays?: { min: number; max: number } | null;
 }
 
 // ─── Variant picker ─────────────────────────────────────────────────────────
@@ -227,7 +230,7 @@ function Gallery({
 }
 
 // ─── PDPPage ───────────────────────────────────────────────────────────────
-export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], backInStockEnabled = true, subscribeEligible = false }: Props) {
+export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], backInStockEnabled = true, subscribeEligible = false, estimatedDays = null }: Props) {
   const [qty, setQty] = useState(1);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
@@ -465,6 +468,13 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                   : 'Add to Cart'}
               </button>
             </div>
+
+            {!outOfStock && estimatedDays && (
+              <p className="small-text" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: -8, marginBottom: 24, color: 'var(--ink-700)' }}>
+                <span aria-hidden="true">🚚</span>
+                Delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min}–{estimatedDays.max} working days</strong> · COD nationwide
+              </p>
+            )}
 
             {outOfStock && backInStockEnabled && (
               <div style={{ marginBottom: 24 }}>

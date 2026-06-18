@@ -73,14 +73,19 @@ customers and spot where an order is.
 - **Product page** — each product has its images, price (and the crossed-out
   original price if it's on sale), description, ingredients, how-to-use, key
   benefits, FAQs, and its customer star rating. If the product comes in
-  variants (e.g. shades), the customer picks one before adding to the cart.
+  variants (e.g. shades), the customer picks one before adding to the cart. When
+  a shipping zone has a delivery estimate configured, an **estimated delivery
+  time** ("Delivery in X–Y working days · COD nationwide") shows by the
+  Add-to-Cart button.
 
 ### 2.2 Cart and checkout
 
 - **Cart** — lists everything the customer has added, with quantities and a
   running total. They can change quantities, remove items, and enter a **coupon
-  code** for a discount. Below the items a **"You may also like"** row suggests
-  bestsellers (excluding what's already in the bag) to encourage add-ons.
+  code** for a discount. The free-shipping progress bar is followed by the same
+  **estimated delivery time** shown on the product page. Below the items a
+  **"You may also like"** row suggests bestsellers (excluding what's already in
+  the bag) to encourage add-ons.
 - **Checkout** — the customer enters their delivery details (name, phone, email,
   full address), sees the shipping cost, and chooses how to pay. A short
   reassurance strip (authentic products, cash on delivery, 7-day returns) sits

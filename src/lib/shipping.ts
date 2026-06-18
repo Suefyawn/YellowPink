@@ -90,3 +90,12 @@ export async function resolveShipping(opts: {
         : null,
   };
 }
+
+/** Pre-address delivery estimate for storefront surfaces (PDP, cart) that
+ *  don't yet know the customer's province — resolves the first active zone's
+ *  standard ETA. Returns null when no zone configures estimated days, so
+ *  callers can simply skip the line rather than show a made-up number. */
+export async function getDefaultEstimatedDays(): Promise<{ min: number; max: number } | null> {
+  const { estimatedDays } = await resolveShipping({ subtotal: 0 });
+  return estimatedDays ?? null;
+}

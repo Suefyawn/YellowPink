@@ -11,6 +11,7 @@ import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtToget
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
 import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd } from '@/lib/seo';
 import { isEnabled } from '@/lib/flags';
+import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
 import { taxonForCategory } from '@/lib/category-taxonomy';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
@@ -174,9 +175,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [backInStockEnabled, reviewPhotosEnabled] = await Promise.all([
+  const [backInStockEnabled, reviewPhotosEnabled, estimatedDays] = await Promise.all([
     isEnabled('back_in_stock'),
     isEnabled('reviews_photos'),
+    getDefaultEstimatedDays(),
   ]);
 
   const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts] = await Promise.all([
@@ -243,6 +245,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         gallery={gallery}
         backInStockEnabled={backInStockEnabled}
         subscribeEligible={taxonForCategory(product.category)?.key === 'wellness'}
+        estimatedDays={estimatedDays}
       />
       <FrequentlyBoughtTogether anchor={product} suggestions={fbt} />
       <MoreToExplore
