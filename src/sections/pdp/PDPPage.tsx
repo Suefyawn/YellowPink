@@ -13,9 +13,10 @@ import { track } from '@/lib/analytics';
 import { stripBrandPrefix } from '@/lib/product-display';
 import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { BenefitIcon } from '@/components/ui/BenefitIcon';
+import { RETURNS_WINDOW_DAYS, freeShippingLabel } from '@/lib/commerce';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
-const SHIPPING_CONTENT = 'Free shipping on orders over PKR 2,500. COD available nationwide. 7-day return policy on unopened items.';
+const SHIPPING_CONTENT = `Free shipping on orders over ${freeShippingLabel()}. COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`;
 
 interface AttributeWithValues extends ProductAttribute {
   values: AttributeValue[];
@@ -653,8 +654,8 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             {[
               { icon: '✓', label: '100% authentic', sub: 'Imported direct from authorised distributors' },
               { icon: '◐', label: 'Tested locally', sub: 'For Pakistani skin tones + climate' },
-              { icon: '◎', label: 'COD nationwide', sub: 'Pay on delivery, free over PKR 2,500' },
-              { icon: '↩', label: '7-day returns', sub: 'On unopened items, no questions asked' },
+              { icon: '◎', label: 'COD nationwide', sub: `Pay on delivery, free over ${freeShippingLabel()}` },
+              { icon: '↩', label: `${RETURNS_WINDOW_DAYS}-day returns`, sub: 'On unopened items, no questions asked' },
             ].map(t => (
               <div
                 key={t.label}

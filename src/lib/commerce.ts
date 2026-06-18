@@ -9,3 +9,12 @@
 // these are only the optimistic pre-address defaults.
 export const FREE_SHIPPING_THRESHOLD = 2500;
 export const DEFAULT_SHIPPING_RATE = 200;
+
+/** Customer-facing returns window, in days. Shared by the PDP trust copy, the
+ *  checkout reassurance strip and the shipping blurb so they never disagree. */
+export const RETURNS_WINDOW_DAYS = 7;
+
+/** The free-shipping threshold formatted as shoppers see it, e.g. "PKR 2,500".
+ *  Derive display copy from this so the figure tracks the threshold constant
+ *  instead of being re-typed (and left stale) in each surface. */
+export const freeShippingLabel = () => `PKR ${FREE_SHIPPING_THRESHOLD.toLocaleString()}`;
