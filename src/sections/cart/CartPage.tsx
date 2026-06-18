@@ -14,7 +14,7 @@ import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { FREE_SHIPPING_THRESHOLD as FREE_SHIPPING, DEFAULT_SHIPPING_RATE } from '@/lib/commerce';
 import type { CartItem, Coupon, Product } from '@/types';
 
-export function CartPage({ restoreToken = null, recommended = [] }: { restoreToken?: string | null; recommended?: Product[] }) {
+export function CartPage({ restoreToken = null, recommended = [], estimatedDays = null }: { restoreToken?: string | null; recommended?: Product[]; estimatedDays?: { min: number; max: number } | null }) {
   const { cartItems, removeFromCart, updateQty, appliedCoupon, setAppliedCoupon, addToCart } = useCart();
   const router = useRouter();
 
@@ -170,6 +170,12 @@ export function CartPage({ restoreToken = null, recommended = [] }: { restoreTok
             <div style={{ height: 4, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', maxWidth: 400 }}>
               <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg, var(--brand-yellow), var(--brand-pink))', borderRadius: 'var(--radius-pill)', transition: 'width 400ms ease-out' }} />
             </div>
+            {estimatedDays && (
+              <div className="small-text" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12, color: 'var(--ink-700)' }}>
+                <span aria-hidden="true">🚚</span>
+                Estimated delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min}–{estimatedDays.max} working days</strong> · COD nationwide
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, marginTop: 32 }} className="cart-grid">

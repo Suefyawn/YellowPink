@@ -1,5 +1,6 @@
 import { CartPage } from '@/sections/cart/CartPage';
 import { getBestsellers } from '@/lib/supabase';
+import { getDefaultEstimatedDays } from '@/lib/shipping';
 
 // User-scoped state; noindex.
 // Title intentionally just "Cart" — the root layout's title.template
@@ -16,10 +17,13 @@ export default async function CartRoute({ searchParams }: { searchParams: Promis
   // Bestsellers feed the "You may also like" cross-sell on the cart. We
   // over-fetch (8) so CartPage can drop whatever's already in the bag and
   // still have a full 4-up row to show.
-  const recommended = await getBestsellers(8);
+  const [recommended, estimatedDays] = await Promise.all([
+    getBestsellers(8),
+    getDefaultEstimatedDays(),
+  ]);
   return (
     <main className="fade-in">
-      <CartPage restoreToken={restore ?? null} recommended={recommended} />
+      <CartPage restoreToken={restore ?? null} recommended={recommended} estimatedDays={estimatedDays} />
     </main>
   );
 }
