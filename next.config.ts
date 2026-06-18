@@ -81,6 +81,9 @@ const nextConfig: NextConfig = {
     return [
       { source: '/products/:slug', destination: '/product/:slug', permanent: true },
       { source: '/products', destination: '/shop', permanent: true },
+      // Policy content lives under /page/:slug; bare /returns is a common
+      // inbound guess (and was 404ing), so alias it to the returns policy.
+      { source: '/returns', destination: '/page/returns', permanent: true },
     ];
   },
   // Security + caching response headers. Applied to every storefront response

@@ -49,7 +49,7 @@ export function NotificationsBell({ notifications }: { notifications: Notificati
         {unread.length > 0 && (
           <span style={{
             position: 'absolute', top: 0, right: 0,
-            background: '#ef4444', color: 'white',
+            background: '#d73d3d', color: 'white',
             width: 16, height: 16, borderRadius: '50%',
             fontSize: '0.625rem', fontWeight: 700,
             display: 'flex', alignItems: 'center', justifyContent: 'center',

@@ -88,27 +88,27 @@ export default async function VendorsPage({
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Add Vendor</h2>
         <form action={createVendor} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
           <div>
-            <label style={lbl}>Name</label>
-            <input name="name" required placeholder="NB Sons" style={{ ...inp, width: 180 }} />
+            <label htmlFor="vendor-name" style={lbl}>Name</label>
+            <input id="vendor-name" name="name" required placeholder="NB Sons" style={{ ...inp, width: 180 }} />
           </div>
           <div>
-            <label style={lbl}>WhatsApp number</label>
-            <input name="phone" required placeholder="+92 300 1234567" style={{ ...inp, width: 170 }} />
+            <label htmlFor="vendor-phone" style={lbl}>WhatsApp number</label>
+            <input id="vendor-phone" name="phone" required placeholder="+92 300 1234567" style={{ ...inp, width: 170 }} />
           </div>
           <div>
-            <label style={lbl}>Commission % we keep</label>
-            <input name="commission_pct" type="number" min={0} max={100} step="0.01" placeholder="35" style={{ ...inp, width: 130 }} />
+            <label htmlFor="vendor-commission_pct" style={lbl}>Commission % we keep</label>
+            <input id="vendor-commission_pct" name="commission_pct" type="number" min={0} max={100} step="0.01" placeholder="35" style={{ ...inp, width: 130 }} />
           </div>
           <div>
-            <label style={lbl}>Who collects payment</label>
-            <select name="settlement_direction" defaultValue="we_collect" style={{ ...inp, width: 200 }}>
+            <label htmlFor="vendor-settlement_direction" style={lbl}>Who collects payment</label>
+            <select id="vendor-settlement_direction" name="settlement_direction" defaultValue="we_collect" style={{ ...inp, width: 200 }}>
               <option value="we_collect">We collect — we pay the vendor</option>
               <option value="vendor_collects">Vendor collects — they pay us</option>
             </select>
           </div>
           <div style={{ flex: 1, minWidth: 140 }}>
-            <label style={lbl}>Notes (optional)</label>
-            <input name="notes" placeholder="What they supply" style={{ ...inp, width: '100%' }} />
+            <label htmlFor="vendor-notes" style={lbl}>Notes (optional)</label>
+            <input id="vendor-notes" name="notes" placeholder="What they supply" style={{ ...inp, width: '100%' }} />
           </div>
           <button type="submit" style={{
             padding: '8px 20px', background: '#C5286A', color: 'white',

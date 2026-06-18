@@ -101,6 +101,7 @@ export default async function InventoryPage({
       <h1 style={{ margin: '0 0 6px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Inventory</h1>
       <p style={{ margin: '0 0 24px', fontSize: '0.8125rem', color: '#6b7280' }}>
         Current stock levels at a glance, plus a permanent audit trail of every movement.
+        {allProducts.length - products.length > 0 && ` Showing ${products.length} inventory-managed products; ${allProducts.length - products.length} more have stock managed externally and aren't tracked here.`}
       </p>
 
       {errMsg && (

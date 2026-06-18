@@ -80,7 +80,7 @@ export default function ForgotPasswordPage() {
                 <input id="forgot-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} style={inp} placeholder="you@example.com" autoComplete="email" />
               </div>
               <button type="submit" disabled={loading} style={{
-                padding: '12px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',
+                padding: '12px', background: loading ? '#f9a8d4' : 'var(--brand-pink-cta)',
                 color: 'white', border: 'none', borderRadius: 8,
                 fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
                 marginTop: 4,

@@ -13,12 +13,12 @@ const STATUSES: { value: OrderStatus; label: string }[] =
 
 const statusColors: Record<OrderStatus, string> = {
   payment_pending: '#9ca3af',
-  payment_failed:  '#ef4444',
-  pending:         '#f59e0b',
-  processing:      '#3b82f6',
-  shipped:         '#8b5cf6',
-  delivered:       '#10b981',
-  cancelled:       '#ef4444',
+  payment_failed:  '#c43838',
+  pending:         '#9a6407',
+  processing:      '#1d4ed8',
+  shipped:         '#6d28d9',
+  delivered:       '#0b7e58',
+  cancelled:       '#c43838',
   returned:        '#6b7280',
   refunded:        '#6b7280',
 };
@@ -46,13 +46,13 @@ export function OrderStatusForm({ orderId, currentStatus }: {
   return (
     <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div>
-        <label style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
+        <label htmlFor="status" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
           Order Status
         </label>
         {/* key on currentStatus so the uncontrolled select re-mounts and
             picks up the new defaultValue after a status change is saved —
             otherwise the dropdown drifts out of sync with the order. */}
-        <select key={currentStatus} name="status" defaultValue={currentStatus} style={{ ...inp }}>
+        <select id="status" key={currentStatus} name="status" defaultValue={currentStatus} style={{ ...inp }}>
           {STATUSES.map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>
           ))}
@@ -76,10 +76,10 @@ export function OrderStatusForm({ orderId, currentStatus }: {
           {pending ? 'Saving…' : 'Update Order'}
         </button>
         {state?.success && (
-          <span style={{ fontSize: '0.875rem', color: '#10b981', fontWeight: 500 }}>✓ Saved</span>
+          <span style={{ fontSize: '0.875rem', color: '#0b7e58', fontWeight: 500 }}>✓ Saved</span>
         )}
         {state?.error && (
-          <span style={{ fontSize: '0.875rem', color: '#ef4444' }}>{state.error}</span>
+          <span style={{ fontSize: '0.875rem', color: '#c43838' }}>{state.error}</span>
         )}
       </div>
       <div style={{ marginTop: 4 }}>

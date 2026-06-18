@@ -140,7 +140,7 @@ export default function TrackPage() {
               }}
             />
             <button type="submit" disabled={loading} style={{
-              padding: '12px 24px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',
+              padding: '12px 24px', background: loading ? '#f9a8d4' : 'var(--brand-pink-cta)',
               color: 'white', border: 'none', borderRadius: 10,
               fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
             }}>

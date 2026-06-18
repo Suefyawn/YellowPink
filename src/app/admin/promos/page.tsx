@@ -21,10 +21,13 @@ const inp: React.CSSProperties = {
   fontSize: '0.875rem', color: '#111827', background: 'white', outline: 'none',
 };
 
-function Field({ label, children, wide }: { label: string; children: React.ReactNode; wide?: boolean }) {
+function Field({ label, children, wide, htmlFor }: { label: string; children: React.ReactNode; wide?: boolean; htmlFor?: string }) {
+  const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 };
   return (
     <div style={wide ? { gridColumn: '1 / -1' } : undefined}>
-      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>{label}</label>
+      {htmlFor
+        ? <label htmlFor={htmlFor} style={labelStyle}>{label}</label>
+        : <span style={labelStyle}>{label}</span>}
       {children}
     </div>
   );
@@ -36,47 +39,47 @@ function Field({ label, children, wide }: { label: string; children: React.React
 function PromoFields({ promo }: { promo?: Promo }) {
   return (
     <>
-      <Field label="Slot">
-        <select name="position" style={inp} defaultValue={promo?.position ?? 'top_bar'} required>
+      <Field label="Slot" htmlFor="position">
+        <select id="position" name="position" style={inp} defaultValue={promo?.position ?? 'top_bar'} required>
           <option value="top_bar">Top bar (thin)</option>
           <option value="hero_strip">Hero strip (card)</option>
         </select>
       </Field>
-      <Field label="Kind">
-        <select name="kind" style={inp} defaultValue={promo?.kind ?? 'announcement'} required>
+      <Field label="Kind" htmlFor="kind">
+        <select id="kind" name="kind" style={inp} defaultValue={promo?.kind ?? 'announcement'} required>
           <option value="announcement">Announcement</option>
           <option value="promo">Promo</option>
         </select>
       </Field>
-      <Field label="Label (pill)">
-        <input name="label" placeholder="NEW" defaultValue={promo?.label ?? ''} style={inp} />
+      <Field label="Label (pill)" htmlFor="label">
+        <input id="label" name="label" placeholder="NEW" defaultValue={promo?.label ?? ''} style={inp} />
       </Field>
-      <Field label="Headline" wide>
-        <input name="headline" required placeholder="Free delivery over PKR 2,500 — COD nationwide" defaultValue={promo?.headline ?? ''} style={inp} />
+      <Field label="Headline" wide htmlFor="headline">
+        <input id="headline" name="headline" required placeholder="Free delivery over PKR 2,500 — COD nationwide" defaultValue={promo?.headline ?? ''} style={inp} />
       </Field>
-      <Field label="Subline" wide>
-        <input name="subline" placeholder="(optional)" defaultValue={promo?.subline ?? ''} style={inp} />
+      <Field label="Subline" wide htmlFor="subline">
+        <input id="subline" name="subline" placeholder="(optional)" defaultValue={promo?.subline ?? ''} style={inp} />
       </Field>
-      <Field label="CTA text">
-        <input name="cta_text" placeholder="Shop now" defaultValue={promo?.cta_text ?? ''} style={inp} />
+      <Field label="CTA text" htmlFor="cta_text">
+        <input id="cta_text" name="cta_text" placeholder="Shop now" defaultValue={promo?.cta_text ?? ''} style={inp} />
       </Field>
-      <Field label="CTA URL">
-        <input name="cta_url" placeholder="/shop" defaultValue={promo?.cta_url ?? ''} style={inp} />
+      <Field label="CTA URL" htmlFor="cta_url">
+        <input id="cta_url" name="cta_url" placeholder="/shop" defaultValue={promo?.cta_url ?? ''} style={inp} />
       </Field>
-      <Field label="Background">
-        <input name="bg_color" type="color" defaultValue={promo?.bg_color ?? '#111827'} style={{ ...inp, padding: 4, height: 36 }} />
+      <Field label="Background" htmlFor="bg_color">
+        <input id="bg_color" name="bg_color" type="color" defaultValue={promo?.bg_color ?? '#111827'} style={{ ...inp, padding: 4, height: 36 }} />
       </Field>
-      <Field label="Text colour">
-        <input name="text_color" type="color" defaultValue={promo?.text_color ?? '#ffffff'} style={{ ...inp, padding: 4, height: 36 }} />
+      <Field label="Text colour" htmlFor="text_color">
+        <input id="text_color" name="text_color" type="color" defaultValue={promo?.text_color ?? '#ffffff'} style={{ ...inp, padding: 4, height: 36 }} />
       </Field>
-      <Field label="Start at">
-        <input name="start_at" type="datetime-local" defaultValue={promo?.start_at ? promo.start_at.slice(0, 16) : ''} style={inp} />
+      <Field label="Start at" htmlFor="start_at">
+        <input id="start_at" name="start_at" type="datetime-local" defaultValue={promo?.start_at ? promo.start_at.slice(0, 16) : ''} style={inp} />
       </Field>
-      <Field label="End at">
-        <input name="end_at" type="datetime-local" defaultValue={promo?.end_at ? promo.end_at.slice(0, 16) : ''} style={inp} />
+      <Field label="End at" htmlFor="end_at">
+        <input id="end_at" name="end_at" type="datetime-local" defaultValue={promo?.end_at ? promo.end_at.slice(0, 16) : ''} style={inp} />
       </Field>
-      <Field label="Audience">
-        <select name="audience" style={inp} defaultValue={promo?.audience ?? ''}>
+      <Field label="Audience" htmlFor="audience">
+        <select id="audience" name="audience" style={inp} defaultValue={promo?.audience ?? ''}>
           <option value="">Everyone</option>
           <option value="guest">Guests (not logged in)</option>
           <option value="logged_in">Logged-in customers</option>
@@ -84,8 +87,8 @@ function PromoFields({ promo }: { promo?: Promo }) {
           <option value="returning">Returning (≥1 order)</option>
         </select>
       </Field>
-      <Field label="Priority (higher wins)">
-        <input name="priority" type="number" min={0} max={1000} defaultValue={promo?.priority ?? 0} style={inp} />
+      <Field label="Priority (higher wins)" htmlFor="priority">
+        <input id="priority" name="priority" type="number" min={0} max={1000} defaultValue={promo?.priority ?? 0} style={inp} />
       </Field>
       <Field label="Countdown timer">
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem' }}>

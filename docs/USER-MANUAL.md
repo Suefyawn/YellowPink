@@ -91,7 +91,9 @@ customers and spot where an order is.
   reassurance strip (authentic products, cash on delivery, 7-day returns) sits
   by the **Place Order** button. The free-shipping threshold shoppers see in the
   cart, mini-cart and checkout all come from one shared setting, so they always
-  agree.
+  agree. Free shipping is earned on the merchandise subtotal (before any
+  discount code), so applying a coupon never strips a free-shipping promise the
+  customer has already qualified for.
 
 ### 2.3 Ways to pay
 

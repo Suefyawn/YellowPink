@@ -45,7 +45,7 @@ export function Pagination({ total, pageSize, currentPage, basePath }: Props) {
       {currentPage > 1 ? (
         <Link href={pageUrl(currentPage - 1)} style={{ ...btn, background: 'white', color: '#374151' }}>‹</Link>
       ) : (
-        <span style={{ ...btn, background: '#f9fafb', color: '#d1d5db', cursor: 'not-allowed' }}>‹</span>
+        <span style={{ ...btn, background: '#f9fafb', color: '#9ca3af', cursor: 'not-allowed' }}>‹</span>
       )}
 
       {pages.map((p, i) =>
@@ -64,7 +64,7 @@ export function Pagination({ total, pageSize, currentPage, basePath }: Props) {
       {currentPage < totalPages ? (
         <Link href={pageUrl(currentPage + 1)} style={{ ...btn, background: 'white', color: '#374151' }}>›</Link>
       ) : (
-        <span style={{ ...btn, background: '#f9fafb', color: '#d1d5db', cursor: 'not-allowed' }}>›</span>
+        <span style={{ ...btn, background: '#f9fafb', color: '#9ca3af', cursor: 'not-allowed' }}>›</span>
       )}
 
       <span style={{ marginLeft: 12, fontSize: '0.8125rem', color: '#9ca3af' }}>

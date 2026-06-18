@@ -12,6 +12,7 @@ import { setOrderConfirmed } from '@/app/admin/vendor-actions';
 import { setOrderCosts, recordPayment, clearPayment } from '@/app/admin/finance/actions';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
+import { stripEmoji } from '@/lib/text';
 import { configuredAdapterIds } from '@/lib/couriers';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { Order, CartItem, OrderStatus } from '@/types';
@@ -38,7 +39,7 @@ const fmtDate = (s: string) =>
 const payLabel: Record<string, string> = { cod: 'Cash on Delivery', card: 'Card Payment', bank: 'Bank Transfer' };
 
 const statusColors: Record<string, string> = {
-  pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444',
+  pending: '#9a6407', processing: '#1d4ed8', shipped: '#6d28d9', delivered: '#0b7e58', cancelled: '#c43838',
 };
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -129,6 +130,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const dt: React.CSSProperties = { fontSize: '0.8125rem', color: '#6b7280', fontWeight: 500 };
   const dd: React.CSSProperties = { fontSize: '0.875rem', color: '#111827', margin: 0 };
 
+  // Customer name, emoji-stripped, for the WhatsApp messages we send out.
+  const custFirst = stripEmoji(o.first_name ?? '');
+  const custLast = stripEmoji(o.last_name ?? '');
+
   // Prefilled WhatsApp message the owner forwards to the chosen vendor.
   const vendorMessage = [
     `Yellow Pink — Order ${o.order_number}`,
@@ -139,7 +144,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     }),
     '',
     'Deliver to:',
-    `${o.first_name} ${o.last_name}`,
+    `${custFirst} ${custLast}`,
     `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
     `Phone: ${o.phone}`,
     '',
@@ -153,7 +158,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // total, address) stay in clear English so amounts and address are never
   // ambiguous. COD orders get a roman-Urdu pay-on-delivery note.
   const customerMessage = [
-    `Assalam-o-Alaikum${o.first_name ? ` ${o.first_name}` : ''}!`,
+    `Assalam-o-Alaikum${custFirst ? ` ${custFirst}` : ''}!`,
     '',
     `Yellow Pink se shopping ka shukriya! Neeche apne order ki tafseel confirm kar lein:`,
     '',
@@ -167,7 +172,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     ...(o.pay_method === 'cod' ? ['Parcel milne par cash adaa karein.'] : []),
     '',
     `Delivery address:`,
-    `${o.first_name} ${o.last_name}`,
+    `${custFirst} ${custLast}`,
     `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
     '',
     `Agar sab kuch theek hai to please reply kar ke confirm kar dein — hum aap ka order foran tayyar kar denge. Koi tabdeeli chahiye to yahin bata dein.`,
