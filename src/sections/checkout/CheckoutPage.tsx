@@ -151,12 +151,15 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (lineTotal === 0) return;
-      const res = await calculateShipping({ province: formData.province || undefined, subtotal: lineTotal });
+      if (subtotal === 0) return;
+      // Free shipping is earned on the merchandise subtotal (pre-discount), so
+      // a coupon never removes a free-shipping promise already shown. The
+      // server trusts this shipping figure, so charged matches displayed.
+      const res = await calculateShipping({ province: formData.province || undefined, subtotal });
       if (!cancelled) setShippingInfo(res);
     })();
     return () => { cancelled = true; };
-  }, [lineTotal, formData.province]);
+  }, [subtotal, formData.province]);
 
   // Capture abandoned-cart snapshot when the user supplies an email AND the
   // cart is non-empty. Debounced 1.2 s so we don't fire per keystroke.

@@ -95,7 +95,7 @@ function AddressForm({
         </label>
         <div style={{ display: 'flex', gap: 12 }}>
           <button type="submit" disabled={pending} style={{
-            flex: 1, padding: 12, background: pending ? '#f9a8d4' : 'var(--brand-pink)',
+            flex: 1, padding: 12, background: pending ? '#f9a8d4' : 'var(--brand-pink-cta)',
             color: 'white', border: 'none', borderRadius: 8,
             fontSize: '0.9375rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
           }}>
@@ -275,7 +275,7 @@ export default function AddressesPage() {
 
         {addresses && !formOpen && (
           <button onClick={() => setShowForm(true)} style={{
-            padding: '10px 18px', background: 'var(--brand-pink)', color: 'white',
+            padding: '10px 18px', background: 'var(--brand-pink-cta)', color: 'white',
             border: 'none', borderRadius: 8, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', marginBottom: 20,
           }}>
             + Add another address

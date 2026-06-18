@@ -9,12 +9,12 @@ import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types';
 const STATUSES: { value: string; color?: string }[] = [
   { value: 'all' },
   { value: 'payment_pending', color: '#d97706' },
-  { value: 'payment_failed',  color: '#ef4444' },
-  { value: 'pending',         color: '#f59e0b' },
-  { value: 'processing',      color: '#3b82f6' },
-  { value: 'shipped',         color: '#8b5cf6' },
-  { value: 'delivered',       color: '#10b981' },
-  { value: 'cancelled',       color: '#ef4444' },
+  { value: 'payment_failed',  color: '#c43838' },
+  { value: 'pending',         color: '#9a6407' },
+  { value: 'processing',      color: '#1d4ed8' },
+  { value: 'shipped',         color: '#6d28d9' },
+  { value: 'delivered',       color: '#0b7e58' },
+  { value: 'cancelled',       color: '#c43838' },
   { value: 'returned',        color: '#6b7280' },
   { value: 'refunded',        color: '#0891b2' },
 ];

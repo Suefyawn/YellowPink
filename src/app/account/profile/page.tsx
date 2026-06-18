@@ -184,7 +184,7 @@ export default function ProfilePage() {
               type="submit"
               disabled={!canSave}
               style={{
-                padding: '12px', background: canSave ? 'var(--brand-pink)' : '#f9a8d4',
+                padding: '12px', background: canSave ? 'var(--brand-pink-cta)' : '#f9a8d4',
                 color: 'white', border: 'none', borderRadius: 8,
                 fontSize: '0.9375rem', fontWeight: 600,
                 cursor: canSave ? 'pointer' : 'not-allowed',

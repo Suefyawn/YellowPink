@@ -84,7 +84,7 @@ export function SubscribeAndSave({
           className="btn-primary"
           style={{
             display: 'block', textAlign: 'center', textDecoration: 'none',
-            background: 'var(--brand-pink)',
+            background: 'var(--brand-pink-cta)',
           }}
         >
           Sign in to subscribe
@@ -115,7 +115,7 @@ export function SubscribeAndSave({
               disabled={pending || loading}
               className="btn-primary"
               style={{
-                background: pending || loading ? '#d1d5db' : 'var(--brand-pink)',
+                background: pending || loading ? '#d1d5db' : 'var(--brand-pink-cta)',
                 cursor: pending || loading ? 'not-allowed' : 'pointer',
                 whiteSpace: 'nowrap',
               }}

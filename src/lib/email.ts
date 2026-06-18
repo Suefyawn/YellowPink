@@ -15,6 +15,7 @@
 import { Resend } from 'resend';
 import * as Sentry from '@sentry/nextjs';
 import { log } from './logger';
+import { stripEmoji } from './text';
 import { brandPlusName } from './product-display';
 import { supabaseAdmin } from './supabase';
 import { SITE_URL } from './seo';
@@ -299,7 +300,7 @@ function renderItemsTable(items: OrderItemLine[]): string {
 export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">New order — ${escapeHtml(order.order_number)}</h2>
-    <p style="margin:0 0 4px"><strong>Customer:</strong> ${escapeHtml(order.first_name)} ${escapeHtml(order.last_name)}</p>
+    <p style="margin:0 0 4px"><strong>Customer:</strong> ${escapeHtml(stripEmoji(order.first_name))} ${escapeHtml(stripEmoji(order.last_name))}</p>
     <p style="margin:0 0 4px"><strong>Phone:</strong> ${escapeHtml(order.phone)}</p>
     <p style="margin:0 0 4px"><strong>City:</strong> ${escapeHtml(order.city)}${order.province ? `, ${escapeHtml(order.province)}` : ''}</p>
     <p style="margin:0 0 12px"><strong>Payment:</strong> ${escapeHtml(order.pay_method.toUpperCase())}</p>
@@ -318,7 +319,7 @@ export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
 // ─── 2. Customer: order confirmation ────────────────────────────────────────
 export async function sendOrderConfirmationEmail(args: OrderSummary & { email: string }): Promise<void> {
   const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:18px">Thanks for your order, ${escapeHtml(args.first_name)}!</h2>
+    <h2 style="margin:0 0 12px;font-size:18px">Thanks for your order, ${escapeHtml(stripEmoji(args.first_name))}!</h2>
     <p style="margin:0 0 16px;color:${INK};line-height:1.5">
       We've received your order <strong>${escapeHtml(args.order_number)}</strong> and will start preparing it shortly.
       You'll get an email when it ships.
@@ -340,7 +341,7 @@ export async function sendOrderConfirmationEmail(args: OrderSummary & { email: s
 export async function sendPaymentReceivedEmail(args: { email: string; first_name: string; order_number: string; total: number; method: string }) {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Payment received</h2>
-    <p>Hi ${escapeHtml(args.first_name)} — we've received your ${escapeHtml(args.method)} payment of <strong>${money(args.total)}</strong> for order <strong>${escapeHtml(args.order_number)}</strong>.</p>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))} — we've received your ${escapeHtml(args.method)} payment of <strong>${money(args.total)}</strong> for order <strong>${escapeHtml(args.order_number)}</strong>.</p>
     <p>We're now preparing your order for shipment.</p>
   `);
   await send({ to: args.email, subject: `Payment received — ${args.order_number}`, html });
@@ -353,7 +354,7 @@ export async function sendShippedEmail(args: { email: string; first_name: string
     : '';
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Your order is on its way</h2>
-    <p>Hi ${escapeHtml(args.first_name)} — your order <strong>${escapeHtml(args.order_number)}</strong> just shipped.</p>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))} — your order <strong>${escapeHtml(args.order_number)}</strong> just shipped.</p>
     ${trackInfo}
     <p style="margin:20px 0 0">
       <a href="${SITE_URL}/track" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track shipment</a>
@@ -366,7 +367,7 @@ export async function sendShippedEmail(args: { email: string; first_name: string
 export async function sendDeliveredEmail(args: { email: string; first_name: string; order_number: string }) {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Delivered</h2>
-    <p>Hi ${escapeHtml(args.first_name)} — your order <strong>${escapeHtml(args.order_number)}</strong> has been delivered. We hope you love it!</p>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))} — your order <strong>${escapeHtml(args.order_number)}</strong> has been delivered. We hope you love it!</p>
     <p>Got a minute? <a href="${SITE_URL}/account/orders" style="color:${BRAND_PINK}">Leave a review</a> — it really helps other shoppers.</p>
   `);
   await send({ to: args.email, subject: `Delivered — ${args.order_number}`, html });
@@ -376,7 +377,7 @@ export async function sendDeliveredEmail(args: { email: string; first_name: stri
 export async function sendCancelledEmail(args: { email: string; first_name: string; order_number: string; reason?: string }) {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Order cancelled</h2>
-    <p>Hi ${escapeHtml(args.first_name)} — order <strong>${escapeHtml(args.order_number)}</strong> has been cancelled.</p>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))} — order <strong>${escapeHtml(args.order_number)}</strong> has been cancelled.</p>
     ${args.reason ? `<p>Reason: ${escapeHtml(args.reason)}</p>` : ''}
     <p>If you didn't request this, reply to this email and we'll look into it.</p>
   `);
@@ -386,7 +387,7 @@ export async function sendCancelledEmail(args: { email: string; first_name: stri
 // ─── 7. Customer: welcome (post-signup) ─────────────────────────────────────
 export async function sendWelcomeEmail(args: { email: string; first_name?: string }) {
   const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:18px">Welcome to Yellow Pink${args.first_name ? `, ${escapeHtml(args.first_name)}` : ''}</h2>
+    <h2 style="margin:0 0 12px;font-size:18px">Welcome to Yellow Pink${args.first_name ? `, ${escapeHtml(stripEmoji(args.first_name))}` : ''}</h2>
     <p>We're glad you're here. Take a look at <a href="${SITE_URL}/shop" style="color:${BRAND_PINK}">what's new</a>, or <a href="${SITE_URL}/blog" style="color:${BRAND_PINK}">read our edit</a> for routines and reviews.</p>
   `, { marketingRecipient: args.email });
   await send({ to: args.email, subject: 'Welcome to Yellow Pink', html, kind: 'batch' });
@@ -415,7 +416,7 @@ export async function sendAbandonedCartEmail(args: {
   discount_pct?: number;
 }): Promise<void> {
   const intro = args.tier === 1
-    ? `Hi${args.first_name ? ` ${escapeHtml(args.first_name)}` : ''} — you left some things in your cart. They're still here whenever you're ready.`
+    ? `Hi${args.first_name ? ` ${escapeHtml(stripEmoji(args.first_name))}` : ''} — you left some things in your cart. They're still here whenever you're ready.`
     : args.tier === 2
     ? `Just a friendly nudge — your cart's still waiting. Tap the button below to pick up where you left off.`
     : `Last chance — your cart's about to expire.${args.discount_code ? ` Use code <strong>${escapeHtml(args.discount_code)}</strong> for ${args.discount_pct ?? 10}% off when you complete your order.` : ''}`;

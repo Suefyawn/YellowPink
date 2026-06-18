@@ -137,7 +137,7 @@ export default function LoginPage() {
             </div>
           </div>
           <button type="submit" disabled={loading} style={{
-            padding: '12px', background: loading ? '#f9a8d4' : 'var(--brand-pink)',
+            padding: '12px', background: loading ? '#f9a8d4' : 'var(--brand-pink-cta)',
             color: 'white', border: 'none', borderRadius: 8,
             fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer',
             marginTop: 4,
@@ -165,7 +165,7 @@ export default function LoginPage() {
         </div>
 
         <div style={{ marginTop: 16, textAlign: 'center' }}>
-          <Link href="/track" style={{ fontSize: '0.8125rem', color: '#9ca3af', textDecoration: 'none' }}>
+          <Link href="/track" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>
             Track an order without signing in →
           </Link>
         </div>

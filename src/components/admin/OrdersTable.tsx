@@ -18,18 +18,18 @@ const payBadge: Record<string, { bg: string; color: string; label: string }> = {
 };
 
 const statusColors: Record<string, string> = {
-  pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6',
-  delivered: '#10b981', cancelled: '#ef4444',
+  pending: '#9a6407', processing: '#1d4ed8', shipped: '#6d28d9',
+  delivered: '#0b7e58', cancelled: '#c43838',
 };
 
 // Labels come from ORDER_STATUS_LABELS so the bulk-action and swipe buttons
 // stay in lock-step with every other status surface (header badge, timeline,
 // filter pills, invoice). Defining a label here would let the two drift.
 const BULK_STATUSES: { value: OrderStatus; color: string }[] = [
-  { value: 'processing', color: '#3b82f6' },
-  { value: 'shipped',    color: '#8b5cf6' },
-  { value: 'delivered',  color: '#10b981' },
-  { value: 'cancelled',  color: '#ef4444' },
+  { value: 'processing', color: '#1d4ed8' },
+  { value: 'shipped',    color: '#6d28d9' },
+  { value: 'delivered',  color: '#0b7e58' },
+  { value: 'cancelled',  color: '#c43838' },
 ];
 
 // Statuses offered in the per-card swipe panel — the forward fulfilment

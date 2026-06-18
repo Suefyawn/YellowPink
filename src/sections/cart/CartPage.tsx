@@ -81,8 +81,11 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
       : appliedCoupon.value
     : 0;
   const total = Math.max(0, subtotal - discount);
-  const progress = Math.min(total / FREE_SHIPPING, 1);
-  const shipping = total >= FREE_SHIPPING ? 0 : DEFAULT_SHIPPING_RATE;
+  // Free shipping is earned on the merchandise subtotal (pre-discount), so
+  // applying a coupon never strips a free-shipping promise the cart already
+  // made. Progress + the threshold gap track the same pre-discount figure.
+  const progress = Math.min(subtotal / FREE_SHIPPING, 1);
+  const shipping = subtotal >= FREE_SHIPPING ? 0 : DEFAULT_SHIPPING_RATE;
   // "You may also like" — bestsellers minus whatever's already in the bag,
   // capped at a single 4-up row.
   const crossSell = recommended.filter(p => !cartItems.some(c => c.id === p.id)).slice(0, 4);
@@ -164,7 +167,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
             <div className="small-text" style={{ marginBottom: 8, color: 'var(--ink-700)' }}>
               {progress >= 1
                 ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>You qualify for free shipping!</span>
-                : <>PKR {(FREE_SHIPPING - total).toLocaleString()} away from <span style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>FREE</span> shipping</>
+                : <>PKR {(FREE_SHIPPING - subtotal).toLocaleString()} away from <span style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>FREE</span> shipping</>
               }
             </div>
             <div style={{ height: 4, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', maxWidth: 400 }}>

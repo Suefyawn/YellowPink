@@ -150,7 +150,7 @@ function ResetPasswordInner() {
               <div style={{ fontSize: '1.75rem', marginBottom: 12 }} aria-hidden>⚠</div>
               <h1 style={{ margin: '0 0 8px', fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>Can&apos;t open this link</h1>
               <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: 16 }}>{linkError}</p>
-              <Link href="/forgot-password" style={{ display: 'inline-block', padding: '10px 18px', background: 'var(--brand-pink)', color: 'white', textDecoration: 'none', borderRadius: 8, fontSize: '0.875rem', fontWeight: 600 }}>
+              <Link href="/forgot-password" style={{ display: 'inline-block', padding: '10px 18px', background: 'var(--brand-pink-cta)', color: 'white', textDecoration: 'none', borderRadius: 8, fontSize: '0.875rem', fontWeight: 600 }}>
                 Request a new link
               </Link>
             </>
@@ -263,7 +263,7 @@ function ResetPasswordInner() {
               </div>
               <button type="submit" disabled={loading || tooShort || mismatch || confirm.length === 0} style={{
                 padding: '12px',
-                background: (loading || tooShort || mismatch || confirm.length === 0) ? '#f9a8d4' : 'var(--brand-pink)',
+                background: (loading || tooShort || mismatch || confirm.length === 0) ? '#f9a8d4' : 'var(--brand-pink-cta)',
                 color: 'white', border: 'none', borderRadius: 8,
                 fontSize: '0.9375rem', fontWeight: 600,
                 cursor: (loading || tooShort || mismatch || confirm.length === 0) ? 'not-allowed' : 'pointer',
