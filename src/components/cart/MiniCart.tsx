@@ -43,6 +43,9 @@ export function MiniCart() {
         aria-modal={cartOpen}
         aria-label="Shopping cart"
         aria-hidden={!cartOpen}
+        // When closed the panel stays mounted (for the slide transition); mark
+        // it inert so its buttons/links aren't focusable or in the a11y tree.
+        inert={!cartOpen}
         style={{
           position: 'fixed', top: 0, right: 0, bottom: 0, width: 400, maxWidth: '90vw',
           background: 'var(--paper)', boxShadow: 'var(--shadow-1)',
