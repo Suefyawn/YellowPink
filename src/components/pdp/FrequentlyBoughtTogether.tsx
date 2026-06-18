@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { StarRating } from '@/components/ui/StarRating';
 import { useCart } from '@/context/CartContext';
 import { brandPlusName } from '@/lib/product-display';
 import type { Product } from '@/types';
@@ -63,6 +64,11 @@ export function FrequentlyBoughtTogether({
                     <div className="tabular-nums" style={{ fontSize: '0.75rem', color: 'var(--ink-700)', marginTop: 2 }}>
                       PKR {p.price.toLocaleString()}
                     </div>
+                    {p.review_count != null && p.review_count > 0 && (
+                      <div style={{ marginTop: 4, display: 'flex', justifyContent: 'center' }}>
+                        <StarRating rating={p.rating} count={p.review_count} size={11} />
+                      </div>
+                    )}
                   </div>
                 </label>
                 {i < allProducts.length - 1 && (

@@ -11,7 +11,7 @@ import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/check
 import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import { brandPlusName } from '@/lib/product-display';
-import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE } from '@/lib/commerce';
+import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { track } from '@/lib/analytics';
 import { readAttribution } from '@/lib/attribution';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
@@ -577,7 +577,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                 display: 'flex', flexWrap: 'wrap', justifyContent: 'center',
                 gap: '6px 16px',
               }}>
-                {['100% authentic products', 'Pay cash on delivery', '7-day easy returns'].map(t => (
+                {['100% authentic products', 'Pay cash on delivery', `${RETURNS_WINDOW_DAYS}-day easy returns`].map(t => (
                   <li key={t} className="small-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--ink-700, var(--ink-500))' }}>
                     <span aria-hidden="true" style={{ color: 'var(--success, #15803d)', fontWeight: 700 }}>✓</span>
                     {t}
