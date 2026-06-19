@@ -40,6 +40,7 @@ import { NewsletterModal } from '@/components/marketing/NewsletterModal';
 import { getWelcomeOffer } from '@/lib/offers';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
+import { CouponCapture } from '@/components/marketing/CouponCapture';
 import { getSiteSettings } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
 import { normalizeTheme } from '@/lib/themes';
@@ -145,6 +146,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <Providers commerce={commerce}>
           <CartAnnouncer />
           <AddToCartToast />
+          <CouponCapture />
           <SiteChrome
             settings={settings}
             promos={promos}
