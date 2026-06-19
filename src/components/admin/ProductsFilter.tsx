@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useTransition } from 'react';
 
-const CATEGORIES = ['All', 'Makeup', 'Skincare', 'Wellness'];
+const CATEGORIES = ['All', 'Makeup', 'Skincare', 'Wellness', 'Bundles'];
 const TAGS = ['All', 'New', 'Sale', 'Bestseller', 'Featured', 'Limited'];
 const SORTS: { value: string; label: string }[] = [
   { value: 'newest',     label: 'Newest first' },
