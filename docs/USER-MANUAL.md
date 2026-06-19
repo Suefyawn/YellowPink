@@ -25,7 +25,8 @@ store and process sales.
 4. [Processing a sale — the order workflow](#4-processing-a-sale--the-order-workflow)
 5. [Team, roles & permissions](#5-team-roles--permissions)
 6. [Store settings](#6-store-settings)
-7. [Reference](#7-reference)
+7. [Marketing & acquisition](#7-marketing--acquisition)
+8. [Reference](#8-reference)
 
 ---
 
@@ -308,7 +309,59 @@ are cached for speed).
 
 ---
 
-## 7. Reference
+## 7. Marketing & acquisition
+
+The store is technically ready to advertise — the pieces below are already built
+and live. What's left is operational: connecting the accounts and running
+campaigns. Once traffic is flowing, the **Analytics → Customers & Traffic** tab
+(funnel by source, funnel by device) shows what's working.
+
+### Product feeds (Google Shopping & Meta/Instagram Shop)
+
+Two always-up-to-date product feeds are published automatically — no manual
+export. They refresh hourly from your live catalogue (published products with an
+image).
+
+| Channel | Feed URL | Where to submit it |
+|---|---|---|
+| **Google Shopping** | `https://www.yellowpink.pk/feeds/google-merchant.xml` | Google **Merchant Center** → Products → Feeds → add a *scheduled fetch* feed (daily is fine) |
+| **Meta (FB/IG) Shop** | `https://www.yellowpink.pk/feeds/meta-catalog.xml` | Meta **Commerce Manager** → Catalog → Data sources → *Use a data feed* (scheduled) |
+
+Each item carries title, description, price (with sale price when on offer),
+availability, brand, image, and a valid Google product category. Products with no
+brand set, or no photo, are weaker in Shopping — fill those in on the product
+page for best results.
+
+### Measuring ad spend (attribution & ROAS)
+
+So the **Funnel by source** widget can credit revenue to the channel that earned
+it, every campaign link you create **must be UTM-tagged**. Add these to the
+destination URL:
+
+```
+https://www.yellowpink.pk/product/<slug>?utm_source=facebook&utm_medium=cpc&utm_campaign=spring-sale
+```
+
+- `utm_source` — where it ran: `facebook`, `instagram`, `google`, `tiktok`, …
+- `utm_medium` — the type: `cpc` (paid), `social`, `email`, …
+- `utm_campaign` — your name for the campaign: `spring-sale`, `eid-2026`, …
+
+The store captures these on arrival, keeps them through the visit, and stamps
+them onto the order, so paid orders are traceable back to the campaign. Meta's
+ad **Pixel** also fires the standard events (ViewContent, AddToCart,
+InitiateCheckout, Purchase) once `NEXT_PUBLIC_META_PIXEL_ID` is set in the
+hosting environment and the visitor accepts marketing cookies.
+
+### AI assistants (ChatGPT etc.)
+
+A small but growing slice of visitors already arrive from AI assistants. The site
+publishes an `llms.txt` summary and structured product data to help them
+recommend the store accurately — nothing to do here, but it's worth keeping
+product descriptions clear and factual since that's what these tools read.
+
+---
+
+## 8. Reference
 
 ### Order statuses
 
