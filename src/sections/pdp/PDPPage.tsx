@@ -15,6 +15,7 @@ import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { BenefitIcon } from '@/components/ui/BenefitIcon';
 import { RETURNS_WINDOW_DAYS, formatPkr } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
+import { effectiveProductFaq } from '@/lib/product-faq';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -699,13 +700,18 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           scroll past the buy-bar. FAQPage schema is emitted by the route
           (see app/product/[slug]/page.tsx) so the rich-result is paired
           with visible content. */}
-      {Array.isArray(product.faq) && product.faq.length > 0 && (
+      {(() => {
+        // Show the admin-authored FAQ when present, else the store-fact
+        // fallback — so every product page has a FAQ block (and matching
+        // FAQPage schema emitted by the route).
+        const faqItems = effectiveProductFaq(product.faq);
+        return (
         <section style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
           <div className="container" style={{ maxWidth: 760 }}>
             <Overline style={{ display: 'block', marginBottom: 16 }}>Frequently asked</Overline>
             <h2 className="display-l" style={{ fontSize: '1.75rem', marginBottom: 24 }}>Questions about this product</h2>
             <div style={{ borderTop: '1px solid var(--line)' }}>
-              {product.faq.map((f, i) => (
+              {faqItems.map((f, i) => (
                 <details key={i} style={{ borderBottom: '1px solid var(--line)', padding: '14px 0' }}>
                   <summary style={{
                     cursor: 'pointer', listStyle: 'none',
@@ -723,7 +729,8 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             </div>
           </div>
         </section>
-      )}
+        );
+      })()}
 
       {relatedProducts.length > 0 && (
         <section style={{ padding: '64px 0' }}>

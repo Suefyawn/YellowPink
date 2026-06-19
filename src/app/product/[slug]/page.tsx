@@ -9,7 +9,8 @@ import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
-import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd } from '@/lib/seo';
+import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd, truncateOnWord } from '@/lib/seo';
+import { effectiveProductFaq } from '@/lib/product-faq';
 import { isEnabled } from '@/lib/flags';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
@@ -29,9 +30,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // Lead with the unique product name so near-identical shade variants that
   // share one stock description (e.g. the Pixi blush sticks) don't collapse
   // into duplicate meta descriptions.
-  const autoDescription = baseDescription.toLowerCase().startsWith(displayName.toLowerCase())
+  const leadDescription = baseDescription.toLowerCase().startsWith(displayName.toLowerCase())
     ? baseDescription
     : `${displayName} — ${baseDescription}`;
+  // Keep meta descriptions in the ~155-char sweet spot Google renders, on a
+  // word boundary, and append an authenticity/COD value line when there's room
+  // and it isn't already implied — improves SERP CTR without changing on-page
+  // copy. (Composed only from existing fields, so it stays accurate.)
+  const TAIL = ' Authentic, with cash on delivery across Pakistan.';
+  const autoDescription = (() => {
+    const lead = truncateOnWord(leadDescription, 155);
+    const hasCod = /\bcod\b|cash on delivery|pakistan/i.test(lead);
+    return !hasCod && lead.length + TAIL.length <= 160 ? `${lead}${TAIL}` : lead;
+  })();
   // Migration 081: admin-controlled overrides win when set; otherwise fall
   // back to the auto-templated values so existing rows keep working.
   const title = product.seo_title?.trim() || autoTitle;
@@ -228,16 +239,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           ])),
         }}
       />
-      {/* Migration 081: FAQPage schema for rich-result eligibility. Only
-          emitted when admin has set a non-empty FAQ array. */}
-      {Array.isArray(product.faq) && product.faq.length > 0 && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: jsonLd(faqLd(product.faq.map(f => ({ question: f.q, answer: f.a })))),
-          }}
-        />
-      )}
+      {/* FAQPage schema for rich-result eligibility. Uses the admin-authored
+          FAQ when present, otherwise the store-fact fallback, so every PDP is
+          rich-result eligible. */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: jsonLd(faqLd(effectiveProductFaq(product.faq).map(f => ({ question: f.q, answer: f.a })))),
+        }}
+      />
       {/* Keyed on the product id so a related-product click (product→product
           navigation, which otherwise reuses this client component) remounts
           PDPPage — resetting the variant picker and quantity to the new
