@@ -17,6 +17,7 @@
 
 import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_NAME, SITE_URL, absoluteUrl } from '@/lib/seo';
+import { googleProductCategory } from '@/lib/google-product-category';
 
 export const revalidate = 3600; // 1h — Meta polls on a schedule; this is plenty.
 
@@ -83,6 +84,9 @@ function item(p: FeedProduct): string {
     p.brand ? `      <g:brand>${xmlEscape(p.brand)}</g:brand>` : '',
     // Imported resale beauty SKUs rarely carry a GTIN/MPN we can publish.
     `      <g:identifier_exists>no</g:identifier_exists>`,
+    // Valid Google-taxonomy category (Meta accepts the same field) + the
+    // free-form internal category as product_type.
+    `      <g:google_product_category>${googleProductCategory(p.category)}</g:google_product_category>`,
     p.category ? `      <g:product_type>${xmlEscape(p.category)}</g:product_type>` : '',
     `    </item>`,
   ].filter(Boolean);

@@ -14,6 +14,7 @@
 
 import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_NAME, SITE_URL, absoluteUrl } from '@/lib/seo';
+import { googleProductCategory } from '@/lib/google-product-category';
 
 export const revalidate = 3600; // 1h — Merchant Center polls daily, this is plenty.
 
@@ -83,7 +84,10 @@ function item(p: FeedProduct): string {
     // identifier_exists=no tells Merchant Center to skip the unique-product-
     // identifier requirement rather than reject the row.
     `      <g:identifier_exists>no</g:identifier_exists>`,
-    p.category ? `      <g:google_product_category>${xmlEscape(p.category)}</g:google_product_category>` : '',
+    // google_product_category MUST come from Google's taxonomy, so map the
+    // internal label to a valid taxonomy ID (falls back to Health & Beauty).
+    // product_type stays the free-form internal category.
+    `      <g:google_product_category>${googleProductCategory(p.category)}</g:google_product_category>`,
     p.category ? `      <g:product_type>${xmlEscape(p.category)}</g:product_type>` : '',
     `    </item>`,
   ].filter(Boolean);
