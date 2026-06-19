@@ -178,7 +178,7 @@ together. Here's what each link is for:
 **Sell** — day-to-day commerce operations
 | Section | What it's for |
 |---|---|
-| **Orders** | Every order placed. Filter by status, search, and open an order to process it. |
+| **Orders** | Every order placed. Filter by status, search, and open an order to process it. With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone. |
 | **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, pricing, and descriptions. Bulk price tools and CSV import are here. |
 | **Inventory** | Stock levels. See low-stock items and adjust stock counts. |
 | **Vendors** | Your suppliers/fulfilment partners. Add vendors and track what you owe or are owed (settlements). |
@@ -187,7 +187,7 @@ together. Here's what each link is for:
 **People** — customers and incentives
 | Section | What it's for |
 |---|---|
-| **Customers** | Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend. Guests are grouped by email (a guest's repeat orders show as one customer); if a guest later signs up with the same email, their orders move under that account automatically. |
+| **Customers** | Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend. Guests are grouped by email (a guest's repeat orders show as one customer); if a guest later signs up with the same email, their orders move under that account automatically. With the *Customers — Delete* permission, a registered customer's page has a **Danger zone** to permanently delete their account; their orders are kept (detached as guest orders) so revenue history stays intact. Guests have no account to delete — remove their orders individually instead. |
 | **Segments** | Customer groupings (e.g. high-spenders) for targeting and analysis. |
 | **Coupons** | Discount codes — create, edit, set limits and expiry, and turn them on/off. |
 

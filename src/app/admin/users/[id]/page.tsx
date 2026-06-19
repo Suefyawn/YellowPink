@@ -6,6 +6,8 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { ORDER_STATUS_LABELS, type Order, type AdminUser, type OrderStatus } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { DeleteButton } from '@/components/admin/DeleteButton';
+import { deleteCustomer } from '@/app/admin/actions';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -57,6 +59,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   if (session && !session.isOwner && !session.permissions.includes('customers.view')) {
     return <NoAccess section="Customers" />;
   }
+  const canDeleteCustomer = !session || session.isOwner || session.permissions.includes('customers.delete');
   const { id } = await params;
 
   // orders is RLS-locked; the `get_admin_user` RPC already uses
@@ -300,6 +303,21 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           </div>
         )}
       </div>
+
+      {canDeleteCustomer && !isGuest && (
+        <div style={{ ...section, marginTop: 20, border: '1px solid #fecaca', background: '#fef2f2' }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#b91c1c' }}>Danger zone</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            Permanently delete this customer&apos;s account. Their {orderList.length} order{orderList.length === 1 ? '' : 's'} are kept (detached as guest orders) so revenue history stays intact. This can&apos;t be undone.
+          </p>
+          <DeleteButton
+            id={user.id}
+            action={deleteCustomer}
+            confirmMsg={`Permanently delete ${user.email || 'this customer'}'s account? Their orders are kept as guest orders. This cannot be undone.`}
+            label="Delete customer"
+          />
+        </div>
+      )}
     </div>
   );
 }
