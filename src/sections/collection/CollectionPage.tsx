@@ -33,6 +33,11 @@ interface Props {
   initialSubcategory?: string | null;
   /** Optional pre-applied "on sale" filter, set by `?on_sale=1`. */
   initialOnSaleOnly?: boolean;
+  /** Pre-applied brand filter (comma-separated) from `?brand=`. Resolved on the
+   *  server and passed in so it survives prerender/hydration — `useSearchParams`
+   *  is empty on the first client render of this statically-generated route, so
+   *  reading brand only from the URL there left the filter unapplied on load. */
+  initialBrand?: string | null;
 }
 
 export function CollectionPage({
@@ -42,6 +47,7 @@ export function CollectionPage({
   initialCategory = 'All',
   initialSubcategory = null,
   initialOnSaleOnly = false,
+  initialBrand = null,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -92,7 +98,9 @@ export function CollectionPage({
     })();
     const sort = (sp.get('sort') as SortKey | null) ?? 'featured';
     const pageNum = Math.max(1, Number(sp.get('page') ?? '1'));
-    const brands = sp.get('brand')?.split(',').filter(Boolean) ?? [];
+    // Prefer the server-resolved initialBrand (present on first render); fall
+    // back to the client URL for in-session reads.
+    const brands = (initialBrand ?? sp.get('brand') ?? '').split(',').map(s => s.trim()).filter(Boolean);
     const attrs  = sp.get('attr')?.split(',').filter(Boolean) ?? [];
     const min = sp.get('min'); const max = sp.get('max');
     return {

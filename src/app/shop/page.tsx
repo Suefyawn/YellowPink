@@ -134,12 +134,12 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   });
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string }> }) {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string; brand?: string }> }) {
   const [products, facetData] = await Promise.all([
     getProducts(),
     loadFacetData(),
   ]);
-  const { category, subcategory, cat, taxon, on_sale, q } = await searchParams;
+  const { category, subcategory, cat, taxon, on_sale, q, brand } = await searchParams;
 
   // ?category= is canonical; ?cat= is a legacy WP param the proxy already
   // 301s across. CollectionPage resolves the value (taxon or leaf) itself.
@@ -208,6 +208,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         initialCategory={initialCategory}
         initialSubcategory={subcategory ?? null}
         initialOnSaleOnly={on_sale === '1'}
+        initialBrand={brand ?? null}
       />
     </main>
   );
