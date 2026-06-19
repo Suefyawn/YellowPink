@@ -83,8 +83,11 @@ export const K_BEAUTY_PAGE_URL = '/k-beauty';
  *  comma-separated multi-brand filter. */
 export const K_BEAUTY_SHOP_URL = `/shop?brand=${encodeURIComponent(K_BEAUTY_BRANDS.join(','))}`;
 
-/** Shop listing for a single brand in the edit. */
-export const kBeautyBrandShopUrl = (brand: string) => `/shop?brand=${encodeURIComponent(brand)}`;
+/** Dedicated landing page for a single brand in the edit. Points at the
+ *  /brand/[slug] archive (richer copy + canonical URL) rather than a raw
+ *  /shop?brand= query. */
+export const kBeautyBrandShopUrl = (brand: string) =>
+  `/brand/${brand.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')}`;
 
 /** Compact FAQ for the /k-beauty page — rendered on-page and mirrored as
  *  FAQPage JSON-LD. Lives here (not in the client section component) so the

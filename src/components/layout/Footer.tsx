@@ -44,6 +44,7 @@ const SHOP_LINKS = [
   { label: 'Skincare',     href: '/shop?taxon=skincare' },
   { label: 'Wellness',     href: '/shop?taxon=wellness' },
   { label: 'K-Beauty',     href: '/k-beauty' },
+  { label: 'All Brands',   href: '/brands' },
   { label: 'All Products', href: '/shop' },
 ];
 

@@ -6,12 +6,14 @@
 import type { MetadataRoute } from 'next';
 import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
+import { brandSlug } from '@/lib/brands';
 
 // Robots-disallowed (utility / private) routes are deliberately excluded —
 // listing them would send a conflicting signal to crawlers.
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
   { path: '/',         priority: 1.0, freq: 'daily' },
   { path: '/shop',     priority: 0.9, freq: 'daily' },
+  { path: '/brands',   priority: 0.6, freq: 'weekly' },
   { path: '/k-beauty', priority: 0.8, freq: 'weekly' },
   { path: '/blog', priority: 0.7, freq: 'weekly' },
   { path: '/faq',  priority: 0.5, freq: 'monthly' },
@@ -19,6 +21,7 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
 
 interface ProductRow {
   slug: string;
+  brand: string | null;
   category: string | null;
   image_url: string | null;
   updated_at: string | null;
@@ -46,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (isDemo) {
     const { DEMO_PRODUCTS, DEMO_BLOG_POSTS, DEMO_PAGES } = await import('@/lib/demo-data');
     products = DEMO_PRODUCTS.map(p => ({
-      slug: p.slug, category: p.category ?? null, image_url: p.image_url ?? null,
+      slug: p.slug, brand: p.brand ?? null, category: p.category ?? null, image_url: p.image_url ?? null,
       updated_at: null, created_at: null,
     }));
     posts = DEMO_BLOG_POSTS.map(p => ({
@@ -57,13 +60,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Only published products / pages — drafts and archived rows must not
     // appear in the sitemap (they 404 or noindex).
     const [prod, blog, cms] = await Promise.all([
-      supabase.from('products').select('slug, category, image_url, updated_at, created_at').eq('status', 'published'),
+      supabase.from('products').select('slug, brand, category, image_url, updated_at, created_at').eq('status', 'published'),
       supabase.from('blog_posts').select('slug, image_url, updated_at, date'),
       supabase.from('pages').select('slug, updated_at, created_at').eq('status', 'published'),
     ]);
     products = (prod.data ?? []) as ProductRow[];
     posts = (blog.data ?? []) as PostRow[];
     pages = (cms.data ?? []) as PageRow[];
+  }
+
+  // Tag archive pages (/tag/[slug]) — every tag that has at least one product.
+  let tagSlugs: string[] = [];
+  if (!isDemo) {
+    const { data: tagRows } = await supabase.from('product_tags').select('slug');
+    tagSlugs = ((tagRows ?? []) as Array<{ slug: string }>).map(t => t.slug);
   }
 
   const staticUrls: MetadataRoute.Sitemap = STATIC_ROUTES.map(r => ({
@@ -83,6 +93,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.7,
+  }));
+
+  // Brand archive pages (/brand/[slug]) — one per distinct brand.
+  const brands = Array.from(new Set(products.map(p => p.brand).filter((b): b is string => Boolean(b))));
+  const brandUrls: MetadataRoute.Sitemap = brands.map(brand => ({
+    url: absoluteUrl(`/brand/${brandSlug(brand)}`),
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.6,
+  }));
+
+  // Tag archive pages (/tag/[slug]).
+  const tagUrls: MetadataRoute.Sitemap = tagSlugs.map(slug => ({
+    url: absoluteUrl(`/tag/${slug}`),
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.5,
   }));
 
   const productUrls: MetadataRoute.Sitemap = products.map(p => {
@@ -117,5 +144,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
 
-  return [...staticUrls, ...categoryUrls, ...productUrls, ...blogUrls, ...pageUrls];
+  return [...staticUrls, ...categoryUrls, ...brandUrls, ...tagUrls, ...productUrls, ...blogUrls, ...pageUrls];
 }
