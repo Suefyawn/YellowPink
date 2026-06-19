@@ -687,6 +687,13 @@ a.underline,
   .trust-grid { grid-template-columns: repeat(2, 1fr) !important; }
   /* Reclaim horizontal room on phones — the 36px desktop gutter is too wide. */
   .adm-page { padding: 20px 14px !important; }
+  /* Product variant editor (admin → product → Variants). The inline grids set
+   * 3–6 desktop columns that jumble on a phone; collapse the edit-form field
+   * rows and the read-only variant rows so each field/control gets full width. */
+  .adm-form-4col { grid-template-columns: 1fr 1fr !important; }
+  .adm-form-3col { grid-template-columns: 1fr !important; }
+  .adm-variant-attrs { grid-template-columns: 1fr 1fr !important; }
+  .adm-variant-row { grid-template-columns: 1fr 1fr !important; }
 }
 
 /* Admin data tables → stacked cards on phones.
