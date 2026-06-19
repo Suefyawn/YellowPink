@@ -368,6 +368,18 @@ For the most accurate ad measurement, two more (optional) settings:
 All of these live in the hosting environment variables — see `.env.example` for
 the exact names and where to find each value.
 
+### Discount codes in ad links
+
+Any campaign link can carry a coupon that **auto-applies** for the shopper —
+add `&coupon=CODE` to the URL (e.g.
+`…/product/relief-sun?utm_source=instagram&utm_medium=cpc&utm_campaign=eid&coupon=EID20`).
+The code is validated and applied to their cart automatically and sticks all the
+way to checkout, so the ad's promised discount is already in place — no "enter
+code" friction. Create the code first under **Coupons** (it must be active);
+`?discount=` and `?code=` work as aliases. Eligibility (minimum order, per-user
+limits) is still enforced at checkout. Pair it with the UTM tags above and the
+**Funnel by source** widget shows how each campaign converts.
+
 ### AI assistants (ChatGPT etc.)
 
 A small but growing slice of visitors already arrive from AI assistants. The site
