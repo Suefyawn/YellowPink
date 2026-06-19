@@ -38,6 +38,17 @@ interface Props {
    *  is empty on the first client render of this statically-generated route, so
    *  reading brand only from the URL there left the filter unapplied on load. */
   initialBrand?: string | null;
+  /** product_id → tag slugs, for the Tags facet + filtering. */
+  productTagMap?: Record<string, string[]>;
+  /** Full tag vocabulary (slug + display name) for facet labels. */
+  allTags?: { slug: string; name: string }[];
+  /** Pre-applied tag filter (comma-separated slugs) from `?tag=`. Server-seeded
+   *  for the same first-render reason as initialBrand. */
+  initialTags?: string | null;
+  /** Pre-applied Featured / Bestseller highlight filters from `?featured=1` /
+   *  `?bestseller=1`. */
+  initialFeatured?: boolean;
+  initialBestseller?: boolean;
 }
 
 export function CollectionPage({
@@ -48,6 +59,11 @@ export function CollectionPage({
   initialSubcategory = null,
   initialOnSaleOnly = false,
   initialBrand = null,
+  productTagMap = {},
+  allTags = [],
+  initialTags = null,
+  initialFeatured = false,
+  initialBestseller = false,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -115,9 +131,14 @@ export function CollectionPage({
       .split(',').map(s => s.trim()).filter(Boolean)
       .map(b => brandCanon.get(b.toLowerCase()) ?? b);
     const attrs  = sp.get('attr')?.split(',').filter(Boolean) ?? [];
+    // Tag slugs from the server-seeded value first, then the live URL.
+    const tagSlugs = (initialTags ?? sp.get('tag') ?? '').split(',').map(s => s.trim()).filter(Boolean);
     const min = sp.get('min'); const max = sp.get('max');
     return {
       cat, sub, sort, pageNum,
+      tags: new Set(tagSlugs),
+      featured: sp.get('featured') === '1' || initialFeatured,
+      bestseller: sp.get('bestseller') === '1' || initialBestseller,
       // Free-text search term — populated when the user comes in from the
       // search overlay (`/shop?q=cerave`) or from a WP-style `/?s=foo`
       // redirect (see proxy.ts).
@@ -167,6 +188,35 @@ export function CollectionPage({
     ).sort()
   , [categoryScoped]);
 
+  // Tag display-name lookup (slug → name) from the full vocabulary.
+  const tagNameBySlug = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const t of allTags) m.set(t.slug, t.name);
+    return m;
+  }, [allTags]);
+
+  // Per-facet product counts within the current category scope — layered-nav
+  // style, so each brand / tag shows how many products carry it.
+  const brandCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of categoryScoped) if (p.brand) m.set(p.brand, (m.get(p.brand) ?? 0) + 1);
+    return m;
+  }, [categoryScoped]);
+
+  // Tags present in scope (slug → count), most-used first, limited to the
+  // known vocabulary so a stale slug can't leak in.
+  const tagsInScope = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of categoryScoped) {
+      for (const slug of (productTagMap[p.id] ?? [])) {
+        if (tagNameBySlug.has(slug)) m.set(slug, (m.get(slug) ?? 0) + 1);
+      }
+    }
+    return [...m.entries()]
+      .sort((a, b) => b[1] - a[1] || (tagNameBySlug.get(a[0]) ?? '').localeCompare(tagNameBySlug.get(b[0]) ?? ''))
+      .map(([slug, count]) => ({ slug, count }));
+  }, [categoryScoped, productTagMap, tagNameBySlug]);
+
   const priceBounds = useMemo(() => {
     if (categoryScoped.length === 0) return { min: 0, max: 10000 };
     let min = Infinity, max = -Infinity;
@@ -183,6 +233,9 @@ export function CollectionPage({
   const [priceMax, setPriceMax] = useState<number | ''>(initialState.max);
   const [inStockOnly, setInStockOnly] = useState(initialState.stock);
   const [onSaleOnly, setOnSaleOnly] = useState(initialState.sale);
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(initialState.tags);
+  const [featuredOnly, setFeaturedOnly] = useState(initialState.featured);
+  const [bestsellerOnly, setBestsellerOnly] = useState(initialState.bestseller);
   const [q, setQ] = useState(initialState.q);
 
   // Filter rail is collapsed by default so the catalogue shows immediately.
@@ -218,7 +271,10 @@ export function CollectionPage({
     }
     if (inStockOnly) out.push({ key: 'stock', label: 'In stock', remove: () => setInStockOnly(false) });
     if (onSaleOnly) out.push({ key: 'sale', label: 'On sale', remove: () => setOnSaleOnly(false) });
+    if (featuredOnly) out.push({ key: 'featured', label: 'Featured', remove: () => setFeaturedOnly(false) });
+    if (bestsellerOnly) out.push({ key: 'bestseller', label: 'Bestseller', remove: () => setBestsellerOnly(false) });
     for (const b of selectedBrands) out.push({ key: `b:${b}`, label: b, remove: () => toggleBrand(b) });
+    for (const slug of selectedTags) out.push({ key: `t:${slug}`, label: tagNameBySlug.get(slug) ?? slug, remove: () => toggleTag(slug) });
     for (const id of selectedValueIds) {
       const v = attrValueLookup.get(id);
       out.push({
@@ -228,8 +284,15 @@ export function CollectionPage({
       });
     }
     return out;
-  }, [q, priceMin, priceMax, inStockOnly, onSaleOnly, selectedBrands, selectedValueIds, attrValueLookup]);
+  }, [q, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly, selectedBrands, selectedTags, selectedValueIds, attrValueLookup, tagNameBySlug]);
 
+  function toggleTag(slug: string) {
+    setSelectedTags(prev => {
+      const next = new Set(prev);
+      if (next.has(slug)) next.delete(slug); else next.add(slug);
+      return next;
+    });
+  }
   function toggleBrand(b: string) {
     setSelectedBrands(prev => {
       const next = new Set(prev);
@@ -246,9 +309,11 @@ export function CollectionPage({
   }
   function clearFilters() {
     setSelectedBrands(new Set());
+    setSelectedTags(new Set());
     setSelectedValueIds(new Set());
     setPriceMin(''); setPriceMax('');
     setInStockOnly(false); setOnSaleOnly(false);
+    setFeaturedOnly(false); setBestsellerOnly(false);
     setQ('');
   }
 
@@ -256,7 +321,7 @@ export function CollectionPage({
   // Page state isn't derivable (it's user-driven within a filter set), so
   // resetting it on filter change has to happen in an effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, q]);
+  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedTags, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly, q]);
   // Brand list rebuilds per-category; when the shopper switches the top tab we
   // drop brand selections that no longer apply. This must NOT run on mount —
   // doing so wiped the brand seeded from `?brand=` in the URL (e.g. landing on
@@ -267,6 +332,7 @@ export function CollectionPage({
   useEffect(() => {
     if (!didMountBrandReset.current) { didMountBrandReset.current = true; return; }
     setSelectedBrands(new Set());
+    setSelectedTags(new Set());
   }, [activeCategory]);
 
   // ─── URL persistence ─────────────────────────────────────────────────────
@@ -280,24 +346,30 @@ export function CollectionPage({
     if (sortBy !== 'featured') sp.set('sort', sortBy);
     if (page !== 1) sp.set('page', String(page));
     if (selectedBrands.size > 0) sp.set('brand', Array.from(selectedBrands).join(','));
+    if (selectedTags.size > 0) sp.set('tag', Array.from(selectedTags).join(','));
     if (selectedValueIds.size > 0) sp.set('attr', Array.from(selectedValueIds).join(','));
     if (priceMin !== '') sp.set('min', String(priceMin));
     if (priceMax !== '') sp.set('max', String(priceMax));
     if (inStockOnly) sp.set('stock', '1');
     if (onSaleOnly) sp.set('sale', '1');
+    if (featuredOnly) sp.set('featured', '1');
+    if (bestsellerOnly) sp.set('bestseller', '1');
     const qs = sp.toString();
     const url = qs ? `/shop?${qs}` : '/shop';
     // Replace, not push — filtering shouldn't pile up history entries.
     router.replace(url, { scroll: false });
-  }, [q, activeCategory, activeSubcategory, sortBy, page, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, router]);
+  }, [q, activeCategory, activeSubcategory, sortBy, page, selectedBrands, selectedTags, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly, selectedValueIds, router]);
 
   const activeFilterCount =
     (q.trim() ? 1 : 0) +
     selectedBrands.size +
+    selectedTags.size +
     selectedValueIds.size +
     (priceMin !== '' || priceMax !== '' ? 1 : 0) +
     (inStockOnly ? 1 : 0) +
-    (onSaleOnly ? 1 : 0);
+    (onSaleOnly ? 1 : 0) +
+    (featuredOnly ? 1 : 0) +
+    (bestsellerOnly ? 1 : 0);
 
   // Leaf categories that actually have at least one product. The sub-category
   // chip row is built from this set so it can never show an empty category —
@@ -344,6 +416,14 @@ export function CollectionPage({
       return false;
     }
     if (selectedBrands.size > 0 && (!p.brand || !selectedBrands.has(p.brand))) return false;
+    // Tags are OR within the facet: a product matches if it carries ANY of the
+    // selected tags (layered-nav convention).
+    if (selectedTags.size > 0) {
+      const pTags = productTagMap[p.id] ?? [];
+      if (!pTags.some(slug => selectedTags.has(slug))) return false;
+    }
+    if (featuredOnly && !p.is_featured) return false;
+    if (bestsellerOnly && !p.is_bestseller) return false;
     if (priceMin !== '' && p.price < priceMin) return false;
     if (priceMax !== '' && p.price > priceMax) return false;
     if (inStockOnly && p.track_inventory !== false && p.stock <= 0) return false;
@@ -608,7 +688,33 @@ export function CollectionPage({
                   <input type="checkbox" checked={onSaleOnly} onChange={e => setOnSaleOnly(e.target.checked)} />
                   On sale
                 </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '4px 0' }}>
+                  <input type="checkbox" checked={featuredOnly} onChange={e => setFeaturedOnly(e.target.checked)} />
+                  Featured
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '4px 0' }}>
+                  <input type="checkbox" checked={bestsellerOnly} onChange={e => setBestsellerOnly(e.target.checked)} />
+                  Bestseller
+                </label>
               </fieldset>
+
+              {/* Tags */}
+              {tagsInScope.length > 0 && (
+                <fieldset style={{ border: 'none', padding: 0, margin: '0 0 20px' }}>
+                  <legend style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-900)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                    Tags
+                  </legend>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 2, maxHeight: 280, overflowY: 'auto', paddingRight: 4 }}>
+                    {tagsInScope.map(({ slug, count }) => (
+                      <label key={slug} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '3px 0' }}>
+                        <input type="checkbox" checked={selectedTags.has(slug)} onChange={() => toggleTag(slug)} />
+                        <span style={{ flex: 1 }}>{tagNameBySlug.get(slug) ?? slug}</span>
+                        <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }}>{count}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
 
               {/* Brand */}
               {allBrands.length > 1 && (
@@ -621,6 +727,7 @@ export function CollectionPage({
                       <label key={b} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', cursor: 'pointer', padding: '3px 0' }}>
                         <input type="checkbox" checked={selectedBrands.has(b)} onChange={() => toggleBrand(b)} />
                         <span style={{ flex: 1 }}>{b}</span>
+                        <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums' }}>{brandCounts.get(b) ?? 0}</span>
                       </label>
                     ))}
                   </div>

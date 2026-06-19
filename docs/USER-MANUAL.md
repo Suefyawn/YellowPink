@@ -70,11 +70,15 @@ customers and spot where an order is.
   the curated K-beauty list — there is nothing extra to configure per product
   beyond setting its brand.
 - **Shop page** (`/shop`) — the full catalogue. Customers can filter by
-  category, brand, and product attributes (shade, size, etc.), search by name,
-  show only on-sale items, and sort by newest, price, or name. Results are
-  paginated. Product cards show a **Sale** badge when discounted and an **"Only
-  N left"** badge when stock is running low (5 or fewer remaining, for products
-  whose inventory the store tracks).
+  category, brand, **tags** (the free-form labels you set in admin), product
+  attributes (shade, size, etc.), price range, and quick toggles for **In
+  stock**, **On sale**, **Featured**, and **Bestseller**. The brand and tag
+  lists show a count next to each option. They can also search by name and sort
+  by newest, price, or name. Filters combine and are saved in the page URL (so a
+  filtered view can be shared or bookmarked, e.g. `/shop?brand=Anua` or
+  `/shop?tag=viral`). Results are paginated. Product cards show a **Sale** badge
+  when discounted and an **"Only N left"** badge when stock is running low (5 or
+  fewer remaining, for products whose inventory the store tracks).
 - **Product page** — each product has its images, price (and the crossed-out
   original price if it's on sale), description, ingredients, how-to-use, key
   benefits, FAQs, and its customer star rating. If the product comes in
