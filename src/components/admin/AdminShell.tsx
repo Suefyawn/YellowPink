@@ -68,6 +68,8 @@ export function AdminShell({
         .adm-sidebar .adm-nav-link:hover { background: rgba(249,168,212,0.07) !important; color: #f9fafb !important; }
         .adm-sidebar .adm-signout:hover { border-color: #ef4444 !important; color: #fca5a5 !important; background: rgba(239,68,68,0.08) !important; }
         .adm-sidebar .adm-signout { transition: all 0.15s; }
+        /* Dashboard KPI cards lift slightly on hover (they're links). */
+        .adm-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,24,40,0.10) !important; border-color: #e5e7eb !important; }
         .adm-main { margin-left: 240px; min-height: 100vh; background: #f3f4f6; }
         .adm-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 30; }
         .adm-topbar .menu-btn { display: none; }
