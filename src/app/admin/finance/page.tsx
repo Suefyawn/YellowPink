@@ -144,7 +144,7 @@ export default async function FinancePage({
 
   const pnlLines: { label: string; value: number; kind?: 'sub' | 'total' | 'net' }[] = [
     { label: 'Revenue (paid orders)', value: revenue },
-    { label: 'Vendor cost (COGS)', value: -cogs, kind: 'sub' },
+    { label: 'Cost of goods (COGS)', value: -cogs, kind: 'sub' },
     { label: 'Delivery cost', value: -deliveryCost, kind: 'sub' },
     { label: 'Payment fees', value: -paymentFees, kind: 'sub' },
     { label: 'Gross profit', value: grossProfit, kind: 'total' },
@@ -239,7 +239,7 @@ export default async function FinancePage({
       <div style={{ ...card, marginBottom: 24 }}>
         <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Revenue by payment method</h2>
         <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
-          Where the money comes in, and the gross profit per method (after vendor cost, delivery and payment fees; before shared overheads).
+          Where the money comes in, and the gross profit per method (after cost of goods, delivery and payment fees; before shared overheads).
         </p>
         {methodRows.length === 0 ? (
           <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>No orders in this period.</p>

@@ -70,6 +70,12 @@ export const productInputSchema = z.object({
                     v => (v === '' || v == null ? null : v),
                     positiveNumber.nullable(),
                   ),
+  // Own-stock acquisition cost per unit (used by Finance COGS for non-vendor
+  // items). Empty form value normalises to null.
+  cost_price:     z.preprocess(
+                    v => (v === '' || v == null ? null : v),
+                    positiveNumber.nullable(),
+                  ),
   image_url:      httpsUrlSchema.optional().or(z.literal('')).nullable(),
   description:    z.string().max(8000).optional().nullable(),
   short_description: z.string().max(1000).optional().nullable(),
