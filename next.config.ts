@@ -28,6 +28,13 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  // The admin "User manual" page (/admin/help) reads docs/USER-MANUAL.md from
+  // disk at request time. That file isn't statically imported, so Next's trace
+  // wouldn't bundle it into the serverless function — force-include it for this
+  // route so the read works on Vercel as well as locally.
+  outputFileTracingIncludes: {
+    '/admin/help': ['./docs/USER-MANUAL.md'],
+  },
   // Image optimisation: allow Supabase Storage + the WP source host (set
   // WP_IMAGE_HOST in env if your Woo images live somewhere else).
   images: {

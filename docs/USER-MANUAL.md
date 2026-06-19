@@ -5,6 +5,10 @@ system. It explains both sides of the platform: the **storefront** your
 customers shop on, and the **admin panel** you and your staff use to run the
 store and process sales.
 
+> **Reading this in the admin:** signed-in staff can open this manual any time
+> from the admin sidebar — **User manual** (bottom of the left nav, under
+> *Sign out*). It always shows the latest version.
+
 > **Keeping this current:** this manual is updated whenever user-facing
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
