@@ -1,21 +1,25 @@
 'use client';
 
-// GA4 (gtag.js) loader. Activated by NEXT_PUBLIC_GA_MEASUREMENT_ID and gated
-// on analytics consent — visitors who haven't opted in never download the
-// script, matching the rest of the consent gating (see lib/analytics.ts).
+// Google tag (gtag.js) loader — GA4 analytics AND Google Ads (conversions +
+// remarketing). Activated by NEXT_PUBLIC_GA_MEASUREMENT_ID and/or
+// NEXT_PUBLIC_GOOGLE_ADS_ID, gated on analytics consent (visitors who haven't
+// opted in never download the script).
 //
-// Commerce events (view_item / add_to_cart / begin_checkout / purchase / etc.)
-// are already forwarded to window.gtag by lib/analytics.ts's track() helper,
-// so the moment this script is in the page they start flowing to GA4 with no
-// further wiring. This component only adds the base tag + a client-side
-// pageview tracker (App Router doesn't auto-fire page_view on soft nav).
+// GA4 commerce events (view_item / add_to_cart / purchase / …) are forwarded to
+// window.gtag by lib/analytics.ts's track() helper. On top of that:
+//   • configuring the AW- id arms Google Ads remarketing audiences, and
+//   • AdsConversionBridge fires the Ads purchase *conversion* on checkout,
+//     using the order number as transaction_id (dedup across uploads).
 
 import Script from 'next/script';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 import { useConsent } from '@/lib/consent';
+import type { TrackEvent } from '@/lib/analytics';
 
 const MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
+const ADS_ID = process.env.NEXT_PUBLIC_GOOGLE_ADS_ID;                          // e.g. AW-123456789
+const ADS_PURCHASE_LABEL = process.env.NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL;  // conversion action label
 
 declare global {
   interface Window {
@@ -24,9 +28,8 @@ declare global {
   }
 }
 
-// Fires a manual `page_view` on every route change. The base `config` call
-// runs once with send_page_view:false so the initial load + every soft nav
-// produce exactly one event each.
+// Fires a manual `page_view` on every route change (App Router doesn't auto-fire
+// on soft nav). GA4 only — no-op when GA4 isn't configured.
 function PageviewTracker() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -43,32 +46,55 @@ function PageviewTracker() {
   return null;
 }
 
+// Fires the Google Ads purchase conversion from the yp:track bus. Remarketing
+// is handled by the AW- config below; this adds the conversion action so Ads
+// can attribute revenue. No-op unless an Ads id + purchase label are set.
+function AdsConversionBridge() {
+  useEffect(() => {
+    if (!ADS_ID || !ADS_PURCHASE_LABEL) return;
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<TrackEvent>).detail;
+      if (detail?.name !== 'purchase' || typeof window.gtag !== 'function') return;
+      const p = detail.payload as { value?: number; currency?: string; transaction_id?: string };
+      window.gtag('event', 'conversion', {
+        send_to: `${ADS_ID}/${ADS_PURCHASE_LABEL}`,
+        value: p.value,
+        currency: p.currency ?? 'PKR',
+        transaction_id: p.transaction_id,
+      });
+    };
+    window.addEventListener('yp:track', handler as EventListener);
+    return () => window.removeEventListener('yp:track', handler as EventListener);
+  }, []);
+  return null;
+}
+
 export function GoogleAnalytics() {
   const { consent } = useConsent();
-  if (!MEASUREMENT_ID) return null;
+  const primaryId = MEASUREMENT_ID ?? ADS_ID;
+  if (!primaryId) return null;
   if (!consent?.analytics) return null;
   return (
     <>
       <Script
-        src={`https://www.googletagmanager.com/gtag/js?id=${MEASUREMENT_ID}`}
+        src={`https://www.googletagmanager.com/gtag/js?id=${primaryId}`}
         strategy="afterInteractive"
       />
-      <Script id="ga4-init" strategy="afterInteractive">
+      <Script id="ga-init" strategy="afterInteractive">
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
           window.gtag = gtag;
           gtag('js', new Date());
-          gtag('config', '${MEASUREMENT_ID}', {
-            send_page_view: false,
-            anonymize_ip: true,
-          });
+          ${MEASUREMENT_ID ? `gtag('config', '${MEASUREMENT_ID}', { send_page_view: false, anonymize_ip: true });` : ''}
+          ${ADS_ID ? `gtag('config', '${ADS_ID}');` : ''}
         `}
       </Script>
       {/* useSearchParams() requires a Suspense boundary in the App Router. */}
       <Suspense fallback={null}>
         <PageviewTracker />
       </Suspense>
+      <AdsConversionBridge />
     </>
   );
 }

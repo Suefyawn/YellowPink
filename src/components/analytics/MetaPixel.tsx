@@ -87,7 +87,15 @@ function EventBridge() {
       if (!mapped) return;
       // Strip undefined params so the pixel payload stays clean.
       const params = Object.fromEntries(Object.entries(mapped.params).filter(([, v]) => v !== undefined));
-      try { window.fbq('track', mapped.name, params); } catch { /* ignore */ }
+      // Dedup key for Purchase: the order number, matching the event_id the
+      // server-side Conversions API sends, so Meta collapses the two into one.
+      const eventID =
+        detail.name === 'purchase'
+          ? (detail.payload as { transaction_id?: string }).transaction_id
+          : undefined;
+      try {
+        window.fbq('track', mapped.name, params, eventID ? { eventID } : undefined);
+      } catch { /* ignore */ }
     };
     window.addEventListener('yp:track', handler as EventListener);
     return () => window.removeEventListener('yp:track', handler as EventListener);

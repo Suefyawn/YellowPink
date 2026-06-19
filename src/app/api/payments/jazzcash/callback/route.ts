@@ -9,6 +9,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { verifyJazzCashCallback } from '@/lib/payments/jazzcash';
 import { sendOrderConfirmationEmail, sendPaymentReceivedEmail } from '@/lib/email';
+import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
+import { SITE_URL } from '@/lib/seo';
 import type { CartItem } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
 
   const { data: order } = await sb
     .from('orders')
-    .select('id, email, first_name, total, items, order_number, status')
+    .select('id, email, phone, first_name, total, items, order_number, status')
     .eq('order_number', verification.orderNumber)
     .single();
 
@@ -103,6 +105,22 @@ export async function POST(req: NextRequest) {
           pay_method: 'jazzcash',
         }),
       ]);
+    }
+
+    // Server-side Meta Purchase (CAPI). Paid orders never fire the client
+    // Pixel purchase (the shopper is on the gateway), so this is the only
+    // conversion signal for them. First transition only, to avoid duplicates.
+    if (firstTransition) {
+      const paidItems = (order.items as CartItem[]) ?? [];
+      await sendMetaPurchaseEvent({
+        orderNumber: order.order_number,
+        value: Number(order.total),
+        currency: 'PKR',
+        email: order.email,
+        phone: (order as { phone?: string | null }).phone ?? null,
+        numItems: paidItems.reduce((s, i) => s + (i.qty ?? 0), 0),
+        eventSourceUrl: `${SITE_URL}/thank-you`,
+      });
     }
     return NextResponse.redirect(new URL(`/thank-you?order=${encodeURIComponent(order.order_number)}`, req.url), 303);
   }

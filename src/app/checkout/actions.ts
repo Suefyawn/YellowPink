@@ -7,6 +7,8 @@ import {
 } from '@/lib/email';
 import { checkoutLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { resolveShipping } from '@/lib/shipping';
+import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
+import { SITE_URL } from '@/lib/seo';
 
 // ─── Order notifications fan-out (called after a successful place_order RPC) ─
 // Sends the internal new-order email and (if we have a customer email)
@@ -45,6 +47,18 @@ export async function notifyNewOrder(order: {
     );
   }
   await Promise.all(sends);
+
+  // Server-side Meta Conversions API Purchase (deduped with the client Pixel
+  // via event_id = order number). Best-effort; no-op unless CAPI is configured.
+  await sendMetaPurchaseEvent({
+    orderNumber: order.order_number,
+    value: order.total,
+    currency: 'PKR',
+    email: order.email,
+    phone: order.phone,
+    numItems: order.items.reduce((s, i) => s + (i.qty ?? 0), 0),
+    eventSourceUrl: `${SITE_URL}/thank-you`,
+  });
 }
 
 // ─── Shipping calculator exposed to the client for the order summary. ──────

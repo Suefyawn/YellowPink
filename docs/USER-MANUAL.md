@@ -352,6 +352,22 @@ ad **Pixel** also fires the standard events (ViewContent, AddToCart,
 InitiateCheckout, Purchase) once `NEXT_PUBLIC_META_PIXEL_ID` is set in the
 hosting environment and the visitor accepts marketing cookies.
 
+For the most accurate ad measurement, two more (optional) settings:
+
+- **Meta Conversions API** — set `META_CAPI_ACCESS_TOKEN` (a secret, generated
+  in Meta Events Manager) and the server will send the Purchase event directly
+  to Meta. This is measured even when the browser Pixel is blocked, and it's the
+  **only** purchase signal for JazzCash/Easypaisa orders (the shopper completes
+  payment off-site, so the browser never fires it). It's automatically deduped
+  with the Pixel using the order number.
+- **Google Ads** — set `NEXT_PUBLIC_GOOGLE_ADS_ID` (`AW-…`) to switch on
+  remarketing audiences, and add `NEXT_PUBLIC_GOOGLE_ADS_PURCHASE_LABEL` to
+  record purchases as a Google Ads conversion. (GA4 already gets every commerce
+  event via `NEXT_PUBLIC_GA_MEASUREMENT_ID`.)
+
+All of these live in the hosting environment variables — see `.env.example` for
+the exact names and where to find each value.
+
 ### AI assistants (ChatGPT etc.)
 
 A small but growing slice of visitors already arrive from AI assistants. The site
