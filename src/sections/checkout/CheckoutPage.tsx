@@ -11,7 +11,8 @@ import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/check
 import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import { brandPlusName } from '@/lib/product-display';
-import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { useCommerceSettings } from '@/context/CommerceSettings';
 import { track } from '@/lib/analytics';
 import { readAttribution } from '@/lib/attribution';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
@@ -77,15 +78,16 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   const [couponCode, setCouponCode] = useState(cartCoupon?.code ?? '');
   const [couponError, setCouponError] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
-  // Optimistic first render from the default free-shipping threshold (₨2,500),
-  // so a qualifying cart shows FREE immediately instead of flashing "PKR 200"
+  // Optimistic first render from the owner's live free-shipping setting, so a
+  // qualifying cart shows FREE immediately instead of flashing "PKR 200"
   // before calculateShipping resolves. The effect below corrects it against
   // the real zone/rate config (and the customer's province).
+  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate } = useCommerceSettings();
   const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string }>(() => {
     const sub = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-    return sub >= FREE_SHIPPING_THRESHOLD
+    return freeShippingEnabled && sub >= freeShippingThreshold
       ? { rate: 0, free: true, label: 'Standard' }
-      : { rate: DEFAULT_SHIPPING_RATE, free: false, label: 'Standard' };
+      : { rate: defaultShippingRate, free: false, label: 'Standard' };
   });
 
   // ─── Rewards: loyalty points ────────────────────────────────────────────

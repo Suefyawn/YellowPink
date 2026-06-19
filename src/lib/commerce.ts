@@ -10,6 +10,50 @@
 export const FREE_SHIPPING_THRESHOLD = 2500;
 export const DEFAULT_SHIPPING_RATE = 200;
 
+/** Resolved free-shipping / shipping configuration, derived from the
+ *  owner-editable site settings (admin → Settings → Shipping). This is the
+ *  single source of truth the whole system reads — storefront copy, the cart
+ *  progress bar, checkout's optimistic estimate, and the server-side rate
+ *  resolver — so changing the threshold (or switching free shipping off)
+ *  reflects everywhere at once. */
+export interface CommerceConfig {
+  /** Master switch. When false, free shipping is never offered anywhere and
+   *  the storefront stops showing the progress bar / "free over X" copy. */
+  freeShippingEnabled: boolean;
+  /** Order subtotal (PKR) at which shipping becomes free. Only meaningful when
+   *  freeShippingEnabled is true. */
+  freeShippingThreshold: number;
+  /** Flat shipping rate (PKR) charged when the order doesn't qualify for free
+   *  shipping and no shipping zone overrides it. */
+  defaultShippingRate: number;
+}
+
+/** Parse the raw site_settings key/value map into a typed CommerceConfig,
+ *  falling back to the historical constants when a value is missing or invalid.
+ *  Free shipping defaults to ON when the toggle has never been set, preserving
+ *  the previous always-on behaviour. */
+export function parseCommerceConfig(settings: Record<string, string>): CommerceConfig {
+  const threshold = Number(settings.free_shipping_threshold);
+  const rate = Number(settings.default_shipping_rate);
+  return {
+    freeShippingEnabled: settings.free_shipping_enabled !== 'false',
+    freeShippingThreshold:
+      Number.isFinite(threshold) && threshold > 0 ? threshold : FREE_SHIPPING_THRESHOLD,
+    defaultShippingRate:
+      Number.isFinite(rate) && rate >= 0 ? rate : DEFAULT_SHIPPING_RATE,
+  };
+}
+
+/** Default config used by client context fallbacks and tests. */
+export const DEFAULT_COMMERCE_CONFIG: CommerceConfig = {
+  freeShippingEnabled: true,
+  freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
+  defaultShippingRate: DEFAULT_SHIPPING_RATE,
+};
+
+/** Format a threshold (PKR) as shoppers see it, e.g. "PKR 2,500". */
+export const formatPkr = (n: number) => `PKR ${n.toLocaleString()}`;
+
 /** Customer-facing returns window, in days. Shared by the PDP trust copy, the
  *  checkout reassurance strip and the shipping blurb so they never disagree. */
 export const RETURNS_WINDOW_DAYS = 7;

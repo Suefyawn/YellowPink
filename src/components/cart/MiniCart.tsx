@@ -8,17 +8,18 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { brandPlusName } from '@/lib/product-display';
-import { FREE_SHIPPING_THRESHOLD as FREE_SHIPPING } from '@/lib/commerce';
+import { useCommerceSettings } from '@/context/CommerceSettings';
 
 export function MiniCart() {
   const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty } = useCart();
+  const { freeShippingEnabled, freeShippingThreshold } = useCommerceSettings();
   const router = useRouter();
   useBodyScrollLock(cartOpen);
   useEscapeKey(cartOpen, () => setCartOpen(false));
   const panelRef = useRef<HTMLDivElement | null>(null);
   useFocusTrap(cartOpen, panelRef);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const progress = Math.min(total / FREE_SHIPPING, 1);
+  const progress = Math.min(total / freeShippingThreshold, 1);
 
   const handleViewCart = () => {
     setCartOpen(false);
@@ -69,6 +70,7 @@ export function MiniCart() {
           >×</button>
         </div>
 
+        {freeShippingEnabled && (
         <div
           style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)' }}
           aria-live="polite"
@@ -98,7 +100,7 @@ export function MiniCart() {
                   <circle cx="18.5" cy="18.5" r="2.5" />
                 </svg>
                 <span>
-                  Spend <span className="tabular-nums" style={{ fontWeight: 600, color: 'var(--ink-900)' }}>PKR {(FREE_SHIPPING - total).toLocaleString()}</span> more for <span style={{ fontWeight: 600, color: 'var(--brand-pink-text)' }}>free shipping</span>
+                  Spend <span className="tabular-nums" style={{ fontWeight: 600, color: 'var(--ink-900)' }}>PKR {(freeShippingThreshold - total).toLocaleString()}</span> more for <span style={{ fontWeight: 600, color: 'var(--brand-pink-text)' }}>free shipping</span>
                 </span>
               </>
             )}
@@ -120,6 +122,7 @@ export function MiniCart() {
             }} />
           </div>
         </div>
+        )}
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
           {cartItems.length === 0 ? (

@@ -41,6 +41,7 @@ import { getWelcomeOffer } from '@/lib/offers';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { getSiteSettings } from '@/lib/supabase';
+import { parseCommerceConfig } from '@/lib/commerce';
 import { normalizeTheme } from '@/lib/themes';
 import { getActivePromos, audienceFor } from '@/lib/promos';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
@@ -103,6 +104,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // JSON-LD reads from the same source as the footer.
   const sameAs = socialSameAs(settings);
   const orgContact = { phone: settings.store_phone, email: settings.store_email };
+  // Single source of truth for free-shipping copy/threshold across the
+  // storefront — seeds the client CommerceSettings provider so the cart,
+  // mini-cart, PDP and checkout never drift from the owner's setting.
+  const commerce = parseCommerceConfig(settings);
   return (
     <html
       lang="en"
@@ -137,7 +142,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <WebVitalsReporter />
         <ServiceWorkerRegister />
         <PWAInstallPrompt />
-        <Providers>
+        <Providers commerce={commerce}>
           <CartAnnouncer />
           <AddToCartToast />
           <SiteChrome
