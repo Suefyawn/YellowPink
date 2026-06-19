@@ -11,6 +11,7 @@ import { TopPagesWidget } from '@/components/admin/TopPagesWidget';
 import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
 import { UserJourneysWidget } from '@/components/admin/UserJourneysWidget';
 import { FunnelBySourceWidget } from '@/components/admin/FunnelBySourceWidget';
+import { FunnelByDeviceWidget } from '@/components/admin/FunnelByDeviceWidget';
 import { RetentionWidget } from '@/components/admin/RetentionWidget';
 import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
 import { can } from '@/lib/permissions';
@@ -275,8 +276,11 @@ export default async function AnalyticsPage({
                 <UserJourneysWidget />
                 <RetentionWidget />
               </div>
-              <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 28 }}>
+              <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
                 <FunnelBySourceWidget />
+                <FunnelByDeviceWidget />
+              </div>
+              <div style={{ marginBottom: 28 }}>
                 <SessionRecordingsWidget />
               </div>
             </>

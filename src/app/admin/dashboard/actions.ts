@@ -57,7 +57,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     pvRows, uuRows, sessRows, trendRows,
     topPagesRows, topEventsRows, topReferrersRows,
     funnelRows,
-    journeyRows, funnelBySourceRows, retentionRows,
+    journeyRows, funnelBySourceRows, funnelByDeviceRows, retentionRows,
   ] = await Promise.all([
     // ── core stats
     phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
@@ -102,6 +102,9 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     // Use the simple session-based count of each event; conversion is the
     // ratio of step n+1 to step n. Not as accurate as PostHog's Funnel
     // insight, but lightweight and good enough for an at-a-glance chart.
+    // NOT_ADMIN matters here too: without it the funnel counts staff
+    // adding-to-cart / placing test orders from the dashboard, inflating it
+    // out of step with every other panel (which all exclude /admin).
     phQuery(apiKey, `
       SELECT
         countIf(event = '$pageview' AND properties.\`$pathname\` = '/')                    as home_view,
@@ -110,7 +113,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         countIf(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as begin_checkout,
         countIf(event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
       FROM events
-      WHERE ${W7}
+      WHERE ${W7} AND ${NOT_ADMIN}
     `),
 
     // ── Top 15 user journeys (4-page sequences per session)
@@ -148,6 +151,24 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       GROUP BY source
       ORDER BY home DESC
       LIMIT 8
+    `),
+
+    // ── Funnel sliced by device type — Mobile vs Desktop. The add-to-cart
+    // step is where the storefront leaks the most visitors, and mobile vs
+    // desktop is the first cut that tells the owner whether it's a phone-
+    // layout problem or broad. Same step definitions as the by-source slice.
+    phQuery(apiKey, `
+      SELECT
+        coalesce(nullIf(properties.\`$device_type\`, ''), 'Unknown') as device,
+        countIf(event = '$pageview' AND properties.\`$pathname\` = '/')                    as home,
+        countIf(event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/')) as product,
+        countIf(event = 'add_to_cart')                                                     as cart,
+        countIf(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as checkout,
+        countIf(event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
+      FROM events
+      WHERE ${W7} AND ${NOT_ADMIN}
+      GROUP BY device
+      ORDER BY home DESC
     `),
 
     // ── 4-week active-user curve (weekly retention proxy)
@@ -222,6 +243,15 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     purchase: Number(purchase),
   }));
 
+  const funnelByDevice = funnelByDeviceRows.map(([device, home, product, cart, checkout, purchase]) => ({
+    device: String(device),
+    home: Number(home),
+    product: Number(product),
+    cart: Number(cart),
+    checkout: Number(checkout),
+    purchase: Number(purchase),
+  }));
+
   const retention = retentionRows.map(([week, users]) => ({
     week: String(week),
     users: Number(users),
@@ -259,6 +289,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     upsertCache(supabase, 'posthog_funnel',          funnel),
     upsertCache(supabase, 'posthog_journeys',        { items: journeys }),
     upsertCache(supabase, 'posthog_funnel_by_source',{ items: funnelBySource }),
+    upsertCache(supabase, 'posthog_funnel_by_device',{ items: funnelByDevice }),
     upsertCache(supabase, 'posthog_retention',       { items: retention }),
     upsertCache(supabase, 'posthog_recordings',      { items: recordings }),
   ]);
