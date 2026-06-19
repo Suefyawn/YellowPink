@@ -35,13 +35,19 @@ export interface FinanceOrder {
   total: number | null; delivery_cost: number | null; payment_fee: number | null;
   utm_source: string | null; status: string | null;
   payment_account: string | null; payment_received_at: string | null;
+  items?: Array<{ id?: string; qty?: number }> | null;
 }
 
-/** Revenue-eligible orders in the window, plus per-order vendor cost (COGS)
- *  from the settlements the vendor flow writes. */
+/** Revenue-eligible orders in the window, plus per-order COGS. COGS combines
+ *  two cost bases, partitioned by how each line item is sourced so nothing is
+ *  double-counted:
+ *    • vendor items  → vendor_settlements.vendor_cost (the dispatched snapshot)
+ *    • own-stock items → products.cost_price × qty (the acquisition cost)
+ *  An order can mix both; vendor lines are exactly the ones whose product has a
+ *  vendor_id, so the own-stock pass only counts vendor_id-null products. */
 export async function loadFinanceOrders(fromISO: string | null): Promise<{ orders: FinanceOrder[]; cogsByOrder: Map<string, number> }> {
   const admin = supabaseAdmin();
-  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at');
+  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, items');
   if (fromISO) oq = oq.gte('created_at', fromISO);
   const { data } = await oq;
   const orders = ((data ?? []) as FinanceOrder[]).filter(o => !DEAD_STATES.has(o.status ?? ''));
@@ -49,10 +55,34 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
   const cogsByOrder = new Map<string, number>();
   const ids = orders.map(o => o.id);
   if (ids.length) {
+    // Vendor COGS — the snapshot recorded when each order was dispatched.
     const { data: settle } = await admin.from('vendor_settlements').select('order_id, vendor_cost').in('order_id', ids);
     const set = new Set(ids);
     for (const s of (settle ?? []) as { order_id: string; vendor_cost: number | null }[]) {
       if (set.has(s.order_id)) cogsByOrder.set(s.order_id, (cogsByOrder.get(s.order_id) ?? 0) + Number(s.vendor_cost ?? 0));
+    }
+
+    // Own-stock COGS — acquisition cost of every line whose product isn't
+    // vendor-sourced (vendor lines are already covered above).
+    const productIds = new Set<string>();
+    for (const o of orders) for (const it of o.items ?? []) if (it?.id) productIds.add(it.id);
+    if (productIds.size) {
+      const { data: prods } = await admin
+        .from('products')
+        .select('id, vendor_id, cost_price')
+        .in('id', [...productIds]);
+      const costMap = new Map(
+        ((prods ?? []) as { id: string; vendor_id: string | null; cost_price: number | null }[])
+          .map(p => [p.id, { vendorId: p.vendor_id, cost: Number(p.cost_price ?? 0) }]),
+      );
+      for (const o of orders) {
+        let own = 0;
+        for (const it of o.items ?? []) {
+          const p = it?.id ? costMap.get(it.id) : undefined;
+          if (p && p.vendorId == null && p.cost > 0) own += p.cost * (Number(it.qty) || 0);
+        }
+        if (own > 0) cogsByOrder.set(o.id, (cogsByOrder.get(o.id) ?? 0) + own);
+      }
     }
   }
   return { orders, cogsByOrder };

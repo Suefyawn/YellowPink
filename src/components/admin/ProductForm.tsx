@@ -57,6 +57,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
   const [price, setPrice] = useState<number>(product?.price ?? 0);
   const [vendorId, setVendorId] = useState(product?.vendor_id ?? '');
   const [vendorCost, setVendorCost] = useState(product?.vendor_cost != null ? String(product.vendor_cost) : '');
+  const [costPrice, setCostPrice] = useState(product?.cost_price != null ? String(product.cost_price) : '');
 
   // Margin preview: explicit per-product cost wins; otherwise derive the cost
   // from the selected vendor's commission %.
@@ -224,6 +225,15 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
                 />
                 <span style={hint}>What you pay the vendor per unit. Overrides the commission %.</span>
               </div>
+            </div>
+            <div style={fieldWrap}>
+              <label style={lbl}>Cost price (PKR)</label>
+              <input
+                name="cost_price" type="number" min={0} step="0.01"
+                value={costPrice} onChange={e => setCostPrice(e.target.value)}
+                style={inp} placeholder="What you paid per unit (own stock)"
+              />
+              <span style={hint}>Your acquisition cost per unit for own-stock items. Powers the profit / COGS figures in Finance. Vendor items use the vendor cost above instead.</span>
             </div>
             {vendorId && (
               <div style={{

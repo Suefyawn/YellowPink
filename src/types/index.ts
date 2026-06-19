@@ -57,6 +57,9 @@ export interface Product {
   vendor_id?: string | null;
   /** Per-unit cost paid to the vendor; overrides the vendor's commission %. */
   vendor_cost?: number | null;
+  /** Per-unit acquisition cost for own-stock items; powers the Finance profit
+   *  calc when the product isn't sourced through a vendor. */
+  cost_price?: number | null;
   image_url?: string;
   description?: string;
   short_description?: string;

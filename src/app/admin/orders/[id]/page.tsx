@@ -181,10 +181,25 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   ].join('\n');
 
   // Per-order profit: gross amount minus the costs recorded for this order.
-  // COGS comes from the vendor settlement (only present for dispatched
-  // orders); delivery + payment fee from the order-costs form. As accurate as
-  // what's been entered — own-stock orders with no costs read as full margin.
-  const ordCogs = settlementRow ? Number(settlementRow.vendor_cost ?? 0) : 0;
+  // COGS combines the vendor settlement (vendor-dispatched lines) with the
+  // acquisition cost of own-stock lines (products.cost_price × qty, only for
+  // products with no vendor_id so vendor lines aren't double-counted).
+  const orderItems = (Array.isArray(o.items) ? o.items : []) as Array<{ id?: string; qty?: number }>;
+  let ownCogs = 0;
+  const ownItemIds = orderItems.map(i => i?.id).filter((v): v is string => Boolean(v));
+  if (ownItemIds.length) {
+    const { data: costRows } = await supabaseAdmin()
+      .from('products').select('id, vendor_id, cost_price').in('id', ownItemIds);
+    const cmap = new Map(
+      ((costRows ?? []) as { id: string; vendor_id: string | null; cost_price: number | null }[])
+        .map(p => [p.id, p]),
+    );
+    for (const it of orderItems) {
+      const p = it?.id ? cmap.get(it.id) : undefined;
+      if (p && p.vendor_id == null && p.cost_price != null) ownCogs += Number(p.cost_price) * (Number(it.qty) || 0);
+    }
+  }
+  const ordCogs = (settlementRow ? Number(settlementRow.vendor_cost ?? 0) : 0) + ownCogs;
   const ordDelivery = Number(o.delivery_cost ?? 0);
   const ordFee = Number(o.payment_fee ?? 0);
   const ordRevenue = Number(o.total ?? 0);
@@ -196,7 +211,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   const profitLines: { label: string; value: number; kind?: 'net' }[] = [
     { label: 'Gross amount', value: ordRevenue },
-    { label: 'Vendor cost (COGS)', value: -ordCogs },
+    { label: 'Cost of goods (COGS)', value: -ordCogs },
     { label: 'Delivery cost', value: -ordDelivery },
     { label: 'Payment fee', value: -ordFee },
     { label: 'Net profit', value: ordNet, kind: 'net' },
