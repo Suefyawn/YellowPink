@@ -19,6 +19,27 @@ async function assertProducts(action: 'edit' | 'delete' = 'edit') {
 // Every write checks its error and returns it to the caller (ProductsTable
 // shows a toast) instead of silently revalidating — see issue #191.
 
+// ─── Single-row inline quick edit (price / stock / status) ─────────────────
+export async function quickUpdateProduct(
+  id: string,
+  patch: { price?: number; stock?: number; status?: string },
+): Promise<{ error?: string }> {
+  const session = await assertProducts();
+  const update: Record<string, unknown> = {};
+  if (patch.price != null && Number.isFinite(patch.price) && patch.price >= 0) update.price = patch.price;
+  if (patch.stock != null && Number.isInteger(patch.stock) && patch.stock >= 0) update.stock = patch.stock;
+  if (patch.status && ['published', 'draft', 'archived'].includes(patch.status)) update.status = patch.status;
+  if (Object.keys(update).length === 0) return { error: 'Nothing to update' };
+  const { error } = await supabaseAdmin().from('products').update(update).eq('id', id);
+  if (error) {
+    log.error('product.quick_update_failed', { id, error: error.message });
+    return { error: error.message };
+  }
+  await logAudit(session, { action: 'product.quick_update', entity: 'product', entity_id: id, diff: update });
+  revalidatePath('/admin/products');
+  return {};
+}
+
 // ─── Bulk status / tag / price ─────────────────────────────────────────────
 export async function bulkPublishProducts(ids: string[]): Promise<{ error?: string }> {
   const session = await assertProducts();
