@@ -1,0 +1,109 @@
+export const revalidate = 300;
+
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import Image from 'next/image';
+import { notFound } from 'next/navigation';
+import { getProducts, supabase, isDemo } from '@/lib/supabase';
+import { ProductTile } from '@/components/ui/ProductTile';
+import { Overline } from '@/components/ui/Overline';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { loadTagData } from '@/lib/shop-facets';
+import { resolveCollectionProducts, type Collection } from '@/lib/collections';
+import type { Product } from '@/types';
+
+// Published collection by slug. Anon RLS already restricts to published, but we
+// also filter explicitly so demo / service-role paths behave the same.
+async function loadCollection(slug: string): Promise<Collection | null> {
+  if (isDemo) return null;
+  const { data } = await supabase.from('collections').select('*').eq('slug', slug).eq('status', 'published').maybeSingle();
+  return (data as Collection | null) ?? null;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const c = await loadCollection(slug);
+  if (!c) return pageMeta({ title: 'Collection', description: 'Shop our curated collections.', path: `/collection/${slug}` });
+  return pageMeta({
+    title: c.seo_title || `${c.title} — Shop`,
+    description: c.seo_description || c.description || `Shop the ${c.title} collection at Yellow Pink — authentic, imported, with cash-on-delivery nationwide in Pakistan.`,
+    path: `/collection/${c.slug}`,
+  });
+}
+
+export default async function CollectionPageRoute({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const c = await loadCollection(slug);
+  if (!c) notFound();
+
+  const [products, tagData] = await Promise.all([getProducts(), loadTagData()]);
+
+  // Manual collections need their explicit ordering; smart ones need the tag
+  // map to evaluate tag conditions.
+  let manualOrder: Map<string, number> | undefined;
+  if (c.type === 'manual') {
+    const { data: rows } = await supabase.from('collection_products').select('product_id, position').eq('collection_id', c.id);
+    manualOrder = new Map(((rows ?? []) as Array<{ product_id: string; position: number }>).map(r => [r.product_id, r.position]));
+  }
+  const list = resolveCollectionProducts(c, products, { manualOrder, productTagMap: tagData.productTagMap });
+
+  const breadcrumb = [
+    { name: 'Home', path: '/' },
+    { name: 'Shop', path: '/shop' },
+    { name: c.title, path: `/collection/${c.slug}` },
+  ];
+
+  return (
+    <main className="fade-in">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }} />
+      {list.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLd(itemListLd(c.title, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}` })))),
+          }}
+        />
+      )}
+
+      {/* Hero */}
+      {c.hero_image_url ? (
+        <section style={{ position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', minHeight: 'clamp(300px, 40vh, 460px)' }}>
+            <Image src={c.hero_image_url} alt={c.title} fill priority sizes="100vw" style={{ objectFit: 'cover' }} />
+            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(250,246,238,0.92) 0%, rgba(250,246,238,0.55) 45%, rgba(250,246,238,0.05) 80%)' }} />
+            <div className="container" style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 'clamp(300px, 40vh, 460px)', paddingTop: 40, paddingBottom: 40 }}>
+              <div style={{ maxWidth: 520 }}>
+                <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-700)' }}>Collection</Overline>
+                <h1 className="display-l" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', marginBottom: 14, lineHeight: 1.06 }}>{c.title}</h1>
+                {c.description && <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 440 }}>{c.description}</p>}
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : (
+        <section style={{ padding: '48px 0 0', borderBottom: '1px solid var(--line)' }}>
+          <div className="container">
+            <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Collection</Overline>
+            <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{c.title}</h1>
+            {c.description && <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 24 }}>{c.description}</p>}
+            <p className="small-text" style={{ marginBottom: 28 }}>{list.length} {list.length === 1 ? 'product' : 'products'}</p>
+          </div>
+        </section>
+      )}
+
+      <section style={{ padding: 'var(--section-gap) 0' }}>
+        <div className="container">
+          {list.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
+              {list.map(p => <ProductTile key={p.id} product={p} />)}
+            </div>
+          ) : (
+            <p className="body-text" style={{ color: 'var(--ink-700)' }}>
+              This collection is being curated — <Link href="/shop" className="text-link">browse the full catalogue</Link> in the meantime.
+            </p>
+          )}
+        </div>
+      </section>
+    </main>
+  );
+}

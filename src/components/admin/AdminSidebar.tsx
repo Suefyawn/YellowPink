@@ -29,6 +29,7 @@ const GROUPS: NavGroup[] = [
     { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders.view' },
     { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products.view' },
     { href: '/admin/tags',      label: 'Tags',      icon: '#', permission: 'products.view' },
+    { href: '/admin/collections', label: 'Collections', icon: '▤', permission: 'products.view' },
     { href: '/admin/inventory', label: 'Inventory', icon: '⧉', permission: 'products.view' },
     { href: '/admin/vendors',   label: 'Vendors',   icon: '▦', permission: 'orders.view' },
     { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'returns' },
