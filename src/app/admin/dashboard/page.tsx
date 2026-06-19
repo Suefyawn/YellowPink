@@ -6,7 +6,6 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
 import { SentryWidget } from '@/components/admin/SentryWidget';
-import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
@@ -40,7 +39,6 @@ export default async function DashboardPage() {
   }
   const canOverview = !session || can(session, 'analytics');
   const canErrors   = !session || can(session, 'analytics_errors');
-  const canRefresh  = !session || can(session, 'analytics_refresh');
   // Server components render once per request — pulling the "now" once
   // here is fine. The `react-hooks/purity` rule flags Date.now() as impure;
   // that warning is for client components that may be re-rendered by the
@@ -123,7 +121,6 @@ export default async function DashboardPage() {
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: 0 }}>
           Dashboard
         </h1>
-        {canRefresh && <RefreshAnalyticsButton />}
       </div>
       <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 32px' }}>
         Welcome back. Here&apos;s what&apos;s happening with your store.

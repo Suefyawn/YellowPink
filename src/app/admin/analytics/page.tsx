@@ -14,6 +14,7 @@ import { FunnelBySourceWidget } from '@/components/admin/FunnelBySourceWidget';
 import { FunnelByDeviceWidget } from '@/components/admin/FunnelByDeviceWidget';
 import { RetentionWidget } from '@/components/admin/RetentionWidget';
 import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
+import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { OrderStatus } from '@/types';
@@ -53,6 +54,7 @@ export default async function AnalyticsPage({
   }
 
   const canTraffic = !session || can(session, 'analytics_traffic');
+  const canRefresh = !session || can(session, 'analytics_refresh');
 
   const sp = await searchParams;
   const window = Math.max(1, Math.min(365, Number(sp.days ?? '30')));
@@ -120,24 +122,27 @@ export default async function AnalyticsPage({
             Showing the last {window} days
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {[{ d: 7, l: '7 days' }, { d: 30, l: '30 days' }, { d: 90, l: '90 days' }, { d: 365, l: '1 year' }].map(opt => {
-            const active = window === opt.d;
-            return (
-              <Link
-                key={opt.d}
-                href={`/admin/analytics?tab=${tab}&days=${opt.d}`}
-                style={{
-                  padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
-                  textDecoration: 'none',
-                  background: active ? '#C5286A' : '#f3f4f6',
-                  color: active ? 'white' : '#6b7280',
-                }}
-              >
-                {opt.l}
-              </Link>
-            );
-          })}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {canRefresh && <RefreshAnalyticsButton />}
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[{ d: 7, l: '7 days' }, { d: 30, l: '30 days' }, { d: 90, l: '90 days' }, { d: 365, l: '1 year' }].map(opt => {
+              const active = window === opt.d;
+              return (
+                <Link
+                  key={opt.d}
+                  href={`/admin/analytics?tab=${tab}&days=${opt.d}`}
+                  style={{
+                    padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
+                    textDecoration: 'none',
+                    background: active ? '#C5286A' : '#f3f4f6',
+                    color: active ? 'white' : '#6b7280',
+                  }}
+                >
+                  {opt.l}
+                </Link>
+              );
+            })}
+          </div>
         </div>
       </div>
 
