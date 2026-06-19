@@ -121,7 +121,8 @@ export function AdminShell({
            * full-width headline block at the top of the card, larger and with
            * its label dropped — the rest stay compact label/value rows. */
           .adm-table-cards td[data-label="Order #"],
-          .adm-table-cards td[data-label="Brand / Name"] {
+          .adm-table-cards td[data-label="Brand / Name"],
+          .adm-table-cards td[data-label="Product"] {
             display: block; text-align: left;
             padding: 4px 0 11px !important;
             margin-bottom: 3px;
@@ -129,10 +130,12 @@ export function AdminShell({
             border-bottom: 1px solid #eef0f2 !important;
           }
           .adm-table-cards td[data-label="Order #"]::before,
-          .adm-table-cards td[data-label="Brand / Name"]::before {
+          .adm-table-cards td[data-label="Brand / Name"]::before,
+          .adm-table-cards td[data-label="Product"]::before {
             content: none;
           }
-          .adm-table-cards td[data-label="Order #"] a {
+          .adm-table-cards td[data-label="Order #"] a,
+          .adm-table-cards td[data-label="Product"] a {
             font-size: 1rem !important;
           }
           .adm-table-cards td[data-label="Brand / Name"] > div:nth-child(2) {
