@@ -35,6 +35,7 @@ export interface FinanceOrder {
   total: number | null; delivery_cost: number | null; payment_fee: number | null;
   utm_source: string | null; status: string | null;
   payment_account: string | null; payment_received_at: string | null;
+  acquisition_cost: number | null;
   items?: Array<{ id?: string; qty?: number }> | null;
 }
 
@@ -47,7 +48,7 @@ export interface FinanceOrder {
  *  vendor_id, so the own-stock pass only counts vendor_id-null products. */
 export async function loadFinanceOrders(fromISO: string | null): Promise<{ orders: FinanceOrder[]; cogsByOrder: Map<string, number> }> {
   const admin = supabaseAdmin();
-  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, items');
+  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, acquisition_cost, items');
   if (fromISO) oq = oq.gte('created_at', fromISO);
   const { data } = await oq;
   const orders = ((data ?? []) as FinanceOrder[]).filter(o => !DEAD_STATES.has(o.status ?? ''));
@@ -85,6 +86,13 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
       }
     }
   }
+
+  // Per-order acquisition cost (staff-entered actual goods cost) overrides the
+  // computed vendor+own-stock estimate — drop-ship prices vary per order.
+  for (const o of orders) {
+    if (o.acquisition_cost != null) cogsByOrder.set(o.id, Number(o.acquisition_cost));
+  }
+
   return { orders, cogsByOrder };
 }
 
