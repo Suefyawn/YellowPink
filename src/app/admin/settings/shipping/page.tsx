@@ -98,6 +98,13 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
         <Card>
           <Section title="Default fallback" desc="Used when checkout can't match the customer's address to a zone below." />
           <Divider />
+          <div style={{ marginBottom: 14 }}>
+            <label style={lbl}>Offer free shipping</label>
+            <Toggle name="free_shipping_enabled" checked={g('free_shipping_enabled', 'true') !== 'false'} />
+            <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+              When off, no order qualifies for free shipping anywhere on the site — the cart progress bar and &ldquo;free over&rdquo; copy disappear, and the flat rate (or zone rate) always applies.
+            </p>
+          </div>
           <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
               <label style={lbl}>Default shipping rate (PKR)</label>

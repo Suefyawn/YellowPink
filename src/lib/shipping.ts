@@ -7,11 +7,8 @@
 // so the storefront keeps working even if the tables aren't populated yet.
 // ============================================================================
 
-import { supabase } from './supabase';
-import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE } from './commerce';
-
-const DEFAULT_FREE_THRESHOLD = FREE_SHIPPING_THRESHOLD;
-const DEFAULT_RATE = DEFAULT_SHIPPING_RATE;
+import { supabase, getSiteSettings } from './supabase';
+import { parseCommerceConfig } from './commerce';
 
 export interface ResolvedRate {
   rate: number;
@@ -33,6 +30,13 @@ export async function resolveShipping(opts: {
   subtotal: number;
 }): Promise<ResolvedRate> {
   const { province, subtotal } = opts;
+
+  // Owner config: default threshold/rate + the master free-shipping switch.
+  // When free shipping is switched off, no order ever qualifies — even if a
+  // zone still carries a threshold value.
+  const cfg = parseCommerceConfig(await getSiteSettings());
+  const DEFAULT_FREE_THRESHOLD = cfg.freeShippingThreshold;
+  const DEFAULT_RATE = cfg.defaultShippingRate;
 
   // Look up zone by province, then the cheapest rate for that zone.
   let zoneId: string | null = null;
@@ -58,8 +62,8 @@ export async function resolveShipping(opts: {
   }
 
   if (!zoneId) {
-    // No zones configured — use legacy defaults.
-    const free = subtotal >= DEFAULT_FREE_THRESHOLD;
+    // No zones configured — use the owner's default threshold/rate.
+    const free = cfg.freeShippingEnabled && subtotal >= DEFAULT_FREE_THRESHOLD;
     return { rate: free ? 0 : DEFAULT_RATE, free, label: 'Standard' };
   }
 
@@ -79,7 +83,10 @@ export async function resolveShipping(opts: {
     estimated_days_max: null,
   };
 
-  const free = row.free_shipping_threshold != null && subtotal >= row.free_shipping_threshold;
+  const free =
+    cfg.freeShippingEnabled &&
+    row.free_shipping_threshold != null &&
+    subtotal >= row.free_shipping_threshold;
   return {
     rate: free ? 0 : row.rate,
     free,

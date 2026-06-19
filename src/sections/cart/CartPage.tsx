@@ -11,7 +11,7 @@ import { getBrowserClient } from '@/lib/supabase-browser';
 import { track } from '@/lib/analytics';
 import { brandPlusName } from '@/lib/product-display';
 import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
-import { FREE_SHIPPING_THRESHOLD as FREE_SHIPPING, DEFAULT_SHIPPING_RATE } from '@/lib/commerce';
+import { useCommerceSettings } from '@/context/CommerceSettings';
 import type { CartItem, Coupon, Product } from '@/types';
 
 export function CartPage({ restoreToken = null, recommended = [], estimatedDays = null }: { restoreToken?: string | null; recommended?: Product[]; estimatedDays?: { min: number; max: number } | null }) {
@@ -84,8 +84,11 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
   // Free shipping is earned on the merchandise subtotal (pre-discount), so
   // applying a coupon never strips a free-shipping promise the cart already
   // made. Progress + the threshold gap track the same pre-discount figure.
-  const progress = Math.min(subtotal / FREE_SHIPPING, 1);
-  const shipping = subtotal >= FREE_SHIPPING ? 0 : DEFAULT_SHIPPING_RATE;
+  // Threshold / enabled come from the owner's live setting (CommerceSettings),
+  // so turning free shipping off here removes the bar and the FREE rate.
+  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate } = useCommerceSettings();
+  const progress = Math.min(subtotal / freeShippingThreshold, 1);
+  const shipping = freeShippingEnabled && subtotal >= freeShippingThreshold ? 0 : defaultShippingRate;
   // "You may also like" — bestsellers minus whatever's already in the bag,
   // capped at a single 4-up row.
   const crossSell = recommended.filter(p => !cartItems.some(c => c.id === p.id)).slice(0, 4);
@@ -164,15 +167,19 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
       <section style={{ padding: '0 0 var(--section-gap)' }}>
         <div className="container">
           <div style={{ padding: '16px 0 32px', borderBottom: '1px solid var(--line)' }}>
-            <div className="small-text" style={{ marginBottom: 8, color: 'var(--ink-700)' }}>
-              {progress >= 1
-                ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>You qualify for free shipping!</span>
-                : <>PKR {(FREE_SHIPPING - subtotal).toLocaleString()} away from <span style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>FREE</span> shipping</>
-              }
-            </div>
-            <div style={{ height: 4, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', maxWidth: 400 }}>
-              <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg, var(--brand-yellow), var(--brand-pink))', borderRadius: 'var(--radius-pill)', transition: 'width 400ms ease-out' }} />
-            </div>
+            {freeShippingEnabled && (
+              <>
+                <div className="small-text" style={{ marginBottom: 8, color: 'var(--ink-700)' }}>
+                  {progress >= 1
+                    ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>You qualify for free shipping!</span>
+                    : <>PKR {(freeShippingThreshold - subtotal).toLocaleString()} away from <span style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>FREE</span> shipping</>
+                  }
+                </div>
+                <div style={{ height: 4, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', maxWidth: 400 }}>
+                  <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg, var(--brand-yellow), var(--brand-pink))', borderRadius: 'var(--radius-pill)', transition: 'width 400ms ease-out' }} />
+                </div>
+              </>
+            )}
             {estimatedDays && (
               <div className="small-text" style={{ marginTop: 12, color: 'var(--ink-700)' }}>
                 Estimated delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min}–{estimatedDays.max} working days</strong> · COD nationwide
