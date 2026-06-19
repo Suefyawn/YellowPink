@@ -55,7 +55,7 @@ export function AdminShell({
   return (
     <>
       <style>{`
-        .adm-sidebar { position: fixed; left: 0; top: 0; bottom: 0; z-index: 50; transition: transform 0.25s ease; }
+        .adm-sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; z-index: 50; transition: transform 0.25s ease; }
         /* Hide the per-sidebar close (X) button on desktop — the sidebar is
          * always-mounted at >= 768 px so there's nothing to close. The
          * AdminSidebar component still renders it (the JSX is shared with
@@ -63,6 +63,11 @@ export function AdminShell({
          * is required because the inline button style hard-codes
          * display:inline-flex. */
         .adm-sidebar button[aria-label="Close admin menu"] { display: none !important; }
+        /* Sidebar interactivity polish — inline styles win on their own, so
+         * hover affordances are applied here with !important. */
+        .adm-sidebar .adm-nav-link:hover { background: rgba(249,168,212,0.07) !important; color: #f9fafb !important; }
+        .adm-sidebar .adm-signout:hover { border-color: #ef4444 !important; color: #fca5a5 !important; background: rgba(239,68,68,0.08) !important; }
+        .adm-sidebar .adm-signout { transition: all 0.15s; }
         .adm-main { margin-left: 240px; min-height: 100vh; background: #f3f4f6; }
         .adm-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 30; }
         .adm-topbar .menu-btn { display: none; }

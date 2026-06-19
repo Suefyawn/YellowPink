@@ -67,7 +67,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
 
   return (
     <aside id="admin-sidebar" style={{
-      width: 240, background: '#111827', minHeight: '100vh', height: '100%',
+      width: '100%', background: '#111827', height: '100%', minHeight: 0,
       display: 'flex', flexDirection: 'column',
       overflowY: 'auto',
     }}>
@@ -136,7 +136,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
               const isOrders = href === '/admin/orders';
               const badgeCount = isOrders && pendingOrderCount > 0 ? pendingOrderCount : 0;
               return (
-                <Link key={href} href={href} onClick={onClose} style={{
+                <Link key={href} href={href} onClick={onClose} className="adm-nav-link" style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   // 44 px min tap target for mobile phones — desktop still looks
                   // tight because the font size is 0.875rem so the row reads
@@ -195,7 +195,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
       {/* Logout */}
       <div style={{ padding: '12px 20px 16px' }}>
         <form action={logoutAdmin}>
-          <button type="submit" style={{
+          <button type="submit" className="adm-signout" style={{
             width: '100%', padding: '8px 12px',
             background: 'transparent', border: '1px solid #374151', borderRadius: 6,
             color: '#9ca3af', cursor: 'pointer', fontSize: '0.8125rem',
