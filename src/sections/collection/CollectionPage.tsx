@@ -99,8 +99,21 @@ export function CollectionPage({
     const sort = (sp.get('sort') as SortKey | null) ?? 'featured';
     const pageNum = Math.max(1, Number(sp.get('page') ?? '1'));
     // Prefer the server-resolved initialBrand (present on first render); fall
-    // back to the client URL for in-session reads.
-    const brands = (initialBrand ?? sp.get('brand') ?? '').split(',').map(s => s.trim()).filter(Boolean);
+    // back to the client URL for in-session reads. Resolve each URL token to
+    // the catalog's canonical brand string (case/space-insensitive) so a link
+    // like ?brand=anua or ?brand=Beauty%20Of%20Joseon still matches the
+    // exact-cased value stored on the products — otherwise a casing drift in
+    // the URL would silently filter to nothing / everything.
+    const brandCanon = new Map<string, string>();
+    for (const p of products) {
+      if (p.brand) {
+        const k = p.brand.trim().toLowerCase();
+        if (!brandCanon.has(k)) brandCanon.set(k, p.brand);
+      }
+    }
+    const brands = (initialBrand ?? sp.get('brand') ?? '')
+      .split(',').map(s => s.trim()).filter(Boolean)
+      .map(b => brandCanon.get(b.toLowerCase()) ?? b);
     const attrs  = sp.get('attr')?.split(',').filter(Boolean) ?? [];
     const min = sp.get('min'); const max = sp.get('max');
     return {
@@ -244,9 +257,17 @@ export function CollectionPage({
   // resetting it on filter change has to happen in an effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, q]);
-  // Brand list rebuilds per-category; drop any selections that no longer apply.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setSelectedBrands(new Set()); }, [activeCategory]);
+  // Brand list rebuilds per-category; when the shopper switches the top tab we
+  // drop brand selections that no longer apply. This must NOT run on mount —
+  // doing so wiped the brand seeded from `?brand=` in the URL (e.g. landing on
+  // /shop?brand=Anua from a K-Beauty brand card), flipping the page straight
+  // back to "all products". Guard the first run so the initial URL brand
+  // survives; only genuine category switches clear the selection.
+  const didMountBrandReset = useRef(false);
+  useEffect(() => {
+    if (!didMountBrandReset.current) { didMountBrandReset.current = true; return; }
+    setSelectedBrands(new Set());
+  }, [activeCategory]);
 
   // ─── URL persistence ─────────────────────────────────────────────────────
   useEffect(() => {
