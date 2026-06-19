@@ -1,0 +1,79 @@
+// ============================================================================
+// Collections — types + membership resolution.
+//
+// A collection groups products for a /collection/[slug] landing page. Manual
+// collections list products explicitly (ordered); smart collections evaluate a
+// rule set against the catalogue so membership stays current. The resolver here
+// is pure so it can run on the storefront page and be unit-tested.
+// ============================================================================
+
+import type { Product } from '@/types';
+
+export type CollectionType = 'manual' | 'smart';
+
+export interface SmartCondition {
+  field: 'tag' | 'brand' | 'category' | 'price' | 'on_sale' | 'featured' | 'bestseller';
+  op: 'in' | 'lte' | 'gte' | 'is';
+  value: string[] | number | boolean;
+}
+
+export interface SmartRules {
+  match?: 'all' | 'any';
+  conditions?: SmartCondition[];
+}
+
+export interface Collection {
+  id: string;
+  slug: string;
+  title: string;
+  description: string | null;
+  hero_image_url: string | null;
+  type: CollectionType;
+  rules: SmartRules;
+  status: 'published' | 'draft';
+  sort_order: number;
+  seo_title: string | null;
+  seo_description: string | null;
+}
+
+function matchCondition(p: Product, c: SmartCondition, productTags: string[]): boolean {
+  switch (c.field) {
+    case 'tag':      return Array.isArray(c.value) && c.value.some(v => productTags.includes(String(v)));
+    case 'brand':    return Array.isArray(c.value) && !!p.brand && c.value.map(String).includes(p.brand);
+    case 'category': return Array.isArray(c.value) && !!p.category && c.value.map(String).includes(p.category);
+    case 'price':
+      if (typeof c.value !== 'number') return false;
+      return c.op === 'gte' ? p.price >= c.value : p.price <= c.value;
+    case 'on_sale':    return !!(p.original_price && p.original_price > p.price);
+    case 'featured':   return !!p.is_featured;
+    case 'bestseller': return !!p.is_bestseller;
+    default:           return false;
+  }
+}
+
+/** True when a product satisfies a smart collection's rule set. An empty rule
+ *  set matches nothing (so a half-built smart collection isn't the whole shop). */
+export function productMatchesRules(p: Product, rules: SmartRules, productTags: string[]): boolean {
+  const conds = rules.conditions ?? [];
+  if (conds.length === 0) return false;
+  const results = conds.map(c => matchCondition(p, c, productTags));
+  return (rules.match ?? 'all') === 'any' ? results.some(Boolean) : results.every(Boolean);
+}
+
+/** Ordered product list for a collection.
+ *  - manual: the products in `manualOrder` (by their stored position).
+ *  - smart:  catalogue products matching the rules, in catalogue order. */
+export function resolveCollectionProducts(
+  collection: Pick<Collection, 'type' | 'rules'>,
+  products: Product[],
+  opts: { manualOrder?: Map<string, number>; productTagMap?: Record<string, string[]> } = {},
+): Product[] {
+  if (collection.type === 'manual') {
+    const order = opts.manualOrder ?? new Map<string, number>();
+    return products
+      .filter(p => order.has(p.id))
+      .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+  }
+  const tagMap = opts.productTagMap ?? {};
+  return products.filter(p => productMatchesRules(p, collection.rules, tagMap[p.id] ?? []));
+}

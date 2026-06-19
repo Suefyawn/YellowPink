@@ -70,10 +70,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   // Tag archive pages (/tag/[slug]) — every tag that has at least one product.
+  // Collection pages (/collection/[slug]) — published collections only.
   let tagSlugs: string[] = [];
+  let collectionSlugs: string[] = [];
   if (!isDemo) {
-    const { data: tagRows } = await supabase.from('product_tags').select('slug');
+    const [{ data: tagRows }, { data: colRows }] = await Promise.all([
+      supabase.from('product_tags').select('slug'),
+      supabase.from('collections').select('slug').eq('status', 'published'),
+    ]);
     tagSlugs = ((tagRows ?? []) as Array<{ slug: string }>).map(t => t.slug);
+    collectionSlugs = ((colRows ?? []) as Array<{ slug: string }>).map(c => c.slug);
   }
 
   const staticUrls: MetadataRoute.Sitemap = STATIC_ROUTES.map(r => ({
@@ -112,6 +118,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
+  // Collection landing pages (/collection/[slug]).
+  const collectionUrls: MetadataRoute.Sitemap = collectionSlugs.map(slug => ({
+    url: absoluteUrl(`/collection/${slug}`),
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }));
+
   const productUrls: MetadataRoute.Sitemap = products.map(p => {
     const last = p.updated_at ?? p.created_at;
     return {
@@ -144,5 +158,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
 
-  return [...staticUrls, ...categoryUrls, ...brandUrls, ...tagUrls, ...productUrls, ...blogUrls, ...pageUrls];
+  return [...staticUrls, ...categoryUrls, ...brandUrls, ...tagUrls, ...collectionUrls, ...productUrls, ...blogUrls, ...pageUrls];
 }

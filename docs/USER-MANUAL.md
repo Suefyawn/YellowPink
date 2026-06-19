@@ -77,6 +77,10 @@ customers and spot where an order is.
 - **Tag pages** (`/tag/<tag>`) — each product tag has its own landing page
   listing the tagged products, created automatically from the tags you set in
   admin.
+- **Collection pages** (`/collection/<slug>`) — curated edits you build in
+  admin (Collections), each with its own hero, description, and product grid.
+  Manual collections show a hand-picked, ordered list; smart collections fill
+  themselves from rules and stay current automatically.
 - **Shop page** (`/shop`) — the full catalogue. Customers can filter by
   category, brand, **tags** (the free-form labels you set in admin), product
   attributes (shade, size, etc.), price range, and quick toggles for **In
@@ -193,6 +197,7 @@ together. Here's what each link is for:
 | **Orders** | Every order placed. Filter by status, search, and open an order to process it. With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone. |
 | **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, pricing, and descriptions. Each product page also has a **Tags** box — type to add a free-form tag (creating it if new) or reuse an existing one. Bulk price tools and CSV import are here. |
 | **Tags** | The tag vocabulary. Free-form labels (e.g. *viral*, *vegan*, *gift*) you attach to products for storefront filtering and curated edits. Create, rename (the storefront link stays stable), or delete a tag; deleting removes it from every product. The "N products" link jumps to the tagged products. |
+| **Collections** | Curated product groups, each with its own landing page (`/collection/<slug>`). **Manual** collections are a hand-picked, drag-ordered product list; **Smart** collections fill themselves from rules (e.g. *tag is viral* **and** *price ≤ 3000*) and stay current as products change. Set a title, description, hero image, SEO, and Draft/Published status. Draft collections are hidden from the storefront. |
 | **Inventory** | Stock levels. See low-stock items and adjust stock counts. |
 | **Vendors** | Your suppliers/fulfilment partners. Add vendors and track what you owe or are owed (settlements). |
 | **Returns** | Customer return requests awaiting your approval, and refund processing. |
