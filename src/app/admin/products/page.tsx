@@ -10,6 +10,7 @@ import { AdminFab } from '@/components/admin/AdminFab';
 import { Pagination } from '@/components/admin/Pagination';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { findTaxon } from '@/lib/category-taxonomy';
 import type { Product } from '@/types';
 
 const PAGE_SIZE = 25;
@@ -46,8 +47,19 @@ export default async function ProductsPage({
   let dataQuery = supabase.from('products').select('*').order(order.col, { ascending: order.asc }).range(from, to);
 
   if (category && category !== 'All') {
-    countQuery = countQuery.eq('category', category);
-    dataQuery = dataQuery.eq('category', category);
+    // The filter pills are top-level taxons (Makeup / Skincare / Wellness /
+    // Bundles), but products store fine-grained leaf categories ("Women's
+    // Health", "Immunity", …). Expand a taxon to its leaf set so e.g.
+    // "Wellness" matches its supplements instead of an exact (empty) match.
+    const taxon = findTaxon(category);
+    if (taxon) {
+      const leaves = [...taxon.categories];
+      countQuery = countQuery.in('category', leaves);
+      dataQuery = dataQuery.in('category', leaves);
+    } else {
+      countQuery = countQuery.eq('category', category);
+      dataQuery = dataQuery.eq('category', category);
+    }
   }
   if (tag && tag !== 'All') {
     countQuery = countQuery.eq('tag', tag);
