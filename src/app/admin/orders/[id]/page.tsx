@@ -199,7 +199,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       if (p && p.vendor_id == null && p.cost_price != null) ownCogs += Number(p.cost_price) * (Number(it.qty) || 0);
     }
   }
-  const ordCogs = (settlementRow ? Number(settlementRow.vendor_cost ?? 0) : 0) + ownCogs;
+  // Per-order acquisition cost (staff-entered actual drop-ship goods cost)
+  // overrides the computed estimate; blank falls back to vendor settlement +
+  // product cost_price.
+  const computedCogs = (settlementRow ? Number(settlementRow.vendor_cost ?? 0) : 0) + ownCogs;
+  const ordAcq = (o as { acquisition_cost?: number | null }).acquisition_cost;
+  const ordCogs = ordAcq != null ? Number(ordAcq) : computedCogs;
   const ordDelivery = Number(o.delivery_cost ?? 0);
   const ordFee = Number(o.payment_fee ?? 0);
   const ordRevenue = Number(o.total ?? 0);
@@ -434,9 +439,13 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <div style={{ ...section, marginBottom: 20 }}>
           <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order costs</h2>
           <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
-            Courier charge and payment-gateway fee for this order. Vendor cost is captured separately via the vendor settlement above; these feed the Finance profit &amp; loss.
+            Courier charge, payment-gateway fee, and the actual goods (acquisition) cost for this order. These feed the Finance profit &amp; loss. The acquisition cost overrides the estimated cost of goods for this order — useful for drop-ship, where the supplier price varies; leave it blank to use the product&apos;s default cost.
           </p>
           <form action={setOrderCosts.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Acquisition cost / COGS (PKR)<br />
+              <input type="number" name="acquisition_cost" min="0" step="1" defaultValue={(o as { acquisition_cost?: number | null }).acquisition_cost ?? ''}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
+            </label>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Delivery cost (PKR)<br />
               <input type="number" name="delivery_cost" min="0" step="1" defaultValue={o.delivery_cost ?? ''}
                 style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />

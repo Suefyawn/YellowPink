@@ -71,15 +71,16 @@ export async function setOrderCosts(orderId: string, formData: FormData): Promis
   };
   const delivery_cost = parseNum(formData.get('delivery_cost'));
   const payment_fee = parseNum(formData.get('payment_fee'));
+  const acquisition_cost = parseNum(formData.get('acquisition_cost'));
 
   const { error } = await supabaseAdmin()
     .from('orders')
-    .update({ delivery_cost, payment_fee })
+    .update({ delivery_cost, payment_fee, acquisition_cost })
     .eq('id', orderId);
   if (error) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(error.message));
   }
-  await logAudit(session, { action: 'order.set_costs', entity: 'order', entity_id:orderId, diff: { delivery_cost, payment_fee } });
+  await logAudit(session, { action: 'order.set_costs', entity: 'order', entity_id:orderId, diff: { delivery_cost, payment_fee, acquisition_cost } });
   revalidatePath(`/admin/orders/${orderId}`);
   redirect(`/admin/orders/${orderId}?costs=saved`);
 }

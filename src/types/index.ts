@@ -254,6 +254,9 @@ export interface Order {
   /** Per-order fulfilment costs (entered by staff) — feed the Finance P&L. */
   delivery_cost?: number | null;
   payment_fee?: number | null;
+  /** Actual goods cost for this order (drop-ship price varies per order);
+   *  overrides the computed COGS in Finance when set. */
+  acquisition_cost?: number | null;
   /** Payment reconciliation (set by staff) — which configured account the
    *  money landed in, when, and who confirmed it. Null = not yet recorded. */
   payment_account?: string | null;
