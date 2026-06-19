@@ -5,11 +5,15 @@ system. It explains both sides of the platform: the **storefront** your
 customers shop on, and the **admin panel** you and your staff use to run the
 store and process sales.
 
+> **Reading this in the admin:** signed-in staff can open this manual any time
+> from the admin sidebar — **User manual** (bottom of the left nav, under
+> *Sign out*). It always shows the latest version.
+
 > **Keeping this current:** this manual is updated whenever user-facing
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 18 June 2026.*
+> *Last updated: 19 June 2026.*
 
 ---
 
@@ -167,7 +171,7 @@ together. Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Dashboard** | At-a-glance health of the store — revenue, order counts by status, top products, low-stock alerts, recent orders. |
-| **Analytics** | Deeper performance data — revenue trends, customer cohorts (RFM segments + retention), and (if connected) website-traffic widgets including top user journeys (which path sequences customers take through the site), funnel-by-traffic-source, a weekly-active-users curve, and inline links to PostHog session recordings to watch real visits. |
+| **Analytics** | Deeper performance data — revenue trends, customer cohorts (RFM segments + retention), and (if connected) website-traffic widgets including top user journeys (which path sequences customers take through the site), funnel-by-traffic-source and funnel-by-device (Mobile vs Desktop conversion at each step — useful for spotting where one device is leaking shoppers, most often at product → add-to-cart), a weekly-active-users curve, and inline links to PostHog session recordings to watch real visits. |
 | **Finance** | Profit & loss for any period (7/30/90 days or all time): revenue from paid orders, minus vendor cost, delivery and payment-fee costs → gross profit, minus your logged expenses (ad spend + overheads) → **net profit and margin**. A **Revenue by payment method** table breaks down orders, revenue and gross profit per method (Cash on Delivery, Bank Transfer, JazzCash, etc.); a **Revenue by account** table shows where payments actually landed once reconciled (with a count of orders still awaiting confirmation); an **Orders in this period** table lists each order's total, costs, gross profit and margin (latest 100, filterable by payment method and exportable to **CSV**); and an **Awaiting payment confirmation** list flags non-COD orders not yet reconciled. Also shows **ROAS** (return on ad spend) by traffic source. Log ad spend and overheads in the **Expenses** table here; enter each order's delivery and payment-fee cost on the order page (*Order costs*), where an **Order profit** summary then shows that order's net profit and margin. On each order you can also record **Payment received** — pick which of your configured accounts (Settings → Payments) the money landed in and the date; this feeds *Revenue by account* and the awaiting-confirmation count, and is for reconciliation only (it doesn't change the order status). |
 
 **Sell** — day-to-day commerce operations

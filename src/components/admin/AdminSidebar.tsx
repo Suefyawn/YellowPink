@@ -173,14 +173,23 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
       {/* Bottom links */}
       <div style={{ padding: '12px 20px 0', borderTop: '1px solid #1f2937' }}>
         {!session.isOwner && (
-          <Link href="/admin/profile" style={{
+          <Link href="/admin/profile" onClick={onClose} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 0', color: '#9ca3af', textDecoration: 'none',
-            fontSize: '0.8125rem', borderBottom: '1px solid #1f2937', marginBottom: 8,
+            fontSize: '0.8125rem',
           }}>
             <span>⚙</span> My Profile
           </Link>
         )}
+        {/* User manual — visible to every signed-in staff member so anyone with
+            admin access can learn how the store + storefront work. */}
+        <Link href="/admin/help" onClick={onClose} style={{
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 0', color: '#9ca3af', textDecoration: 'none',
+          fontSize: '0.8125rem', borderTop: '1px solid #1f2937', marginTop: 8,
+        }}>
+          <span>❓</span> User manual
+        </Link>
       </div>
 
       {/* Logout */}
