@@ -18,6 +18,7 @@
 import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_NAME, SITE_URL, absoluteUrl } from '@/lib/seo';
 import { googleProductCategory } from '@/lib/google-product-category';
+import { loadFeedVariants, type FeedVariant } from '@/lib/product-feed';
 
 export const revalidate = 3600; // 1h — Meta polls on a schedule; this is plenty.
 
@@ -55,24 +56,31 @@ function clean(text: string | null, max: number): string {
   return stripped.length > max ? stripped.slice(0, max - 1).trimEnd() + '…' : stripped;
 }
 
-function item(p: FeedProduct): string {
-  const title = clean(p.brand ? `${p.brand} — ${p.name}` : p.name, 150);
+// One <item>. With a `variant`, emits that variant's own row grouped under the
+// parent via item_group_id; otherwise the parent product row.
+function item(p: FeedProduct, variant?: FeedVariant): string {
+  const baseTitle = p.brand ? `${p.brand} — ${p.name}` : p.name;
+  const title = clean(variant ? `${baseTitle} — ${variant.label}` : baseTitle, 150);
   const description = clean(p.description || p.short_description || p.name, 1000);
   const link = absoluteUrl(`/product/${p.slug}`);
-  const imageLink = p.image_url ?? '';
+  const imageLink = (variant?.image_url ?? p.image_url) ?? '';
+  const stock = variant ? variant.stock : p.stock;
   // Meta expects "in stock" / "out of stock" (with spaces).
   const available =
-    p.track_inventory === false || p.stock > 0 ? 'in stock' : 'out of stock';
-  // g:price is the regular price, g:sale_price the discounted one. When
-  // original_price > price the product is on sale — emit both so the Shop can
+    p.track_inventory === false || stock > 0 ? 'in stock' : 'out of stock';
+  // g:price is the regular price, g:sale_price the discounted one. When the
+  // compare-at price is higher the item is on sale — emit both so the Shop can
   // render the strikethrough.
-  const onSale = p.original_price != null && p.original_price > p.price;
-  const regularPrice = onSale ? p.original_price! : p.price;
-  const salePrice = onSale ? p.price : null;
+  const basePrice = variant ? variant.price : p.price;
+  const compareAt = variant ? variant.compare_at_price : p.original_price;
+  const onSale = compareAt != null && compareAt > basePrice;
+  const regularPrice = onSale ? compareAt! : basePrice;
+  const salePrice = onSale ? basePrice : null;
 
   const lines = [
     `    <item>`,
-    `      <g:id>${xmlEscape(p.id)}</g:id>`,
+    `      <g:id>${xmlEscape(variant ? variant.id : p.id)}</g:id>`,
+    variant ? `      <g:item_group_id>${xmlEscape(p.id)}</g:item_group_id>` : '',
     `      <g:title>${xmlEscape(title)}</g:title>`,
     `      <g:description>${xmlEscape(description)}</g:description>`,
     `      <g:link>${xmlEscape(link)}</g:link>`,
@@ -81,6 +89,7 @@ function item(p: FeedProduct): string {
     `      <g:condition>new</g:condition>`,
     `      <g:price>${regularPrice}.00 PKR</g:price>`,
     salePrice != null ? `      <g:sale_price>${salePrice}.00 PKR</g:sale_price>` : '',
+    variant?.sku ? `      <g:mpn>${xmlEscape(variant.sku)}</g:mpn>` : '',
     p.brand ? `      <g:brand>${xmlEscape(p.brand)}</g:brand>` : '',
     // Imported resale beauty SKUs rarely carry a GTIN/MPN we can publish.
     `      <g:identifier_exists>no</g:identifier_exists>`,
@@ -120,10 +129,15 @@ async function loadProducts(): Promise<FeedProduct[]> {
 }
 
 export async function GET(): Promise<Response> {
-  const products = await loadProducts();
+  const products = (await loadProducts()).filter(p => p.image_url); // Meta requires an image_link
+  // Products with variants emit one row per variant (item_group_id); others a
+  // single parent row.
+  const variantsByProduct = isDemo ? new Map<string, FeedVariant[]>() : await loadFeedVariants(products.map(p => p.id));
   const items = products
-    .filter(p => p.image_url) // Meta requires an image_link
-    .map(item)
+    .map(p => {
+      const vs = variantsByProduct.get(p.id);
+      return vs && vs.length ? vs.map(v => item(p, v)).join('\n') : item(p);
+    })
     .join('\n');
 
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
