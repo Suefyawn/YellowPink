@@ -6,7 +6,9 @@ interface Row {
 }
 interface Data { items: Row[] }
 
-const pct = (num: number, denom: number) => denom > 0 ? `${Math.round((num / denom) * 100)}%` : '—';
+// Clamp at 100%: a lightweight event-count proxy can out-count an earlier step,
+// but a funnel step can't convert >100% of the prior one.
+const pct = (num: number, denom: number) => denom > 0 ? `${Math.min(100, Math.round((num / denom) * 100))}%` : '—';
 
 export async function FunnelByDeviceWidget() {
   const result = await readAnalyticsCache<Data>('posthog_funnel_by_device');

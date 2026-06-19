@@ -37,11 +37,14 @@ export async function ConversionFunnelWidget() {
   const top = steps[0]?.count ?? 0;
 
   // Per-step conversion (this step / previous step). First step is always
-  // 100% (it's the funnel mouth).
+  // 100% (it's the funnel mouth). Clamped at 100%: this is a lightweight
+  // event-count proxy (see dashboard actions), so a noisier later step — e.g.
+  // several add_to_cart events per product view — can out-count the prior step;
+  // a funnel conversion can't exceed 100%, so we cap the display.
   const conversions = steps.map((s, i) => {
     if (i === 0) return 100;
     const prev = steps[i - 1].count;
-    return prev > 0 ? Math.round((s.count / prev) * 100) : 0;
+    return prev > 0 ? Math.min(100, Math.round((s.count / prev) * 100)) : 0;
   });
 
   const COLOURS = ['#6366f1', '#8b5cf6', '#C5286A', '#f59e0b', '#10b981'];
@@ -52,7 +55,7 @@ export async function ConversionFunnelWidget() {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {steps.map((s, i) => {
-          const widthPct = top > 0 ? Math.max((s.count / top) * 100, 2) : 0;
+          const widthPct = top > 0 ? Math.min(100, Math.max((s.count / top) * 100, 2)) : 0;
           const conv = conversions[i];
           return (
             <div key={s.event}>
