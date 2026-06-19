@@ -64,11 +64,19 @@ customers and spot where an order is.
   itself if none are live.
 - **K-Beauty page** (`/k-beauty`) — a dedicated collection page for the Korean
   beauty range, reachable from the main menu and footer. It has its own hero,
-  spotlight cards for each Korean brand (linking to that brand's Shop
-  listing), a "why K-beauty" ritual explainer, the full product grid, and a
+  spotlight cards for each Korean brand (each links to that brand's landing
+  page), a "why K-beauty" ritual explainer, the full product grid, and a
   short FAQ. Products appear here automatically when they carry a brand from
   the curated K-beauty list — there is nothing extra to configure per product
   beyond setting its brand.
+- **Brand pages** (`/brand/<brand>`) — every brand has its own landing page
+  with that brand's products, reachable from the **All Brands** directory
+  (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each has a
+  "Filter & sort all …" link through to the Shop page. These appear and update
+  automatically from the brands on your products — nothing to configure.
+- **Tag pages** (`/tag/<tag>`) — each product tag has its own landing page
+  listing the tagged products, created automatically from the tags you set in
+  admin.
 - **Shop page** (`/shop`) — the full catalogue. Customers can filter by
   category, brand, **tags** (the free-form labels you set in admin), product
   attributes (shade, size, etc.), price range, and quick toggles for **In
