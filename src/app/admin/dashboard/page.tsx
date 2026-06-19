@@ -46,6 +46,9 @@ export default async function DashboardPage() {
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   const thirtyDaysAgo = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
+  // Prior 30-day window [60d ago, 30d ago) — powers the period-over-period
+  // trend pills on the KPI cards.
+  const sixtyDaysAgo = new Date(nowMs - 60 * 24 * 60 * 60 * 1000).toISOString();
 
   // orders RLS (migration 070) drops anon SELECT — use the service role
   // for every orders read on this page. products / blog_posts still
@@ -58,6 +61,8 @@ export default async function DashboardPage() {
     { count: lowStockCount },
     { count: newCustomerCount },
     { data: recentOrdersForChart },
+    { count: prevCustomerCount },
+    { data: prevRevenueRows },
   ] = await Promise.all([
     admin.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
     // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
@@ -76,6 +81,9 @@ export default async function DashboardPage() {
     // days". The view excludes cancelled / payment_pending / payment_failed
     // orders and zeroes refunds.
     admin.from('v_orders_revenue').select('revenue, created_at').gte('created_at', thirtyDaysAgo),
+    // Prior-period comparisons for the trend pills.
+    admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
+    admin.from('v_orders_revenue').select('revenue').gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
   ]);
 
   // Build 30-day revenue series — reuse the `nowMs` we pinned above so the
@@ -108,22 +116,49 @@ export default async function DashboardPage() {
   const revenue30d = chartDays.reduce((s, d) => s + d.revenue, 0);
   const ordersToFulfill = (statusCounts.pending ?? 0) + (statusCounts.processing ?? 0);
 
-  const stats = [
-    { label: 'Revenue · last 30 days', value: fmt(revenue30d), icon: '₨', color: '#10b981', href: '/admin/analytics' },
-    { label: 'Orders to fulfill', value: ordersToFulfill, icon: '◎', color: '#C5286A', href: '/admin/orders' },
-    { label: 'New customers · 30 days', value: newCustomerCount ?? 0, icon: '◉', color: '#6366f1', href: '/admin/users' },
-    { label: 'Low stock items', value: lowStockCount ?? 0, icon: '⧉', color: '#f59e0b', href: '/admin/inventory' },
+  // Period-over-period deltas (current 30d vs the prior 30d). null = no
+  // meaningful comparison (snapshot metrics like "orders to fulfill" and
+  // "low stock" are point-in-time, so they carry no trend).
+  const revenuePrev30d = ((prevRevenueRows ?? []) as Array<{ revenue: number }>)
+    .reduce((s, r) => s + (Number(r.revenue) || 0), 0);
+  const pctChange = (cur: number, prev: number): number | null => {
+    if (prev <= 0) return cur > 0 ? 100 : null;
+    return Math.round(((cur - prev) / prev) * 100);
+  };
+  type Trend = { pct: number; goodWhenUp: boolean } | null;
+  const revenueTrend: Trend = (() => {
+    const p = pctChange(revenue30d, revenuePrev30d);
+    return p === null ? null : { pct: p, goodWhenUp: true };
+  })();
+  const customerTrend: Trend = (() => {
+    const p = pctChange(newCustomerCount ?? 0, prevCustomerCount ?? 0);
+    return p === null ? null : { pct: p, goodWhenUp: true };
+  })();
+
+  const stats: { label: string; value: string | number; icon: string; color: string; href: string; trend: Trend; hint?: string }[] = [
+    { label: 'Revenue · last 30 days', value: fmt(revenue30d), icon: '₨', color: '#10b981', href: '/admin/analytics', trend: revenueTrend },
+    { label: 'Orders to fulfill', value: ordersToFulfill, icon: '◎', color: '#C5286A', href: '/admin/orders', trend: null, hint: ordersToFulfill > 0 ? 'Needs action' : 'All clear' },
+    { label: 'New customers · 30 days', value: newCustomerCount ?? 0, icon: '◉', color: '#6366f1', href: '/admin/users', trend: customerTrend },
+    { label: 'Low stock items', value: lowStockCount ?? 0, icon: '⧉', color: '#f59e0b', href: '/admin/inventory', trend: null, hint: (lowStockCount ?? 0) > 0 ? 'Restock soon' : 'Healthy' },
   ];
+
+  const greeting = (() => {
+    const h = new Date(nowMs).getUTCHours();
+    if (h < 12) return 'Good morning';
+    if (h < 17) return 'Good afternoon';
+    return 'Good evening';
+  })();
+  const firstName = session?.name?.trim().split(/\s+/)[0];
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: 0 }}>
-          Dashboard
+          {greeting}{firstName ? `, ${firstName}` : ''}
         </h1>
       </div>
       <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 32px' }}>
-        Welcome back. Here&apos;s what&apos;s happening with your store.
+        Here&apos;s what&apos;s happening with your store today.
       </p>
 
       {/* ── Overview block (gated on `analytics` permission) ────────────── */}
@@ -131,27 +166,54 @@ export default async function DashboardPage() {
       <>
       {/* Stat cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 32 }} className="adm-stat-grid">
-        {stats.map(s => (
-          <Link key={s.label} href={s.href} style={{
-            background: 'white', borderRadius: 10, padding: '24px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            display: 'flex', flexDirection: 'column', gap: 12,
+        {stats.map(s => {
+          const up = s.trend ? s.trend.pct >= 0 : false;
+          const positive = s.trend ? (s.trend.goodWhenUp ? up : !up) : false;
+          const trendColor = positive ? '#059669' : '#dc2626';
+          const trendBg = positive ? '#ecfdf5' : '#fef2f2';
+          return (
+          <Link key={s.label} href={s.href} className="adm-kpi-card" style={{
+            position: 'relative', overflow: 'hidden',
+            background: 'white', borderRadius: 14, padding: '22px 22px 20px',
+            border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+            display: 'flex', flexDirection: 'column', gap: 14,
             textDecoration: 'none', color: 'inherit',
+            transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
           }}>
+            {/* coloured accent rail */}
+            <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: s.color }} />
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500 }}>{s.label}</span>
               <span style={{
-                width: 36, height: 36, borderRadius: 8,
+                width: 38, height: 38, borderRadius: 10,
                 background: s.color + '18',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1rem', color: s.color,
+                fontSize: '1.05rem', color: s.color,
               }}>{s.icon}</span>
             </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
+            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
               {s.value}
             </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 22 }}>
+              {s.trend ? (
+                <>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 3,
+                    padding: '2px 8px', borderRadius: 20,
+                    background: trendBg, color: trendColor,
+                    fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
+                  }}>
+                    {up ? '▲' : '▼'} {Math.abs(s.trend.pct)}%
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>vs prev 30d</span>
+                </>
+              ) : s.hint ? (
+                <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{s.hint}</span>
+              ) : null}
+            </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
 
       {/* Revenue chart */}
@@ -279,11 +341,10 @@ export default async function DashboardPage() {
             No orders yet
           </div>
         ) : (
-          <div className="adm-table-scroll">
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                {['Order', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
+                {['Order #', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
                   <th scope="col" key={h} style={{ padding: '10px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{h}</th>
                 ))}
               </tr>
@@ -293,18 +354,18 @@ export default async function DashboardPage() {
                 const status = o.status ?? 'pending';
                 return (
                   <tr key={o.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Order #" style={{ padding: '12px 16px' }}>
                       <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 600, fontSize: '0.875rem', color: '#C5286A', textDecoration: 'none' }}>
                         {o.order_number}
                       </Link>
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                    <td data-label="Customer" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {o.first_name} {o.last_name}
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
+                    <td data-label="Total" style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
                       {fmt(o.total)}
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Status" style={{ padding: '12px 16px' }}>
                       <span style={{
                         display: 'inline-block', padding: '2px 10px', borderRadius: 20,
                         fontSize: '0.75rem', fontWeight: 600,
@@ -314,7 +375,7 @@ export default async function DashboardPage() {
                         {ORDER_STATUS_LABELS[status as OrderStatus] ?? status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px' }}>
+                    <td data-label="Payment" style={{ padding: '12px 16px' }}>
                       <span style={{
                         display: 'inline-block', padding: '2px 10px',
                         background: '#f3f4f6', borderRadius: 20,
@@ -323,7 +384,7 @@ export default async function DashboardPage() {
                         {payLabel[o.pay_method] ?? o.pay_method}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+                    <td data-label="Date" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
                       {o.created_at ? fmtDate(o.created_at) : '—'}
                     </td>
                   </tr>
@@ -331,7 +392,6 @@ export default async function DashboardPage() {
               })}
             </tbody>
           </table>
-          </div>
         )}
       </div>
       )}
