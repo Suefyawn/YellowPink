@@ -123,7 +123,7 @@ export function KBeautyCollection({ products }: { products: Product[] }) {
           <div style={{ marginBottom: 36, maxWidth: 560 }}>
             <Overline style={{ display: 'block', marginBottom: 10, color: 'var(--ink-500)' }}>The Houses of the Edit</Overline>
             <h2 className="display-l" style={{ fontSize: '2.25rem', margin: 0 }}>
-              Three brands, <em style={{ fontStyle: 'italic' }}>hand-picked.</em>
+              {K_BEAUTY_BRAND_INFO.length} brands, <em style={{ fontStyle: 'italic' }}>hand-picked.</em>
             </h2>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid-3">
