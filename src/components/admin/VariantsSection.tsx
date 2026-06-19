@@ -62,7 +62,7 @@ function VariantForm({
 
       {/* Attribute selectors */}
       {attributes.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(attributes.length, 3)}, 1fr)`, gap: 12, marginBottom: 12 }}>
+        <div className="adm-variant-attrs" style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(attributes.length, 3)}, 1fr)`, gap: 12, marginBottom: 12 }}>
           {attributes.map(a => {
             const current = variant?.option_value_ids.find(id => a.values.some(av => av.id === id)) ?? '';
             return (
