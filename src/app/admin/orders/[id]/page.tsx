@@ -10,6 +10,8 @@ import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
 import { VendorDispatch } from '@/components/admin/VendorDispatch';
 import { setOrderConfirmed } from '@/app/admin/vendor-actions';
 import { setOrderCosts, recordPayment, clearPayment } from '@/app/admin/finance/actions';
+import { deleteOrder } from '@/app/admin/actions';
+import { DeleteButton } from '@/components/admin/DeleteButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
@@ -51,6 +53,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // dispatch, shipment booking, status update). A view-only staffer still
   // sees the full read-only order detail.
   const canEdit = !session || session.isOwner || session.permissions.includes('orders.edit');
+  const canDelete = !session || session.isOwner || session.permissions.includes('orders.delete');
   const { id } = await params;
   const { data: order } = await supabaseAdmin().from('orders').select('*').eq('id', id).single();
   if (!order) notFound();
@@ -713,6 +716,21 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
       </div>
+
+      {canDelete && (
+        <div style={{ ...section, marginTop: 20, border: '1px solid #fecaca', background: '#fef2f2' }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#b91c1c' }}>Danger zone</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            Permanently delete this order along with its payment, shipment and settlement records. This can&apos;t be undone.
+          </p>
+          <DeleteButton
+            id={o.id!}
+            action={deleteOrder}
+            confirmMsg={`Permanently delete order ${o.order_number}? This also removes its payments, shipments and settlement records and cannot be undone.`}
+            label="Delete order"
+          />
+        </div>
+      )}
     </div>
   );
 }

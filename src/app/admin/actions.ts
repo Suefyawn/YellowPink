@@ -199,6 +199,47 @@ export async function deleteProduct(formData: FormData) {
   redirect('/admin/products?deleted=1');
 }
 
+// ─── Orders / customers — destructive deletes ──────────────────────────────────
+
+/** Permanently delete an order. Dependent rows are handled by the FK rules:
+ *  payments / order_events / shipments / return_requests / vendor_settlements
+ *  CASCADE; ledger + redemption links SET NULL. Gated on orders.delete. */
+export async function deleteOrder(formData: FormData) {
+  const session = await assertPermission('orders.delete');
+  const id = formData.get('id') as string;
+  const admin = supabaseAdmin();
+  const { data: ord } = await admin.from('orders').select('order_number').eq('id', id).maybeSingle();
+  const { error } = await admin.from('orders').delete().eq('id', id);
+  if (error) redirect(`/admin/orders/${id}?err=` + encodeURIComponent(error.message));
+  await logAudit(session, { action: 'order.delete', entity: 'order', entity_id: id, diff: { order_number: (ord as { order_number?: string } | null)?.order_number } });
+  revalidatePath('/admin/orders');
+  redirect('/admin/orders?deleted=1');
+}
+
+/** Permanently delete a registered customer account (auth user + profile).
+ *  Their orders are DETACHED (user_id → null) rather than deleted, so the
+ *  order/revenue history is preserved as guest orders. Guests have no account
+ *  to delete. Gated on customers.delete. */
+export async function deleteCustomer(formData: FormData) {
+  const session = await assertPermission('customers.delete');
+  const id = formData.get('id') as string;
+  if (!id || id.startsWith('guest-')) {
+    redirect('/admin/users?err=' + encodeURIComponent('Guest buyers have no account to delete — remove their individual orders instead.'));
+  }
+  const admin = supabaseAdmin();
+  // Preserve financial history: detach the customer's orders before removing
+  // the account (orders.user_id → auth.users is NO ACTION, so this also avoids
+  // an FK violation on the auth delete).
+  const { error: detachErr } = await admin.from('orders').update({ user_id: null }).eq('user_id', id);
+  if (detachErr) redirect(`/admin/users/${id}?err=` + encodeURIComponent(detachErr.message));
+  await admin.from('profiles').delete().eq('id', id);
+  const { error: authErr } = await admin.auth.admin.deleteUser(id);
+  if (authErr) redirect(`/admin/users/${id}?err=` + encodeURIComponent(authErr.message));
+  await logAudit(session, { action: 'customer.delete', entity: 'customer', entity_id: id, diff: { orders_detached: true } });
+  revalidatePath('/admin/users');
+  redirect('/admin/users?deleted=1');
+}
+
 // ─── Blog ─────────────────────────────────────────────────────────────────────
 
 export async function createBlogPost(
