@@ -179,7 +179,8 @@ together. Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Orders** | Every order placed. Filter by status, search, and open an order to process it. With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone. |
-| **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, pricing, and descriptions. Bulk price tools and CSV import are here. |
+| **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, pricing, and descriptions. Each product page also has a **Tags** box — type to add a free-form tag (creating it if new) or reuse an existing one. Bulk price tools and CSV import are here. |
+| **Tags** | The tag vocabulary. Free-form labels (e.g. *viral*, *vegan*, *gift*) you attach to products for storefront filtering and curated edits. Create, rename (the storefront link stays stable), or delete a tag; deleting removes it from every product. The "N products" link jumps to the tagged products. |
 | **Inventory** | Stock levels. See low-stock items and adjust stock counts. |
 | **Vendors** | Your suppliers/fulfilment partners. Add vendors and track what you owe or are owed (settlements). |
 | **Returns** | Customer return requests awaiting your approval, and refund processing. |

@@ -19,7 +19,7 @@ export default async function ProductsPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    category?: string; tag?: string; q?: string; page?: string; sort?: string;
+    category?: string; tag?: string; ptag?: string; q?: string; page?: string; sort?: string;
     deleted?: string; archived?: string; error?: string;
   }>;
 }) {
@@ -27,7 +27,7 @@ export default async function ProductsPage({
   if (session && !session.isOwner && !session.permissions.includes('products.view')) {
     return <NoAccess section="Products" />;
   }
-  const { category, tag, q, page: pageParam, sort, deleted, archived, error } = await searchParams;
+  const { category, tag, ptag, q, page: pageParam, sort, deleted, archived, error } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -43,8 +43,33 @@ export default async function ProductsPage({
   };
   const order = SORT_MAP[sort ?? 'newest'] ?? SORT_MAP.newest;
 
+  // ?ptag=<slug> filters by a many-to-many product tag (the Tags manager links
+  // here). Resolve the slug to its product id set up front so both queries can
+  // constrain on it. A slug with no products yields an empty (impossible) set.
+  let ptagName: string | null = null;
+  let ptagProductIds: string[] | null = null;
+  if (ptag) {
+    const { data: tagRow } = await supabase.from('product_tags').select('id, name').eq('slug', ptag).maybeSingle();
+    ptagName = (tagRow as { name?: string } | null)?.name ?? ptag;
+    const tagId = (tagRow as { id?: string } | null)?.id;
+    if (tagId) {
+      const { data: mapRows } = await supabase.from('product_tag_map').select('product_id').eq('tag_id', tagId);
+      ptagProductIds = ((mapRows ?? []) as Array<{ product_id: string }>).map(r => r.product_id);
+    } else {
+      ptagProductIds = [];
+    }
+  }
+
   let countQuery = supabase.from('products').select('*', { count: 'exact', head: true });
   let dataQuery = supabase.from('products').select('*').order(order.col, { ascending: order.asc }).range(from, to);
+
+  if (ptagProductIds) {
+    // `.in('id', [])` returns nothing — the correct result for a tag with no
+    // products (rather than silently ignoring the filter).
+    const ids = ptagProductIds.length > 0 ? ptagProductIds : ['00000000-0000-0000-0000-000000000000'];
+    countQuery = countQuery.in('id', ids);
+    dataQuery = dataQuery.in('id', ids);
+  }
 
   if (category && category !== 'All') {
     // The filter pills are top-level taxons (Makeup / Skincare / Wellness /
@@ -99,6 +124,15 @@ export default async function ProductsPage({
       <Suspense fallback={null}>
         <ProductsFilter total={total} />
       </Suspense>
+
+      {ptag && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16, fontSize: '0.8125rem', color: '#374151' }}>
+          <span style={{ padding: '4px 10px', borderRadius: 20, background: '#fce7f3', color: '#9d174d', fontWeight: 600 }}>
+            Tag: {ptagName}
+          </span>
+          <Link href="/admin/products" style={{ color: '#6b7280', textDecoration: 'none' }}>Clear ✕</Link>
+        </div>
+      )}
 
       <ProductsFlash deleted={!!deleted} archived={!!archived} error={error} />
 
