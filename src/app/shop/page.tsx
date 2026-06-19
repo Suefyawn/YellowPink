@@ -20,6 +20,37 @@ interface FacetData {
   productValueMap: Record<string, string[]>;     // product_id → attribute_value_ids
 }
 
+export interface TagFacet { slug: string; name: string }
+
+interface TagData {
+  productTagMap: Record<string, string[]>;       // product_id → tag slugs
+  allTags: TagFacet[];                           // full tag vocabulary (slug + display name)
+}
+
+// Tags power the storefront Tags facet. product_tags + product_tag_map are
+// anon-readable (migration 143); the catalogue is small so one round-trip is
+// plenty. Demo mode has no tag tables, so short-circuit.
+async function loadTagData(): Promise<TagData> {
+  if (isDemo) return { productTagMap: {}, allTags: [] };
+  const [{ data: tagRows }, { data: mapRows }] = await Promise.all([
+    supabase.from('product_tags').select('id, slug, name').order('name'),
+    supabase.from('product_tag_map').select('product_id, tag_id'),
+  ]);
+  const slugById = new Map<string, string>();
+  const allTags: TagFacet[] = [];
+  for (const t of (tagRows ?? []) as Array<{ id: string; slug: string; name: string }>) {
+    slugById.set(t.id, t.slug);
+    allTags.push({ slug: t.slug, name: t.name });
+  }
+  const productTagMap: Record<string, string[]> = {};
+  for (const r of (mapRows ?? []) as Array<{ product_id: string; tag_id: string }>) {
+    const slug = slugById.get(r.tag_id);
+    if (!slug) continue;
+    (productTagMap[r.product_id] ??= []).push(slug);
+  }
+  return { productTagMap, allTags };
+}
+
 async function loadFacetData(): Promise<FacetData> {
   // Demo-mode short-circuit: no variants in stub data, no facets.
   if (isDemo) return { attributes: [], productValueMap: {} };
@@ -134,12 +165,15 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   });
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string; brand?: string }> }) {
-  const [products, facetData] = await Promise.all([
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string; brand?: string; tag?: string; featured?: string; bestseller?: string }> }) {
+  const [products, facetData, tagData] = await Promise.all([
     getProducts(),
     loadFacetData(),
+    loadTagData(),
   ]);
-  const { category, subcategory, cat, taxon, on_sale, q, brand } = await searchParams;
+  const { category, subcategory, cat, taxon, on_sale, q, brand, tag: tagParam, featured, bestseller } = await searchParams;
+  const searchParamsFeatured = featured === '1';
+  const searchParamsBestseller = bestseller === '1';
 
   // ?category= is canonical; ?cat= is a legacy WP param the proxy already
   // 301s across. CollectionPage resolves the value (taxon or leaf) itself.
@@ -205,10 +239,15 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         products={products}
         attributes={facetData.attributes}
         productValueMap={facetData.productValueMap}
+        productTagMap={tagData.productTagMap}
+        allTags={tagData.allTags}
         initialCategory={initialCategory}
         initialSubcategory={subcategory ?? null}
         initialOnSaleOnly={on_sale === '1'}
         initialBrand={brand ?? null}
+        initialTags={tagParam ?? null}
+        initialFeatured={searchParamsFeatured}
+        initialBestseller={searchParamsBestseller}
       />
     </main>
   );
