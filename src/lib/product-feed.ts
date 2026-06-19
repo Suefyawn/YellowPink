@@ -5,7 +5,12 @@
 // A variant's human label is composed from its attribute values (the same
 // data the PDP variant picker uses), e.g. "Shade 828" or "Red · Large".
 
-import { supabaseAdmin } from './supabase';
+// Anon client (not service-role): the feed routes are statically prerendered
+// at build time, where SUPABASE_SERVICE_ROLE_KEY isn't available — using the
+// admin client there crashes the build. The variant/attribute tables are
+// anon-readable (the public PDP reads them the same way), so the anon client
+// is both correct and build-safe.
+import { supabase } from './supabase';
 
 export interface FeedVariant {
   id: string;
@@ -22,9 +27,9 @@ export interface FeedVariant {
 export async function loadFeedVariants(productIds: string[]): Promise<Map<string, FeedVariant[]>> {
   const out = new Map<string, FeedVariant[]>();
   if (productIds.length === 0) return out;
-  const admin = supabaseAdmin();
+  const db = supabase;
 
-  const { data: variantRows } = await admin
+  const { data: variantRows } = await db
     .from('product_variants')
     .select('id, product_id, sku, price, compare_at_price, stock, image_url, sort_order')
     .in('product_id', productIds)
@@ -38,7 +43,7 @@ export async function loadFeedVariants(productIds: string[]): Promise<Map<string
 
   // variant → its attribute-value ids
   const variantIds = variants.map(v => v.id);
-  const { data: vav } = await admin
+  const { data: vav } = await db
     .from('variant_attribute_values')
     .select('variant_id, attribute_value_id')
     .in('variant_id', variantIds);
@@ -48,7 +53,7 @@ export async function loadFeedVariants(productIds: string[]): Promise<Map<string
   const valueText = new Map<string, string>();
   const valueSort = new Map<string, number>();
   if (valueIds.length) {
-    const { data: vals } = await admin
+    const { data: vals } = await db
       .from('attribute_values')
       .select('id, value, sort_order')
       .in('id', valueIds);
