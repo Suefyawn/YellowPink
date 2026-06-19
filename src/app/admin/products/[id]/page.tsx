@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { VariantsSection } from '@/components/admin/VariantsSection';
+import { ProductTagsEditor } from '@/components/admin/ProductTagsEditor';
 import { ProductInventoryHistory } from '@/components/admin/ProductInventoryHistory';
 import type { Product, ProductAttribute, AttributeValue, ProductVariant, Vendor } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
@@ -78,6 +79,16 @@ export default async function EditProductPage({
   // vendors RLS has no policy — read with the service role.
   const { data: vendorData } = await supabaseAdmin().from('vendors').select('*').order('name');
 
+  // Tags: this product's current set + the full tag vocabulary for suggestions.
+  const [{ data: mapRows }, { data: allTagRows }] = await Promise.all([
+    supabase.from('product_tag_map').select('product_tags(name)').eq('product_id', product.id),
+    supabase.from('product_tags').select('name').order('name'),
+  ]);
+  const productTags = ((mapRows ?? []) as Array<{ product_tags: { name: string } | { name: string }[] | null }>)
+    .flatMap(r => (Array.isArray(r.product_tags) ? r.product_tags : r.product_tags ? [r.product_tags] : []))
+    .map(t => t.name);
+  const allTags = ((allTagRows ?? []) as Array<{ name: string }>).map(t => t.name);
+
   return (
     <>
       {feedbackError && (
@@ -93,6 +104,7 @@ export default async function EditProductPage({
       )}
       <ProductForm product={product} vendors={(vendorData ?? []) as Vendor[]} />
       <div style={{ padding: '0 36px 32px' }}>
+        <ProductTagsEditor productId={product.id} initialTags={productTags} suggestions={allTags} />
         <VariantsSection
           productId={product.id}
           productKind={product.kind ?? 'simple'}
