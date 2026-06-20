@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AdminSidebar } from './AdminSidebar';
 import { AdminBottomNav } from './AdminBottomNav';
+import { CommandPalette } from './CommandPalette';
 import { NotificationsBell } from './NotificationsBell';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import type { StaffSession } from '@/lib/permissions';
@@ -378,6 +379,8 @@ export function AdminShell({
         pendingOrderCount={pendingOrderCount}
         onMore={() => setOpen(true)}
       />
+
+      <CommandPalette session={session} />
     </>
   );
 }
