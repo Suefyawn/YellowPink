@@ -219,6 +219,13 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
                 </span>
               </span>
             </label>
+            {trackInv && (
+              <div style={{ ...fieldWrap, marginTop: 16, maxWidth: 240 }}>
+                <label style={lbl}>Reorder point</label>
+                <input name="reorder_point" type="number" min={0} defaultValue={product?.reorder_point ?? 0} style={inp} placeholder="0" />
+                <span style={hint}>Flag this product for reorder when stock falls to this level. 0 = use the global low-stock alert.</span>
+              </div>
+            )}
           </Section>
 
           {/* ── Vendor & sourcing ──────────────────────────────────────── */}

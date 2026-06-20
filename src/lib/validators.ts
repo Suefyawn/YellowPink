@@ -53,6 +53,9 @@ export const productInputSchema = z.object({
                   ),
   slug:           slugSchema,
   stock:          positiveInt,
+  // Per-product reorder point (0 = off → global low-stock threshold). The form
+  // always submits it; '' / missing normalises to 0.
+  reorder_point:  z.preprocess(v => (v === '' || v == null ? 0 : v), positiveInt),
   // Merchandising flags. Native checkboxes submit 'on' when ticked and are
   // absent when unticked, so preprocess undefined → false. These booleans
   // drive the homepage rails and the `featured`/`bestseller` smart-collection
