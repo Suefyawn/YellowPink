@@ -63,6 +63,14 @@ function isOwnedPath(pathname: string): boolean {
     pathname.startsWith('/product/') ||
     pathname.startsWith('/blog/') ||
     pathname.startsWith('/page/') ||
+    // Storefront archive routes Next owns directly — must be listed here or the
+    // legacy WordPress pattern rules below would hijack them (e.g. /brand/<slug>
+    // was being 301'd to /shop?category=<slug>, showing "All Products").
+    pathname === '/brands' ||
+    pathname === '/collections' ||
+    pathname.startsWith('/brand/') ||
+    pathname.startsWith('/tag/') ||
+    pathname.startsWith('/collection/') ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
     pathname === '/favicon.ico' ||
@@ -228,12 +236,14 @@ function wpPatternRedirect(pathname: string, params: URLSearchParams): string | 
   const blogPage = pathname.match(/^\/blog\/page\/(\d+)\/?$/);
   if (blogPage) return `/blog?page=${blogPage[1]}`;
 
-  // /category/<slug>/ + /brand/<slug>/ → /shop?category=<slug>.
-  // NOTE: /product-category/<slug> is deliberately NOT handled here — those old
-  // WordPress slugs don't match the new taxonomy (e.g. bone-health ≠ bone-joint),
-  // so they're resolved via the per-slug `redirects` table (correct targets),
-  // with a slug-passthrough fallback in the proxy for anything unmapped.
-  const cat = pathname.match(/^\/(?:category|brand)\/([^/]+)\/?$/);
+  // /category/<slug>/ → /shop?category=<slug> (legacy WordPress blog/category
+  // URLs). NOTE: /brand/<slug> is NOT handled here any more — it's a real Next
+  // route (the brand archive page), so it's listed in isOwnedPath above and
+  // never reaches this function. /product-category/<slug> is also deliberately
+  // excluded — those old WordPress slugs don't match the new taxonomy (e.g.
+  // bone-health ≠ bone-joint), so they're resolved via the per-slug `redirects`
+  // table, with a slug-passthrough fallback in the proxy for anything unmapped.
+  const cat = pathname.match(/^\/category\/([^/]+)\/?$/);
   if (cat) return `/shop?category=${encodeURIComponent(cat[1])}`;
 
   // /author/<name>/<page?>/ → /blog (we don't have author archives)
