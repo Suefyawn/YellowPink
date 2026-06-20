@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { supabaseAdmin } from '@/lib/supabase';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { CopyButton } from '@/components/admin/CopyButton';
 import { CouponEditModal } from '@/components/admin/CouponEditModal';
 import { createCoupon, deleteCoupon, toggleCoupon } from '@/app/admin/coupon-actions';
 import { getStaffSession } from '@/lib/staff-auth';
@@ -151,7 +152,10 @@ export default async function CouponsPage({
                 return (
                   <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', ...stateStyle[state] }}>
                     <td data-label="Code" style={{ padding: '12px 16px' }}>
-                      <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</span>
+                        <CopyButton value={c.code} iconOnly title={`Copy coupon code ${c.code}`} />
+                      </span>
                       {isExpired && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#dc2626', background: '#fef2f2', padding: '1px 6px', borderRadius: 10 }}>EXPIRED</span>}
                       {isMaxed && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#ea580c', background: '#fff7ed', padding: '1px 6px', borderRadius: 10 }}>MAXED</span>}
                     </td>
