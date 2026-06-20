@@ -56,7 +56,13 @@ export default async function CodReconciliationPage() {
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6, gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>COD reconciliation</h1>
-        <Link href="/admin/finance" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>← Finance</Link>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <a href="/admin/finance/cod/export" style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}>Download CSV ↓</a>
+          {outstanding.length > 0 && (
+            <a href="/admin/finance/cod/export?outstanding=1" style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}>To-collect only ↓</a>
+          )}
+          <Link href="/admin/finance" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>← Finance</Link>
+        </div>
       </div>
       <p style={{ margin: '0 0 20px', fontSize: '0.8125rem', color: '#6b7280' }}>
         Cash-on-delivery money owed and collected. Mark a payment received on each order&apos;s page; it then moves from
