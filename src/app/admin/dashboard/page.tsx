@@ -49,6 +49,10 @@ export default async function DashboardPage() {
   // Prior 30-day window [60d ago, 30d ago) — powers the period-over-period
   // trend pills on the KPI cards.
   const sixtyDaysAgo = new Date(nowMs - 60 * 24 * 60 * 60 * 1000).toISOString();
+  // "Stuck" thresholds — orders/returns sitting longer than this are surfaced
+  // in the Needs-attention card so they don't drift past the operator's eye.
+  const oneDayAgo = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString();
+  const threeDaysAgo = new Date(nowMs - 3 * 24 * 60 * 60 * 1000).toISOString();
 
   // orders RLS (migration 070) drops anon SELECT — use the service role
   // for every orders read on this page. products / blog_posts still
@@ -63,6 +67,9 @@ export default async function DashboardPage() {
     { data: recentOrdersForChart },
     { count: prevCustomerCount },
     { data: prevRevenueRows },
+    { count: stuckPaymentCount },
+    { count: stalePendingCount },
+    { count: openReturnsCount },
   ] = await Promise.all([
     admin.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
     // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
@@ -84,6 +91,17 @@ export default async function DashboardPage() {
     // Prior-period comparisons for the trend pills.
     admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
     admin.from('v_orders_revenue').select('revenue').gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
+    // "Needs attention" counters — surface state that's drifted past the
+    // expected SLA so the owner can clear it from the dashboard:
+    //  • payment_pending older than 24h (gateway likely never confirmed)
+    //  • plain pending older than 3 days (waiting on confirmation too long)
+    //  • return requests still in `pending` state
+    admin.from('orders').select('*', { count: 'exact', head: true })
+      .eq('status', 'payment_pending').lt('created_at', oneDayAgo),
+    admin.from('orders').select('*', { count: 'exact', head: true })
+      .eq('status', 'pending').lt('created_at', threeDaysAgo),
+    admin.from('return_requests').select('*', { count: 'exact', head: true })
+      .eq('status', 'pending'),
   ]);
 
   // Build 30-day revenue series — reuse the `nowMs` we pinned above so the
@@ -226,6 +244,67 @@ export default async function DashboardPage() {
         </div>
         <RevenueChart days={chartDays} />
       </div>
+
+      {/* Needs attention — only renders when there's actually something
+          actionable. Each row links into the filtered list. */}
+      {(() => {
+        const items: { count: number; label: string; href: string }[] = [];
+        if ((stuckPaymentCount ?? 0) > 0) items.push({
+          count: stuckPaymentCount ?? 0,
+          label: `payment-pending order${(stuckPaymentCount ?? 0) === 1 ? '' : 's'} stuck > 24h`,
+          href: '/admin/orders?status=payment_pending',
+        });
+        if ((stalePendingCount ?? 0) > 0) items.push({
+          count: stalePendingCount ?? 0,
+          label: `unconfirmed order${(stalePendingCount ?? 0) === 1 ? '' : 's'} > 3 days old`,
+          href: '/admin/orders?status=pending',
+        });
+        if ((openReturnsCount ?? 0) > 0) items.push({
+          count: openReturnsCount ?? 0,
+          label: `return request${(openReturnsCount ?? 0) === 1 ? '' : 's'} awaiting approval`,
+          href: '/admin/returns',
+        });
+        if (items.length === 0) return null;
+        return (
+          <div style={{
+            background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 10,
+            padding: '18px 22px', marginBottom: 32,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#991b1b' }}>
+                Needs attention
+              </h2>
+              <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>
+                {items.length} thing{items.length === 1 ? '' : 's'} to clear
+              </span>
+            </div>
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {items.map(it => (
+                <li key={it.href}>
+                  <Link href={it.href} style={{
+                    display: 'flex', alignItems: 'center', gap: 10,
+                    padding: '8px 12px', background: 'white',
+                    border: '1px solid #fecaca', borderRadius: 8,
+                    textDecoration: 'none', color: '#7f1d1d',
+                    fontSize: '0.875rem',
+                  }}>
+                    <span style={{
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      minWidth: 26, height: 26, padding: '0 6px',
+                      borderRadius: 13, background: '#dc2626', color: 'white',
+                      fontSize: '0.75rem', fontWeight: 700,
+                    }}>
+                      {it.count}
+                    </span>
+                    <span style={{ flex: 1 }}>{it.label}</span>
+                    <span aria-hidden="true" style={{ color: '#dc2626' }}>→</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        );
+      })()}
 
       {/* Low Stock Alert */}
       {lowStockProducts && lowStockProducts.length > 0 && (
