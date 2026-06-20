@@ -295,7 +295,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
             pay_method: payMethod,
             subtotal,
             shipping,
-            total: beforeRewards,                  // pre-rewards order total — points decrement separately
+            total,                                 // final cash owed — RPC reconciles against this exact figure
             items: cartItems,
             status: 'pending',
             user_id: user?.id || '',
