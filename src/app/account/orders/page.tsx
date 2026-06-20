@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
+import { useCart } from '@/context/CartContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
@@ -19,10 +20,31 @@ const statusColors: Record<string, string> = {
 
 export default function AccountOrdersPage() {
   const { user, loading } = useAuth();
+  const { addToCart, setCartOpen } = useCart();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [fetching, setFetching] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [reordering, setReordering] = useState<string | null>(null);
+
+  // Reorder = add every line back to the current cart. addToCart merges
+  // duplicates and clamps to live stock, so an item that's since gone out
+  // of stock is silently skipped instead of letting the customer place an
+  // order it can't fulfil. Opens the mini-cart on success.
+  const reorder = (o: Order) => {
+    if (!o.id) return;
+    setReordering(o.id);
+    for (const item of (o.items ?? [])) {
+      addToCart({
+        ...item,
+        qty: item.qty,
+        variant_id: item.variant_id ?? null,
+        variant_label: item.variant_label ?? null,
+      });
+    }
+    setCartOpen(true);
+    setReordering(null);
+  };
 
   useEffect(() => {
     if (!loading && !user) { router.replace('/login'); return; }
@@ -160,14 +182,31 @@ export default function AccountOrdersPage() {
                         <span style={{ color: 'var(--brand-pink-text)' }}>{fmt(o.total)}</span>
                       </div>
 
-                      {status === 'delivered' && o.id && (
-                        <div style={{ marginTop: 16, textAlign: 'right' }}>
-                          <Link
-                            href={`/account/orders/returns/new?order=${encodeURIComponent(o.id)}`}
-                            style={{ fontSize: '0.8125rem', color: 'var(--ink-700)', textDecoration: 'underline' }}
+                      {o.id && (o.items?.length ?? 0) > 0 && (
+                        <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+                          <button
+                            type="button"
+                            onClick={() => reorder(o)}
+                            disabled={reordering === o.id}
+                            style={{
+                              padding: '8px 16px', background: 'var(--ink-900)', color: 'white',
+                              border: 'none', borderRadius: 'var(--radius-card)',
+                              fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
+                              fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+                              cursor: reordering === o.id ? 'wait' : 'pointer',
+                              opacity: reordering === o.id ? 0.6 : 1,
+                            }}
                           >
-                            Request a return →
-                          </Link>
+                            {reordering === o.id ? 'Adding…' : 'Buy again'}
+                          </button>
+                          {status === 'delivered' && (
+                            <Link
+                              href={`/account/orders/returns/new?order=${encodeURIComponent(o.id)}`}
+                              style={{ fontSize: '0.8125rem', color: 'var(--ink-700)', textDecoration: 'underline' }}
+                            >
+                              Request a return →
+                            </Link>
+                          )}
                         </div>
                       )}
                     </div>
