@@ -53,6 +53,12 @@ export const productInputSchema = z.object({
                   ),
   slug:           slugSchema,
   stock:          positiveInt,
+  // Merchandising flags. Native checkboxes submit 'on' when ticked and are
+  // absent when unticked, so preprocess undefined → false. These booleans
+  // drive the homepage rails and the `featured`/`bestseller` smart-collection
+  // rules (distinct from the free-text `tag` badge above).
+  is_featured:    z.preprocess(v => v === 'on' || v === 'true' || v === true, z.boolean()),
+  is_bestseller:  z.preprocess(v => v === 'on' || v === 'true' || v === true, z.boolean()),
   // Inventory tracking toggle. The product form always submits 'true'/'false'
   // via a hidden input; a missing value (e.g. an older form or import) keeps
   // the tracked default.
