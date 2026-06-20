@@ -9,7 +9,7 @@ import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
 import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
 import { VendorDispatch } from '@/components/admin/VendorDispatch';
 import { setOrderConfirmed } from '@/app/admin/vendor-actions';
-import { setOrderCosts, recordPayment, clearPayment } from '@/app/admin/finance/actions';
+import { setOrderCosts, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
 import { deleteOrder } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
@@ -538,6 +538,30 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <p style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Not yet recorded.</p>
         )}
       </div>
+
+      {/* Internal notes — freeform staff note, admin-only. Distinct from the
+          order timeline (which records status-change reasons). */}
+      {canEdit && (
+        <div style={{ ...section, marginBottom: 20 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Internal notes</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            A private note for your team (e.g. delivery preferences, call attempts). Never shown to the customer.
+          </p>
+          <form action={updateOrderNotes.bind(null, o.id!)}>
+            <textarea
+              name="notes"
+              defaultValue={o.notes ?? ''}
+              rows={3}
+              maxLength={4000}
+              placeholder="Add a note about this order…"
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+            />
+            <div style={{ marginTop: 10 }}>
+              <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save note</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
         {/* Customer */}
