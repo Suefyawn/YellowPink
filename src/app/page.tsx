@@ -13,7 +13,7 @@ import {
   getBlogPosts,
 } from '@/lib/supabase';
 import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
-import { getPublishedCollections } from '@/lib/collections-data';
+import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 
 // Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -68,7 +68,7 @@ export default async function HomePage() {
     getProductsByBrands(K_BEAUTY_BRANDS, 4),
     getSiteSettings(),
     getBlogPosts(),
-    getPublishedCollections(3),
+    getPublishedCollectionsWithCovers(3),
   ]);
 
   // The featured sale collection is shown only while a sale is switched on

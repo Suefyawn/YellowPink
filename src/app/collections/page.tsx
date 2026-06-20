@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { CollectionsGrid } from '@/components/ui/CollectionsGrid';
-import { getPublishedCollections } from '@/lib/collections-data';
+import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 import { pageMeta, jsonLd, breadcrumbLd } from '@/lib/seo';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -16,7 +16,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function CollectionsIndexPage() {
-  const collections = await getPublishedCollections();
+  const collections = await getPublishedCollectionsWithCovers();
 
   return (
     <main className="fade-in">
