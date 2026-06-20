@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useCallback, useRef, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useTransition } from 'react';
 import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types';
 
 // Pill order + colour. Labels come from the shared ORDER_STATUS_LABELS map so
@@ -28,6 +28,13 @@ export function OrdersFilter({ total }: { total: number }) {
   const [, startTransition] = useTransition();
   const status = params.get('status') ?? 'all';
   const q = params.get('q') ?? '';
+
+  // Remember the active list query so the order-detail "← Orders" link can
+  // return the staffer to the exact filtered/searched view they came from.
+  useEffect(() => {
+    const qs = params.toString();
+    try { sessionStorage.setItem('adminOrdersQuery', qs ? `?${qs}` : ''); } catch { /* private mode */ }
+  }, [params]);
 
   const push = useCallback((next: URLSearchParams) => {
     startTransition(() => router.push(`/admin/orders?${next.toString()}`));

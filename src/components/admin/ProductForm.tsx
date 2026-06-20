@@ -28,13 +28,18 @@ const row3: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1
 
 // One titled block of the form. Sections are separated by a hairline so a
 // long product edit reads as grouped steps, not one undifferentiated wall.
+// Section titles in render order — also drives the "jump to" nav. Keep in
+// sync with the <Section> blocks below.
+const FORM_SECTIONS = ['Basics', 'Merchandising', 'Pricing & stock', 'Vendor & sourcing', 'Page link', 'Product image', 'Product-page content', 'Search & social'];
+
 function Section({ title, desc, first, children }: {
   title: string; desc?: string; first?: boolean; children: React.ReactNode;
 }) {
   return (
-    <section style={{
+    <section id={toSlug(title)} style={{
       marginBottom: 24, paddingTop: first ? 0 : 24,
       borderTop: first ? 'none' : '1px solid #f3f4f6',
+      scrollMarginTop: 72,
     }}>
       <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#111827' }}>{title}</h2>
       <p style={{ margin: '2px 0 16px', fontSize: '0.75rem', color: '#6b7280' }}>
@@ -96,6 +101,22 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
       </div>
 
       <div style={{ background: 'white', borderRadius: 10, padding: '28px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', maxWidth: 820 }}>
+        {/* Jump-to nav — a long product edit is a lot of scrolling; these
+            anchor chips drop you straight to a section. Sticky so they stay
+            reachable as you scroll. */}
+        <nav aria-label="Jump to section" style={{
+          position: 'sticky', top: 0, zIndex: 4, background: 'rgba(255,255,255,0.94)',
+          backdropFilter: 'saturate(140%) blur(6px)', WebkitBackdropFilter: 'saturate(140%) blur(6px)',
+          margin: '-28px -28px 20px', padding: '12px 28px', borderBottom: '1px solid #f3f4f6',
+          display: 'flex', gap: 6, overflowX: 'auto', borderRadius: '10px 10px 0 0',
+        }}>
+          {FORM_SECTIONS.map(s => (
+            <a key={s} href={`#${toSlug(s)}`} style={{
+              flexShrink: 0, padding: '5px 11px', borderRadius: 999, border: '1px solid #e5e7eb',
+              fontSize: '0.75rem', fontWeight: 600, color: '#374151', textDecoration: 'none', background: 'white', whiteSpace: 'nowrap',
+            }}>{s}</a>
+          ))}
+        </nav>
         {state?.error && (
           <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 7, padding: '10px 14px', marginBottom: 20, color: '#dc2626', fontSize: '0.875rem' }}>
             {state.error}
