@@ -27,12 +27,22 @@ export default async function OrdersPage({
 async function OrdersPageInner({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string }>;
 }) {
-  const { status, q, page: pageParam } = await searchParams;
+  const { status, q, page: pageParam, range } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
+
+  // Map the friendly `range` chip into a created_at lower bound. Empty / unset
+  // / 'all' = no time filter; everything else is "the last N days from now".
+  const rangeDays: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
+  // Server component on every request — Date.now() is fine here, the
+  // purity rule targets render of client components.
+  const rangeSinceIso = range && rangeDays[range]
+    // eslint-disable-next-line react-hooks/purity
+    ? new Date(Date.now() - rangeDays[range] * 86_400_000).toISOString()
+    : null;
 
   // orders RLS (migration 070) removed the anon SELECT path — the table
   // is now service-role / authenticated-self-only. Staff-cookie auth
@@ -45,6 +55,10 @@ async function OrdersPageInner({
   if (status && status !== 'all') {
     countQuery = countQuery.eq('status', status as OrderStatus);
     dataQuery = dataQuery.eq('status', status as OrderStatus);
+  }
+  if (rangeSinceIso) {
+    countQuery = countQuery.gte('created_at', rangeSinceIso);
+    dataQuery = dataQuery.gte('created_at', rangeSinceIso);
   }
   if (q) {
     // Strip characters that would break the PostgREST `.or()` grammar (commas
@@ -65,7 +79,7 @@ async function OrdersPageInner({
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Orders</h1>
-        <ExportCSVButton status={status} q={q} />
+        <ExportCSVButton status={status} q={q} range={range} />
       </div>
 
       <Suspense fallback={null}>

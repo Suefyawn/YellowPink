@@ -22,12 +22,23 @@ const STATUSES: { value: string; color?: string }[] = [
 const statusLabel = (v: string) =>
   v === 'all' ? 'All' : (ORDER_STATUS_LABELS[v as OrderStatus] ?? v);
 
+// Quick "show me orders from the last X days" presets. `all` clears the date
+// filter so the page falls back to the full history.
+const RANGES: { value: string; label: string }[] = [
+  { value: 'all',  label: 'All time' },
+  { value: '1d',   label: 'Today' },
+  { value: '7d',   label: 'Last 7d' },
+  { value: '30d',  label: 'Last 30d' },
+  { value: '90d',  label: 'Last 90d' },
+];
+
 export function OrdersFilter({ total }: { total: number }) {
   const router = useRouter();
   const params = useSearchParams();
   const [, startTransition] = useTransition();
   const status = params.get('status') ?? 'all';
   const q = params.get('q') ?? '';
+  const range = params.get('range') ?? 'all';
 
   // Remember the active list query so the order-detail "← Orders" link can
   // return the staffer to the exact filtered/searched view they came from.
@@ -47,6 +58,13 @@ export function OrdersFilter({ total }: { total: number }) {
     push(next);
   };
 
+  const setRange = (r: string) => {
+    const next = new URLSearchParams(params.toString());
+    if (r === 'all') { next.delete('range'); } else { next.set('range', r); }
+    next.delete('page');
+    push(next);
+  };
+
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setSearch = (v: string) => {
     if (debounce.current) clearTimeout(debounce.current);
@@ -59,10 +77,11 @@ export function OrdersFilter({ total }: { total: number }) {
   };
 
   const clearAll = () => push(new URLSearchParams());
-  const hasFilters = status !== 'all' || !!q;
+  const hasFilters = status !== 'all' || !!q || range !== 'all';
 
   return (
-    <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
+    <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
       <div className="adm-filter-pills" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
         {STATUSES.map(s => {
           const isActive = status === s.value;
@@ -105,6 +124,25 @@ export function OrdersFilter({ total }: { total: number }) {
       <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
         {total} order{total !== 1 ? 's' : ''}
       </span>
+    </div>
+    <div className="adm-filter-pills" style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+      <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em', marginRight: 6 }}>
+        Placed
+      </span>
+      {RANGES.map(r => {
+        const isActive = range === r.value;
+        return (
+          <button key={r.value} onClick={() => setRange(r.value)} style={{
+            padding: '5px 12px', borderRadius: 16, border: 'none', cursor: 'pointer',
+            fontSize: '0.75rem', fontWeight: isActive ? 600 : 400,
+            background: isActive ? '#111827' : '#f3f4f6',
+            color: isActive ? '#f9fafb' : '#6b7280',
+          }}>
+            {r.label}
+          </button>
+        );
+      })}
+    </div>
     </div>
   );
 }
