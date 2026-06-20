@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 20 June 2026.*
+> *Last updated: 21 June 2026.*
 
 ---
 
@@ -95,6 +95,10 @@ customers and spot where an order is.
   `/shop?tag=viral`). Results are paginated. Product cards show a **Sale** badge
   when discounted and an **"Only N left"** badge when stock is running low (5 or
   fewer remaining, for products whose inventory the store tracks).
+- **Search overlay** — the header magnifying glass opens a full-width search
+  panel. When the box is empty it shows the shopper's **Recent** searches as
+  one-tap chips (the last 6, deduped), then Trending brands and Categories.
+  Typing brings up live product results.
 - **Product page** — each product has its images, price (and the crossed-out
   original price if it's on sale), description, ingredients, how-to-use, key
   benefits, FAQs, and its customer star rating. If the product comes in
@@ -143,7 +147,10 @@ Every order gets a unique **order number** (for example `YP-A1B2C3`).
 - They receive an **order confirmation email**.
 - They can check progress anytime at the **Track page** (`/track`) by entering
   their order number and phone — no login needed. Once the order ships, the
-  tracking number and courier link appear there.
+  tracking number and courier link appear there. The **Track your order**
+  button in the confirmation email opens the page with both fields pre-filled
+  and runs the lookup automatically, so a single tap from the inbox shows
+  status with no typing.
 
 ### 2.5 Customer accounts
 
@@ -195,14 +202,15 @@ together. Here's what each link is for:
 **Insights**
 | Section | What it's for |
 |---|---|
-| **Dashboard** | At-a-glance health of the store — revenue, order counts by status, top products, low-stock alerts, recent orders. |
+| **Dashboard** | At-a-glance health of the store — revenue, order counts by status, top products, low-stock alerts, recent orders. A **Needs attention** card appears above Low stock whenever something has drifted past its SLA: payment-pending orders stuck over 24 hours, plain pending orders unconfirmed for over 3 days, and any return requests still awaiting approval. Each row deep-links to the filtered list so you can clear it in one click; the whole card hides when all three counters are zero. |
 | **Analytics** | Deeper performance data — revenue trends, customer cohorts (RFM segments + retention), and (if connected) website-traffic widgets including top user journeys (which path sequences customers take through the site), funnel-by-traffic-source and funnel-by-device (Mobile vs Desktop conversion at each step — useful for spotting where one device is leaking shoppers, most often at product → add-to-cart), a weekly-active-users curve, and inline links to PostHog session recordings to watch real visits. |
 | **Finance** | Profit & loss for any period (7/30/90 days or all time): revenue from paid orders, minus **cost of goods** (COGS), delivery and payment-fee costs → gross profit, minus your logged expenses (ad spend + overheads) → **net profit and margin**. COGS is worked out per order from how each item is sourced: vendor items use the vendor cost from their settlement, and own-stock items use the **Cost price** you set on the product page (Products → a product → *Vendor & sourcing* → Cost price). Set a cost price on your own-stock products so their profit is real instead of showing as 100% margin. Because drop-ship prices change order to order, you can also enter the **actual** goods cost for a specific order in *Order costs* on the order page (**Acquisition cost / COGS**) — when set, it overrides the estimate above for that one order; leave it blank to use the product default. A **Revenue by payment method** table breaks down orders, revenue and gross profit per method (Cash on Delivery, Bank Transfer, JazzCash, etc.); a **Revenue by account** table shows where payments actually landed once reconciled (with a count of orders still awaiting confirmation); an **Orders in this period** table lists each order's total, costs, gross profit and margin (latest 100, filterable by payment method and exportable to **CSV**); and an **Awaiting payment confirmation** list flags non-COD orders not yet reconciled. Also shows **ROAS** (return on ad spend) by traffic source. Log ad spend and overheads in the **Expenses** table here; enter each order's acquisition (goods), delivery and payment-fee cost on the order page (*Order costs*), where an **Order profit** summary then shows that order's net profit and margin. On each order you can also record **Payment received** — pick which of your configured accounts (Settings → Payments) the money landed in and the date; this feeds *Revenue by account* and the awaiting-confirmation count, and is for reconciliation only (it doesn't change the order status). |
+| **COD reconciliation** | The cash side of the business at a glance: **Outstanding** (delivered COD orders waiting for you to confirm cash received), **Collected** (delivered and reconciled), and **In transit** (still out for delivery — your expected cash to come). Open any order to record the payment. Two CSV exports — **Download CSV** for the full active COD list (a courier/route manifest) and **To-collect only** for the outstanding subset — open cleanly in Excel. |
 
 **Sell** — day-to-day commerce operations
 | Section | What it's for |
 |---|---|
-| **Orders** | Every order placed. Filter by status, search, and open an order to process it. With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone. |
+| **Orders** | Every order placed. Filter by status, by **date range** (Today / Last 7d / Last 30d / Last 90d / All time — "Today" is the calendar day in Pakistan time), and by search across order number, name, email or phone. Unfulfilled rows (pending / processing / payment_pending) get a coloured **age pill** next to their date — amber when they've sat too long, red when they're at risk — so a stale order jumps out without reading every date. Open an order to process it. With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone. |
 | **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, pricing, and descriptions. Each product page also has a **Tags** box — type to add a free-form tag (creating it if new) or reuse an existing one. Bulk price tools and CSV import are here. |
 | **Tags** | The tag vocabulary. Free-form labels (e.g. *viral*, *vegan*, *gift*) you attach to products for storefront filtering and curated edits. Create, rename (the storefront link stays stable), or delete a tag; deleting removes it from every product. The "N products" link jumps to the tagged products. |
 | **Collections** | Curated product groups, each with its own landing page (`/collection/<slug>`). **Manual** collections are a hand-picked, drag-ordered product list; **Smart** collections fill themselves from rules (e.g. *tag is viral* **and** *price ≤ 3000*) and stay current as products change. Set a title, description, hero image, SEO, and Draft/Published status. Draft collections are hidden from the storefront. |
@@ -213,7 +221,7 @@ together. Here's what each link is for:
 **People** — customers and incentives
 | Section | What it's for |
 |---|---|
-| **Customers** | Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend. Guests are grouped by email (a guest's repeat orders show as one customer); if a guest later signs up with the same email, their orders move under that account automatically. With the *Customers — Delete* permission, a registered customer's page has a **Danger zone** to permanently delete their account; their orders are kept (detached as guest orders) so revenue history stays intact. Guests have no account to delete — remove their orders individually instead. |
+| **Customers** | Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend. The customer page shows four stats — **Orders / Delivered / Total spend / Avg order** (total spend and average exclude cancelled, refunded, returned and payment-failed orders so they reflect realized revenue) — plus a tap-to-call phone link and a one-tap **WhatsApp** button that opens chat with a Yellow Pink greeting pre-filled. Guests are grouped by email (a guest's repeat orders show as one customer); if a guest later signs up with the same email, their orders move under that account automatically. With the *Customers — Delete* permission, a registered customer's page has a **Danger zone** to permanently delete their account; their orders are kept (detached as guest orders) so revenue history stays intact. Guests have no account to delete — remove their orders individually instead. |
 | **Segments** | Customer groupings (e.g. high-spenders) for targeting and analysis. |
 | **Coupons** | Discount codes — create, edit, set limits and expiry, and turn them on/off. |
 
@@ -288,7 +296,13 @@ margin, and who owes whom. Mark it **settled** once that payment is done.
 **The rest of the order page** also shows the customer's details (with a
 "repeat customer" badge and lifetime spend if applicable), the shipping address,
 the items, the full status timeline, a payment summary, and a **Print Invoice**
-button.
+button. The customer's phone is a tap-to-call link, the email is a `mailto:`
+link, and the shipping address has an **Open in Maps ↗** link that opens
+Google Maps with the address pre-filled — handy when handing off to a courier
+or sanity-checking a delivery zone. If a customer reports they didn't get the
+order confirmation email, the email field has a **Resend confirmation email**
+button right next to it (gated on Orders — Manage); the resend is recorded in
+the Activity log.
 
 > **Tip:** cancelling an order automatically returns its items to stock.
 
