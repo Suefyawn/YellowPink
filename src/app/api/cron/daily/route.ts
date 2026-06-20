@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
   results.push(await runJob(req, '/api/cron/subscription-reorder'));
   results.push(await runJob(req, '/api/cron/review-requests'));
   results.push(await runJob(req, '/api/cron/low-stock'));
+  results.push(await runJob(req, '/api/cron/stuck-payments'));
   results.push(await runJob(req, '/api/cron/analytics-refresh'));
 
   const allOk = results.every(r => r.ok);
