@@ -11,6 +11,38 @@ const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
+// Statuses where the order is still waiting on us to act. We only flag age for
+// these — a delivered order from 3 weeks ago isn't "stale".
+const UNFULFILLED = new Set<string>(['pending', 'processing']);
+
+// Whole days between then and now. Reads the clock at call time; the table is a
+// client component re-rendered on navigation, so this stays roughly current.
+function ageDays(iso: string): number {
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+}
+
+// Amber pill for unfulfilled orders aging past 2 days; red past 5. Returns null
+// when there's nothing to flag, so fulfilled / fresh orders stay clean.
+function AgeFlag({ status, createdAt }: { status: string; createdAt: string | null | undefined }) {
+  if (!createdAt || !UNFULFILLED.has(status)) return null;
+  const d = ageDays(createdAt);
+  if (d < 2) return null;
+  const urgent = d >= 5;
+  return (
+    <span
+      title={`Unfulfilled for ${d} days`}
+      style={{
+        marginLeft: 6, padding: '1px 7px', borderRadius: 10, fontSize: '0.6875rem', fontWeight: 700,
+        background: urgent ? '#fef2f2' : '#fffbeb',
+        color: urgent ? '#b91c1c' : '#b45309',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      {d}d
+    </span>
+  );
+}
+
 const payBadge: Record<string, { bg: string; color: string; label: string }> = {
   cod:  { bg: '#fef3c7', color: '#92400e', label: 'COD' },
   card: { bg: '#ede9fe', color: '#5b21b6', label: 'Card' },
@@ -161,6 +193,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                 <td style={{ padding: '12px 16px' }}><PayBadge method={o.pay_method} /></td>
                 <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                   {o.created_at ? fmtDate(o.created_at) : '—'}
+                  <AgeFlag status={st} createdAt={o.created_at} />
                 </td>
               </tr>
             );
@@ -198,6 +231,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                   <PayBadge method={o.pay_method} />
                   <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
                     {o.created_at ? fmtDate(o.created_at) : '—'}
+                    <AgeFlag status={st} createdAt={o.created_at} />
                   </span>
                 </div>
               </div>
