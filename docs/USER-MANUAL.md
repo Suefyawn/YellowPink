@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 19 June 2026.*
+> *Last updated: 20 June 2026.*
 
 ---
 
@@ -234,6 +234,11 @@ together. Here's what each link is for:
 > can't be completed shows a red banner or toast with the reason — the form
 > never just clears silently. If you see one of these messages repeatedly,
 > copy the text and share it with your developer.
+
+> **Jump anywhere with one keystroke.** Press **Cmd K** (Mac) or **Ctrl K**
+> (Windows / Linux) from any admin page to open the command palette — start
+> typing the name of a section ("orders", "settings", "cod") and press Enter
+> to go there. Press **?** to see the full list of keyboard shortcuts.
 
 ---
 
