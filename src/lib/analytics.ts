@@ -39,6 +39,8 @@ export type TrackEvent =
   | { name: 'begin_checkout';  payload: TrackCartPayload }
   | { name: 'purchase';        payload: TrackCartPayload & { transaction_id: string } }
   | { name: 'search';          payload: { query: string } }
+  | { name: 'select_item';     payload: { product_id: string; product_name: string; query?: string } }
+  | { name: 'select_sort';     payload: { sort: string } }
   | { name: 'sign_up';         payload: { method?: string } };
 
 const PLAUSIBLE_DOMAIN = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;

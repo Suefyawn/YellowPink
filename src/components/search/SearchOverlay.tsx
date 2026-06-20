@@ -16,6 +16,7 @@ import { getBrowserClient } from '@/lib/supabase-browser';
 import { DEMO_PRODUCTS } from '@/lib/demo-data';
 import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { brandPlusName } from '@/lib/product-display';
+import { track } from '@/lib/analytics';
 import type { Product } from '@/types';
 
 // Fallbacks when the server didn't pass anything (demo mode, network blip,
@@ -82,6 +83,10 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
       getBrowserClient().rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
         setProducts((data ?? []) as Product[]);
       });
+      // GA4 `search` — fired once the query settles (≥2 chars), so it counts
+      // real search usage (incl. typeahead-only sessions) without spamming a
+      // hit per keystroke. The event type existed but was never emitted.
+      if (query.trim().length >= 2) track({ name: 'search', payload: { query: query.trim() } });
     }, 200);
     return () => clearTimeout(handle);
   }, [query, searchOpen]);
@@ -97,9 +102,12 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   // Server already filtered + ranked via pg_trgm. Just rename for the JSX.
   const filtered = products;
 
-  const goToProduct = (slug: string) => {
+  const goToProduct = (p: Product) => {
+    // GA4 `select_item` — which result the shopper picked, and from what query,
+    // so search → click-through can be measured.
+    track({ name: 'select_item', payload: { product_id: p.id, product_name: p.name, query: query.trim() || undefined } });
     setSearchOpen(false);
-    router.push(`/product/${slug}`);
+    router.push(`/product/${p.slug}`);
   };
 
   // Submit the current query as a full /shop?q=… search and close the overlay.
@@ -227,7 +235,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                     {filtered.slice(0, 6).map((p) => (
                       <button key={p.id}
                         type="button"
-                        onClick={() => goToProduct(p.slug)}
+                        onClick={() => goToProduct(p)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
                           font: 'inherit', color: 'inherit', background: 'transparent', border: 'none',
