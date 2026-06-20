@@ -1,5 +1,5 @@
 'use client';
-import { useActionState, useState } from 'react';
+import { useActionState, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createProduct, updateProduct } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
@@ -50,6 +50,16 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
   const boundAction = isEdit ? updateProduct.bind(null, product!.id) : createProduct;
   const [state, action, pending] = useActionState(boundAction, null);
 
+  // Warn before leaving with unsaved edits (tab close / refresh / external
+  // nav). Suppressed while submitting — a successful save redirects away.
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (!dirty || pending) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty, pending]);
+
   const [name, setName] = useState(product?.name ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [trackInv, setTrackInv] = useState(product?.track_inventory !== false);
@@ -92,7 +102,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
           </div>
         )}
 
-        <form action={action}>
+        <form action={action} onInput={() => { if (!dirty) setDirty(true); }} onSubmit={() => setDirty(false)}>
           {/* ── Basics ─────────────────────────────────────────────────── */}
           <Section title="Basics" first>
             <div style={row2}>

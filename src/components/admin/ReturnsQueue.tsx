@@ -31,6 +31,7 @@ export function ReturnsQueue({ rows, orderMap }: {
   const [acting, startTransition] = useTransition();
   const toast = useToast();
   const [decisionFor, setDecisionFor] = useState<string | null>(null);
+  const [rejectingFor, setRejectingFor] = useState<string | null>(null);
 
   if (rows.length === 0) {
     return (
@@ -46,6 +47,7 @@ export function ReturnsQueue({ rows, orderMap }: {
         const order = orderMap[r.order_id];
         const requestedAmount = r.items.reduce((s, i) => s + i.price * i.qty, 0);
         const isOpen = decisionFor === r.id;
+        const isRejecting = rejectingFor === r.id;
         return (
           <div key={r.id} style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
@@ -123,30 +125,7 @@ export function ReturnsQueue({ rows, orderMap }: {
 
             {r.status === 'pending' && (
               <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
-                {!isOpen ? (
-                  <>
-                    <button
-                      onClick={() => setDecisionFor(r.id)}
-                      style={{ padding: '6px 14px', background: '#16a34a', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Approve…
-                    </button>
-                    <button
-                      onClick={() => {
-                        const note = window.prompt('Why are you rejecting? (optional)') ?? '';
-                        startTransition(async () => {
-                          const res = await rejectReturn(r.id, note);
-                          if ('success' in res && res.success) toast('Return rejected', 'success');
-                          else toast(('error' in res && res.error) ? res.error : 'Failed', 'error');
-                        });
-                      }}
-                      disabled={acting}
-                      style={{ padding: '6px 14px', background: 'transparent', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
-                    >
-                      Reject
-                    </button>
-                  </>
-                ) : (
+                {isOpen ? (
                   <ApproveForm
                     requestedAmount={requestedAmount}
                     onCancel={() => setDecisionFor(null)}
@@ -162,6 +141,38 @@ export function ReturnsQueue({ rows, orderMap }: {
                       });
                     }}
                   />
+                ) : isRejecting ? (
+                  <RejectForm
+                    busy={acting}
+                    onCancel={() => setRejectingFor(null)}
+                    onReject={note => {
+                      startTransition(async () => {
+                        const res = await rejectReturn(r.id, note);
+                        if ('success' in res && res.success) {
+                          toast('Return rejected', 'success');
+                          setRejectingFor(null);
+                        } else {
+                          toast(('error' in res && res.error) ? res.error : 'Failed', 'error');
+                        }
+                      });
+                    }}
+                  />
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { setRejectingFor(null); setDecisionFor(r.id); }}
+                      style={{ padding: '6px 14px', background: '#16a34a', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Approve…
+                    </button>
+                    <button
+                      onClick={() => { setDecisionFor(null); setRejectingFor(r.id); }}
+                      disabled={acting}
+                      style={{ padding: '6px 14px', background: 'transparent', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                    >
+                      Reject…
+                    </button>
+                  </>
                 )}
               </div>
             )}
@@ -210,6 +221,39 @@ function ApproveForm({
       <button onClick={() => onApprove(amount, method, note)}
         style={{ padding: '5px 12px', background: '#16a34a', color: 'white', border: 'none', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
         Confirm
+      </button>
+      <button onClick={onCancel}
+        style={{ padding: '5px 10px', background: 'transparent', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', cursor: 'pointer' }}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+// Inline reject panel — replaces the bare window.prompt with an on-brand
+// textarea (optional reason) so the reason is visible while typing and the
+// flow matches the approve panel.
+function RejectForm({
+  busy, onCancel, onReject,
+}: {
+  busy: boolean;
+  onCancel: () => void;
+  onReject: (note: string) => void;
+}) {
+  const [note, setNote] = useState('');
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', background: '#fef2f2', padding: 10, borderRadius: 6, border: '1px solid #fecaca' }}>
+      <input
+        value={note}
+        onChange={e => setNote(e.target.value)}
+        maxLength={500}
+        placeholder="Reason for rejection (optional, shared with the customer)"
+        autoFocus
+        style={{ flex: 1, minWidth: 160, padding: '5px 8px', border: '1px solid #fca5a5', borderRadius: 4, fontSize: '0.8125rem' }}
+      />
+      <button onClick={() => onReject(note)} disabled={busy}
+        style={{ padding: '5px 12px', background: '#dc2626', color: 'white', border: 'none', borderRadius: 4, fontSize: '0.75rem', fontWeight: 600, cursor: busy ? 'not-allowed' : 'pointer' }}>
+        Confirm reject
       </button>
       <button onClick={onCancel}
         style={{ padding: '5px 10px', background: 'transparent', color: '#6b7280', border: '1px solid #d1d5db', borderRadius: 4, fontSize: '0.75rem', cursor: 'pointer' }}>
