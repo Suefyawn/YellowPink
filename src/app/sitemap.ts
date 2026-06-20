@@ -11,12 +11,16 @@ import { brandSlug } from '@/lib/brands';
 // Robots-disallowed (utility / private) routes are deliberately excluded —
 // listing them would send a conflicting signal to crawlers.
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
-  { path: '/',         priority: 1.0, freq: 'daily' },
-  { path: '/shop',     priority: 0.9, freq: 'daily' },
-  { path: '/brands',   priority: 0.6, freq: 'weekly' },
-  { path: '/k-beauty', priority: 0.8, freq: 'weekly' },
-  { path: '/blog', priority: 0.7, freq: 'weekly' },
-  { path: '/faq',  priority: 0.5, freq: 'monthly' },
+  { path: '/',           priority: 1.0, freq: 'daily' },
+  { path: '/shop',       priority: 0.9, freq: 'daily' },
+  { path: '/collections', priority: 0.7, freq: 'weekly' },
+  { path: '/brands',     priority: 0.6, freq: 'weekly' },
+  { path: '/k-beauty',   priority: 0.8, freq: 'weekly' },
+  { path: '/blog',       priority: 0.7, freq: 'weekly' },
+  // NOTE: /faq is intentionally NOT listed — it 301-redirects to the CMS page
+  // /page/faq (see proxy.ts PAGE_SLUG_MAP), which is already emitted in the
+  // published-pages section below. Listing the redirecting URL would be a
+  // self-referential crawl waste.
 ];
 
 interface ProductRow {

@@ -1,4 +1,5 @@
 import { WishlistPage } from '@/sections/wishlist/WishlistPage';
+import { absoluteUrl } from '@/lib/seo';
 
 // Personal page — must never be indexed.
 export const metadata = {
@@ -6,7 +7,9 @@ export const metadata = {
   title: 'Wishlist',
   description: 'Items you have saved for later.',
   robots: { index: false, follow: false },
-  alternates: { canonical: 'https://yellowpink.pk/wishlist' },
+  // Canonical via absoluteUrl so it tracks SITE_URL (www) instead of a
+  // hard-coded apex host.
+  alternates: { canonical: absoluteUrl('/wishlist') },
 };
 
 export default function Page() {
