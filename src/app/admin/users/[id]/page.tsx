@@ -8,6 +8,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { deleteCustomer } from '@/app/admin/actions';
+import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -126,6 +127,11 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   }
   const totalSpend = orderList.reduce((s, o) => s + o.total, 0);
   const deliveredCount = orderList.filter(o => o.status === 'delivered').length;
+  const aov = orderList.length ? Math.round(totalSpend / orderList.length) : 0;
+  const customerName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim()
+    || user.email || user.phone || 'there';
+  const waMessage = `Hi ${customerName.split(' ')[0]}, hope you're well — message from Yellow Pink.`;
+  const waHref = whatsappUrlForCustomer(user.phone, waMessage);
 
   const section: React.CSSProperties = {
     background: 'white', borderRadius: 10,
@@ -172,13 +178,35 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#6b7280' }}>Phone</span>
-                <span style={{ color: '#374151', fontWeight: 500 }}>{user.phone ?? '—'}</span>
+                {user.phone ? (
+                  <a href={`tel:${user.phone}`} style={{ color: '#C5286A', fontWeight: 500, textDecoration: 'none' }}>{user.phone}</a>
+                ) : (
+                  <span style={{ color: '#374151', fontWeight: 500 }}>—</span>
+                )}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#6b7280' }}>Joined</span>
                 <span style={{ color: '#374151' }}>{fmtDate(user.created_at)}</span>
               </div>
             </div>
+            {waHref && (
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  background: '#25D366', color: 'white', textDecoration: 'none',
+                  padding: '8px 14px', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600,
+                }}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M17.5 14.4c-.3-.1-1.7-.8-2-.9s-.5-.1-.7.2-.8.9-.9 1.1-.3.2-.6 0c-.3-.1-1.2-.4-2.3-1.4-.9-.8-1.4-1.7-1.6-2-.2-.3 0-.5.1-.6l.5-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5s-.7-1.7-.9-2.3c-.2-.6-.5-.5-.7-.5h-.6c-.2 0-.5.1-.8.4s-1 1-1 2.5 1.1 2.9 1.2 3.1c.1.2 2.1 3.2 5 4.5.7.3 1.3.5 1.7.6.7.2 1.4.2 1.9.1.6-.1 1.7-.7 2-1.4.2-.7.2-1.2.2-1.4 0-.1-.2-.2-.5-.4z"/>
+                  <path d="M21.6 4.4C16.9-.3 9.3-.3 4.6 4.4c-3.7 3.7-4.4 9.3-2.1 13.7L0 24l6.1-2.4c1.6.9 3.4 1.4 5.3 1.4 7.1 0 12.6-5.5 12.6-12.6 0-2.6-.9-5-2.4-7zM12.1 21c-1.6 0-3.2-.4-4.7-1.3l-.3-.2-3.6 1.4 1.4-3.5-.2-.3c-2.1-3.3-1.6-7.5 1.3-10.4 3.5-3.5 9.1-3.5 12.5 0 3.5 3.5 3.5 9.1 0 12.5-1.7 1.7-3.9 2.8-6.4 2.8z"/>
+                </svg>
+                WhatsApp
+              </a>
+            )}
           </div>
 
           {/* Stats */}
@@ -186,7 +214,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
             {[
               { label: 'Orders', value: orderList.length, wide: false },
               { label: 'Delivered', value: deliveredCount, wide: false },
-              { label: 'Total Spend', value: fmt(totalSpend), wide: true },
+              { label: 'Total spend', value: fmt(totalSpend), wide: false },
+              { label: 'Avg order', value: fmt(aov), wide: false },
             ].map(s => (
               <div key={s.label} style={{
                 ...section,
