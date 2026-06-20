@@ -33,6 +33,7 @@ const COMMANDS: Cmd[] = [
   { label: 'New product',    group: 'Sell', href: '/admin/products/new', permission: 'products.edit' },
   { label: 'Tags',           group: 'Sell', href: '/admin/tags', permission: 'products.view' },
   { label: 'Collections',    group: 'Sell', href: '/admin/collections', permission: 'products.view' },
+  { label: 'Brands',         group: 'Sell', href: '/admin/brands', permission: 'products.view' },
   { label: 'Inventory',      group: 'Sell', href: '/admin/inventory', permission: 'products.view' },
   { label: 'Vendors',        group: 'Sell', href: '/admin/vendors', permission: 'orders.view' },
   { label: 'Returns',        group: 'Sell', href: '/admin/returns', permission: 'returns' },
