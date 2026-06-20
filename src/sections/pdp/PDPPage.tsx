@@ -427,10 +427,13 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             {product.review_count != null && product.review_count > 0 && (
               <a
                 href="#reviews"
-                style={{ display: 'inline-flex', marginBottom: 12, textDecoration: 'none' }}
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, textDecoration: 'none' }}
                 aria-label={`${product.review_count} customer review${product.review_count === 1 ? '' : 's'} — read reviews`}
               >
                 <StarRating rating={product.rating} count={product.review_count} size={15} />
+                <span className="small-text" style={{ color: 'var(--brand-pink-text)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  See all {product.review_count} review{product.review_count === 1 ? '' : 's'} ↓
+                </span>
               </a>
             )}
             {product.variant && variants.length === 0 && (

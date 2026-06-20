@@ -157,8 +157,9 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
             Your Cart ({cartItems.reduce((s, i) => s + i.qty, 0)})
           </h1>
           {restoreNotice && (
-            <div style={{ padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#166534', fontSize: '0.875rem', marginBottom: 24, maxWidth: 520 }}>
-              {restoreNotice}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, color: '#166534', fontSize: '0.875rem', marginBottom: 24, maxWidth: 520 }}>
+              <span style={{ flex: 1 }}>{restoreNotice}</span>
+              <button type="button" aria-label="Dismiss" onClick={() => setRestoreNotice(null)} style={{ background: 'none', border: 'none', color: '#166534', cursor: 'pointer', fontSize: '1rem', lineHeight: 1, padding: 4, flexShrink: 0 }}>✕</button>
             </div>
           )}
         </div>
