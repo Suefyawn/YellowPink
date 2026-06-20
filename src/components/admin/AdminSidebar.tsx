@@ -24,6 +24,7 @@ const GROUPS: NavGroup[] = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
     { href: '/admin/analytics', label: 'Analytics', icon: '◐', permission: 'analytics' },
     { href: '/admin/finance',   label: 'Finance',   icon: '₨', permission: 'analytics' },
+    { href: '/admin/finance/cod', label: 'COD',     icon: '⛁', permission: 'analytics' },
   ]},
   { label: 'Sell', items: [
     { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders.view' },
