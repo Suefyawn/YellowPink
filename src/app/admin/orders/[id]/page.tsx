@@ -14,6 +14,7 @@ import { deleteOrder } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
+import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
@@ -609,7 +610,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <>
                 <dt style={dt}>Email</dt>
                 <dd style={dd}>
-                  <a href={`mailto:${o.email}`} style={{ color: '#C5286A', textDecoration: 'none', fontWeight: 500 }}>{o.email}</a>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <a href={`mailto:${o.email}`} style={{ color: '#C5286A', textDecoration: 'none', fontWeight: 500 }}>{o.email}</a>
+                    {canEdit && o.id && (
+                      <ResendConfirmationButton orderId={o.id} hasEmail />
+                    )}
+                  </div>
                 </dd>
               </>
             )}

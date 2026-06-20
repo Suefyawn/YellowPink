@@ -290,6 +290,42 @@ export async function deleteBlogPost(formData: FormData) {
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
+/** Resend the order confirmation email — for customers who say they never
+ *  received the original (deliverability, spam, typo). Logs the resend so it
+ *  shows up in the order's audit trail.
+ *  Gated on orders.edit (same as status changes / payment recording).  */
+export async function resendOrderConfirmation(id: string): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertPermission('orders.edit');
+  const admin = supabaseAdmin();
+  const { data: o, error } = await admin
+    .from('orders')
+    .select('order_number, email, first_name, last_name, phone, city, province, total, items, pay_method')
+    .eq('id', id)
+    .single();
+  if (error || !o) return { error: error?.message ?? 'Order not found' };
+  if (!o.email) return { error: 'No email on file for this order.' };
+  try {
+    const { sendOrderConfirmationEmail } = await import('@/lib/email');
+    await sendOrderConfirmationEmail({
+      email: o.email,
+      order_number: o.order_number,
+      first_name: o.first_name ?? '',
+      last_name: o.last_name ?? '',
+      phone: o.phone ?? '',
+      city: o.city ?? '',
+      province: o.province ?? '',
+      total: o.total ?? 0,
+      items: (o.items ?? []) as never,
+      pay_method: o.pay_method ?? 'cod',
+    });
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : 'Failed to send email' };
+  }
+  await logAudit(session, { action: 'order.confirmation_resent', entity: 'order', entity_id: id, diff: { to: o.email } });
+  revalidatePath(`/admin/orders/${id}`);
+  return { success: true };
+}
+
 export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus): Promise<{ error?: string; count?: number }> {
   await assertPermission('orders.edit');
   // orders RLS bars anon writes; service role is required for admin
