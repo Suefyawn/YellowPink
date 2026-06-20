@@ -38,6 +38,9 @@ interface Props {
   /** Pre-address standard delivery estimate (working days), shown by the buy
    *  panel. Null when no shipping zone configures an ETA. */
   estimatedDays?: { min: number; max: number } | null;
+  /** Loyalty points earned per PKR spent (site setting). 0 hides the
+   *  "earn points" nudge. */
+  pointsPerPkr?: number;
 }
 
 // ─── Variant picker ─────────────────────────────────────────────────────────
@@ -231,7 +234,7 @@ function Gallery({
 }
 
 // ─── PDPPage ───────────────────────────────────────────────────────────────
-export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], backInStockEnabled = true, subscribeEligible = false, estimatedDays = null }: Props) {
+export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], backInStockEnabled = true, subscribeEligible = false, estimatedDays = null, pointsPerPkr = 0 }: Props) {
   const [qty, setQty] = useState(1);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
@@ -321,6 +324,10 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const displayOriginal       = activeVariant?.compare_at_price ?? product.original_price ?? null;
   const displayStock          = activeVariant?.stock ?? product.stock;
   const displayImageOverride  = activeVariant?.image_url ?? null;
+  // Loyalty nudge — points earned for the current price × quantity. Mirrors
+  // the server-side earn trigger (points_per_pkr) so the figure matches what
+  // actually lands in the customer's balance after the order.
+  const pointsEarned = pointsPerPkr > 0 ? Math.round(displayPrice * qty * pointsPerPkr) : 0;
 
   // Build gallery: if the variant has its own image, slot it in as the first thumbnail.
   const galleryToShow: ProductImageT[] = useMemo(() => {
@@ -437,6 +444,12 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 </span>
               )}
             </div>
+            {pointsEarned > 0 && (
+              <p className="small-text" style={{ marginTop: -8, marginBottom: 16, color: 'var(--brand-pink-text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span aria-hidden="true">★</span>
+                Earn <strong style={{ fontWeight: 600 }}>{pointsEarned.toLocaleString()}</strong> reward {pointsEarned === 1 ? 'point' : 'points'} with this order
+              </p>
+            )}
             <div style={{ marginBottom: 20 }}>
               {outOfStock ? (
                 <span style={{ display: 'inline-block', padding: '3px 10px', background: '#fef2f2', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>Out of Stock</span>
