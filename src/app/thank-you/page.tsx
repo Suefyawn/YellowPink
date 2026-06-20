@@ -20,19 +20,36 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   const { order } = await searchParams;
   const orderNumber = order ?? 'YP-??????';
 
-  // For a bank-transfer order, show the accounts to pay into. Look up the
-  // order's pay method (orders RLS blocks anon — service-role read).
+  // Look up the order (orders RLS blocks anon — service-role read). We use it
+  // to show the bank accounts for a bank-transfer order AND to render an order
+  // summary so the customer sees what they bought without checking their email.
+  // The page is noindex and the order number is required, so no new exposure.
+  type OrderItem = { name: string; qty: number; price: number; variant?: string | null; variant_label?: string | null };
+  type OrderRow = {
+    pay_method: string | null;
+    items: OrderItem[] | null;
+    subtotal: number | null;
+    shipping: number | null;
+    discount_amount: number | null;
+    total: number | null;
+  };
   let bankAccounts: BankAccount[] = [];
   let bankNotes = '';
+  let summary: OrderRow | null = null;
   if (order) {
     const { data: row } = await supabaseAdmin()
-      .from('orders').select('pay_method').eq('order_number', order).maybeSingle();
-    if (row?.pay_method === 'bank') {
+      .from('orders')
+      .select('pay_method, items, subtotal, shipping, discount_amount, total')
+      .eq('order_number', order)
+      .maybeSingle();
+    summary = (row as OrderRow | null) ?? null;
+    if (summary?.pay_method === 'bank') {
       const settings = await getSiteSettings();
       bankAccounts = parseBankAccounts(settings.pay_bank_accounts);
       bankNotes = settings.pay_bank_instructions ?? '';
     }
   }
+  const summaryItems = Array.isArray(summary?.items) ? summary!.items! : [];
 
   return (
     <main className="fade-in">
@@ -57,6 +74,50 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
           {bankAccounts.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <BankAccountsList accounts={bankAccounts} notes={bankNotes} reference={orderNumber} />
+            </div>
+          )}
+
+          {summaryItems.length > 0 && (
+            <div style={{ background: 'var(--paper2)', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', padding: 24, marginBottom: 24, textAlign: 'left' }}>
+              <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>Order Summary</Overline>
+              {summaryItems.map((it, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                  <span style={{ fontSize: '0.8125rem' }}>
+                    {it.name}
+                    {(it.variant_label ?? it.variant) ? <span className="small-text" style={{ marginLeft: 6 }}>{it.variant_label ?? it.variant}</span> : null}
+                    <span className="small-text" style={{ marginLeft: 6 }}>× {it.qty}</span>
+                  </span>
+                  <span className="tabular-nums" style={{ fontSize: '0.8125rem', fontWeight: 500, flexShrink: 0 }}>PKR {(it.price * it.qty).toLocaleString()}</span>
+                </div>
+              ))}
+              <hr className="hairline" style={{ margin: '14px 0' }} />
+              {summary?.subtotal != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span className="small-text">Subtotal</span>
+                  <span className="small-text tabular-nums">PKR {summary.subtotal.toLocaleString()}</span>
+                </div>
+              )}
+              {(summary?.discount_amount ?? 0) > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span className="small-text" style={{ color: '#15803d' }}>Discount</span>
+                  <span className="small-text tabular-nums" style={{ color: '#15803d' }}>− PKR {summary!.discount_amount!.toLocaleString()}</span>
+                </div>
+              )}
+              {summary?.shipping != null && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span className="small-text">Shipping</span>
+                  <span className="small-text tabular-nums" style={{ color: summary.shipping === 0 ? 'var(--success)' : 'inherit' }}>{summary.shipping === 0 ? 'FREE' : `PKR ${summary.shipping.toLocaleString()}`}</span>
+                </div>
+              )}
+              {summary?.total != null && (
+                <>
+                  <hr className="hairline" style={{ margin: '12px 0' }} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.9375rem', fontWeight: 700 }}>Total</span>
+                    <span className="tabular-nums" style={{ fontSize: '0.9375rem', fontWeight: 700 }}>PKR {summary.total.toLocaleString()}</span>
+                  </div>
+                </>
+              )}
             </div>
           )}
 

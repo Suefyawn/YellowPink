@@ -250,7 +250,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value.toUpperCase()); setCouponError(''); }}
                       onKeyDown={e => e.key === 'Enter' && applyCoupon()}
-                      placeholder="Coupon code"
+                      placeholder="Promo code (e.g. SAVE10)"
                       style={{
                         flex: 1, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8,
                         fontSize: '0.875rem', fontFamily: 'monospace', background: 'white',

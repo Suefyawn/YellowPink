@@ -249,16 +249,22 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   };
 
   const handleSubmit = async () => {
+    // Guard against double-submit: the button is disabled while `submitting`,
+    // but a fast double-click can fire two handlers before React re-renders —
+    // and the rate-gate await below used to run with the button still live.
+    if (submitting) return;
     if (!validate()) return;
+
+    setSubmitting(true);
+    setSubmitError('');
 
     const rate = await checkoutRateGate();
     if (!rate.ok) {
       setSubmitError('Too many checkout attempts. Please wait a minute and try again.');
+      setSubmitting(false);
       return;
     }
 
-    setSubmitting(true);
-    setSubmitError('');
     try {
       const sb = getBrowserClient();
       // Order numbers are client-generated; the DB UNIQUE constraint is the
@@ -491,7 +497,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                       aria-label="Coupon code"
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
-                      placeholder="Coupon code"
+                      placeholder="Promo code (e.g. SAVE10)"
                       style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', background: 'white', fontFamily: 'monospace', textTransform: 'uppercase' }}
                     />
                     <button onClick={applyCoupon} disabled={couponLoading} aria-busy={couponLoading} style={{
@@ -573,7 +579,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               <button className="btn-primary" style={{ width: '100%' }} onClick={handleSubmit} disabled={submitting} aria-busy={submitting}>
                 {submitting ? 'Placing Order…' : payMethod === 'jazzcash' || payMethod === 'easypaisa' ? `Continue to ${payMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa'} →` : 'Place Order'}
               </button>
-              <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)' }}>Secure checkout · COD available</p>
+              <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)', display: 'inline-flex', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
+                <span aria-hidden="true" style={{ lineHeight: 1 }}>🔒</span> Secure checkout · COD available
+              </p>
               {/* Reassurance strip at the decision point — checkout previously
                   carried no trust signals, a known driver of COD-market
                   abandonment. Plain text + ticks, no new assets. */}
