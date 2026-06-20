@@ -11,9 +11,21 @@ const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
-// Statuses where the order is still waiting on us to act. We only flag age for
-// these — a delivered order from 3 weeks ago isn't "stale".
-const UNFULFILLED = new Set<string>(['pending', 'processing']);
+// Per-status age thresholds (days). The two waiting-on-us-to-confirm statuses
+// have different SLAs:
+//   • payment_pending — gateway should confirm in seconds; >24h means the
+//     callback never came back and the payment likely failed silently.
+//     This matches the dashboard "Needs attention" 24h cutoff.
+//   • pending — waiting on us to confirm with the customer. Amber after
+//     two days, red after five (matches the prior orders-table behaviour).
+//   • processing — actively being prepared. Same thresholds as pending.
+// Any status not in this map gets no pill (delivered / cancelled / shipped
+// already moved past us; flagging their age would be noise).
+const AGE_THRESHOLDS: Record<string, { amber: number; red: number; verb: string }> = {
+  payment_pending: { amber: 1, red: 3, verb: 'Payment pending' },
+  pending:         { amber: 2, red: 5, verb: 'Unconfirmed' },
+  processing:      { amber: 2, red: 5, verb: 'Unfulfilled' },
+};
 
 // Whole days between then and now. Reads the clock at call time; the table is a
 // client component re-rendered on navigation, so this stays roughly current.
@@ -21,16 +33,18 @@ function ageDays(iso: string): number {
   return Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
 }
 
-// Amber pill for unfulfilled orders aging past 2 days; red past 5. Returns null
-// when there's nothing to flag, so fulfilled / fresh orders stay clean.
+// Amber → red pill for orders aging past the per-status threshold. Returns
+// null when there's nothing to flag so fulfilled / fresh orders stay clean.
 function AgeFlag({ status, createdAt }: { status: string; createdAt: string | null | undefined }) {
-  if (!createdAt || !UNFULFILLED.has(status)) return null;
+  if (!createdAt) return null;
+  const t = AGE_THRESHOLDS[status];
+  if (!t) return null;
   const d = ageDays(createdAt);
-  if (d < 2) return null;
-  const urgent = d >= 5;
+  if (d < t.amber) return null;
+  const urgent = d >= t.red;
   return (
     <span
-      title={`Unfulfilled for ${d} days`}
+      title={`${t.verb} for ${d} day${d === 1 ? '' : 's'}`}
       style={{
         marginLeft: 6, padding: '1px 7px', borderRadius: 10, fontSize: '0.6875rem', fontWeight: 700,
         background: urgent ? '#fef2f2' : '#fffbeb',
