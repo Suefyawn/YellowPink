@@ -13,6 +13,7 @@ import {
   getBlogPosts,
 } from '@/lib/supabase';
 import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
+import { getPublishedCollections } from '@/lib/collections-data';
 
 // Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -48,6 +49,7 @@ import { BestsellersBand } from '@/sections/home/BestsellersBand';
 import { WellnessSection } from '@/sections/home/WellnessSection';
 import { KBeautySection } from '@/sections/home/KBeautySection';
 import { CategoryTiles } from '@/sections/home/CategoryTiles';
+import { CollectionsSection } from '@/sections/home/CollectionsSection';
 import { RealResults } from '@/sections/home/RealResults';
 import { JournalSection } from '@/sections/home/JournalSection';
 import { PressStrip } from '@/sections/home/PressStrip';
@@ -58,7 +60,7 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, bestsellers, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts] = await Promise.all([
+  const [featured, bestsellers, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections] = await Promise.all([
     getFeatured(6),
     getBestsellers(8),
     getOnSale(8),
@@ -66,6 +68,7 @@ export default async function HomePage() {
     getProductsByBrands(K_BEAUTY_BRANDS, 4),
     getSiteSettings(),
     getBlogPosts(),
+    getPublishedCollections(3),
   ]);
 
   // The featured sale collection is shown only while a sale is switched on
@@ -119,6 +122,7 @@ export default async function HomePage() {
       <BestsellersBand products={bestsellers.slice(0, 4)} />
       <WellnessSection products={wellnessProducts} />
       <CategoryTiles groups={categoryGroups} />
+      <CollectionsSection collections={collections} />
       <RealResults />
       <JournalSection posts={blogPosts} />
       <PressStrip />
