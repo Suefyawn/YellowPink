@@ -7,6 +7,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { brandPlusName } from '@/lib/product-display';
 import { adjustStock } from '@/app/admin/inventory-actions';
 import { InventoryStockSearch } from '@/components/admin/InventoryStockSearch';
+import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 
 interface LedgerRow {
   id: string;
@@ -22,7 +23,7 @@ interface LedgerRow {
   created_at: string;
 }
 
-interface ProductLite { id: string; name: string; brand: string | null; stock: number; track_inventory?: boolean }
+interface ProductLite { id: string; name: string; brand: string | null; stock: number; reorder_point?: number; vendor_id?: string | null; track_inventory?: boolean }
 interface OrderLite { id: string; order_number: string }
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -71,7 +72,7 @@ export default async function InventoryPage({
   // 109 SKUs today — well under any sane limit.
   const [{ data: ledgerData }, { data: productData }] = await Promise.all([
     ledgerQuery,
-    admin.from('products').select('id, name, brand, stock, track_inventory').order('name'),
+    admin.from('products').select('id, name, brand, stock, reorder_point, vendor_id, track_inventory').order('name'),
   ]);
   const rows = (ledgerData ?? []) as LedgerRow[];
   const allProducts = (productData ?? []) as ProductLite[];
@@ -103,6 +104,29 @@ export default async function InventoryPage({
     : { data: [] };
   const orderMap = new Map<string, OrderLite>(((orderData ?? []) as OrderLite[]).map(o => [o.id, o]));
 
+  // ─── Reorder needed ──────────────────────────────────────────────────────
+  // Tracked products at/below their per-product reorder point, grouped by
+  // vendor with a WhatsApp purchase-order link. Suggested qty tops the SKU
+  // back up to ~2× its reorder point.
+  const reorderList = products
+    .filter(p => (p.reorder_point ?? 0) > 0 && p.stock <= (p.reorder_point ?? 0))
+    .sort((a, b) => a.stock - b.stock);
+  const suggestQty = (p: ProductLite) => Math.max((p.reorder_point ?? 0) * 2 - p.stock, 1);
+  const reorderVendorIds = Array.from(new Set(reorderList.map(p => p.vendor_id).filter((v): v is string => Boolean(v))));
+  const { data: vendorData } = reorderVendorIds.length
+    ? await admin.from('vendors').select('id, name, phone').in('id', reorderVendorIds)
+    : { data: [] };
+  const vendorMap = new Map<string, { id: string; name: string; phone: string | null }>(
+    ((vendorData ?? []) as Array<{ id: string; name: string; phone: string | null }>).map(v => [v.id, v]),
+  );
+  const reorderByVendor = new Map<string, ProductLite[]>();
+  for (const p of reorderList) {
+    const key = p.vendor_id ?? 'none';
+    const arr = reorderByVendor.get(key) ?? [];
+    arr.push(p);
+    reorderByVendor.set(key, arr);
+  }
+
   return (
     <div style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 6px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Inventory</h1>
@@ -131,6 +155,69 @@ export default async function InventoryPage({
           </div>
         ))}
       </div>
+
+      {/* ─── Reorder needed ─────────────────────────────────────────────── */}
+      {reorderList.length > 0 && (
+        <div style={{ background: 'white', borderRadius: 10, border: '1px solid #fde68a', overflow: 'hidden', marginBottom: 24 }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6', background: '#fffbeb' }}>
+            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#92400e' }}>
+              Reorder needed · {reorderList.length} product{reorderList.length === 1 ? '' : 's'}
+            </h2>
+            <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#b45309' }}>
+              At or below their reorder point. Grouped by vendor — send a purchase order on WhatsApp in one tap.
+            </p>
+          </div>
+          <div style={{ padding: '8px 16px 16px' }}>
+            {Array.from(reorderByVendor.entries()).map(([key, items]) => {
+              const vendor = key === 'none' ? null : vendorMap.get(key);
+              const vendorName = vendor?.name ?? 'No vendor assigned';
+              const poMessage = [
+                'Yellow Pink — Reorder request',
+                '',
+                ...items.map(p => `• ${suggestQty(p)}× ${brandPlusName(p.brand, p.name)} (in stock: ${p.stock})`),
+              ].join('\n');
+              const waHref = vendor?.phone ? whatsappUrlForCustomer(vendor.phone, poMessage) : null;
+              return (
+                <div key={key} style={{ marginTop: 12, border: '1px solid #f3f4f6', borderRadius: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '10px 14px', borderBottom: '1px solid #f3f4f6', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{vendorName}</span>
+                    {waHref ? (
+                      <a href={waHref} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#25D366', color: '#fff', textDecoration: 'none', padding: '6px 12px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600 }}>
+                        Send PO on WhatsApp
+                      </a>
+                    ) : (
+                      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{key === 'none' ? 'Assign a vendor to send a PO' : 'No vendor phone on file'}</span>
+                    )}
+                  </div>
+                  <div className="adm-table-scroll">
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                      <thead>
+                        <tr style={{ background: '#fafafa' }}>
+                          {['Product', 'In stock', 'Reorder at', 'Suggest order'].map((h, i) => (
+                            <th scope="col" key={h} style={{ padding: '8px 14px', textAlign: i === 0 ? 'left' : 'right', fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map(p => (
+                          <tr key={p.id} style={{ borderTop: '1px solid #f9fafb' }}>
+                            <td style={{ padding: '8px 14px' }}>
+                              <Link href={`/admin/products/${p.id}`} style={{ color: '#111827', textDecoration: 'none', fontWeight: 500 }}>{brandPlusName(p.brand, p.name)}</Link>
+                            </td>
+                            <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: p.stock <= 0 ? '#991b1b' : '#92400e' }}>{p.stock}</td>
+                            <td style={{ padding: '8px 14px', textAlign: 'right', color: '#6b7280' }}>{p.reorder_point}</td>
+                            <td style={{ padding: '8px 14px', textAlign: 'right', fontWeight: 600 }}>{suggestQty(p)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ─── Stock levels table ─────────────────────────────────────────── */}
       <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', marginBottom: 24 }}>

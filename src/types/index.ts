@@ -50,6 +50,9 @@ export interface Product {
   tag?: string;
   slug: string;
   stock: number;
+  /** Stock level at/below which to reorder. 0 = use the global low-stock
+   *  threshold. Drives the inventory "reorder needed" list. */
+  reorder_point?: number;
   /** When false, inventory is managed externally (e.g. a third-party vendor):
    *  the product is always sellable and its stock count is not tracked. */
   track_inventory?: boolean;
