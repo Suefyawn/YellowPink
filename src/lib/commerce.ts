@@ -58,6 +58,15 @@ export const formatPkr = (n: number) => `PKR ${n.toLocaleString()}`;
  *  checkout reassurance strip and the shipping blurb so they never disagree. */
 export const RETURNS_WINDOW_DAYS = 7;
 
+/** Order statuses that never represent realized revenue: never paid, the money
+ *  was given back, or the sale fell through. Customer lifetime-spend and
+ *  average-order-value figures must exclude these so a cancelled or refunded
+ *  order doesn't inflate the numbers. Mirrors the v_orders_revenue view's
+ *  intent for the per-customer surfaces that can't use that view. */
+export const NON_REVENUE_ORDER_STATUSES = [
+  'cancelled', 'refunded', 'returned', 'payment_failed',
+] as const;
+
 /** The free-shipping threshold formatted as shoppers see it, e.g. "PKR 2,500".
  *  Derive display copy from this so the figure tracks the threshold constant
  *  instead of being re-typed (and left stale) in each surface. */

@@ -9,6 +9,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { deleteCustomer } from '@/app/admin/actions';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
+import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
@@ -125,9 +126,17 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     orderList = (orders ?? []) as Order[];
     activityRows = (activity ?? []) as ActivityRow[];
   }
-  const totalSpend = orderList.reduce((s, o) => s + o.total, 0);
+  // Lifetime spend + AOV are revenue figures, so they count only realized
+  // orders — a cancelled / refunded / returned / payment-failed order brought
+  // in no money and would otherwise inflate both numbers (and AOV especially,
+  // since it divides by the order count). "Orders" below still shows the full
+  // count so the customer's total activity is visible.
+  const revenueOrders = orderList.filter(
+    o => !(NON_REVENUE_ORDER_STATUSES as readonly string[]).includes(o.status ?? ''),
+  );
+  const totalSpend = revenueOrders.reduce((s, o) => s + o.total, 0);
   const deliveredCount = orderList.filter(o => o.status === 'delivered').length;
-  const aov = orderList.length ? Math.round(totalSpend / orderList.length) : 0;
+  const aov = revenueOrders.length ? Math.round(totalSpend / revenueOrders.length) : 0;
   const customerName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim()
     || user.email || user.phone || 'there';
   const waMessage = `Hi ${customerName.split(' ')[0]}, hope you're well — message from Yellow Pink.`;
