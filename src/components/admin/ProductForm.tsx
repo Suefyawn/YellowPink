@@ -156,6 +156,26 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
             </div>
           </Section>
 
+          {/* ── Merchandising ──────────────────────────────────────────── */}
+          <Section title="Merchandising" desc="Surface this product on the homepage rails and in the Featured / Bestsellers collections.">
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', flex: '1 1 240px' }}>
+                <input type="checkbox" name="is_featured" defaultChecked={product?.is_featured ?? false} style={{ marginTop: 2, accentColor: '#C5286A' }} />
+                <span>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Featured</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>Show in the homepage “Featured” rail and the Featured smart collection.</span>
+                </span>
+              </label>
+              <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', flex: '1 1 240px' }}>
+                <input type="checkbox" name="is_bestseller" defaultChecked={product?.is_bestseller ?? false} style={{ marginTop: 2, accentColor: '#C5286A' }} />
+                <span>
+                  <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Bestseller</span>
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>Show in the homepage “Bestsellers” rail and the Bestsellers smart collection.</span>
+                </span>
+              </label>
+            </div>
+          </Section>
+
           {/* ── Pricing & stock ────────────────────────────────────────── */}
           <Section title="Pricing & stock">
             <div style={{ ...row3, marginBottom: 16 }}>

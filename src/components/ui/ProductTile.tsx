@@ -28,7 +28,7 @@ export function ProductTile({ product }: ProductTileProps) {
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlist();
-  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count } = product;
+  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count, is_bestseller } = product;
   const wishlisted = isWishlisted(id);
 
   // Quick-add UX matrix:
@@ -112,6 +112,13 @@ export function ProductTile({ product }: ProductTileProps) {
                 padding: '2px 8px', borderRadius: 'var(--radius-pill)',
                 fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
               }}>Sale</span>
+            )}
+            {is_bestseller && (
+              <span style={{
+                background: 'var(--brand-pink)', color: '#fff',
+                padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}>Bestseller</span>
             )}
             {lowStock && (
               <span style={{
