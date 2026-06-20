@@ -6,8 +6,28 @@ export const revalidate = 300;
 import type { Metadata } from 'next';
 import { getProducts } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
-import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
 import { canonicalCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
+import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+
+// Category-landing FAQ. Parameterised by the active category label so every
+// landing page gets useful, unique copy + FAQPage rich-result eligibility,
+// without hand-authoring a bespoke set for all 18 leaf categories. The answers
+// are universally true store facts (authenticity, COD, delivery, returns) that
+// also reinforce the PK-market trust signals Google rewards.
+function landingFaqs(label: string): { q: string; a: string }[] {
+  const c = label.toLowerCase();
+  return [
+    { q: `Are your ${c} products authentic?`,
+      a: `Yes — every ${c} product at Yellow Pink is 100% genuine, sourced from authorised channels and imported for the Pakistani market. We never sell counterfeits.` },
+    { q: `Is cash on delivery (COD) available for ${c}?`,
+      a: `Absolutely. You can order any ${c} product with cash on delivery nationwide across Pakistan, and pay only when your parcel arrives.` },
+    { q: `How long does delivery take?`,
+      a: `Orders are typically delivered in 2–4 working days, with tracking shared on WhatsApp once your order ships.` },
+    { q: `Can I return ${c} products?`,
+      a: `Yes — unused items can be returned within ${RETURNS_WINDOW_DAYS} days of delivery. Start a return from your account or message us on WhatsApp and we'll help.` },
+  ];
+}
 import { loadFacetData, loadTagData } from '@/lib/shop-facets';
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; q?: string; brand?: string }> }): Promise<Metadata> {
@@ -160,6 +180,36 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         initialFeatured={searchParamsFeatured}
         initialBestseller={searchParamsBestseller}
       />
+      {/* Category-landing FAQ — only on a genuine category/taxon/subcategory
+          landing (not search or brand-filtered views, which canonicalise away),
+          so the indexable landing pages carry FAQPage structured data + on-page
+          E-A-T copy. */}
+      {(() => {
+        const landingLabel = taxonObj?.label
+          ?? (subcategory ? canonicalCategory(subcategory) : null)
+          ?? (initialCategory !== 'All' ? canonicalCategory(initialCategory) : null);
+        if (!landingLabel || q || brand) return null;
+        const faqs = landingFaqs(landingLabel);
+        return (
+          <section className="container" style={{ padding: '8px 0 var(--section-gap)' }}>
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(faqs.map(f => ({ question: f.q, answer: f.a })))) }}
+            />
+            <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 16px' }}>
+              {landingLabel} — frequently asked
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 760 }}>
+              {faqs.map((f, i) => (
+                <details key={i} style={{ borderBottom: '1px solid var(--line)', padding: '12px 0' }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--ink-900)' }}>{f.q}</summary>
+                  <p className="body-text" style={{ color: 'var(--ink-700)', margin: '8px 0 0' }}>{f.a}</p>
+                </details>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
     </main>
   );
 }
