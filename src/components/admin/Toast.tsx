@@ -15,7 +15,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback((message: string, type: ToastType = 'success') => {
     const id = ++counter.current;
     setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3500);
+    // 3.5s was too quick to read a bulk-action result before it vanished.
+    // Errors linger longer than successes since they usually need action.
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), type === 'error' ? 6000 : 5000);
   }, []);
 
   const colors: Record<ToastType, { bg: string; border: string; color: string; icon: string }> = {

@@ -12,6 +12,7 @@ import { setOrderConfirmed } from '@/app/admin/vendor-actions';
 import { setOrderCosts, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
 import { deleteOrder } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { CopyButton } from '@/components/admin/CopyButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
@@ -247,6 +248,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827', fontFamily: 'monospace' }}>
           {o.order_number}
         </h1>
+        <CopyButton value={o.order_number} title={`Copy order number ${o.order_number}`} />
         <span style={{
           padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
           background: (statusColors[currentStatus] ?? '#6b7280') + '20',
@@ -446,7 +448,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </p>
           <form action={setOrderCosts.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Acquisition cost / COGS (PKR)<br />
-              <input type="number" name="acquisition_cost" min="0" step="1" defaultValue={(o as { acquisition_cost?: number | null }).acquisition_cost ?? ''}
+              <input type="number" name="acquisition_cost" min="0" step="1"
+                defaultValue={(o as { acquisition_cost?: number | null }).acquisition_cost ?? (settlementRow ? Math.round(Number(settlementRow.vendor_cost ?? 0)) : '')}
                 style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
             </label>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Delivery cost (PKR)<br />
@@ -585,6 +588,11 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               {o.user_id && (
                 <Link href={`/admin/users/${o.user_id}`} style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}>
                   View profile →
+                </Link>
+              )}
+              {(o.phone || o.email) && (
+                <Link href={`/admin/orders?q=${encodeURIComponent(o.phone || o.email || '')}`} style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}>
+                  This customer&apos;s orders →
                 </Link>
               )}
             </div>
