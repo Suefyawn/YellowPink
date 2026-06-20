@@ -106,6 +106,13 @@ export function ProductTile({ product }: ProductTileProps) {
             position: 'absolute', top: 8, left: 8, zIndex: 1,
             display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-start',
           }}>
+            {soldOut && (
+              <span style={{
+                background: 'var(--ink-900)', color: '#fff',
+                padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}>Sold out</span>
+            )}
             {(original_price ?? 0) > price && (
               <span style={{
                 background: 'var(--brand-yellow)', color: 'var(--ink-900)',

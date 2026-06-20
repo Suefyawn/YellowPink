@@ -155,15 +155,17 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   const total        = Math.max(0, beforeRewards - pointsCovers);
 
   // Recompute shipping whenever subtotal or province changes.
+  const [shippingLoading, setShippingLoading] = useState(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (subtotal === 0) return;
+      setShippingLoading(true);
       // Free shipping is earned on the merchandise subtotal (pre-discount), so
       // a coupon never removes a free-shipping promise already shown. The
       // server trusts this shipping figure, so charged matches displayed.
       const res = await calculateShipping({ province: formData.province || undefined, subtotal });
-      if (!cancelled) setShippingInfo(res);
+      if (!cancelled) { setShippingInfo(res); setShippingLoading(false); }
     })();
     return () => { cancelled = true; };
   }, [subtotal, formData.province]);
@@ -478,7 +480,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               )}
             </div>
 
-            <div style={{ background: 'var(--paper2)', borderRadius: 'var(--radius-card)', padding: 28, border: '1px solid var(--line)', alignSelf: 'start', position: 'sticky', top: 100 }}>
+            <div style={{ background: 'var(--paper2)', borderRadius: 'var(--radius-card)', padding: 28, border: '1px solid var(--line)', alignSelf: 'start', position: 'sticky', top: 100, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
               <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>Your Order</Overline>
               {cartItems.map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
@@ -565,7 +567,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span className="small-text">Shipping{shippingInfo.label ? ` (${shippingInfo.label})` : ''}</span>
-                <span className="small-text tabular-nums" style={{ fontWeight: 500, color: shipping === 0 ? 'var(--success)' : 'inherit' }}>{shipping === 0 ? 'FREE' : `PKR ${shipping}`}</span>
+                <span className="small-text tabular-nums" aria-live="polite" style={{ fontWeight: 500, color: shippingLoading ? 'var(--ink-500)' : shipping === 0 ? 'var(--success)' : 'inherit' }}>{shippingLoading ? 'updating…' : shipping === 0 ? 'FREE' : `PKR ${shipping}`}</span>
               </div>
               {pointsCovers > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>

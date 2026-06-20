@@ -228,6 +228,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                 </div>
               ) : (
                 <div>
+                  <div className="sr-only" role="status" aria-live="polite">{filtered.length} result{filtered.length !== 1 ? 's' : ''} found</div>
                   <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>
                     {filtered.length} Result{filtered.length !== 1 ? 's' : ''}
                   </Overline>
