@@ -115,7 +115,11 @@ export async function setStaffCookie(staffId: string): Promise<void> {
   const store = await cookies();
   store.set(STAFF_COOKIE, signToken(staffId), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    // Hardcode secure — the admin surface is HTTPS-only on every deployment
+    // we run (Vercel preview included), and the owner cookie (signed-cookie
+    // alongside) already sets this unconditionally. Tying it to NODE_ENV
+    // left a footgun if the env var ever flipped on a build.
+    secure: true,
     maxAge: SESSION_TTL_MS / 1000,
     path: '/',
     // strict: the admin cookie never rides a cross-site request, so a forged

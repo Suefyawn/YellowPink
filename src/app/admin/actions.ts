@@ -107,16 +107,34 @@ export async function loginStaff(
       const submittedHash = createHash('sha256').update(cleaned).digest('hex');
       const idx = backupCodes.findIndex(c => c === submittedHash);
       if (idx >= 0) {
-        codeIsBackup = true;
-        backupCodes = backupCodes.filter((_, i) => i !== idx);
-        const { error: burnError } = await supabaseAdmin()
-          .from('staff_members').update({ backup_codes: backupCodes }).eq('id', data.id);
+        // Atomically burn the code: only update if it's still present in the
+        // row. Two concurrent logins racing on the same backup code can BOTH
+        // pass the in-memory findIndex check; the .contains() filter means
+        // only the first UPDATE matches a row. The loser sees zero rows
+        // affected and is rejected as if the code didn't match, so no second
+        // login can ride a single backup code through.
+        const updatedCodes = backupCodes.filter((_, i) => i !== idx);
+        const { data: updated, error: burnError } = await supabaseAdmin()
+          .from('staff_members')
+          .update({ backup_codes: updatedCodes })
+          .eq('id', data.id)
+          .contains('backup_codes', [submittedHash])
+          .select('id');
         if (burnError) {
           // Refuse the login rather than let an unburned backup code be
           // reused indefinitely (#191).
           log.error('staff.backup_code_burn_failed', { staff_id: data.id, error: burnError.message });
           return { error: 'Could not complete sign-in. Please try again.' };
         }
+        if (!updated || updated.length === 0) {
+          // Concurrent login already burned this code. Treat as "invalid 2FA
+          // code" so the loser sees a normal failure rather than a hint that
+          // someone else just signed in with the same backup.
+          log.warn('staff.backup_code_race_lost', { staff_id: data.id });
+          return { error: 'Invalid 2FA code' };
+        }
+        codeIsBackup = true;
+        backupCodes = updatedCodes;
       }
     }
     if (!codeIsTotp && !codeIsBackup) return { error: 'Invalid 2FA code' };
