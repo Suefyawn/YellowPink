@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { ORDER_STATUS_LABELS } from '@/types';
 import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
@@ -50,12 +51,38 @@ const RATE_LIMIT_WINDOW = 60_000;
 const MAX_ATTEMPTS = 5;
 const attempts: { count: number; since: number } = { count: 0, since: Date.now() };
 
-export default function TrackPage() {
-  const [orderNumber, setOrderNumber] = useState('');
-  const [phone, setPhone] = useState('');
+// `?order=YP-XXXXX` (and optionally `&phone=…`) pre-fills the form when the
+// customer clicks "Track your order" from the confirmation email. We can't
+// auto-submit because the lookup is gated on the phone for security, but the
+// pre-fill saves a copy-paste step.
+function TrackForm() {
+  const params = useSearchParams();
+  const initialOrderNumber = params.get('order') ?? '';
+  const initialPhone = params.get('phone') ?? '';
+  const [orderNumber, setOrderNumber] = useState(initialOrderNumber);
+  const [phone, setPhone] = useState(initialPhone);
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // If both came in via the URL, auto-submit so the customer hits the page and
+  // sees their status without an extra click. The form remains visible — we
+  // don't trust the URL phone alone, but the RPC guards the actual lookup.
+  useEffect(() => {
+    if (!initialOrderNumber || !initialPhone) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true);
+    const sb = getBrowserClient();
+    sb.rpc('lookup_order' as never, {
+      p_order_number: initialOrderNumber.trim().toUpperCase(),
+      p_phone: initialPhone.trim(),
+    } as never).then(({ data, error: rpcError }) => {
+      const row = Array.isArray(data) ? (data[0] as Order | undefined) : (data as Order | null);
+      setLoading(false);
+      if (rpcError || !row) return;
+      setOrder(row);
+    });
+  }, [initialOrderNumber, initialPhone]);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -230,5 +257,14 @@ export default function TrackPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Suspense wraps the form because useSearchParams suspends during prerender.
+export default function TrackPage() {
+  return (
+    <Suspense fallback={null}>
+      <TrackForm />
+    </Suspense>
   );
 }
