@@ -80,7 +80,11 @@ customers and spot where an order is.
 - **Collection pages** (`/collection/<slug>`) — curated edits you build in
   admin (Collections), each with its own hero, description, and product grid.
   Manual collections show a hand-picked, ordered list; smart collections fill
-  themselves from rules and stay current automatically.
+  themselves from rules and stay current automatically. All published
+  collections are listed at **`/collections`**, and the three top ones also
+  appear in a **"Shop by collection"** band on the homepage.
+- **Top menu** now includes **Collections** and **Brands** links (alongside
+  K-Beauty, Sale and Blog) on both desktop and mobile.
 - **Shop page** (`/shop`) — the full catalogue. Customers can filter by
   category, brand, **tags** (the free-form labels you set in admin), product
   attributes (shade, size, etc.), price range, and quick toggles for **In
