@@ -246,6 +246,7 @@ export async function createBlogPost(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  await assertPermission('blog');
   // checkbox quirk: when unchecked, `featured` is absent from FormData.
   const normalized = new FormData();
   for (const [k, v] of formData.entries()) normalized.append(k, v);
@@ -265,6 +266,7 @@ export async function updateBlogPost(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  await assertPermission('blog');
   const normalized = new FormData();
   for (const [k, v] of formData.entries()) normalized.append(k, v);
   if (!normalized.has('featured')) normalized.append('featured', 'false');
@@ -279,6 +281,7 @@ export async function updateBlogPost(
 }
 
 export async function deleteBlogPost(formData: FormData) {
+  await assertPermission('blog');
   const id = formData.get('id') as string;
   const { error } = await supabaseAdmin().from('blog_posts').delete().eq('id', id);
   if (error) {

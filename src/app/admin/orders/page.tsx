@@ -17,7 +17,7 @@ export default async function OrdersPage({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ...rawProps}: any) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.view'))) {
     return <NoAccess section="Orders" />;
   }
   const { searchParams } = rawProps;

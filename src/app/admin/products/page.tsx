@@ -24,7 +24,7 @@ export default async function ProductsPage({
   }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.view'))) {
     return <NoAccess section="Products" />;
   }
   const { category, tag, ptag, q, page: pageParam, sort, deleted, archived, error } = await searchParams;

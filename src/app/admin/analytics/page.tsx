@@ -49,7 +49,7 @@ export default async function AnalyticsPage({
   searchParams: Promise<{ days?: string; tab?: string }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('analytics')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
     return <NoAccess section="Analytics" />;
   }
 

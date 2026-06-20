@@ -16,7 +16,7 @@ const day = (s: string | null) => (s ? new Date(s).toISOString().slice(0, 10) : 
 // shows, via the shared helpers. Gated on the same permission as the page.
 export async function GET(req: NextRequest) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('analytics')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
     return new Response('Forbidden', { status: 403 });
   }
 

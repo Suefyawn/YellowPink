@@ -5,7 +5,7 @@ import { SettingsNav } from '@/components/admin/SettingsNav';
 
 export default async function SettingsLayout({ children }: { children: ReactNode }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('settings')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
     redirect('/admin/dashboard');
   }
 

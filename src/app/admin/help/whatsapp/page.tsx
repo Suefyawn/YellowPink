@@ -9,7 +9,7 @@ import { hasWhatsApp, merchantNumber, whatsappUrl, WA_TEMPLATES } from '@/lib/wh
 
 export default async function WhatsAppHelpPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner) {
+  if (!session || !session.isOwner) {
     return <NoAccess section="WhatsApp setup help" />;
   }
   const configured = hasWhatsApp();

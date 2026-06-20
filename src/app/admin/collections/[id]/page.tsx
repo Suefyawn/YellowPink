@@ -19,7 +19,7 @@ export default async function EditCollectionPage({
   params, searchParams,
 }: { params: Promise<{ id: string }>; searchParams?: Promise<{ saved?: string; error?: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products.edit')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.edit'))) {
     return <NoAccess section="Collections" />;
   }
   const { id } = await params;

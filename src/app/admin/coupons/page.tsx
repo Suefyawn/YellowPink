@@ -32,7 +32,7 @@ export default async function CouponsPage({
   searchParams?: Promise<{ error?: string; created?: string }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('coupons')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('coupons'))) {
     return <NoAccess section="Coupons" />;
   }
   const sp = (await searchParams) ?? {};
