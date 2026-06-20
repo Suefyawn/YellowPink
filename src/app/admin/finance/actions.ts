@@ -116,6 +116,28 @@ export async function recordPayment(orderId: string, formData: FormData): Promis
   redirect(`/admin/orders/${orderId}?pay=recorded`);
 }
 
+// Save a freeform internal staff note on an order (admin-only; never shown to
+// the customer). Gated on orders.edit, same as the other order-page widgets.
+export async function updateOrderNotes(orderId: string, formData: FormData): Promise<void> {
+  const session = await getStaffSession();
+  if (session && !session.isOwner && !session.permissions.includes('orders.edit')) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Not authorized'));
+  }
+  const raw = String(formData.get('notes') ?? '').trim();
+  const notes = raw === '' ? null : raw.slice(0, 4000);
+
+  const { error } = await supabaseAdmin()
+    .from('orders')
+    .update({ notes })
+    .eq('id', orderId);
+  if (error) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(error.message));
+  }
+  await logAudit(session, { action: 'order.update_notes', entity: 'order', entity_id: orderId });
+  revalidatePath(`/admin/orders/${orderId}`);
+  redirect(`/admin/orders/${orderId}?notes=saved`);
+}
+
 // Undo a recorded payment (e.g. logged against the wrong account).
 export async function clearPayment(orderId: string): Promise<void> {
   const session = await getStaffSession();
