@@ -222,7 +222,7 @@ export function ProductTile({ product }: ProductTileProps) {
           boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
         }}
       >
-        <span aria-hidden="true" style={{ color: wishlisted ? 'white' : 'var(--ink-500)', lineHeight: 1 }}>
+        <span aria-hidden="true" style={{ color: wishlisted ? 'white' : 'var(--ink-700)', lineHeight: 1 }}>
           {wishlisted ? '♥' : '♡'}
         </span>
       </button>
