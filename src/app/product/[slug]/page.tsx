@@ -3,7 +3,7 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductBySlug, supabase, isDemo, getProductsByBrand, getProductsByTaxon } from '@/lib/supabase';
+import { getProductBySlug, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings } from '@/lib/supabase';
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
@@ -192,11 +192,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const product = await getProductBySlug(slug);
   if (!product) notFound();
 
-  const [backInStockEnabled, reviewPhotosEnabled, estimatedDays] = await Promise.all([
+  const [backInStockEnabled, reviewPhotosEnabled, estimatedDays, siteSettings] = await Promise.all([
     isEnabled('back_in_stock'),
     isEnabled('reviews_photos'),
     getDefaultEstimatedDays(),
+    getSiteSettings(),
   ]);
+  // Loyalty earn rate (points per PKR) drives the PDP "earn points" nudge.
+  // Defaults to the same 0.1 the loyalty settings form seeds.
+  const pointsPerPkr = Number(siteSettings.loyalty_points_per_pkr ?? '0.1') || 0;
 
   const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts] = await Promise.all([
     isDemo
@@ -262,6 +266,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         backInStockEnabled={backInStockEnabled}
         subscribeEligible={taxonForCategory(product.category)?.key === 'wellness'}
         estimatedDays={estimatedDays}
+        pointsPerPkr={pointsPerPkr}
       />
       <FrequentlyBoughtTogether anchor={product} suggestions={fbt} />
       <MoreToExplore
