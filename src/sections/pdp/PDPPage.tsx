@@ -10,6 +10,7 @@ import { useCart } from '@/context/CartContext';
 import { BackInStockForm } from '@/components/pdp/BackInStockForm';
 import { SubscribeAndSave } from '@/components/pdp/SubscribeAndSave';
 import { track } from '@/lib/analytics';
+import { tapHaptic } from '@/lib/haptics';
 import { stripBrandPrefix } from '@/lib/product-display';
 import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { BenefitIcon } from '@/components/ui/BenefitIcon';
@@ -356,6 +357,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
 
   const handleAdd = () => {
     if (variants.length > 0 && !activeVariant) return;
+    tapHaptic();
     setAddedFlash(true);
     addToCart({
       ...product,

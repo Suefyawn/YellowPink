@@ -14,6 +14,7 @@ import { brandPlusName } from '@/lib/product-display';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { track } from '@/lib/analytics';
+import { successHaptic } from '@/lib/haptics';
 import { readAttribution } from '@/lib/attribution';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
 import type { Coupon, PayMethod, LoyaltyAccount, BankAccount } from '@/types';
@@ -262,6 +263,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     if (submitting) return;
     if (!validate()) return;
 
+    successHaptic();
     setSubmitting(true);
     setSubmitError('');
 

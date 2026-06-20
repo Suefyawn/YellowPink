@@ -78,6 +78,15 @@ export function AdminShell({
         .adm-fab { display: none; }
         .adm-orders-cards { display: none; }
         .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        /* Sticky table headers — long order / inventory / finance lists are
+         * easier to scan when the column labels follow the viewport. */
+        .adm-table-scroll thead th {
+          position: sticky;
+          top: 0;
+          z-index: 5;
+          background: white;
+          box-shadow: inset 0 -2px 0 #f3f4f6;
+        }
         /* Products list: desktop shows the table, the mobile card
          * stack is hidden. The @media block below flips this for phones. */
         .adm-products-cards { display: none; }
