@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
+import { track } from '@/lib/analytics';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { TAXONS, findTaxon, taxonForCategory, canonicalCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
 import type { Product, ProductAttribute, AttributeValue } from '@/types';
@@ -577,7 +578,7 @@ export function CollectionPage({
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
               <span className="small-text">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</span>
-              <select value={sortBy} onChange={e => setSortBy(e.target.value as SortKey)}
+              <select value={sortBy} onChange={e => { const s = e.target.value as SortKey; setSortBy(s); track({ name: 'select_sort', payload: { sort: s } }); }}
                 aria-label="Sort products"
                 style={{
                   padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
