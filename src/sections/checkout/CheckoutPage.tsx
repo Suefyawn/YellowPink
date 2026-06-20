@@ -116,6 +116,11 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   // Firing on submit conflated "started checkout" with "completed checkout"
   // and made the funnel skip this step for everyone who bailed (#193). Fires
   // once per page visit, after the cart has hydrated from localStorage.
+  // Focus the first field on mount so the customer can start typing without a
+  // tap — one less interaction, and on mobile it brings the keyboard up.
+  const emailRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { emailRef.current?.focus(); }, []);
+
   const beganCheckout = useRef(false);
   useEffect(() => {
     if (beganCheckout.current || cartItems.length === 0) return;
@@ -369,7 +374,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     width: '100%', padding: '10px 12px',
     border: `1px solid ${errors[key] ? 'var(--error)' : 'var(--line)'}`,
     borderRadius: 'var(--radius-card)', fontFamily: 'var(--font-ui)',
-    fontSize: '0.875rem', color: 'var(--ink-900)', background: 'var(--paper)',
+    // 16px so iOS Safari doesn't auto-zoom the viewport on field focus, which
+    // mid-checkout breaks the layout rhythm and feels janky.
+    fontSize: '1rem', color: 'var(--ink-900)', background: 'var(--paper)',
   });
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: 6 };
 
@@ -389,7 +396,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               <Overline style={{ display: 'block', marginBottom: 16 }}>Contact</Overline>
               <div style={{ marginBottom: 24 }}>
                 <label htmlFor="co-email" style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
-                <input id="co-email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
+                <input ref={emailRef} id="co-email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
                 {errors.email && <span id="co-email-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="checkout-name-grid">
@@ -576,7 +583,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                   {submitError}
                 </div>
               )}
-              <button className="btn-primary" style={{ width: '100%' }} onClick={handleSubmit} disabled={submitting} aria-busy={submitting}>
+              <button className="btn-primary" style={{ width: '100%', ...(submitting ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }} onClick={handleSubmit} disabled={submitting} aria-busy={submitting}>
                 {submitting ? 'Placing Order…' : payMethod === 'jazzcash' || payMethod === 'easypaisa' ? `Continue to ${payMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa'} →` : 'Place Order'}
               </button>
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)', display: 'inline-flex', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 6 }}>

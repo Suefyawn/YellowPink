@@ -392,18 +392,21 @@ export function Header() {
         <nav aria-label="Mobile primary" style={{ padding: '8px var(--side) 24px', display: 'flex', flexDirection: 'column' }}>
           {TAXONS.map(t => {
             const expanded = openSection === t.key;
+            const curCat = searchParams.get('category');
+            const taxonActive = searchParams.get('taxon') === t.key || (!!curCat && t.categories.includes(curCat));
             return (
               <div key={t.key} style={{ borderBottom: '1px solid var(--line)' }}>
                 <button
                   type="button"
                   onClick={() => setOpenSection(expanded ? null : t.key)}
                   aria-expanded={expanded}
+                  aria-current={taxonActive ? 'page' : undefined}
                   aria-controls={`mobile-nav-${t.key}`}
                   tabIndex={mobileMenu ? 0 : -1}
                   style={{
                     width: '100%', background: 'none', border: 'none', cursor: 'pointer',
-                    fontFamily: 'var(--font-ui)', fontSize: '1.0625rem', fontWeight: 600,
-                    color: 'var(--ink-900)', display: 'flex', alignItems: 'center',
+                    fontFamily: 'var(--font-ui)', fontSize: '1.0625rem', fontWeight: taxonActive ? 700 : 600,
+                    color: taxonActive ? 'var(--brand-pink-text)' : 'var(--ink-900)', display: 'flex', alignItems: 'center',
                     justifyContent: 'space-between', padding: '18px 4px', minHeight: 52,
                   }}
                 >
@@ -426,18 +429,24 @@ export function Header() {
                         letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--brand-pink-text)',
                       }}
                     >All {t.label}</Link>
-                    {t.categories.map(cat => (
-                      <Link
-                        key={cat}
-                        href={`/shop?category=${encodeURIComponent(cat)}`}
-                        onClick={() => setMobileMenu(false)}
-                        tabIndex={mobileMenu ? 0 : -1}
-                        style={{
-                          display: 'block', padding: '11px 16px', textDecoration: 'none',
-                          fontFamily: 'var(--font-ui)', fontSize: '0.9375rem', color: 'var(--ink-700)',
-                        }}
-                      >{cat}</Link>
-                    ))}
+                    {t.categories.map(cat => {
+                      const catActive = curCat === cat;
+                      return (
+                        <Link
+                          key={cat}
+                          href={`/shop?category=${encodeURIComponent(cat)}`}
+                          onClick={() => setMobileMenu(false)}
+                          aria-current={catActive ? 'page' : undefined}
+                          tabIndex={mobileMenu ? 0 : -1}
+                          style={{
+                            display: 'block', padding: '11px 16px', textDecoration: 'none',
+                            fontFamily: 'var(--font-ui)', fontSize: '0.9375rem',
+                            fontWeight: catActive ? 700 : 400,
+                            color: catActive ? 'var(--brand-pink-text)' : 'var(--ink-700)',
+                          }}
+                        >{cat}</Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>

@@ -5,6 +5,7 @@ import { AnnouncementBar } from './AnnouncementBar';
 import { PromoBanner } from './PromoBanner';
 import { Header } from './Header';
 import { Footer } from './Footer';
+import { BackToTop } from '@/components/ui/BackToTop';
 import { MiniCart } from '@/components/cart/MiniCart';
 import { SearchOverlay } from '@/components/search/SearchOverlay';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
@@ -93,6 +94,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
       <MiniCart />
       <SearchOverlay trending={searchTrending} categories={searchCategories} />
       <KeyboardShortcuts />
+      <BackToTop />
     </>
   );
 }
