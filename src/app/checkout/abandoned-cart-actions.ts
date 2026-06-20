@@ -6,15 +6,19 @@
 
 import { headers } from 'next/headers';
 import { supabase } from '@/lib/supabase';
+import { createServerSupabase } from '@/lib/supabase-server';
 import { checkoutLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { emailSchema } from '@/lib/validators';
 import type { CartItem } from '@/types';
 
+// The client used to pass `user_id` directly; the RPC then merged it via
+// COALESCE on upsert. A malicious caller could spoof their own UUID onto
+// another user's cart row keyed by email. We now ignore any client-supplied
+// user_id and read the authenticated user from cookies server-side.
 interface CartSnapshot {
   email: string;
   items: CartItem[];
   subtotal: number;
-  user_id?: string | null;
 }
 
 export async function captureAbandonedCart(snapshot: CartSnapshot): Promise<{ ok: true; token?: string } | { ok: false; error: string }> {
@@ -29,11 +33,16 @@ export async function captureAbandonedCart(snapshot: CartSnapshot): Promise<{ ok
   const { success } = await checkoutLimiter.limit(`abandoned:${ipFromHeaders(h)}`);
   if (!success) return { ok: false, error: 'rate limited' };
 
+  // Resolve the actual authenticated user from the session cookie; null for
+  // guest checkouts. Never trust the client.
+  const authed = await createServerSupabase();
+  const { data: { user } } = await authed.auth.getUser();
+
   const { data, error } = await supabase.rpc('capture_abandoned_cart' as never, {
     p_email:    snapshot.email,
     p_cart:     snapshot.items,
     p_subtotal: snapshot.subtotal,
-    p_user_id:  snapshot.user_id ?? null,
+    p_user_id:  user?.id ?? null,
   } as never);
 
   if (error) return { ok: false, error: error.message };

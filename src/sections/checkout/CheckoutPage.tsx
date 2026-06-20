@@ -178,15 +178,16 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     const email = formData.email.trim();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
     const t = setTimeout(() => {
+      // user_id is resolved server-side from the session cookie; no need to
+      // (and no benefit in) sending it from the client.
       void captureAbandonedCart({
         email,
         items: cartItems,
         subtotal,
-        user_id: user?.id ?? null,
       });
     }, 1200);
     return () => clearTimeout(t);
-  }, [formData.email, cartItems, subtotal, user?.id]);
+  }, [formData.email, cartItems, subtotal]);
 
   const update = (key: string, val: string) => {
     setFormData(p => ({ ...p, [key]: val }));
@@ -298,7 +299,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
             total: beforeRewards,                  // pre-rewards order total — points decrement separately
             items: cartItems,
             status: 'pending',
-            user_id: user?.id || '',
+            // user_id is derived server-side from auth.uid() inside place_order
+            // (migration 149) — passing it from the client let a tampered
+            // payload claim someone else's order.
             coupon_code: cartCoupon?.code || '',
             discount_amount: discount,
             // Marketing attribution (UTM + first-touch landing/referrer) so the
