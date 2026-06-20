@@ -68,6 +68,12 @@ function TrackForm() {
   // If both came in via the URL, auto-submit so the customer hits the page and
   // sees their status without an extra click. The form remains visible — we
   // don't trust the URL phone alone, but the RPC guards the actual lookup.
+  //
+  // Failure handling matters here: a *system* error (RPC/network/deploy blip)
+  // must not leave a silent blank form, so we surface a soft retry message.
+  // A genuine no-match on a prefilled link (rare — the link is minted from a
+  // real order) stays quiet so we don't accuse a legitimate visitor of a bad
+  // order number; they can correct the prefilled fields and submit manually.
   useEffect(() => {
     if (!initialOrderNumber || !initialPhone) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -79,8 +85,10 @@ function TrackForm() {
     } as never).then(({ data, error: rpcError }) => {
       const row = Array.isArray(data) ? (data[0] as Order | undefined) : (data as Order | null);
       setLoading(false);
-      if (rpcError || !row) return;
-      setOrder(row);
+      if (row) { setOrder(row); return; }
+      if (rpcError) {
+        setError("We couldn't load your order automatically. Please tap Track to try again.");
+      }
     });
   }, [initialOrderNumber, initialPhone]);
 
