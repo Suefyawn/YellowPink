@@ -41,7 +41,9 @@ export function ExportCSVButton({ status, q }: Props) {
     let query = sb.from('orders').select('*').order('created_at', { ascending: false });
     if (status && status !== 'all') query = query.eq('status', status as OrderStatus);
     if (q) {
-      const filter = `order_number.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`;
+      // Keep in sync with the orders page search (order #, name, email, phone).
+      const term = q.replace(/[(),*]/g, ' ').trim();
+      const filter = `order_number.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`;
       query = query.or(filter);
     }
     const { data } = await query;

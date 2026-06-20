@@ -47,7 +47,12 @@ async function OrdersPageInner({
     dataQuery = dataQuery.eq('status', status as OrderStatus);
   }
   if (q) {
-    const filter = `order_number.ilike.%${q}%,first_name.ilike.%${q}%,last_name.ilike.%${q}%`;
+    // Strip characters that would break the PostgREST `.or()` grammar (commas
+    // separate conditions; parens group them). Customers are searched by
+    // order number, name, email and phone — support in this market is
+    // phone-first, so matching the contact fields is essential.
+    const term = q.replace(/[(),*]/g, ' ').trim();
+    const filter = `order_number.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`;
     countQuery = countQuery.or(filter);
     dataQuery = dataQuery.or(filter);
   }
