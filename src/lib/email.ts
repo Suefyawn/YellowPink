@@ -614,6 +614,34 @@ export async function sendReviewRequestEmail(args: {
   });
 }
 
+// ─── 11b. Owner: stuck-payment alert (background job) ───────────────────────
+// Orders that started an online payment but never completed sit in
+// `payment_pending` indefinitely — invisible unless someone scans the orders
+// list. This digest surfaces them so the owner can cancel or follow up before
+// the customer re-pays and gets double-charged.
+export async function sendStuckPaymentsAlertEmail(args: {
+  orders: { order_number: string; total: number; pay_method: string; customer: string; hoursOld: number }[];
+}) {
+  if (!args.orders.length) return;
+  const rows = args.orders.map(o =>
+    `<tr><td style="padding:6px 8px;font-size:14px">${escapeHtml(o.order_number)}</td>
+         <td style="padding:6px 8px;font-size:14px">${escapeHtml(o.customer)}</td>
+         <td style="padding:6px 8px;font-size:14px">${escapeHtml(o.pay_method)}</td>
+         <td style="padding:6px 8px;font-size:14px;text-align:right">PKR ${o.total.toLocaleString()}</td>
+         <td style="padding:6px 8px;font-size:14px;text-align:right">${o.hoursOld}h</td></tr>`
+  ).join('');
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">Payments stuck pending</h2>
+    <p>${args.orders.length} order${args.orders.length === 1 ? '' : 's'} have been waiting on an online payment for over 2 hours — the customer likely abandoned the gateway or it timed out. Check before they re-pay (and get double-charged), then cancel or follow up.</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px">
+      <tr><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Order</th><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Customer</th><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Method</th><th align="right" style="padding:6px 8px;font-size:12px;color:#6b7280">Total</th><th align="right" style="padding:6px 8px;font-size:12px;color:#6b7280">Age</th></tr>
+      ${rows}
+    </table>
+    <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/orders?status=payment_pending" style="color:${BRAND_PINK};font-weight:600">→ Review pending payments</a></p>
+  `);
+  await send({ to: OWNER_EMAIL, subject: `Action needed — ${args.orders.length} payment${args.orders.length === 1 ? '' : 's'} stuck pending`, html, kind: 'batch' });
+}
+
 // ─── 11. Owner: low-stock alert (background job) ────────────────────────────
 export async function sendLowStockAlertEmail(args: { products: { name: string; brand: string; stock: number; slug: string }[] }) {
   if (!args.products.length) return;
