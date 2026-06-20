@@ -602,8 +602,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <dt style={dt}>Name</dt>
             <dd style={dd}>{o.first_name} {o.last_name}</dd>
             <dt style={dt}>Phone</dt>
-            <dd style={dd}>{o.phone}</dd>
-            {o.email && <><dt style={dt}>Email</dt><dd style={dd}>{o.email}</dd></>}
+            <dd style={dd}>
+              <a href={`tel:${o.phone}`} style={{ color: '#C5286A', fontWeight: 500, textDecoration: 'none' }}>{o.phone}</a>
+            </dd>
+            {o.email && (
+              <>
+                <dt style={dt}>Email</dt>
+                <dd style={dd}>
+                  <a href={`mailto:${o.email}`} style={{ color: '#C5286A', textDecoration: 'none', fontWeight: 500 }}>{o.email}</a>
+                </dd>
+              </>
+            )}
             {customerStats && (
               <>
                 <dt style={dt}>Lifetime spend</dt>
@@ -618,7 +627,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
         {/* Shipping */}
         <div style={section}>
-          <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipping address</h2>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipping address</h2>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}${o.zip ? ` ${o.zip}` : ''}, Pakistan`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ fontSize: '0.75rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}
+            >
+              Open in Maps ↗
+            </a>
+          </div>
           <dl style={dl}>
             <dt style={dt}>Address</dt>
             <dd style={dd}>{o.address}</dd>
