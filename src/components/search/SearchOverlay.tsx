@@ -24,6 +24,7 @@ import type { Product } from '@/types';
 // SearchOverlayWrapper.tsx normally resolves these from real catalog data.
 const TRENDING_FALLBACK = ['CeraVe', 'NARS', 'Kiko Milano', 'PIXI', 'Rhode'];
 const CATEGORIES_FALLBACK = ['Skincare', 'Lip Tints', 'Foundations', 'Sunscreen', 'Wellness'];
+const RECENT_KEY = 'yp_recent_searches';
 
 interface SearchOverlayProps {
   /** Server-fetched top brands (top 5 by in-stock product count). */
@@ -40,11 +41,40 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   const { searchOpen, setSearchOpen } = useSearch();
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [recent, setRecent] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
   useBodyScrollLock(searchOpen);
   useFocusTrap(searchOpen, panelRef);
+
+  // Recent searches — persisted in localStorage, most-recent first, capped at
+  // 6. Re-read each time the overlay opens so it reflects searches made in
+  // other tabs. The store is the external system, so syncing it into state on
+  // open is the documented setState-in-effect exception.
+  useEffect(() => {
+    if (!searchOpen) return;
+    try {
+      const raw = localStorage.getItem(RECENT_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setRecent(raw ? (JSON.parse(raw) as string[]).slice(0, 6) : []);
+    } catch { /* ignore */ }
+  }, [searchOpen]);
+
+  const pushRecent = (term: string) => {
+    const t = term.trim();
+    if (!t) return;
+    setRecent(prev => {
+      const next = [t, ...prev.filter(x => x.toLowerCase() !== t.toLowerCase())].slice(0, 6);
+      try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const clearRecent = () => {
+    setRecent([]);
+    try { localStorage.removeItem(RECENT_KEY); } catch { /* ignore */ }
+  };
 
   // Sync UI state to the overlay's open/closed external signal — focus the
   // search input when opening, clear the typeahead query when closing.
@@ -106,6 +136,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
     // GA4 `select_item` — which result the shopper picked, and from what query,
     // so search → click-through can be measured.
     track({ name: 'select_item', payload: { product_id: p.id, product_name: p.name, query: query.trim() || undefined } });
+    if (query.trim()) pushRecent(query);
     setSearchOpen(false);
     router.push(`/product/${p.slug}`);
   };
@@ -117,6 +148,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   const goToSearch = (term: string) => {
     const t = term.trim();
     if (!t) return;
+    pushRecent(t);
     setSearchOpen(false);
     router.push(`/shop?q=${encodeURIComponent(t)}`);
   };
@@ -278,6 +310,42 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
               )}
             </div>
           ) : (
+            <>
+            {recent.length > 0 && (
+              <div style={{ marginBottom: 28 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                  <Overline style={{ color: 'var(--ink-500)' }}>Recent</Overline>
+                  <button
+                    type="button"
+                    onClick={clearRecent}
+                    style={{
+                      background: 'none', border: 'none', cursor: 'pointer',
+                      fontSize: '0.75rem', color: 'var(--ink-500)', fontFamily: 'var(--font-ui)',
+                      textDecoration: 'underline',
+                    }}
+                  >Clear</button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {recent.map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => goToSearch(t)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        padding: '7px 14px', background: 'var(--paper2)',
+                        border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
+                        fontSize: '0.8125rem', fontWeight: 500, color: 'var(--ink-900)',
+                        cursor: 'pointer', fontFamily: 'var(--font-ui)',
+                      }}
+                    >
+                      <span aria-hidden="true" style={{ opacity: 0.5, fontSize: '0.75rem' }}>↺</span>
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 40 }} className="search-suggestions">
               <div>
                 <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Trending</Overline>
@@ -318,6 +386,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                 ))}
               </div>
             </div>
+            </>
           )}
         </div>
       </div>
