@@ -13,6 +13,7 @@ import { setOrderCosts, recordPayment, clearPayment, updateOrderNotes } from '@/
 import { deleteOrder } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
+import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
@@ -243,7 +244,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       `}</style>
 
       <div className="no-print print-hide" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28, flexWrap: 'wrap' }}>
-        <Link href="/admin/orders" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '0.875rem' }}>← Orders</Link>
+        <BackToOrdersLink />
         <span style={{ color: '#d1d5db' }}>/</span>
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827', fontFamily: 'monospace' }}>
           {o.order_number}
