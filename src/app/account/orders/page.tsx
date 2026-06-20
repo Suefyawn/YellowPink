@@ -26,15 +26,45 @@ export default function AccountOrdersPage() {
   const [fetching, setFetching] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [reordering, setReordering] = useState<string | null>(null);
+  // Note is scoped to the order it belongs to so it only renders under that
+  // card. Cleared at the start of every reorder so re-attempts feel clean.
+  const [reorderNote, setReorderNote] = useState<{ orderId: string; message: string } | null>(null);
 
-  // Reorder = add every line back to the current cart. addToCart merges
-  // duplicates and clamps to live stock, so an item that's since gone out
-  // of stock is silently skipped instead of letting the customer place an
-  // order it can't fulfil. Opens the mini-cart on success.
-  const reorder = (o: Order) => {
+  // Reorder = re-add every line from a past order to the current cart.
+  // The order's items snapshot doesn't carry a live `stock` field — only the
+  // products row does — so we fetch the current stock + track_inventory for
+  // every line, drop the ones that are tracked-and-empty, and only feed the
+  // survivors to addToCart. The customer sees only items they can actually
+  // buy land in the cart, with a small note if anything was filtered out.
+  const reorder = async (o: Order) => {
     if (!o.id) return;
     setReordering(o.id);
-    for (const item of (o.items ?? [])) {
+    setReorderNote(null);
+    const items = o.items ?? [];
+    const ids = items.map(i => i.id).filter((v): v is string => Boolean(v));
+    let available = items;
+    if (ids.length > 0) {
+      const sb = getBrowserClient();
+      const { data: rows } = await sb
+        .from('products')
+        .select('id, stock, track_inventory')
+        .in('id', ids);
+      const stockMap = new Map<string, { stock: number | null; track_inventory: boolean | null }>(
+        (rows ?? []).map((r: { id: string; stock: number | null; track_inventory: boolean | null }) =>
+          [r.id, { stock: r.stock, track_inventory: r.track_inventory }],
+        ),
+      );
+      available = items.filter(i => {
+        if (!i.id) return false;
+        const s = stockMap.get(i.id);
+        // Unknown product (deleted/archived) → drop. Untracked → always keep.
+        // Tracked → keep only when current stock covers the qty being added.
+        if (!s) return false;
+        if (s.track_inventory === false) return true;
+        return typeof s.stock === 'number' && s.stock >= (i.qty ?? 1);
+      });
+    }
+    for (const item of available) {
       addToCart({
         ...item,
         qty: item.qty,
@@ -42,7 +72,16 @@ export default function AccountOrdersPage() {
         variant_label: item.variant_label ?? null,
       });
     }
-    setCartOpen(true);
+    const skipped = items.length - available.length;
+    if (skipped > 0 && o.id) {
+      setReorderNote({
+        orderId: o.id,
+        message: available.length === 0
+          ? "None of these items are in stock right now."
+          : `${skipped} item${skipped === 1 ? '' : 's'} from this order ${skipped === 1 ? "isn't" : "aren't"} in stock right now and ${skipped === 1 ? 'was' : 'were'} skipped.`,
+      });
+    }
+    if (available.length > 0) setCartOpen(true);
     setReordering(null);
   };
 
@@ -183,31 +222,45 @@ export default function AccountOrdersPage() {
                       </div>
 
                       {o.id && (o.items?.length ?? 0) > 0 && (
-                        <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
-                          <button
-                            type="button"
-                            onClick={() => reorder(o)}
-                            disabled={reordering === o.id}
-                            style={{
-                              padding: '8px 16px', background: 'var(--ink-900)', color: 'white',
-                              border: 'none', borderRadius: 'var(--radius-card)',
-                              fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
-                              fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
-                              cursor: reordering === o.id ? 'wait' : 'pointer',
-                              opacity: reordering === o.id ? 0.6 : 1,
-                            }}
-                          >
-                            {reordering === o.id ? 'Adding…' : 'Buy again'}
-                          </button>
-                          {status === 'delivered' && (
-                            <Link
-                              href={`/account/orders/returns/new?order=${encodeURIComponent(o.id)}`}
-                              style={{ fontSize: '0.8125rem', color: 'var(--ink-700)', textDecoration: 'underline' }}
+                        <>
+                          <div style={{ marginTop: 16, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 16, flexWrap: 'wrap' }}>
+                            <button
+                              type="button"
+                              onClick={() => reorder(o)}
+                              disabled={reordering === o.id}
+                              style={{
+                                padding: '8px 16px', background: 'var(--ink-900)', color: 'white',
+                                border: 'none', borderRadius: 'var(--radius-card)',
+                                fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
+                                fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+                                cursor: reordering === o.id ? 'wait' : 'pointer',
+                                opacity: reordering === o.id ? 0.6 : 1,
+                              }}
                             >
-                              Request a return →
-                            </Link>
+                              {reordering === o.id ? 'Adding…' : 'Buy again'}
+                            </button>
+                            {status === 'delivered' && (
+                              <Link
+                                href={`/account/orders/returns/new?order=${encodeURIComponent(o.id)}`}
+                                style={{ fontSize: '0.8125rem', color: 'var(--ink-700)', textDecoration: 'underline' }}
+                              >
+                                Request a return →
+                              </Link>
+                            )}
+                          </div>
+                          {reorderNote?.orderId === o.id && reordering !== o.id && (
+                            <div
+                              role="status"
+                              aria-live="polite"
+                              style={{
+                                marginTop: 10, fontSize: '0.75rem',
+                                color: 'var(--ink-700)', textAlign: 'right',
+                              }}
+                            >
+                              {reorderNote.message}
+                            </div>
                           )}
-                        </div>
+                        </>
                       )}
                     </div>
                   )}

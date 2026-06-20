@@ -152,7 +152,9 @@ Customers can shop as guests or create an account. A signed-in customer has:
 - **My Orders** — their full order history, with status and tracking. Orders
   they placed as a guest with the same email are linked automatically. Each
   order has a one-tap **Buy again** button that drops the same items back into
-  the cart (out-of-stock lines are silently skipped).
+  the cart. Lines whose product has since gone out of stock are dropped at
+  the same time, and a small note under the button calls out anything that
+  was skipped.
 - **Addresses** — saved delivery addresses for faster checkout.
 - **Rewards** — loyalty points earned from purchases, redeemable as a discount.
 - **Subscriptions** — reorder reminders for products they buy regularly.
