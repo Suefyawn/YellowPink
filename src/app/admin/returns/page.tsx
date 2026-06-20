@@ -51,12 +51,80 @@ export default async function ReturnsPage() {
     orderMap.set(o.id, o);
   }
 
+  // ─── Returns insights ───────────────────────────────────────────────────
+  // Aggregate over ALL returns (a small table) for accurate KPIs — the queue
+  // above is capped at 200 for display. Surfaces which products come back most
+  // and why, so the owner can act on a QA / expectations-mismatch problem.
+  const { data: allReturns } = await admin
+    .from('return_requests')
+    .select('status, reason, refund_amount, items, created_at');
+  type AggRow = { status: string; reason: string | null; refund_amount: number | null; items: { name?: string; qty?: number }[] | null; created_at: string };
+  const ar = (allReturns ?? []) as AggRow[];
+  // One-shot clock read for a 90-day window on a dynamic (uncached) admin
+  // page. The react-hooks/purity rule flags Date.now() as impure; safe here.
+  // eslint-disable-next-line react-hooks/purity
+  const since90 = Date.now() - 90 * 24 * 60 * 60 * 1000;
+  const last90 = ar.filter(r => Date.parse(r.created_at) >= since90).length;
+  const totalRefunded = ar.filter(r => r.status === 'refunded').reduce((s, r) => s + Number(r.refund_amount ?? 0), 0);
+  const productCounts = new Map<string, number>();
+  const reasonCounts = new Map<string, number>();
+  for (const r of ar) {
+    for (const it of (r.items ?? [])) {
+      if (it?.name) productCounts.set(it.name, (productCounts.get(it.name) ?? 0) + (Number(it.qty) || 1));
+    }
+    const reason = (r.reason ?? '').trim() || 'Not specified';
+    reasonCounts.set(reason, (reasonCounts.get(reason) ?? 0) + 1);
+  }
+  const topProducts = [...productCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  const topReasons = [...reasonCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+  // Return rate proxy: returns raised in the last 90d ÷ orders delivered in the
+  // same window.
+  const { count: deliveredCount } = await admin
+    .from('orders').select('*', { count: 'exact', head: true })
+    .eq('status', 'delivered').gte('created_at', new Date(since90).toISOString());
+  const returnRate = deliveredCount && deliveredCount > 0 ? (last90 / deliveredCount) * 100 : null;
+
+  const kpi: React.CSSProperties = { background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' };
+  const kpiLabel: React.CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' };
+  const kpiVal: React.CSSProperties = { fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginTop: 2 };
+
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Returns</h1>
         <Link href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>← All orders</Link>
       </div>
+
+      {ar.length > 0 && (
+        <section style={{ marginBottom: 28 }}>
+          <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
+            <div style={kpi}><div style={kpiLabel}>Total returns</div><div style={kpiVal}>{ar.length.toLocaleString()}</div></div>
+            <div style={kpi}><div style={kpiLabel}>Last 90 days</div><div style={kpiVal}>{last90.toLocaleString()}</div></div>
+            <div style={kpi}><div style={kpiLabel}>Refunded (total)</div><div style={kpiVal}>PKR {Math.round(totalRefunded).toLocaleString()}</div></div>
+            <div style={kpi}><div style={kpiLabel}>Return rate (90d)</div><div style={kpiVal}>{returnRate == null ? '—' : `${returnRate.toFixed(1)}%`}</div></div>
+          </div>
+          <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ ...kpi, padding: '16px' }}>
+              <div style={{ ...kpiLabel, marginBottom: 10 }}>Most-returned products</div>
+              {topProducts.length === 0 ? <p style={{ fontSize: '0.8125rem', color: '#9ca3af', margin: 0 }}>No data yet.</p> : topProducts.map(([name, n]) => (
+                <div key={name} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', fontSize: '0.8125rem' }}>
+                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                  <span style={{ fontWeight: 700, color: '#111827', flexShrink: 0 }}>{n}</span>
+                </div>
+              ))}
+            </div>
+            <div style={{ ...kpi, padding: '16px' }}>
+              <div style={{ ...kpiLabel, marginBottom: 10 }}>Top reasons</div>
+              {topReasons.map(([reason, n]) => (
+                <div key={reason} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', fontSize: '0.8125rem' }}>
+                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reason}</span>
+                  <span style={{ fontWeight: 700, color: '#111827', flexShrink: 0 }}>{n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <ReturnsQueue rows={rows} orderMap={Object.fromEntries(orderMap)} />
     </div>
