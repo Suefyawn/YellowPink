@@ -285,7 +285,7 @@ export default async function InventoryPage({
       >
         <div>
           <label htmlFor="product_id" style={lbl}>Product</label>
-          <select id="product_id" name="product_id" required style={inp} defaultValue="">
+          <select id="product_id" name="product_id" required style={inp} defaultValue={productFilter ?? ''}>
             <option value="" disabled>Choose a product</option>
             {products.map(p => (
               <option key={p.id} value={p.id}>
