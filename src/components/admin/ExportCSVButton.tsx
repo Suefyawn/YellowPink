@@ -30,9 +30,12 @@ function toCSV(orders: Order[]): string {
 interface Props {
   status?: string;
   q?: string;
+  range?: string;
 }
 
-export function ExportCSVButton({ status, q }: Props) {
+const RANGE_DAYS: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
+
+export function ExportCSVButton({ status, q, range }: Props) {
   const [loading, setLoading] = useState(false);
 
   const handleExport = async () => {
@@ -40,6 +43,9 @@ export function ExportCSVButton({ status, q }: Props) {
     const sb = getBrowserClient();
     let query = sb.from('orders').select('*').order('created_at', { ascending: false });
     if (status && status !== 'all') query = query.eq('status', status as OrderStatus);
+    if (range && RANGE_DAYS[range]) {
+      query = query.gte('created_at', new Date(Date.now() - RANGE_DAYS[range] * 86_400_000).toISOString());
+    }
     if (q) {
       // Keep in sync with the orders page search (order #, name, email, phone).
       const term = q.replace(/[(),*]/g, ' ').trim();
