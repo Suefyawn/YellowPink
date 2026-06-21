@@ -24,6 +24,7 @@ interface MessageRow {
   subject: string | null;
   message: string;
   status: 'new' | 'read' | 'archived';
+  source: string | null;
   created_at: string;
 }
 
@@ -42,6 +43,11 @@ function MessageCard({ m }: { m: MessageRow }) {
         {m.status === 'new' && (
           <span style={{ background: '#fce7f3', color: '#9d174d', borderRadius: 20, padding: '2px 8px', fontSize: '0.6875rem', fontWeight: 700 }}>
             New
+          </span>
+        )}
+        {m.source === 'email' && (
+          <span title="Received by email" style={{ background: '#eef2f6', color: '#475569', borderRadius: 20, padding: '2px 8px', fontSize: '0.6875rem', fontWeight: 700 }}>
+            Email
           </span>
         )}
         <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827' }}>{m.name}</span>
@@ -122,7 +128,7 @@ export default async function MessagesPage({
   // right credential to read the inbox.
   const { data } = await supabaseAdmin()
     .from('contact_messages')
-    .select('id, name, email, subject, message, status, created_at')
+    .select('id, name, email, subject, message, status, source, created_at')
     .order('created_at', { ascending: false })
     .limit(300);
 
@@ -135,7 +141,7 @@ export default async function MessagesPage({
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Messages</h1>
       <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>
-        Customer messages sent from the storefront contact form. Replies open your email app.
+        Customer messages from the storefront contact form and (if inbound email is configured) emails to your store address. Replies open your email app.
       </p>
 
       {sp.error && (
