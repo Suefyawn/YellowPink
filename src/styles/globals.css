@@ -741,16 +741,61 @@ a.underline,
   .adm-table-cards td div { white-space: normal !important; max-width: 100% !important; }
 }
 
+/* ── Settings rail (desktop) ─────────────────────────────────────────────
+ * Grouped, iconed nav. Brand-pink active state, subtle hover. */
+.adm-settings-nav-group { margin-bottom: 16px; }
+.adm-settings-nav-group-label {
+  font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.07em;
+  text-transform: uppercase; color: #9ca3af; padding: 0 12px; margin-bottom: 6px;
+}
+.adm-settings-nav-link {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 9px 12px; border-radius: 9px; text-decoration: none;
+  color: #374151; border-left: 3px solid transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.adm-settings-nav-link:hover { background: #f9fafb; color: #111827; }
+.adm-settings-nav-link[aria-current="page"] {
+  background: #fdf2f8; color: #111827; border-left-color: #C5286A;
+}
+.adm-settings-nav-icon { flex-shrink: 0; margin-top: 1px; color: #9ca3af; display: inline-flex; }
+.adm-settings-nav-link:hover .adm-settings-nav-icon { color: #6b7280; }
+.adm-settings-nav-link[aria-current="page"] .adm-settings-nav-icon { color: #C5286A; }
+.adm-settings-nav-text { min-width: 0; }
+.adm-settings-nav-label { display: block; font-size: 0.875rem; font-weight: 500; }
+.adm-settings-nav-link[aria-current="page"] .adm-settings-nav-label { font-weight: 600; }
+.adm-settings-nav-desc { display: block; font-size: 0.75rem; color: #9ca3af; margin-top: 2px; }
+
+/* Brand-pink focus ring for every field inside Settings (replaces the bare
+ * default outline; inputs use inline styles so this is the only place a
+ * :focus-visible treatment can live). */
+.adm-settings-layout input:focus-visible,
+.adm-settings-layout select:focus-visible,
+.adm-settings-layout textarea:focus-visible {
+  border-color: #C5286A !important;
+  box-shadow: 0 0 0 3px rgba(197, 40, 106, 0.13);
+  outline: none;
+}
+.adm-settings-save-btn:hover { background: #a81f59 !important; }
+
 /* Settings split layout: side rail + content on desktop, stacked on phones.
- * On narrow viewports the rail collapses into a horizontal scroller so all
- * sub-page links remain reachable without a hamburger / drawer pattern. */
+ * On narrow viewports the rail collapses into a horizontal pill scroller so
+ * all sub-page links stay reachable without a hamburger / drawer pattern. The
+ * group wrappers `display:contents` so the links flatten into one row and the
+ * section labels / icons / descriptions drop away. */
 @media (max-width: 900px) {
   .adm-settings-layout { flex-direction: column !important; }
   .adm-settings-nav { width: 100% !important; padding-right: 0 !important; padding-bottom: 12px; overflow-x: auto; }
-  .adm-settings-nav nav { flex-direction: row !important; min-width: max-content; gap: 4px !important; }
-  .adm-settings-nav-link { white-space: nowrap; border-left: 0 !important; border-bottom: 3px solid transparent !important; padding: 8px 12px !important; }
-  .adm-settings-nav-link[aria-current="page"] { border-bottom-color: #C5286A !important; }
-  .adm-settings-nav-link > div:last-child { display: none; }
+  .adm-settings-nav nav { flex-direction: row !important; min-width: max-content; gap: 6px !important; }
+  .adm-settings-nav-group { display: contents !important; }
+  .adm-settings-nav-group-label { display: none !important; }
+  .adm-settings-nav-icon, .adm-settings-nav-desc { display: none !important; }
+  .adm-settings-nav-link {
+    white-space: nowrap; border-left: 0 !important;
+    border-radius: 999px !important; padding: 8px 14px !important;
+    background: #f3f4f6;
+  }
+  .adm-settings-nav-link[aria-current="page"] { background: #fdf2f8 !important; color: #C5286A !important; }
 }
 
 /* FAQ accordion chevron: rotate + into × when the <details> is open. */
