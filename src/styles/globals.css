@@ -558,6 +558,29 @@ a.underline,
   text-transform: uppercase; letter-spacing: 0.03em;
 }
 .blog-body tbody tr:nth-child(even) { background: #faf9fb; }
+/* Inline product mentions auto-linked by linkProductMentions() — make them
+   read as shoppable links, not plain body text. */
+.blog-body a.blog-product-link {
+  color: var(--brand-pink-text); font-weight: 600;
+  text-decoration: underline; text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+/* Transactional CTA button for in-article "Shop this" prompts. The <a> tag
+   keeps its class through the sanitizer (anchors are in the attr allowlist),
+   so authors can drop <a class="blog-cta" href="/product/...">…</a> straight
+   into a post body. Self-centres as a block so no wrapper element is needed. */
+.blog-body a.blog-cta {
+  display: block; width: fit-content; max-width: 100%;
+  margin: 28px auto; padding: 14px 28px;
+  background: var(--brand-pink-cta, #C5286A); color: #fff;
+  border-radius: 10px; text-align: center;
+  font-family: var(--font-ui); font-weight: 700; font-size: 0.9375rem;
+  text-decoration: none; letter-spacing: 0.01em;
+  transition: background 150ms ease-out, transform 150ms ease-out;
+}
+@media (hover: hover) {
+  .blog-body a.blog-cta:hover { background: var(--brand-pink-text, #9d174d); transform: translateY(-1px); }
+}
 @media (max-width: 1023px) {
   .blog-article-grid { display: block; }
   .blog-article-main { margin: 0 auto; }
