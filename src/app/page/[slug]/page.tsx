@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { supabase, isDemo } from '@/lib/supabase';
+import { supabase, isDemo, getSiteSettings } from '@/lib/supabase';
+import { parseCommerceConfig } from '@/lib/commerce';
 import { DEMO_PAGES } from '@/lib/demo-data';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { pageMeta, jsonLd, pageArticleLd, faqLd, breadcrumbLd } from '@/lib/seo';
@@ -48,7 +49,7 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
   // body_html is sanitised once at import-time (see importer) but defensively
   // re-sanitise here in case content was edited via raw SQL.
   const safeHtml = sanitizeHtml(page.body_html);
-  const faqs = getPageFaq(page.slug);
+  const faqs = getPageFaq(page.slug, parseCommerceConfig(await getSiteSettings()));
 
   return (
     <>

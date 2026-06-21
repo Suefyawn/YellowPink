@@ -12,6 +12,7 @@ import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { ScrollToTop } from './ScrollToTop';
 import type { Promo } from '@/lib/promos';
 import { socialLinks } from '@/lib/socials';
+import { parseCommerceConfig, freeShippingSentence } from '@/lib/commerce';
 
 interface SiteChromeProps {
   children: React.ReactNode;
@@ -52,7 +53,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
         />
       ) : topBarSettingsActive && (
         <AnnouncementBar
-          text={settings.announcement_text ?? 'Free delivery on orders over PKR 2,500 — COD Nationwide'}
+          text={settings.announcement_text ?? freeShippingSentence(parseCommerceConfig(settings))}
           bgColor={settings.announcement_color ?? '#111827'}
         />
       )}

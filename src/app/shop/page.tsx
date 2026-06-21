@@ -9,21 +9,23 @@ import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
 import { canonicalCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { getDefaultEstimatedDays } from '@/lib/shipping';
 
 // Category-landing FAQ. Parameterised by the active category label so every
 // landing page gets useful, unique copy + FAQPage rich-result eligibility,
 // without hand-authoring a bespoke set for all 18 leaf categories. The answers
 // are universally true store facts (authenticity, COD, delivery, returns) that
 // also reinforce the PK-market trust signals Google rewards.
-function landingFaqs(label: string): { q: string; a: string }[] {
+function landingFaqs(label: string, estimatedDays?: { min: number; max: number } | null): { q: string; a: string }[] {
   const c = label.toLowerCase();
+  const deliveryRange = estimatedDays ? `${estimatedDays.min}–${estimatedDays.max}` : 'a few';
   return [
     { q: `Are your ${c} products authentic?`,
       a: `Yes — every ${c} product at Yellow Pink is 100% genuine, sourced from authorised channels and imported for the Pakistani market. We never sell counterfeits.` },
     { q: `Is cash on delivery (COD) available for ${c}?`,
       a: `Absolutely. You can order any ${c} product with cash on delivery nationwide across Pakistan, and pay only when your parcel arrives.` },
     { q: `How long does delivery take?`,
-      a: `Orders are typically delivered in 2–4 working days, with tracking shared on WhatsApp once your order ships.` },
+      a: `Orders are typically delivered in ${deliveryRange} working days, with tracking shared on WhatsApp once your order ships.` },
     { q: `Can I return ${c} products?`,
       a: `Yes — unused items can be returned within ${RETURNS_WINDOW_DAYS} days of delivery. Start a return from your account or message us on WhatsApp and we'll help.` },
   ];
@@ -97,10 +99,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string; brand?: string; tag?: string; featured?: string; bestseller?: string }> }) {
-  const [products, facetData, tagData] = await Promise.all([
+  const [products, facetData, tagData, estimatedDays] = await Promise.all([
     getProducts(),
     loadFacetData(),
     loadTagData(),
+    getDefaultEstimatedDays(),
   ]);
   const { category, subcategory, cat, taxon, on_sale, q, brand, tag: tagParam, featured, bestseller } = await searchParams;
   const searchParamsFeatured = featured === '1';
@@ -189,7 +192,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           ?? (subcategory ? canonicalCategory(subcategory) : null)
           ?? (initialCategory !== 'All' ? canonicalCategory(initialCategory) : null);
         if (!landingLabel || q || brand) return null;
-        const faqs = landingFaqs(landingLabel);
+        const faqs = landingFaqs(landingLabel, estimatedDays);
         return (
           <section className="container" style={{ padding: '8px 0 var(--section-gap)' }}>
             <script

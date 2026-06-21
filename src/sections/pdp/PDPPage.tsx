@@ -722,7 +722,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
         // Show the admin-authored FAQ when present, else the store-fact
         // fallback — so every product page has a FAQ block (and matching
         // FAQPage schema emitted by the route).
-        const faqItems = effectiveProductFaq(product.faq);
+        const faqItems = effectiveProductFaq(product.faq, { estimatedDays });
         return (
         <section style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
           <div className="container" style={{ maxWidth: 760 }}>
