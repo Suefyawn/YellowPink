@@ -3,6 +3,7 @@ import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { createBlogPost, updateBlogPost } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
+import { SubmitToIndexButton } from './IndexingButtons';
 import type { BlogPost } from '@/types';
 
 function toSlug(s: string) {
@@ -170,6 +171,11 @@ export function BlogForm({ post }: { post?: BlogPost }) {
             }}>
               Cancel
             </Link>
+            {isEdit && post?.slug && (
+              <span style={{ marginLeft: 'auto' }}>
+                <SubmitToIndexButton path={`/blog/${post.slug}`} />
+              </span>
+            )}
           </div>
         </form>
       </div>

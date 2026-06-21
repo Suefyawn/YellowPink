@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 21 June 2026.*
+> *Last updated: 21 June 2026 (added automatic search-engine indexing).*
 
 ---
 
@@ -518,6 +518,31 @@ them again.
 4. The dashboard's *Products* and *Merchant listings* tiles show counts of
    pages Google has validated, not your full catalogue. Numbers grow as
    Google crawls; the sitemap submission above is what drives that.
+
+**Automatic search-engine indexing (built in)**
+
+You don't have to manually "Request indexing" for every page — the store pings
+search engines for you through two channels:
+
+- **IndexNow** (Bing, Yandex, Naver) — works out of the box, nothing to set up.
+- **Google Indexing API** — optional. It stays off until you add a Google Cloud
+  service-account key (env var `GOOGLE_INDEXING_CREDENTIALS`) and add that
+  service account as an *Owner* in Search Console. Until then, Google still
+  discovers pages via the sitemap above.
+
+How it's used:
+
+- **Automatic** — whenever you publish or edit a product or a blog post, its
+  URL is submitted automatically.
+- **Per page** — the product and blog editors have a **Submit to index** button
+  to re-send a single page on demand.
+- **Whole site** — the Blog list page has a **Resubmit all to index** button
+  that sends the entire live catalogue and blog to IndexNow in one go.
+
+A small toast confirms each submission and shows which channels accepted it.
+(Note: Google's direct API has a small daily quota and officially targets
+job/event pages, so the "resubmit all" button uses IndexNow only; Google is
+pinged per page on publish.)
 
 **Google Analytics 4 (visitor behaviour)**
 
