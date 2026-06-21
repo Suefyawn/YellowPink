@@ -11,7 +11,9 @@ import type { Product } from '@/types';
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
-  if (!post) return {};
+  // notFound() (not `return {}`) so the 404 status is set during metadata
+  // generation, before streaming — avoids a soft-404 (200 + not-found UI).
+  if (!post) notFound();
   return pageMeta({
     title: post.title,
     description: post.excerpt ?? post.title,
