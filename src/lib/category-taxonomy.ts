@@ -102,6 +102,30 @@ export function taxonForCategory(category: string | null | undefined): Taxon | n
   return null;
 }
 
+// Per-taxon SEO: the four top-level nav landing pages (/shop?taxon=<key>) are
+// real index targets, so each gets a unique, keyword-led title + meta
+// description + intro instead of the generic "Shop All Products" + a canonical
+// pointing back at /shop. Titles stay short (the layout appends "| Yellow
+// Pink"); descriptions double as the on-page intro copy.
+export const TAXON_SEO: Record<TaxonKey, { title: string; description: string }> = {
+  makeup: {
+    title: 'Makeup in Pakistan — Buy Authentic',
+    description: 'Shop imported makeup at Yellow Pink — foundation, concealer, blush, lip & cheek tints, highlighters and brushes from international brands. 100% authentic, with cash on delivery across Pakistan.',
+  },
+  skincare: {
+    title: 'Skincare in Pakistan — Buy Authentic',
+    description: 'Shop imported skincare at Yellow Pink — cleansers, serums, moisturisers, sunscreens and K-beauty favourites. 100% authentic, with cash on delivery across Pakistan.',
+  },
+  wellness: {
+    title: 'Wellness & Supplements in Pakistan',
+    description: 'Shop vitamins and supplements at Yellow Pink — immunity, bone & joint, heart, digestive, women’s and men’s health and more. Authentic, with cash on delivery across Pakistan.',
+  },
+  bundles: {
+    title: 'Bundles & Combo Packs in Pakistan',
+    description: 'Shop value bundles and combo packs at Yellow Pink — curated skincare, makeup and wellness sets at the best prices, with cash on delivery across Pakistan.',
+  },
+};
+
 // ── Category landing-page copy ──────────────────────────────────────────────
 // Intro copy shown on each Shop category/taxon page AND reused as that page's
 // meta description, so every category landing page has unique, indexable text
