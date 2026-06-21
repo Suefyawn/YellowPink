@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getProducts } from '@/lib/supabase';
-import { ProductTile } from '@/components/ui/ProductTile';
+import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { brandNameFromSlug, brandSlug } from '@/lib/brands';
@@ -53,24 +53,16 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
             <Link href="/brands" style={{ color: 'inherit', textDecoration: 'none' }}>Brands</Link> / {brand}
           </Overline>
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{brand}</h1>
-          <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 20 }}>
+          <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 0 }}>
             Explore the full {brand} range at Yellow Pink — 100% authentic, imported, with cash-on-delivery across Pakistan.
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
-            <span className="small-text">{list.length} {list.length === 1 ? 'product' : 'products'}</span>
-            <Link href={`/shop?brand=${encodeURIComponent(brand)}`} className="text-link">
-              Filter &amp; sort all {brand} products →
-            </Link>
-          </div>
         </div>
       </section>
 
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
           {list.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
-              {list.map(p => <ProductTile key={p.id} product={p} />)}
-            </div>
+            <ProductBrowser products={list} />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
               This brand is restocking — <Link href="/shop" className="text-link">browse the full catalogue</Link> in the meantime.
