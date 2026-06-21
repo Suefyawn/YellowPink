@@ -186,6 +186,27 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
               </button>
             </nav>
           )}
+
+          {/* Full article index — every post linked in one place. The grid
+              above is client-paginated (only the active page mounts), which
+              left posts beyond page 1 with no crawlable link and got them
+              flagged as "orphaned sitemap pages" in the SEO crawl. This
+              renders an <a> for every post server-side, so each article is
+              reachable in a single internal hop regardless of pagination. */}
+          {posts.length > POSTS_PER_PAGE && (
+            <nav aria-label="All articles" style={{ marginTop: 56, paddingTop: 28, borderTop: '1px solid var(--line)' }}>
+              <Overline style={{ display: 'block', marginBottom: 14, color: 'var(--ink-500)' }}>All articles</Overline>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, columns: '2 260px', columnGap: 32 }}>
+                {posts.map(p => (
+                  <li key={p.id} style={{ breakInside: 'avoid', marginBottom: 8 }}>
+                    <Link href={`/blog/${p.slug}`} className="text-link" style={{ fontSize: '0.875rem', lineHeight: 1.45 }}>
+                      {p.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          )}
         </div>
       </section>
     </div>

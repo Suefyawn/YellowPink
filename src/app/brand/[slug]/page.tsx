@@ -23,6 +23,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     description: `Shop authentic, imported ${brand} in Pakistan at Yellow Pink — original products at the best prices, with cash on delivery nationwide.`,
     path: `/brand/${brandSlug(brand)}`,
     keywords: [brand, `${brand} Pakistan`, `${brand} price in Pakistan`, 'COD'],
+    // Representative packshot as the share image (products already fetched
+    // above, so this is free) — bespoke social card per brand instead of the
+    // generic fallback. Falls through to app/opengraph-image.tsx if none.
+    image: products.find(p => p.brand === brand && p.image_url)?.image_url || undefined,
   });
 }
 
