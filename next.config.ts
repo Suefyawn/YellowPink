@@ -72,6 +72,10 @@ const nextConfig: NextConfig = {
       // Common CDNs people host product imagery on.
       { protocol: 'https' as const, hostname: 'images.unsplash.com' },
       { protocol: 'https' as const, hostname: 'res.cloudinary.com' },
+      // NB Sons (the in-house brand) Shopify store — a few collection cover
+      // banners are reused from there. Forward-compat for if/when image
+      // optimization is re-enabled; today images render unoptimized anyway.
+      { protocol: 'https' as const, hostname: 'cdn.shopify.com' },
     ],
   },
   // Edge compression.
