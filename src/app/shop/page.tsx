@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import { getProducts } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
-import { canonicalCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
+import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO } from '@/lib/category-taxonomy';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 
@@ -32,8 +32,8 @@ function landingFaqs(label: string, estimatedDays?: { min: number; max: number }
 }
 import { loadFacetData, loadTagData } from '@/lib/shop-facets';
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; q?: string; brand?: string }> }): Promise<Metadata> {
-  const { category, subcategory, cat, q, brand } = await searchParams;
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; q?: string; brand?: string }> }): Promise<Metadata> {
+  const { category, subcategory, cat, taxon, q, brand } = await searchParams;
   // Resolve ?category= (or the legacy ?cat=) to its canonical label, so the
   // slug form (?category=combo-packs) and the label form (?category=Combo
   // Packs) collapse onto ONE title + canonical URL instead of two duplicates.
@@ -42,6 +42,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // normalisation — otherwise ?subcategory=combo-packs and ?subcategory=Combo
   // Packs would render two different titles + canonicals for the same page.
   const resolvedSubcategory = canonicalCategory(subcategory);
+  // The four top-level nav landing pages (/shop?taxon=makeup|skincare|…) are
+  // real index targets — give each its own title/description/self-canonical
+  // instead of the generic "Shop All Products" + a canonical back to /shop.
+  // Only when no (sub)category is set, since those are more specific.
+  const resolvedTaxon = !resolvedCategory && !resolvedSubcategory ? findTaxon(taxon) : null;
   // Sanitise free-text params before interpolating them into the title /
   // description / og:title (audit SEV-2: raw `<img onerror=…>` once ended up
   // in the og:title `content` attribute). Strip every character with
@@ -56,6 +61,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   if (trimmedQ)                 title = `Search: ${trimmedQ}`;
   else if (resolvedSubcategory) title = `${resolvedSubcategory} — Shop`;
   else if (resolvedCategory)    title = `${resolvedCategory} — Shop`;
+  else if (resolvedTaxon)       title = TAXON_SEO[resolvedTaxon.key].title;
   else if (trimmedBrand)        title = `${trimmedBrand} — Shop`;
   else                          title = 'Shop All Products';
 
@@ -70,7 +76,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const canonicalParams = new URLSearchParams();
   if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
   if (resolvedSubcategory) canonicalParams.set('subcategory', resolvedSubcategory);
-  if (trimmedBrand && !resolvedCategory && !resolvedSubcategory) canonicalParams.set('brand', trimmedBrand);
+  else if (resolvedTaxon) canonicalParams.set('taxon', resolvedTaxon.key);
+  if (trimmedBrand && !resolvedCategory && !resolvedSubcategory && !resolvedTaxon) canonicalParams.set('brand', trimmedBrand);
   const qs = canonicalParams.toString();
 
   // Description: search > subcategory copy > category landing copy > brand
@@ -83,6 +90,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     description = CATEGORY_DESCRIPTIONS[resolvedSubcategory];
   } else if (resolvedCategory && CATEGORY_DESCRIPTIONS[resolvedCategory]) {
     description = CATEGORY_DESCRIPTIONS[resolvedCategory];
+  } else if (resolvedTaxon) {
+    description = TAXON_SEO[resolvedTaxon.key].description;
   } else if (trimmedBrand) {
     description = `Shop the ${trimmedBrand} range at Yellow Pink — 100% authentic, imported ${trimmedBrand}, with cash-on-delivery nationwide in Pakistan.`;
   } else {
