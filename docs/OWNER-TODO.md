@@ -1,0 +1,67 @@
+# Owner to-do — things only you can finish
+
+**Last updated:** 2026-06-21
+
+These are the steps that need *your* accounts, domain/DNS access, or business
+decisions — the code side is done and live. Roughly in priority order.
+
+## 1. Connect Google (Analytics + Search Console)
+The wiring is built — paste IDs in **Admin → Settings → Integrations → Connect
+Google** (no redeploy needed).
+- [ ] **GA4:** create a property at analytics.google.com (region Pakistan, PKR)
+      → Admin → Data streams → Web (`https://www.yellowpink.pk`) → copy the
+      **Measurement ID** (`G-XXXXXXXXXX`) → paste in the admin form → Save.
+- [ ] **Search Console:** search.google.com/search-console → add a property.
+      Either a **Domain** property (verify via a DNS TXT record — best) or a
+      **URL-prefix** property (HTML-tag method → paste the `content` value in
+      the admin form → Verify).
+- [ ] After GSC verifies → **Sitemaps → submit `sitemap.xml`**.
+
+## 2. Google Merchant Center (products on Google Shopping, free)
+Feed is ready: `https://www.yellowpink.pk/feeds/google-merchant.xml` (299
+products, drafts excluded).
+- [ ] Create account at merchants.google.com (country Pakistan, currency PKR).
+- [ ] Claim the website (reuses Search Console verification — do #1 first).
+- [ ] Set up **Shipping** (free listings require it).
+- [ ] **Products → Feeds → Add primary feed → Scheduled fetch** → paste the feed
+      URL → daily schedule.
+- [ ] Enable **free listings** ("Surfaces across Google").
+- [ ] Clear disapprovals — likely "missing GTIN": set **identifier exists = no**
+      for own-label/local items.
+- _Not needed: the Merchant API / API diagnostics — the feed covers everything._
+
+## 3. Meta (Instagram/Facebook) shopping
+- [ ] Connect the feed `https://www.yellowpink.pk/feeds/meta-catalog.xml` in
+      **Meta Commerce Manager** → Catalog → Data sources → scheduled feed.
+
+## 4. WhatsApp + inbound email
+- [ ] **WhatsApp header button:** set `NEXT_PUBLIC_WHATSAPP_NUMBER` in Vercel env
+      (your `store_phone` is saved, but the header button reads this env var).
+- [ ] **Inbound email to `hello@`** (optional, capture replies in Admin →
+      Messages): set `INBOUND_EMAIL_TOKEN` in Vercel; point an inbound parser
+      (Postmark/SendGrid/Mailgun) webhook at
+      `https://www.yellowpink.pk/api/inbound-email?key=<INBOUND_EMAIL_TOKEN>`;
+      add the parser's MX records to the `yellowpink.pk` DNS.
+
+## 5. The 35 catalogue-gap product drafts
+They're prepped with real product, brand, market price **and image** — hidden
+until you publish. See `docs/catalogue-gaps.csv` for supplier + price per item.
+- [ ] Source the ones you want to stock.
+- [ ] In **Admin → Products**: set **your** retail price (current values are
+      market references — add your margin), confirm stock, add any better photo,
+      then **Publish**.
+- [ ] (Optional) swap the **probiotics** image — the brand master was low-res.
+
+## 6. Social profiles
+- [x] **Instagram** linked (`@yellowpink.pk`).
+- [ ] Send me your **Facebook / TikTok / YouTube / X / Pinterest** handles (or
+      add them in **Admin → Settings → Store profile → Social media**). They'll
+      appear in the footer + Google `sameAs` automatically.
+
+## 7. SEO follow-ups (optional, growth)
+- [ ] Re-run the **Semrush Site Audit** to refresh the score (the broken-image /
+      canonical / orphaned-page issues are already fixed in code).
+- [ ] Set up **rank tracking** for the target keyword set (see
+      `docs/SEO-KEYWORDS.md`).
+- [ ] Consider stocking the catalogue gaps + the launch blog posts already
+      published to capture that demand.
