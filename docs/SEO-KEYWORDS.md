@@ -108,3 +108,25 @@ syrup for kids, glutathione supplement, supplements pakistan.
 
 > Branded + "pakistan" and exact-product terms (pixi glow tonic, zinc syrup for
 > kids) are the quickest wins — low competition, exact-match SKUs.
+
+## 5. Domain state & competitors (2026-06-21)
+
+**yellowpink.pk** is greenfield in Semrush PK: rank ~918,681, **18 organic
+keywords, ~0 organic traffic**. Everything is upside — the meta backfill in
+this change is the foundation; the priority now is indexation (submit sitemap
+in Search Console, request indexing on the head-term PDPs/categories) and the
+content posts in §2.
+
+**PK skincare competitors** (ranking on the storefront's head terms, from live
+SERPs for "vitamin c serum pakistan"): accufixcosmetics.com, trego.pk,
+goldenpearl.com.pk, skinfactor.pk, olim.pk, rios.pk, **theordinary.pk**,
+oriorcosmetics.com, skinstorepakistan.com. These are the right targets for a
+later `organic_research` keyword-gap pull and `backlink_research` outreach
+list (not run this session to conserve API units; the domain set above is the
+starting point).
+
+> Note: Semrush **site audit** and **position tracking** require a *Project* to
+> be created for yellowpink.pk in the Semrush UI (the report APIs read an
+> existing project's crawl — there was none to read). Create the project, add
+> the §4 keyword set to position tracking, and kick a site-audit crawl; then a
+> future session can pull `siteaudit_research` / `tracking_research` results.
