@@ -198,6 +198,17 @@ them). Staff read and manage these under **Admin → Messages**
 ([section 3.2](#32-the-sections)). This is the path for non-order questions now
 that there's no shared support mailbox.
 
+**Inbound email (optional).** Emails sent *directly* to your store address
+(e.g. `hello@yellowpink.pk`) can also be funnelled into **Admin → Messages**
+so they're answered in the same place — those rows carry an **Email** tag. This
+needs a one-time setup by whoever manages the domain: pick an inbound-email
+parser (Postmark Inbound, SendGrid Inbound Parse, or Mailgun Routes), set
+`INBOUND_EMAIL_TOKEN` in the Vercel environment to a long random secret, point
+the parser's webhook at
+`https://www.yellowpink.pk/api/inbound-email?key=<INBOUND_EMAIL_TOKEN>`, and add
+the parser's MX records to the domain DNS. Until that's done, only contact-form
+messages appear; direct emails are unaffected.
+
 ---
 
 ## 3. The admin panel — a tour
@@ -249,7 +260,7 @@ together. Here's what each link is for:
 | **Promos** | The promotional banner shown on the storefront — content, colours, and on/off. |
 | **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. |
 | **Reviews** | Moderate customer reviews (approve, unapprove, edit, delete) and seed reviews yourself (migration / phoned-in feedback). |
-| **Messages** | The inbox for the storefront **contact form**. Every message a customer sends from the Contact page lands here (and is emailed to the store owner). Messages start as **Unread**; open the section to read them, hit **Reply** (opens your email app with the sender's address pre-filled), then **Mark read**, **Archive**, or **Delete**. The Messages menu item shows a pink badge with the unread count, and a notification appears in the bell when a new message arrives. |
+| **Messages** | The inbox for the storefront **contact form** (and, if inbound email is set up, direct emails to your store address — those show an **Email** tag). Every message lands here (form submissions are also emailed to the store owner). Messages start as **Unread**; open the section to read them, hit **Reply** (opens your email app with the sender's address pre-filled), then **Mark read**, **Archive**, or **Delete**. The Messages menu item shows a pink badge with the unread count, and a notification appears in the bell when a new message arrives. |
 | **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |
 
 **Store** — admin internals
