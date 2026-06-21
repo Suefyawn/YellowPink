@@ -79,7 +79,7 @@ export default async function WhatsAppHelpPage() {
             <strong>Quick replies</strong>{' — type a shortcut to expand a saved message. Set these up:'}
             <ul style={{ ...ul, marginTop: 6 }}>
               <li><code>/track</code>{' → Please share your order number (starts with YP-) and I will check the status.'}</li>
-              <li><code>/shipping</code>{' → Free shipping on orders over PKR 2,500. COD nationwide. Delivery takes 2–4 business days.'}</li>
+              <li><code>/shipping</code>{' → Free shipping on orders over PKR 5,000. COD nationwide. Delivery takes 2–4 business days.'}</li>
               <li><code>/return</code>{' → We accept returns within 7 days on unopened items. Reply with your order number to start a return.'}</li>
               <li><code>/cod</code>{' → Yes, COD is available nationwide. You pay the courier on delivery, no card needed.'}</li>
             </ul>

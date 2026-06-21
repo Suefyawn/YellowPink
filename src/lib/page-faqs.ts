@@ -30,7 +30,7 @@ const FAQS: Record<string, FaqEntry[]> = {
     {
       question: 'When does free shipping apply?',
       answer:
-        'Free shipping is automatically applied to orders over PKR 2,500 nationwide. Below that threshold, a flat shipping fee is calculated at checkout based on your delivery city.',
+        'Free shipping is automatically applied to orders over PKR 5,000 nationwide. Below that threshold, a flat shipping fee is calculated at checkout based on your delivery city.',
     },
     {
       question: 'Which courier services do you use?',

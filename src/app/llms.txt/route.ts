@@ -32,7 +32,7 @@ export async function GET() {
   lines.push('');
 
   lines.push('## Key facts');
-  lines.push('- Market: Pakistan (PKR currency, COD nationwide, free over PKR 2,500)');
+  lines.push('- Market: Pakistan (PKR currency, COD nationwide, free over PKR 5,000)');
   lines.push('- Payment: JazzCash, Easypaisa, Cash on Delivery');
   lines.push('- Shipping: 2–5 working days via TCS / Leopards / M&P / BlueEx');
   lines.push('- Returns: 7 days from delivery on unopened items');

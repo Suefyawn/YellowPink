@@ -52,7 +52,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
         />
       ) : topBarSettingsActive && (
         <AnnouncementBar
-          text={settings.announcement_text ?? 'Free delivery on orders over PKR 2,500 — COD Nationwide'}
+          text={settings.announcement_text ?? 'Free delivery on orders over PKR 5,000 — COD Nationwide'}
           bgColor={settings.announcement_color ?? '#111827'}
         />
       )}

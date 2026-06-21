@@ -5,7 +5,7 @@ type IconName = 'authentic' | 'delivery' | 'cod' | 'returns';
 
 const ITEMS: { icon: IconName; label: string; sub: string }[] = [
   { icon: 'authentic', label: '100% Authentic', sub: 'Imported directly' },
-  { icon: 'delivery',  label: 'Free Delivery',  sub: 'Over PKR 2,500' },
+  { icon: 'delivery',  label: 'Free Delivery',  sub: 'Over PKR 5,000' },
   { icon: 'cod',       label: 'COD Nationwide',  sub: 'Pay on delivery' },
   { icon: 'returns',   label: 'Easy Returns',    sub: '7-day policy' },
 ];

@@ -55,7 +55,7 @@ function PromoFields({ promo }: { promo?: Promo }) {
         <input id="label" name="label" placeholder="NEW" defaultValue={promo?.label ?? ''} style={inp} />
       </Field>
       <Field label="Headline" wide htmlFor="headline">
-        <input id="headline" name="headline" required placeholder="Free delivery over PKR 2,500 — COD nationwide" defaultValue={promo?.headline ?? ''} style={inp} />
+        <input id="headline" name="headline" required placeholder="Free delivery over PKR 5,000 — COD nationwide" defaultValue={promo?.headline ?? ''} style={inp} />
       </Field>
       <Field label="Subline" wide htmlFor="subline">
         <input id="subline" name="subline" placeholder="(optional)" defaultValue={promo?.subline ?? ''} style={inp} />

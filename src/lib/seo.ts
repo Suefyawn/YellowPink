@@ -223,7 +223,7 @@ export function productLd(
     '@type': 'OfferShippingDetails',
     shippingRate: {
       '@type': 'MonetaryAmount',
-      // We charge for shipping under PKR 2,500, free above.
+      // We charge for shipping under PKR 5,000, free above.
       value: 0,
       currency: 'PKR',
     },
