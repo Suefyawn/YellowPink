@@ -77,12 +77,14 @@ customers and spot where an order is.
   beyond setting its brand.
 - **Brand pages** (`/brand/<brand>`) — every brand has its own landing page
   with that brand's products, reachable from the **All Brands** directory
-  (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each has a
-  "Filter & sort all …" link through to the Shop page. These appear and update
-  automatically from the brands on your products — nothing to configure.
+  (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each page has
+  its own on-page **sort** (Featured / Newest / Price / Name), **category
+  filter** chips, and an **in-stock** toggle, so shoppers refine right there
+  without leaving the page. These appear and update automatically from the
+  brands on your products — nothing to configure.
 - **Tag pages** (`/tag/<tag>`) — each product tag has its own landing page
-  listing the tagged products, created automatically from the tags you set in
-  admin.
+  listing the tagged products with the same on-page sort + filter controls,
+  created automatically from the tags you set in admin.
 - **Collection pages** (`/collection/<slug>`) — curated edits you build in
   admin (Collections), each with its own hero, description, and product grid.
   Manual collections show a hand-picked, ordered list; smart collections fill
