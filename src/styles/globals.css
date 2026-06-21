@@ -540,6 +540,24 @@ a.underline,
 }
 /* Anchor jumps land clear of the sticky site header. */
 .blog-body h2 { scroll-margin-top: 96px; }
+/* Comparison tables in long-form posts. The sanitizer strips the wp-block-table
+   class, so style the bare elements. Horizontal scroll on narrow screens keeps
+   wide tables from breaking the layout. */
+.blog-body figure { margin: 24px 0; max-width: 100%; overflow-x: auto; }
+.blog-body table {
+  width: 100%; border-collapse: collapse;
+  margin: 24px 0; font-family: var(--font-ui); font-size: 0.9375rem;
+}
+.blog-body th, .blog-body td {
+  border: 1px solid var(--line); padding: 10px 14px;
+  text-align: left; vertical-align: top; line-height: 1.5;
+}
+.blog-body thead th {
+  background: var(--brand-pink-bg, #fdf2f8); color: var(--ink-900);
+  font-weight: 600; font-size: 0.8125rem;
+  text-transform: uppercase; letter-spacing: 0.03em;
+}
+.blog-body tbody tr:nth-child(even) { background: #faf9fb; }
 @media (max-width: 1023px) {
   .blog-article-grid { display: block; }
   .blog-article-main { margin: 0 auto; }
