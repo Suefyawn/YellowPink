@@ -7,13 +7,14 @@ import {
   getBestsellers,
   getFeatured,
   getOnSale,
-  getProductsByTaxon,
   getProductsByBrands,
+  getWellnessProducts,
   getSiteSettings,
   getBlogPosts,
 } from '@/lib/supabase';
 import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
 import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
+import { buildWellnessShowcase } from '@/lib/wellness-data';
 
 // Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -64,12 +65,15 @@ export default async function HomePage() {
     getFeatured(6),
     getBestsellers(8),
     getOnSale(8),
-    getProductsByTaxon('wellness', 4),
+    getWellnessProducts(),
     getProductsByBrands(K_BEAUTY_BRANDS, 4),
     getSiteSettings(),
     getBlogPosts(),
     getPublishedCollectionsWithCovers(3),
   ]);
+
+  // Shape the full wellness set into per-concern cards + a featured rail.
+  const wellness = buildWellnessShowcase(wellnessProducts);
 
   // The featured sale collection is shown only while a sale is switched on
   // in Admin → Settings → Sale (the central on/off switch).
@@ -120,7 +124,7 @@ export default async function HomePage() {
         />
       )}
       <BestsellersBand products={bestsellers.slice(0, 4)} />
-      <WellnessSection products={wellnessProducts} />
+      <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
       <CategoryTiles groups={categoryGroups} />
       <CollectionsSection collections={collections} />
       <RealResults />
