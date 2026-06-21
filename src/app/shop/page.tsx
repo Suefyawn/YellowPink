@@ -63,7 +63,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   else if (resolvedCategory)    title = `${resolvedCategory} — Shop`;
   else if (resolvedTaxon)       title = TAXON_SEO[resolvedTaxon.key].title;
   else if (trimmedBrand)        title = `${trimmedBrand} — Shop`;
-  else                          title = 'Shop All Products';
+  else                          title = 'Shop Imported Beauty & Wellness in Pakistan';
 
   // Canonical strategy:
   //   • `/shop`, `/shop?category=Foo` (`?subcategory=Bar`) and a pure
@@ -95,7 +95,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   } else if (trimmedBrand) {
     description = `Shop the ${trimmedBrand} range at Yellow Pink — 100% authentic, imported ${trimmedBrand}, with cash-on-delivery nationwide in Pakistan.`;
   } else {
-    description = 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.';
+    description = 'Browse authentic imported skincare, makeup and wellness supplements at Yellow Pink — 100% genuine international brands, with cash on delivery nationwide in Pakistan.';
   }
 
   return pageMeta({
