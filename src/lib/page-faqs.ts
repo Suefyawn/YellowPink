@@ -10,12 +10,29 @@
 // To add coverage for a new page, append a new key here and ensure the same
 // Q/A pairs are present in the CMS page body.
 
+import { FREE_SHIPPING_THRESHOLD, RETURNS_WINDOW_DAYS, formatPkr, type CommerceConfig } from './commerce';
+
 export interface FaqEntry {
   question: string;
   answer: string;
 }
 
-const FAQS: Record<string, FaqEntry[]> = {
+/** Live policy figures, so the FAQ answers (and the FAQPage JSON-LD built from
+ *  them) track the owner's settings instead of stating a hard-coded number. */
+export interface FaqPolicy {
+  freeShippingEnabled: boolean;
+  freeShippingThreshold: number;
+}
+
+const freeShippingAnswer = (p: FaqPolicy) =>
+  p.freeShippingEnabled
+    ? `Free shipping is automatically applied to orders over ${formatPkr(p.freeShippingThreshold)} nationwide. Below that threshold, a flat shipping fee is calculated at checkout based on your delivery city.`
+    : 'A flat shipping fee is calculated at checkout based on your delivery city.';
+
+const returnsWindowAnswer = () =>
+  `You can request a return within ${RETURNS_WINDOW_DAYS} days of delivery for unopened, unused items in their original packaging. Opened or used items are not eligible unless they arrived damaged or defective.`;
+
+const buildFaqs = (p: FaqPolicy): Record<string, FaqEntry[]> => ({
   shipping: [
     {
       question: 'How long does delivery take in Pakistan?',
@@ -29,8 +46,7 @@ const FAQS: Record<string, FaqEntry[]> = {
     },
     {
       question: 'When does free shipping apply?',
-      answer:
-        'Free shipping is automatically applied to orders over PKR 5,000 nationwide. Below that threshold, a flat shipping fee is calculated at checkout based on your delivery city.',
+      answer: freeShippingAnswer(p),
     },
     {
       question: 'Which courier services do you use?',
@@ -46,8 +62,7 @@ const FAQS: Record<string, FaqEntry[]> = {
   returns: [
     {
       question: 'What is your return window?',
-      answer:
-        'You can request a return within 7 days of delivery for unopened, unused items in their original packaging. Opened or used items are not eligible unless they arrived damaged or defective.',
+      answer: returnsWindowAnswer(),
     },
     {
       question: 'How do I request a return?',
@@ -87,8 +102,15 @@ const FAQS: Record<string, FaqEntry[]> = {
         'Reach us via the Contact page or by replying to your order confirmation email. We respond to most enquiries within one working day, Monday to Saturday.',
     },
   ],
-};
+});
 
-export function getPageFaq(slug: string): FaqEntry[] | null {
-  return FAQS[slug] ?? null;
+/** FAQ entries for a CMS page slug, with policy figures (free-shipping
+ *  threshold, returns window) resolved from the live commerce config. Pass
+ *  `parseCommerceConfig(settings)`; omit it and it falls back to the defaults. */
+export function getPageFaq(slug: string, config?: Pick<CommerceConfig, 'freeShippingEnabled' | 'freeShippingThreshold'>): FaqEntry[] | null {
+  const policy: FaqPolicy = {
+    freeShippingEnabled: config?.freeShippingEnabled ?? true,
+    freeShippingThreshold: config?.freeShippingThreshold ?? FREE_SHIPPING_THRESHOLD,
+  };
+  return buildFaqs(policy)[slug] ?? null;
 }

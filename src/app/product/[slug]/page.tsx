@@ -249,7 +249,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLd(faqLd(effectiveProductFaq(product.faq).map(f => ({ question: f.q, answer: f.a })))),
+          __html: jsonLd(faqLd(effectiveProductFaq(product.faq, { estimatedDays }).map(f => ({ question: f.q, answer: f.a })))),
         }}
       />
       {/* Keyed on the product id so a related-product click (product→product
