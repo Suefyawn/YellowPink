@@ -9,7 +9,7 @@ import { useSearch } from '@/context/SearchContext';
 import { useAuth } from '@/context/AuthContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { TAXONS } from '@/lib/category-taxonomy';
-import { whatsappUrl, WA_TEMPLATES } from '@/lib/whatsapp';
+import { whatsappUrl, whatsappUrlFromNumber, WA_TEMPLATES } from '@/lib/whatsapp';
 
 // Desktop nav: each taxon (Makeup / Skincare / Wellness / Bundles) opens a
 // mega-menu dropdown of its categories; the flat items are plain links.
@@ -45,7 +45,7 @@ function navLinkStyle(active: boolean): React.CSSProperties {
   };
 }
 
-export function Header() {
+export function Header({ whatsappNumber }: { whatsappNumber?: string } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   // Hydration gate for the cart-count badge. The cart loads from
@@ -215,7 +215,11 @@ export function Header() {
               set. Persistent across every page; the merchant runs the
               standard Business app on their phone, no paid API. */}
           {(() => {
-            const href = whatsappUrl(WA_TEMPLATES.generic());
+            // Prefer the owner's number from settings (store_phone, passed by
+            // SiteChrome) so the button works without the build-time
+            // NEXT_PUBLIC_WHATSAPP_NUMBER inline; fall back to that env var.
+            const href = (whatsappNumber && whatsappUrlFromNumber(whatsappNumber, WA_TEMPLATES.generic()))
+              || whatsappUrl(WA_TEMPLATES.generic());
             if (!href) return null;
             return (
               <a
