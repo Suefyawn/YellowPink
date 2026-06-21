@@ -175,6 +175,9 @@ async function send(opts: {
   subject: string;
   html: string;
   replyTo?: string;
+  /** Override the default verified `from` (e.g. send support replies from the
+   *  store's hello@ address rather than orders@). Domain must be verified. */
+  from?: string;
   /** 'batch' mail (cron digests, marketing) yields once the daily Resend
    *  free-tier budget is nearly spent. Defaults to 'transactional', which
    *  always sends — order confirmations must never be dropped. */
@@ -208,7 +211,7 @@ async function send(opts: {
     // Cap the Resend call so a hung network request can't stall the caller
     // indefinitely (a newsletter blast would otherwise freeze the admin UI).
     const sendCall = resend.emails.send({
-      from: FROM,
+      from: opts.from ?? FROM,
       to: opts.to,
       subject: opts.subject,
       html: opts.html,
@@ -344,6 +347,29 @@ export async function sendContactMessageEmail(args: {
     subject: `New message from ${args.name}${subjectLine ? ` — ${subjectLine}` : ''}`,
     html,
   });
+}
+
+// Owner's reply to a customer, sent from Admin → Messages. Sent from the
+// store support address (keeps the thread on hello@) with replyTo pointing
+// back there, so the customer's reply returns to the inbound webhook and
+// threads into the same conversation. Returns whether the send succeeded so
+// the caller can avoid recording a reply that never went out.
+export async function sendCustomerReplyEmail(args: {
+  to: string;
+  customerName?: string | null;
+  subject: string;
+  body: string;
+  from?: string;
+  replyTo?: string;
+}): Promise<boolean> {
+  const name = args.customerName?.trim();
+  const greeting = name ? `Hi ${escapeHtml(stripEmoji(name))},` : 'Hi,';
+  const html = shell(`
+    <p style="margin:0 0 14px;font-size:14px;color:${INK}">${greeting}</p>
+    <div style="margin:0 0 16px;white-space:pre-wrap;line-height:1.6;font-size:14px;color:${INK_700}">${escapeHtml(args.body)}</div>
+    <p style="margin:18px 0 0;color:${MUTED};font-size:13px">— The Yellow Pink team</p>
+  `);
+  return send({ to: args.to, subject: args.subject, html, from: args.from, replyTo: args.replyTo });
 }
 
 // ─── 2. Customer: order confirmation ────────────────────────────────────────
