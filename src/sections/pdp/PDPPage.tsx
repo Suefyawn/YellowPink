@@ -18,6 +18,7 @@ import { BenefitIcon } from '@/components/ui/BenefitIcon';
 import { RETURNS_WINDOW_DAYS, formatPkr } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { effectiveProductFaq } from '@/lib/product-faq';
+import { taxonForCategory } from '@/lib/category-taxonomy';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -248,6 +249,10 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // Free-shipping copy tracks the owner's live setting (threshold + on/off).
   const { freeShippingEnabled, freeShippingThreshold } = useCommerceSettings();
   const freeShipLabel = formatPkr(freeShippingThreshold);
+  // Wellness/supplement products need different trust signals than makeup —
+  // "tested for Pakistani skin tones" is nonsensical on a supplement, so the
+  // "Why Yellow Pink" block swaps to authenticity/expiry copy for this taxon.
+  const isWellness = taxonForCategory(product.category)?.key === 'wellness';
   const shippingContent = freeShippingEnabled
     ? `Free shipping on orders over ${freeShipLabel}. COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`
     : `COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`;
@@ -660,7 +665,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               Why this product earns a spot in your routine
             </h2>
             <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0 }}>
-              Every product is tested for Pakistani skin and climate, sourced from authorised distributors, and shipped with cash-on-delivery nationwide.
+              {isWellness
+                ? 'Every supplement is 100% authentic, sourced from authorised distributors, sealed and expiry-checked before dispatch, and shipped with cash-on-delivery nationwide.'
+                : 'Every product is tested for Pakistani skin and climate, sourced from authorised distributors, and shipped with cash-on-delivery nationwide.'}
             </p>
           </div>
 
@@ -673,7 +680,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           >
             {[
               { icon: '✓', label: '100% authentic', sub: 'Imported direct from authorised distributors' },
-              { icon: '◐', label: 'Tested locally', sub: 'For Pakistani skin tones + climate' },
+              isWellness
+                ? { icon: '◐', label: 'Sealed & in-date', sub: 'Batch + expiry checked before dispatch' }
+                : { icon: '◐', label: 'Tested locally', sub: 'For Pakistani skin tones + climate' },
               { icon: '◎', label: 'COD nationwide', sub: freeShippingEnabled ? `Pay on delivery, free over ${freeShipLabel}` : 'Pay on delivery, nationwide' },
               { icon: '↩', label: `${RETURNS_WINDOW_DAYS}-day returns`, sub: 'On unopened items, no questions asked' },
             ].map(t => (
