@@ -192,11 +192,12 @@ for you to approve or reject.
 
 The **Contact** page (linked in the footer) offers WhatsApp and a **contact
 form**. A customer fills in their name, email, an optional subject, and their
-message; on submit it's saved to the store and the owner is emailed a copy
-(with the customer's address as the reply-to, so a reply goes straight back to
-them). Staff read and manage these under **Admin → Messages**
-([section 3.2](#32-the-sections)). This is the path for non-order questions now
-that there's no shared support mailbox.
+message; on submit it's saved to the store and the owner is emailed a copy.
+Staff then read and reply under **Admin → Messages**
+([section 3.2](#32-the-sections)), where each customer's messages and your
+replies are threaded into one conversation — you reply from the admin and it
+goes out from your store address by email, all kept on record. This is the
+path for non-order questions now that there's no shared support mailbox.
 
 **Inbound email (optional).** Emails sent *directly* to your store address
 (e.g. `hello@yellowpink.pk`) can also be funnelled into **Admin → Messages**
@@ -266,7 +267,7 @@ together. Here's what each link is for:
 | **Promos** | The promotional banner shown on the storefront — content, colours, and on/off. |
 | **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. |
 | **Reviews** | Moderate customer reviews (approve, unapprove, edit, delete) and seed reviews yourself (migration / phoned-in feedback). |
-| **Messages** | The inbox for the storefront **contact form** (and, if inbound email is set up, direct emails to your store address — those show an **Email** tag). Every message lands here (form submissions are also emailed to the store owner). Messages start as **Unread**; open the section to read them, hit **Reply** (opens your email app with the sender's address pre-filled), then **Mark read**, **Archive**, or **Delete**. The Messages menu item shows a pink badge with the unread count, and a notification appears in the bell when a new message arrives. |
+| **Messages** | A **threaded inbox** for the storefront **contact form** and **inbound email** (direct emails to your store address show an **Email** tag). Messages are grouped into **conversations by customer**, shown as a chat (their messages on the left, your replies on the right). **Reply right here** — the box at the bottom of a conversation sends your reply **from your store address via email**, and the reply is saved into the thread, so the whole exchange stays on record. When the customer replies, it threads back into the same conversation automatically. Per-conversation **Mark read** / **Archive** / **Restore**. The Messages menu item shows a pink badge with the unread count, and the bell notifies on new **incoming** messages (your own replies don't notify). |
 | **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |
 
 **Store** — admin internals
