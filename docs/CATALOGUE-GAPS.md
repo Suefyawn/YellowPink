@@ -9,6 +9,37 @@ decision (real product, price, stock, photography) — this brief quantifies the
 opportunity so that decision is informed. Volumes are monthly PK searches;
 competition is the Semrush paid-difficulty index (0–1, lower = easier).
 
+> **📄 Full sheet: [`docs/catalogue-gaps.csv`](./catalogue-gaps.csv)** — all ~35
+> gaps across supplements + beauty/hair, each with PK demand, competition,
+> coverage status, a **suggested product**, a **locally-available source**, the
+> **price in PKR** and a URL. Open it in Excel / Google Sheets. The sections
+> below are the narrative for the highest-value gaps.
+
+**Already actioned this session:** launch blog posts published for
+collagen, omega-3 and biotin (capturing the informational intent now), and
+hidden **draft product scaffolds** created for those three
+(`collagen-peptides-powder`, `omega-3-fish-oil`, `biotin-10000-mcg`) with
+keyword-ready meta — set a price/stock/image and publish once sourced.
+
+## Local sourcing at a glance
+From the price research (see the CSV for per-item detail):
+
+- **Supplements → Nutrifactor** (Pakistani brand, also on dvago.pk / dawaai.pk /
+  healthwire.pk) is the easiest, cheapest route and covers almost every gap
+  (B12, melatonin, ACV, omega-3, biotin, zinc, ginseng, ginkgo, vitamin E,
+  CoQ10, B-complex, creatine, whey) at ~PKR 850–6,500. Imported options
+  (Natural Factors, Nature's Bounty, NeoCell, Seven Seas) exist where a local
+  equivalent is weak (selenium, probiotics, cod liver oil, sublingual B12).
+- **Beauty/hair naturals → Conatural, Saeed Ghani, Hemani** cover rosemary oil,
+  castor oil, HA serum, lip balm, hair-growth oil cheaply (~PKR 350–1,500).
+- **Colour cosmetics → Rivaj UK / Saeed Ghani** (kajal, eyeliner, mascara, lip
+  liner, setting spray) at ~PKR 100–700.
+- **Pharmacy → minoxidil** (Minoxin Plus etc. on healthwire.pk / dvago.pk).
+
+> Prices marked "unconfirmed" in the CSV came from search snippets because some
+> retailers (Naheed, Daraz, dawaai) render prices via JavaScript — verify those
+> on-page before committing stock.
+
 ## Priority gaps
 
 ### 1. Oral collagen — biggest opportunity
