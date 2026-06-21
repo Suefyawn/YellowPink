@@ -759,6 +759,14 @@ a.underline,
 .adm-settings-tab[aria-current="page"] { color: #C5286A; border-bottom-color: #C5286A; font-weight: 600; }
 .adm-settings-tab-icon { display: inline-flex; flex-shrink: 0; }
 
+/* Footer social icon buttons — brighten + subtle fill on hover/focus. */
+.footer-social:hover,
+.footer-social:focus-visible {
+  color: var(--paper) !important;
+  background: rgba(250, 246, 238, 0.10);
+  border-color: rgba(250, 246, 238, 0.32);
+}
+
 /* Brand-pink focus ring for every field inside Settings (replaces the bare
  * default outline; inputs use inline styles so this is the only place a
  * :focus-visible treatment can live). */
