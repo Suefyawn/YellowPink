@@ -14,12 +14,18 @@ import { whatsappUrl, WA_TEMPLATES } from '@/lib/whatsapp';
 // Desktop nav: each taxon (Makeup / Skincare / Wellness / Bundles) opens a
 // mega-menu dropdown of its categories; the flat items are plain links.
 // Driven by the central taxonomy so editorial changes don't touch the header.
+//
+// `primary` items show in the (space-constrained) desktop top bar; the rest
+// were demoting it into a 9-item row that read as cluttered. Everything still
+// appears in the mobile drawer (which has room) and in the footer — so only
+// Sale stays in the desktop bar alongside the four taxons. Collections / Brands
+// / K-Beauty / Blog are one scroll away in the footer.
 const FLAT_ITEMS = [
-  { label: 'Collections', href: '/collections' },
-  { label: 'Brands', href: '/brands' },
-  { label: 'K-Beauty', href: '/k-beauty' },
-  { label: 'Sale', href: '/shop?on_sale=1' },
-  { label: 'Blog', href: '/blog' },
+  { label: 'Collections', href: '/collections', primary: false },
+  { label: 'Brands', href: '/brands', primary: false },
+  { label: 'K-Beauty', href: '/k-beauty', primary: false },
+  { label: 'Sale', href: '/shop?on_sale=1', primary: true },
+  { label: 'Blog', href: '/blog', primary: false },
 ];
 
 function navLinkStyle(active: boolean): React.CSSProperties {
@@ -187,7 +193,7 @@ export function Header() {
               </div>
             );
           })}
-          {FLAT_ITEMS.map(item => {
+          {FLAT_ITEMS.filter(item => item.primary).map(item => {
             const active = isActiveLink(item.href);
             return (
               <Link
