@@ -9,6 +9,7 @@ import { StarRating } from '@/components/ui/StarRating';
 import { useCart } from '@/context/CartContext';
 import { BackInStockForm } from '@/components/pdp/BackInStockForm';
 import { SubscribeAndSave } from '@/components/pdp/SubscribeAndSave';
+import { ProductDescription } from '@/components/pdp/ProductDescription';
 import { track } from '@/lib/analytics';
 import { tapHaptic } from '@/lib/haptics';
 import { stripBrandPrefix } from '@/lib/product-display';
@@ -574,11 +575,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </ul>
             )}
 
-            {product.description && (
-              <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 440 }}>
-                {product.description}
-              </p>
-            )}
+            {product.description && <ProductDescription text={product.description} maxWidth={440} />}
 
             {/* Migration 081 — short testimonial / press quote, rendered as a
                 paper2 callout so it reads as social signal rather than body
