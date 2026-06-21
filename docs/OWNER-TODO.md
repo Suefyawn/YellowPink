@@ -5,17 +5,14 @@
 These are the steps that need *your* accounts, domain/DNS access, or business
 decisions — the code side is done and live. Roughly in priority order.
 
-## 1. Connect Google (Analytics + Search Console)
-The wiring is built — paste IDs in **Admin → Settings → Integrations → Connect
-Google** (no redeploy needed).
-- [ ] **GA4:** create a property at analytics.google.com (region Pakistan, PKR)
-      → Admin → Data streams → Web (`https://www.yellowpink.pk`) → copy the
-      **Measurement ID** (`G-XXXXXXXXXX`) → paste in the admin form → Save.
-- [ ] **Search Console:** search.google.com/search-console → add a property.
-      Either a **Domain** property (verify via a DNS TXT record — best) or a
-      **URL-prefix** property (HTML-tag method → paste the `content` value in
-      the admin form → Verify).
-- [ ] After GSC verifies → **Sitemaps → submit `sitemap.xml`**.
+## 1. Connect Google (Analytics + Search Console) — ✅ DONE
+The wiring is built — IDs pasted in **Admin → Settings → Integrations → Connect
+Google**. Both verified live on the site (2026-06-21).
+- [x] **GA4:** Measurement ID `G-7T3LNCVZZ0` firing on the storefront.
+- [x] **Search Console:** verification meta tag live; property verified.
+- [x] **Sitemap** `sitemap.xml` submitted in Search Console.
+- [ ] _Over the next few days, check GSC → Pages/Indexing to confirm Google is
+      crawling, and GA4 → Realtime to confirm traffic is recording._
 
 ## 2. Google Merchant Center (products on Google Shopping, free)
 Feed is ready: `https://www.yellowpink.pk/feeds/google-merchant.xml` (299
