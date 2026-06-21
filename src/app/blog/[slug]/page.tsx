@@ -11,8 +11,10 @@ import type { Product } from '@/types';
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
-  // notFound() (not `return {}`) so the 404 status is set during metadata
-  // generation, before streaming — avoids a soft-404 (200 + not-found UI).
+  // Missing post → notFound(). Note: the blog segment has a loading.tsx
+  // skeleton, so an invalid slug streams a 200 shell first → soft-404 (200 +
+  // noindex'd not-found UI) rather than a hard 404. Accepted trade-off; the
+  // page is noindexed and such URLs aren't linked/sitemapped.
   if (!post) notFound();
   return pageMeta({
     title: post.title,
