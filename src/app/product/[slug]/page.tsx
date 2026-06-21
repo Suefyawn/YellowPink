@@ -20,10 +20,12 @@ import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttri
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  // notFound() here (not `return {}`) so the 404 status is set during metadata
-  // generation, before the page's Suspense boundaries start streaming — a bare
-  // `return {}` let the response stream a 200 and only render the not-found UI
-  // (a soft-404). notFound injects a noindex robots tag either way.
+  // Missing product → notFound() (the page does the same). Note: because this
+  // route has a loading.tsx skeleton, Next streams a 200 shell before this
+  // resolves, so an invalid slug is a soft-404 (HTTP 200 + the noindex'd
+  // not-found UI) rather than a hard 404. That's an accepted trade-off —
+  // keeping the PDP loading skeleton over a pristine status on phantom,
+  // unlinked, noindexed URLs. Removing loading.tsx would restore the 404.
   if (!product) notFound();
   // Use the dedupe-aware composer so WP imports that already prefix the
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
