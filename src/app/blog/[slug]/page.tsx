@@ -35,13 +35,14 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   ]);
   if (!post) notFound();
 
-  let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 2);
-  if (relatedPosts.length < 2) {
-    // Top up with other recent posts so every post links out to two others —
+  let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 3);
+  if (relatedPosts.length < 3) {
+    // Top up with other recent posts so every post links out to three others —
     // keeps posts in thin categories from being near-orphaned internally
-    // (SEO audit: "pages with only one internal link").
+    // (SEO audit: "pages with only one internal link") and spreads more crawl
+    // equity per article.
     const have = new Set([post.slug, ...relatedPosts.map(p => p.slug)]);
-    relatedPosts = [...relatedPosts, ...allPosts.filter(p => !have.has(p.slug)).slice(0, 2 - relatedPosts.length)];
+    relatedPosts = [...relatedPosts, ...allPosts.filter(p => !have.has(p.slug)).slice(0, 3 - relatedPosts.length)];
   }
 
   // Related-products matching by taxon. Blog categories ("Bone Health",
