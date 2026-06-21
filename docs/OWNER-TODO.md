@@ -38,10 +38,11 @@ products, drafts excluded).
 - [ ] **WhatsApp header button:** set `NEXT_PUBLIC_WHATSAPP_NUMBER` in Vercel env
       (your `store_phone` is saved, but the header button reads this env var).
 - [ ] **Inbound email to `hello@`** (optional, capture replies in Admin →
-      Messages): set `INBOUND_EMAIL_TOKEN` in Vercel; point an inbound parser
-      (Postmark/SendGrid/Mailgun) webhook at
-      `https://www.yellowpink.pk/api/inbound-email?key=<INBOUND_EMAIL_TOKEN>`;
-      add the parser's MX records to the `yellowpink.pk` DNS.
+      Messages) — uses **Resend** (no new provider): in Resend, enable
+      **receiving** for `yellowpink.pk` and add the **MX record** to DNS; add a
+      Resend **webhook** for the `email.received` event pointing at
+      `https://www.yellowpink.pk/api/inbound-email`, and copy its signing secret
+      into `RESEND_INBOUND_WEBHOOK_SECRET` in Vercel, then redeploy.
 
 ## 5. The 35 catalogue-gap product drafts
 They're prepped with real product, brand, market price **and image** — hidden

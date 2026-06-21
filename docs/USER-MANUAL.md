@@ -200,14 +200,20 @@ that there's no shared support mailbox.
 
 **Inbound email (optional).** Emails sent *directly* to your store address
 (e.g. `hello@yellowpink.pk`) can also be funnelled into **Admin → Messages**
-so they're answered in the same place — those rows carry an **Email** tag. This
-needs a one-time setup by whoever manages the domain: pick an inbound-email
-parser (Postmark Inbound, SendGrid Inbound Parse, or Mailgun Routes), set
-`INBOUND_EMAIL_TOKEN` in the Vercel environment to a long random secret, point
-the parser's webhook at
-`https://www.yellowpink.pk/api/inbound-email?key=<INBOUND_EMAIL_TOKEN>`, and add
-the parser's MX records to the domain DNS. Until that's done, only contact-form
-messages appear; direct emails are unaffected.
+so they're answered in the same place — those rows carry an **Email** tag. It
+uses **Resend** (already powering the store's outgoing email), so there's no
+new provider to sign up for. One-time setup by whoever manages the domain:
+
+1. **Resend → Domains** → enable receiving for `yellowpink.pk` and add the
+   **MX record** it shows to your DNS.
+2. **Resend → Webhooks** → add an endpoint for the **`email.received`** event
+   pointing at `https://www.yellowpink.pk/api/inbound-email`, and copy its
+   **signing secret** into the `RESEND_INBOUND_WEBHOOK_SECRET` Vercel
+   environment variable, then redeploy.
+
+Until that's done, only contact-form messages appear; direct emails are
+unaffected. (`RESEND_API_KEY`, already set for sending, is reused to fetch the
+message body.)
 
 ---
 
