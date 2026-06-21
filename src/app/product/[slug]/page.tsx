@@ -20,7 +20,11 @@ import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttri
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  if (!product) return {};
+  // notFound() here (not `return {}`) so the 404 status is set during metadata
+  // generation, before the page's Suspense boundaries start streaming — a bare
+  // `return {}` let the response stream a 200 and only render the not-found UI
+  // (a soft-404). notFound injects a noindex robots tag either way.
+  if (!product) notFound();
   // Use the dedupe-aware composer so WP imports that already prefix the
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
   const displayName = brandPlusName(product.brand, product.name);
