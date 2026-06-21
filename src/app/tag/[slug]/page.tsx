@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
-import { ProductTile } from '@/components/ui/ProductTile';
+import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import type { Product } from '@/types';
@@ -59,21 +59,13 @@ export default async function TagPage({ params }: { params: Promise<{ slug: stri
         <div className="container">
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Tagged</Overline>
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{tag.name}</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
-            <span className="small-text">{list.length} {list.length === 1 ? 'product' : 'products'}</span>
-            <Link href={`/shop?tag=${encodeURIComponent(slug)}`} className="text-link">
-              Filter &amp; sort →
-            </Link>
-          </div>
         </div>
       </section>
 
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
           {list.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
-              {list.map(p => <ProductTile key={p.id} product={p} />)}
-            </div>
+            <ProductBrowser products={list} />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
               Nothing here yet — <Link href="/shop" className="text-link">browse the full catalogue</Link>.
