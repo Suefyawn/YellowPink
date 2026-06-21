@@ -6,6 +6,7 @@ import { DEMO_PAGES } from '@/lib/demo-data';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { pageMeta, jsonLd, pageArticleLd, faqLd, breadcrumbLd } from '@/lib/seo';
 import { getPageFaq } from '@/lib/page-faqs';
+import { ContactForm } from '@/components/contact/ContactForm';
 import type { Page } from '@/types';
 
 // Static content imported from WordPress (About, Privacy, Terms, FAQ…).
@@ -91,6 +92,19 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
             style={{ color: 'var(--ink-700)', lineHeight: 1.7, fontSize: '1.0625rem' }}
             dangerouslySetInnerHTML={{ __html: safeHtml }}
           />
+          {/* The contact page gets a real form (the storefront's "email us"
+              path) — submissions land in Admin → Messages and forward to the
+              owner, since hello@yellowpink.pk has no inbox. */}
+          {page.slug === 'contact' && (
+            <section style={{ marginTop: 40 }} aria-label="Send us a message">
+              <h2 className="h2" style={{ marginBottom: 8 }}>Send us a message</h2>
+              <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24 }}>
+                Prefer to write? Fill this in and we&apos;ll reply by email,
+                usually within one working day.
+              </p>
+              <ContactForm />
+            </section>
+          )}
           {faqs && (
             <section style={{ marginTop: 48 }} aria-label="Frequently asked questions">
               <h2 className="h2" style={{ marginBottom: 24 }}>Frequently asked questions</h2>

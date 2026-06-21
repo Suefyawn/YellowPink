@@ -15,10 +15,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const products = await getProducts();
   const brand = brandNameFromSlug(slug, products);
   if (!brand) return pageMeta({ title: 'Brand', description: 'Shop by brand at Yellow Pink.', path: `/brand/${slug}` });
+  // Lead the title with "Buy <brand> in Pakistan" — PK shoppers search the
+  // brand name + "pakistan" (e.g. "cerave pakistan", "the ordinary pakistan"),
+  // so front-loading that intent beats a bare "<brand> — Shop".
   return pageMeta({
-    title: `${brand} — Shop`,
-    description: `Shop the ${brand} range at Yellow Pink — 100% authentic, imported ${brand}, with cash-on-delivery nationwide in Pakistan.`,
+    title: `Buy ${brand} in Pakistan — Authentic`,
+    description: `Shop authentic, imported ${brand} in Pakistan at Yellow Pink — original products at the best prices, with cash on delivery nationwide.`,
     path: `/brand/${brandSlug(brand)}`,
+    keywords: [brand, `${brand} Pakistan`, `${brand} price in Pakistan`, 'COD'],
   });
 }
 

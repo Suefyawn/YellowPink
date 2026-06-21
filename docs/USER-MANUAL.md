@@ -188,6 +188,16 @@ for you to approve or reject.
 - **Newsletter** — customers can subscribe via the footer sign-up form or the
   prompt shown after a purchase.
 
+### 2.8 Getting in touch
+
+The **Contact** page (linked in the footer) offers WhatsApp and a **contact
+form**. A customer fills in their name, email, an optional subject, and their
+message; on submit it's saved to the store and the owner is emailed a copy
+(with the customer's address as the reply-to, so a reply goes straight back to
+them). Staff read and manage these under **Admin → Messages**
+([section 3.2](#32-the-sections)). This is the path for non-order questions now
+that there's no shared support mailbox.
+
 ---
 
 ## 3. The admin panel — a tour
@@ -239,6 +249,7 @@ together. Here's what each link is for:
 | **Promos** | The promotional banner shown on the storefront — content, colours, and on/off. |
 | **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. |
 | **Reviews** | Moderate customer reviews (approve, unapprove, edit, delete) and seed reviews yourself (migration / phoned-in feedback). |
+| **Messages** | The inbox for the storefront **contact form**. Every message a customer sends from the Contact page lands here (and is emailed to the store owner). Messages start as **Unread**; open the section to read them, hit **Reply** (opens your email app with the sender's address pre-filled), then **Mark read**, **Archive**, or **Delete**. The Messages menu item shows a pink badge with the unread count, and a notification appears in the bell when a new message arrives. |
 | **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |
 
 **Store** — admin internals
