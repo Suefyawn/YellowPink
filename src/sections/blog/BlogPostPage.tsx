@@ -182,7 +182,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
             <section style={{ padding: '48px 0' }}>
               <div className="container">
                 <Overline style={{ display: 'block', marginBottom: 24 }}>More from {post.category}</Overline>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--gutter)' }} className="duo-grid">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="blog-grid">
                   {relatedPosts.map((rp) => (
                     <Link key={rp.id} href={`/blog/${rp.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <article style={{ cursor: 'pointer' }}>
