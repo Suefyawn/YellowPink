@@ -56,7 +56,13 @@ customers and spot where an order is.
 
 - **Home page** — the landing page. It shows a hero banner, curated product
   rails (featured items, bestsellers, wellness picks), shop-by-category tiles,
-  the latest blog posts, and trust/press sections. It also features **The
+  the latest blog posts, and trust/press sections. A dedicated **"Beauty starts
+  from within"** wellness showcase presents every health concern (Women's
+  Health, Immunity, Bone & Joint, and more) as its own card with a live product
+  count and "from" price, a featured wellness rail, and supplement-specific
+  assurances (authentic, sealed & in-date, cash on delivery). The concern cards
+  and counts are generated automatically from the live catalogue, so they never
+  drift from what's actually in stock. It also features **The
   K-Beauty Edit** — a band showcasing products from curated Korean beauty
   brands, linking to the K-Beauty collection page. The band appears
   automatically once at least one product from a listed K-beauty brand is
