@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 22 June 2026 (added the programmatic blog management API, the HTML sitemap page and per-post blog author byline).*
+> *Last updated: 22 June 2026 (added the programmatic blog management API + image upload, the HTML sitemap page and per-post blog author byline).*
 
 ---
 
@@ -571,6 +571,13 @@ Endpoints (base `https://www.yellowpink.pk/api/blog`):
 | `GET /api/blog/{id-or-slug}` | Fetch one post. |
 | `PATCH /api/blog/{id-or-slug}` | Update any subset of fields. |
 | `DELETE /api/blog/{id-or-slug}` | Delete a post. |
+
+To attach a **featured image**, set `image_url` to a hosted URL. If your
+automation has the image as a file, upload it first via `POST /api/media`
+(same `Authorization: Bearer` token; send `multipart/form-data` with a `file`
+field — JPG/PNG/WebP/AVIF, up to 5 MB). It returns `{ "url": "…" }`; pass that
+back as the post's `image_url`. This keeps the whole flow API-only — no admin
+session needed.
 
 Posts created or edited this way go live immediately and are auto-submitted to
 the search engines, exactly like the admin editor. A duplicate slug returns
