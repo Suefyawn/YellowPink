@@ -114,6 +114,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // storefront — seeds the client CommerceSettings provider so the cart,
   // mini-cart, PDP and checkout never drift from the owner's setting.
   const commerce = parseCommerceConfig(settings);
+  // Origin that serves catalogue/blog images — used for an early preconnect.
+  const supabaseOrigin = (() => {
+    try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').origin; } catch { return null; }
+  })();
   return (
     <html
       lang="en"
@@ -124,6 +128,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${fontDisplay.variable} ${fontUI.variable}`}
     >
       <head>
+        {/* Preconnect to the Supabase origin that serves catalogue + blog
+            images (and storage) so the LCP image starts downloading a round
+            trip sooner. Images are served un-optimised from this host, so the
+            early connection matters. */}
+        {supabaseOrigin && (
+          <>
+            <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href={supabaseOrigin} />
+          </>
+        )}
         {/* Google Search Console ownership verification (owner-set in admin,
             env fallback). Only rendered when a code is present. */}
         {gscVerification && <meta name="google-site-verification" content={gscVerification} />}

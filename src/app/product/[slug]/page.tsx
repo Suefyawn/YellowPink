@@ -11,6 +11,7 @@ import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtToget
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
 import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd, truncateOnWord } from '@/lib/seo';
 import { effectiveProductFaq } from '@/lib/product-faq';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { isEnabled } from '@/lib/flags';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
@@ -227,6 +228,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>[];
 
+  // Single source for both the visible trail and the BreadcrumbList schema.
+  const crumbs = [
+    { name: 'Home',           path: '/' },
+    { name: 'Shop',           path: '/shop' },
+    { name: product.category, path: `/shop?category=${encodeURIComponent(product.category)}` },
+    { name: product.name,     path: `/product/${product.slug}` },
+  ];
+
   return (
     // minHeight: 100vh — guarantees the PDP block fills the viewport before
     // the gallery image decodes. Without it, on mobile between SSR delivery
@@ -241,14 +250,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLd(breadcrumbLd([
-            { name: 'Home',           path: '/' },
-            { name: 'Shop',           path: '/shop' },
-            { name: product.category, path: `/shop?category=${encodeURIComponent(product.category)}` },
-            { name: product.name,     path: `/product/${product.slug}` },
-          ])),
+          __html: jsonLd(breadcrumbLd(crumbs)),
         }}
       />
+      <Breadcrumbs items={crumbs} />
       {/* FAQPage schema for rich-result eligibility. Uses the admin-authored
           FAQ when present, otherwise the store-fact fallback, so every PDP is
           rich-result eligible. */}
