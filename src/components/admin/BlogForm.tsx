@@ -16,14 +16,17 @@ function today() {
 
 // Canonical blog taxonomy. Kept as a fixed dropdown (not free text) so the
 // category list can't drift back into the WP-import mess of near-duplicate
-// values — see migration 100. Add a new category here when one is needed.
+// values — see migrations 100 and 189. Add a new category here when one is
+// needed (and migrate existing rows onto it).
 const BLOG_CATEGORIES = [
+  'Skincare',
+  'Hair',
+  'Makeup',
   'Wellness',
   "Women's Health",
   "Men's Health",
   'Fertility',
   'Bone & Joint',
-  'Beauty & Skincare',
 ] as const;
 
 const inp: React.CSSProperties = {
