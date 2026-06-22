@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 22 June 2026 (added the HTML sitemap page and per-post blog author byline).*
+> *Last updated: 22 June 2026 (added the programmatic blog management API, the HTML sitemap page and per-post blog author byline).*
 
 ---
 
@@ -548,6 +548,33 @@ A small toast confirms each submission and shows which channels accepted it.
 (Note: Google's direct API has a small daily quota and officially targets
 job/event pages, so the "resubmit all" button uses IndexNow only; Google is
 pinged per page on publish.)
+
+**Blog management API (for automation / AI content pipelines)**
+
+Besides the admin editor, the journal can be managed programmatically over a
+small HTTP API — handy for bulk imports, a publishing schedule, or an AI
+content pipeline that drafts and posts articles. It's **off until you set a
+token**, so it can never be left open by accident.
+
+1. Generate a long random token (e.g. `openssl rand -hex 32`).
+2. In Vercel → Project → Settings → Environment Variables, add
+   `BLOG_API_TOKEN` = that value for Production, and redeploy.
+3. Every request must send the header `Authorization: Bearer <token>`. While the
+   variable is unset, the endpoints return `503`.
+
+Endpoints (base `https://www.yellowpink.pk/api/blog`):
+
+| Method & path | What it does |
+|---|---|
+| `GET /api/blog` | List posts, newest first. Filters: `?category=`, `?featured=true`, `?q=` (title/excerpt search), `?limit=` (max 100), `?offset=`. |
+| `POST /api/blog` | Create a post. JSON body: `title`, `slug`, `excerpt`, `category` required; optional `body`, `image_url`, `author`, `read_time`, `featured`, `date` (defaults to today). |
+| `GET /api/blog/{id-or-slug}` | Fetch one post. |
+| `PATCH /api/blog/{id-or-slug}` | Update any subset of fields. |
+| `DELETE /api/blog/{id-or-slug}` | Delete a post. |
+
+Posts created or edited this way go live immediately and are auto-submitted to
+the search engines, exactly like the admin editor. A duplicate slug returns
+`409`; invalid fields return `422` with details.
 
 **Google Analytics 4 (visitor behaviour)**
 
