@@ -17,6 +17,7 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
   { path: '/brands',     priority: 0.6, freq: 'weekly' },
   { path: '/k-beauty',   priority: 0.8, freq: 'weekly' },
   { path: '/blog',       priority: 0.7, freq: 'weekly' },
+  { path: '/sitemap',    priority: 0.3, freq: 'weekly' },
   // NOTE: /faq is intentionally NOT listed — it 301-redirects to the CMS page
   // /page/faq (see proxy.ts PAGE_SLUG_MAP), which is already emitted in the
   // published-pages section below. Listing the redirecting URL would be a
