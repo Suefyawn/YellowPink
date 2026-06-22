@@ -64,6 +64,7 @@ const HELP_LINKS = [
   { label: 'Privacy',      href: '/privacy' },
   { label: 'Terms',        href: '/page/terms-and-conditions' },
   { label: 'Disclaimer',   href: '/page/disclaimer' },
+  { label: 'Sitemap',      href: '/sitemap' },
 ];
 
 // Brand glyphs keyed by platform. Instagram/Facebook/YouTube are lucide-style

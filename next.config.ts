@@ -90,6 +90,12 @@ const nextConfig: NextConfig = {
       // Policy content lives under /page/:slug; bare /returns is a common
       // inbound guess (and was 404ing), so alias it to the returns policy.
       { source: '/returns', destination: '/page/returns', permanent: true },
+      // Blog cannibalization cleanup (migration 192): duplicate posts were
+      // consolidated onto one canonical each; 308 the removed slugs so their
+      // crawl/link equity flows to the survivor instead of 404ing.
+      { source: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan-2', destination: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan', permanent: true },
+      { source: '/blog/vit-kd-vitamin-d3-k2-bone-heart-health-pakistan', destination: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan', permanent: true },
+      { source: '/blog/how-to-increase-sperm-count-naturally-pakistan', destination: '/blog/increase-sperm-count-naturally-pakistan-guide', permanent: true },
       // Force apex → www as a PERMANENT (308) redirect. The platform default
       // can be a temporary 307 (SEO audit: "temporary redirects"); this pins
       // it at the app layer so link equity consolidates on the www host.

@@ -131,15 +131,23 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.75rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 16, maxWidth: 880 }}>{post.title}</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', fontSize: '1.0625rem', lineHeight: 1.6, marginBottom: 24, maxWidth: 720 }}>{post.excerpt}</p>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>YP</span>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Yellow Pink Editorial</div>
-              <div className="small-text">{post.date}</div>
-            </div>
-          </div>
+          {(() => {
+            const author = post.author?.trim() || 'Yellow Pink Editorial Team';
+            const initials = author
+              .replace(/^(dr|mr|ms|mrs)\.?\s+/i, '')
+              .split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || 'YP';
+            return (
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 16 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{initials}</span>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>By {author}</div>
+                  <div className="small-text">{post.date}</div>
+                </div>
+              </div>
+            );
+          })()}
           <BlogShareStrip title={post.title} url={absoluteUrl(`/blog/${post.slug}`)} excerpt={post.excerpt} />
           <div style={{ borderBottom: '1px solid var(--line)', marginTop: 16 }} />
         </div>

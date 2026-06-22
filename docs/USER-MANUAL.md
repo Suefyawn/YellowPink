@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 21 June 2026 (added automatic search-engine indexing).*
+> *Last updated: 22 June 2026 (added the HTML sitemap page and per-post blog author byline).*
 
 ---
 
@@ -114,6 +114,11 @@ customers and spot where an order is.
   a shipping zone has a delivery estimate configured, an **estimated delivery
   time** ("Delivery in X–Y working days · COD nationwide") shows by the
   Add-to-Cart button.
+- **Sitemap page** (`/sitemap`, linked from the footer Help column) — a single
+  human-readable index of the whole store: every shop category (grouped by
+  Makeup / Skincare / Wellness), all collections, brands, journal posts and
+  information pages, each one click away. It complements the machine
+  `/sitemap.xml` that search engines read.
 
 ### 2.2 Cart and checkout
 
@@ -265,7 +270,7 @@ together. Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Promos** | The promotional banner shown on the storefront — content, colours, and on/off. |
-| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. |
+| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. Each post has an **Author** field for the byline (defaults to "Yellow Pink Editorial Team"); naming a real expert on health/beauty posts strengthens their search-engine trust signals. |
 | **Reviews** | Moderate customer reviews (approve, unapprove, edit, delete) and seed reviews yourself (migration / phoned-in feedback). |
 | **Messages** | A **threaded inbox** for the storefront **contact form** and **inbound email** (direct emails to your store address show an **Email** tag). Messages are grouped into **conversations by customer**, shown as a chat (their messages on the left, your replies on the right). **Reply right here** — the box at the bottom of a conversation sends your reply **from your store address via email**, and the reply is saved into the thread, so the whole exchange stays on record. When the customer replies, it threads back into the same conversation automatically. Per-conversation **Mark read** / **Archive** / **Restore**. The Messages menu item shows a pink badge with the unread count, and the bell notifies on new **incoming** messages (your own replies don't notify). |
 | **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |

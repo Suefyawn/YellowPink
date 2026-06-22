@@ -117,6 +117,20 @@ export function BlogForm({ post }: { post?: BlogPost }) {
             </div>
           </div>
 
+          {/* Author */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Author</label>
+            <input
+              name="author"
+              defaultValue={post?.author ?? 'Yellow Pink Editorial Team'}
+              style={inp}
+              placeholder="Yellow Pink Editorial Team"
+            />
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'block' }}>
+              Shown as the byline. Use a named expert for health/beauty posts to strengthen E-E-A-T.
+            </span>
+          </div>
+
           {/* Cover Image */}
           <div style={{ marginBottom: 16 }}>
             <ImageUpload name="image_url" currentUrl={imageUrl} label="Cover Image" aspect={16 / 9} />
