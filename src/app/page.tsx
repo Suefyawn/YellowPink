@@ -15,6 +15,7 @@ import {
 import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
 import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 import { buildWellnessShowcase } from '@/lib/wellness-data';
+import { categoryHref } from '@/lib/category-taxonomy';
 
 // Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -81,7 +82,7 @@ export default async function HomePage() {
 
   const tile = (label: string) => ({
     label,
-    href: `/shop?category=${encodeURIComponent(label)}`,
+    href: categoryHref(label),
     image: CATEGORY_IMAGE_BASE ? `${CATEGORY_IMAGE_BASE}/${CATEGORY_TILE_FILES[label]}` : undefined,
   });
   const categoryGroups = [

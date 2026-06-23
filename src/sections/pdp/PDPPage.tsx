@@ -18,7 +18,7 @@ import { BenefitIcon } from '@/components/ui/BenefitIcon';
 import { RETURNS_WINDOW_DAYS, formatPkr } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { effectiveProductFaq } from '@/lib/product-faq';
-import { taxonForCategory } from '@/lib/category-taxonomy';
+import { taxonForCategory, categoryHref } from '@/lib/category-taxonomy';
 import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
@@ -395,7 +395,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const midCrumb = product.brand
     ? { label: product.brand, href: `/shop?brand=${encodeURIComponent(product.brand)}` }
     : product.category
-    ? { label: product.category, href: `/shop?category=${encodeURIComponent(product.category)}` }
+    ? { label: product.category, href: categoryHref(product.category) }
     : null;
 
   return (

@@ -12,7 +12,7 @@ import { getProducts, getBlogPosts, supabase, isDemo } from '@/lib/supabase';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd } from '@/lib/seo';
 import { brandsFromProducts } from '@/lib/brands';
-import { TAXONS, taxonForCategory } from '@/lib/category-taxonomy';
+import { TAXONS, taxonForCategory, categoryHref } from '@/lib/category-taxonomy';
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMeta({
@@ -116,7 +116,7 @@ export default async function HtmlSitemapPage() {
                 <ul style={listStyle}>
                   {g.cats.map(c => (
                     <li key={c}>
-                      <Link href={`/shop?category=${encodeURIComponent(c)}`} style={linkStyle}>{c}</Link>
+                      <Link href={categoryHref(c)} style={linkStyle}>{c}</Link>
                     </li>
                   ))}
                 </ul>
@@ -125,7 +125,7 @@ export default async function HtmlSitemapPage() {
             {ungrouped.length > 0 && (
               <ul style={listStyle}>
                 {ungrouped.map(c => (
-                  <li key={c}><Link href={`/shop?category=${encodeURIComponent(c)}`} style={linkStyle}>{c}</Link></li>
+                  <li key={c}><Link href={categoryHref(c)} style={linkStyle}>{c}</Link></li>
                 ))}
               </ul>
             )}

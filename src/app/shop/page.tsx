@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import { getProducts } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
-import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO } from '@/lib/category-taxonomy';
+import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref } from '@/lib/category-taxonomy';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 
@@ -142,7 +142,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     { name: 'Shop', path: '/shop' },
     ...(taxonObj ? [{ name: taxonObj.label, path: `/shop?taxon=${taxonObj.key}` }] : []),
     ...(initialCategory !== 'All' && !taxonObj
-      ? [{ name: initialCategory, path: `/shop?category=${encodeURIComponent(initialCategory)}` }]
+      ? [{ name: initialCategory, path: categoryHref(initialCategory) }]
       : []),
   ];
 

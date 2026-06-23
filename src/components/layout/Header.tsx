@@ -8,7 +8,7 @@ import { useCart } from '@/context/CartContext';
 import { useSearch } from '@/context/SearchContext';
 import { useAuth } from '@/context/AuthContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
-import { TAXONS } from '@/lib/category-taxonomy';
+import { TAXONS, categoryHref } from '@/lib/category-taxonomy';
 import { whatsappUrl, whatsappUrlFromNumber, WA_TEMPLATES } from '@/lib/whatsapp';
 
 // Desktop nav: each taxon (Makeup / Skincare / Wellness / Bundles) opens a
@@ -177,7 +177,7 @@ export function Header({ whatsappNumber }: { whatsappNumber?: string } = {}) {
                       {t.categories.map(cat => (
                         <Link
                           key={cat}
-                          href={`/shop?category=${encodeURIComponent(cat)}`}
+                          href={categoryHref(cat)}
                           style={{
                             display: 'block', padding: '9px 12px', borderRadius: 8,
                             textDecoration: 'none', fontFamily: 'var(--font-ui)',
@@ -444,7 +444,7 @@ export function Header({ whatsappNumber }: { whatsappNumber?: string } = {}) {
                       return (
                         <Link
                           key={cat}
-                          href={`/shop?category=${encodeURIComponent(cat)}`}
+                          href={categoryHref(cat)}
                           onClick={() => setMobileMenu(false)}
                           aria-current={catActive ? 'page' : undefined}
                           tabIndex={mobileMenu ? 0 : -1}
