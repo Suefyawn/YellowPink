@@ -10,6 +10,7 @@
 // ============================================================================
 
 import type { Product } from '@/types';
+import { categoryHref } from '@/lib/category-taxonomy';
 
 export interface WellnessConcern {
   /** Canonical category label (matches products.category + the taxonomy). */
@@ -54,7 +55,7 @@ export function buildWellnessConcerns(products: Product[]): WellnessConcern[] {
       tagline: meta.tagline,
       count: inCat.length,
       fromPrice,
-      href: `/shop?category=${encodeURIComponent(meta.label)}`,
+      href: categoryHref(meta.label),
     };
   }).filter((c) => c.count > 0);
 }

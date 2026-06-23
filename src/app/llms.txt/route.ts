@@ -7,6 +7,7 @@
 // data when Supabase isn't configured (build-time, fresh clone, etc.).
 
 import { SITE_URL, SITE_NAME, absoluteUrl } from '@/lib/seo';
+import { categoryHref } from '@/lib/category-taxonomy';
 import { supabase, isDemo, getProducts, getSiteSettings } from '@/lib/supabase';
 import { brandPlusName } from '@/lib/product-display';
 import { parseCommerceConfig, formatPkr, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
@@ -62,7 +63,7 @@ export async function GET() {
   if (cats.length > 0) {
     lines.push('## Browse by category');
     for (const c of cats) {
-      lines.push(`- [${c}](${SITE_URL}/shop?category=${encodeURIComponent(c)})`);
+      lines.push(`- [${c}](${SITE_URL}${categoryHref(c)})`);
     }
     lines.push('');
   }
