@@ -100,7 +100,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     new Set(products.map(p => p.category).filter((c): c is string => Boolean(c))),
   );
   const categoryUrls: MetadataRoute.Sitemap = categories.map(cat => ({
-    url: `${SITE_URL}/shop?category=${encodeURIComponent(cat)}`,
+    // Build the query string exactly as the shop page's self-canonical does
+    // (URLSearchParams → space "+", "'" "%27"). Using encodeURIComponent here
+    // produced "%20"/raw "'", which differs from the canonical, so GSC flagged
+    // every multi-word category ("Women's Health", "Face Makeup", …) as
+    // "Alternate page with proper canonical tag" — the sitemap "errors".
+    url: `${SITE_URL}/shop?${new URLSearchParams({ category: cat }).toString()}`,
     lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.7,

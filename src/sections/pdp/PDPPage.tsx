@@ -19,6 +19,7 @@ import { RETURNS_WINDOW_DAYS, formatPkr } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { effectiveProductFaq } from '@/lib/product-faq';
 import { taxonForCategory } from '@/lib/category-taxonomy';
+import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -581,6 +582,14 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             )}
 
             {product.description && <ProductDescription text={product.description} maxWidth={440} />}
+
+            {/* YMYL safeguard: supplements carry a "food supplement, not a
+                medicine" disclaimer. Cosmetics/makeup don't. */}
+            {isWellness && (
+              <div style={{ maxWidth: 440 }}>
+                <MedicalDisclaimer variant="product" />
+              </div>
+            )}
 
             {/* Migration 081 — short testimonial / press quote, rendered as a
                 paper2 callout so it reads as social signal rather than body

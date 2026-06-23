@@ -8,6 +8,8 @@ import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
 import { absoluteUrl } from '@/lib/seo';
+import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
+import { isHealthCategory } from '@/lib/category-taxonomy';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
@@ -101,6 +103,10 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
           No content yet.
         </p>
       )}
+
+      {/* YMYL safeguard: health/wellness articles carry a medical disclaimer
+          (educational, not advice). Beauty posts don't. */}
+      {isHealthCategory(post.category) && <MedicalDisclaimer variant="editorial" />}
 
       {/* Bottom-of-post share strip — catches the reader who finishes the
           article and is most likely to share. */}
