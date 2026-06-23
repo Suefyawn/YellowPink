@@ -9,6 +9,8 @@
 // Render it only for health categories — see isHealthCategory() in
 // lib/category-taxonomy. Beauty/cosmetic pages must not show it.
 
+import Link from 'next/link';
+
 const COPY: Record<'editorial' | 'product', string> = {
   editorial:
     'This article is for general educational purposes only and is not medical advice. ' +
@@ -60,6 +62,15 @@ export function MedicalDisclaimer({
         style={{ color: 'var(--ink-500)', fontSize: '0.75rem', lineHeight: 1.55, margin: 0 }}
       >
         {COPY[variant]}
+        {variant === 'editorial' && (
+          <>
+            {' '}
+            <Link href="/page/editorial-standards" style={{ color: 'var(--ink-700)', textDecoration: 'underline' }}>
+              Read our editorial standards
+            </Link>
+            .
+          </>
+        )}
       </p>
     </aside>
   );

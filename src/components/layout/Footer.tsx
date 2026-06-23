@@ -50,10 +50,11 @@ const SHOP_LINKS = [
 ];
 
 const COMPANY_LINKS = [
-  { label: 'About Us',         href: '/page/about' },
-  { label: 'Blog',             href: '/blog' },
-  { label: 'Contact',          href: '/page/contact' },
-  { label: 'Shipping Policy',  href: '/page/shipping' },
+  { label: 'About Us',           href: '/page/about' },
+  { label: 'Blog',               href: '/blog' },
+  { label: 'Editorial Standards', href: '/page/editorial-standards' },
+  { label: 'Contact',            href: '/page/contact' },
+  { label: 'Shipping Policy',    href: '/page/shipping' },
 ];
 
 const HELP_LINKS = [
