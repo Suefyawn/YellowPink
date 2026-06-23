@@ -116,6 +116,15 @@ export function isHealthCategory(category: string | null | undefined): boolean {
   return HEALTH_BLOG_CATEGORIES.has(category.trim().toLowerCase());
 }
 
+/** Canonical href for a category landing page. Built with URLSearchParams
+ *  (space -> "+", "'" -> "%27") so every internal link is byte-identical to
+ *  the shop page's self-canonical and the sitemap entry. Using
+ *  encodeURIComponent here instead ("%20"/raw "'") makes internal links point
+ *  at a non-canonical URL variant, which Google then has to collapse. */
+export function categoryHref(category: string): string {
+  return `/shop?${new URLSearchParams({ category }).toString()}`;
+}
+
 // Richer on-page intro copy for the wellness category landing pages — these
 // target competitive head terms ("women's health supplements Pakistan", …), so
 // a unique, genuinely useful 2–3 sentence intro (vs the one-line meta blurb in
