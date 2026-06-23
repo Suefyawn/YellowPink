@@ -116,6 +116,31 @@ export function isHealthCategory(category: string | null | undefined): boolean {
   return HEALTH_BLOG_CATEGORIES.has(category.trim().toLowerCase());
 }
 
+// Richer on-page intro copy for the wellness category landing pages — these
+// target competitive head terms ("women's health supplements Pakistan", …), so
+// a unique, genuinely useful 2–3 sentence intro (vs the one-line meta blurb in
+// CATEGORY_DESCRIPTIONS) gives Google real on-page content to rank. Compliant
+// by design: no disease/cure claims. Categories without an entry fall back to
+// the short CATEGORY_DESCRIPTIONS line.
+export const CATEGORY_INTRO: Record<string, string> = {
+  "Women's Health":
+    "Yellow Pink's women's health range covers fertility support, prenatal and postnatal nutrition, hormonal balance, iron and everyday vitality — from trusted international supplement brands. Whether you're planning a pregnancy, managing your cycle, or simply topping up key nutrients, every product here is 100% authentic and sealed, with cash on delivery nationwide across Pakistan.",
+  "Men's Health":
+    "Support energy, stamina, fertility and everyday performance with our men's health supplements — from L-arginine and CoQ10 sachets to testosterone-support herbs and daily multivitamins. Each product is 100% genuine and imported, delivered with cash on delivery anywhere in Pakistan.",
+  'Immunity':
+    "Give your body's everyday defences a hand with our immunity range — vitamin C, vitamin D, zinc, elderberry and multivitamin formulas from reputable global brands. Ideal for seasonal changes and busy routines, all authentic and sealed, with cash on delivery across Pakistan.",
+  'Bone & Joint':
+    'Keep moving comfortably with our bone and joint supplements — calcium and vitamin D for bone strength, plus glucosamine, chondroitin and collagen for joint support. Popular with active adults and older family members alike, all 100% authentic, with cash on delivery nationwide in Pakistan.',
+  'Heart Health':
+    'Look after your cardiovascular wellbeing with our heart health range — omega-3 fish oils, CoQ10 and other supplements that support a healthy heart and circulation. Sourced from trusted international brands, genuine and sealed, with cash on delivery across Pakistan.',
+  'Digestive & Gut':
+    'Support comfortable digestion and a balanced gut with our probiotics, prebiotics and digestive-enzyme supplements. From daily gut maintenance to occasional bloating, find authentic, well-stored products here, with cash on delivery anywhere in Pakistan.',
+  'Cough & Respiratory':
+    'Soothe seasonal coughs and support healthy breathing with our respiratory range — herbal syrups, lozenges and vitamin blends from trusted brands. Every product is 100% genuine and sealed, delivered cash on delivery across Pakistan.',
+  'Kids':
+    'Gentle, easy-to-take syrups, gummies and supplements made for growing children — from everyday multivitamins to immunity and bone support. Chosen for taste and trust, every product is authentic and sealed, with cash on delivery nationwide in Pakistan.',
+};
+
 // Per-taxon SEO: the four top-level nav landing pages (/shop?taxon=<key>) are
 // real index targets, so each gets a unique, keyword-led title + meta
 // description + intro instead of the generic "Shop All Products" + a canonical
