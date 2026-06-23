@@ -13,6 +13,12 @@
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yellowpink.pk').replace(/\/$/, '');
 
+// The CDN that actually serves every catalogue/blog image (and the LCP hero).
+// Exported so the root layout can <link rel="preconnect"> to it — without it,
+// the browser pays a full DNS+TCP+TLS handshake to this host before the LCP
+// image can start downloading.
+export const IMAGE_CDN_ORIGIN = 'https://images.weserv.nl';
+
 export default function weservLoader({
   src,
   width,
@@ -35,5 +41,5 @@ export default function weservLoader({
   const q = quality ?? 75;
   // w = target width, q = quality, output=webp = modern format, we = never
   // upscale past the original's dimensions.
-  return `https://images.weserv.nl/?url=${encodeURIComponent(abs)}&w=${width}&q=${q}&output=webp&we`;
+  return `${IMAGE_CDN_ORIGIN}/?url=${encodeURIComponent(abs)}&w=${width}&q=${q}&output=webp&we`;
 }

@@ -43,6 +43,7 @@ import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { CouponCapture } from '@/components/marketing/CouponCapture';
 import { getSiteSettings } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
+import { IMAGE_CDN_ORIGIN } from '@/lib/image-loader';
 import { normalizeTheme } from '@/lib/themes';
 import { getActivePromos, audienceFor } from '@/lib/promos';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
@@ -128,10 +129,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${fontDisplay.variable} ${fontUI.variable}`}
     >
       <head>
-        {/* Preconnect to the Supabase origin that serves catalogue + blog
-            images (and storage) so the LCP image starts downloading a round
-            trip sooner. Images are served un-optimised from this host, so the
-            early connection matters. */}
+        {/* Preconnect to the image CDN (images.weserv.nl) that serves every
+            catalogue/blog image AND the LCP hero — the single most important
+            early connection for mobile LCP. The Supabase origin is also
+            preconnected: weserv fetches the original from there, and the
+            Supabase JS client hits it for data/API. */}
+        <link rel="preconnect" href={IMAGE_CDN_ORIGIN} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={IMAGE_CDN_ORIGIN} />
         {supabaseOrigin && (
           <>
             <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
