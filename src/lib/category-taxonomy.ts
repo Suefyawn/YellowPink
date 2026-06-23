@@ -139,6 +139,22 @@ export const CATEGORY_INTRO: Record<string, string> = {
     'Soothe seasonal coughs and support healthy breathing with our respiratory range — herbal syrups, lozenges and vitamin blends from trusted brands. Every product is 100% genuine and sealed, delivered cash on delivery across Pakistan.',
   'Kids':
     'Gentle, easy-to-take syrups, gummies and supplements made for growing children — from everyday multivitamins to immunity and bone support. Chosen for taste and trust, every product is authentic and sealed, with cash on delivery nationwide in Pakistan.',
+  // Beauty & bundle landing pages — same keyword-led treatment for the
+  // higher-volume cosmetic categories and value sets.
+  'Cleansers & Treatments':
+    'From gentle daily cleansers and foaming washes to targeted serums, exfoliants and acne treatments, our cleansers & treatments range helps you build a routine for clearer, healthier-looking skin. Every product is 100% authentic and imported, with cash on delivery across Pakistan.',
+  'Lip & Cheek Tints':
+    'Add a wash of natural colour with our lip and cheek tints — buildable, long-wearing formulas from popular K-beauty and international brands for an effortless flush. All genuine and sealed, with cash on delivery nationwide in Pakistan.',
+  'Face Makeup':
+    'Build a flawless base with our face makeup — foundations, concealers, powders and primers to even tone, blur pores and set your look. 100% authentic and imported, with cash on delivery across Pakistan.',
+  'Moisturizers':
+    'Lock in hydration with our moisturisers — lightweight gels, rich creams and barrier-repair formulas for every skin type and season. Authentic and sealed, with cash on delivery nationwide in Pakistan.',
+  'Highlighters':
+    'Catch the light with our highlighters — powder, liquid and stick formulas that add a natural glow or a bolder strobe. 100% genuine and imported, with cash on delivery across Pakistan.',
+  'Combo Packs':
+    'Save with our combo packs — curated sets that pair complementary skincare, makeup and wellness products at a better price than buying them separately. All authentic and sealed, with cash on delivery across Pakistan.',
+  'Budget Bundles':
+    'Get more for less with our budget bundles — value sets of everyday beauty and wellness essentials, hand-picked to stretch your rupee further. 100% genuine, with cash on delivery nationwide in Pakistan.',
 };
 
 // Per-taxon SEO: the four top-level nav landing pages (/shop?taxon=<key>) are
