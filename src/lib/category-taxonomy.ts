@@ -102,6 +102,20 @@ export function taxonForCategory(category: string | null | undefined): Taxon | n
   return null;
 }
 
+// Health/YMYL categories — used to decide where a medical disclaimer must
+// show. Covers the product "wellness" taxon leaves (Women's Health, Immunity,
+// Bone & Joint, …) PLUS blog-only health categories that aren't product leaves
+// ("Wellness", "Fertility"). Beauty categories (Skincare, Makeup, Hair) return
+// false — they don't need a medical disclaimer.
+const HEALTH_BLOG_CATEGORIES = new Set(
+  ['Wellness', 'Fertility', 'Health'].map(s => s.toLowerCase()),
+);
+export function isHealthCategory(category: string | null | undefined): boolean {
+  if (!category) return false;
+  if (taxonForCategory(category)?.key === 'wellness') return true;
+  return HEALTH_BLOG_CATEGORIES.has(category.trim().toLowerCase());
+}
+
 // Per-taxon SEO: the four top-level nav landing pages (/shop?taxon=<key>) are
 // real index targets, so each gets a unique, keyword-led title + meta
 // description + intro instead of the generic "Shop All Products" + a canonical
