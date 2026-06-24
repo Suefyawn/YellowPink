@@ -129,3 +129,8 @@ shows this works: brand searches there convert at **30% CTR** (9 clicks/30 impr)
    inspect the new URLs to speed it up. Optional: collapse the legacy two-hop
    redirect to one.
 5. Skincare/makeup: keep publishing, but treat as a 2–3 quarter horizon.
+
+> **Update 2026-06-24:** Semrush Site Audit pulled (Health 80/100) — see
+> `SEO-SITE-AUDIT-2026-06.md`. Content pass done: 21 broken internal links in the
+> fertility/PCOS/men's-health blog cluster fixed and verified. Backlink round 2 +
+> keyword-gap run (both low-yield — competitors are branded/cosmetics).
