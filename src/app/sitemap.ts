@@ -8,6 +8,12 @@ import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
 import { brandSlug } from '@/lib/brands';
 
+// Regenerate hourly so posts/products added via the DB, the blog API or the
+// admin (none of which trigger a deploy) appear in the sitemap within an hour.
+// Without this the sitemap is built once at deploy time and silently goes stale
+// as new content is published.
+export const revalidate = 3600;
+
 // Robots-disallowed (utility / private) routes are deliberately excluded —
 // listing them would send a conflicting signal to crawlers.
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
