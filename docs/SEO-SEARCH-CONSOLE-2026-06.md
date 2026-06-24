@@ -104,10 +104,17 @@ shows this works: brand searches there convert at **30% CTR** (9 clicks/30 impr)
 ## Reprioritized action list
 
 1. **CTR pass on the top branded SKUs (Finding 3).** Fastest win, no ranking
-   change needed. ✅ *Started:* the product title template now appends a localized
-   "Price in Pakistan" intent cue for short branded SKUs
-   (`src/app/product/[slug]/page.tsx`); per-SKU `seo_title`/`seo_description`
-   overrides for the dozen highest-impression products are the follow-up.
+   change needed. ✅ *Done:* (a) the product title template now appends a
+   localized "Price in Pakistan" intent cue for short branded SKUs
+   (`src/app/product/[slug]/page.tsx`); (b) hand-written `seo_title` +
+   `seo_description` overrides applied to the **16 highest-impression / weakest-CTR
+   SKUs** (DB, 2026-06-24) — each leads with the searched term and adds an intent
+   cue (`uses` / `price in pakistan`), price and COD: semofer, m-sol-sachet,
+   ferosim, greelac, meth-d, calin-g, repro-m, argivital-sachet, marixtizer,
+   multiflux, s-lyte, x-fit, syror, simfolic, fol-chew, simrid. (Several had
+   placeholder metas — e.g. Syror's description was "Composition Soy Isoflavones
+   (USP) 50 mg"; M-Sol's title was a bare "M-Sol Sachet".) Live via ISR (~5 min).
+   *Next:* watch GSC CTR on these over 2–3 weeks; extend to the next tier of SKUs.
 2. **Pivot content + the backlink data asset to PCOS/fertility/men's health
    (Finding 2).** ✅ *Started:* PCOS data-asset draft in
    `docs/content-drafts/pcos-in-pakistan.md`.
