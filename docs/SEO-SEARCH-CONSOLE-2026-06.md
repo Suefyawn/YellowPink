@@ -114,7 +114,13 @@ shows this works: brand searches there convert at **30% CTR** (9 clicks/30 impr)
    multiflux, s-lyte, x-fit, syror, simfolic, fol-chew, simrid. (Several had
    placeholder metas — e.g. Syror's description was "Composition Soy Isoflavones
    (USP) 50 mg"; M-Sol's title was a bare "M-Sol Sachet".) Live via ISR (~5 min).
-   *Next:* watch GSC CTR on these over 2–3 weeks; extend to the next tier of SKUs.
+   **Tier 2 (2026-06-24):** 13 more SKUs rewritten — morr, vit-kd, puratin,
+   citowit, finkuff, fybosim, artibro, cranblue, eletcid, stevoice, calosent,
+   flex-4, cee (several were bare placeholders: "MORR", "Vit KD", "Puratin";
+   others were >60-char titles that truncated). **29 SKUs total now have
+   hand-tuned meta.** Already-strong rows (calco-fit, gluthic, trimo-m,
+   simdac-drops, f-lium-drops, leukaz, pelargonium, ultrapin) left as-is.
+   *Next:* watch GSC CTR on these over 2–3 weeks; extend to remaining catalog if it pays off.
 2. **Pivot content + the backlink data asset to PCOS/fertility/men's health
    (Finding 2).** ✅ *Started:* PCOS data-asset draft in
    `docs/content-drafts/pcos-in-pakistan.md`.
