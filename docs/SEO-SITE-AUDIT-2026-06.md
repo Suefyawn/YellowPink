@@ -18,7 +18,7 @@ Merchant listing, etc.). The two soft spots are Crawlability and Linking.
 | **Broken internal links (id 8)** | 21 | ✅ **Fixed this session** (see §2) |
 | 4xx pages (id 2) | 17 | Mostly the targets of those broken links; re-crawl should clear |
 | Temporary redirects (id 109) | 619 | **Not a ranking problem** — it's the site-wide header "My Account" link → `/account` → 307 → `/login`. A 307 is *correct* for an auth gate (you must NOT 301 it). Counted once per page that links to it. Optional: `rel="nofollow"` the account/cart/login links to save crawl budget. |
-| Multiple canonical URLs (id 39) | 23 | Worth a look — pages emitting two canonical tags. Likely a layout+page double-set on a specific template. |
+| Multiple canonical URLs (id 39) | 23 | ✅ Investigated — **false positive**. All 23 are `/shop?category=…`/`?taxon=…` pages. Fetched the live HTML: each has exactly **one** correct self-referencing canonical (e.g. `…?category=Women%27s+Health`). Crawler artifact (JS-render double-count / stale snapshot), not a code bug — no change made. |
 | Redirect chains/loops (id 33) | 11 | The apex→www then →/blog two-hop on legacy links. Low priority. |
 | Pages with one internal link (id 213) | 92 | The "Linking 74" driver — deeper internal linking (incl. §2) helps. |
 | Low text/HTML ratio (id 112) | 274 | Mostly catalog/listing pages; expected for a storefront. |
@@ -97,5 +97,8 @@ a domain gap.
 - **GSC:** submit sitemap + URL-inspect the new `/product`,`/blog` URLs to speed
   index consolidation.
 - **Outreach:** send the `SEO-BACKLINKS.md` emails / place the directory + stockist listings.
-- **Optional code polish:** `rel="nofollow"` on header account/cart/login links
-  (trims the 619 auth-redirect crawl noise); investigate the 23 multiple-canonical pages.
+- ~~Optional code polish: `rel="nofollow"` on header auth links; investigate the
+  23 multiple-canonical pages.~~ ✅ **Done 2026-06-24:** added `rel="nofollow"`
+  to the header account/login + wishlist links (desktop + mobile, 4 links) to
+  trim the auth-redirect crawl noise; multiple-canonical confirmed a false
+  positive (live HTML has one correct canonical), no change needed.
