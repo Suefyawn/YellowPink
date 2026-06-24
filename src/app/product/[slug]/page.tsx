@@ -31,7 +31,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // Use the dedupe-aware composer so WP imports that already prefix the
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
   const displayName = brandPlusName(product.brand, product.name);
-  const autoTitle = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
+  const autoTitleBase = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
+  // SERP CTR: short branded SKUs (e.g. "Semofer", "M-Sol Sachet") were ranking
+  // page-1 but getting ~0 % CTR with a bare "<name> | Yellow Pink" title — the
+  // SERP gave a searcher no reason to click (GSC, 2026-06). Append a localized
+  // commercial-intent cue ("Price in Pakistan") that also matches real queries
+  // ("… price in pakistan"). Gated so it only fires when the name is short
+  // enough to stay inside Google's ~60-char render budget — the root template
+  // adds " | Yellow Pink" (14 chars), so we cap the base at 46 — when there's
+  // no variant suffix, and when the name doesn't already imply geo. Longer,
+  // already-descriptive titles (most skincare imports) are left untouched, and
+  // an admin `seo_title` override always wins (applied below).
+  const GEO_CUE = ' Price in Pakistan';
+  const autoTitle =
+    !product.variant &&
+    !/pakistan|\bpk\b/i.test(autoTitleBase) &&
+    autoTitleBase.length + GEO_CUE.length <= 46
+      ? `${autoTitleBase}${GEO_CUE}`
+      : autoTitleBase;
   const baseDescription = product.short_description?.trim()
     ?? (product.description?.trim().slice(0, 160) || `Buy ${displayName} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`);
   // Lead with the unique product name so near-identical shade variants that

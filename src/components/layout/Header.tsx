@@ -256,6 +256,7 @@ export function Header({ whatsappNumber }: { whatsappNumber?: string } = {}) {
           </button>
           <Link
             href={user ? '/account' : '/login'}
+            rel="nofollow"
             aria-label={user ? 'My account' : 'Sign in'}
             className="header-icon-desktop-only"
             style={{
@@ -270,6 +271,7 @@ export function Header({ whatsappNumber }: { whatsappNumber?: string } = {}) {
           </Link>
           <Link
             href="/wishlist"
+            rel="nofollow"
             aria-label="My wishlist"
             title="Wishlist"
             className="header-icon-desktop-only"
@@ -486,6 +488,7 @@ export function Header({ whatsappNumber }: { whatsappNumber?: string } = {}) {
               menu + hitting the tiny header icon. */}
           <Link
             href={user ? '/account' : '/login'}
+            rel="nofollow"
             onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}
             style={{
@@ -504,6 +507,7 @@ export function Header({ whatsappNumber }: { whatsappNumber?: string } = {}) {
           {/* Wishlist — moved off the cramped header icon row into the drawer. */}
           <Link
             href="/wishlist"
+            rel="nofollow"
             onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}
             style={{
