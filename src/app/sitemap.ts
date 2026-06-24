@@ -142,6 +142,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // <image:loc> requires an ABSOLUTE URL. Blog hero assets are stored as
+  // site-relative paths (/blog-heroes/x.webp, served from /public); product
+  // images are already absolute (Supabase storage or the /catalog CDN). GSC
+  // rejects relative image locs as "Invalid URL", so normalise both forms.
+  const absImage = (u: string): string => (/^https?:\/\//.test(u) ? u : absoluteUrl(u));
+
   const productUrls: MetadataRoute.Sitemap = products.map(p => {
     const last = p.updated_at ?? p.created_at;
     return {
@@ -149,7 +155,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: last ? new Date(last) : now,
       changeFrequency: 'weekly',
       priority: 0.8,
-      images: p.image_url ? [p.image_url] : undefined,
+      images: p.image_url ? [absImage(p.image_url)] : undefined,
     };
   });
 
@@ -160,7 +166,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: last ? new Date(last) : now,
       changeFrequency: 'monthly',
       priority: 0.6,
-      images: p.image_url ? [p.image_url] : undefined,
+      images: p.image_url ? [absImage(p.image_url)] : undefined,
     };
   });
 
