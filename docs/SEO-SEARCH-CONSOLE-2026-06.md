@@ -15,51 +15,43 @@
 The headline: the site is **indexed and ranking** (avg pos ~7 on mobile), but
 clicks are tiny because of three fixable problems below.
 
-## Finding 1 — CRITICAL: the old WordPress site and the new Next.js site are both live and cannibalizing each other
+## Finding 1 — Legacy WordPress URLs still surface in the index, but the cutover and redirects are already correct (live-verified)
 
-The app has **no root-level catch-all route** (`src/app/` has `product/[slug]`,
-`blog/[slug]`, `page/[slug]` — but no `/[slug]`). Yet GSC shows *flat* URLs
-ranking and taking clicks — these can only be served by the **legacy WordPress
-storefront** still answering on the apex `yellowpink.pk`:
+GSC shows the same content under two URL shapes — old *flat* WordPress paths and
+the new `/product`,`/blog` paths — and in several cases the flat URL still
+out-impresses the new one:
 
-| URL in GSC | Served by | Clicks | Impr | Pos |
-|---|---|---:|---:|---:|
-| `yellowpink.pk/argivital-sachet-...-pakistan/` | **WordPress** (flat) | **5** | 64 | 7.4 |
-| `www.yellowpink.pk/product/semofer` | Next.js | 4 | 75 | 7.1 |
-| `yellowpink.pk/top-10-pcos-supplements-pakistan/` | **WordPress** (flat) | 2 | 95 | 19.3 |
-| `yellowpink.pk/m-sol-vs-myofolic-...-2026/` | **WordPress** (flat) | 1 | **134** | 8.8 |
-| `www.yellowpink.pk/blog/m-sol-vs-myofolic-...-2026` | Next.js | 0 | 40 | 8.2 |
+| URL in GSC | Clicks | Impr | Pos |
+|---|---:|---:|---:|
+| `yellowpink.pk/argivital-sachet-...-pakistan/` (flat) | **5** | 64 | 7.4 |
+| `www.yellowpink.pk/product/semofer` (new) | 4 | 75 | 7.1 |
+| `yellowpink.pk/top-10-pcos-supplements-pakistan/` (flat) | 2 | 95 | 19.3 |
+| `yellowpink.pk/m-sol-vs-myofolic-...-2026/` (flat) | 1 | **134** | 8.8 |
+| `www.yellowpink.pk/blog/m-sol-vs-myofolic-...-2026` (new) | 0 | 40 | 8.2 |
 
-The **same content is indexed twice** — the WordPress flat URL and the new
-`/blog` or `/product` URL — and in several cases the *old WP page is winning*
-(the m-sol article: 134 impressions on WP vs 40 on Next; argivital's flat WP URL
-is the single best-clicking page on the site). Google is splitting ranking
-signals and link equity across two competing copies. The homepage alone appears
-as **three** URLs: `http://yellowpink.pk/`, `https://yellowpink.pk/`, and
-`https://www.yellowpink.pk/`.
+**I probed this live (2026-06-24) and the migration is actually in good shape:**
 
-`next.config.ts` already has an apex→www 308 and a few blog-consolidation 301s,
-but those only fire for requests the **Next app** serves. Because the flat apex
-URLs are still serving (and clicking), the apex is evidently **still pointed at
-WordPress**, so the redirect never runs for them.
+- `yellowpink.pk` → **308** → `www.yellowpink.pk` (Vercel/Next.js everywhere; no WordPress is serving).
+- The legacy flat URLs **already 301 to the correct new page** and resolve `200`,
+  e.g. `…/argivital-sachet-…-pakistan/` → `/blog/argivital-sachet-…`,
+  `…/top-10-pcos-supplements-pakistan/` → `/blog/top-10-pcos-supplements-pakistan`,
+  `…/m-sol-vs-myofolic-…/` → `/blog/m-sol-vs-myofolic-…`.
 
-**Impact:** this is very likely the biggest single drag on performance and on the
-Authority Score 2 problem — backlinks and age are spread across two domains/URL
-sets that don't pass equity to each other.
+So this is **not** two live sites cannibalizing each other (an earlier draft of
+this doc overstated it). It's normal post-migration **index lag**: Google still
+lists the old flat URLs it knew, but every one redirects to the new canonical, so
+the index will consolidate on its own. No code change is required.
 
-**Fix (needs an ops decision — see question at the end):**
-1. Point the apex `yellowpink.pk` at the Next.js app (or 301 the whole apex to `www`).
-2. Add **301s from every legacy WordPress URL → its new equivalent** (flat
-   `/argivital-sachet-.../` → `/product/argivital-sachet`, flat
-   `/top-10-pcos-supplements-pakistan/` → `/blog/top-10-pcos-supplements-pakistan`,
-   etc.). This consolidates the older WP pages' equity onto the new ones — and
-   since the WP pages currently out-impress the new ones, that should be a real lift.
-3. Confirm in GSC that the WP flat URLs drop out and the `/product`,`/blog` URLs absorb the impressions.
+**Minor cleanup worth doing (low priority):**
+1. The flat apex URLs take **two hops** (apex→www, then flat→`/blog`). Collapsing
+   to a single 301 (handle the path rewrite on the apex host directly) is tidier
+   and passes equity marginally better, but isn't urgent.
+2. Speed consolidation by submitting the updated sitemap + using the URL
+   Inspection tool on the new `/product`,`/blog` URLs so Google recrawls and drops
+   the legacy duplicates faster.
 
-> I can build the redirect map in `next.config.ts` once we confirm the apex is
-> (or will be) served by the Next app and I have the legacy URL list (the WP
-> sitemap, or I can derive most from the product/post slugs). I did **not** do
-> it blind because the right form depends on the hosting/DNS cutover state.
+> Net: the dual-URL appearance is transitional and self-healing. The real levers
+> are Findings 2 and 3 below, not a redirect rebuild.
 
 ## Finding 2 — Real demand is wellness / PCOS / fertility / men's health, NOT skincare & makeup
 
@@ -111,16 +103,16 @@ shows this works: brand searches there convert at **30% CTR** (9 clicks/30 impr)
 
 ## Reprioritized action list
 
-1. **Resolve the WP↔Next dual-indexing (Finding 1).** Highest impact; needs the ops decision below.
-2. **CTR pass on the top ~15 ranking SKUs (Finding 3).** Quick in-repo win; do regardless of #1.
-3. **Pivot content + the backlink data asset to PCOS/fertility/men's health (Finding 2).**
-4. **Backlinks campaign** (`docs/SEO-BACKLINKS.md`) — still the authority play, but it
-   can't fully pay off until #1 stops splitting equity across two sites.
+1. **CTR pass on the top branded SKUs (Finding 3).** Fastest win, no ranking
+   change needed. ✅ *Started:* the product title template now appends a localized
+   "Price in Pakistan" intent cue for short branded SKUs
+   (`src/app/product/[slug]/page.tsx`); per-SKU `seo_title`/`seo_description`
+   overrides for the dozen highest-impression products are the follow-up.
+2. **Pivot content + the backlink data asset to PCOS/fertility/men's health
+   (Finding 2).** ✅ *Started:* PCOS data-asset draft in
+   `docs/content-drafts/pcos-in-pakistan.md`.
+3. **Backlinks campaign** (`docs/SEO-BACKLINKS.md`) — the long-term authority play.
+4. **Index consolidation (Finding 1).** Self-healing; just submit the sitemap and
+   inspect the new URLs to speed it up. Optional: collapse the legacy two-hop
+   redirect to one.
 5. Skincare/makeup: keep publishing, but treat as a 2–3 quarter horizon.
-
-## Open question for the owner
-
-Is the apex `yellowpink.pk` still served by the **old WordPress** site, and is the
-plan to fully cut over to the Next.js app on `www`? The redirect/consolidation fix
-(Finding 1) depends on that answer. If yes, I'll build the legacy→new 301 map in
-`next.config.ts` from the WP URL list.
