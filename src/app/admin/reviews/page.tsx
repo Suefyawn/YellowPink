@@ -32,7 +32,7 @@ export default async function ReviewsPage({
   searchParams?: Promise<{ error?: string; created?: string; updated?: string }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('reviews')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('reviews'))) {
     return <NoAccess section="Reviews" />;
   }
   const sp = (await searchParams) ?? {};

@@ -21,7 +21,7 @@ export default async function BlogAdminPage({
   searchParams: Promise<{ q?: string; category?: string; page?: string }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('blog')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('blog'))) {
     return <NoAccess section="Blog" />;
   }
   const { q, category, page: pageParam } = await searchParams;

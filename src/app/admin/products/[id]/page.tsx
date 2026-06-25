@@ -66,7 +66,7 @@ export default async function EditProductPage({
   searchParams?: Promise<{ error?: string }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products.edit')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.edit'))) {
     return <NoAccess section="Products" />;
   }
   const { id } = await params;

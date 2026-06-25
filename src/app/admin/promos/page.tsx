@@ -110,7 +110,7 @@ export default async function AdminPromosPage({
   searchParams: Promise<{ edit?: string; error?: string }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('promos')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('promos'))) {
     return <NoAccess section="Promos" />;
   }
 

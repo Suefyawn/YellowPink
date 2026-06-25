@@ -32,7 +32,7 @@ const csvCell = (v: unknown): string => {
 
 export async function GET(req: NextRequest): Promise<Response> {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('customers.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('customers.view'))) {
     return new Response('Forbidden', { status: 403 });
   }
 

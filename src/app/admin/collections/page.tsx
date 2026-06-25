@@ -13,7 +13,7 @@ interface CollectionRow {
 
 export default async function CollectionsPage({ searchParams }: { searchParams?: Promise<{ error?: string; deleted?: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.view'))) {
     return <NoAccess section="Collections" />;
   }
   const sp = (await searchParams) ?? {};

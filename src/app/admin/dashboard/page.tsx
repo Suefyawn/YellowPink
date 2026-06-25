@@ -34,7 +34,7 @@ export default async function DashboardPage() {
   const session = await getStaffSession();
   // Dashboard is the landing surface — anyone with overview OR either of the
   // finer analytics perms can land here; they'll just see fewer widgets.
-  if (session && !canAny(session, ['analytics', 'analytics_traffic', 'analytics_errors'])) {
+  if (!session || !canAny(session, ['analytics', 'analytics_traffic', 'analytics_errors'])) {
     return <NoAccess section="Dashboard" />;
   }
   const canOverview = !session || can(session, 'analytics');

@@ -12,7 +12,7 @@ import { parseCommerceConfig, formatPkr, RETURNS_WINDOW_DAYS } from '@/lib/comme
 
 export default async function WhatsAppHelpPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner) {
+  if (!session || !session.isOwner) {
     return <NoAccess section="WhatsApp setup help" />;
   }
   const configured = hasWhatsApp();
