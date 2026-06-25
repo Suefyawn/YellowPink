@@ -15,7 +15,7 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { isEnabled } from '@/lib/flags';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
-import { taxonForCategory, categoryHref } from '@/lib/category-taxonomy';
+import { taxonForCategory, categoryHref, isHealthCategory } from '@/lib/category-taxonomy';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -35,20 +35,23 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // SERP CTR: short branded SKUs (e.g. "Semofer", "M-Sol Sachet") were ranking
   // page-1 but getting ~0 % CTR with a bare "<name> | Yellow Pink" title — the
   // SERP gave a searcher no reason to click (GSC, 2026-06). Append a localized
-  // commercial-intent cue ("Price in Pakistan") that also matches real queries
-  // ("… price in pakistan"). Gated so it only fires when the name is short
-  // enough to stay inside Google's ~60-char render budget — the root template
-  // adds " | Yellow Pink" (14 chars), so we cap the base at 46 — when there's
-  // no variant suffix, and when the name doesn't already imply geo. Longer,
+  // intent cue. Supplement/medicine SKUs draw heavy *informational* intent
+  // ("calin g tablet uses", "m-sol sachet uses", "meth d tab" — GSC, 2026-06),
+  // so wellness products lead the cue with "Uses" before the commercial "Price
+  // in Pakistan"; beauty products keep the price-only cue. We pick the richest
+  // cue that still fits Google's ~60-char render budget — the root template adds
+  // " | Yellow Pink" (14 chars), so the base is capped at 46 — and only when
+  // there's no variant suffix and the name doesn't already imply geo. Longer,
   // already-descriptive titles (most skincare imports) are left untouched, and
   // an admin `seo_title` override always wins (applied below).
-  const GEO_CUE = ' Price in Pakistan';
-  const autoTitle =
-    !product.variant &&
-    !/pakistan|\bpk\b/i.test(autoTitleBase) &&
-    autoTitleBase.length + GEO_CUE.length <= 46
-      ? `${autoTitleBase}${GEO_CUE}`
-      : autoTitleBase;
+  const CUES = isHealthCategory(product.category)
+    ? [' Uses & Price in Pakistan', ' Price in Pakistan']
+    : [' Price in Pakistan'];
+  const cue =
+    !product.variant && !/pakistan|\bpk\b/i.test(autoTitleBase)
+      ? (CUES.find(c => autoTitleBase.length + c.length <= 46) ?? '')
+      : '';
+  const autoTitle = `${autoTitleBase}${cue}`;
   const baseDescription = product.short_description?.trim()
     ?? (product.description?.trim().slice(0, 160) || `Buy ${displayName} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`);
   // Lead with the unique product name so near-identical shade variants that
@@ -225,6 +228,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Loyalty earn rate (points per PKR) drives the PDP "earn points" nudge.
   // Defaults to the same 0.1 the loyalty settings form seeds.
   const pointsPerPkr = Number(siteSettings.loyalty_points_per_pkr ?? '0.1') || 0;
+  // Points granted when a review is approved (reviews_award_points trigger).
+  // Surfaced on the review form to actually drive review volume → ★ snippets.
+  const reviewPoints = Math.max(0, Number(siteSettings.loyalty_review_points ?? '25') || 0);
 
   const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts] = await Promise.all([
     isDemo
@@ -304,7 +310,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         categoryProducts={categoryProducts}
         excludeIds={[product.id, ...crossSells.map(p => p.id), ...fbt.map(p => p.id)]}
       />
-      <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} />
+      <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} rewardPoints={reviewPoints} />
       <RecentlyViewed currentProductId={product.id} />
     </main>
   );
