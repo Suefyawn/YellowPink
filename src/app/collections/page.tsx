@@ -9,8 +9,8 @@ import { pageMeta, jsonLd, breadcrumbLd } from '@/lib/seo';
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: 'Collections',
-    description: 'Shop our curated collections at Yellow Pink — handpicked edits of authentic, imported beauty and wellness, with cash-on-delivery nationwide in Pakistan.',
+    title: 'Beauty & Wellness Collections in Pakistan',
+    description: 'Shop curated beauty and wellness collections at Yellow Pink — bestsellers, the skincare edit, makeup, supplements and value bundles. Authentic, with cash on delivery across Pakistan.',
     path: '/collections',
   });
 }
@@ -27,7 +27,7 @@ export default async function CollectionsIndexPage() {
       <section style={{ padding: '48px 0 0' }}>
         <div className="container">
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Curated for you</Overline>
-          <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>Collections</h1>
+          <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>Beauty &amp; Wellness Collections</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 32 }}>
             Handpicked and smart edits — the easiest way to find your next favourite.
           </p>

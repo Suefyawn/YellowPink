@@ -8,6 +8,7 @@ import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { loadTagData } from '@/lib/shop-facets';
 import { resolveCollectionProducts, type Collection } from '@/lib/collections';
 import type { Product } from '@/types';
@@ -67,6 +68,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
   return (
     <main className="fade-in">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }} />
+      <Breadcrumbs items={breadcrumb} />
       {list.length > 0 && (
         <script
           type="application/ld+json"

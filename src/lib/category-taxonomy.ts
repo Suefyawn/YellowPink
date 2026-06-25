@@ -177,12 +177,12 @@ export const TAXON_SEO: Record<TaxonKey, { title: string; description: string }>
     description: 'Shop imported makeup at Yellow Pink — foundation, concealer, blush, lip & cheek tints, highlighters and brushes from international brands. 100% authentic, with cash on delivery across Pakistan.',
   },
   skincare: {
-    title: 'Skincare in Pakistan — Buy Authentic',
-    description: 'Shop imported skincare at Yellow Pink — cleansers, serums, moisturisers, sunscreens and K-beauty favourites. 100% authentic, with cash on delivery across Pakistan.',
+    title: 'Skincare in Pakistan — Korean & Imported, Authentic',
+    description: 'Shop imported and Korean skincare products in Pakistan at Yellow Pink — cleansers, serums, moisturisers, sunscreens and K-beauty favourites. 100% authentic, COD nationwide.',
   },
   wellness: {
-    title: 'Wellness & Supplements in Pakistan',
-    description: 'Shop vitamins and supplements at Yellow Pink — immunity, bone & joint, heart, digestive, women’s and men’s health and more. Authentic, with cash on delivery across Pakistan.',
+    title: 'Supplements & Vitamins in Pakistan — Authentic',
+    description: 'Shop health supplements and vitamins in Pakistan at Yellow Pink — immunity, bone & joint, heart, digestive, women’s and men’s health and more. Authentic, with cash on delivery.',
   },
   bundles: {
     title: 'Bundles & Combo Packs in Pakistan',
