@@ -6,9 +6,9 @@ import { BlogPage } from '@/sections/blog/BlogPage';
 export const revalidate = 600;
 
 export const metadata = pageMeta({
-  title: 'Beauty & wellness journal',
+  title: 'Beauty & Wellness Blog — Skincare & Supplement Guides',
   description:
-    'Skin, sleep, and supplement guides from the Yellow Pink editors. Plain-English, evidence-led, no influencer fluff.',
+    'Skincare, makeup, sleep and supplement guides from the Yellow Pink editors — plain-English, evidence-led advice for Pakistan. No influencer fluff.',
   path: '/blog',
 });
 

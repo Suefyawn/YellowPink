@@ -53,15 +53,16 @@ import { socialSameAs } from '@/lib/socials';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    // Homepage title carries the primary geo keyword ("in Pakistan") so the
-    // root domain is a clear landing target for "imported beauty/skincare/
-    // makeup Pakistan" queries — not just the brand name. Child pages use the
-    // template and supply their own title.
-    default: `${SITE_NAME} — Imported Beauty & Wellness in Pakistan`,
+    // Homepage title leads with the concrete high-volume PK head nouns
+    // ("skincare", "makeup", "supplements") + the geo keyword, so the root
+    // domain is a clear landing target for "skincare/skin care products/
+    // korean skincare/makeup Pakistan" queries — not just the brand name.
+    // Child pages use the template and supply their own title.
+    default: `${SITE_NAME} — Skincare, Makeup & Supplements in Pakistan`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    'Shop authentic imported skincare, makeup and wellness supplements at Yellow Pink — 100% genuine international brands, with cash on delivery across Pakistan.',
+    'Shop authentic imported skincare, Korean beauty, makeup and wellness supplements in Pakistan — 100% genuine brands like CeraVe, Anua & The Ordinary, with COD.',
   applicationName: SITE_NAME,
   // We deleted /icon.svg when installing the flower favicon. Next.js
   // auto-generates /icon and /apple-icon link tags from
