@@ -8,6 +8,7 @@ import { DeleteButton } from '@/components/admin/DeleteButton';
 import { BlogFilter } from '@/components/admin/BlogFilter';
 import { Pagination } from '@/components/admin/Pagination';
 import { AdminFab } from '@/components/admin/AdminFab';
+import { ResubmitAllButton } from '@/components/admin/IndexingButtons';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import type { BlogPost } from '@/types';
@@ -54,12 +55,15 @@ export default async function BlogAdminPage({
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Blog Posts</h1>
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{total} post{total !== 1 ? 's' : ''}</p>
         </div>
-        <Link href="/admin/blog/new" style={{
-          padding: '10px 20px', background: '#C5286A', color: 'white',
-          borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
-        }}>
-          + New Post
-        </Link>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <ResubmitAllButton />
+          <Link href="/admin/blog/new" style={{
+            padding: '10px 20px', background: '#C5286A', color: 'white',
+            borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
+          }}>
+            + New Post
+          </Link>
+        </div>
       </div>
 
       <Suspense fallback={null}>

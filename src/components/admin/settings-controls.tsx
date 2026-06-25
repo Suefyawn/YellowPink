@@ -30,7 +30,7 @@ export function Toggle({ name, checked }: { name: string; checked: boolean }) {
     <label style={{ display: 'inline-flex', alignItems: 'center', gap: 10, cursor: 'pointer' }}>
       <input type="hidden" name={name} value="false" />
       <input type="checkbox" name={name} value="true" defaultChecked={checked}
-        style={{ width: 18, height: 18, accentColor: '#6366f1', cursor: 'pointer' }} />
+        style={{ width: 18, height: 18, accentColor: '#C5286A', cursor: 'pointer' }} />
       <span style={{ fontSize: '0.875rem', color: '#374151', fontWeight: 500 }}>Enabled</span>
     </label>
   );
@@ -48,7 +48,7 @@ export function ColorPicker({ name, value, label }: { name: string; value: strin
 
 export function Card({ children }: { children: ReactNode }) {
   return (
-    <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px', marginBottom: 24 }}>
+    <div style={{ background: 'white', borderRadius: 12, border: '1px solid #f0f0f3', boxShadow: '0 1px 2px rgba(16,24,40,0.04), 0 1px 3px rgba(16,24,40,0.06)', padding: '24px', marginBottom: 20 }}>
       {children}
     </div>
   );
@@ -77,7 +77,7 @@ export function PayMethodRow({ name, checked, label, desc }: { name: string; che
           name={name}
           value="true"
           defaultChecked={checked}
-          style={{ width: 18, height: 18, accentColor: '#6366f1', cursor: 'pointer' }}
+          style={{ width: 18, height: 18, accentColor: '#C5286A', cursor: 'pointer' }}
         />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -128,10 +128,10 @@ export function SaveBar() {
       display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
       boxShadow: '0 -6px 18px rgba(0,0,0,0.05)',
     }}>
-      <button type="submit" style={{
-        padding: '11px 28px', background: '#111827', color: 'white',
+      <button type="submit" className="adm-settings-save-btn" style={{
+        padding: '11px 28px', background: '#C5286A', color: 'white',
         border: 'none', borderRadius: 8, fontWeight: 700, fontSize: '0.9375rem',
-        cursor: 'pointer',
+        cursor: 'pointer', transition: 'background 0.15s ease',
       }}>
         Save changes
       </button>
