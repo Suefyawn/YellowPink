@@ -53,6 +53,7 @@ const COMPANY_LINKS = [
   { label: 'About Us',           href: '/page/about' },
   { label: 'Blog',               href: '/blog' },
   { label: 'Editorial Standards', href: '/page/editorial-standards' },
+  { label: 'Medical Review Board', href: '/medical-review-board' },
   { label: 'Contact',            href: '/page/contact' },
   { label: 'Shipping Policy',    href: '/page/shipping' },
 ];
