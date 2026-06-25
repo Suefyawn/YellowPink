@@ -7,6 +7,7 @@ import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { redirectIfMapped } from '@/lib/redirects';
 import type { Product } from '@/types';
 
 // Resolve a tag slug → { name, productIds }. Returns null when the tag
@@ -48,7 +49,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function TagPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const [tag, products] = await Promise.all([loadTag(slug), getProducts()]);
-  if (!tag) notFound();
+  // Legacy WP taxonomy (incl. /product-tag/* funnelled here by the proxy) often
+  // has no live tag — honour a manual redirect before 404ing.
+  if (!tag) { await redirectIfMapped(`/tag/${slug}`); notFound(); }
 
   const list = products.filter(p => tag.productIds.has(p.id));
   const breadcrumb = [
