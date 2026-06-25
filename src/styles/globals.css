@@ -842,6 +842,16 @@ a.underline,
   .adm-table-cards td:not([data-label]) { justify-content: flex-start; }
   /* Un-truncate cell content that ellipsises in the desktop table. */
   .adm-table-cards td div { white-space: normal !important; max-width: 100% !important; }
+  /* Broken-links "Fix" cell: the redirect form needs to go full-width and
+   * stack (label above the input + button) on phones rather than squashing
+   * the input, button and "ignore" link onto one cramped line. */
+  .adm-table-cards td.bl-fix-cell {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: left;
+  }
+  .bl-fix-cell form { width: 100%; }
+  .bl-fix-cell input { width: 100% !important; min-width: 0 !important; box-sizing: border-box; }
 }
 
 /* ── Settings tabs (horizontal) ──────────────────────────────────────────
