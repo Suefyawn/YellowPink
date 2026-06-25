@@ -4,6 +4,7 @@ export const revalidate = 600;
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getBlogPostBySlug, getBlogPosts, getProducts, getSiteSettings } from '@/lib/supabase';
+import { redirectIfMapped } from '@/lib/redirects';
 import { medicalReviewer, type MedicalReviewer } from '@/lib/eeat';
 import { getReviewerById, getActiveReviewers } from '@/lib/reviewers';
 import { isHealthCategory } from '@/lib/category-taxonomy';
@@ -37,7 +38,8 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
     getProducts(),
     getSiteSettings(),
   ]);
-  if (!post) notFound();
+  // Unpublished/renamed post? Honour a manual redirect before 404ing.
+  if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
 
   // E-E-A-T: resolve the medical reviewer for YMYL health posts (same gate as
   // the medical disclaimer). Priority: explicit per-post Review Board

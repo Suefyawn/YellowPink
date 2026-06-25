@@ -6,8 +6,6 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { StarRating } from '@/components/ui/StarRating';
 import { useCart } from '@/context/CartContext';
-import { BackInStockForm } from '@/components/pdp/BackInStockForm';
-import { SubscribeAndSave } from '@/components/pdp/SubscribeAndSave';
 import { ProductDescription } from '@/components/pdp/ProductDescription';
 import { track } from '@/lib/analytics';
 import { tapHaptic } from '@/lib/haptics';
@@ -35,9 +33,6 @@ interface Props {
   variants?: VariantWithOptions[];
   attributes?: AttributeWithValues[];
   gallery?: ProductImageT[];
-  backInStockEnabled?: boolean;
-  /** True for wellness consumables — enables the Subscribe & Save opt-in. */
-  subscribeEligible?: boolean;
   /** Pre-address standard delivery estimate (working days), shown by the buy
    *  panel. Null when no shipping zone configures an ETA. */
   estimatedDays?: { min: number; max: number } | null;
@@ -286,7 +281,7 @@ function Gallery({
 }
 
 // ─── PDPPage ───────────────────────────────────────────────────────────────
-export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], backInStockEnabled = true, subscribeEligible = false, estimatedDays = null, pointsPerPkr = 0 }: Props) {
+export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], estimatedDays = null, pointsPerPkr = 0 }: Props) {
   const [qty, setQty] = useState(1);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
@@ -532,22 +527,6 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               <p className="small-text" style={{ marginTop: -8, marginBottom: 24, color: 'var(--ink-700)' }}>
                 Delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min}–{estimatedDays.max} working days</strong> · COD nationwide
               </p>
-            )}
-
-            {outOfStock && backInStockEnabled && (
-              <div style={{ marginBottom: 24 }}>
-                <BackInStockForm productId={product.id} variantId={activeVariant?.id ?? null} />
-              </div>
-            )}
-
-            {subscribeEligible && (
-              <div style={{ marginBottom: 24 }}>
-                <SubscribeAndSave
-                  productId={product.id}
-                  variantId={activeVariant?.id ?? null}
-                  productName={displayName}
-                />
-              </div>
             )}
 
             {/* WhatsApp CTA — pre-fills the merchant chat with this product's

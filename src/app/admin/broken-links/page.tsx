@@ -49,7 +49,7 @@ export default async function BrokenLinksPage() {
   const inp: React.CSSProperties = {
     padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 7,
     fontSize: '0.8125rem', color: '#111827', background: 'white', outline: 'none',
-    fontFamily: 'monospace', minWidth: 200,
+    fontFamily: 'monospace', flex: '1 1 auto', minWidth: 0,
   };
   const th: React.CSSProperties = {
     textAlign: 'left', padding: '8px 10px', fontSize: '0.6875rem', fontWeight: 600,
@@ -66,7 +66,7 @@ export default async function BrokenLinksPage() {
         a 404 for genuinely removed content is perfectly fine and won&apos;t hurt your ranking.
       </p>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
         <Stat label="Open" value={open.length} />
         <Stat label="Total hits" value={totalHits} />
         <Stat label="Resolved" value={resolved.length} />
@@ -77,7 +77,7 @@ export default async function BrokenLinksPage() {
           ✓ No open broken links. Every 404 has been redirected or reviewed.
         </div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+        <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
               <th style={th}>Path</th>
@@ -90,23 +90,23 @@ export default async function BrokenLinksPage() {
           <tbody>
             {open.map(r => (
               <tr key={r.id}>
-                <td style={{ ...td, fontFamily: 'monospace', wordBreak: 'break-all' }}>{r.path}</td>
-                <td style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{r.hit_count}</td>
-                <td style={{ ...td, whiteSpace: 'nowrap', color: '#6b7280' }}>{ago(r.last_seen)}</td>
-                <td style={{ ...td, color: '#6b7280', fontSize: '0.75rem' }}>
+                <td data-label="Path" style={{ ...td, fontFamily: 'monospace', overflowWrap: 'anywhere' }}>{r.path}</td>
+                <td data-label="Hits" style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{r.hit_count}</td>
+                <td data-label="Last seen" style={{ ...td, whiteSpace: 'nowrap', color: '#6b7280' }}>{ago(r.last_seen)}</td>
+                <td data-label="Source" style={{ ...td, color: '#6b7280', fontSize: '0.75rem' }}>
                   {r.last_referer
-                    ? <span title={r.last_referer} style={{ wordBreak: 'break-all' }}>{r.last_referer}</span>
+                    ? <span title={r.last_referer} style={{ overflowWrap: 'anywhere' }}>{r.last_referer}</span>
                     : (r.is_bot ? 'crawler' : 'direct / unknown')}
                 </td>
-                <td style={td}>
+                <td className="bl-fix-cell" style={td}>
                   <form action={addRedirect} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                     <input type="hidden" name="from_path" value={r.path} />
                     <input name="to_path" placeholder="/shop or /product/…" style={inp} aria-label={`Redirect ${r.path} to`} required />
-                    <button type="submit" className="adm-btn-primary" style={{ padding: '7px 12px', fontSize: '0.8125rem', borderRadius: 7, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                    <button type="submit" className="adm-btn-primary" style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: 7, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
                       Redirect
                     </button>
                   </form>
-                  <form action={ignoreNotFound} style={{ marginTop: 6 }}>
+                  <form action={ignoreNotFound} style={{ marginTop: 8 }}>
                     <input type="hidden" name="path" value={r.path} />
                     <button type="submit" style={{ padding: 0, fontSize: '0.75rem', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
                       Ignore (it&apos;s meant to be gone)
@@ -124,12 +124,12 @@ export default async function BrokenLinksPage() {
           <summary style={{ cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
             Resolved ({resolved.length})
           </summary>
-          <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
             <tbody>
               {resolved.map(r => (
                 <tr key={r.id}>
-                  <td style={{ ...td, fontFamily: 'monospace', color: '#6b7280', wordBreak: 'break-all' }}>{r.path}</td>
-                  <td style={{ ...td, textAlign: 'right', color: '#9ca3af' }}>{r.hit_count} hits</td>
+                  <td data-label="Path" style={{ ...td, fontFamily: 'monospace', color: '#6b7280', overflowWrap: 'anywhere' }}>{r.path}</td>
+                  <td data-label="Hits" style={{ ...td, textAlign: 'right', color: '#9ca3af' }}>{r.hit_count} hits</td>
                   <td style={{ ...td, width: 120 }}>
                     <form action={reopenNotFound}>
                       <input type="hidden" name="path" value={r.path} />

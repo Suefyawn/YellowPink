@@ -4,6 +4,7 @@ export const revalidate = 300;
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getProductBySlug, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings } from '@/lib/supabase';
+import { redirectIfMapped } from '@/lib/redirects';
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
@@ -15,7 +16,7 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { isEnabled } from '@/lib/flags';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
-import { taxonForCategory, categoryHref, isHealthCategory } from '@/lib/category-taxonomy';
+import { categoryHref, isHealthCategory } from '@/lib/category-taxonomy';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -217,10 +218,11 @@ async function loadCrossSells(productId: string, fallbackCategory: string): Prom
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  if (!product) notFound();
+  // Discontinued/renamed product? Honour a manual redirect (admin Broken Links)
+  // before 404ing, so an indexed dead /product/<slug> can point at a live one.
+  if (!product) { await redirectIfMapped(`/product/${slug}`); notFound(); }
 
-  const [backInStockEnabled, reviewPhotosEnabled, estimatedDays, siteSettings] = await Promise.all([
-    isEnabled('back_in_stock'),
+  const [reviewPhotosEnabled, estimatedDays, siteSettings] = await Promise.all([
     isEnabled('reviews_photos'),
     getDefaultEstimatedDays(),
     getSiteSettings(),
@@ -297,8 +299,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         variants={variantData.variants}
         attributes={variantData.attributes}
         gallery={gallery}
-        backInStockEnabled={backInStockEnabled}
-        subscribeEligible={taxonForCategory(product.category)?.key === 'wellness'}
         estimatedDays={estimatedDays}
         pointsPerPkr={pointsPerPkr}
       />

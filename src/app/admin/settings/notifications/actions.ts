@@ -7,7 +7,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import type { NotificationEvent } from '@/lib/notification-recipients';
 
-const VALID_EVENTS: NotificationEvent[] = ['order.new', 'inventory.low'];
+const VALID_EVENTS: NotificationEvent[] = ['order.new', 'seo.broken_links'];
 const PATH = '/admin/settings/notifications';
 
 async function assertOwner() {

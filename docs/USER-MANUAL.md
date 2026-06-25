@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 25 June 2026 (added a Broken links 404 monitor with one-click redirects + daily digest, a floating WhatsApp chat button, optional short product videos in the PDP gallery, the contact-page redesign, and keyword-led SEO meta across the storefront).*
+> *Last updated: 25 June 2026 (removed Subscribe & Save and the stock-alert automation — low-stock digests and back-in-stock notifications — to suit the dropship model; added a Broken links 404 monitor with one-click redirects + daily digest, a floating WhatsApp chat button, optional short product videos in the PDP gallery, the contact-page redesign, and keyword-led SEO meta across the storefront).*
 
 ---
 
@@ -180,7 +180,6 @@ Customers can shop as guests or create an account. A signed-in customer has:
   was skipped.
 - **Addresses** — saved delivery addresses for faster checkout.
 - **Rewards** — loyalty points earned from purchases, redeemable as a discount.
-- **Subscriptions** — reorder reminders for products they buy regularly.
 - **Profile** — their personal details and password.
 
 ### 2.6 Returns
@@ -391,7 +390,7 @@ what — pick a page, edit, hit **Save changes** at the bottom.
 | **Shipping & tax** (`/admin/settings/shipping`) | An **Offer free shipping** master switch, the default shipping rate (the fallback) and free-shipping threshold, tax rate, and per-zone overrides — add named zones (e.g. Karachi, Lahore, Remote) with their own rate, free-shipping threshold, and estimated delivery days. The threshold and the on/off switch flow through the **whole site at once** — the product page, cart progress bar, mini-cart, checkout estimate and the charged shipping all read the same setting, so changing the number (or turning free shipping off entirely) updates everywhere with no stale copy. |
 | **Payments** (`/admin/settings/payments`) | Turn each payment method on or off, and manage the bank/wallet accounts shown to customers paying by transfer. |
 | **Loyalty** (`/admin/settings/loyalty`) | How customers earn and redeem loyalty points. |
-| **Notifications** (`/admin/settings/notifications`) | Add as many staff email addresses as you like and pick which alerts each one receives — **New orders** (every order, immediately), **Low stock** (daily digest when items drop below 5 units), and **Broken links (404s)** (daily digest of newly-broken URLs). If nobody is configured for an event, the alert falls back to the `OWNER_EMAIL` env var so existing behaviour is unchanged. |
+| **Notifications** (`/admin/settings/notifications`) | Add as many staff email addresses as you like and pick which alerts each one receives — **New orders** (every order, immediately) and **Broken links (404s)** (daily digest of newly-broken URLs). If nobody is configured for an event, the alert falls back to the `OWNER_EMAIL` env var so existing behaviour is unchanged. |
 | **Integrations** (`/admin/settings/integrations`) | Live status for every third-party service the store uses — Resend (email), PostHog, Sentry, Upstash, JazzCash, Easypaisa, Search Console, Meta Pixel, WhatsApp. Each card shows whether its env vars are set and (for analytics services) when data last synced. Secret values are never displayed. This is also where you paste the **Search Console** and **Meta (Facebook/Instagram) domain-verification** codes — the latter is required in Meta Business Manager before you can run conversion ads. It's also where you set a **Medical reviewer** (name + credentials + optional profile link): when set, your health/supplement journal articles show a *"Medically reviewed by …"* byline and emit reviewer schema — the strongest E-E-A-T trust signal for that content. Use a **real** clinician only; leave blank if you don't have one and nothing is shown. |
 
 Saved changes apply to the storefront within a few minutes (storefront pages

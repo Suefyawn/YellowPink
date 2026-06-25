@@ -16,7 +16,6 @@ interface Flag {
 // Hard-coded fallbacks matching the seeds in 20260523_060_feature_flags.sql.
 // Used when (a) demo mode is on (no DB), or (b) the table is empty for that key.
 const DEFAULTS: Record<string, boolean> = {
-  back_in_stock:     true,
   reviews_photos:    true,
   promo_banner:      true,
   exit_intent_modal: false,
