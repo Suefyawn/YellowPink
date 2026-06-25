@@ -8,6 +8,8 @@ import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
 import { absoluteUrl } from '@/lib/seo';
+import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
+import { isHealthCategory } from '@/lib/category-taxonomy';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
@@ -102,6 +104,10 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
         </p>
       )}
 
+      {/* YMYL safeguard: health/wellness articles carry a medical disclaimer
+          (educational, not advice). Beauty posts don't. */}
+      {isHealthCategory(post.category) && <MedicalDisclaimer variant="editorial" />}
+
       {/* Bottom-of-post share strip — catches the reader who finishes the
           article and is most likely to share. */}
       <BlogShareStrip title={post.title} url={absoluteUrl(`/blog/${post.slug}`)} excerpt={post.excerpt} />
@@ -131,15 +137,23 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
           </div>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.75rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 16, maxWidth: 880 }}>{post.title}</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', fontSize: '1.0625rem', lineHeight: 1.6, marginBottom: 24, maxWidth: 720 }}>{post.excerpt}</p>
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 16 }}>
-            <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>YP</span>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>Yellow Pink Editorial</div>
-              <div className="small-text">{post.date}</div>
-            </div>
-          </div>
+          {(() => {
+            const author = post.author?.trim() || 'Yellow Pink Editorial Team';
+            const initials = author
+              .replace(/^(dr|mr|ms|mrs)\.?\s+/i, '')
+              .split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || 'YP';
+            return (
+              <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 16 }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{initials}</span>
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>By {author}</div>
+                  <div className="small-text">{post.date}</div>
+                </div>
+              </div>
+            );
+          })()}
           <BlogShareStrip title={post.title} url={absoluteUrl(`/blog/${post.slug}`)} excerpt={post.excerpt} />
           <div style={{ borderBottom: '1px solid var(--line)', marginTop: 16 }} />
         </div>
@@ -182,7 +196,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
             <section style={{ padding: '48px 0' }}>
               <div className="container">
                 <Overline style={{ display: 'block', marginBottom: 24 }}>More from {post.category}</Overline>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 'var(--gutter)' }} className="duo-grid">
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="blog-grid">
                   {relatedPosts.map((rp) => (
                     <Link key={rp.id} href={`/blog/${rp.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <article style={{ cursor: 'pointer' }}>

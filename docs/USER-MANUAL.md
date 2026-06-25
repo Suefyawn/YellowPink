@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 21 June 2026.*
+> *Last updated: 22 June 2026 (added the programmatic blog management API + image upload, the HTML sitemap page and per-post blog author byline).*
 
 ---
 
@@ -56,7 +56,13 @@ customers and spot where an order is.
 
 - **Home page** — the landing page. It shows a hero banner, curated product
   rails (featured items, bestsellers, wellness picks), shop-by-category tiles,
-  the latest blog posts, and trust/press sections. It also features **The
+  the latest blog posts, and trust/press sections. A dedicated **"Beauty starts
+  from within"** wellness showcase presents every health concern (Women's
+  Health, Immunity, Bone & Joint, and more) as its own card with a live product
+  count and "from" price, a featured wellness rail, and supplement-specific
+  assurances (authentic, sealed & in-date, cash on delivery). The concern cards
+  and counts are generated automatically from the live catalogue, so they never
+  drift from what's actually in stock. It also features **The
   K-Beauty Edit** — a band showcasing products from curated Korean beauty
   brands, linking to the K-Beauty collection page. The band appears
   automatically once at least one product from a listed K-beauty brand is
@@ -71,12 +77,14 @@ customers and spot where an order is.
   beyond setting its brand.
 - **Brand pages** (`/brand/<brand>`) — every brand has its own landing page
   with that brand's products, reachable from the **All Brands** directory
-  (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each has a
-  "Filter & sort all …" link through to the Shop page. These appear and update
-  automatically from the brands on your products — nothing to configure.
+  (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each page has
+  its own on-page **sort** (Featured / Newest / Price / Name), **category
+  filter** chips, and an **in-stock** toggle, so shoppers refine right there
+  without leaving the page. These appear and update automatically from the
+  brands on your products — nothing to configure.
 - **Tag pages** (`/tag/<tag>`) — each product tag has its own landing page
-  listing the tagged products, created automatically from the tags you set in
-  admin.
+  listing the tagged products with the same on-page sort + filter controls,
+  created automatically from the tags you set in admin.
 - **Collection pages** (`/collection/<slug>`) — curated edits you build in
   admin (Collections), each with its own hero, description, and product grid.
   Manual collections show a hand-picked, ordered list; smart collections fill
@@ -106,6 +114,11 @@ customers and spot where an order is.
   a shipping zone has a delivery estimate configured, an **estimated delivery
   time** ("Delivery in X–Y working days · COD nationwide") shows by the
   Add-to-Cart button.
+- **Sitemap page** (`/sitemap`, linked from the footer Help column) — a single
+  human-readable index of the whole store: every shop category (grouped by
+  Makeup / Skincare / Wellness), all collections, brands, journal posts and
+  information pages, each one click away. It complements the machine
+  `/sitemap.xml` that search engines read.
 
 ### 2.2 Cart and checkout
 
@@ -180,6 +193,34 @@ for you to approve or reject.
 - **Newsletter** — customers can subscribe via the footer sign-up form or the
   prompt shown after a purchase.
 
+### 2.8 Getting in touch
+
+The **Contact** page (linked in the footer) offers WhatsApp and a **contact
+form**. A customer fills in their name, email, an optional subject, and their
+message; on submit it's saved to the store and the owner is emailed a copy.
+Staff then read and reply under **Admin → Messages**
+([section 3.2](#32-the-sections)), where each customer's messages and your
+replies are threaded into one conversation — you reply from the admin and it
+goes out from your store address by email, all kept on record. This is the
+path for non-order questions now that there's no shared support mailbox.
+
+**Inbound email (optional).** Emails sent *directly* to your store address
+(e.g. `hello@yellowpink.pk`) can also be funnelled into **Admin → Messages**
+so they're answered in the same place — those rows carry an **Email** tag. It
+uses **Resend** (already powering the store's outgoing email), so there's no
+new provider to sign up for. One-time setup by whoever manages the domain:
+
+1. **Resend → Domains** → enable receiving for `yellowpink.pk` and add the
+   **MX record** it shows to your DNS.
+2. **Resend → Webhooks** → add an endpoint for the **`email.received`** event
+   pointing at `https://www.yellowpink.pk/api/inbound-email`, and copy its
+   **signing secret** into the `RESEND_INBOUND_WEBHOOK_SECRET` Vercel
+   environment variable, then redeploy.
+
+Until that's done, only contact-form messages appear; direct emails are
+unaffected. (`RESEND_API_KEY`, already set for sending, is reused to fetch the
+message body.)
+
 ---
 
 ## 3. The admin panel — a tour
@@ -229,8 +270,9 @@ together. Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Promos** | The promotional banner shown on the storefront — content, colours, and on/off. |
-| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. |
+| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. Each post has an **Author** field for the byline (defaults to "Yellow Pink Editorial Team"); naming a real expert on health/beauty posts strengthens their search-engine trust signals. |
 | **Reviews** | Moderate customer reviews (approve, unapprove, edit, delete) and seed reviews yourself (migration / phoned-in feedback). |
+| **Messages** | A **threaded inbox** for the storefront **contact form** and **inbound email** (direct emails to your store address show an **Email** tag). Messages are grouped into **conversations by customer**, shown as a chat (their messages on the left, your replies on the right). **Reply right here** — the box at the bottom of a conversation sends your reply **from your store address via email**, and the reply is saved into the thread, so the whole exchange stays on record. When the customer replies, it threads back into the same conversation automatically. Per-conversation **Mark read** / **Archive** / **Restore**. The Messages menu item shows a pink badge with the unread count, and the bell notifies on new **incoming** messages (your own replies don't notify). |
 | **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |
 
 **Store** — admin internals
@@ -481,6 +523,65 @@ them again.
 4. The dashboard's *Products* and *Merchant listings* tiles show counts of
    pages Google has validated, not your full catalogue. Numbers grow as
    Google crawls; the sitemap submission above is what drives that.
+
+**Automatic search-engine indexing (built in)**
+
+You don't have to manually "Request indexing" for every page — the store pings
+search engines for you through two channels:
+
+- **IndexNow** (Bing, Yandex, Naver) — works out of the box, nothing to set up.
+- **Google Indexing API** — optional. It stays off until you add a Google Cloud
+  service-account key (env var `GOOGLE_INDEXING_CREDENTIALS`) and add that
+  service account as an *Owner* in Search Console. Until then, Google still
+  discovers pages via the sitemap above.
+
+How it's used:
+
+- **Automatic** — whenever you publish or edit a product or a blog post, its
+  URL is submitted automatically.
+- **Per page** — the product and blog editors have a **Submit to index** button
+  to re-send a single page on demand.
+- **Whole site** — the Blog list page has a **Resubmit all to index** button
+  that sends the entire live catalogue and blog to IndexNow in one go.
+
+A small toast confirms each submission and shows which channels accepted it.
+(Note: Google's direct API has a small daily quota and officially targets
+job/event pages, so the "resubmit all" button uses IndexNow only; Google is
+pinged per page on publish.)
+
+**Blog management API (for automation / AI content pipelines)**
+
+Besides the admin editor, the journal can be managed programmatically over a
+small HTTP API — handy for bulk imports, a publishing schedule, or an AI
+content pipeline that drafts and posts articles. It's **off until you set a
+token**, so it can never be left open by accident.
+
+1. Generate a long random token (e.g. `openssl rand -hex 32`).
+2. In Vercel → Project → Settings → Environment Variables, add
+   `BLOG_API_TOKEN` = that value for Production, and redeploy.
+3. Every request must send the header `Authorization: Bearer <token>`. While the
+   variable is unset, the endpoints return `503`.
+
+Endpoints (base `https://www.yellowpink.pk/api/blog`):
+
+| Method & path | What it does |
+|---|---|
+| `GET /api/blog` | List posts, newest first. Filters: `?category=`, `?featured=true`, `?q=` (title/excerpt search), `?limit=` (max 100), `?offset=`. |
+| `POST /api/blog` | Create a post. JSON body: `title`, `slug`, `excerpt`, `category` required; optional `body`, `image_url`, `author`, `read_time`, `featured`, `date` (defaults to today). |
+| `GET /api/blog/{id-or-slug}` | Fetch one post. |
+| `PATCH /api/blog/{id-or-slug}` | Update any subset of fields. |
+| `DELETE /api/blog/{id-or-slug}` | Delete a post. |
+
+To attach a **featured image**, set `image_url` to a hosted URL. If your
+automation has the image as a file, upload it first via `POST /api/media`
+(same `Authorization: Bearer` token; send `multipart/form-data` with a `file`
+field — JPG/PNG/WebP/AVIF, up to 5 MB). It returns `{ "url": "…" }`; pass that
+back as the post's `image_url`. This keeps the whole flow API-only — no admin
+session needed.
+
+Posts created or edited this way go live immediately and are auto-submitted to
+the search engines, exactly like the admin editor. A duplicate slug returns
+`409`; invalid fields return `422` with details.
 
 **Google Analytics 4 (visitor behaviour)**
 

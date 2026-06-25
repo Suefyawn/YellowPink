@@ -26,3 +26,23 @@ export async function assertPermission(perm: Permission): Promise<StaffSession> 
   if (!can(session, perm)) throw new Error('Unauthorized');
   return session;
 }
+
+/**
+ * Page-level "should this surface be hidden?" check.
+ *
+ * Returns true when the request lacks the required permission — including the
+ * crucial **null session** case. The historical pattern at call sites was:
+ *
+ *   if (session && !session.isOwner && !session.permissions.includes('X')) { ... }
+ *
+ * which silently FALLS THROUGH for null sessions, leaving admin pages and
+ * actions reachable by an unauthenticated POST/GET (there is no middleware
+ * gating /admin/* beyond what each page does itself). Use this helper instead
+ * so the gate covers the null-session case by construction. For server actions
+ * that should throw, prefer assertPermission() above.
+ */
+export function lacksPermission(session: StaffSession | null, perm: Permission): boolean {
+  if (!session) return true;
+  if (session.isOwner) return false;
+  return !can(session, perm);
+}

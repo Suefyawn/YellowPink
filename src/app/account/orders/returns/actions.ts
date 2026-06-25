@@ -4,8 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { createServerSupabase as authedClient } from '@/lib/supabase-server';
 import { reviewLimiter, ipFromHeaders } from '@/lib/ratelimit';
+import { supabaseAdmin } from '@/lib/supabase';
+import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { brandPlusName } from '@/lib/product-display';
 
-interface ReturnItem { product_id: string; qty: number; name: string; price: number }
+// A stored return line, reconstructed server-side from the order snapshot.
+interface ReturnItem { product_id: string; qty: number; name: string; price: number; variant_id: string | null }
 
 // authedClient() is the @supabase/ssr server client — reads the customer's
 // session from cookies so RLS on order returns applies.
@@ -13,7 +17,10 @@ interface ReturnItem { product_id: string; qty: number; name: string; price: num
 export async function requestReturn(args: {
   order_id: string;
   reason: string;
-  items: ReturnItem[];
+  /** Indexes into the order's items array + the qty being returned for each.
+   *  We deliberately DON'T take price/name from the client — those are read
+   *  back from the order so a tampered payload can't inflate a refund. */
+  items: { index: number; qty: number }[];
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
   const h = await headers();
   const { success } = await reviewLimiter.limit(`return:${ipFromHeaders(h)}`);
@@ -27,12 +34,68 @@ export async function requestReturn(args: {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return { ok: false, error: 'You must be signed in' };
 
+  // ── Server-side eligibility: never trust the client. The /new form gates on
+  // these too, but a direct action call bypasses the UI. The RLS insert policy
+  // only checks user_id, NOT that the order belongs to the user — so without
+  // this block a customer could file a return against someone else's order. ──
+  const admin = supabaseAdmin();
+  const { data: order } = await admin
+    .from('orders')
+    .select('id, user_id, status, items, created_at')
+    .eq('id', args.order_id)
+    .maybeSingle();
+  // Same "Order not found" message whether the order is missing or owned by
+  // someone else, so we don't confirm the existence of other people's orders.
+  if (!order || order.user_id !== user.id) return { ok: false, error: 'Order not found' };
+  if (order.status !== 'delivered') {
+    return { ok: false, error: 'This order isn’t delivered yet, so it isn’t eligible for a return.' };
+  }
+
+  // Returns window is measured from the delivery date (the order_events row for
+  // the delivered transition); fall back to the order date if that event is
+  // missing. Only reject when we can positively place it past the window — a
+  // missing timestamp shouldn't block a legitimate return.
+  const { data: deliveredEvt } = await admin
+    .from('order_events')
+    .select('created_at')
+    .eq('order_id', order.id)
+    .eq('to_status', 'delivered')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const deliveredAt = (deliveredEvt?.created_at as string | undefined) ?? order.created_at;
+  if (deliveredAt && Date.now() - new Date(deliveredAt).getTime() > RETURNS_WINDOW_DAYS * 86_400_000) {
+    return { ok: false, error: `The ${RETURNS_WINDOW_DAYS}-day return window for this order has closed.` };
+  }
+
+  // Reconstruct each line from the order snapshot: price, name and variant come
+  // from our record (not the client), and qty is clamped to what was ordered.
+  // This is what makes the downstream refund amount and the restock-on-receive
+  // (which needs variant_id) trustworthy.
+  type OrderLine = { id?: string; name?: string; brand?: string | null; price?: number; qty?: number; variant_id?: string | null };
+  const orderItems = (order.items ?? []) as OrderLine[];
+  const lines: ReturnItem[] = [];
+  for (const sel of args.items) {
+    const src = orderItems[sel.index];
+    if (!src || !src.id) continue;
+    const qty = Math.min(Math.floor(Number(sel.qty)), Number(src.qty ?? 0));
+    if (!Number.isFinite(qty) || qty <= 0) continue;
+    lines.push({
+      product_id: src.id,
+      qty,
+      name: brandPlusName(src.brand, src.name ?? ''),
+      price: Number(src.price ?? 0),
+      variant_id: src.variant_id ?? null,
+    });
+  }
+  if (lines.length === 0) return { ok: false, error: 'Select at least one item to return.' };
+
   const { data, error } = await sb.from('return_requests').insert({
-    order_id:    args.order_id,
+    order_id:    order.id,
     user_id:     user.id,
     email:       user.email ?? null,
     reason:      args.reason.trim(),
-    items:       args.items,
+    items:       lines,
     status:      'pending',
   }).select('id').single();
 
@@ -46,7 +109,6 @@ export async function requestReturn(args: {
 // client; declaring them here keeps the customer/admin paths colocated.
 
 import { getStaffSession } from '@/lib/staff-auth';
-import { supabaseAdmin } from '@/lib/supabase';
 import { logAudit } from '@/lib/audit';
 
 async function assertOrders() {
@@ -76,6 +138,16 @@ export async function approveReturn(args: {
     .single();
   if (!row) return { error: 'return request not found' };
   if (row.status !== 'pending') return { error: `cannot approve a ${row.status} request` };
+
+  // Cap the refund at the value of the returned items so an admin typo
+  // (50000 for a 5000 return) can't silently overpay / over-credit. The items
+  // + prices were reconstructed server-side at request time, so this bound is
+  // trustworthy. A small epsilon tolerates rounding.
+  const itemsValue = ((row.items ?? []) as Array<{ price?: number; qty?: number }>)
+    .reduce((s, i) => s + Number(i.price ?? 0) * Number(i.qty ?? 0), 0);
+  if (args.refund_amount > itemsValue + 0.5) {
+    return { error: `Refund (PKR ${Math.round(args.refund_amount)}) exceeds the returned items' value (PKR ${Math.round(itemsValue)}).` };
+  }
 
   const { error } = await admin
     .from('return_requests')

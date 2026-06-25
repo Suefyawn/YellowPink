@@ -6,7 +6,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 
 export default async function EditBlogPostPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('blog')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('blog'))) {
     return <NoAccess section="Blog" />;
   }
   const { id } = await params;

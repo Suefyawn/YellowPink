@@ -10,8 +10,8 @@ import { getBrandDirectory } from '@/lib/brands';
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMeta({
-    title: 'All Brands',
-    description: 'Browse every brand at Yellow Pink — authentic, imported skincare, makeup and wellness, with cash-on-delivery nationwide in Pakistan.',
+    title: 'Beauty, Skincare & Makeup Brands in Pakistan',
+    description: 'Browse every brand at Yellow Pink — authentic imported skincare, makeup and wellness brands like CeraVe, Anua, The Ordinary and Beauty of Joseon, with cash on delivery across Pakistan.',
     path: '/brands',
   });
 }

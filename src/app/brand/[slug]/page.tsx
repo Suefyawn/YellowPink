@@ -5,9 +5,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getProducts } from '@/lib/supabase';
-import { ProductTile } from '@/components/ui/ProductTile';
+import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { brandNameFromSlug, brandSlug, getBrandRecord } from '@/lib/brands';
 import type { Product } from '@/types';
 
@@ -16,12 +17,20 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const [products, record] = await Promise.all([getProducts(), getBrandRecord(slug)]);
   const brand = record?.name ?? brandNameFromSlug(slug, products);
   if (!brand) return pageMeta({ title: 'Brand', description: 'Shop by brand at Yellow Pink.', path: `/brand/${slug}` });
+  // Lead the title with "Buy <brand> in Pakistan" — PK shoppers search the
+  // brand name + "pakistan" (e.g. "cerave pakistan", "the ordinary pakistan"),
+  // so front-loading that intent beats a bare "<brand> — Shop".
   return pageMeta({
-    title: record?.seo_title || `${brand} — Shop`,
+    title: record?.seo_title || `Buy ${brand} in Pakistan — Authentic`,
     description: record?.seo_description
       || record?.description
-      || `Shop the ${brand} range at Yellow Pink — 100% authentic, imported ${brand}, with cash-on-delivery nationwide in Pakistan.`,
+      || `Shop authentic, imported ${brand} in Pakistan at Yellow Pink — original products at the best prices, with cash on delivery nationwide.`,
     path: `/brand/${brandSlug(brand)}`,
+    keywords: [brand, `${brand} Pakistan`, `${brand} price in Pakistan`, 'COD'],
+    // Representative packshot as the share image (products already fetched
+    // above, so this is free) — bespoke social card per brand instead of the
+    // generic fallback. Falls through to app/opengraph-image.tsx if none.
+    image: products.find(p => p.brand === brand && p.image_url)?.image_url || undefined,
   });
 }
 
@@ -50,6 +59,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   return (
     <main className="fade-in">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }} />
+      <Breadcrumbs items={breadcrumb} />
       {list.length > 0 && (
         <script
           type="application/ld+json"
@@ -109,9 +119,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
           {list.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
-              {list.map(p => <ProductTile key={p.id} product={p} />)}
-            </div>
+            <ProductBrowser products={list} />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
               This brand is restocking — <Link href="/shop" className="text-link">browse the full catalogue</Link> in the meantime.

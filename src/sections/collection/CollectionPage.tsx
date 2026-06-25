@@ -6,7 +6,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { track } from '@/lib/analytics';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
-import { TAXONS, findTaxon, taxonForCategory, canonicalCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
+import { TAXONS, findTaxon, taxonForCategory, canonicalCategory, CATEGORY_DESCRIPTIONS, CATEGORY_INTRO } from '@/lib/category-taxonomy';
 import type { Product, ProductAttribute, AttributeValue } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -480,10 +480,13 @@ export function CollectionPage({
         <div className="container">
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Shop</Overline>
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{pageTitle}</h1>
-          <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 480, marginBottom: 32 }}>
+          <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 560, marginBottom: 32 }}>
             {singleBrand
               ? `Explore the full ${singleBrand} range at Yellow Pink — 100% authentic, imported, with cash-on-delivery across Pakistan.`
-              : (activeSubcategory ? CATEGORY_DESCRIPTIONS[activeSubcategory] : undefined)
+              // Prefer the richer keyword-led intro for wellness head-term pages;
+              // fall back to the short CATEGORY_DESCRIPTIONS blurb otherwise.
+              : (activeSubcategory ? CATEGORY_INTRO[activeSubcategory] ?? CATEGORY_DESCRIPTIONS[activeSubcategory] : undefined)
+                ?? CATEGORY_INTRO[activeCategory]
                 ?? CATEGORY_DESCRIPTIONS[activeCategory]
                 ?? CATEGORY_DESCRIPTIONS.All}
           </p>

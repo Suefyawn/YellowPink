@@ -8,6 +8,7 @@ import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { loadTagData } from '@/lib/shop-facets';
 import { resolveCollectionProducts, type Collection } from '@/lib/collections';
 import type { Product } from '@/types';
@@ -28,6 +29,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: c.seo_title || `${c.title} — Shop`,
     description: c.seo_description || c.description || `Shop the ${c.title} collection at Yellow Pink — authentic, imported, with cash-on-delivery nationwide in Pakistan.`,
     path: `/collection/${c.slug}`,
+    // Use the collection's own hero as the share image so social cards /
+    // SERP thumbnails are bespoke per collection instead of the generic
+    // branded fallback. Falls through to app/opengraph-image.tsx when a
+    // collection has no hero set.
+    image: c.hero_image_url || undefined,
   });
 }
 
@@ -62,6 +68,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
   return (
     <main className="fade-in">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }} />
+      <Breadcrumbs items={breadcrumb} />
       {list.length > 0 && (
         <script
           type="application/ld+json"

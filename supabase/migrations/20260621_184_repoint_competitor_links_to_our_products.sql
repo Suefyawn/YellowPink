@@ -1,0 +1,4 @@
+-- Repointed ~30 outbound competitor/commercial links in old WP posts to our
+-- own equivalent product/category pages (conversion + stop equity leak); two
+-- with no equivalent were unlinked (text kept). Medical/journal citations left
+-- intact. Applied to live DB via Supabase MCP; this file is the repo record.
