@@ -27,6 +27,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL('/checkout?error=payment_config', req.url), 303);
   }
 
+  // Refuse any callback with a bad signature BEFORE we touch the database.
+  // Otherwise an attacker who guesses a (predictable) txn_ref can pollute the
+  // existing payments row's status / raw_payload / error_message with
+  // attacker-supplied data, even though the order itself is protected
+  // downstream by the amount + status guards.
+  if (!verification.ok) {
+    return NextResponse.redirect(new URL(`/checkout?error=signature`, req.url), 303);
+  }
+
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -39,10 +48,6 @@ export async function POST(req: NextRequest) {
     raw_payload: raw,
     error_message: verification.status === 'failed' ? verification.responseMessage : null,
   }).eq('gateway', 'jazzcash').eq('txn_ref', verification.txnRef);
-
-  if (!verification.ok) {
-    return NextResponse.redirect(new URL(`/checkout?error=signature`, req.url), 303);
-  }
 
   const { data: order } = await sb
     .from('orders')

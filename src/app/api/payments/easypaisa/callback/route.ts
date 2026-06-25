@@ -25,6 +25,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL('/checkout?error=payment_config', req.url), 303);
   }
 
+  // Refuse any callback with a bad signature BEFORE we touch the database.
+  // The order_number rides in the redirect URL and is therefore easy for an
+  // attacker to discover; without this early-return a forged callback would
+  // still pollute the matching payments row's status / raw_payload.
+  if (!verification.ok) {
+    return NextResponse.redirect(new URL(`/checkout?error=signature`, req.url), 303);
+  }
+
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -46,10 +54,6 @@ export async function POST(req: NextRequest) {
     raw_payload: raw,
     error_message: verification.status === 'failed' ? verification.responseMessage : null,
   }).eq('gateway', 'easypaisa').eq('order_id', order.id);
-
-  if (!verification.ok) {
-    return NextResponse.redirect(new URL(`/checkout?error=signature`, req.url), 303);
-  }
 
   // P0-3: amount-tamper defence — gateway must report what we billed.
   const orderPaisa = Math.round(Number(order.total) * 100);
