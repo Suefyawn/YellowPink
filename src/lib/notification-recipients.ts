@@ -14,18 +14,13 @@ import { log } from './logger';
 
 const FALLBACK_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
 
-export type NotificationEvent = 'order.new' | 'inventory.low' | 'seo.broken_links';
+export type NotificationEvent = 'order.new' | 'seo.broken_links';
 
 export const NOTIFICATION_EVENTS: { key: NotificationEvent; label: string; desc: string }[] = [
   {
     key: 'order.new',
     label: 'New orders',
     desc: 'Every time a customer places an order. One email per order.',
-  },
-  {
-    key: 'inventory.low',
-    label: 'Low stock',
-    desc: 'Daily digest when any product drops below 5 units in stock.',
   },
   {
     key: 'seo.broken_links',

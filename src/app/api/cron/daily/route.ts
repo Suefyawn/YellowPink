@@ -1,12 +1,15 @@
 // ============================================================================
 // Consolidated daily cron. Runs these jobs sequentially:
 //   1. abandoned-cart       — drip emails to carts left for 24 h / 72 h
-//   2. back-in-stock        — notify watchers whose product came back
-//   3. courier-sync         — poll courier APIs for in-transit shipments
-//   4. review-requests      — ask for reviews on orders delivered 3–30 days ago
-//   5. low-stock            — email the owner a low-stock restock digest
-//   6. not-found-digest     — email the owner newly-broken (404) URLs
-//   7. analytics-refresh    — refresh PostHog + Sentry dashboard widgets
+//   2. courier-sync         — poll courier APIs for in-transit shipments
+//   3. review-requests      — ask for reviews on orders delivered 3–30 days ago
+//   4. stuck-payments       — flag orders stuck mid-payment for follow-up
+//   5. not-found-digest     — email the owner newly-broken (404) URLs
+//   6. analytics-refresh    — refresh PostHog + Sentry dashboard widgets
+//
+// Removed: low-stock + back-in-stock. The store runs a dropship model, so
+// shelf stock isn't tracked and there's nothing to restock-alert or notify
+// watchers about — those jobs (and their email senders + routes) were deleted.
 //
 // Vercel Hobby allows only 2 cron entries per project and only at
 // daily-or-less-frequent schedules. The previous setup (three crons,
@@ -16,8 +19,8 @@
 // handlers via in-process fetch — keeps the per-job logic untouched.
 //
 // Upgrade path: when the project moves to Vercel Pro, split this back
-// into three crons (`abandoned-cart` + `back-in-stock` daily, plus
-// `courier-sync` every 30 min) for fresher tracking updates.
+// into separate crons (e.g. `abandoned-cart` daily, `courier-sync`
+// every 30 min) for fresher tracking updates.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -74,10 +77,8 @@ export async function GET(req: NextRequest) {
   // long-runs, and so a failure in one job doesn't abort the others.
   const results: SubJobResult[] = [];
   results.push(await runJob(req, '/api/cron/abandoned-cart'));
-  results.push(await runJob(req, '/api/cron/back-in-stock'));
   results.push(await runJob(req, '/api/cron/courier-sync'));
   results.push(await runJob(req, '/api/cron/review-requests'));
-  results.push(await runJob(req, '/api/cron/low-stock'));
   results.push(await runJob(req, '/api/cron/stuck-payments'));
   results.push(await runJob(req, '/api/cron/not-found-digest'));
   results.push(await runJob(req, '/api/cron/analytics-refresh'));

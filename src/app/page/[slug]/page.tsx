@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { supabase, isDemo, getSiteSettings } from '@/lib/supabase';
+import { redirectIfMapped } from '@/lib/redirects';
 import { parseCommerceConfig } from '@/lib/commerce';
 import { DEMO_PAGES } from '@/lib/demo-data';
 import { sanitizeHtml } from '@/lib/sanitize';
@@ -47,7 +48,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function StaticPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const page = await loadPage(slug);
-  if (!page) notFound();
+  // No live page? An old WP URL (e.g. /page/home, a draft import Google still
+  // has indexed) may have a manual redirect — honour it before 404ing.
+  if (!page) { await redirectIfMapped(`/page/${slug}`); notFound(); }
 
   // body_html is sanitised once at import-time (see importer) but defensively
   // re-sanitise here in case content was edited via raw SQL.

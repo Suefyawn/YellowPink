@@ -16,7 +16,6 @@ import { Resend } from 'resend';
 import * as Sentry from '@sentry/nextjs';
 import { log } from './logger';
 import { stripEmoji } from './text';
-import { brandPlusName } from './product-display';
 import { supabaseAdmin } from './supabase';
 import { SITE_URL } from './seo';
 import { getRecipientsForEvent } from './notification-recipients';
@@ -24,8 +23,8 @@ import { getWelcomeOffer } from './offers';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 // OWNER_EMAIL stays as the fallback recipient and as a reply-to address on
-// outgoing customer mail. Active fan-out for new-order + low-stock alerts
-// now goes through notification_recipients; this env var only kicks in when
+// outgoing customer mail. Active fan-out for new-order alerts now goes
+// through notification_recipients; this env var only kicks in when
 // nobody is configured (or the lookup fails).
 const OWNER_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
 const FROM = process.env.EMAIL_FROM ?? 'Yellow Pink Orders <orders@yellowpink.pk>';
@@ -498,26 +497,6 @@ export async function sendAbandonedCartEmail(args: {
   });
 }
 
-// ─── 10. Customer: back-in-stock ────────────────────────────────────────────
-export async function sendBackInStockEmail(args: {
-  email: string;
-  product_name: string;
-  product_url: string;
-  image_url?: string;
-}): Promise<void> {
-  const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:18px">It's back in stock!</h2>
-    <p>The product you asked us to watch is now available again:</p>
-    <p style="margin:14px 0"><strong>${escapeHtml(args.product_name)}</strong></p>
-    ${args.image_url ? `<img src="${escapeHtml(args.image_url)}" alt="${escapeHtml(args.product_name)}" style="max-width:280px;border-radius:8px;border:1px solid #e5e7eb"/>` : ''}
-    <p style="margin:24px 0 0">
-      <a href="${escapeHtml(args.product_url)}" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Shop now →</a>
-    </p>
-    <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Stock moves fast — finish your order soon if you don't want to miss it.</p>
-  `);
-  await send({ to: args.email, subject: `Back in stock: ${args.product_name}`, html, kind: 'batch' });
-}
-
 // ─── 11.5. Customer: newsletter welcome ─────────────────────────────────────
 // Fires immediately after a newsletter signup succeeds. Sets expectations
 // (one email a fortnight, what's in it), confirms the email is on file, and
@@ -667,23 +646,6 @@ export async function sendStuckPaymentsAlertEmail(args: {
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/orders?status=payment_pending" style="color:${BRAND_PINK};font-weight:600">→ Review pending payments</a></p>
   `);
   await send({ to: OWNER_EMAIL, subject: `Action needed — ${args.orders.length} payment${args.orders.length === 1 ? '' : 's'} stuck pending`, html, kind: 'batch' });
-}
-
-// ─── 11. Owner: low-stock alert (background job) ────────────────────────────
-export async function sendLowStockAlertEmail(args: { products: { name: string; brand: string; stock: number; slug: string }[] }) {
-  if (!args.products.length) return;
-  const rows = args.products.map(p =>
-    `<tr><td style="padding:6px 8px;font-size:14px">${escapeHtml(brandPlusName(p.brand, p.name))}</td>
-         <td style="padding:6px 8px;font-size:14px;text-align:right">${p.stock}</td></tr>`
-  ).join('');
-  const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:18px">Low stock alert</h2>
-    <p>${args.products.length} product${args.products.length === 1 ? '' : 's'} dropped below the 5-unit threshold:</p>
-    <table style="width:100%;border-collapse:collapse;margin-top:12px">${rows}</table>
-    <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/products" style="color:${BRAND_PINK};font-weight:600">→ Restock now</a></p>
-  `);
-  const recipients = await getRecipientsForEvent('inventory.low');
-  await send({ to: recipients, subject: `Low stock — ${args.products.length} item${args.products.length === 1 ? '' : 's'}`, html, kind: 'batch' });
 }
 
 // Broken-link (404) digest — the daily cron passes only NEW, unresolved misses
