@@ -80,7 +80,7 @@ export default async function UsersPage({
   searchParams: Promise<{ q?: string; page?: string; sort?: string; type?: string; activity?: string }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('customers.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('customers.view'))) {
     return <NoAccess section="Customers" />;
   }
 

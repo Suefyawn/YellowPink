@@ -52,7 +52,7 @@ export default async function InventoryPage({
   searchParams,
 }: { searchParams: Promise<{ product?: string; reason?: string; error?: string; ok?: string; view?: string; q?: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.view'))) {
     return <NoAccess section="Inventory" />;
   }
 

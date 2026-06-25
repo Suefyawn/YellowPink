@@ -31,7 +31,7 @@ export default async function VendorsPage({
   searchParams?: Promise<{ error?: string }>;
 }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.view'))) {
     return <NoAccess section="Vendors" />;
   }
   const { error: feedbackError } = (await searchParams) ?? {};

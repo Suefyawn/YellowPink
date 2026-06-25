@@ -6,7 +6,7 @@ import type { Vendor } from '@/types';
 
 export default async function NewProductPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products.edit')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.edit'))) {
     return <NoAccess section="Products" />;
   }
   // vendors RLS has no policy — read with the service role.

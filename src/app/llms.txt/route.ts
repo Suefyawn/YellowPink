@@ -7,8 +7,11 @@
 // data when Supabase isn't configured (build-time, fresh clone, etc.).
 
 import { SITE_URL, SITE_NAME, absoluteUrl } from '@/lib/seo';
-import { supabase, isDemo, getProducts } from '@/lib/supabase';
+import { categoryHref } from '@/lib/category-taxonomy';
+import { supabase, isDemo, getProducts, getSiteSettings } from '@/lib/supabase';
 import { brandPlusName } from '@/lib/product-display';
+import { parseCommerceConfig, formatPkr, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { getDefaultEstimatedDays } from '@/lib/shipping';
 
 export const runtime  = 'nodejs';
 // We don't set `revalidate` because the route fetches from Supabase per-render
@@ -18,6 +21,15 @@ export const runtime  = 'nodejs';
 export async function GET() {
   const cats = await loadCategories();
   const products = await loadProducts();
+  // Policy figures are read live so this file never states a stale number.
+  const commerce = parseCommerceConfig(await getSiteSettings());
+  const days = await getDefaultEstimatedDays();
+  const shippingLine = days
+    ? `${days.min}–${days.max} working days via TCS / Leopards / M&P / BlueEx`
+    : 'a few working days via TCS / Leopards / M&P / BlueEx';
+  const freeOver = commerce.freeShippingEnabled
+    ? `, free over ${formatPkr(commerce.freeShippingThreshold)}`
+    : '';
 
   const lines: string[] = [];
 
@@ -32,10 +44,10 @@ export async function GET() {
   lines.push('');
 
   lines.push('## Key facts');
-  lines.push('- Market: Pakistan (PKR currency, COD nationwide, free over PKR 2,500)');
+  lines.push(`- Market: Pakistan (PKR currency, COD nationwide${freeOver})`);
   lines.push('- Payment: JazzCash, Easypaisa, Cash on Delivery');
-  lines.push('- Shipping: 2–5 working days via TCS / Leopards / M&P / BlueEx');
-  lines.push('- Returns: 7 days from delivery on unopened items');
+  lines.push(`- Shipping: ${shippingLine}`);
+  lines.push(`- Returns: ${RETURNS_WINDOW_DAYS} days from delivery on unopened items`);
   lines.push('- Categories: Skincare, Makeup, Wellness (supplements)');
   lines.push('');
 
@@ -51,7 +63,7 @@ export async function GET() {
   if (cats.length > 0) {
     lines.push('## Browse by category');
     for (const c of cats) {
-      lines.push(`- [${c}](${SITE_URL}/shop?category=${encodeURIComponent(c)})`);
+      lines.push(`- [${c}](${SITE_URL}${categoryHref(c)})`);
     }
     lines.push('');
   }

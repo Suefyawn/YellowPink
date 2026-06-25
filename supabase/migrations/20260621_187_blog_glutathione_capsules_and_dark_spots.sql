@@ -1,0 +1,1 @@
+-- New SEO blog posts: "glutathione capsules" and "dark spots on face". Live via MCP.

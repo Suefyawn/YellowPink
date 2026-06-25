@@ -43,6 +43,7 @@ import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { CouponCapture } from '@/components/marketing/CouponCapture';
 import { getSiteSettings } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
+import { IMAGE_CDN_ORIGIN } from '@/lib/image-loader';
 import { normalizeTheme } from '@/lib/themes';
 import { getActivePromos, audienceFor } from '@/lib/promos';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
@@ -52,10 +53,16 @@ import { socialSameAs } from '@/lib/socials';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — Imported Beauty & Wellness`,
+    // Homepage title leads with the concrete high-volume PK head nouns
+    // ("skincare", "makeup", "supplements") + the geo keyword, so the root
+    // domain is a clear landing target for "skincare/skin care products/
+    // korean skincare/makeup Pakistan" queries — not just the brand name.
+    // Child pages use the template and supply their own title.
+    default: `${SITE_NAME} — Skincare, Makeup & Supplements in Pakistan`,
     template: `%s | ${SITE_NAME}`,
   },
-  description: 'International skincare, makeup, and clinical-grade nutraceuticals. Now in Pakistan with COD.',
+  description:
+    'Shop authentic imported skincare, Korean beauty, makeup and wellness supplements in Pakistan — 100% genuine brands like CeraVe, Anua & The Ordinary, with COD.',
   applicationName: SITE_NAME,
   // We deleted /icon.svg when installing the flower favicon. Next.js
   // auto-generates /icon and /apple-icon link tags from
@@ -74,14 +81,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
-  // Backup verification meta tag. The DNS TXT (domain property) is the primary
-  // verification — this is harmless redundancy that also covers URL-prefix
-  // properties (e.g. www-subdomain) without a second DNS round-trip. Set
-  // GOOGLE_SITE_VERIFICATION in Vercel env to the content="" value Google
-  // gives you; leave blank to skip.
-  verification: {
-    google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
-  },
+  // Google Search Console verification is rendered as a runtime <meta> in
+  // RootLayout (below) so the owner can paste the code in Admin → Settings →
+  // Integrations without a redeploy; it falls back to GOOGLE_SITE_VERIFICATION.
 };
 
 export const viewport: Viewport = {
@@ -105,10 +107,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // JSON-LD reads from the same source as the footer.
   const sameAs = socialSameAs(settings);
   const orgContact = { phone: settings.store_phone, email: settings.store_email };
+  // GA4 + Search Console are owner-managed (Admin → Settings → Integrations),
+  // stored in site_settings; fall back to env so existing deployments keep
+  // working. Reading them here means changing the IDs needs no redeploy.
+  const gaMeasurementId = settings.ga_measurement_id?.trim() || undefined;
+  const gscVerification = settings.google_site_verification?.trim() || process.env.GOOGLE_SITE_VERIFICATION || undefined;
   // Single source of truth for free-shipping copy/threshold across the
   // storefront — seeds the client CommerceSettings provider so the cart,
   // mini-cart, PDP and checkout never drift from the owner's setting.
   const commerce = parseCommerceConfig(settings);
+  // Origin that serves catalogue/blog images — used for an early preconnect.
+  const supabaseOrigin = (() => {
+    try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').origin; } catch { return null; }
+  })();
   return (
     <html
       lang="en"
@@ -119,6 +130,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={`${fontDisplay.variable} ${fontUI.variable}`}
     >
       <head>
+        {/* Preconnect to the image CDN (images.weserv.nl) that serves every
+            catalogue/blog image AND the LCP hero — the single most important
+            early connection for mobile LCP. The Supabase origin is also
+            preconnected: weserv fetches the original from there, and the
+            Supabase JS client hits it for data/API. */}
+        <link rel="preconnect" href={IMAGE_CDN_ORIGIN} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={IMAGE_CDN_ORIGIN} />
+        {supabaseOrigin && (
+          <>
+            <link rel="preconnect" href={supabaseOrigin} crossOrigin="anonymous" />
+            <link rel="dns-prefetch" href={supabaseOrigin} />
+          </>
+        )}
+        {/* Google Search Console ownership verification (owner-set in admin,
+            env fallback). Only rendered when a code is present. */}
+        {gscVerification && <meta name="google-site-verification" content={gscVerification} />}
         {/* Site-wide JSON-LD: a single Organization node (@id-referenced by
             WebSite.publisher) plus WebSite for the sitelinks search box.
             Both render on every page — the duplication-across-pages pattern
@@ -137,7 +164,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <DemoBanner />
         <ConsentBanner />
         <NewsletterModal discountPct={welcomeOffer.pct} />
-        <GoogleAnalytics />
+        <GoogleAnalytics measurementId={gaMeasurementId} />
         <MetaPixel />
         <AttributionCapture />
         <WebVitalsReporter />

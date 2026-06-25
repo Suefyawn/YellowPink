@@ -13,6 +13,7 @@ import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
+import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { log } from '@/lib/logger';
 import { verifyTotp } from '@/lib/totp';
 import type { OrderStatus } from '@/types';
@@ -160,9 +161,14 @@ export async function createProduct(
   const session = await assertPermission('products.edit');
   const parsed = parseForm(productInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { data, error } = await supabaseAdmin().from('products').insert(parsed.data).select('id').single();
+  const { data, error } = await supabaseAdmin().from('products').insert(parsed.data).select('id, slug, status').single();
   if (error) return { error: error.message };
   await logAudit(session, { action: 'product.create', entity: 'product', entity_id: data?.id as string | undefined, diff: parsed.data });
+  // Nudge search engines as soon as a live product appears (best-effort).
+  const created = data as { slug?: string; status?: string } | null;
+  if (created?.slug && created.status === 'published') {
+    await submitToSearchEnginesQuietly([`/product/${created.slug}`]);
+  }
   revalidatePath('/admin/products');
   redirect('/admin/products');
 }
@@ -180,6 +186,12 @@ export async function updateProduct(
   const { error } = await supabaseAdmin().from('products').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
   await logAudit(session, { action: 'product.update', entity: 'product', entity_id: id, diff: { before, after: parsed.data } });
+  // Re-submit to search engines when the product is live (best-effort).
+  const { data: after } = await supabaseAdmin().from('products').select('slug, status').eq('id', id).maybeSingle();
+  const live = after as { slug?: string; status?: string } | null;
+  if (live?.slug && live.status === 'published') {
+    await submitToSearchEnginesQuietly([`/product/${live.slug}`]);
+  }
   revalidatePath('/admin/products');
   redirect('/admin/products');
 }
@@ -264,6 +276,7 @@ export async function createBlogPost(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  await assertPermission('blog');
   // checkbox quirk: when unchecked, `featured` is absent from FormData.
   const normalized = new FormData();
   for (const [k, v] of formData.entries()) normalized.append(k, v);
@@ -274,6 +287,9 @@ export async function createBlogPost(
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { error } = await supabaseAdmin().from('blog_posts').insert(parsed.data);
   if (error) return { error: error.message };
+  // Blog posts go live immediately — ping search engines (best-effort).
+  const slug = (parsed.data as { slug?: string }).slug;
+  if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
 }
@@ -283,6 +299,7 @@ export async function updateBlogPost(
   _prev: { error?: string } | null,
   formData: FormData
 ): Promise<{ error: string } | null> {
+  await assertPermission('blog');
   const normalized = new FormData();
   for (const [k, v] of formData.entries()) normalized.append(k, v);
   if (!normalized.has('featured')) normalized.append('featured', 'false');
@@ -292,11 +309,57 @@ export async function updateBlogPost(
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { error } = await supabaseAdmin().from('blog_posts').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
+  const slug = (parsed.data as { slug?: string }).slug;
+  if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   revalidatePath('/admin/blog');
   redirect('/admin/blog');
 }
 
+// ─── Search-engine indexing ────────────────────────────────────────────────────
+
+/** Manually (re)submit a single storefront URL to the search-engine index
+ *  channels. Called from the "Submit to index" buttons on the product/blog
+ *  forms. Returns a human-readable per-channel summary for a toast. */
+export async function requestIndexing(path: string): Promise<{ ok: boolean; message: string }> {
+  await assertPermission('products.edit');
+  const result = await submitToSearchEngines([path]);
+  if (result.submitted.length === 0) return { ok: false, message: 'No valid URL to submit.' };
+  const parts = result.results.map(r => {
+    const name = r.channel === 'google' ? 'Google' : 'IndexNow';
+    if (r.skipped) return `${name}: not configured`;
+    return `${name}: ${r.ok ? 'OK' : 'failed'}`;
+  });
+  const ok = result.results.every(r => r.ok);
+  return { ok, message: parts.join(' · ') };
+}
+
+/** Re-submit the entire live catalogue + blog to IndexNow in one request.
+ *  Google is intentionally skipped here — its publish quota (~200/day) is too
+ *  small for a full-site resubmit; auto-on-publish covers Google per-item. */
+export async function resubmitAllUrls(): Promise<{ ok: boolean; message: string }> {
+  await assertPermission('products.edit');
+  const admin = supabaseAdmin();
+  const [{ data: prods }, { data: posts }] = await Promise.all([
+    admin.from('products').select('slug').eq('status', 'published'),
+    admin.from('blog_posts').select('slug'),
+  ]);
+  const paths = [
+    '/', '/shop', '/blog', '/collections',
+    ...((prods ?? []) as { slug: string }[]).map(p => `/product/${p.slug}`),
+    ...((posts ?? []) as { slug: string }[]).map(p => `/blog/${p.slug}`),
+  ];
+  const result = await submitToSearchEngines(paths, { google: false });
+  const indexnow = result.results.find(r => r.channel === 'indexnow');
+  return {
+    ok: !!indexnow?.ok,
+    message: indexnow?.ok
+      ? `Submitted ${result.submitted.length} URLs to IndexNow (Bing/Yandex).`
+      : `Submission failed: ${indexnow?.detail ?? 'unknown error'}`,
+  };
+}
+
 export async function deleteBlogPost(formData: FormData) {
+  await assertPermission('blog');
   const id = formData.get('id') as string;
   const { error } = await supabaseAdmin().from('blog_posts').delete().eq('id', id);
   if (error) {
