@@ -251,6 +251,14 @@ function wpPatternRedirect(pathname: string, params: URLSearchParams): string | 
   const cat = pathname.match(/^\/category\/([^/]+)\/?$/);
   if (cat) return `/shop?category=${encodeURIComponent(cat[1])}`;
 
+  // /product-tag/<slug>/… → /tag/<slug>. There's no /product-tag route (it
+  // always 404s), so funnel every legacy WP product-tag URL — including the
+  // /feed/ and ?add-to-cart= variants — into the real tag route, which then
+  // resolves the tag or honours a manual redirect (redirectIfMapped) at its
+  // 404 boundary. Strips any trailing path so /product-tag/x/feed/ → /tag/x.
+  const productTag = pathname.match(/^\/product-tag\/([^/]+)(?:\/.*)?$/);
+  if (productTag) return `/tag/${productTag[1]}`;
+
   // /author/<name>/<page?>/ → /blog (we don't have author archives)
   if (/^\/author\/[^/]+(?:\/page\/\d+)?\/?$/.test(pathname)) return '/blog';
 

@@ -10,6 +10,7 @@ import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { brandNameFromSlug, brandSlug, getBrandRecord } from '@/lib/brands';
+import { redirectIfMapped } from '@/lib/redirects';
 import type { Product } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -38,7 +39,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   const { slug } = await params;
   const [products, record] = await Promise.all([getProducts(), getBrandRecord(slug)]);
   const brand = record?.name ?? brandNameFromSlug(slug, products);
-  if (!brand) notFound();
+  if (!brand) { await redirectIfMapped(`/brand/${slug}`); notFound(); }
 
   const list = products.filter(p => p.brand === brand);
   const breadcrumb = [

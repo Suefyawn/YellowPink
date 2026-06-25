@@ -10,6 +10,7 @@ import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { loadTagData } from '@/lib/shop-facets';
+import { redirectIfMapped } from '@/lib/redirects';
 import { resolveCollectionProducts, type Collection } from '@/lib/collections';
 import type { Product } from '@/types';
 
@@ -40,7 +41,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function CollectionPageRoute({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const c = await loadCollection(slug);
-  if (!c) notFound();
+  if (!c) { await redirectIfMapped(`/collection/${slug}`); notFound(); }
 
   const [products, tagData] = await Promise.all([getProducts(), loadTagData()]);
 
