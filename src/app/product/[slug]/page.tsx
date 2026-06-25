@@ -228,6 +228,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Loyalty earn rate (points per PKR) drives the PDP "earn points" nudge.
   // Defaults to the same 0.1 the loyalty settings form seeds.
   const pointsPerPkr = Number(siteSettings.loyalty_points_per_pkr ?? '0.1') || 0;
+  // Points granted when a review is approved (reviews_award_points trigger).
+  // Surfaced on the review form to actually drive review volume → ★ snippets.
+  const reviewPoints = Math.max(0, Number(siteSettings.loyalty_review_points ?? '25') || 0);
 
   const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts] = await Promise.all([
     isDemo
@@ -307,7 +310,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         categoryProducts={categoryProducts}
         excludeIds={[product.id, ...crossSells.map(p => p.id), ...fbt.map(p => p.id)]}
       />
-      <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} />
+      <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} rewardPoints={reviewPoints} />
       <RecentlyViewed currentProductId={product.id} />
     </main>
   );

@@ -636,8 +636,13 @@ export async function sendReviewRequestEmail(args: {
   first_name?: string;
   order_number: string;
   products: { name: string; slug: string; image_url?: string | null }[];
+  /** Loyalty points granted per approved review — named explicitly in the
+   *  email when > 0 (a concrete "earn 25 points" reads far stronger than a
+   *  vague "earn points" and is what actually lifts review volume). */
+  rewardPoints?: number;
 }): Promise<void> {
   if (args.products.length === 0) return;
+  const pts = Math.max(0, Math.floor(args.rewardPoints ?? 0));
 
   const rows = args.products.map(p => `
     <tr>
@@ -658,9 +663,13 @@ export async function sendReviewRequestEmail(args: {
     <p style="margin:0 0 14px">Hi ${escapeHtml(args.first_name ?? 'there')} — your order <strong>${escapeHtml(args.order_number)}</strong> landed a few days ago, so you've had a chance to try it out.</p>
     <p style="margin:0 0 18px">A quick, honest review helps other shoppers in Pakistan choose well — and it only takes a minute.</p>
     <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 8px">${rows}</table>
+    ${pts > 0 ? `
+    <p style="margin:18px 0 0;padding:12px 16px;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:10px;color:#9d174d;font-size:14px;font-weight:600">
+      ★ Earn ${pts} loyalty points for each approved review — our thank-you for sharing.
+    </p>` : `
     <p style="margin:22px 0 0;color:${MUTED};font-size:12px;line-height:1.5">
       Approved reviews earn loyalty points — a small thank-you for sharing.
-    </p>
+    </p>`}
   `, { marketingRecipient: args.email });
   await send({
     to: args.email,

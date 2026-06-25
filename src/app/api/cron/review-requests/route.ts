@@ -50,6 +50,12 @@ export async function GET(req: NextRequest) {
     { auth: { persistSession: false } }
   );
 
+  // Loyalty points granted per approved review — named in the email so the
+  // nudge is concrete ("earn 25 points") rather than vague.
+  const { data: setting } = await sb
+    .from('site_settings').select('value').eq('key', 'loyalty_review_points').maybeSingle();
+  const rewardPoints = Math.max(0, Number((setting as { value?: string } | null)?.value ?? '25') || 0);
+
   const now = Date.now();
   const windowOpen = new Date(now - 30 * DAY_MS).toISOString();
   const windowClose = new Date(now - 3 * DAY_MS).toISOString();
@@ -103,6 +109,7 @@ export async function GET(req: NextRequest) {
       first_name: order.first_name ?? undefined,
       order_number: order.order_number,
       products,
+      rewardPoints,
     });
 
     await sb.from('orders')

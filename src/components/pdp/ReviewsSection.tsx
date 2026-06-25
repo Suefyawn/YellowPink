@@ -159,7 +159,7 @@ function ReviewPhotoUploader({ urls, onChange }: { urls: string[]; onChange: (ur
 }
 
 // ─── Main section ──────────────────────────────────────────────────────────
-export function ReviewsSection({ productId, reviews, photosEnabled = true }: { productId: string; reviews: Review[]; photosEnabled?: boolean }) {
+export function ReviewsSection({ productId, reviews, photosEnabled = true, rewardPoints = 0 }: { productId: string; reviews: Review[]; photosEnabled?: boolean; rewardPoints?: number }) {
   const [state, action, pending] = useActionState(submitReview, null);
   const [sortBy, setSortBy] = useState<SortKey>('recent');
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
@@ -311,13 +311,31 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true }: { p
 
           {/* Right: write a review */}
           <div style={{ position: 'sticky', top: 100 }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 500, margin: '0 0 24px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 500, margin: '0 0 16px' }}>
               Write a Review
             </h2>
 
+            {/* Loyalty incentive — the approval trigger (reviews_award_points)
+                grants these points to signed-in reviewers; advertising it is
+                what actually drives review volume (and thus ★ rich snippets). */}
+            {rewardPoints > 0 && (
+              <p style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                margin: '0 0 24px', padding: '10px 14px',
+                background: '#fdf2f8', border: '1px solid #fbcfe8', borderRadius: 'var(--radius-card)',
+                fontSize: '0.8125rem', color: '#9d174d', fontWeight: 600,
+              }}>
+                <span aria-hidden="true" style={{ fontSize: '1rem' }}>★</span>
+                Earn {rewardPoints} loyalty points when your review is approved.{' '}
+                <a href="/account/rewards" style={{ color: '#be185d', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                  Sign in to collect
+                </a>
+              </p>
+            )}
+
             {state && 'success' in state ? (
               <div style={{ padding: '20px 24px', background: '#dcfce7', border: '1px solid #86efac', borderRadius: 'var(--radius-card)', color: '#166534', fontWeight: 600 }}>
-                Thank you! Your review has been submitted and will appear after approval.
+                Thank you! Your review has been submitted and will appear after approval.{rewardPoints > 0 ? ` Signed-in customers earn ${rewardPoints} points once it’s live.` : ''}
               </div>
             ) : (
               <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
