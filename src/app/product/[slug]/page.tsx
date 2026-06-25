@@ -15,7 +15,7 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { isEnabled } from '@/lib/flags';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
-import { taxonForCategory, categoryHref, isHealthCategory } from '@/lib/category-taxonomy';
+import { categoryHref, isHealthCategory } from '@/lib/category-taxonomy';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -298,7 +298,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         attributes={variantData.attributes}
         gallery={gallery}
         backInStockEnabled={backInStockEnabled}
-        subscribeEligible={taxonForCategory(product.category)?.key === 'wellness'}
         estimatedDays={estimatedDays}
         pointsPerPkr={pointsPerPkr}
       />

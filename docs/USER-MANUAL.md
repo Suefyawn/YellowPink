@@ -180,7 +180,6 @@ Customers can shop as guests or create an account. A signed-in customer has:
   was skipped.
 - **Addresses** — saved delivery addresses for faster checkout.
 - **Rewards** — loyalty points earned from purchases, redeemable as a discount.
-- **Subscriptions** — reorder reminders for products they buy regularly.
 - **Profile** — their personal details and password.
 
 ### 2.6 Returns

@@ -589,44 +589,6 @@ export async function sendNewsletterBroadcastEmail(args: {
   return send({ to: args.email, subject: args.subject, html, kind: 'batch' });
 }
 
-// ─── 11.6. Customer: reorder reminder (Subscribe & Save) ────────────────────
-// Fired by the daily cron when a reorder_subscriptions row falls due. Nudges
-// the customer to restock a consumable they subscribed to, and carries the
-// SUBSCRIBE10 code so the "Save" half of Subscribe & Save is honoured.
-export async function sendReorderReminderEmail(args: {
-  email: string;
-  product_name: string;
-  product_url: string;
-  image_url?: string;
-  interval_days: number;
-}): Promise<void> {
-  const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">Running low?</h2>
-    <p style="margin:0 0 14px">It's been about ${args.interval_days} days — time to restock <strong>${escapeHtml(args.product_name)}</strong> before you run out.</p>
-    ${args.image_url ? `<p style="margin:0 0 18px"><img src="${escapeHtml(args.image_url)}" alt="${escapeHtml(args.product_name)}" style="max-width:220px;border-radius:10px;border:1px solid #e5e7eb"/></p>` : ''}
-    <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 22px">
-      <tr><td style="background:${PAPER};border:1px dashed ${BRAND_PINK};border-radius:10px;padding:18px 22px;text-align:center">
-        <p style="margin:0 0 6px;color:${MUTED};font-size:12px;letter-spacing:0.08em;text-transform:uppercase">Your subscriber discount</p>
-        <p style="margin:0 0 4px;color:${INK};font-size:24px;font-weight:700;letter-spacing:0.06em;font-family:'Courier New',monospace">SUBSCRIBE10</p>
-        <p style="margin:0;color:${INK_700};font-size:13px">10% off this reorder over PKR 1,500. Apply it at checkout.</p>
-      </td></tr>
-    </table>
-    <p style="margin:0 0 24px;text-align:center">
-      <a href="${escapeHtml(args.product_url)}" style="display:inline-block;padding:12px 28px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600;letter-spacing:0.02em">Reorder now</a>
-    </p>
-    <p style="margin:24px 0 0;color:${MUTED};font-size:12px;line-height:1.5">
-      You set up this reminder via Subscribe &amp; Save. Change the schedule or cancel any time from
-      <a href="${SITE_URL}/account/subscriptions" style="color:${BRAND_PINK}">your subscriptions</a>.
-    </p>
-  `, { marketingRecipient: args.email });
-  await send({
-    to: args.email,
-    subject: `Time to reorder ${args.product_name}`,
-    html,
-    kind: 'batch',
-  });
-}
-
 // ─── 11.7. Customer: post-delivery review request ──────────────────────────
 // Fired by the daily cron a few days after an order is delivered. Asks the
 // customer to review what they bought, linking each product straight to its

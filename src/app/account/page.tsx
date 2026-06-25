@@ -66,14 +66,6 @@ export default function AccountPage() {
             <div style={{ fontWeight: 600, fontSize: '1.0625rem', color: 'var(--ink-900)', marginBottom: 4 }}>Rewards</div>
             <div style={{ fontSize: '0.875rem', color: 'var(--ink-500)' }}>Points, tier, and your referral code</div>
           </Link>
-          <Link href="/account/subscriptions" style={{
-            display: 'block', padding: '28px 24px', background: 'white', borderRadius: 12,
-            boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textDecoration: 'none', border: '1px solid var(--line)',
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: 12 }}>⟳</div>
-            <div style={{ fontWeight: 600, fontSize: '1.0625rem', color: 'var(--ink-900)', marginBottom: 4 }}>Subscriptions</div>
-            <div style={{ fontSize: '0.875rem', color: 'var(--ink-500)' }}>Reorder reminders for your wellness essentials</div>
-          </Link>
           <Link href="/account/profile" style={{
             display: 'block', padding: '28px 24px', background: 'white', borderRadius: 12,
             boxShadow: '0 1px 4px rgba(0,0,0,0.08)', textDecoration: 'none', border: '1px solid var(--line)',
