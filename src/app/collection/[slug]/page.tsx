@@ -52,6 +52,12 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
   }
   const list = resolveCollectionProducts(c, products, { manualOrder, productTagMap: tagData.productTagMap });
 
+  // Hero cover: the collection's own hero_image_url when set, otherwise the
+  // first member product's image — the same fallback the collection cards use
+  // (getPublishedCollectionsWithCovers), so the detail hero is never a bare
+  // text block while every collection still has a null hero in the DB.
+  const heroImage = c.hero_image_url || list.find(p => p.image_url)?.image_url || null;
+
   const breadcrumb = [
     { name: 'Home', path: '/' },
     { name: 'Shop', path: '/shop' },
@@ -71,10 +77,10 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
       )}
 
       {/* Hero */}
-      {c.hero_image_url ? (
+      {heroImage ? (
         <section style={{ position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'relative', minHeight: 'clamp(300px, 40vh, 460px)' }}>
-            <Image src={c.hero_image_url} alt={c.title} fill priority sizes="100vw" style={{ objectFit: 'cover' }} />
+            <Image src={heroImage} alt={c.title} fill priority sizes="100vw" style={{ objectFit: 'cover' }} />
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(250,246,238,0.92) 0%, rgba(250,246,238,0.55) 45%, rgba(250,246,238,0.05) 80%)' }} />
             <div className="container" style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 'clamp(300px, 40vh, 460px)', paddingTop: 40, paddingBottom: 40 }}>
               <div style={{ maxWidth: 520 }}>
