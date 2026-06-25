@@ -89,7 +89,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
           like /forgot-password / /reset-password / /track / /login
           prerender cleanly while Header still hydrates on the client. */}
       <Suspense fallback={null}>
-        <Header whatsappNumber={settings.store_whatsapp?.trim() || settings.store_phone?.trim() || undefined} />
+        <Header />
       </Suspense>
       {children}
       <Footer socials={socialLinks(settings)} />
