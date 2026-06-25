@@ -28,6 +28,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     title: c.seo_title || `${c.title} — Shop`,
     description: c.seo_description || c.description || `Shop the ${c.title} collection at Yellow Pink — authentic, imported, with cash-on-delivery nationwide in Pakistan.`,
     path: `/collection/${c.slug}`,
+    // Use the collection's own hero as the share image so social cards /
+    // SERP thumbnails are bespoke per collection instead of the generic
+    // branded fallback. Falls through to app/opengraph-image.tsx when a
+    // collection has no hero set.
+    image: c.hero_image_url || undefined,
   });
 }
 

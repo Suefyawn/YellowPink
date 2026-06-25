@@ -44,6 +44,7 @@ const GROUPS: NavGroup[] = [
     { href: '/admin/promos',    label: 'Promos',    icon: '✧', permission: 'promos' },
     { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
     { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'reviews' },
+    { href: '/admin/messages',  label: 'Messages',  icon: '◫', permission: 'messages' },
     { href: '/admin/newsletter', label: 'Newsletter', icon: '✉', permission: 'newsletter' },
     { href: '/admin/emails',    label: 'Email log', icon: '❏', permission: 'settings' },
   ]},
@@ -62,7 +63,7 @@ function canSee(item: NavItem, session: StaffSession): boolean {
   return true;
 }
 
-export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { session: StaffSession; onClose?: () => void; pendingOrderCount?: number }) {
+export function AdminSidebar({ session, onClose, pendingOrderCount = 0, unreadMessageCount = 0 }: { session: StaffSession; onClose?: () => void; pendingOrderCount?: number; unreadMessageCount?: number }) {
   const pathname = usePathname();
   const visibleGroups = GROUPS
     .map(g => ({ ...g, items: g.items.filter(item => canSee(item, session)) }))
@@ -136,8 +137,10 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
             </div>
             {group.items.map(({ href, label, icon }) => {
               const active = pathname === href || (href !== '/admin/dashboard' && pathname.startsWith(href));
-              const isOrders = href === '/admin/orders';
-              const badgeCount = isOrders && pendingOrderCount > 0 ? pendingOrderCount : 0;
+              const badgeCount =
+                href === '/admin/orders'   && pendingOrderCount  > 0 ? pendingOrderCount  :
+                href === '/admin/messages' && unreadMessageCount > 0 ? unreadMessageCount :
+                0;
               return (
                 <Link key={href} href={href} onClick={onClose} className="adm-nav-link" style={{
                   display: 'flex', alignItems: 'center', gap: 12,
@@ -191,7 +194,22 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0 }: { sess
           padding: '8px 0', color: '#9ca3af', textDecoration: 'none',
           fontSize: '0.8125rem', borderTop: '1px solid #1f2937', marginTop: 8,
         }}>
-          <span>❓</span> User manual
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            style={{ flexShrink: 0 }}
+          >
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+          </svg>
+          User manual
         </Link>
       </div>
 

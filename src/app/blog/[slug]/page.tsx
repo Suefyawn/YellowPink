@@ -11,7 +11,11 @@ import type { Product } from '@/types';
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
-  if (!post) return {};
+  // Missing post → notFound(). Note: the blog segment has a loading.tsx
+  // skeleton, so an invalid slug streams a 200 shell first → soft-404 (200 +
+  // noindex'd not-found UI) rather than a hard 404. Accepted trade-off; the
+  // page is noindexed and such URLs aren't linked/sitemapped.
+  if (!post) notFound();
   return pageMeta({
     title: post.title,
     description: post.excerpt ?? post.title,
@@ -31,13 +35,14 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   ]);
   if (!post) notFound();
 
-  let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 2);
-  if (relatedPosts.length < 2) {
-    // Top up with other recent posts so every post links out to two others —
+  let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 3);
+  if (relatedPosts.length < 3) {
+    // Top up with other recent posts so every post links out to three others —
     // keeps posts in thin categories from being near-orphaned internally
-    // (SEO audit: "pages with only one internal link").
+    // (SEO audit: "pages with only one internal link") and spreads more crawl
+    // equity per article.
     const have = new Set([post.slug, ...relatedPosts.map(p => p.slug)]);
-    relatedPosts = [...relatedPosts, ...allPosts.filter(p => !have.has(p.slug)).slice(0, 2 - relatedPosts.length)];
+    relatedPosts = [...relatedPosts, ...allPosts.filter(p => !have.has(p.slug)).slice(0, 3 - relatedPosts.length)];
   }
 
   // Related-products matching by taxon. Blog categories ("Bone Health",

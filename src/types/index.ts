@@ -205,6 +205,9 @@ export interface BlogPost {
   featured?: boolean;
   body?: string;
   image_url?: string;
+  /** Byline + Article schema author. Backfilled to the editorial team; admins
+   *  can set a named individual per post for stronger E-E-A-T. */
+  author?: string | null;
   created_at?: string;
   updated_at?: string;
 }

@@ -1,0 +1,3 @@
+-- New SEO blog posts (keyword-gap, Semrush PK data): "reduce melanin naturally"
+-- and "skin whitening home remedies". Inserted into blog_posts via Supabase MCP;
+-- this file is the repo record. Heroes in /public/blog-heroes.

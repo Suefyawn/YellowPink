@@ -1,6 +1,10 @@
 export const dynamic = 'force-dynamic';
 
-import { SettingsPageHeader } from '@/components/admin/settings-controls';
+import { getSiteSettings } from '@/lib/supabase';
+import { saveSettings } from '../actions';
+import {
+  inp, lbl, Section, Card, Divider, SaveBar, StatusBanner, SettingsPageHeader,
+} from '@/components/admin/settings-controls';
 import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
 
 // IMPORTANT: never render an env-var VALUE on this page — only its presence.
@@ -141,8 +145,13 @@ function StatusBadge({ status }: { status: 'ok' | 'partial' | 'missing' }) {
   );
 }
 
-export default async function SettingsIntegrationsPage() {
-  const resolved = await Promise.all(INTEGRATIONS.map(resolve));
+export default async function SettingsIntegrationsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
+  const [resolved, s, sp] = await Promise.all([
+    Promise.all(INTEGRATIONS.map(resolve)),
+    getSiteSettings(),
+    searchParams,
+  ]);
+  const g = (key: string) => s[key] ?? '';
 
   const summary = {
     ok:      resolved.filter(r => r.status === 'ok').length,
@@ -154,8 +163,37 @@ export default async function SettingsIntegrationsPage() {
     <>
       <SettingsPageHeader
         title="Integrations"
-        subtitle="Third-party services Yellow Pink uses. Statuses are computed live from the deployed environment variables."
+        subtitle="Connect Google Analytics & Search Console below, then check the live status of every third-party service."
       />
+
+      <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
+
+      {/* Connect Google — owner-editable, no redeploy needed (saved to
+          site_settings, read by the root layout). */}
+      <Card>
+        <form action={saveSettings}>
+          <input type="hidden" name="_redirect" value="/admin/settings/integrations" />
+          <Section title="Connect Google" desc="Paste your IDs to link Google Analytics 4 and Search Console directly — changes go live immediately, no redeploy." />
+          <Divider />
+          <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div>
+              <label style={lbl}>Google Analytics 4 — Measurement ID</label>
+              <input name="ga_measurement_id" defaultValue={g('ga_measurement_id')} style={inp} placeholder="G-XXXXXXXXXX" />
+              <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                GA4 → Admin → Data streams → your web stream → <em>Measurement ID</em>.
+              </p>
+            </div>
+            <div>
+              <label style={lbl}>Search Console — verification code</label>
+              <input name="google_site_verification" defaultValue={g('google_site_verification')} style={inp} placeholder="paste only the content=… value" />
+              <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                Search Console → add a URL-prefix property → <em>HTML tag</em> method → paste only the <code>content</code> value, then click Verify.
+              </p>
+            </div>
+          </div>
+          <SaveBar />
+        </form>
+      </Card>
 
       {/* Summary row */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>

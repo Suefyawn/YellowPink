@@ -11,20 +11,44 @@ import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtToget
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
 import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd, truncateOnWord } from '@/lib/seo';
 import { effectiveProductFaq } from '@/lib/product-faq';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { isEnabled } from '@/lib/flags';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { brandPlusName, stripBrandPrefix } from '@/lib/product-display';
-import { taxonForCategory } from '@/lib/category-taxonomy';
+import { taxonForCategory, categoryHref } from '@/lib/category-taxonomy';
 import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttribute, AttributeValue } from '@/types';
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  if (!product) return {};
+  // Missing product → notFound() (the page does the same). Note: because this
+  // route has a loading.tsx skeleton, Next streams a 200 shell before this
+  // resolves, so an invalid slug is a soft-404 (HTTP 200 + the noindex'd
+  // not-found UI) rather than a hard 404. That's an accepted trade-off —
+  // keeping the PDP loading skeleton over a pristine status on phantom,
+  // unlinked, noindexed URLs. Removing loading.tsx would restore the 404.
+  if (!product) notFound();
   // Use the dedupe-aware composer so WP imports that already prefix the
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
   const displayName = brandPlusName(product.brand, product.name);
-  const autoTitle = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
+  const autoTitleBase = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
+  // SERP CTR: short branded SKUs (e.g. "Semofer", "M-Sol Sachet") were ranking
+  // page-1 but getting ~0 % CTR with a bare "<name> | Yellow Pink" title — the
+  // SERP gave a searcher no reason to click (GSC, 2026-06). Append a localized
+  // commercial-intent cue ("Price in Pakistan") that also matches real queries
+  // ("… price in pakistan"). Gated so it only fires when the name is short
+  // enough to stay inside Google's ~60-char render budget — the root template
+  // adds " | Yellow Pink" (14 chars), so we cap the base at 46 — when there's
+  // no variant suffix, and when the name doesn't already imply geo. Longer,
+  // already-descriptive titles (most skincare imports) are left untouched, and
+  // an admin `seo_title` override always wins (applied below).
+  const GEO_CUE = ' Price in Pakistan';
+  const autoTitle =
+    !product.variant &&
+    !/pakistan|\bpk\b/i.test(autoTitleBase) &&
+    autoTitleBase.length + GEO_CUE.length <= 46
+      ? `${autoTitleBase}${GEO_CUE}`
+      : autoTitleBase;
   const baseDescription = product.short_description?.trim()
     ?? (product.description?.trim().slice(0, 160) || `Buy ${displayName} in Pakistan. PKR ${product.price.toLocaleString()}. Fast COD delivery nationwide.`);
   // Lead with the unique product name so near-identical shade variants that
@@ -221,6 +245,14 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>[];
 
+  // Single source for both the visible trail and the BreadcrumbList schema.
+  const crumbs = [
+    { name: 'Home',           path: '/' },
+    { name: 'Shop',           path: '/shop' },
+    { name: product.category, path: categoryHref(product.category) },
+    { name: product.name,     path: `/product/${product.slug}` },
+  ];
+
   return (
     // minHeight: 100vh — guarantees the PDP block fills the viewport before
     // the gallery image decodes. Without it, on mobile between SSR delivery
@@ -235,21 +267,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLd(breadcrumbLd([
-            { name: 'Home',           path: '/' },
-            { name: 'Shop',           path: '/shop' },
-            { name: product.category, path: `/shop?category=${encodeURIComponent(product.category)}` },
-            { name: product.name,     path: `/product/${product.slug}` },
-          ])),
+          __html: jsonLd(breadcrumbLd(crumbs)),
         }}
       />
+      <Breadcrumbs items={crumbs} />
       {/* FAQPage schema for rich-result eligibility. Uses the admin-authored
           FAQ when present, otherwise the store-fact fallback, so every PDP is
           rich-result eligible. */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: jsonLd(faqLd(effectiveProductFaq(product.faq).map(f => ({ question: f.q, answer: f.a })))),
+          __html: jsonLd(faqLd(effectiveProductFaq(product.faq, { estimatedDays }).map(f => ({ question: f.q, answer: f.a })))),
         }}
       />
       {/* Keyed on the product id so a related-product click (product→product

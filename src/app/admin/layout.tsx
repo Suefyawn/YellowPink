@@ -20,6 +20,7 @@ const KIND_PERMISSION: Record<string, Permission | null> = {
   payment_failed: 'orders.view',
   return_request: 'returns',
   new_review:     'reviews',
+  new_message:    'messages',
   staff_added:    null,           // visible to all signed-in staff
   sentry_issue:   'analytics_errors',
   posthog_spike:  'analytics_traffic',
@@ -48,13 +49,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // client returns 0 rows. The badge count and notification feed need
   // the service role.
   const admin = supabaseAdmin();
-  const [{ count: pendingOrderCount }, { data: rawNotifications }] = await Promise.all([
+  const [{ count: pendingOrderCount }, { count: unreadMessageCount }, { data: rawNotifications }] = await Promise.all([
     // Orders still needing fulfilment — pending OR processing. Matches the
     // Dashboard's "Orders to fulfill" KPI so the two numbers agree.
     admin
       .from('orders')
       .select('id', { count: 'exact', head: true })
       .in('status', ['pending', 'processing']),
+    // Unread contact messages — drives the Messages sidebar badge.
+    admin
+      .from('contact_messages')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'new'),
     admin
       .from('admin_notifications')
       .select('id, kind, title, body, link, read, created_at')
@@ -81,6 +87,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <AdminShell
         session={session}
         pendingOrderCount={pendingOrderCount ?? 0}
+        unreadMessageCount={unreadMessageCount ?? 0}
         notifications={notifications}
       >
         {children}

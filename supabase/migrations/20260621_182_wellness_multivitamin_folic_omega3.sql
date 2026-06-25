@@ -1,0 +1,5 @@
+-- New "best multivitamin in Pakistan" post (2,900/mo -> Multiflux) + full
+-- house-standard rewrites of the thin folic-acid (FOL Chew / Simfolic /
+-- Complete Pregnancy Care) and omega-3 posts. Shoppable links + .blog-cta;
+-- generated heroes in /public/blog-heroes/. Applied to live DB via Supabase
+-- MCP; this file is the repo record (canonical bodies live in blog_posts).

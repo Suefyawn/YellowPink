@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
-import { ProductTile } from '@/components/ui/ProductTile';
+import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import type { Product } from '@/types';
@@ -24,10 +24,24 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const tag = await loadTag(slug);
   if (!tag) return pageMeta({ title: 'Tag', description: 'Shop by tag at Yellow Pink.', path: `/tag/${slug}` });
+  // One representative packshot for the social card (single lightweight query
+  // over just this tag's products) rather than the generic branded fallback.
+  let ogImage: string | undefined;
+  if (!isDemo && tag.productIds.size) {
+    const { data: img } = await supabase
+      .from('products')
+      .select('image_url')
+      .in('id', [...tag.productIds])
+      .not('image_url', 'is', null)
+      .limit(1)
+      .maybeSingle();
+    ogImage = (img as { image_url?: string } | null)?.image_url || undefined;
+  }
   return pageMeta({
     title: `${tag.name} — Shop`,
     description: `Shop ${tag.name} at Yellow Pink — authentic, imported skincare, makeup and wellness, with cash-on-delivery nationwide in Pakistan.`,
     path: `/tag/${slug}`,
+    image: ogImage,
   });
 }
 
@@ -59,21 +73,13 @@ export default async function TagPage({ params }: { params: Promise<{ slug: stri
         <div className="container">
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Tagged</Overline>
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{tag.name}</h1>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
-            <span className="small-text">{list.length} {list.length === 1 ? 'product' : 'products'}</span>
-            <Link href={`/shop?tag=${encodeURIComponent(slug)}`} className="text-link">
-              Filter &amp; sort →
-            </Link>
-          </div>
         </div>
       </section>
 
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
           {list.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
-              {list.map(p => <ProductTile key={p.id} product={p} />)}
-            </div>
+            <ProductBrowser products={list} />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
               Nothing here yet — <Link href="/shop" className="text-link">browse the full catalogue</Link>.
