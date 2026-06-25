@@ -50,7 +50,7 @@ const statusColors: Record<string, string> = {
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.view'))) {
     return <NoAccess section="Orders" />;
   }
   // orders.edit gates the mutating widgets below (confirmation, vendor

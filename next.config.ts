@@ -39,24 +39,19 @@ const nextConfig: NextConfig = {
   // WP_IMAGE_HOST in env if your Woo images live somewhere else).
   images: {
     // Vercel's Image Optimization (the /_next/image transformer) is metered;
-    // on the free plan we exhausted the monthly transformation quota, after
-    // which the optimizer returns HTTP 402 and any not-yet-cached image (e.g.
-    // newly added products) renders blank. Serve images unoptimized so they go
-    // straight from their source (Supabase Storage CDN + the small pre-built
-    // WebP photos in /public/catalog) with zero transformations and no quota
-    // dependency. width/height/sizes on each <Image> still drive layout and
-    // lazy-loading, so CLS is unaffected. remotePatterns below is kept for
-    // forward-compat if optimization is re-enabled on a paid plan.
-    unoptimized: true,
-    formats: ['image/avif', 'image/webp'],
-    // Tight breakpoint set so we don't generate dozens of derivatives per
+    // on the free plan we exhausted the monthly quota, after which it 402s and
+    // images render blank. Instead of serving originals un-optimised, we route
+    // every <Image> through a custom loader (src/lib/image-loader.ts) that
+    // proxies images.weserv.nl — a free CDN that resizes to the requested
+    // width and re-encodes to WebP, with no Vercel quota and no Supabase plan
+    // change. deviceSizes/imageSizes still drive the responsive srcSet widths.
+    loader: 'custom',
+    loaderFile: './src/lib/image-loader.ts',
+    // Tight breakpoint set so we don't request dozens of derivatives per
     // image. Storefront tiles render at <= 480 px on phones, ~360 px in a
     // 4-up grid on desktop, and full-bleed at 1080 px on hero shots.
     deviceSizes: [360, 480, 640, 828, 1080, 1440, 1920],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    // 30 d browser cache on the optimized URL (the source URL keeps its
-    // own cache headers).
-    minimumCacheTTL: 60 * 60 * 24 * 30,
     remotePatterns: [
       // Supabase Storage on the configured project.
       ...(supabaseHost ? [{ protocol: 'https' as const, hostname: supabaseHost, pathname: '/storage/v1/object/public/**' }] : []),
@@ -72,6 +67,10 @@ const nextConfig: NextConfig = {
       // Common CDNs people host product imagery on.
       { protocol: 'https' as const, hostname: 'images.unsplash.com' },
       { protocol: 'https' as const, hostname: 'res.cloudinary.com' },
+      // NB Sons (the in-house brand) Shopify store — a few collection cover
+      // banners are reused from there. Forward-compat for if/when image
+      // optimization is re-enabled; today images render unoptimized anyway.
+      { protocol: 'https' as const, hostname: 'cdn.shopify.com' },
     ],
   },
   // Edge compression.
@@ -91,6 +90,12 @@ const nextConfig: NextConfig = {
       // Policy content lives under /page/:slug; bare /returns is a common
       // inbound guess (and was 404ing), so alias it to the returns policy.
       { source: '/returns', destination: '/page/returns', permanent: true },
+      // Blog cannibalization cleanup (migration 192): duplicate posts were
+      // consolidated onto one canonical each; 308 the removed slugs so their
+      // crawl/link equity flows to the survivor instead of 404ing.
+      { source: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan-2', destination: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan', permanent: true },
+      { source: '/blog/vit-kd-vitamin-d3-k2-bone-heart-health-pakistan', destination: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan', permanent: true },
+      { source: '/blog/how-to-increase-sperm-count-naturally-pakistan', destination: '/blog/increase-sperm-count-naturally-pakistan-guide', permanent: true },
       // Force apex → www as a PERMANENT (308) redirect. The platform default
       // can be a temporary 307 (SEO audit: "temporary redirects"); this pins
       // it at the app layer so link equity consolidates on the www host.

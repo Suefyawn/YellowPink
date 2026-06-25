@@ -31,7 +31,7 @@ const fmtDate = (s: string) =>
 
 export default async function CodReconciliationPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('analytics')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
     return <NoAccess section="COD reconciliation" />;
   }
 

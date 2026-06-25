@@ -7,31 +7,34 @@ import type { Metadata } from 'next';
 import { getProducts } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
-import { canonicalCategory, CATEGORY_DESCRIPTIONS } from '@/lib/category-taxonomy';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
+import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref } from '@/lib/category-taxonomy';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { getDefaultEstimatedDays } from '@/lib/shipping';
 
 // Category-landing FAQ. Parameterised by the active category label so every
 // landing page gets useful, unique copy + FAQPage rich-result eligibility,
 // without hand-authoring a bespoke set for all 18 leaf categories. The answers
 // are universally true store facts (authenticity, COD, delivery, returns) that
 // also reinforce the PK-market trust signals Google rewards.
-function landingFaqs(label: string): { q: string; a: string }[] {
+function landingFaqs(label: string, estimatedDays?: { min: number; max: number } | null): { q: string; a: string }[] {
   const c = label.toLowerCase();
+  const deliveryRange = estimatedDays ? `${estimatedDays.min}–${estimatedDays.max}` : 'a few';
   return [
     { q: `Are your ${c} products authentic?`,
       a: `Yes — every ${c} product at Yellow Pink is 100% genuine, sourced from authorised channels and imported for the Pakistani market. We never sell counterfeits.` },
     { q: `Is cash on delivery (COD) available for ${c}?`,
       a: `Absolutely. You can order any ${c} product with cash on delivery nationwide across Pakistan, and pay only when your parcel arrives.` },
     { q: `How long does delivery take?`,
-      a: `Orders are typically delivered in 2–4 working days, with tracking shared on WhatsApp once your order ships.` },
+      a: `Orders are typically delivered in ${deliveryRange} working days, with tracking shared on WhatsApp once your order ships.` },
     { q: `Can I return ${c} products?`,
       a: `Yes — unused items can be returned within ${RETURNS_WINDOW_DAYS} days of delivery. Start a return from your account or message us on WhatsApp and we'll help.` },
   ];
 }
 import { loadFacetData, loadTagData } from '@/lib/shop-facets';
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; q?: string; brand?: string }> }): Promise<Metadata> {
-  const { category, subcategory, cat, q, brand } = await searchParams;
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; q?: string; brand?: string }> }): Promise<Metadata> {
+  const { category, subcategory, cat, taxon, q, brand } = await searchParams;
   // Resolve ?category= (or the legacy ?cat=) to its canonical label, so the
   // slug form (?category=combo-packs) and the label form (?category=Combo
   // Packs) collapse onto ONE title + canonical URL instead of two duplicates.
@@ -40,6 +43,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // normalisation — otherwise ?subcategory=combo-packs and ?subcategory=Combo
   // Packs would render two different titles + canonicals for the same page.
   const resolvedSubcategory = canonicalCategory(subcategory);
+  // The four top-level nav landing pages (/shop?taxon=makeup|skincare|…) are
+  // real index targets — give each its own title/description/self-canonical
+  // instead of the generic "Shop All Products" + a canonical back to /shop.
+  // Only when no (sub)category is set, since those are more specific.
+  const resolvedTaxon = !resolvedCategory && !resolvedSubcategory ? findTaxon(taxon) : null;
   // Sanitise free-text params before interpolating them into the title /
   // description / og:title (audit SEV-2: raw `<img onerror=…>` once ended up
   // in the og:title `content` attribute). Strip every character with
@@ -54,8 +62,9 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   if (trimmedQ)                 title = `Search: ${trimmedQ}`;
   else if (resolvedSubcategory) title = `${resolvedSubcategory} — Shop`;
   else if (resolvedCategory)    title = `${resolvedCategory} — Shop`;
+  else if (resolvedTaxon)       title = TAXON_SEO[resolvedTaxon.key].title;
   else if (trimmedBrand)        title = `${trimmedBrand} — Shop`;
-  else                          title = 'Shop All Products';
+  else                          title = 'Shop Imported Beauty & Wellness in Pakistan';
 
   // Canonical strategy:
   //   • `/shop`, `/shop?category=Foo` (`?subcategory=Bar`) and a pure
@@ -68,7 +77,8 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const canonicalParams = new URLSearchParams();
   if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
   if (resolvedSubcategory) canonicalParams.set('subcategory', resolvedSubcategory);
-  if (trimmedBrand && !resolvedCategory && !resolvedSubcategory) canonicalParams.set('brand', trimmedBrand);
+  else if (resolvedTaxon) canonicalParams.set('taxon', resolvedTaxon.key);
+  if (trimmedBrand && !resolvedCategory && !resolvedSubcategory && !resolvedTaxon) canonicalParams.set('brand', trimmedBrand);
   const qs = canonicalParams.toString();
 
   // Description: search > subcategory copy > category landing copy > brand
@@ -81,10 +91,12 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     description = CATEGORY_DESCRIPTIONS[resolvedSubcategory];
   } else if (resolvedCategory && CATEGORY_DESCRIPTIONS[resolvedCategory]) {
     description = CATEGORY_DESCRIPTIONS[resolvedCategory];
+  } else if (resolvedTaxon) {
+    description = TAXON_SEO[resolvedTaxon.key].description;
   } else if (trimmedBrand) {
     description = `Shop the ${trimmedBrand} range at Yellow Pink — 100% authentic, imported ${trimmedBrand}, with cash-on-delivery nationwide in Pakistan.`;
   } else {
-    description = 'Browse imported skincare, makeup, and wellness products. COD available nationwide in Pakistan.';
+    description = 'Browse authentic imported skincare, makeup and wellness supplements at Yellow Pink — 100% genuine international brands, with cash on delivery nationwide in Pakistan.';
   }
 
   return pageMeta({
@@ -97,10 +109,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 }
 
 export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string; brand?: string; tag?: string; featured?: string; bestseller?: string }> }) {
-  const [products, facetData, tagData] = await Promise.all([
+  const [products, facetData, tagData, estimatedDays] = await Promise.all([
     getProducts(),
     loadFacetData(),
     loadTagData(),
+    getDefaultEstimatedDays(),
   ]);
   const { category, subcategory, cat, taxon, on_sale, q, brand, tag: tagParam, featured, bestseller } = await searchParams;
   const searchParamsFeatured = featured === '1';
@@ -130,7 +143,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     { name: 'Shop', path: '/shop' },
     ...(taxonObj ? [{ name: taxonObj.label, path: `/shop?taxon=${taxonObj.key}` }] : []),
     ...(initialCategory !== 'All' && !taxonObj
-      ? [{ name: initialCategory, path: `/shop?category=${encodeURIComponent(initialCategory)}` }]
+      ? [{ name: initialCategory, path: categoryHref(initialCategory) }]
       : []),
   ];
 
@@ -140,6 +153,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }}
       />
+      <Breadcrumbs items={breadcrumb} />
       {/* Only emit the ItemList when it actually has items. Taxon-level
           category labels (e.g. ?category=Skincare) have no exact leaf-category
           match server-side, which otherwise produced an empty ItemList — a
@@ -189,7 +203,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           ?? (subcategory ? canonicalCategory(subcategory) : null)
           ?? (initialCategory !== 'All' ? canonicalCategory(initialCategory) : null);
         if (!landingLabel || q || brand) return null;
-        const faqs = landingFaqs(landingLabel);
+        const faqs = landingFaqs(landingLabel, estimatedDays);
         return (
           <section className="container" style={{ padding: '8px 0 var(--section-gap)' }}>
             <script

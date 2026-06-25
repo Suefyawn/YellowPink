@@ -102,6 +102,94 @@ export function taxonForCategory(category: string | null | undefined): Taxon | n
   return null;
 }
 
+// Health/YMYL categories — used to decide where a medical disclaimer must
+// show. Covers the product "wellness" taxon leaves (Women's Health, Immunity,
+// Bone & Joint, …) PLUS blog-only health categories that aren't product leaves
+// ("Wellness", "Fertility"). Beauty categories (Skincare, Makeup, Hair) return
+// false — they don't need a medical disclaimer.
+const HEALTH_BLOG_CATEGORIES = new Set(
+  ['Wellness', 'Fertility', 'Health'].map(s => s.toLowerCase()),
+);
+export function isHealthCategory(category: string | null | undefined): boolean {
+  if (!category) return false;
+  if (taxonForCategory(category)?.key === 'wellness') return true;
+  return HEALTH_BLOG_CATEGORIES.has(category.trim().toLowerCase());
+}
+
+/** Canonical href for a category landing page. Built with URLSearchParams
+ *  (space -> "+", "'" -> "%27") so every internal link is byte-identical to
+ *  the shop page's self-canonical and the sitemap entry. Using
+ *  encodeURIComponent here instead ("%20"/raw "'") makes internal links point
+ *  at a non-canonical URL variant, which Google then has to collapse. */
+export function categoryHref(category: string): string {
+  return `/shop?${new URLSearchParams({ category }).toString()}`;
+}
+
+// Richer on-page intro copy for the wellness category landing pages — these
+// target competitive head terms ("women's health supplements Pakistan", …), so
+// a unique, genuinely useful 2–3 sentence intro (vs the one-line meta blurb in
+// CATEGORY_DESCRIPTIONS) gives Google real on-page content to rank. Compliant
+// by design: no disease/cure claims. Categories without an entry fall back to
+// the short CATEGORY_DESCRIPTIONS line.
+export const CATEGORY_INTRO: Record<string, string> = {
+  "Women's Health":
+    "Yellow Pink's women's health range covers fertility support, prenatal and postnatal nutrition, hormonal balance, iron and everyday vitality — from trusted international supplement brands. Whether you're planning a pregnancy, managing your cycle, or simply topping up key nutrients, every product here is 100% authentic and sealed, with cash on delivery nationwide across Pakistan.",
+  "Men's Health":
+    "Support energy, stamina, fertility and everyday performance with our men's health supplements — from L-arginine and CoQ10 sachets to testosterone-support herbs and daily multivitamins. Each product is 100% genuine and imported, delivered with cash on delivery anywhere in Pakistan.",
+  'Immunity':
+    "Give your body's everyday defences a hand with our immunity range — vitamin C, vitamin D, zinc, elderberry and multivitamin formulas from reputable global brands. Ideal for seasonal changes and busy routines, all authentic and sealed, with cash on delivery across Pakistan.",
+  'Bone & Joint':
+    'Keep moving comfortably with our bone and joint supplements — calcium and vitamin D for bone strength, plus glucosamine, chondroitin and collagen for joint support. Popular with active adults and older family members alike, all 100% authentic, with cash on delivery nationwide in Pakistan.',
+  'Heart Health':
+    'Look after your cardiovascular wellbeing with our heart health range — omega-3 fish oils, CoQ10 and other supplements that support a healthy heart and circulation. Sourced from trusted international brands, genuine and sealed, with cash on delivery across Pakistan.',
+  'Digestive & Gut':
+    'Support comfortable digestion and a balanced gut with our probiotics, prebiotics and digestive-enzyme supplements. From daily gut maintenance to occasional bloating, find authentic, well-stored products here, with cash on delivery anywhere in Pakistan.',
+  'Cough & Respiratory':
+    'Soothe seasonal coughs and support healthy breathing with our respiratory range — herbal syrups, lozenges and vitamin blends from trusted brands. Every product is 100% genuine and sealed, delivered cash on delivery across Pakistan.',
+  'Kids':
+    'Gentle, easy-to-take syrups, gummies and supplements made for growing children — from everyday multivitamins to immunity and bone support. Chosen for taste and trust, every product is authentic and sealed, with cash on delivery nationwide in Pakistan.',
+  // Beauty & bundle landing pages — same keyword-led treatment for the
+  // higher-volume cosmetic categories and value sets.
+  'Cleansers & Treatments':
+    'From gentle daily cleansers and foaming washes to targeted serums, exfoliants and acne treatments, our cleansers & treatments range helps you build a routine for clearer, healthier-looking skin. Every product is 100% authentic and imported, with cash on delivery across Pakistan.',
+  'Lip & Cheek Tints':
+    'Add a wash of natural colour with our lip and cheek tints — buildable, long-wearing formulas from popular K-beauty and international brands for an effortless flush. All genuine and sealed, with cash on delivery nationwide in Pakistan.',
+  'Face Makeup':
+    'Build a flawless base with our face makeup — foundations, concealers, powders and primers to even tone, blur pores and set your look. 100% authentic and imported, with cash on delivery across Pakistan.',
+  'Moisturizers':
+    'Lock in hydration with our moisturisers — lightweight gels, rich creams and barrier-repair formulas for every skin type and season. Authentic and sealed, with cash on delivery nationwide in Pakistan.',
+  'Highlighters':
+    'Catch the light with our highlighters — powder, liquid and stick formulas that add a natural glow or a bolder strobe. 100% genuine and imported, with cash on delivery across Pakistan.',
+  'Combo Packs':
+    'Save with our combo packs — curated sets that pair complementary skincare, makeup and wellness products at a better price than buying them separately. All authentic and sealed, with cash on delivery across Pakistan.',
+  'Budget Bundles':
+    'Get more for less with our budget bundles — value sets of everyday beauty and wellness essentials, hand-picked to stretch your rupee further. 100% genuine, with cash on delivery nationwide in Pakistan.',
+};
+
+// Per-taxon SEO: the four top-level nav landing pages (/shop?taxon=<key>) are
+// real index targets, so each gets a unique, keyword-led title + meta
+// description + intro instead of the generic "Shop All Products" + a canonical
+// pointing back at /shop. Titles stay short (the layout appends "| Yellow
+// Pink"); descriptions double as the on-page intro copy.
+export const TAXON_SEO: Record<TaxonKey, { title: string; description: string }> = {
+  makeup: {
+    title: 'Makeup in Pakistan — Buy Authentic',
+    description: 'Shop imported makeup at Yellow Pink — foundation, concealer, blush, lip & cheek tints, highlighters and brushes from international brands. 100% authentic, with cash on delivery across Pakistan.',
+  },
+  skincare: {
+    title: 'Skincare in Pakistan — Korean & Imported, Authentic',
+    description: 'Shop imported and Korean skincare products in Pakistan at Yellow Pink — cleansers, serums, moisturisers, sunscreens and K-beauty favourites. 100% authentic, COD nationwide.',
+  },
+  wellness: {
+    title: 'Supplements & Vitamins in Pakistan — Authentic',
+    description: 'Shop health supplements and vitamins in Pakistan at Yellow Pink — immunity, bone & joint, heart, digestive, women’s and men’s health and more. Authentic, with cash on delivery.',
+  },
+  bundles: {
+    title: 'Bundles & Combo Packs in Pakistan',
+    description: 'Shop value bundles and combo packs at Yellow Pink — curated skincare, makeup and wellness sets at the best prices, with cash on delivery across Pakistan.',
+  },
+};
+
 // ── Category landing-page copy ──────────────────────────────────────────────
 // Intro copy shown on each Shop category/taxon page AND reused as that page's
 // meta description, so every category landing page has unique, indexable text

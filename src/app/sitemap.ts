@@ -8,6 +8,12 @@ import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
 import { brandSlug } from '@/lib/brands';
 
+// Regenerate hourly so posts/products added via the DB, the blog API or the
+// admin (none of which trigger a deploy) appear in the sitemap within an hour.
+// Without this the sitemap is built once at deploy time and silently goes stale
+// as new content is published.
+export const revalidate = 3600;
+
 // Robots-disallowed (utility / private) routes are deliberately excluded —
 // listing them would send a conflicting signal to crawlers.
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
@@ -17,6 +23,7 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
   { path: '/brands',     priority: 0.6, freq: 'weekly' },
   { path: '/k-beauty',   priority: 0.8, freq: 'weekly' },
   { path: '/blog',       priority: 0.7, freq: 'weekly' },
+  { path: '/sitemap',    priority: 0.3, freq: 'weekly' },
   // NOTE: /faq is intentionally NOT listed — it 301-redirects to the CMS page
   // /page/faq (see proxy.ts PAGE_SLUG_MAP), which is already emitted in the
   // published-pages section below. Listing the redirecting URL would be a
@@ -99,7 +106,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     new Set(products.map(p => p.category).filter((c): c is string => Boolean(c))),
   );
   const categoryUrls: MetadataRoute.Sitemap = categories.map(cat => ({
-    url: `${SITE_URL}/shop?category=${encodeURIComponent(cat)}`,
+    // Build the query string exactly as the shop page's self-canonical does
+    // (URLSearchParams → space "+", "'" "%27"). Using encodeURIComponent here
+    // produced "%20"/raw "'", which differs from the canonical, so GSC flagged
+    // every multi-word category ("Women's Health", "Face Makeup", …) as
+    // "Alternate page with proper canonical tag" — the sitemap "errors".
+    url: `${SITE_URL}/shop?${new URLSearchParams({ category: cat }).toString()}`,
     lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.7,
@@ -130,6 +142,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // <image:loc> requires an ABSOLUTE URL. Blog hero assets are stored as
+  // site-relative paths (/blog-heroes/x.webp, served from /public); product
+  // images are already absolute (Supabase storage or the /catalog CDN). GSC
+  // rejects relative image locs as "Invalid URL", so normalise both forms.
+  const absImage = (u: string): string => (/^https?:\/\//.test(u) ? u : absoluteUrl(u));
+
   const productUrls: MetadataRoute.Sitemap = products.map(p => {
     const last = p.updated_at ?? p.created_at;
     return {
@@ -137,7 +155,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: last ? new Date(last) : now,
       changeFrequency: 'weekly',
       priority: 0.8,
-      images: p.image_url ? [p.image_url] : undefined,
+      images: p.image_url ? [absImage(p.image_url)] : undefined,
     };
   });
 
@@ -148,7 +166,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: last ? new Date(last) : now,
       changeFrequency: 'monthly',
       priority: 0.6,
-      images: p.image_url ? [p.image_url] : undefined,
+      images: p.image_url ? [absImage(p.image_url)] : undefined,
     };
   });
 

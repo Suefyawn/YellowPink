@@ -12,7 +12,7 @@ const EXPENSE_CATEGORIES = ['Ads', 'Salaries', 'Packaging', 'Marketing', 'Rent &
 
 export async function addExpense(formData: FormData): Promise<void> {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('analytics')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
     redirect('/admin/finance?err=' + encodeURIComponent('Not authorized'));
   }
 
@@ -44,7 +44,7 @@ export async function addExpense(formData: FormData): Promise<void> {
 
 export async function deleteExpense(id: string): Promise<void> {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('analytics')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
     redirect('/admin/finance?err=' + encodeURIComponent('Not authorized'));
   }
   const { error } = await supabaseAdmin().from('expenses').delete().eq('id', id);
@@ -60,7 +60,7 @@ export async function deleteExpense(id: string): Promise<void> {
 // saved from the order detail page. Gated on orders.edit.
 export async function setOrderCosts(orderId: string, formData: FormData): Promise<void> {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders.edit')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Not authorized'));
   }
   const parseNum = (v: FormDataEntryValue | null): number | null => {
@@ -90,7 +90,7 @@ export async function setOrderCosts(orderId: string, formData: FormData): Promis
 // transfers and break revenue down by account. Gated on orders.edit.
 export async function recordPayment(orderId: string, formData: FormData): Promise<void> {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders.edit')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Not authorized'));
   }
   const account = String(formData.get('payment_account') || '').trim();
@@ -120,7 +120,7 @@ export async function recordPayment(orderId: string, formData: FormData): Promis
 // the customer). Gated on orders.edit, same as the other order-page widgets.
 export async function updateOrderNotes(orderId: string, formData: FormData): Promise<void> {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders.edit')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Not authorized'));
   }
   const raw = String(formData.get('notes') ?? '').trim();
@@ -141,7 +141,7 @@ export async function updateOrderNotes(orderId: string, formData: FormData): Pro
 // Undo a recorded payment (e.g. logged against the wrong account).
 export async function clearPayment(orderId: string): Promise<void> {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('orders.edit')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Not authorized'));
   }
   const { error } = await supabaseAdmin()

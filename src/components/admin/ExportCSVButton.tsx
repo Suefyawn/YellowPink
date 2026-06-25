@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { getBrowserClient } from '@/lib/supabase-browser';
+import { orderRangeSinceIso } from '@/lib/order-range';
 import type { Order, OrderStatus } from '@/types';
 
 function toCSV(orders: Order[]): string {
@@ -33,8 +34,6 @@ interface Props {
   range?: string;
 }
 
-const RANGE_DAYS: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
-
 export function ExportCSVButton({ status, q, range }: Props) {
   const [loading, setLoading] = useState(false);
 
@@ -43,9 +42,10 @@ export function ExportCSVButton({ status, q, range }: Props) {
     const sb = getBrowserClient();
     let query = sb.from('orders').select('*').order('created_at', { ascending: false });
     if (status && status !== 'all') query = query.eq('status', status as OrderStatus);
-    if (range && RANGE_DAYS[range]) {
-      query = query.gte('created_at', new Date(Date.now() - RANGE_DAYS[range] * 86_400_000).toISOString());
-    }
+    // Shared with the Orders page so the export window matches the on-screen
+    // filter exactly ("Today" = PKT calendar day, 7d/30d/90d rolling).
+    const rangeSince = orderRangeSinceIso(range);
+    if (rangeSince) query = query.gte('created_at', rangeSince);
     if (q) {
       // Keep in sync with the orders page search (order #, name, email, phone).
       const term = q.replace(/[(),*]/g, ' ').trim();

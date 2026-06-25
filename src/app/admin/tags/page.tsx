@@ -11,7 +11,7 @@ interface TagRow { id: string; slug: string; name: string }
 
 export default async function TagsPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products.view')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.view'))) {
     return <NoAccess section="Tags" />;
   }
   const admin = supabaseAdmin();

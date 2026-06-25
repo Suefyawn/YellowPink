@@ -28,6 +28,8 @@ export const SOCIAL_PLATFORMS: SocialPlatform[] = [
 ];
 
 export interface SocialLink {
+  /** Platform key (e.g. `social_instagram`) so the footer can pick an icon. */
+  key: string;
   label: string;
   href: string;
 }
@@ -45,7 +47,7 @@ function normalizeUrl(raw: string): string {
 /** Footer social links — every configured platform, in display order. */
 export function socialLinks(settings: Record<string, string>): SocialLink[] {
   return SOCIAL_PLATFORMS
-    .map(p => ({ label: p.label, href: normalizeUrl(settings[p.key] ?? '') }))
+    .map(p => ({ key: p.key, label: p.label, href: normalizeUrl(settings[p.key] ?? '') }))
     .filter(s => s.href.length > 0);
 }
 

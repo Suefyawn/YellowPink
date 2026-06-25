@@ -23,7 +23,7 @@ interface CampaignRow {
 
 export default async function NewsletterPage() {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('newsletter')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('newsletter'))) {
     return <NoAccess section="Newsletter" />;
   }
 

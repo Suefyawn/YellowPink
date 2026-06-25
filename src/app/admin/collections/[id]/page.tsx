@@ -8,6 +8,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { updateCollection } from '@/app/admin/collection-actions';
 import { CollectionProductPicker, type PickerProduct } from '@/components/admin/CollectionProductPicker';
 import { CollectionRulesEditor } from '@/components/admin/CollectionRulesEditor';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 import { ALL_CATEGORIES } from '@/lib/category-taxonomy';
 import { brandPlusName } from '@/lib/product-display';
 import type { Collection } from '@/lib/collections';
@@ -19,7 +20,7 @@ export default async function EditCollectionPage({
   params, searchParams,
 }: { params: Promise<{ id: string }>; searchParams?: Promise<{ saved?: string; error?: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('products.edit')) {
+  if (!session || (!session.isOwner && !session.permissions.includes('products.edit'))) {
     return <NoAccess section="Collections" />;
   }
   const { id } = await params;
@@ -67,8 +68,11 @@ export default async function EditCollectionPage({
           <label style={lbl}>Description</label>
           <textarea name="description" defaultValue={c.description ?? ''} rows={2} style={{ ...inp, resize: 'vertical' }} placeholder="Shown on the collection page hero." />
         </div>
-        <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <div><label style={lbl}>Hero image URL</label><input name="hero_image_url" defaultValue={c.hero_image_url ?? ''} style={inp} placeholder="https://…" /></div>
+        <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14, alignItems: 'start' }}>
+          <div>
+            <ImageUpload name="hero_image_url" currentUrl={c.hero_image_url} label="Hero image" aspect={16 / 9} />
+            <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Leave empty to auto-use the first product&apos;s image as the cover.</p>
+          </div>
           <div><label style={lbl}>Sort order</label><input name="sort_order" type="number" defaultValue={c.sort_order} style={inp} /></div>
         </div>
         <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>

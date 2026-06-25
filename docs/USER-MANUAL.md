@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 20 June 2026.*
+> *Last updated: 22 June 2026 (added the programmatic blog management API + image upload, the HTML sitemap page and per-post blog author byline).*
 
 ---
 
@@ -56,7 +56,13 @@ customers and spot where an order is.
 
 - **Home page** — the landing page. It shows a hero banner, curated product
   rails (featured items, bestsellers, wellness picks), shop-by-category tiles,
-  the latest blog posts, and trust/press sections. It also features **The
+  the latest blog posts, and trust/press sections. A dedicated **"Beauty starts
+  from within"** wellness showcase presents every health concern (Women's
+  Health, Immunity, Bone & Joint, and more) as its own card with a live product
+  count and "from" price, a featured wellness rail, and supplement-specific
+  assurances (authentic, sealed & in-date, cash on delivery). The concern cards
+  and counts are generated automatically from the live catalogue, so they never
+  drift from what's actually in stock. It also features **The
   K-Beauty Edit** — a band showcasing products from curated Korean beauty
   brands, linking to the K-Beauty collection page. The band appears
   automatically once at least one product from a listed K-beauty brand is
@@ -71,12 +77,14 @@ customers and spot where an order is.
   beyond setting its brand.
 - **Brand pages** (`/brand/<brand>`) — every brand has its own landing page
   with that brand's products, reachable from the **All Brands** directory
-  (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each has a
-  "Filter & sort all …" link through to the Shop page. These appear and update
-  automatically from the brands on your products — nothing to configure.
+  (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each page has
+  its own on-page **sort** (Featured / Newest / Price / Name), **category
+  filter** chips, and an **in-stock** toggle, so shoppers refine right there
+  without leaving the page. These appear and update automatically from the
+  brands on your products — nothing to configure.
 - **Tag pages** (`/tag/<tag>`) — each product tag has its own landing page
-  listing the tagged products, created automatically from the tags you set in
-  admin.
+  listing the tagged products with the same on-page sort + filter controls,
+  created automatically from the tags you set in admin.
 - **Collection pages** (`/collection/<slug>`) — curated edits you build in
   admin (Collections), each with its own hero, description, and product grid.
   Manual collections show a hand-picked, ordered list; smart collections fill
@@ -95,6 +103,10 @@ customers and spot where an order is.
   `/shop?tag=viral`). Results are paginated. Product cards show a **Sale** badge
   when discounted and an **"Only N left"** badge when stock is running low (5 or
   fewer remaining, for products whose inventory the store tracks).
+- **Search overlay** — the header magnifying glass opens a full-width search
+  panel. When the box is empty it shows the shopper's **Recent** searches as
+  one-tap chips (the last 6, deduped), then Trending brands and Categories.
+  Typing brings up live product results.
 - **Product page** — each product has its images, price (and the crossed-out
   original price if it's on sale), description, ingredients, how-to-use, key
   benefits, FAQs, and its customer star rating. If the product comes in
@@ -102,6 +114,11 @@ customers and spot where an order is.
   a shipping zone has a delivery estimate configured, an **estimated delivery
   time** ("Delivery in X–Y working days · COD nationwide") shows by the
   Add-to-Cart button.
+- **Sitemap page** (`/sitemap`, linked from the footer Help column) — a single
+  human-readable index of the whole store: every shop category (grouped by
+  Makeup / Skincare / Wellness), all collections, brands, journal posts and
+  information pages, each one click away. It complements the machine
+  `/sitemap.xml` that search engines read.
 
 ### 2.2 Cart and checkout
 
@@ -143,7 +160,10 @@ Every order gets a unique **order number** (for example `YP-A1B2C3`).
 - They receive an **order confirmation email**.
 - They can check progress anytime at the **Track page** (`/track`) by entering
   their order number and phone — no login needed. Once the order ships, the
-  tracking number and courier link appear there.
+  tracking number and courier link appear there. The **Track your order**
+  button in the confirmation email opens the page with both fields pre-filled
+  and runs the lookup automatically, so a single tap from the inbox shows
+  status with no typing.
 
 ### 2.5 Customer accounts
 
@@ -173,6 +193,34 @@ for you to approve or reject.
 - **Newsletter** — customers can subscribe via the footer sign-up form or the
   prompt shown after a purchase.
 
+### 2.8 Getting in touch
+
+The **Contact** page (linked in the footer) offers WhatsApp and a **contact
+form**. A customer fills in their name, email, an optional subject, and their
+message; on submit it's saved to the store and the owner is emailed a copy.
+Staff then read and reply under **Admin → Messages**
+([section 3.2](#32-the-sections)), where each customer's messages and your
+replies are threaded into one conversation — you reply from the admin and it
+goes out from your store address by email, all kept on record. This is the
+path for non-order questions now that there's no shared support mailbox.
+
+**Inbound email (optional).** Emails sent *directly* to your store address
+(e.g. `hello@yellowpink.pk`) can also be funnelled into **Admin → Messages**
+so they're answered in the same place — those rows carry an **Email** tag. It
+uses **Resend** (already powering the store's outgoing email), so there's no
+new provider to sign up for. One-time setup by whoever manages the domain:
+
+1. **Resend → Domains** → enable receiving for `yellowpink.pk` and add the
+   **MX record** it shows to your DNS.
+2. **Resend → Webhooks** → add an endpoint for the **`email.received`** event
+   pointing at `https://www.yellowpink.pk/api/inbound-email`, and copy its
+   **signing secret** into the `RESEND_INBOUND_WEBHOOK_SECRET` Vercel
+   environment variable, then redeploy.
+
+Until that's done, only contact-form messages appear; direct emails are
+unaffected. (`RESEND_API_KEY`, already set for sending, is reused to fetch the
+message body.)
+
 ---
 
 ## 3. The admin panel — a tour
@@ -195,14 +243,15 @@ together. Here's what each link is for:
 **Insights**
 | Section | What it's for |
 |---|---|
-| **Dashboard** | At-a-glance health of the store — revenue, order counts by status, top products, low-stock alerts, recent orders. |
+| **Dashboard** | At-a-glance health of the store — revenue, order counts by status, top products, low-stock alerts, recent orders. A **Needs attention** card appears above Low stock whenever something has drifted past its SLA: payment-pending orders stuck over 24 hours, plain pending orders unconfirmed for over 3 days, and any return requests still awaiting approval. Each row deep-links to the filtered list so you can clear it in one click; the whole card hides when all three counters are zero. |
 | **Analytics** | Deeper performance data — revenue trends, customer cohorts (RFM segments + retention), and (if connected) website-traffic widgets including top user journeys (which path sequences customers take through the site), funnel-by-traffic-source and funnel-by-device (Mobile vs Desktop conversion at each step — useful for spotting where one device is leaking shoppers, most often at product → add-to-cart), a weekly-active-users curve, and inline links to PostHog session recordings to watch real visits. |
 | **Finance** | Profit & loss for any period (7/30/90 days or all time): revenue from paid orders, minus **cost of goods** (COGS), delivery and payment-fee costs → gross profit, minus your logged expenses (ad spend + overheads) → **net profit and margin**. COGS is worked out per order from how each item is sourced: vendor items use the vendor cost from their settlement, and own-stock items use the **Cost price** you set on the product page (Products → a product → *Vendor & sourcing* → Cost price). Set a cost price on your own-stock products so their profit is real instead of showing as 100% margin. Because drop-ship prices change order to order, you can also enter the **actual** goods cost for a specific order in *Order costs* on the order page (**Acquisition cost / COGS**) — when set, it overrides the estimate above for that one order; leave it blank to use the product default. A **Revenue by payment method** table breaks down orders, revenue and gross profit per method (Cash on Delivery, Bank Transfer, JazzCash, etc.); a **Revenue by account** table shows where payments actually landed once reconciled (with a count of orders still awaiting confirmation); an **Orders in this period** table lists each order's total, costs, gross profit and margin (latest 100, filterable by payment method and exportable to **CSV**); and an **Awaiting payment confirmation** list flags non-COD orders not yet reconciled. Also shows **ROAS** (return on ad spend) by traffic source. Log ad spend and overheads in the **Expenses** table here; enter each order's acquisition (goods), delivery and payment-fee cost on the order page (*Order costs*), where an **Order profit** summary then shows that order's net profit and margin. On each order you can also record **Payment received** — pick which of your configured accounts (Settings → Payments) the money landed in and the date; this feeds *Revenue by account* and the awaiting-confirmation count, and is for reconciliation only (it doesn't change the order status). |
+| **COD reconciliation** | The cash side of the business at a glance: **Outstanding** (delivered COD orders waiting for you to confirm cash received), **Collected** (delivered and reconciled), and **In transit** (still out for delivery — your expected cash to come). Open any order to record the payment. Two CSV exports — **Download CSV** for the full active COD list (a courier/route manifest) and **To-collect only** for the outstanding subset — open cleanly in Excel. |
 
 **Sell** — day-to-day commerce operations
 | Section | What it's for |
 |---|---|
-| **Orders** | Every order placed. Filter by status, search, and open an order to process it. With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone. |
+| **Orders** | Every order placed. Filter by status, by **date range** (Today / Last 7d / Last 30d / Last 90d / All time — "Today" is the calendar day in Pakistan time), and by search across order number, name, email or phone. Unfulfilled rows (pending / processing / payment_pending) get a coloured **age pill** next to their date — amber when they've sat too long, red when they're at risk — so a stale order jumps out without reading every date. Open an order to process it. With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone. |
 | **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, pricing, and descriptions. Each product page also has a **Tags** box — type to add a free-form tag (creating it if new) or reuse an existing one. Bulk price tools and CSV import are here. |
 | **Tags** | The tag vocabulary. Free-form labels (e.g. *viral*, *vegan*, *gift*) you attach to products for storefront filtering and curated edits. Create, rename (the storefront link stays stable), or delete a tag; deleting removes it from every product. The "N products" link jumps to the tagged products. |
 | **Collections** | Curated product groups, each with its own landing page (`/collection/<slug>`). **Manual** collections are a hand-picked, drag-ordered product list; **Smart** collections fill themselves from rules (e.g. *tag is viral* **and** *price ≤ 3000*) and stay current as products change. Set a title, description, hero image, SEO, and Draft/Published status. Draft collections are hidden from the storefront. |
@@ -213,7 +262,7 @@ together. Here's what each link is for:
 **People** — customers and incentives
 | Section | What it's for |
 |---|---|
-| **Customers** | Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend. Guests are grouped by email (a guest's repeat orders show as one customer); if a guest later signs up with the same email, their orders move under that account automatically. With the *Customers — Delete* permission, a registered customer's page has a **Danger zone** to permanently delete their account; their orders are kept (detached as guest orders) so revenue history stays intact. Guests have no account to delete — remove their orders individually instead. |
+| **Customers** | Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend. The customer page shows four stats — **Orders / Delivered / Total spend / Avg order** (total spend and average exclude cancelled, refunded, returned and payment-failed orders so they reflect realized revenue) — plus a tap-to-call phone link and a one-tap **WhatsApp** button that opens chat with a Yellow Pink greeting pre-filled. Guests are grouped by email (a guest's repeat orders show as one customer); if a guest later signs up with the same email, their orders move under that account automatically. With the *Customers — Delete* permission, a registered customer's page has a **Danger zone** to permanently delete their account; their orders are kept (detached as guest orders) so revenue history stays intact. Guests have no account to delete — remove their orders individually instead. |
 | **Segments** | Customer groupings (e.g. high-spenders) for targeting and analysis. |
 | **Coupons** | Discount codes — create, edit, set limits and expiry, and turn them on/off. |
 
@@ -221,8 +270,9 @@ together. Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Promos** | The promotional banner shown on the storefront — content, colours, and on/off. |
-| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. |
+| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. Each post has an **Author** field for the byline (defaults to "Yellow Pink Editorial Team"); naming a real expert on health/beauty posts strengthens their search-engine trust signals. |
 | **Reviews** | Moderate customer reviews (approve, unapprove, edit, delete) and seed reviews yourself (migration / phoned-in feedback). |
+| **Messages** | A **threaded inbox** for the storefront **contact form** and **inbound email** (direct emails to your store address show an **Email** tag). Messages are grouped into **conversations by customer**, shown as a chat (their messages on the left, your replies on the right). **Reply right here** — the box at the bottom of a conversation sends your reply **from your store address via email**, and the reply is saved into the thread, so the whole exchange stays on record. When the customer replies, it threads back into the same conversation automatically. Per-conversation **Mark read** / **Archive** / **Restore**. The Messages menu item shows a pink badge with the unread count, and the bell notifies on new **incoming** messages (your own replies don't notify). |
 | **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |
 
 **Store** — admin internals
@@ -288,7 +338,13 @@ margin, and who owes whom. Mark it **settled** once that payment is done.
 **The rest of the order page** also shows the customer's details (with a
 "repeat customer" badge and lifetime spend if applicable), the shipping address,
 the items, the full status timeline, a payment summary, and a **Print Invoice**
-button.
+button. The customer's phone is a tap-to-call link, the email is a `mailto:`
+link, and the shipping address has an **Open in Maps ↗** link that opens
+Google Maps with the address pre-filled — handy when handing off to a courier
+or sanity-checking a delivery zone. If a customer reports they didn't get the
+order confirmation email, the email field has a **Resend confirmation email**
+button right next to it (gated on Orders — Manage); the resend is recorded in
+the Activity log.
 
 > **Tip:** cancelling an order automatically returns its items to stock.
 
@@ -467,6 +523,65 @@ them again.
 4. The dashboard's *Products* and *Merchant listings* tiles show counts of
    pages Google has validated, not your full catalogue. Numbers grow as
    Google crawls; the sitemap submission above is what drives that.
+
+**Automatic search-engine indexing (built in)**
+
+You don't have to manually "Request indexing" for every page — the store pings
+search engines for you through two channels:
+
+- **IndexNow** (Bing, Yandex, Naver) — works out of the box, nothing to set up.
+- **Google Indexing API** — optional. It stays off until you add a Google Cloud
+  service-account key (env var `GOOGLE_INDEXING_CREDENTIALS`) and add that
+  service account as an *Owner* in Search Console. Until then, Google still
+  discovers pages via the sitemap above.
+
+How it's used:
+
+- **Automatic** — whenever you publish or edit a product or a blog post, its
+  URL is submitted automatically.
+- **Per page** — the product and blog editors have a **Submit to index** button
+  to re-send a single page on demand.
+- **Whole site** — the Blog list page has a **Resubmit all to index** button
+  that sends the entire live catalogue and blog to IndexNow in one go.
+
+A small toast confirms each submission and shows which channels accepted it.
+(Note: Google's direct API has a small daily quota and officially targets
+job/event pages, so the "resubmit all" button uses IndexNow only; Google is
+pinged per page on publish.)
+
+**Blog management API (for automation / AI content pipelines)**
+
+Besides the admin editor, the journal can be managed programmatically over a
+small HTTP API — handy for bulk imports, a publishing schedule, or an AI
+content pipeline that drafts and posts articles. It's **off until you set a
+token**, so it can never be left open by accident.
+
+1. Generate a long random token (e.g. `openssl rand -hex 32`).
+2. In Vercel → Project → Settings → Environment Variables, add
+   `BLOG_API_TOKEN` = that value for Production, and redeploy.
+3. Every request must send the header `Authorization: Bearer <token>`. While the
+   variable is unset, the endpoints return `503`.
+
+Endpoints (base `https://www.yellowpink.pk/api/blog`):
+
+| Method & path | What it does |
+|---|---|
+| `GET /api/blog` | List posts, newest first. Filters: `?category=`, `?featured=true`, `?q=` (title/excerpt search), `?limit=` (max 100), `?offset=`. |
+| `POST /api/blog` | Create a post. JSON body: `title`, `slug`, `excerpt`, `category` required; optional `body`, `image_url`, `author`, `read_time`, `featured`, `date` (defaults to today). |
+| `GET /api/blog/{id-or-slug}` | Fetch one post. |
+| `PATCH /api/blog/{id-or-slug}` | Update any subset of fields. |
+| `DELETE /api/blog/{id-or-slug}` | Delete a post. |
+
+To attach a **featured image**, set `image_url` to a hosted URL. If your
+automation has the image as a file, upload it first via `POST /api/media`
+(same `Authorization: Bearer` token; send `multipart/form-data` with a `file`
+field — JPG/PNG/WebP/AVIF, up to 5 MB). It returns `{ "url": "…" }`; pass that
+back as the post's `image_url`. This keeps the whole flow API-only — no admin
+session needed.
+
+Posts created or edited this way go live immediately and are auto-submitted to
+the search engines, exactly like the admin editor. A duplicate slug returns
+`409`; invalid fields return `422` with details.
 
 **Google Analytics 4 (visitor behaviour)**
 
