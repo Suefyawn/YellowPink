@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 22 June 2026 (added the programmatic blog management API + image upload, the HTML sitemap page and per-post blog author byline).*
+> *Last updated: 25 June 2026 (added a floating WhatsApp chat button, optional short product videos in the PDP gallery, the contact-page redesign, and keyword-led SEO meta across the storefront).*
 
 ---
 
@@ -109,7 +109,10 @@ customers and spot where an order is.
   Typing brings up live product results.
 - **Product page** — each product has its images, price (and the crossed-out
   original price if it's on sale), description, ingredients, how-to-use, key
-  benefits, FAQs, and its customer star rating. If the product comes in
+  benefits, FAQs, and its customer star rating. If a product has a **short
+  video** (e.g. a makeup swatch), it appears as an extra slide in the image
+  gallery with a play button — it **never autoplays** and only loads when the
+  shopper taps play, so it doesn't slow the page. If the product comes in
   variants (e.g. shades), the customer picks one before adding to the cart. When
   a shipping zone has a delivery estimate configured, an **estimated delivery
   time** ("Delivery in X–Y working days · COD nationwide") shows by the
@@ -195,6 +198,11 @@ for you to approve or reject.
 
 ### 2.8 Getting in touch
 
+A **floating "Chat on WhatsApp" button** sits in the bottom-right corner of
+every page — one tap opens WhatsApp with a greeting pre-filled, so shoppers can
+reach you live without leaving the site. It appears automatically once your
+store number is set (Settings → Profile → store phone / WhatsApp).
+
 The **Contact** page (linked in the footer) offers WhatsApp and a **contact
 form**. A customer fills in their name, email, an optional subject, and their
 message; on submit it's saved to the store and the owner is emailed a copy.
@@ -252,7 +260,7 @@ together. Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Orders** | Every order placed. Filter by status, by **date range** (Today / Last 7d / Last 30d / Last 90d / All time — "Today" is the calendar day in Pakistan time), and by search across order number, name, email or phone. Unfulfilled rows (pending / processing / payment_pending) get a coloured **age pill** next to their date — amber when they've sat too long, red when they're at risk — so a stale order jumps out without reading every date. Open an order to process it. With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone. |
-| **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, pricing, and descriptions. Each product page also has a **Tags** box — type to add a free-form tag (creating it if new) or reuse an existing one. Bulk price tools and CSV import are here. |
+| **Products** | The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, an optional **short product video** (drag-drop or browse — MP4/WebM, max 30 MB; shown as a tap-to-play gallery slide), pricing, and descriptions. Each product page also has a **Tags** box — type to add a free-form tag (creating it if new) or reuse an existing one. Bulk price tools and CSV import are here. |
 | **Tags** | The tag vocabulary. Free-form labels (e.g. *viral*, *vegan*, *gift*) you attach to products for storefront filtering and curated edits. Create, rename (the storefront link stays stable), or delete a tag; deleting removes it from every product. The "N products" link jumps to the tagged products. |
 | **Collections** | Curated product groups, each with its own landing page (`/collection/<slug>`). **Manual** collections are a hand-picked, drag-ordered product list; **Smart** collections fill themselves from rules (e.g. *tag is viral* **and** *price ≤ 3000*) and stay current as products change. Set a title, description, hero image, SEO, and Draft/Published status. Draft collections are hidden from the storefront. |
 | **Inventory** | Stock levels. See low-stock items and adjust stock counts. |

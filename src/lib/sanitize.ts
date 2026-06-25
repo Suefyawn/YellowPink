@@ -9,8 +9,30 @@ const ALLOWED_ATTRS: Record<string, string[]> = {
   span: ['style'],
 };
 
+const OWN_HOST = /^https?:\/\/(www\.)?yellowpink\.pk(\/|$)/i;
+
+// Add rel="nofollow noopener noreferrer" + target="_blank" to absolute external
+// links in user/imported content (blog bodies, CMS pages). Keeps our own and
+// relative links untouched. SEO hygiene: don't pass link equity to — or take
+// responsibility for — third-party URLs embedded in content.
+function markExternalLinks(html: string): string {
+  return html.replace(/<a\b([^>]*)>/gi, (whole, attrs: string) => {
+    const href = attrs.match(/href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const url = href ? (href[1] ?? href[2] ?? href[3] ?? '') : '';
+    if (!/^https?:\/\//i.test(url) || OWN_HOST.test(url)) return whole; // internal/relative
+
+    let out = attrs;
+    const relMatch = out.match(/\srel\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
+    const rel = new Set((relMatch ? (relMatch[1] ?? relMatch[2] ?? '') : '').split(/\s+/).filter(Boolean));
+    rel.add('nofollow'); rel.add('noopener'); rel.add('noreferrer');
+    out = relMatch ? out.replace(relMatch[0], ` rel="${[...rel].join(' ')}"`) : `${out} rel="${[...rel].join(' ')}"`;
+    if (!/\starget\s*=/i.test(out)) out += ' target="_blank"';
+    return `<a${out}>`;
+  });
+}
+
 export function sanitizeHtml(raw: string): string {
-  return raw
+  const cleaned = raw
     // Strip script/style/iframe tags entirely (including content)
     .replace(/<(script|style|iframe|object|embed|form)[^>]*>[\s\S]*?<\/\1>/gi, '')
     // Strip all event handlers (onclick, onerror, etc.)
@@ -27,4 +49,5 @@ export function sanitizeHtml(raw: string): string {
       if (allowed.length === 0) return match.replace(/\s+[a-zA-Z][^=>"'\s]*(?:=(?:"[^"]*"|'[^']*'|[^\s>]*))?/g, '');
       return match;
     });
+  return markExternalLinks(cleaned);
 }

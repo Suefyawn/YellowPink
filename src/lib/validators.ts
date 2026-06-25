@@ -86,6 +86,9 @@ export const productInputSchema = z.object({
                     positiveNumber.nullable(),
                   ),
   image_url:      httpsUrlSchema.optional().or(z.literal('')).nullable(),
+  // Optional short product video (PDP gallery slide). Empty string from the
+  // form normalises to null.
+  video_url:      httpsUrlSchema.optional().or(z.literal('')).transform(s => s || null).nullable(),
   description:    z.string().max(8000).optional().nullable(),
   short_description: z.string().max(1000).optional().nullable(),
   how_to_use:     z.string().max(8000).optional().nullable(),

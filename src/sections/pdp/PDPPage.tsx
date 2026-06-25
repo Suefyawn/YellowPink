@@ -190,17 +190,21 @@ function ZoomableImage({ src, alt, label, fallback }: { src: string | null; alt:
 }
 
 function Gallery({
-  images, alt, fallback, brandLabel,
+  images, alt, fallback, brandLabel, videoUrl,
 }: {
   images: ProductImageT[];
   alt: string;
   fallback?: string | null;
   brandLabel?: string;
+  videoUrl?: string | null;
 }) {
   const hero = images[0]?.url ?? fallback ?? null;
   const [active, setActive] = useState<string | null>(hero);
+  const [videoActive, setVideoActive] = useState(false);
+  const hasVideo = Boolean(videoUrl);
 
-  if (images.length <= 1) {
+  // One image and no video → simple zoomable hero, no thumbnail rail.
+  if (images.length <= 1 && !hasVideo) {
     return <ZoomableImage src={active} alt={alt} label={brandLabel} fallback={fallback} />;
   }
 
@@ -211,27 +215,72 @@ function Gallery({
     // strip — no more 64px sidebar stealing space on a phone.
     <div className="pdp-gallery" style={{ display: 'flex', gap: 12, flex: 1 }}>
       <div className="pdp-gallery-thumbs" role="group" aria-label="Product images" style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64, flexShrink: 0 }}>
-        {images.map(img => (
+        {images.map(img => {
+          const sel = !videoActive && active === img.url;
+          return (
+            <button
+              key={img.id}
+              type="button"
+              onClick={() => { setActive(img.url); setVideoActive(false); }}
+              aria-label={img.alt || alt}
+              aria-current={sel ? 'true' : undefined}
+              className="pdp-gallery-thumb"
+              style={{
+                width: 64, height: 80, padding: 0,
+                border: '1px solid ' + (sel ? 'var(--ink-900)' : 'var(--line)'),
+                borderRadius: 'var(--radius-card)', overflow: 'hidden',
+                background: 'var(--paper2)', cursor: 'pointer',
+                flexShrink: 0,
+              }}
+            >
+              <ProductImage src={img.url} alt={img.alt || alt} label={brandLabel} width={80} height={80} />
+            </button>
+          );
+        })}
+        {hasVideo && (
           <button
-            key={img.id}
             type="button"
-            onClick={() => setActive(img.url)}
-            aria-label={img.alt || alt}
-            aria-current={active === img.url ? 'true' : undefined}
+            onClick={() => setVideoActive(true)}
+            aria-label="Play product video"
+            aria-current={videoActive ? 'true' : undefined}
             className="pdp-gallery-thumb"
             style={{
-              width: 64, height: 80, padding: 0,
-              border: '1px solid ' + (active === img.url ? 'var(--ink-900)' : 'var(--line)'),
+              width: 64, height: 80, padding: 0, position: 'relative',
+              border: '1px solid ' + (videoActive ? 'var(--ink-900)' : 'var(--line)'),
               borderRadius: 'var(--radius-card)', overflow: 'hidden',
-              background: 'var(--paper2)', cursor: 'pointer',
-              flexShrink: 0,
+              background: 'var(--paper2)', cursor: 'pointer', flexShrink: 0,
             }}
           >
-            <ProductImage src={img.url} alt={img.alt || alt} label={brandLabel} width={80} height={80} />
+            <ProductImage src={hero} alt={alt} label={brandLabel} width={80} height={80} />
+            <span aria-hidden="true" style={{
+              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: 'rgba(0,0,0,0.28)', color: '#fff',
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            </span>
           </button>
-        ))}
+        )}
       </div>
-      <ZoomableImage src={active} alt={alt} label={brandLabel} fallback={fallback} />
+      {videoActive && videoUrl ? (
+        <div
+          className="pdp-hero"
+          style={{ flex: 1, aspectRatio: '1 / 1', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: '#000' }}
+        >
+          {/* Lazy: preload="none" + no autoplay — the clip is only fetched once
+              the shopper taps play, so it never weighs on the initial PDP load
+              or the LCP. The hero image stands in as the poster. */}
+          <video
+            src={videoUrl}
+            poster={hero ?? undefined}
+            controls
+            preload="none"
+            playsInline
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+          />
+        </div>
+      ) : (
+        <ZoomableImage src={active} alt={alt} label={brandLabel} fallback={fallback} />
+      )}
     </div>
   );
 }
@@ -402,7 +451,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             the right column grows the row and the aspect-ratio image scales
             up/down with it. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto', alignItems: 'start' }} className="pdp-grid">
-          <Gallery images={galleryToShow} alt={`${product.brand ?? ''} ${displayName}`.trim()} fallback={product.image_url} brandLabel={product.brand ?? undefined} />
+          <Gallery images={galleryToShow} alt={`${product.brand ?? ''} ${displayName}`.trim()} fallback={product.image_url} brandLabel={product.brand ?? undefined} videoUrl={product.video_url} />
 
           <div style={{ minWidth: 0 }}>
             <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>{product.brand}</Overline>

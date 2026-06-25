@@ -342,6 +342,11 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
             <ImageUpload name="image_url" currentUrl={product?.image_url} label="" aspect={1} />
           </Section>
 
+          {/* ── Video ──────────────────────────────────────────────────── */}
+          <Section title="Product video" desc="Optional short clip (e.g. a makeup swatch). Shown as a tap-to-play slide in the gallery — never autoplays, lazy-loaded so it doesn't slow the page. MP4/WebM, max 30 MB.">
+            <ImageUpload name="video_url" kind="video" currentUrl={product?.video_url} label="" aspect={1} />
+          </Section>
+
           {/* ── Product-page content ───────────────────────────────────── */}
           <Section title="Product-page content" desc="Shown on the customer-facing product page. All optional.">
             <div style={{ ...fieldWrap, marginBottom: 16 }}>

@@ -10,6 +10,7 @@ import { MiniCart } from '@/components/cart/MiniCart';
 import { SearchOverlay } from '@/components/search/SearchOverlay';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { ScrollToTop } from './ScrollToTop';
+import { WhatsAppFab } from './WhatsAppFab';
 import type { Promo } from '@/lib/promos';
 import { socialLinks } from '@/lib/socials';
 import { parseCommerceConfig, freeShippingSentence } from '@/lib/commerce';
@@ -96,6 +97,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
       <SearchOverlay trending={searchTrending} categories={searchCategories} />
       <KeyboardShortcuts />
       <BackToTop />
+      <WhatsAppFab number={settings.store_whatsapp?.trim() || settings.store_phone?.trim() || undefined} />
     </>
   );
 }
