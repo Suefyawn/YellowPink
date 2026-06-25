@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { requestReturn } from '@/app/account/orders/returns/actions';
-import { brandPlusName } from '@/lib/product-display';
 import { Skeleton } from '@/components/ui/Skeleton';
 import type { Order } from '@/types';
 
@@ -67,15 +66,11 @@ function ReturnForm() {
 
   const handleSubmit = async () => {
     setErr(null);
+    // Send only the order-item index + qty; the server reconstructs name,
+    // price and variant from the order so the payload can't be tampered with.
     const items = (order.items ?? [])
-      .map((it, i) => ({ idx: i, it }))
-      .filter(({ idx }) => (selected[idx] ?? 0) > 0)
-      .map(({ idx, it }) => ({
-        product_id: it.id ?? '',
-        qty: Math.min(selected[idx] ?? 0, it.qty),
-        name: brandPlusName(it.brand, it.name),
-        price: it.price,
-      }));
+      .map((it, i) => ({ index: i, qty: Math.min(selected[i] ?? 0, it.qty) }))
+      .filter(x => x.qty > 0);
     if (items.length === 0) { setErr('Select at least one item to return.'); return; }
     if (reason.trim().length < 5) { setErr('Tell us briefly why you\'re returning.'); return; }
     setSubmitting(true);
