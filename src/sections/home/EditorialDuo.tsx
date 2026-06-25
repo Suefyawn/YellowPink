@@ -6,32 +6,28 @@ import { useState } from 'react';
 import { SectionDivider } from '@/components/ui/SectionDivider';
 import { Overline } from '@/components/ui/Overline';
 
-// Build the image URLs from the configured Supabase project rather than
-// hard-coding one project's hostname. With no Supabase env (demo mode) the
-// URL would fail next/image's remotePatterns check and 500 the whole
-// homepage — render the gradient fallback instead.
-const STORAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
-  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images`
-  : null;
-
+// Editorial duo: one makeup-led card and one wellness-led card — the two
+// highest-demand PK themes (makeup 18k, supplements/ashwagandha/magnesium).
+// Original generated banners served from /public (no remote host / demo-mode
+// gap, and they're tiny ~48 KB webp so they don't weigh on the homepage).
 const CARDS = [
   {
-    title: 'Treat Melasma',
-    subtitle: 'Real Solutions',
-    cta: 'Explore Treatments',
-    href: '/shop?category=Skincare',
-    img: STORAGE_BASE ? `${STORAGE_BASE}/wp/1748-a696ff90.webp` : null,
-    fallbackColor: '#e8f5e9',
-    alt: 'Anti-melasma skincare products',
+    title: 'Lips, Cheeks & Glow',
+    subtitle: 'The Makeup Edit',
+    cta: 'Shop Makeup',
+    href: '/shop?taxon=makeup',
+    img: '/editorial/makeup-edit.webp',
+    fallbackColor: '#fbe9ef',
+    alt: 'Imported makeup in Pakistan — lipstick, lip tints, blush, highlighter and brushes',
   },
   {
-    title: 'Clear Skin',
-    subtitle: 'Acne Care',
-    cta: 'Shop Cleansers',
-    href: '/shop?category=Skincare',
-    img: STORAGE_BASE ? `${STORAGE_BASE}/wp/1693-7ac9a5de.webp` : null,
-    fallbackColor: '#fdf6e3',
-    alt: 'Skincare moisturizer and sunscreen',
+    title: 'Wellness & Supplements',
+    subtitle: 'Beauty from Within',
+    cta: 'Shop Supplements',
+    href: '/shop?taxon=wellness',
+    img: '/editorial/wellness-edit.webp',
+    fallbackColor: '#eef3ec',
+    alt: 'Health supplements and vitamins in Pakistan — multivitamins, ashwagandha, magnesium and omega-3',
   },
 ];
 
