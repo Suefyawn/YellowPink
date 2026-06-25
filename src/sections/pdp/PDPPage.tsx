@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
@@ -18,7 +17,7 @@ import { BenefitIcon } from '@/components/ui/BenefitIcon';
 import { RETURNS_WINDOW_DAYS, formatPkr } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { effectiveProductFaq } from '@/lib/product-faq';
-import { taxonForCategory, categoryHref } from '@/lib/category-taxonomy';
+import { taxonForCategory } from '@/lib/category-taxonomy';
 import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
@@ -388,32 +387,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // h1 + breadcrumb crumb so we don't render "KIKO MILANO" twice in a row.
   const displayName = stripBrandPrefix(product.brand, product.name);
 
-  // Middle breadcrumb crumb: prefer the brand (linked to its filtered
-  // listing), fall back to the category. Products with neither get no
-  // middle crumb at all — previously a no-brand product rendered an
-  // empty "Home / / Name" segment.
-  const midCrumb = product.brand
-    ? { label: product.brand, href: `/shop?brand=${encodeURIComponent(product.brand)}` }
-    : product.category
-    ? { label: product.category, href: categoryHref(product.category) }
-    : null;
-
+  // The visible breadcrumb trail + its BreadcrumbList schema are rendered once,
+  // by the product route (app/product/[slug]/page.tsx) above this component.
+  // PDPPage must NOT render its own trail too, or the page shows two crumbs.
   return (
     <div>
-      <div className="container" style={{ padding: '16px var(--side)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <Link href="/" style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', color: 'var(--ink-500)', textDecoration: 'none' }}>Home</Link>
-          <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
-          {midCrumb && (
-            <>
-              <Link href={midCrumb.href} style={{ fontSize: '0.8125rem', color: 'var(--ink-500)', textDecoration: 'none' }}>{midCrumb.label}</Link>
-              <span style={{ color: 'var(--ink-500)', fontSize: '0.75rem' }}>/</span>
-            </>
-          )}
-          <span style={{ fontSize: '0.8125rem', color: 'var(--ink-900)' }}>{displayName}</span>
-        </div>
-      </div>
-
       <div className="container" style={{ borderTop: '1px solid var(--line)' }}>
         {/* minmax(0,1fr) lets each column shrink below its content's intrinsic
             width — without it a long product name forced the grid wider than
