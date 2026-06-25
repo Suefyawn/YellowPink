@@ -714,3 +714,36 @@ export async function sendLowStockAlertEmail(args: { products: { name: string; b
   const recipients = await getRecipientsForEvent('inventory.low');
   await send({ to: recipients, subject: `Low stock — ${args.products.length} item${args.products.length === 1 ? '' : 's'}`, html, kind: 'batch' });
 }
+
+// Broken-link (404) digest — the daily cron passes only NEW, unresolved misses
+// (already deduped per-path), so this just renders. No-op when the list is
+// empty, so a clean day is silent.
+export async function sendBrokenLinksDigestEmail(args: {
+  items: { path: string; hit_count: number; last_referer: string | null; is_bot: boolean }[];
+}) {
+  if (!args.items.length) return;
+  const rows = args.items.map(i => {
+    const src = i.last_referer ? escapeHtml(i.last_referer) : (i.is_bot ? 'crawler' : 'direct / unknown');
+    return `<tr>
+      <td style="padding:6px 8px;font-size:13px;font-family:monospace">${escapeHtml(i.path)}</td>
+      <td style="padding:6px 8px;font-size:13px;text-align:right">${i.hit_count}</td>
+      <td style="padding:6px 8px;font-size:12px;color:#6b7280">${src}</td>
+    </tr>`;
+  }).join('');
+  const n = args.items.length;
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">${n} new broken link${n === 1 ? '' : 's'} (404)</h2>
+    <p>${n === 1 ? 'A URL' : 'These URLs'} started returning 404 — a visitor or crawler hit a dead link.
+       Review and one-click redirect any that should point somewhere:</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px">
+      <tr><th style="text-align:left;padding:6px 8px;font-size:11px;color:#6b7280;text-transform:uppercase">Path</th>
+          <th style="text-align:right;padding:6px 8px;font-size:11px;color:#6b7280;text-transform:uppercase">Hits</th>
+          <th style="text-align:left;padding:6px 8px;font-size:11px;color:#6b7280;text-transform:uppercase">Source</th></tr>
+      ${rows}
+    </table>
+    <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/broken-links" style="color:${BRAND_PINK};font-weight:600">→ Review &amp; fix in admin</a></p>
+    <p style="margin:12px 0 0;font-size:12px;color:#9ca3af">A 404 for genuinely removed content is fine to ignore — this digest just makes sure none slip past you.</p>
+  `);
+  const recipients = await getRecipientsForEvent('seo.broken_links');
+  await send({ to: recipients, subject: `${n} new broken link${n === 1 ? '' : 's'} on the store`, html, kind: 'batch' });
+}

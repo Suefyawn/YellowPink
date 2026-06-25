@@ -14,7 +14,7 @@ import { log } from './logger';
 
 const FALLBACK_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
 
-export type NotificationEvent = 'order.new' | 'inventory.low';
+export type NotificationEvent = 'order.new' | 'inventory.low' | 'seo.broken_links';
 
 export const NOTIFICATION_EVENTS: { key: NotificationEvent; label: string; desc: string }[] = [
   {
@@ -26,6 +26,11 @@ export const NOTIFICATION_EVENTS: { key: NotificationEvent; label: string; desc:
     key: 'inventory.low',
     label: 'Low stock',
     desc: 'Daily digest when any product drops below 5 units in stock.',
+  },
+  {
+    key: 'seo.broken_links',
+    label: 'Broken links (404s)',
+    desc: 'Daily digest when a new URL starts returning 404 (e.g. a dead link a crawler or visitor hit).',
   },
 ];
 

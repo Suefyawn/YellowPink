@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 25 June 2026 (added a floating WhatsApp chat button, optional short product videos in the PDP gallery, the contact-page redesign, and keyword-led SEO meta across the storefront).*
+> *Last updated: 25 June 2026 (added a Broken links 404 monitor with one-click redirects + daily digest, a floating WhatsApp chat button, optional short product videos in the PDP gallery, the contact-page redesign, and keyword-led SEO meta across the storefront).*
 
 ---
 
@@ -287,7 +287,7 @@ together. Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Email log** | A record of every email the system has sent (order emails, newsletters, etc.). |
-| **Activity log** | An audit trail of admin actions — who changed what, and when. Owner only. |
+| **Broken links** | Every URL on the store that returned a **404**, captured automatically the moment a visitor or search-engine crawler hits it (aggregated per URL with a hit count, last-seen time, and where the click came from). For each one you can **add a redirect** — type where it should go and it's live within a minute, **no deploy** — or **ignore** it (a 404 for genuinely removed content is perfectly fine and doesn't hurt ranking). You also get a **daily email digest** of any *new* broken links so nothing slips past. |
 | **Team** | Staff accounts and their roles. Owner only. |
 | **Settings** | Store-wide configuration — see [section 6](#6-store-settings). |
 
@@ -391,7 +391,7 @@ what — pick a page, edit, hit **Save changes** at the bottom.
 | **Shipping & tax** (`/admin/settings/shipping`) | An **Offer free shipping** master switch, the default shipping rate (the fallback) and free-shipping threshold, tax rate, and per-zone overrides — add named zones (e.g. Karachi, Lahore, Remote) with their own rate, free-shipping threshold, and estimated delivery days. The threshold and the on/off switch flow through the **whole site at once** — the product page, cart progress bar, mini-cart, checkout estimate and the charged shipping all read the same setting, so changing the number (or turning free shipping off entirely) updates everywhere with no stale copy. |
 | **Payments** (`/admin/settings/payments`) | Turn each payment method on or off, and manage the bank/wallet accounts shown to customers paying by transfer. |
 | **Loyalty** (`/admin/settings/loyalty`) | How customers earn and redeem loyalty points. |
-| **Notifications** (`/admin/settings/notifications`) | Add as many staff email addresses as you like and pick which alerts each one receives — **New orders** (every order, immediately) and **Low stock** (daily digest when items drop below 5 units). If nobody is configured for an event, the alert falls back to the `OWNER_EMAIL` env var so existing behaviour is unchanged. |
+| **Notifications** (`/admin/settings/notifications`) | Add as many staff email addresses as you like and pick which alerts each one receives — **New orders** (every order, immediately), **Low stock** (daily digest when items drop below 5 units), and **Broken links (404s)** (daily digest of newly-broken URLs). If nobody is configured for an event, the alert falls back to the `OWNER_EMAIL` env var so existing behaviour is unchanged. |
 | **Integrations** (`/admin/settings/integrations`) | Live status for every third-party service the store uses — Resend (email), PostHog, Sentry, Upstash, JazzCash, Easypaisa, Search Console, WhatsApp. Each card shows whether its env vars are set and (for analytics services) when data last synced. Secret values are never displayed. |
 
 Saved changes apply to the storefront within a few minutes (storefront pages
