@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> *Last updated: 25 June 2026 (added optional short product videos in the PDP gallery, the contact-page redesign, and keyword-led SEO meta across the storefront).*
+> *Last updated: 25 June 2026 (added a floating WhatsApp chat button, optional short product videos in the PDP gallery, the contact-page redesign, and keyword-led SEO meta across the storefront).*
 
 ---
 
@@ -197,6 +197,11 @@ for you to approve or reject.
   prompt shown after a purchase.
 
 ### 2.8 Getting in touch
+
+A **floating "Chat on WhatsApp" button** sits in the bottom-right corner of
+every page — one tap opens WhatsApp with a greeting pre-filled, so shoppers can
+reach you live without leaving the site. It appears automatically once your
+store number is set (Settings → Profile → store phone / WhatsApp).
 
 The **Contact** page (linked in the footer) offers WhatsApp and a **contact
 form**. A customer fills in their name, email, an optional subject, and their
