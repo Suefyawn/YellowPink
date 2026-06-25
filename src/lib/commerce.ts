@@ -7,7 +7,7 @@
 //
 // The real, province-aware rate still comes from shipping_rates in the DB;
 // these are only the optimistic pre-address defaults.
-export const FREE_SHIPPING_THRESHOLD = 2500;
+export const FREE_SHIPPING_THRESHOLD = 5000;
 export const DEFAULT_SHIPPING_RATE = 200;
 
 /** Resolved free-shipping / shipping configuration, derived from the
@@ -51,14 +51,32 @@ export const DEFAULT_COMMERCE_CONFIG: CommerceConfig = {
   defaultShippingRate: DEFAULT_SHIPPING_RATE,
 };
 
-/** Format a threshold (PKR) as shoppers see it, e.g. "PKR 2,500". */
+/** Format a threshold (PKR) as shoppers see it, e.g. "PKR 5,000". */
 export const formatPkr = (n: number) => `PKR ${n.toLocaleString()}`;
+
+// ── Config-derived customer copy ────────────────────────────────────────────
+// Every surface that mentions the free-shipping promise builds its wording
+// from these helpers + the live CommerceConfig, so the threshold (and the
+// on/off switch) is typed once in Admin and read everywhere — no surface ever
+// hard-codes the number. Server pages pass parseCommerceConfig(settings);
+// client components read it from useCommerceSettings().
+
+/** Compact free-shipping label for trust strips / badges, e.g. "Over PKR 5,000". */
+export const freeShippingShort = (c: CommerceConfig) =>
+  `Over ${formatPkr(c.freeShippingThreshold)}`;
+
+/** Full announcement-bar / banner sentence, derived from the live config.
+ *  Falls back to a COD line when free shipping is switched off. */
+export const freeShippingSentence = (c: CommerceConfig) =>
+  c.freeShippingEnabled
+    ? `Free delivery on orders over ${formatPkr(c.freeShippingThreshold)} — COD Nationwide`
+    : 'Cash on delivery nationwide';
 
 /** Customer-facing returns window, in days. Shared by the PDP trust copy, the
  *  checkout reassurance strip and the shipping blurb so they never disagree. */
 export const RETURNS_WINDOW_DAYS = 7;
 
-/** The free-shipping threshold formatted as shoppers see it, e.g. "PKR 2,500".
+/** The free-shipping threshold formatted as shoppers see it, e.g. "PKR 5,000".
  *  Derive display copy from this so the figure tracks the threshold constant
  *  instead of being re-typed (and left stale) in each surface. */
 export const freeShippingLabel = () => `PKR ${FREE_SHIPPING_THRESHOLD.toLocaleString()}`;

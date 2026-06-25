@@ -3,6 +3,7 @@ import { useActionState, useState } from 'react';
 import Link from 'next/link';
 import { createBlogPost, updateBlogPost } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
+import { SubmitToIndexButton } from './IndexingButtons';
 import type { BlogPost } from '@/types';
 
 function toSlug(s: string) {
@@ -15,14 +16,17 @@ function today() {
 
 // Canonical blog taxonomy. Kept as a fixed dropdown (not free text) so the
 // category list can't drift back into the WP-import mess of near-duplicate
-// values — see migration 100. Add a new category here when one is needed.
+// values — see migrations 100 and 189. Add a new category here when one is
+// needed (and migrate existing rows onto it).
 const BLOG_CATEGORIES = [
+  'Skincare',
+  'Hair',
+  'Makeup',
   'Wellness',
   "Women's Health",
   "Men's Health",
   'Fertility',
   'Bone & Joint',
-  'Beauty & Skincare',
 ] as const;
 
 const inp: React.CSSProperties = {
@@ -113,6 +117,20 @@ export function BlogForm({ post }: { post?: BlogPost }) {
             </div>
           </div>
 
+          {/* Author */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Author</label>
+            <input
+              name="author"
+              defaultValue={post?.author ?? 'Yellow Pink Editorial Team'}
+              style={inp}
+              placeholder="Yellow Pink Editorial Team"
+            />
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'block' }}>
+              Shown as the byline. Use a named expert for health/beauty posts to strengthen E-E-A-T.
+            </span>
+          </div>
+
           {/* Cover Image */}
           <div style={{ marginBottom: 16 }}>
             <ImageUpload name="image_url" currentUrl={imageUrl} label="Cover Image" aspect={16 / 9} />
@@ -170,6 +188,11 @@ export function BlogForm({ post }: { post?: BlogPost }) {
             }}>
               Cancel
             </Link>
+            {isEdit && post?.slug && (
+              <span style={{ marginLeft: 'auto' }}>
+                <SubmitToIndexButton path={`/blog/${post.slug}`} />
+              </span>
+            )}
           </div>
         </form>
       </div>

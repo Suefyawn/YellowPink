@@ -227,6 +227,28 @@ export async function getProductsByTaxon(taxonOrCategory: string, limit = 8): Pr
   }, DEMO_PRODUCTS.filter(p => cats.includes(p.category)).slice(0, limit));
 }
 
+/** Every published wellness product, bestsellers first then newest. Powers
+ *  the homepage WellnessSection, which derives its per-concern counts +
+ *  from-prices and its featured rail from one live query (no baked numbers
+ *  that drift from the catalog). Wellness is ~60 rows, so pulling the full
+ *  set with the tile projection is cheap and keeps the section accurate. */
+export async function getWellnessProducts(): Promise<Product[]> {
+  const { categoriesForTaxon } = await import('./category-taxonomy');
+  const cats = (categoriesForTaxon('wellness') ?? []) as string[];
+  if (isDemo) return DEMO_PRODUCTS.filter(p => cats.includes(p.category));
+  return safe('getWellnessProducts', async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select(PRODUCT_TILE_COLUMNS)
+      .in('category', cats)
+      .eq('status', 'published')
+      .order('is_bestseller', { ascending: false })
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []) as Product[];
+  }, DEMO_PRODUCTS.filter(p => cats.includes(p.category)));
+}
+
 /** Products from a single brand — powers the "More from {brand}" rail on
  *  the PDP. Published only; returns [] for a missing brand so the rail
  *  collapses cleanly. */

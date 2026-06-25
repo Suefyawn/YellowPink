@@ -142,15 +142,24 @@ function contactPointLd(contact: OrgContact) {
   ];
 }
 
-// The single canonical Organization node, rendered site-wide by the root
+// The single canonical merchant node, rendered site-wide by the root
 // layout. `sameAs` is the merchant's social profiles and `contact` the
 // store phone/email — both owner-managed via admin Settings. Empty values
 // are omitted rather than emitted as null/empty (which markup validators
 // flag as errors).
+//
+// @type is `OnlineStore` — the schema.org subtype of Organization for an
+// online-only merchant. We deliberately do NOT use LocalBusiness: that type
+// requires a physical address + geo, and Yellow Pink is an online store with
+// nationwide COD and no storefront, so a LocalBusiness node would be
+// incomplete (Rich Results flags missing `address`) and misleading. OnlineStore
+// keeps the same `@id`, so WebSite.publisher and Product.seller references
+// still resolve, while qualifying the brand for merchant/store rich results
+// and carrying the payment + currency signals Google reads for shopping.
 export function organizationLd(sameAs: string[] = [], contact: OrgContact = {}) {
   return {
     '@context': 'https://schema.org',
-    '@type': 'Organization',
+    '@type': 'OnlineStore',
     '@id': ORGANIZATION_ID,
     name: SITE_NAME,
     url: SITE_URL,
@@ -161,6 +170,10 @@ export function organizationLd(sameAs: string[] = [], contact: OrgContact = {}) 
     description:
       'Imported beauty, skincare and wellness products delivered across Pakistan with cash-on-delivery.',
     areaServed: { '@type': 'Country', name: 'Pakistan' },
+    // Payment + currency signals for the online store. COD is the primary
+    // method; Easypaisa/JazzCash are the wired digital rails. All prices PKR.
+    currenciesAccepted: 'PKR',
+    paymentAccepted: 'Cash on Delivery, Easypaisa, JazzCash',
     sameAs: sameAs.length ? sameAs : undefined,
     contactPoint: contactPointLd(contact),
   };
@@ -223,7 +236,7 @@ export function productLd(
     '@type': 'OfferShippingDetails',
     shippingRate: {
       '@type': 'MonetaryAmount',
-      // We charge for shipping under PKR 2,500, free above.
+      // We charge for shipping under PKR 5,000, free above.
       value: 0,
       currency: 'PKR',
     },
@@ -325,6 +338,17 @@ export function productLd(
   };
 }
 
+// A byline naming a team/desk/staff is an Organization; a personal name is a
+// Person. Picking the right @type matters — Google's Article guidance wants a
+// Person for individual authors (E-E-A-T), but flags a Person whose name is
+// clearly an organisation. Defaults to Organization when no author is set.
+function articleAuthorLd(author?: string | null) {
+  const name = author?.trim();
+  if (!name) return { '@type': 'Organization', name: SITE_NAME };
+  const isOrg = /\b(team|editorial|staff|desk|group|yellow\s*pink)\b/i.test(name);
+  return isOrg ? { '@type': 'Organization', name } : { '@type': 'Person', name };
+}
+
 export function articleLd(post: BlogPost) {
   return {
     '@context': 'https://schema.org',
@@ -338,7 +362,7 @@ export function articleLd(post: BlogPost) {
     // dates either side. The DB column exists (used by the blog sitemap)
     // even though the type previously omitted it.
     dateModified: post.updated_at ?? post.date,
-    author: { '@type': 'Organization', name: SITE_NAME },
+    author: articleAuthorLd(post.author),
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,

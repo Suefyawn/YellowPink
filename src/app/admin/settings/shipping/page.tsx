@@ -59,7 +59,7 @@ function ZoneFields({ zone, rate }: { zone?: Zone; rate?: Rate | null }) {
         </div>
         <div>
           <label style={lbl}>Free shipping at (PKR, blank for never)</label>
-          <input name="free_shipping_threshold" type="number" min={0} defaultValue={rate?.free_shipping_threshold ?? ''} style={inp} placeholder="e.g. 2500" />
+          <input name="free_shipping_threshold" type="number" min={0} defaultValue={rate?.free_shipping_threshold ?? ''} style={inp} placeholder="e.g. 5000" />
         </div>
       </div>
       <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -112,7 +112,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
             </div>
             <div>
               <label style={lbl}>Free shipping threshold (PKR)</label>
-              <input name="free_shipping_threshold" type="number" min={0} defaultValue={g('free_shipping_threshold', '2500')} style={inp} />
+              <input name="free_shipping_threshold" type="number" min={0} defaultValue={g('free_shipping_threshold', '5000')} style={inp} />
             </div>
             <div>
               <label style={lbl}>Tax rate (%)</label>

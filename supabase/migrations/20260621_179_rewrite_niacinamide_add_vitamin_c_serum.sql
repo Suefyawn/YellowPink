@@ -1,0 +1,6 @@
+-- Rewrite the thin niacinamide post to house standard (~2,700 words, 11 sections,
+-- comparison tables, cited research, FAQ, real product links) + add the brand-new
+-- "vitamin c serum" gap post (12,100/mo, no existing coverage). Both get a
+-- purpose-generated editorial hero image in /public/blog-heroes/.
+-- NOTE: applied to the live DB via Supabase MCP; this file is the repo record.
+-- Full HTML bodies live in the blog_posts rows; see the DB for canonical content.
