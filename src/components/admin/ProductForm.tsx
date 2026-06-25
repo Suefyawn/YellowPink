@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { createProduct, updateProduct } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
 import { KeyBenefitsEditor, FaqEditor } from './ProductContentEditors';
+import { SubmitToIndexButton } from './IndexingButtons';
 import { TAXONS } from '@/lib/category-taxonomy';
 import type { Product, Vendor } from '@/types';
 
@@ -442,6 +443,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
                   : 'Creating a new product'}
             </div>
             <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              {isEdit && product?.slug && <SubmitToIndexButton path={`/product/${product.slug}`} />}
               <Link href="/admin/products" style={{
                 padding: '9px 18px', background: 'white', color: '#374151',
                 border: '1px solid #d1d5db', borderRadius: 7,

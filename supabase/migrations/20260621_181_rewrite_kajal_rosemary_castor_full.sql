@@ -1,0 +1,6 @@
+-- Rewrote the three thin makeup/hair launch posts to house standard (~2,500
+-- words, comparison tables, FAQ, shoppable links + .blog-cta CTA buttons),
+-- keeping the original slugs. New generated hero images live in
+-- /public/blog-heroes/. Targets: kajal 27,100/mo, rosemary oil 14,800/mo,
+-- castor oil 14,800/mo (Semrush PK). Applied to live DB via Supabase MCP;
+-- this file is the repo record (canonical bodies live in the blog_posts rows).

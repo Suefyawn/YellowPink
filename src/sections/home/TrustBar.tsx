@@ -1,14 +1,16 @@
+'use client';
+
 // Trust strip under the hero. Line icons match the Feather-style set used
 // across the header / mini-cart so the row reads as part of one system.
+//
+// The delivery + returns lines read the live owner settings (free-shipping
+// threshold / on-off, and the returns window) instead of hard-coding the
+// figures, so the strip can never drift from the cart, checkout or PDP.
+
+import { useCommerceSettings } from '@/context/CommerceSettings';
+import { RETURNS_WINDOW_DAYS, freeShippingShort } from '@/lib/commerce';
 
 type IconName = 'authentic' | 'delivery' | 'cod' | 'returns';
-
-const ITEMS: { icon: IconName; label: string; sub: string }[] = [
-  { icon: 'authentic', label: '100% Authentic', sub: 'Imported directly' },
-  { icon: 'delivery',  label: 'Free Delivery',  sub: 'Over PKR 2,500' },
-  { icon: 'cod',       label: 'COD Nationwide',  sub: 'Pay on delivery' },
-  { icon: 'returns',   label: 'Easy Returns',    sub: '7-day policy' },
-];
 
 function TrustIcon({ name }: { name: IconName }) {
   const p = {
@@ -30,6 +32,20 @@ function TrustIcon({ name }: { name: IconName }) {
 }
 
 export function TrustBar() {
+  const commerce = useCommerceSettings();
+
+  // Delivery line tracks the live free-shipping setting (threshold + on/off);
+  // returns line tracks the single returns-window source. If the owner switches
+  // free shipping off, the slot is dropped rather than showing an empty promise.
+  const ITEMS: { icon: IconName; label: string; sub: string }[] = [
+    { icon: 'authentic', label: '100% Authentic', sub: 'Imported directly' },
+    ...(commerce.freeShippingEnabled
+      ? [{ icon: 'delivery' as IconName, label: 'Free Delivery', sub: freeShippingShort(commerce) }]
+      : []),
+    { icon: 'cod', label: 'COD Nationwide', sub: 'Pay on delivery' },
+    { icon: 'returns', label: 'Easy Returns', sub: `${RETURNS_WINDOW_DAYS}-day policy` },
+  ];
+
   return (
     <section style={{ padding: '32px 0', borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)' }}>
       <div className="container trust-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)', textAlign: 'center' }}>
