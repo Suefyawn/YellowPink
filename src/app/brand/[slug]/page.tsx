@@ -7,6 +7,7 @@ import { getProducts } from '@/lib/supabase';
 import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { brandNameFromSlug, brandSlug } from '@/lib/brands';
 import type { Product } from '@/types';
 
@@ -46,6 +47,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   return (
     <main className="fade-in">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }} />
+      <Breadcrumbs items={breadcrumb} />
       {list.length > 0 && (
         <script
           type="application/ld+json"

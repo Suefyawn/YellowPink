@@ -7,6 +7,7 @@ import type { Metadata } from 'next';
 import { getProducts } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
+import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref } from '@/lib/category-taxonomy';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
@@ -152,6 +153,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }}
       />
+      <Breadcrumbs items={breadcrumb} />
       {/* Only emit the ItemList when it actually has items. Taxon-level
           category labels (e.g. ?category=Skincare) have no exact leaf-category
           match server-side, which otherwise produced an empty ItemList — a
