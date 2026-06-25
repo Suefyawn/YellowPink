@@ -6,6 +6,7 @@
 import type { Metadata } from 'next';
 import type { Product, BlogPost, ProductReview, ProductVariant } from '@/types';
 import { brandPlusName } from '@/lib/product-display';
+import type { MedicalReviewer } from '@/lib/eeat';
 
 // Resolution order: explicit NEXT_PUBLIC_SITE_URL (set this once a custom
 // domain is live) → Vercel's production URL → a safe default. The final
@@ -349,7 +350,8 @@ function articleAuthorLd(author?: string | null) {
   return isOrg ? { '@type': 'Organization', name } : { '@type': 'Person', name };
 }
 
-export function articleLd(post: BlogPost) {
+export function articleLd(post: BlogPost, opts?: { reviewer?: MedicalReviewer | null }) {
+  const reviewer = opts?.reviewer;
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -363,6 +365,27 @@ export function articleLd(post: BlogPost) {
     // even though the type previously omitted it.
     dateModified: post.updated_at ?? post.date,
     author: articleAuthorLd(post.author),
+    // E-E-A-T: a credentialed medical reviewer is the strongest trust signal
+    // for YMYL health content. Emitted only when the store has configured a
+    // real reviewer (see lib/eeat.ts) — never fabricated.
+    ...(reviewer
+      ? {
+          reviewedBy: {
+            '@type': 'Person',
+            name: reviewer.name,
+            ...(reviewer.credentials ? { honorificSuffix: reviewer.credentials } : {}),
+            ...(reviewer.specialty ? { jobTitle: reviewer.specialty } : {}),
+            // url → the on-site board profile when present (a real author page),
+            // else the external profile. sameAs always points at the external,
+            // verifiable professional profile.
+            ...(reviewer.profileSlug
+              ? { url: absoluteUrl(`/medical-review-board/${reviewer.profileSlug}`) }
+              : reviewer.url ? { url: reviewer.url } : {}),
+            ...(reviewer.url ? { sameAs: [reviewer.url] } : {}),
+          },
+          lastReviewed: post.updated_at ?? post.date,
+        }
+      : {}),
     publisher: {
       '@type': 'Organization',
       name: SITE_NAME,

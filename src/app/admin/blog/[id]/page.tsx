@@ -10,7 +10,10 @@ export default async function EditBlogPostPage({ params }: { params: Promise<{ i
     return <NoAccess section="Blog" />;
   }
   const { id } = await params;
-  const { data: post } = await supabase.from('blog_posts').select('*').eq('id', id).single();
+  const [{ data: post }, { data: reviewers }] = await Promise.all([
+    supabase.from('blog_posts').select('*').eq('id', id).single(),
+    supabase.from('content_reviewers').select('id, name, specialty').eq('active', true).order('sort_order').order('name'),
+  ]);
   if (!post) notFound();
-  return <BlogForm post={post} />;
+  return <BlogForm post={post} reviewers={(reviewers ?? []) as { id: string; name: string; specialty: string | null }[]} />;
 }

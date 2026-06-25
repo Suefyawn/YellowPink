@@ -197,6 +197,17 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
                 Business Manager → Brand safety → <em>Domains</em> → add your domain → <em>Meta-tag verification</em> → paste only the <code>content</code> value, then click Verify. Required before running conversion ads.
               </p>
             </div>
+            <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #f3f4f6', paddingTop: 16, marginTop: 4 }}>
+              <label style={lbl}>Medical reviewer (E-E-A-T) — for health/supplement content</label>
+              <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                A real, named clinician who reviews your health articles adds a <strong>&ldquo;Medically reviewed by&rdquo;</strong> byline + schema — the strongest trust signal Google looks for on supplement/health content. Leave blank if you don&rsquo;t have one yet (nothing is shown). <em>Only use a genuine reviewer — never a made-up name.</em>
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <input name="medical_reviewer_name" defaultValue={g('medical_reviewer_name')} style={inp} placeholder="Name — e.g. Dr. Ayesha Khan" />
+                <input name="medical_reviewer_credentials" defaultValue={g('medical_reviewer_credentials')} style={inp} placeholder="Credentials — e.g. PharmD, MBBS" />
+              </div>
+              <input name="medical_reviewer_url" defaultValue={g('medical_reviewer_url')} style={{ ...inp, marginTop: 12 }} placeholder="Profile URL (LinkedIn / clinic / PMDC) — optional, for verification" />
+            </div>
           </div>
           <SaveBar />
         </form>

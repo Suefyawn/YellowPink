@@ -23,6 +23,7 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
   { path: '/brands',     priority: 0.6, freq: 'weekly' },
   { path: '/k-beauty',   priority: 0.8, freq: 'weekly' },
   { path: '/blog',       priority: 0.7, freq: 'weekly' },
+  { path: '/medical-review-board', priority: 0.5, freq: 'monthly' },
   { path: '/sitemap',    priority: 0.3, freq: 'weekly' },
   // NOTE: /faq is intentionally NOT listed — it 301-redirects to the CMS page
   // /page/faq (see proxy.ts PAGE_SLUG_MAP), which is already emitted in the
@@ -84,13 +85,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Collection pages (/collection/[slug]) — published collections only.
   let tagSlugs: string[] = [];
   let collectionSlugs: string[] = [];
+  let reviewerSlugs: string[] = [];
   if (!isDemo) {
-    const [{ data: tagRows }, { data: colRows }] = await Promise.all([
+    const [{ data: tagRows }, { data: colRows }, { data: revRows }] = await Promise.all([
       supabase.from('product_tags').select('slug'),
       supabase.from('collections').select('slug').eq('status', 'published'),
+      supabase.from('content_reviewers').select('slug').eq('active', true),
     ]);
     tagSlugs = ((tagRows ?? []) as Array<{ slug: string }>).map(t => t.slug);
     collectionSlugs = ((colRows ?? []) as Array<{ slug: string }>).map(c => c.slug);
+    reviewerSlugs = ((revRows ?? []) as Array<{ slug: string }>).map(r => r.slug);
   }
 
   const staticUrls: MetadataRoute.Sitemap = STATIC_ROUTES.map(r => ({
@@ -142,6 +146,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  // Medical Review Board profile pages (/medical-review-board/[slug]) — E-E-A-T
+  // expertise nodes, worth crawling/indexing.
+  const reviewerUrls: MetadataRoute.Sitemap = reviewerSlugs.map(slug => ({
+    url: absoluteUrl(`/medical-review-board/${slug}`),
+    lastModified: now,
+    changeFrequency: 'monthly',
+    priority: 0.4,
+  }));
+
   // <image:loc> requires an ABSOLUTE URL. Blog hero assets are stored as
   // site-relative paths (/blog-heroes/x.webp, served from /public); product
   // images are already absolute (Supabase storage or the /catalog CDN). GSC
@@ -180,5 +193,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
 
-  return [...staticUrls, ...categoryUrls, ...brandUrls, ...tagUrls, ...collectionUrls, ...productUrls, ...blogUrls, ...pageUrls];
+  return [...staticUrls, ...categoryUrls, ...brandUrls, ...tagUrls, ...collectionUrls, ...reviewerUrls, ...productUrls, ...blogUrls, ...pageUrls];
 }

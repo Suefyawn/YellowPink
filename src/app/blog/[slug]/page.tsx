@@ -3,7 +3,10 @@ export const revalidate = 600;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getBlogPostBySlug, getBlogPosts, getProducts } from '@/lib/supabase';
+import { getBlogPostBySlug, getBlogPosts, getProducts, getSiteSettings } from '@/lib/supabase';
+import { medicalReviewer, type MedicalReviewer } from '@/lib/eeat';
+import { getReviewerById, getActiveReviewers } from '@/lib/reviewers';
+import { isHealthCategory } from '@/lib/category-taxonomy';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
 import { pageMeta, jsonLd, articleLd, breadcrumbLd } from '@/lib/seo';
 import type { Product } from '@/types';
@@ -28,12 +31,27 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BlogPostRoute({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [post, allPosts, allProducts] = await Promise.all([
+  const [post, allPosts, allProducts, settings] = await Promise.all([
     getBlogPostBySlug(slug),
     getBlogPosts(),
     getProducts(),
+    getSiteSettings(),
   ]);
   if (!post) notFound();
+
+  // E-E-A-T: resolve the medical reviewer for YMYL health posts (same gate as
+  // the medical disclaimer). Priority: explicit per-post Review Board
+  // assignment → the default board reviewer → the legacy store-wide setting.
+  // null on beauty posts or when none is configured.
+  let reviewer: MedicalReviewer | null = null;
+  if (isHealthCategory(post.category)) {
+    const pid = (post as { reviewer_id?: string | null }).reviewer_id;
+    let r = pid ? await getReviewerById(pid) : null;
+    if (!r) r = (await getActiveReviewers()).find(x => x.is_default) ?? null;
+    reviewer = r
+      ? { name: r.name, credentials: r.credentials ?? undefined, specialty: r.specialty ?? undefined, url: r.profile_url ?? undefined, profileSlug: r.slug }
+      : medicalReviewer(settings);
+  }
 
   let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 3);
   if (relatedPosts.length < 3) {
@@ -78,7 +96,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
     <main className="fade-in">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(articleLd(post)) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(articleLd(post, { reviewer })) }}
       />
       <script
         type="application/ld+json"
@@ -90,7 +108,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
           ])),
         }}
       />
-      <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} />
+      <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} reviewer={reviewer} />
     </main>
   );
 }
