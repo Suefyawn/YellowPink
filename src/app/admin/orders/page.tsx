@@ -8,6 +8,7 @@ import { Pagination } from '@/components/admin/Pagination';
 import { ExportCSVButton } from '@/components/admin/ExportCSVButton';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { orderRangeSinceIso } from '@/lib/order-range';
 import type { Order, OrderStatus } from '@/types';
 
 const PAGE_SIZE = 25;
@@ -34,15 +35,10 @@ async function OrdersPageInner({
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
 
-  // Map the friendly `range` chip into a created_at lower bound. Empty / unset
-  // / 'all' = no time filter; everything else is "the last N days from now".
-  const rangeDays: Record<string, number> = { '1d': 1, '7d': 7, '30d': 30, '90d': 90 };
-  // Server component on every request — Date.now() is fine here, the
-  // purity rule targets render of client components.
-  const rangeSinceIso = range && rangeDays[range]
-    // eslint-disable-next-line react-hooks/purity
-    ? new Date(Date.now() - rangeDays[range] * 86_400_000).toISOString()
-    : null;
+  // Map the friendly `range` chip into a created_at lower bound. "Today" is the
+  // current PKT calendar day; 7d/30d/90d are rolling windows. Shared with the
+  // CSV export button via orderRangeSinceIso so the query and the export agree.
+  const rangeSinceIso = orderRangeSinceIso(range);
 
   // orders RLS (migration 070) removed the anon SELECT path — the table
   // is now service-role / authenticated-self-only. Staff-cookie auth

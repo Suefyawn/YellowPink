@@ -2,6 +2,7 @@ import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
+import { categoryHref } from '@/lib/category-taxonomy';
 import type { Product } from '@/types';
 
 // PDP cross-link rails. The product page otherwise links out only through
@@ -64,7 +65,7 @@ export function MoreToExplore({ brand, category, brandProducts, categoryProducts
         {showCategory && (
           <Rail
             heading={`More in ${category}`}
-            href={`/shop?category=${encodeURIComponent(category)}`}
+            href={categoryHref(category)}
             linkLabel={`Shop all ${category} →`}
             products={categoryRow}
             style={showBrand ? { marginTop: 56 } : undefined}

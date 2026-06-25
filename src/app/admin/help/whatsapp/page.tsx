@@ -3,6 +3,9 @@ export const dynamic = 'force-dynamic';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { hasWhatsApp, merchantNumber, whatsappUrl, WA_TEMPLATES } from '@/lib/whatsapp';
+import { getSiteSettings } from '@/lib/supabase';
+import { getDefaultEstimatedDays } from '@/lib/shipping';
+import { parseCommerceConfig, formatPkr, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 
 // Plain content page — no migrations, no DB writes. Lives under /admin so
 // only staff can see the setup instructions for the merchant phone.
@@ -15,6 +18,14 @@ export default async function WhatsAppHelpPage() {
   const configured = hasWhatsApp();
   const number = merchantNumber();
   const previewUrl = whatsappUrl(WA_TEMPLATES.generic());
+  // Canned replies quote live policy figures so staff never paste a stale
+  // threshold / window into a customer chat.
+  const commerce = parseCommerceConfig(await getSiteSettings());
+  const days = await getDefaultEstimatedDays();
+  const deliveryRange = days ? `${days.min}–${days.max}` : 'a few';
+  const freeShipSentence = commerce.freeShippingEnabled
+    ? `Free shipping on orders over ${formatPkr(commerce.freeShippingThreshold)}.`
+    : 'Shipping is calculated at checkout by city.';
 
   return (
     <div style={{ padding: '32px 36px', maxWidth: 820 }}>
@@ -79,8 +90,8 @@ export default async function WhatsAppHelpPage() {
             <strong>Quick replies</strong>{' — type a shortcut to expand a saved message. Set these up:'}
             <ul style={{ ...ul, marginTop: 6 }}>
               <li><code>/track</code>{' → Please share your order number (starts with YP-) and I will check the status.'}</li>
-              <li><code>/shipping</code>{' → Free shipping on orders over PKR 2,500. COD nationwide. Delivery takes 2–4 business days.'}</li>
-              <li><code>/return</code>{' → We accept returns within 7 days on unopened items. Reply with your order number to start a return.'}</li>
+              <li><code>/shipping</code>{` → ${freeShipSentence} COD nationwide. Delivery takes ${deliveryRange} business days.`}</li>
+              <li><code>/return</code>{` → We accept returns within ${RETURNS_WINDOW_DAYS} days on unopened items. Reply with your order number to start a return.`}</li>
               <li><code>/cod</code>{' → Yes, COD is available nationwide. You pay the courier on delivery, no card needed.'}</li>
             </ul>
           </li>

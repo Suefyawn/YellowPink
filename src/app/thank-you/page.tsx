@@ -5,6 +5,7 @@ import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { WhatsAppButton } from '@/components/ui/WhatsAppButton';
 import { WA_TEMPLATES } from '@/lib/whatsapp';
 import { getSiteSettings, supabaseAdmin } from '@/lib/supabase';
+import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
 import type { BankAccount } from '@/types';
@@ -19,6 +20,10 @@ export const metadata: Metadata = {
 export default async function ThankYouPage({ searchParams }: { searchParams: Promise<{ order?: string }> }) {
   const { order } = await searchParams;
   const orderNumber = order ?? 'YP-??????';
+  // Delivery estimate reads the live shipping default so it tracks Admin →
+  // Settings → Shipping instead of a hard-coded "2–4 business days".
+  const days = await getDefaultEstimatedDays();
+  const deliveryEstimate = days ? `${days.min}–${days.max} business days` : 'a few business days';
 
   // Look up the order (orders RLS blocks anon — service-role read). We use it
   // to show the bank accounts for a bank-transfer order AND to render an order
@@ -68,7 +73,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             Your order <strong>{orderNumber}</strong> has been placed successfully.
           </p>
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 32 }}>
-            We&apos;ll send you a confirmation on WhatsApp with tracking details once your order ships. Delivery typically takes 2–4 business days.
+            We&apos;ll send you a confirmation on WhatsApp with tracking details once your order ships. Delivery typically takes {deliveryEstimate}.
           </p>
 
           {bankAccounts.length > 0 && (

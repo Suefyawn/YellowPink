@@ -16,6 +16,7 @@ import { getBrowserClient } from '@/lib/supabase-browser';
 import { DEMO_PRODUCTS } from '@/lib/demo-data';
 import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { brandPlusName } from '@/lib/product-display';
+import { categoryHref } from '@/lib/category-taxonomy';
 import { track } from '@/lib/analytics';
 import type { Product } from '@/types';
 
@@ -154,7 +155,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   };
   const goToCategory = (cat: string) => {
     setSearchOpen(false);
-    router.push(`/shop?category=${encodeURIComponent(cat)}`);
+    router.push(categoryHref(cat));
   };
 
   return (

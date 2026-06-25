@@ -1,4 +1,9 @@
-const ALLOWED_TAGS = new Set(['p','br','b','strong','i','em','u','s','ul','ol','li','h2','h3','h4','blockquote','a','span','hr']);
+const ALLOWED_TAGS = new Set(['p','br','b','strong','i','em','u','s','ul','ol','li','h2','h3','h4','blockquote','a','span','hr',
+  // Comparison tables are core to the long-form blog format. Without these,
+  // the sanitizer stripped every <table> and flattened the cells into an
+  // unreadable run-on of text. Table elements carry no script surface, so
+  // they're safe to allow (their attributes are still stripped below).
+  'table','thead','tbody','tfoot','tr','th','td','figure','figcaption','caption']);
 const ALLOWED_ATTRS: Record<string, string[]> = {
   a: ['href', 'target', 'rel'],
   span: ['style'],
