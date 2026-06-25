@@ -20,6 +20,7 @@ import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
 import { configuredAdapterIds } from '@/lib/couriers';
 import { ORDER_STATUS_LABELS } from '@/types';
+import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
 import type { Order, CartItem, OrderStatus } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -118,7 +119,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       .from('orders')
       .select('id, total, status, created_at')
       .or(orFilters)
-      .neq('status', 'cancelled');
+      // Lifetime spend counts realized revenue only — drop cancelled, refunded,
+      // returned and payment-failed so the figure (and the customer-detail
+      // page's matching Total spend / AOV) reflect money actually taken.
+      .not('status', 'in', `(${NON_REVENUE_ORDER_STATUSES.join(',')})`);
     const rows = (history ?? []) as Array<{ id: string; total: number; status: string; created_at: string }>;
     const orderCount = rows.length;
     const total = rows.reduce((s, r) => s + (r.total ?? 0), 0);
