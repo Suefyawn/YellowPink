@@ -108,6 +108,12 @@ export async function POST(req: NextRequest) {
         phone: (order as { phone?: string | null }).phone ?? null,
         numItems: paidItems.reduce((s, i) => s + (i.qty ?? 0), 0),
         eventSourceUrl: `${SITE_URL}/thank-you`,
+        // Browser redirect back from the gateway carries the Pixel cookies +
+        // IP/UA — pass them for CAPI match quality.
+        fbc: req.cookies.get('_fbc')?.value,
+        fbp: req.cookies.get('_fbp')?.value,
+        clientIp: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,
+        userAgent: req.headers.get('user-agent') ?? undefined,
       });
     }
     return NextResponse.redirect(new URL(`/thank-you?order=${encodeURIComponent(order.order_number)}`, req.url), 303);
