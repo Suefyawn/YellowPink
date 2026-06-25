@@ -392,7 +392,7 @@ what — pick a page, edit, hit **Save changes** at the bottom.
 | **Payments** (`/admin/settings/payments`) | Turn each payment method on or off, and manage the bank/wallet accounts shown to customers paying by transfer. |
 | **Loyalty** (`/admin/settings/loyalty`) | How customers earn and redeem loyalty points. |
 | **Notifications** (`/admin/settings/notifications`) | Add as many staff email addresses as you like and pick which alerts each one receives — **New orders** (every order, immediately), **Low stock** (daily digest when items drop below 5 units), and **Broken links (404s)** (daily digest of newly-broken URLs). If nobody is configured for an event, the alert falls back to the `OWNER_EMAIL` env var so existing behaviour is unchanged. |
-| **Integrations** (`/admin/settings/integrations`) | Live status for every third-party service the store uses — Resend (email), PostHog, Sentry, Upstash, JazzCash, Easypaisa, Search Console, WhatsApp. Each card shows whether its env vars are set and (for analytics services) when data last synced. Secret values are never displayed. |
+| **Integrations** (`/admin/settings/integrations`) | Live status for every third-party service the store uses — Resend (email), PostHog, Sentry, Upstash, JazzCash, Easypaisa, Search Console, Meta Pixel, WhatsApp. Each card shows whether its env vars are set and (for analytics services) when data last synced. Secret values are never displayed. This is also where you paste the **Search Console** and **Meta (Facebook/Instagram) domain-verification** codes — the latter is required in Meta Business Manager before you can run conversion ads. |
 
 Saved changes apply to the storefront within a few minutes (storefront pages
 are cached for speed).

@@ -112,6 +112,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // working. Reading them here means changing the IDs needs no redeploy.
   const gaMeasurementId = settings.ga_measurement_id?.trim() || undefined;
   const gscVerification = settings.google_site_verification?.trim() || process.env.GOOGLE_SITE_VERIFICATION || undefined;
+  // Meta (Facebook/Instagram) domain verification — required in Business Manager
+  // to claim the domain for Aggregated Event Measurement and to control which
+  // ad accounts may run conversion events for it. Owner-set in admin, env
+  // fallback; rendered as a runtime <meta> like the GSC tag above.
+  const fbDomainVerification = settings.facebook_domain_verification?.trim() || process.env.FACEBOOK_DOMAIN_VERIFICATION || undefined;
   // Single source of truth for free-shipping copy/threshold across the
   // storefront — seeds the client CommerceSettings provider so the cart,
   // mini-cart, PDP and checkout never drift from the owner's setting.
@@ -146,6 +151,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Google Search Console ownership verification (owner-set in admin,
             env fallback). Only rendered when a code is present. */}
         {gscVerification && <meta name="google-site-verification" content={gscVerification} />}
+        {/* Meta domain verification (owner-set in admin, env fallback). */}
+        {fbDomainVerification && <meta name="facebook-domain-verification" content={fbDomainVerification} />}
         {/* Site-wide JSON-LD: a single Organization node (@id-referenced by
             WebSite.publisher) plus WebSite for the sitelinks search box.
             Both render on every page — the duplication-across-pages pattern
