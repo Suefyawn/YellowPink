@@ -459,6 +459,43 @@ export async function sendStaffTempPasswordEmail(args: { email: string; name: st
   await send({ to: args.email, subject: 'Yellow Pink admin access', html });
 }
 
+// ─── 8.5. Medical Review Board: doctor applications ─────────────────────────
+// Owner alert when a doctor applies to join the review board.
+export async function sendReviewerApplicationEmail(args: {
+  name: string; email: string; credentials?: string | null; specialty?: string | null;
+  pmdc_number?: string | null; profile_url?: string | null;
+}): Promise<void> {
+  const row = (label: string, value?: string | null) =>
+    value ? `<tr><td style="padding:4px 10px 4px 0;color:${MUTED};font-size:13px">${label}</td><td style="padding:4px 0;font-size:13px">${escapeHtml(value)}</td></tr>` : '';
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">New Medical Review Board application</h2>
+    <p>A clinician has applied to review your health content. Verify their credentials before approving.</p>
+    <table style="margin:14px 0;border-collapse:collapse">
+      ${row('Name', args.name)}
+      ${row('Email', args.email)}
+      ${row('Credentials', args.credentials)}
+      ${row('Specialty', args.specialty)}
+      ${row('PMDC #', args.pmdc_number)}
+      ${row('Profile', args.profile_url)}
+    </table>
+    <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/reviewers" style="color:${BRAND_PINK};font-weight:600">→ Review &amp; approve</a></p>
+  `);
+  const recipients = await getRecipientsForEvent('order.new');
+  await send({ to: recipients, subject: `Reviewer application — ${args.name}`, html, kind: 'batch' });
+}
+
+// Doctor notification once the owner approves their application.
+export async function sendReviewerApprovedEmail(args: { name: string; email: string }): Promise<void> {
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">You're approved — welcome to the board</h2>
+    <p>Hi ${escapeHtml(args.name)}, thank you for joining the Yellow Pink Medical Review Board.</p>
+    <p>You can now sign in to your reviewer dashboard to complete your profile and see the articles credited to you. We'll email you a one-time sign-in link each time — no password to remember.</p>
+    <p style="margin:20px 0 0"><a href="${SITE_URL}/reviewer/login" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Sign in to your dashboard →</a></p>
+    <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Sign in at ${SITE_URL}/reviewer/login using this email address (${escapeHtml(args.email)}).</p>
+  `);
+  await send({ to: args.email, subject: 'Your Yellow Pink reviewer access', html });
+}
+
 // ─── 9. Customer: abandoned cart reminder ──────────────────────────────────
 export async function sendAbandonedCartEmail(args: {
   email: string;

@@ -5,13 +5,20 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
-import { saveReviewer, setDefaultReviewer, deleteReviewer } from './actions';
+import { saveReviewer, setDefaultReviewer, deleteReviewer, approveReviewerApplication, rejectReviewerApplication } from './actions';
 
 interface ReviewerRow {
   id: string; slug: string; name: string;
   credentials: string | null; specialty: string | null; bio: string | null;
   photo_url: string | null; profile_url: string | null;
   review_topics: string[]; is_default: boolean; active: boolean; sort_order: number;
+}
+
+interface ApplicationRow {
+  id: string; name: string; email: string;
+  credentials: string | null; specialty: string | null; pmdc_number: string | null;
+  bio: string | null; profile_url: string | null; review_topics: string[];
+  message: string | null; created_at: string;
 }
 
 const inp: React.CSSProperties = {
@@ -51,11 +58,20 @@ export default async function ReviewersPage() {
     return <NoAccess section="Review Board" />;
   }
 
-  const { data } = await supabaseAdmin()
-    .from('content_reviewers')
-    .select('id, slug, name, credentials, specialty, bio, photo_url, profile_url, review_topics, is_default, active, sort_order')
-    .order('sort_order').order('name');
+  const admin = supabaseAdmin();
+  const [{ data }, { data: apps }] = await Promise.all([
+    admin
+      .from('content_reviewers')
+      .select('id, slug, name, credentials, specialty, bio, photo_url, profile_url, review_topics, is_default, active, sort_order')
+      .order('sort_order').order('name'),
+    admin
+      .from('reviewer_applications')
+      .select('id, name, email, credentials, specialty, pmdc_number, bio, profile_url, review_topics, message, created_at')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true }),
+  ]);
   const reviewers = (data ?? []) as ReviewerRow[];
+  const applications = (apps ?? []) as ApplicationRow[];
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 1000 }}>
@@ -66,6 +82,50 @@ export default async function ReviewersPage() {
         their name + credentials show on the articles assigned to them. <strong>Only add genuine, consenting reviewers</strong> —
         verify credentials (PMDC) before publishing.
       </p>
+
+      {applications.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <h2 style={{ margin: '0 0 14px', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
+            Pending applications
+            <span style={{ marginLeft: 8, fontSize: '0.6875rem', fontWeight: 700, color: '#9d174d', background: '#fdf2f8', padding: '2px 8px', borderRadius: 999 }}>{applications.length}</span>
+          </h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280', maxWidth: 720 }}>
+            Doctors who applied via the public form. <strong>Verify credentials (PMDC) before approving.</strong> Approving
+            creates their public profile, provisions a magic-link sign-in, and emails them their dashboard link.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {applications.map(a => (
+              <div key={a.id} style={{ border: '1px solid #fde68a', borderRadius: 12, padding: 18, background: '#fffdf5' }}>
+                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827', marginBottom: 6 }}>
+                  {a.name} {a.credentials && <span style={{ fontWeight: 500, color: '#6b7280' }}>· {a.credentials}</span>}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '4px 10px', fontSize: '0.8125rem', color: '#374151', marginBottom: 12 }}>
+                  <span style={{ color: '#9ca3af' }}>Email</span><span>{a.email}</span>
+                  {a.specialty && <><span style={{ color: '#9ca3af' }}>Specialty</span><span>{a.specialty}</span></>}
+                  {a.pmdc_number && <><span style={{ color: '#9ca3af' }}>PMDC #</span><span>{a.pmdc_number}</span></>}
+                  {a.review_topics.length > 0 && <><span style={{ color: '#9ca3af' }}>Topics</span><span>{a.review_topics.join(', ')}</span></>}
+                  {a.profile_url && <><span style={{ color: '#9ca3af' }}>Profile</span><span><a href={a.profile_url} target="_blank" rel="noopener noreferrer" style={{ color: '#9d174d', wordBreak: 'break-all' }}>{a.profile_url}</a></span></>}
+                  {a.bio && <><span style={{ color: '#9ca3af' }}>Bio</span><span>{a.bio}</span></>}
+                  {a.message && <><span style={{ color: '#9ca3af' }}>Note</span><span style={{ fontStyle: 'italic' }}>{a.message}</span></>}
+                </div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <form action={approveReviewerApplication}>
+                    <input type="hidden" name="id" value={a.id} />
+                    <button type="submit" className="adm-btn-primary" style={{ padding: '7px 16px', fontSize: '0.8125rem', borderRadius: 7, background: '#15803d', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600 }}>
+                      Approve &amp; invite
+                    </button>
+                  </form>
+                  <form action={rejectReviewerApplication} style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <input type="hidden" name="id" value={a.id} />
+                    <input name="notes" placeholder="Reason (optional, private)" style={{ ...inp, width: 200, padding: '6px 10px', fontSize: '0.8125rem' }} />
+                    <button type="submit" style={{ background: 'none', border: '1px solid #e5e7eb', color: '#6b7280', fontSize: '0.8125rem', padding: '6px 12px', borderRadius: 7, cursor: 'pointer' }}>Reject</button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {reviewers.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
