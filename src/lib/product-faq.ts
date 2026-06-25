@@ -9,14 +9,23 @@ import { RETURNS_WINDOW_DAYS } from './commerce';
 
 export interface ProductFaqItem { q: string; a: string }
 
-const STORE_FACT_FAQ: ProductFaqItem[] = [
+/** Delivery-estimate window (working days) resolved from the live shipping
+ *  defaults, so the delivery answer never hard-codes a day range. */
+export interface ProductFaqOptions {
+  estimatedDays?: { min: number; max: number } | null;
+}
+
+const deliveryRange = (d?: { min: number; max: number } | null) =>
+  d ? `${d.min}–${d.max}` : 'a few';
+
+const storeFactFaq = (opts?: ProductFaqOptions): ProductFaqItem[] => [
   {
     q: 'Is this product 100% authentic?',
     a: 'Yes. Every product at Yellow Pink is genuine, imported and sourced from authorised distributors — never counterfeit.',
   },
   {
     q: 'Do you deliver across Pakistan?',
-    a: 'Yes — we ship nationwide with cash on delivery (COD) available everywhere. Orders typically arrive in 2–5 working days.',
+    a: `Yes — we ship nationwide with cash on delivery (COD) available everywhere. Orders typically arrive in ${deliveryRange(opts?.estimatedDays)} working days.`,
   },
   {
     q: 'How is shipping charged?',
@@ -32,6 +41,7 @@ const STORE_FACT_FAQ: ProductFaqItem[] = [
  *  present, otherwise the store-fact fallback so no PDP is left without one. */
 export function effectiveProductFaq(
   faq: ReadonlyArray<ProductFaqItem> | null | undefined,
+  opts?: ProductFaqOptions,
 ): ProductFaqItem[] {
-  return faq && faq.length > 0 ? [...faq] : STORE_FACT_FAQ;
+  return faq && faq.length > 0 ? [...faq] : storeFactFaq(opts);
 }

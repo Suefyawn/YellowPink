@@ -1,0 +1,7 @@
+-- Fixed high-confidence link problems in old WP-imported posts:
+--  1. Three broken internal product links (m-sol -> m-sol-sachet;
+--     calco-fit-magnesium-glycinate-pakistan -> calco-fit;
+--     calosent-calcium-supplement-pakistan -> calosent).
+--  2. Two outbound links to competitor store sale.sensatotrade.com (with
+--     affiliate gclid params) repointed to our equivalents (gluthic, trimo-m).
+-- Applied to live DB via Supabase MCP; this file is the repo record.

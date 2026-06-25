@@ -9,6 +9,7 @@ import { StarRating } from '@/components/ui/StarRating';
 import { useCart } from '@/context/CartContext';
 import { BackInStockForm } from '@/components/pdp/BackInStockForm';
 import { SubscribeAndSave } from '@/components/pdp/SubscribeAndSave';
+import { ProductDescription } from '@/components/pdp/ProductDescription';
 import { track } from '@/lib/analytics';
 import { tapHaptic } from '@/lib/haptics';
 import { stripBrandPrefix } from '@/lib/product-display';
@@ -17,6 +18,8 @@ import { BenefitIcon } from '@/components/ui/BenefitIcon';
 import { RETURNS_WINDOW_DAYS, formatPkr } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { effectiveProductFaq } from '@/lib/product-faq';
+import { taxonForCategory, categoryHref } from '@/lib/category-taxonomy';
+import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -247,6 +250,10 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // Free-shipping copy tracks the owner's live setting (threshold + on/off).
   const { freeShippingEnabled, freeShippingThreshold } = useCommerceSettings();
   const freeShipLabel = formatPkr(freeShippingThreshold);
+  // Wellness/supplement products need different trust signals than makeup —
+  // "tested for Pakistani skin tones" is nonsensical on a supplement, so the
+  // "Why Yellow Pink" block swaps to authenticity/expiry copy for this taxon.
+  const isWellness = taxonForCategory(product.category)?.key === 'wellness';
   const shippingContent = freeShippingEnabled
     ? `Free shipping on orders over ${freeShipLabel}. COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`
     : `COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`;
@@ -388,7 +395,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const midCrumb = product.brand
     ? { label: product.brand, href: `/shop?brand=${encodeURIComponent(product.brand)}` }
     : product.category
-    ? { label: product.category, href: `/shop?category=${encodeURIComponent(product.category)}` }
+    ? { label: product.category, href: categoryHref(product.category) }
     : null;
 
   return (
@@ -574,10 +581,14 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </ul>
             )}
 
-            {product.description && (
-              <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24, maxWidth: 440 }}>
-                {product.description}
-              </p>
+            {product.description && <ProductDescription text={product.description} maxWidth={440} />}
+
+            {/* YMYL safeguard: supplements carry a "food supplement, not a
+                medicine" disclaimer. Cosmetics/makeup don't. */}
+            {isWellness && (
+              <div style={{ maxWidth: 440 }}>
+                <MedicalDisclaimer variant="product" />
+              </div>
             )}
 
             {/* Migration 081 — short testimonial / press quote, rendered as a
@@ -663,7 +674,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               Why this product earns a spot in your routine
             </h2>
             <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0 }}>
-              Every product is tested for Pakistani skin and climate, sourced from authorised distributors, and shipped with cash-on-delivery nationwide.
+              {isWellness
+                ? 'Every supplement is 100% authentic, sourced from authorised distributors, sealed and expiry-checked before dispatch, and shipped with cash-on-delivery nationwide.'
+                : 'Every product is tested for Pakistani skin and climate, sourced from authorised distributors, and shipped with cash-on-delivery nationwide.'}
             </p>
           </div>
 
@@ -676,7 +689,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           >
             {[
               { icon: '✓', label: '100% authentic', sub: 'Imported direct from authorised distributors' },
-              { icon: '◐', label: 'Tested locally', sub: 'For Pakistani skin tones + climate' },
+              isWellness
+                ? { icon: '◐', label: 'Sealed & in-date', sub: 'Batch + expiry checked before dispatch' }
+                : { icon: '◐', label: 'Tested locally', sub: 'For Pakistani skin tones + climate' },
               { icon: '◎', label: 'COD nationwide', sub: freeShippingEnabled ? `Pay on delivery, free over ${freeShipLabel}` : 'Pay on delivery, nationwide' },
               { icon: '↩', label: `${RETURNS_WINDOW_DAYS}-day returns`, sub: 'On unopened items, no questions asked' },
             ].map(t => (
@@ -722,7 +737,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
         // Show the admin-authored FAQ when present, else the store-fact
         // fallback — so every product page has a FAQ block (and matching
         // FAQPage schema emitted by the route).
-        const faqItems = effectiveProductFaq(product.faq);
+        const faqItems = effectiveProductFaq(product.faq, { estimatedDays });
         return (
         <section style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
           <div className="container" style={{ maxWidth: 760 }}>
