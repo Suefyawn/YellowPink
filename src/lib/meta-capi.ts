@@ -37,6 +37,10 @@ export interface MetaPurchaseInput {
   eventSourceUrl?: string;
   clientIp?: string;
   userAgent?: string;
+  /** Meta click-id / browser-id cookies (set by the Pixel). Passing them lifts
+   *  the CAPI event's match quality and attribution accuracy substantially. */
+  fbc?: string | null;
+  fbp?: string | null;
 }
 
 /** Fire a server-side Purchase event to the Meta Conversions API. */
@@ -48,6 +52,8 @@ export async function sendMetaPurchaseEvent(input: MetaPurchaseInput): Promise<v
     if (input.phone) { const ph = hashPhone(input.phone); if (ph) user_data.ph = [ph]; }
     if (input.clientIp) user_data.client_ip_address = input.clientIp;
     if (input.userAgent) user_data.client_user_agent = input.userAgent;
+    if (input.fbc) user_data.fbc = input.fbc;
+    if (input.fbp) user_data.fbp = input.fbp;
 
     const custom_data: Record<string, unknown> = {
       currency: input.currency ?? 'PKR',

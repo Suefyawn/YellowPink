@@ -13,6 +13,7 @@ import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd } from '@/lib/seo';
 import { brandsFromProducts } from '@/lib/brands';
 import { TAXONS, taxonForCategory, categoryHref } from '@/lib/category-taxonomy';
+import { brandPlusName } from '@/lib/product-display';
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMeta({
@@ -59,6 +60,20 @@ export default async function HtmlSitemapPage() {
   const ungrouped = categories.filter(c => !taxonForCategory(c));
 
   const brands = brandsFromProducts(products);
+
+  // Every product, grouped by category. The whole point of this HTML hub is
+  // crawl/indexing: linking each PDP directly here puts every product one click
+  // from a crawlable page, so nothing is buried on page 2+ of a paginated
+  // category listing (the usual cause of "discovered/crawled — not indexed").
+  const productsByCategory = new Map<string, typeof products>();
+  for (const p of products) {
+    const key = p.category || 'Other';
+    if (!productsByCategory.has(key)) productsByCategory.set(key, []);
+    productsByCategory.get(key)!.push(p);
+  }
+  const productGroups = [...productsByCategory.entries()]
+    .map(([cat, list]) => [cat, list.slice().sort((a, b) => a.name.localeCompare(b.name))] as const)
+    .sort((a, b) => a[0].localeCompare(b[0]));
 
   // Blog posts grouped by editorial category.
   const postsByCategory = new Map<string, typeof posts>();
@@ -152,6 +167,24 @@ export default async function HtmlSitemapPage() {
                   <li key={b.slug}><Link href={`/brand/${b.slug}`} style={linkStyle}>{b.name}</Link></li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {/* All products — flat link hub so every PDP is one click from a
+              crawlable page (helps Google index the full catalogue). */}
+          {productGroups.length > 0 && (
+            <div style={sectionStyle}>
+              <h2 style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: 12 }}>All products</h2>
+              {productGroups.map(([cat, list]) => (
+                <div key={cat} style={{ marginBottom: 16 }}>
+                  <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--ink-500)' }}>{cat}</Overline>
+                  <ul style={listStyle}>
+                    {list.map(p => (
+                      <li key={p.id}><Link href={`/product/${p.slug}`} style={linkStyle}>{brandPlusName(p.brand, p.name)}</Link></li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
             </div>
           )}
 

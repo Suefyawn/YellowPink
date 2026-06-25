@@ -1,6 +1,6 @@
 'use server';
 
-import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import {
   sendNewOrderEmail,
   sendOrderConfirmationEmail,
@@ -50,6 +50,10 @@ export async function notifyNewOrder(order: {
 
   // Server-side Meta Conversions API Purchase (deduped with the client Pixel
   // via event_id = order number). Best-effort; no-op unless CAPI is configured.
+  // Read the Meta Pixel cookies + request IP/UA so the CAPI event matches the
+  // browser Pixel for accurate attribution (server action → request scope).
+  const ck = await cookies();
+  const hdrs = await headers();
   await sendMetaPurchaseEvent({
     orderNumber: order.order_number,
     value: order.total,
@@ -58,6 +62,10 @@ export async function notifyNewOrder(order: {
     phone: order.phone,
     numItems: order.items.reduce((s, i) => s + (i.qty ?? 0), 0),
     eventSourceUrl: `${SITE_URL}/thank-you`,
+    fbc: ck.get('_fbc')?.value,
+    fbp: ck.get('_fbp')?.value,
+    clientIp: ipFromHeaders(hdrs),
+    userAgent: hdrs.get('user-agent') ?? undefined,
   });
 }
 

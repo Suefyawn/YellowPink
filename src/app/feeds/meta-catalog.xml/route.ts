@@ -130,13 +130,22 @@ async function loadProducts(): Promise<FeedProduct[]> {
 
 export async function GET(): Promise<Response> {
   const products = (await loadProducts()).filter(p => p.image_url); // Meta requires an image_link
-  // Products with variants emit one row per variant (item_group_id); others a
-  // single parent row.
+  // One row per PRODUCT, with g:id = parent product id. This is deliberate:
+  // the Pixel/CAPI send the parent product id as content_ids (the PDP can't
+  // know which variant a shopper will pick at view/add time), so a variant-
+  // level catalog (g:id = variant id) silently breaks dynamic retargeting for
+  // every product that has variants. Parent-level ids keep the catalog and the
+  // pixel in lockstep. A variant product is "in stock" if ANY enabled variant
+  // is; its price is the parent/base price.
   const variantsByProduct = isDemo ? new Map<string, FeedVariant[]>() : await loadFeedVariants(products.map(p => p.id));
   const items = products
     .map(p => {
       const vs = variantsByProduct.get(p.id);
-      return vs && vs.length ? vs.map(v => item(p, v)).join('\n') : item(p);
+      if (vs && vs.length) {
+        const anyInStock = vs.some(v => v.stock > 0);
+        return item({ ...p, stock: anyInStock ? 1 : 0 });
+      }
+      return item(p);
     })
     .join('\n');
 

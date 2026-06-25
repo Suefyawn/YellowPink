@@ -190,6 +190,13 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
                 Search Console → add a URL-prefix property → <em>HTML tag</em> method → paste only the <code>content</code> value, then click Verify.
               </p>
             </div>
+            <div>
+              <label style={lbl}>Meta (Facebook/Instagram) — domain verification code</label>
+              <input name="facebook_domain_verification" defaultValue={g('facebook_domain_verification')} style={inp} placeholder="paste only the content=… value" />
+              <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                Business Manager → Brand safety → <em>Domains</em> → add your domain → <em>Meta-tag verification</em> → paste only the <code>content</code> value, then click Verify. Required before running conversion ads.
+              </p>
+            </div>
           </div>
           <SaveBar />
         </form>

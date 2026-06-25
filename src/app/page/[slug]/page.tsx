@@ -85,15 +85,16 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
       )}
       <article className="container" style={{ padding: '64px var(--side)' }}>
         <div style={{ maxWidth: 720, margin: '0 auto' }}>
-          <h1
-            className="display-l"
-            style={{ fontSize: '2.5rem', fontWeight: 500, margin: '0 0 32px', letterSpacing: '-0.025em' }}
-          >
-            {page.title}
-          </h1>
+          <header style={{ marginBottom: 36, paddingBottom: 24, borderBottom: '1px solid var(--line)' }}>
+            <h1
+              className="display-l"
+              style={{ fontSize: '2.5rem', fontWeight: 500, margin: 0, letterSpacing: '-0.025em', lineHeight: 1.1 }}
+            >
+              {page.title}
+            </h1>
+          </header>
           <div
-            className="body-text"
-            style={{ color: 'var(--ink-700)', lineHeight: 1.7, fontSize: '1.0625rem' }}
+            className="cms-prose"
             dangerouslySetInnerHTML={{ __html: safeHtml }}
           />
           {/* Contact page: WhatsApp-first channel cards (the fast paths), then

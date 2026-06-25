@@ -215,7 +215,17 @@ export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
           marginTop: 48, paddingTop: 24, borderTop: '1px solid rgba(250,246,238,0.08)',
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16,
         }}>
-          <span className="small-text" style={{ color: 'rgba(250,246,238,0.6)' }}>© {new Date().getFullYear()} Yellow Pink. All rights reserved.</span>
+          <span className="small-text" style={{ color: 'rgba(250,246,238,0.6)' }}>
+            © {new Date().getFullYear()} Yellow Pink. Powered by{' '}
+            <a
+              href="https://trellee.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: 'rgba(250,246,238,0.85)', textDecoration: 'underline' }}
+            >
+              Trellee
+            </a>
+          </span>
         </div>
       </div>
     </footer>
