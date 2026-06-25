@@ -7,9 +7,14 @@ interface Props {
   currentUrl?: string | null;
   label?: string;
   aspect?: number; // width/height ratio, default 1
+  /** 'image' (default) or 'video' — switches the accepted types, size cap and
+   *  preview element. Both upload through the same /api/upload endpoint. */
+  kind?: 'image' | 'video';
 }
 
-export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1 }: Props) {
+export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1, kind = 'image' }: Props) {
+  const isVideo = kind === 'video';
+  const maxMb = isVideo ? 30 : 5;
   const [url, setUrl] = useState(currentUrl ?? '');
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -18,8 +23,11 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1 }: P
   const inputRef = useRef<HTMLInputElement>(null);
 
   const upload = useCallback(async (file: File) => {
-    if (!file.type.startsWith('image/')) { setError('Please select an image file (JPEG, PNG, WebP)'); return; }
-    if (file.size > 5 * 1024 * 1024) { setError('Max file size is 5 MB'); return; }
+    if (!file.type.startsWith(isVideo ? 'video/' : 'image/')) {
+      setError(isVideo ? 'Please select a video file (MP4, WebM, MOV)' : 'Please select an image file (JPEG, PNG, WebP)');
+      return;
+    }
+    if (file.size > maxMb * 1024 * 1024) { setError(`Max file size is ${maxMb} MB`); return; }
 
     setUploading(true);
     setError('');
@@ -45,7 +53,7 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1 }: P
       setUploading(false);
       setTimeout(() => setProgress(0), 600);
     }
-  }, []);
+  }, [isVideo, maxMb]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -85,16 +93,27 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1 }: P
           aspectRatio: String(aspect),
         }}
       >
-        {/* Current image preview */}
+        {/* Current image / video preview */}
         {hasImage && !uploading && (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={url}
-              alt="Preview"
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-              onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
-            />
+            {isVideo ? (
+              <video
+                src={url}
+                muted
+                playsInline
+                controls
+                preload="metadata"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', background: '#000' }}
+              />
+            ) : (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={url}
+                alt="Preview"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                onError={e => { (e.target as HTMLImageElement).style.opacity = '0.3'; }}
+              />
+            )}
             {/* Hover overlay */}
             <div style={{
               position: 'absolute', inset: 0,
@@ -129,10 +148,10 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1 }: P
               ↑
             </div>
             <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>
-              {dragging ? 'Drop to upload' : 'Upload image'}
+              {dragging ? 'Drop to upload' : isVideo ? 'Upload video' : 'Upload image'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-              Drag & drop or click to browse<br />JPEG, PNG, WebP · Max 5 MB
+              Drag & drop or click to browse<br />{isVideo ? 'MP4, WebM, MOV · Max 30 MB' : 'JPEG, PNG, WebP · Max 5 MB'}
             </div>
           </div>
         )}
@@ -175,7 +194,7 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1 }: P
       </div>
 
       {/* Hidden file input */}
-      <input ref={inputRef} type="file" accept="image/*" onChange={onFileChange} style={{ display: 'none' }} />
+      <input ref={inputRef} type="file" accept={isVideo ? 'video/*' : 'image/*'} onChange={onFileChange} style={{ display: 'none' }} />
     </div>
   );
 }

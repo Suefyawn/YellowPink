@@ -64,6 +64,9 @@ export interface Product {
    *  calc when the product isn't sourced through a vendor. */
   cost_price?: number | null;
   image_url?: string;
+  /** Optional short product video, shown as a (non-autoplay) slide in the PDP
+   *  gallery carousel. Public URL (Supabase storage / CDN). */
+  video_url?: string | null;
   description?: string;
   short_description?: string;
   how_to_use?: string;
