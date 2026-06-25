@@ -383,7 +383,7 @@ export async function sendOrderConfirmationEmail(args: OrderSummary & { email: s
     ${renderItemsTable(args.items)}
     <p style="margin:8px 0 0;text-align:right;font-size:16px"><strong>Total: ${money(args.total)}</strong></p>
     <p style="margin:20px 0 0">
-      <a href="${SITE_URL}/track?order=${encodeURIComponent(args.order_number)}&phone=${encodeURIComponent(args.phone)}" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track your order</a>
+      <a href="${SITE_URL}/track?order=${encodeURIComponent(args.order_number)}${args.phone ? `&phone=${encodeURIComponent(args.phone)}` : ''}" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track your order</a>
     </p>
   `);
   await send({
