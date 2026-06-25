@@ -8,18 +8,24 @@ import { useCart } from '@/context/CartContext';
 import { useSearch } from '@/context/SearchContext';
 import { useAuth } from '@/context/AuthContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
-import { TAXONS } from '@/lib/category-taxonomy';
-import { whatsappUrl, WA_TEMPLATES } from '@/lib/whatsapp';
+import { TAXONS, categoryHref } from '@/lib/category-taxonomy';
+import { whatsappUrl, whatsappUrlFromNumber, WA_TEMPLATES } from '@/lib/whatsapp';
 
 // Desktop nav: each taxon (Makeup / Skincare / Wellness / Bundles) opens a
 // mega-menu dropdown of its categories; the flat items are plain links.
 // Driven by the central taxonomy so editorial changes don't touch the header.
+//
+// `primary` items show in the (space-constrained) desktop top bar; the rest
+// were demoting it into a 9-item row that read as cluttered. Everything still
+// appears in the mobile drawer (which has room) and in the footer — so only
+// Sale stays in the desktop bar alongside the four taxons. Collections / Brands
+// / K-Beauty / Blog are one scroll away in the footer.
 const FLAT_ITEMS = [
-  { label: 'Collections', href: '/collections' },
-  { label: 'Brands', href: '/brands' },
-  { label: 'K-Beauty', href: '/k-beauty' },
-  { label: 'Sale', href: '/shop?on_sale=1' },
-  { label: 'Blog', href: '/blog' },
+  { label: 'Collections', href: '/collections', primary: false },
+  { label: 'Brands', href: '/brands', primary: false },
+  { label: 'K-Beauty', href: '/k-beauty', primary: false },
+  { label: 'Sale', href: '/shop?on_sale=1', primary: true },
+  { label: 'Blog', href: '/blog', primary: false },
 ];
 
 function navLinkStyle(active: boolean): React.CSSProperties {
@@ -39,7 +45,7 @@ function navLinkStyle(active: boolean): React.CSSProperties {
   };
 }
 
-export function Header() {
+export function Header({ whatsappNumber }: { whatsappNumber?: string } = {}) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   // Hydration gate for the cart-count badge. The cart loads from
@@ -171,7 +177,7 @@ export function Header() {
                       {t.categories.map(cat => (
                         <Link
                           key={cat}
-                          href={`/shop?category=${encodeURIComponent(cat)}`}
+                          href={categoryHref(cat)}
                           style={{
                             display: 'block', padding: '9px 12px', borderRadius: 8,
                             textDecoration: 'none', fontFamily: 'var(--font-ui)',
@@ -187,7 +193,7 @@ export function Header() {
               </div>
             );
           })}
-          {FLAT_ITEMS.map(item => {
+          {FLAT_ITEMS.filter(item => item.primary).map(item => {
             const active = isActiveLink(item.href);
             return (
               <Link
@@ -209,7 +215,11 @@ export function Header() {
               set. Persistent across every page; the merchant runs the
               standard Business app on their phone, no paid API. */}
           {(() => {
-            const href = whatsappUrl(WA_TEMPLATES.generic());
+            // Prefer the owner's number from settings (store_phone, passed by
+            // SiteChrome) so the button works without the build-time
+            // NEXT_PUBLIC_WHATSAPP_NUMBER inline; fall back to that env var.
+            const href = (whatsappNumber && whatsappUrlFromNumber(whatsappNumber, WA_TEMPLATES.generic()))
+              || whatsappUrl(WA_TEMPLATES.generic());
             if (!href) return null;
             return (
               <a
@@ -246,6 +256,7 @@ export function Header() {
           </button>
           <Link
             href={user ? '/account' : '/login'}
+            rel="nofollow"
             aria-label={user ? 'My account' : 'Sign in'}
             className="header-icon-desktop-only"
             style={{
@@ -260,6 +271,7 @@ export function Header() {
           </Link>
           <Link
             href="/wishlist"
+            rel="nofollow"
             aria-label="My wishlist"
             title="Wishlist"
             className="header-icon-desktop-only"
@@ -434,7 +446,7 @@ export function Header() {
                       return (
                         <Link
                           key={cat}
-                          href={`/shop?category=${encodeURIComponent(cat)}`}
+                          href={categoryHref(cat)}
                           onClick={() => setMobileMenu(false)}
                           aria-current={catActive ? 'page' : undefined}
                           tabIndex={mobileMenu ? 0 : -1}
@@ -476,6 +488,7 @@ export function Header() {
               menu + hitting the tiny header icon. */}
           <Link
             href={user ? '/account' : '/login'}
+            rel="nofollow"
             onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}
             style={{
@@ -494,6 +507,7 @@ export function Header() {
           {/* Wishlist — moved off the cramped header icon row into the drawer. */}
           <Link
             href="/wishlist"
+            rel="nofollow"
             onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}
             style={{

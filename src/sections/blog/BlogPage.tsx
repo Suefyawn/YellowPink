@@ -45,7 +45,13 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / POSTS_PER_PAGE));
   const safePage = Math.min(Math.max(page, 1), totalPages);
-  const paginated = filtered.slice((safePage - 1) * POSTS_PER_PAGE, safePage * POSTS_PER_PAGE);
+  // Every matching card is rendered into the DOM; cards outside the active
+  // page are hidden with `display:none` rather than sliced out. This keeps the
+  // nice client-side filter/search/pagination UX while leaving a real,
+  // crawlable <a> for every post in the server HTML — so we no longer need a
+  // separate "All articles" link dump to avoid orphaned (un-linked) posts.
+  const pageStart = (safePage - 1) * POSTS_PER_PAGE;
+  const pageEnd = safePage * POSTS_PER_PAGE;
 
   return (
     <div>
@@ -117,7 +123,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
             </div>
           </div>
 
-          {paginated.length === 0 ? (
+          {filtered.length === 0 ? (
             <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--ink-500)' }}>
               <p className="body-text" style={{ marginBottom: 6 }}>No posts match that filter.</p>
               <button
@@ -129,8 +135,8 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
             </div>
           ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="blog-grid">
-            {paginated.map((post) => (
-              <Link key={post.id} href={`/blog/${post.slug}`} className="blog-tile" style={{ textDecoration: 'none', color: 'inherit' }}>
+            {filtered.map((post, i) => (
+              <Link key={post.id} href={`/blog/${post.slug}`} className="blog-tile" style={{ textDecoration: 'none', color: 'inherit', display: i >= pageStart && i < pageEnd ? undefined : 'none' }}>
                 <article style={{ cursor: 'pointer' }}>
                   {/* Hover lift handled in CSS (.blog-tile:hover .blog-tile-img) instead
                       of JS onMouseEnter — the old version was a React Compiler
@@ -186,6 +192,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
               </button>
             </nav>
           )}
+
         </div>
       </section>
     </div>

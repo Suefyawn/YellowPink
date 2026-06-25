@@ -11,8 +11,8 @@
 // endpoint refuses anything it can't verify.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
+import { verifyResendSignature } from '@/lib/resend-webhook';
 import { log } from '@/lib/logger';
 
 const EVENT_COLUMN: Record<string, string> = {
@@ -23,31 +23,6 @@ const EVENT_COLUMN: Record<string, string> = {
   'email.complained': 'complained_at',
 };
 
-// Svix signature verification. The signing secret is `whsec_<base64>`; the
-// signed payload is `${id}.${timestamp}.${rawBody}`.
-function verifySignature(secret: string, headers: Headers, body: string): boolean {
-  const id = headers.get('svix-id');
-  const timestamp = headers.get('svix-timestamp');
-  const signature = headers.get('svix-signature');
-  if (!id || !timestamp || !signature) return false;
-
-  // Reject stale deliveries (replay protection) — 5 minute tolerance.
-  const ts = Number(timestamp);
-  if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
-
-  const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
-  const expected = createHmac('sha256', key).update(`${id}.${timestamp}.${body}`).digest('base64');
-  const expectedBuf = Buffer.from(expected);
-
-  // The header is a space-separated list of `v1,<sig>` entries.
-  return signature.split(' ').some(part => {
-    const sig = part.split(',')[1];
-    if (!sig) return false;
-    const sigBuf = Buffer.from(sig);
-    return sigBuf.length === expectedBuf.length && timingSafeEqual(sigBuf, expectedBuf);
-  });
-}
-
 export async function POST(req: NextRequest) {
   const secret = process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) {
@@ -56,7 +31,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.text();
-  if (!verifySignature(secret, req.headers, body)) {
+  if (!verifyResendSignature(secret, req.headers, body)) {
     return NextResponse.json({ error: 'invalid signature' }, { status: 401 });
   }
 

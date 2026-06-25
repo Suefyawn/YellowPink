@@ -61,6 +61,15 @@ export function whatsappUrlForCustomer(phone: string | null | undefined, message
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
 
+/** wa.me link from an explicit merchant number (e.g. `store_phone` from admin
+ *  settings), normalised like a customer phone (strips non-digits, 0… → 92…).
+ *  Lets server components pass the number down so client buttons (the header)
+ *  render WhatsApp without depending on the build-time inline of
+ *  NEXT_PUBLIC_WHATSAPP_NUMBER. Returns null when empty/unparseable. */
+export function whatsappUrlFromNumber(number: string | null | undefined, message?: string): string | null {
+  return whatsappUrlForCustomer(number, message);
+}
+
 /** Pre-typed messages for the common storefront contact points. */
 export const WA_TEMPLATES = {
   generic:     () => "Hi Yellow Pink! I'd like to ask a question.",

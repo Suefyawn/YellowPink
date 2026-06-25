@@ -1,0 +1,7 @@
+-- Add a transactional .blog-cta button to the niacinamide + vitamin C posts,
+-- and insert two more PK skincare-gap posts: hyaluronic acid serum (5,400/mo,
+-- KD 14) and best sunscreen for oily skin (1,900/mo, KD 19). Each carries
+-- shoppable inline product links plus a .blog-cta button so the content has a
+-- clear path to purchase. Hero images in /public/blog-heroes/.
+-- NOTE: applied to the live DB via Supabase MCP; this file is the repo record.
+-- Full HTML bodies live in the blog_posts rows; see the DB for canonical content.

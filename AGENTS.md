@@ -14,3 +14,11 @@ When a change alters user-facing behaviour — the storefront flow, an admin
 section, the order/fulfilment workflow, settings, roles, or payment options —
 update `docs/USER-MANUAL.md` in the same change so the manual never drifts from
 the product. Refresh its "Last updated" date when you do.
+
+# Icons
+
+Admin sidebar and storefront chrome use inline SVG icons (lucide-style:
+24×24 viewBox, `stroke="currentColor"`, `strokeWidth="2"`, rendered at
+14px or 16px). Do **not** introduce emoji as navigation icons — they pick
+up the OS emoji font and clash with the brand. Inherit colour from the
+parent via `currentColor`.
