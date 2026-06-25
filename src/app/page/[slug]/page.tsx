@@ -7,6 +7,8 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import { pageMeta, jsonLd, pageArticleLd, faqLd, breadcrumbLd } from '@/lib/seo';
 import { getPageFaq } from '@/lib/page-faqs';
 import { ContactForm } from '@/components/contact/ContactForm';
+import { ContactChannels } from '@/components/contact/ContactChannels';
+import { socialLinks } from '@/lib/socials';
 import type { Page } from '@/types';
 
 // Static content imported from WordPress (About, Privacy, Terms, FAQ…).
@@ -50,7 +52,9 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
   // body_html is sanitised once at import-time (see importer) but defensively
   // re-sanitise here in case content was edited via raw SQL.
   const safeHtml = sanitizeHtml(page.body_html);
-  const faqs = getPageFaq(page.slug, parseCommerceConfig(await getSiteSettings()));
+  const settings = await getSiteSettings();
+  const isContact = page.slug === 'contact';
+  const faqs = getPageFaq(page.slug, parseCommerceConfig(settings));
 
   return (
     <>
@@ -92,11 +96,20 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
             style={{ color: 'var(--ink-700)', lineHeight: 1.7, fontSize: '1.0625rem' }}
             dangerouslySetInnerHTML={{ __html: safeHtml }}
           />
-          {/* The contact page gets a real form (the storefront's "email us"
-              path) — submissions land in Admin → Messages and forward to the
-              owner, since hello@yellowpink.pk has no inbox. */}
-          {page.slug === 'contact' && (
-            <section style={{ marginTop: 40 }} aria-label="Send us a message">
+          {/* Contact page: WhatsApp-first channel cards (the fast paths), then
+              a real "email us" form. Submissions land in Admin → Messages and
+              forward to the owner, since hello@yellowpink.pk has no inbox. */}
+          {isContact && (
+            <div style={{ marginTop: 32 }}>
+              <ContactChannels
+                phone={settings.store_phone ?? null}
+                email={settings.store_email ?? null}
+                socials={socialLinks(settings)}
+              />
+            </div>
+          )}
+          {isContact && (
+            <section style={{ marginTop: 44 }} aria-label="Send us a message">
               <h2 className="h2" style={{ marginBottom: 8 }}>Send us a message</h2>
               <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24 }}>
                 Prefer to write? Fill this in and we&apos;ll reply by email,
