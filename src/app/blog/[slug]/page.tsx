@@ -3,7 +3,9 @@ export const revalidate = 600;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getBlogPostBySlug, getBlogPosts, getProducts } from '@/lib/supabase';
+import { getBlogPostBySlug, getBlogPosts, getProducts, getSiteSettings } from '@/lib/supabase';
+import { medicalReviewer } from '@/lib/eeat';
+import { isHealthCategory } from '@/lib/category-taxonomy';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
 import { pageMeta, jsonLd, articleLd, breadcrumbLd } from '@/lib/seo';
 import type { Product } from '@/types';
@@ -28,12 +30,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BlogPostRoute({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [post, allPosts, allProducts] = await Promise.all([
+  const [post, allPosts, allProducts, settings] = await Promise.all([
     getBlogPostBySlug(slug),
     getBlogPosts(),
     getProducts(),
+    getSiteSettings(),
   ]);
   if (!post) notFound();
+
+  // E-E-A-T: surface the store's medical reviewer on YMYL health posts only
+  // (same gate as the medical disclaimer). null on beauty posts or when no
+  // reviewer is configured — the byline + schema then simply omit it.
+  const reviewer = isHealthCategory(post.category) ? medicalReviewer(settings) : null;
 
   let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 3);
   if (relatedPosts.length < 3) {
@@ -78,7 +86,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
     <main className="fade-in">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(articleLd(post)) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(articleLd(post, { reviewer })) }}
       />
       <script
         type="application/ld+json"
@@ -90,7 +98,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
           ])),
         }}
       />
-      <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} />
+      <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} reviewer={reviewer} />
     </main>
   );
 }

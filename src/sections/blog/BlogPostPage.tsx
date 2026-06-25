@@ -10,12 +10,15 @@ import { BlogToc, type TocHeading } from './BlogToc';
 import { absoluteUrl } from '@/lib/seo';
 import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import { isHealthCategory } from '@/lib/category-taxonomy';
+import { reviewerLabel, type MedicalReviewer } from '@/lib/eeat';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
   post: BlogPost;
   relatedPosts: BlogPost[];
   relatedProducts: Product[];
+  /** Store-wide medical reviewer (health posts only); null otherwise. */
+  reviewer?: MedicalReviewer | null;
 }
 
 function decodeEntities(s: string): string {
@@ -59,7 +62,7 @@ function extractHeadings(html: string): { html: string; headings: TocHeading[] }
   return { html: out, headings };
 }
 
-export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPageProps) {
+export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: BlogPostPageProps) {
   const { html: withIds, headings } = post.body
     ? extractHeadings(sanitizeHtml(post.body))
     : { html: '', headings: [] as TocHeading[] };
@@ -149,11 +152,42 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts }: BlogPostPa
                 </div>
                 <div>
                   <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>By {author}</div>
-                  <div className="small-text">{post.date}</div>
+                  <div className="small-text">
+                    {post.date}
+                    {reviewer && <> · Medically reviewed</>}
+                  </div>
                 </div>
               </div>
             );
           })()}
+          {/* E-E-A-T: credentialed medical-reviewer line on health posts. Shown
+              only when the store has named a real reviewer (lib/eeat.ts). */}
+          {reviewer && (
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
+                padding: '10px 14px', marginBottom: 16, borderRadius: 10,
+                background: 'var(--surface-2, #faf7f2)', border: '1px solid var(--line)',
+                fontSize: '0.8125rem', color: 'var(--ink-700)',
+              }}
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                <path d="M22 4 12 14.01l-3-3" />
+              </svg>
+              <span>
+                Medically reviewed by{' '}
+                {reviewer.url ? (
+                  <a href={reviewer.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-pink-text, #9d174d)', fontWeight: 600 }}>
+                    {reviewerLabel(reviewer)}
+                  </a>
+                ) : (
+                  <strong style={{ color: 'var(--ink-900)' }}>{reviewerLabel(reviewer)}</strong>
+                )}
+                {' '}· Last reviewed {post.updated_at ? new Date(post.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : post.date}
+              </span>
+            </div>
+          )}
           <BlogShareStrip title={post.title} url={absoluteUrl(`/blog/${post.slug}`)} excerpt={post.excerpt} />
           <div style={{ borderBottom: '1px solid var(--line)', marginTop: 16 }} />
         </div>
