@@ -17,9 +17,14 @@ export interface MedicalReviewer {
   name: string;
   /** Post-nominal credentials, e.g. "PharmD", "MBBS", "Registered Nutritionist". */
   credentials?: string;
-  /** Public professional profile (LinkedIn, clinic, PMDC reg) — used as the
-   *  Person.url / sameAs so the expertise is verifiable. */
+  /** Area of expertise, e.g. "Obstetrics & Gynaecology". */
+  specialty?: string;
+  /** External professional profile (LinkedIn, clinic, PMDC reg) — schema sameAs. */
   url?: string;
+  /** Slug of the reviewer's on-site board profile (/medical-review-board/<slug>),
+   *  when they're a Medical Review Board member — used for the byline link and
+   *  the schema Person.url. */
+  profileSlug?: string;
 }
 
 /** Resolve the store-wide medical reviewer from site_settings, or null when the

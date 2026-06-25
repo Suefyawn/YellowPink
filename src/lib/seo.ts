@@ -374,7 +374,14 @@ export function articleLd(post: BlogPost, opts?: { reviewer?: MedicalReviewer | 
             '@type': 'Person',
             name: reviewer.name,
             ...(reviewer.credentials ? { honorificSuffix: reviewer.credentials } : {}),
-            ...(reviewer.url ? { url: reviewer.url, sameAs: reviewer.url } : {}),
+            ...(reviewer.specialty ? { jobTitle: reviewer.specialty } : {}),
+            // url → the on-site board profile when present (a real author page),
+            // else the external profile. sameAs always points at the external,
+            // verifiable professional profile.
+            ...(reviewer.profileSlug
+              ? { url: absoluteUrl(`/medical-review-board/${reviewer.profileSlug}`) }
+              : reviewer.url ? { url: reviewer.url } : {}),
+            ...(reviewer.url ? { sameAs: [reviewer.url] } : {}),
           },
           lastReviewed: post.updated_at ?? post.date,
         }

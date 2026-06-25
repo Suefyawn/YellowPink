@@ -174,6 +174,11 @@ export const blogPostInputSchema = z.object({
   body:      z.string().optional().nullable(),
   image_url: httpsUrlSchema.optional().or(z.literal('')).nullable(),
   author:    z.string().trim().max(120).optional().or(z.literal('')).nullable(),
+  // Medical Review Board assignment — empty string (the "None" option) → null.
+  reviewer_id: z.preprocess(
+    v => (v === '' || v == null ? null : v),
+    z.string().uuid().nullable(),
+  ),
 });
 export type BlogPostInput = z.infer<typeof blogPostInputSchema>;
 

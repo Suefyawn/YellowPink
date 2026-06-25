@@ -177,13 +177,18 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
               </svg>
               <span>
                 Medically reviewed by{' '}
-                {reviewer.url ? (
+                {reviewer.profileSlug ? (
+                  <Link href={`/medical-review-board/${reviewer.profileSlug}`} style={{ color: 'var(--brand-pink-text, #9d174d)', fontWeight: 600 }}>
+                    {reviewerLabel(reviewer)}
+                  </Link>
+                ) : reviewer.url ? (
                   <a href={reviewer.url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand-pink-text, #9d174d)', fontWeight: 600 }}>
                     {reviewerLabel(reviewer)}
                   </a>
                 ) : (
                   <strong style={{ color: 'var(--ink-900)' }}>{reviewerLabel(reviewer)}</strong>
                 )}
+                {reviewer.specialty ? ` · ${reviewer.specialty}` : ''}
                 {' '}· Last reviewed {post.updated_at ? new Date(post.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : post.date}
               </span>
             </div>

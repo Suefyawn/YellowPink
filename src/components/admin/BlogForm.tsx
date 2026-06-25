@@ -40,7 +40,7 @@ const lbl: React.CSSProperties = {
   fontWeight: 600, color: '#374151', marginBottom: 5,
 };
 
-export function BlogForm({ post }: { post?: BlogPost }) {
+export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?: { id: string; name: string; specialty: string | null }[] }) {
   const isEdit = Boolean(post);
   const boundAction = isEdit ? updateBlogPost.bind(null, post!.id) : createBlogPost;
   const [state, action, pending] = useActionState(boundAction, null);
@@ -128,6 +128,20 @@ export function BlogForm({ post }: { post?: BlogPost }) {
             />
             <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'block' }}>
               Shown as the byline. Use a named expert for health/beauty posts to strengthen E-E-A-T.
+            </span>
+          </div>
+
+          {/* Medical reviewer (E-E-A-T) — assign a board doctor to health posts. */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Medically reviewed by</label>
+            <select name="reviewer_id" defaultValue={(post as { reviewer_id?: string | null } | undefined)?.reviewer_id ?? ''} style={inp}>
+              <option value="">— None —</option>
+              {reviewers.map(r => (
+                <option key={r.id} value={r.id}>{r.name}{r.specialty ? ` · ${r.specialty}` : ''}</option>
+              ))}
+            </select>
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'block' }}>
+              For health/supplement posts, assign a real doctor from your <a href="/admin/reviewers" style={{ color: '#9d174d' }}>Review Board</a> who has reviewed it. Adds a &ldquo;Medically reviewed by&rdquo; byline + schema. Only assign if they genuinely reviewed it.
             </span>
           </div>
 
