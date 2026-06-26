@@ -17,7 +17,7 @@ interface ReviewerRow {
 interface ApplicationRow {
   id: string; name: string; email: string;
   credentials: string | null; specialty: string | null; pmdc_number: string | null;
-  bio: string | null; profile_url: string | null; review_topics: string[];
+  bio: string | null; profile_url: string | null; photo_url: string | null; review_topics: string[];
   message: string | null; created_at: string;
 }
 
@@ -66,7 +66,7 @@ export default async function ReviewersPage() {
       .order('sort_order').order('name'),
     admin
       .from('reviewer_applications')
-      .select('id, name, email, credentials, specialty, pmdc_number, bio, profile_url, review_topics, message, created_at')
+      .select('id, name, email, credentials, specialty, pmdc_number, bio, profile_url, photo_url, review_topics, message, created_at')
       .eq('status', 'pending')
       .order('created_at', { ascending: true }),
   ]);
@@ -96,8 +96,14 @@ export default async function ReviewersPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {applications.map(a => (
               <div key={a.id} style={{ border: '1px solid #fde68a', borderRadius: 12, padding: 18, background: '#fffdf5' }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827', marginBottom: 6 }}>
-                  {a.name} {a.credentials && <span style={{ fontWeight: 500, color: '#6b7280' }}>· {a.credentials}</span>}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 6 }}>
+                  {a.photo_url && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={a.photo_url} alt={a.name} width={44} height={44} style={{ width: 44, height: 44, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }} />
+                  )}
+                  <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>
+                    {a.name} {a.credentials && <span style={{ fontWeight: 500, color: '#6b7280' }}>· {a.credentials}</span>}
+                  </div>
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '4px 10px', fontSize: '0.8125rem', color: '#374151', marginBottom: 12 }}>
                   <span style={{ color: '#9ca3af' }}>Email</span><span>{a.email}</span>

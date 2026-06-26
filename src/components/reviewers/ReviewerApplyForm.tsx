@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { submitReviewerApplication, type ApplyResult } from '@/app/medical-review-board/apply/actions';
+import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 
 // Public application form for clinicians who want to join the Medical Review
 // Board. Submissions land in reviewer_applications (Admin → Reviewers) for the
@@ -72,6 +73,10 @@ export function ReviewerApplyForm() {
         <label htmlFor="r-profile" style={labelStyle}>Verifiable profile link</label>
         <input id="r-profile" name="profile_url" type="url" style={fieldStyle} placeholder="PMDC / hospital page / LinkedIn" />
         <p style={hint}>Helps us verify you — and becomes your public profile link if approved.</p>
+      </div>
+      <div>
+        <span style={labelStyle}>Photo</span>
+        <PhotoUpload name="photo_url" />
       </div>
       <div>
         <label htmlFor="r-bio" style={labelStyle}>Short bio</label>

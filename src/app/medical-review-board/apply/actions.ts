@@ -38,6 +38,7 @@ export async function submitReviewerApplication(
     name, email, credentials, pmdc_number, specialty,
     bio: str(formData, 'bio') || null,
     profile_url,
+    photo_url: str(formData, 'photo_url') || null,
     review_topics: topics,
     message: str(formData, 'message') || null,
   });
