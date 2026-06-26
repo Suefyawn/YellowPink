@@ -6,7 +6,7 @@ import {
   inp, lbl, Section, Card, Divider, SaveBar, StatusBanner, SettingsPageHeader,
 } from '@/components/admin/settings-controls';
 import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
-import { getGoogleConnection, isGoogleOAuthConfigured, REDIRECT_URI, listSitemaps, type SitemapStatus } from '@/lib/google';
+import { getGoogleConnection, isGoogleOAuthConfigured, REDIRECT_URI, listSitemaps, listGscSites, listGa4Properties, type SitemapStatus, type GscSite, type Ga4Property } from '@/lib/google';
 import { disconnectGoogleAction, submitSitemapAction, setGscSiteAction, setGa4PropertyAction } from './google-actions';
 
 // IMPORTANT: never render an env-var VALUE on this page — only its presence.
@@ -157,11 +157,19 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
   const g = (key: string) => s[key] ?? '';
   const googleConfigured = isGoogleOAuthConfigured();
 
-  // Sitemap status is one Google API call — only when connected + linked, and
-  // never fatal to the page.
+  // When connected, fetch the owner's GSC sites + GA4 properties so they can
+  // pick the right one from a dropdown (auto-link only guesses). All best-effort
+  // — a Google API hiccup must never break the settings page.
+  let gscSites: GscSite[] = [];
+  let ga4Props: Ga4Property[] = [];
   let sitemaps: SitemapStatus[] = [];
-  if (googleConn?.gsc_site_url) {
-    try { sitemaps = await listSitemaps(googleConn.gsc_site_url); } catch { /* show none */ }
+  if (googleConn) {
+    const [sitesR, propsR] = await Promise.allSettled([listGscSites(), listGa4Properties()]);
+    if (sitesR.status === 'fulfilled') gscSites = sitesR.value;
+    if (propsR.status === 'fulfilled') ga4Props = propsR.value;
+    if (googleConn.gsc_site_url) {
+      try { sitemaps = await listSitemaps(googleConn.gsc_site_url); } catch { /* show none */ }
+    }
   }
   const ourSitemap = sitemaps.find(m => m.path.includes('/sitemap.xml')) ?? sitemaps[0] ?? null;
   const googleMsg: Record<string, string> = {
@@ -278,13 +286,26 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="adm-form-2col">
               <form action={setGscSiteAction}>
                 <label style={lbl}>Search Console property</label>
-                <input name="gsc_site_url" defaultValue={googleConn.gsc_site_url ?? ''} style={inp} placeholder="sc-domain:yellowpink.pk" />
+                {gscSites.length > 0 ? (
+                  <select name="gsc_site_url" defaultValue={googleConn.gsc_site_url ?? ''} style={inp}>
+                    {!googleConn.gsc_site_url && <option value="">Select a property…</option>}
+                    {gscSites.map(s => <option key={s.siteUrl} value={s.siteUrl}>{s.siteUrl}</option>)}
+                  </select>
+                ) : (
+                  <input name="gsc_site_url" defaultValue={googleConn.gsc_site_url ?? ''} style={inp} placeholder="sc-domain:yellowpink.pk" />
+                )}
                 <button type="submit" style={{ marginTop: 8, padding: '6px 12px', fontSize: '0.8125rem', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 7, cursor: 'pointer' }}>Save</button>
               </form>
               <form action={setGa4PropertyAction}>
-                <label style={lbl}>GA4 property ID {googleConn.ga4_property_name ? `· ${googleConn.ga4_property_name}` : ''}</label>
-                <input name="ga4_property_id" defaultValue={googleConn.ga4_property_id ?? ''} style={inp} placeholder="e.g. 412345678" />
-                <input type="hidden" name="ga4_property_name" value={googleConn.ga4_property_name ?? ''} />
+                <label style={lbl}>GA4 property</label>
+                {ga4Props.length > 0 ? (
+                  <select name="ga4_property_id" defaultValue={ga4Props.find(p => p.propertyId === googleConn.ga4_property_id) ? `${googleConn.ga4_property_id}::${googleConn.ga4_property_name ?? ''}` : ''} style={inp}>
+                    {!googleConn.ga4_property_id && <option value="">Select a property…</option>}
+                    {ga4Props.map(p => <option key={p.propertyId} value={`${p.propertyId}::${p.displayName}`}>{p.displayName} ({p.propertyId})</option>)}
+                  </select>
+                ) : (
+                  <input name="ga4_property_id" defaultValue={googleConn.ga4_property_id ?? ''} style={inp} placeholder="e.g. 412345678" />
+                )}
                 <button type="submit" style={{ marginTop: 8, padding: '6px 12px', fontSize: '0.8125rem', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 7, cursor: 'pointer' }}>Save</button>
               </form>
             </div>
