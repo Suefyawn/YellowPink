@@ -77,9 +77,14 @@ export function Header() {
   // loaded page — clicking a dropdown link should land you on the new page with
   // the menu closed, the industry-standard behaviour.
   useEffect(() => {
+    // Closing menus in response to an external change (the URL) is exactly what
+    // an effect is for here; the lint rule's cascading-render concern doesn't
+    // apply to a one-shot reset on navigation.
+    /* eslint-disable react-hooks/set-state-in-effect */
     setOpenMenu(null);
     setOpenSection(null);
     setMobileMenu(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
   }, [pathname, searchParams]);
 
   // Decide which NAV_ITEM is "active" for the current URL. We match on
