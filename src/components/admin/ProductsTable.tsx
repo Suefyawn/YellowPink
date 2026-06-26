@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { deleteProduct } from '@/app/admin/actions';
 import {
-  bulkArchiveProducts, bulkDeleteProducts, bulkPriceAdjustProducts,
+  bulkArchiveProducts, bulkDeleteProducts, bulkDraftProducts, bulkPriceAdjustProducts,
   bulkPublishProducts, bulkTagProducts, quickUpdateProduct,
 } from '@/app/admin/bulk-product-actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
@@ -326,6 +326,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
         }}>
           <span style={{ color: '#f9fafb', fontSize: '0.875rem', fontWeight: 600 }}>{selected.size} selected</span>
           <button onClick={() => wrap(() => bulkPublishProducts(Array.from(selected)), 'Published')} disabled={pending} style={btn('#10b981')}>Publish</button>
+          <button onClick={() => wrap(() => bulkDraftProducts(Array.from(selected)), 'Set to draft')} disabled={pending} style={btn('#f59e0b')}>Set draft</button>
           <button onClick={() => wrap(() => bulkArchiveProducts(Array.from(selected)), 'Archived')} disabled={pending} style={btn('#6b7280')}>Archive</button>
           <select onChange={e => {
             const v = e.target.value; if (!v) return;

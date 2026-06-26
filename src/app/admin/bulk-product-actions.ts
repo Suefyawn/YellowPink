@@ -54,6 +54,19 @@ export async function bulkPublishProducts(ids: string[]): Promise<{ error?: stri
   return {};
 }
 
+export async function bulkDraftProducts(ids: string[]): Promise<{ error?: string }> {
+  const session = await assertProducts();
+  if (ids.length === 0) return {};
+  const { error } = await supabaseAdmin().from('products').update({ status: 'draft' }).in('id', ids);
+  if (error) {
+    log.error('product.bulk_draft_failed', { count: ids.length, error: error.message });
+    return { error: `Could not unpublish: ${error.message}` };
+  }
+  await logAudit(session, { action: 'product.bulk_draft', entity: 'product', diff: { count: ids.length, ids } });
+  revalidatePath('/admin/products');
+  return {};
+}
+
 export async function bulkArchiveProducts(ids: string[]): Promise<{ error?: string }> {
   const session = await assertProducts();
   if (ids.length === 0) return {};
