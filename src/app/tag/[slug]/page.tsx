@@ -24,7 +24,8 @@ async function loadTag(slug: string): Promise<{ name: string; productIds: Set<st
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const tag = await loadTag(slug);
-  if (!tag) return pageMeta({ title: 'Tag', description: 'Shop by tag at Yellow Pink.', path: `/tag/${slug}` });
+  // Unknown tag → the page 404s; keep that thin fallback out of the index.
+  if (!tag) return pageMeta({ title: 'Tag', description: 'Shop by tag at Yellow Pink.', path: `/tag/${slug}`, noIndex: true });
   // One representative packshot for the social card (single lightweight query
   // over just this tag's products) rather than the generic branded fallback.
   let ogImage: string | undefined;
@@ -39,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     ogImage = (img as { image_url?: string } | null)?.image_url || undefined;
   }
   return pageMeta({
-    title: `${tag.name}, Shop`,
+    title: `Shop ${tag.name} in Pakistan`,
     description: `Shop ${tag.name} at Yellow Pink, authentic, imported skincare, makeup and wellness, with cash-on-delivery nationwide in Pakistan.`,
     path: `/tag/${slug}`,
     image: ogImage,
