@@ -16,11 +16,24 @@ import type { Product } from '@/types';
 
 const PAGE_SIZE = 25;
 
+// Minimal filter-builder shape so the same chain applies to both the data
+// query and the (differently-typed) head count queries. Cast is localised to
+// applyShared; callers keep their concrete builder type.
+interface FilterBuilder {
+  eq(col: string, val: unknown): FilterBuilder;
+  gt(col: string, val: unknown): FilterBuilder;
+  gte(col: string, val: unknown): FilterBuilder;
+  lte(col: string, val: unknown): FilterBuilder;
+  in(col: string, vals: readonly unknown[]): FilterBuilder;
+  or(filter: string): FilterBuilder;
+}
+
 export default async function ProductsPage({
   searchParams,
 }: {
   searchParams: Promise<{
     category?: string; tag?: string; ptag?: string; q?: string; page?: string; sort?: string;
+    status?: string; brand?: string; stock?: string; min?: string; max?: string;
     deleted?: string; archived?: string; error?: string;
   }>;
 }) {
@@ -28,10 +41,13 @@ export default async function ProductsPage({
   if (!session || (!session.isOwner && !session.permissions.includes('products.view'))) {
     return <NoAccess section="Products" />;
   }
-  const { category, tag, ptag, q, page: pageParam, sort, deleted, archived, error } = await searchParams;
-  const page = Math.max(1, parseInt(pageParam ?? '1', 10));
+  const sp = await searchParams;
+  const { category, tag, ptag, q, sort, status, brand, stock } = sp;
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
+  const min = sp.min && /^\d+$/.test(sp.min) ? Number(sp.min) : null;
+  const max = sp.max && /^\d+$/.test(sp.max) ? Number(sp.max) : null;
 
   // Sort options mirror the dropdown in ProductsFilter.
   const SORT_MAP: Record<string, { col: string; asc: boolean }> = {
@@ -61,45 +77,79 @@ export default async function ProductsPage({
     }
   }
 
-  let countQuery = supabase.from('products').select('*', { count: 'exact', head: true });
-  let dataQuery = supabase.from('products').select('*').order(order.col, { ascending: order.asc }).range(from, to);
-
-  if (ptagProductIds) {
-    // `.in('id', [])` returns nothing — the correct result for a tag with no
-    // products (rather than silently ignoring the filter).
-    const ids = ptagProductIds.length > 0 ? ptagProductIds : ['00000000-0000-0000-0000-000000000000'];
-    countQuery = countQuery.in('id', ids);
-    dataQuery = dataQuery.in('id', ids);
-  }
-
-  if (category && category !== 'All') {
-    // The filter pills are top-level taxons (Makeup / Skincare / Wellness /
-    // Bundles), but products store fine-grained leaf categories ("Women's
-    // Health", "Immunity", …). Expand a taxon to its leaf set so e.g.
-    // "Wellness" matches its supplements instead of an exact (empty) match.
-    const taxon = findTaxon(category);
-    if (taxon) {
-      const leaves = [...taxon.categories];
-      countQuery = countQuery.in('category', leaves);
-      dataQuery = dataQuery.in('category', leaves);
-    } else {
-      countQuery = countQuery.eq('category', category);
-      dataQuery = dataQuery.eq('category', category);
+  // Apply every filter EXCEPT status — shared by the data query and the
+  // per-status count queries (so the status tabs reflect the other filters).
+  const applyShared = <T,>(qb: T): T => {
+    let b = qb as unknown as FilterBuilder;
+    if (ptagProductIds) {
+      const ids = ptagProductIds.length > 0 ? ptagProductIds : ['00000000-0000-0000-0000-000000000000'];
+      b = b.in('id', ids);
     }
-  }
-  if (tag && tag !== 'All') {
-    countQuery = countQuery.eq('tag', tag);
-    dataQuery = dataQuery.eq('tag', tag);
-  }
-  if (q) {
-    const filter = `name.ilike.%${q}%,brand.ilike.%${q}%`;
-    countQuery = countQuery.or(filter);
-    dataQuery = dataQuery.or(filter);
-  }
+    if (category && category !== 'All') {
+      // The category control emits either a top-level taxon (Makeup / Skincare
+      // / Wellness / Bundles) or an exact leaf ("Women's Health"). A taxon
+      // expands to its leaf set; a leaf matches exactly.
+      const taxon = findTaxon(category);
+      if (taxon) b = b.in('category', [...taxon.categories]);
+      else b = b.eq('category', category);
+    }
+    if (brand) b = b.eq('brand', brand);
+    if (tag && tag !== 'All') b = b.eq('tag', tag);
+    if (q) b = b.or(`name.ilike.%${q}%,brand.ilike.%${q}%`);
+    // Stock state. Tracked products only, except "managed" (externally managed).
+    if (stock === 'in')        b = b.eq('track_inventory', true).gt('stock', 0);
+    else if (stock === 'low')  b = b.eq('track_inventory', true).gt('stock', 0).lte('stock', 10);
+    else if (stock === 'out')  b = b.eq('track_inventory', true).eq('stock', 0);
+    else if (stock === 'managed') b = b.eq('track_inventory', false);
+    if (min != null) b = b.gte('price', min);
+    if (max != null) b = b.lte('price', max);
+    return b as unknown as T;
+  };
 
-  const [{ count: totalCount }, { data: products }] = await Promise.all([countQuery, dataQuery]);
-  const total = totalCount ?? 0;
+  const headCount = () => supabase.from('products').select('id', { count: 'exact', head: true });
+  const activeStatus = status && status !== 'all' ? status : null;
+
+  let dataQuery = applyShared(supabase.from('products').select('*'))
+    .order(order.col, { ascending: order.asc }).range(from, to);
+  if (activeStatus) dataQuery = dataQuery.eq('status', activeStatus);
+
+  // Count per status (shared filters applied) drives the tab badges + the
+  // current pagination total.
+  const [
+    { data: products },
+    { count: cPublished },
+    { count: cDraft },
+    { count: cArchived },
+  ] = await Promise.all([
+    dataQuery,
+    applyShared(headCount()).eq('status', 'published'),
+    applyShared(headCount()).eq('status', 'draft'),
+    applyShared(headCount()).eq('status', 'archived'),
+  ]);
+
+  const statusCounts = {
+    published: cPublished ?? 0,
+    draft: cDraft ?? 0,
+    archived: cArchived ?? 0,
+    all: (cPublished ?? 0) + (cDraft ?? 0) + (cArchived ?? 0),
+  };
+  const total = activeStatus
+    ? (statusCounts[activeStatus as keyof typeof statusCounts] ?? 0)
+    : statusCounts.all;
   const list = (products ?? []) as Product[];
+
+  // Distinct categories + brands for the filter dropdowns (cheap over the whole
+  // catalogue). Categories cover any value present, including ones outside the
+  // nav taxonomy (e.g. Sunscreens, Fragrance).
+  const { data: facetRows } = await supabase.from('products').select('category, brand');
+  const catSet = new Set<string>();
+  const brandSet = new Set<string>();
+  for (const r of (facetRows ?? []) as Array<{ category: string | null; brand: string | null }>) {
+    if (r.category) catSet.add(r.category);
+    if (r.brand) brandSet.add(r.brand);
+  }
+  const categories = [...catSet].sort((a, b) => a.localeCompare(b));
+  const brands = [...brandSet].sort((a, b) => a.localeCompare(b));
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -124,7 +174,7 @@ export default async function ProductsPage({
       </div>
 
       <Suspense fallback={null}>
-        <ProductsFilter total={total} />
+        <ProductsFilter total={total} statusCounts={statusCounts} categories={categories} brands={brands} />
       </Suspense>
 
       {ptag && (
@@ -136,7 +186,7 @@ export default async function ProductsPage({
         </div>
       )}
 
-      <ProductsFlash deleted={!!deleted} archived={!!archived} error={error} />
+      <ProductsFlash deleted={!!sp.deleted} archived={!!sp.archived} error={sp.error} />
 
       <ProductsTable products={list} />
 
