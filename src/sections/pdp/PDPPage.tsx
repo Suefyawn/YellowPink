@@ -288,6 +288,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // Sticky mobile buy-bar: shown once the in-page buy panel scrolls out of
   // view so the Add-to-Cart action is always one tap away on a phone.
   const buyPanelRef = useRef<HTMLDivElement | null>(null);
+  const stickyBarRef = useRef<HTMLDivElement | null>(null);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const { addToCart } = useCart();
   // Free-shipping copy tracks the owner's live setting (threshold + on/off).
@@ -315,6 +316,20 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
     io.observe(el);
     return () => io.disconnect();
   }, []);
+
+  // While the sticky buy-bar is up, lift the global floating buttons (WhatsApp
+  // FAB + back-to-top) above it via a CSS var they read, so they don't overlap
+  // the bar on mobile. Cleared when the bar hides or the PDP unmounts.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (showStickyBar) {
+      const h = stickyBarRef.current?.offsetHeight ?? 68;
+      root.style.setProperty('--fab-bottom-offset', `${h + 12}px`);
+    } else {
+      root.style.removeProperty('--fab-bottom-offset');
+    }
+    return () => { root.style.removeProperty('--fab-bottom-offset'); };
+  }, [showStickyBar]);
 
   // view_item analytics — fires once per product visit.
   useEffect(() => {
@@ -789,6 +804,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           `pdp-sticky-bar` CSS class (display:none ≥768px). Reuses the same
           qty + handleAdd as the in-page panel so state stays in sync. */}
       <div
+        ref={stickyBarRef}
         className="pdp-sticky-bar"
         inert={!showStickyBar}
         style={{

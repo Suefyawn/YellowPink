@@ -30,8 +30,9 @@ export function BackToTop() {
       style={{
         position: 'fixed', right: 'max(16px, env(safe-area-inset-right))',
         // Sits above the persistent WhatsApp FAB (56px bubble at bottom-right)
-        // so the two don't overlap when both are visible.
-        bottom: 'calc(max(16px, env(safe-area-inset-bottom)) + 68px)',
+        // so the two don't overlap; --fab-bottom-offset lifts both above the
+        // PDP sticky buy-bar while it's up.
+        bottom: 'calc(max(16px, env(safe-area-inset-bottom)) + 68px + var(--fab-bottom-offset, 0px))',
         width: 44, height: 44, borderRadius: '50%',
         background: 'var(--ink-900)', color: '#fff',
         border: 'none', cursor: 'pointer',
