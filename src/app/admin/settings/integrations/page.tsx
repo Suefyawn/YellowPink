@@ -6,6 +6,8 @@ import {
   inp, lbl, Section, Card, Divider, SaveBar, StatusBanner, SettingsPageHeader,
 } from '@/components/admin/settings-controls';
 import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
+import { getGoogleConnection, isGoogleOAuthConfigured, REDIRECT_URI, listSitemaps, type SitemapStatus } from '@/lib/google';
+import { disconnectGoogleAction, submitSitemapAction, setGscSiteAction, setGa4PropertyAction } from './google-actions';
 
 // IMPORTANT: never render an env-var VALUE on this page — only its presence.
 // All checks happen server-side; only the boolean leaves this module.
@@ -145,13 +147,29 @@ function StatusBadge({ status }: { status: 'ok' | 'partial' | 'missing' }) {
   );
 }
 
-export default async function SettingsIntegrationsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
-  const [resolved, s, sp] = await Promise.all([
+export default async function SettingsIntegrationsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string; google?: string }> }) {
+  const [resolved, s, sp, googleConn] = await Promise.all([
     Promise.all(INTEGRATIONS.map(resolve)),
     getSiteSettings(),
     searchParams,
+    getGoogleConnection(),
   ]);
   const g = (key: string) => s[key] ?? '';
+  const googleConfigured = isGoogleOAuthConfigured();
+
+  // Sitemap status is one Google API call — only when connected + linked, and
+  // never fatal to the page.
+  let sitemaps: SitemapStatus[] = [];
+  if (googleConn?.gsc_site_url) {
+    try { sitemaps = await listSitemaps(googleConn.gsc_site_url); } catch { /* show none */ }
+  }
+  const ourSitemap = sitemaps.find(m => m.path.includes('/sitemap.xml')) ?? sitemaps[0] ?? null;
+  const googleMsg: Record<string, string> = {
+    connected: '✓ Google account connected.',
+    disconnected: 'Google account disconnected.',
+    sitemap_submitted: '✓ Sitemap submitted to Google for crawling.',
+    saved: '✓ Saved.',
+  };
 
   const summary = {
     ok:      resolved.filter(r => r.status === 'ok').length,
@@ -211,6 +229,86 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
           </div>
           <SaveBar />
         </form>
+      </Card>
+
+      {/* Connect Google (OAuth) — live GSC/GA4 + sitemap submission. */}
+      {sp.google && googleMsg[sp.google] && (
+        <div style={{ marginBottom: 16, padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, color: '#166534', fontSize: '0.875rem' }}>
+          {googleMsg[sp.google]}
+        </div>
+      )}
+      <Card>
+        <Section
+          title="Connect Google — live data &amp; indexing"
+          desc="Sign in with Google to pull live Search Console &amp; GA4 data into your dashboard and submit your sitemap for indexing — no CSV uploads."
+        />
+        <Divider />
+
+        {!googleConfigured ? (
+          <div style={{ fontSize: '0.875rem', color: '#374151', lineHeight: 1.6 }}>
+            <p style={{ margin: '0 0 10px' }}>To enable this, set up a Google Cloud OAuth app (one-time):</p>
+            <ol style={{ margin: '0 0 12px', paddingLeft: 20, display: 'grid', gap: 4 }}>
+              <li>In <strong>console.cloud.google.com</strong>, enable the <em>Search Console API</em>, <em>Analytics Data API</em> and <em>Analytics Admin API</em>.</li>
+              <li>OAuth consent screen → <strong>External</strong>, add your Google email as a <strong>Test user</strong>.</li>
+              <li>Create an <strong>OAuth client (Web)</strong> with this exact redirect URI:</li>
+            </ol>
+            <code style={{ display: 'block', padding: '8px 12px', background: '#f3f4f6', borderRadius: 6, fontSize: '0.8125rem', wordBreak: 'break-all', marginBottom: 12 }}>{REDIRECT_URI}</code>
+            <p style={{ margin: 0, color: '#6b7280' }}>Then set <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> in Vercel and redeploy — a <strong>Connect</strong> button appears here.</p>
+          </div>
+        ) : !googleConn ? (
+          <div>
+            <a href="/api/google/oauth/start" className="adm-btn-primary" style={{ display: 'inline-block', padding: '10px 20px', background: '#111827', color: '#fff', borderRadius: 8, textDecoration: 'none', fontWeight: 600, fontSize: '0.875rem' }}>
+              Connect Google account
+            </a>
+            <p style={{ margin: '10px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+              Grants read access to Search Console &amp; GA4 and lets us submit your sitemap. Redirect URI registered in Cloud Console must be <code style={{ wordBreak: 'break-all' }}>{REDIRECT_URI}</code>.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 18 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+              <div style={{ fontSize: '0.875rem', color: '#111827' }}>
+                Connected as <strong>{googleConn.email ?? 'your Google account'}</strong>
+              </div>
+              <form action={disconnectGoogleAction}>
+                <button type="submit" style={{ padding: '6px 12px', fontSize: '0.8125rem', background: 'none', border: '1px solid #e5e7eb', borderRadius: 7, cursor: 'pointer', color: '#6b7280' }}>Disconnect</button>
+              </form>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }} className="adm-form-2col">
+              <form action={setGscSiteAction}>
+                <label style={lbl}>Search Console property</label>
+                <input name="gsc_site_url" defaultValue={googleConn.gsc_site_url ?? ''} style={inp} placeholder="sc-domain:yellowpink.pk" />
+                <button type="submit" style={{ marginTop: 8, padding: '6px 12px', fontSize: '0.8125rem', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 7, cursor: 'pointer' }}>Save</button>
+              </form>
+              <form action={setGa4PropertyAction}>
+                <label style={lbl}>GA4 property ID {googleConn.ga4_property_name ? `· ${googleConn.ga4_property_name}` : ''}</label>
+                <input name="ga4_property_id" defaultValue={googleConn.ga4_property_id ?? ''} style={inp} placeholder="e.g. 412345678" />
+                <input type="hidden" name="ga4_property_name" value={googleConn.ga4_property_name ?? ''} />
+                <button type="submit" style={{ marginTop: 8, padding: '6px 12px', fontSize: '0.8125rem', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: 7, cursor: 'pointer' }}>Save</button>
+              </form>
+            </div>
+
+            <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 16 }}>
+              <label style={lbl}>Submit pages for indexing</label>
+              <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                Submits your full sitemap to Google so it (re)crawls every page. Google still decides what/when to index — there is no API to force-index individual pages, so the sitemap is the supported, scalable nudge.
+              </p>
+              <form action={submitSitemapAction}>
+                <button type="submit" disabled={!googleConn.gsc_site_url} className="adm-btn-primary" style={{ padding: '8px 16px', background: googleConn.gsc_site_url ? '#111827' : '#d1d5db', color: '#fff', border: 'none', borderRadius: 8, cursor: googleConn.gsc_site_url ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: '0.8125rem' }}>
+                  Submit sitemap to Google
+                </button>
+              </form>
+              {ourSitemap && (
+                <p style={{ margin: '10px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                  Last submitted: {ourSitemap.lastSubmitted ? new Date(ourSitemap.lastSubmitted).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                  {' · '}{ourSitemap.submittedUrls} URLs
+                  {ourSitemap.errors > 0 && <span style={{ color: '#dc2626' }}> · {ourSitemap.errors} errors</span>}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </Card>
 
       {/* Summary row */}
