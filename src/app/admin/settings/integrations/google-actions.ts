@@ -50,7 +50,11 @@ export async function setGscSiteAction(formData: FormData): Promise<void> {
 
 export async function setGa4PropertyAction(formData: FormData): Promise<void> {
   await assertSettings();
-  const id = str(formData, 'ga4_property_id');
-  if (id) await setGa4Property(id, str(formData, 'ga4_property_name') || null);
+  // Dropdown values are "propertyId::Display Name"; a manual entry is just the id.
+  const raw = str(formData, 'ga4_property_id');
+  if (raw) {
+    const [id, ...rest] = raw.split('::');
+    if (id) await setGa4Property(id, rest.join('::') || null);
+  }
   done('google=saved');
 }
