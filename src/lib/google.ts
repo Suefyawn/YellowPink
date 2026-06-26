@@ -190,13 +190,20 @@ async function getAccessToken(): Promise<string> {
 
 async function gapi<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken();
+  // Only set JSON content-type when there's a body — an empty PUT (e.g.
+  // sitemaps.submit) with Content-Type: application/json makes Google try to
+  // parse the empty body as JSON and 400 with "Unexpected end of input".
+  const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+  if (init?.body) headers['Content-Type'] = 'application/json';
   const res = await fetch(url, {
     ...init,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: { ...headers, ...((init?.headers as Record<string, string>) ?? {}) },
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`google api ${res.status}: ${await res.text()}`);
-  return (await res.json()) as T;
+  // Some endpoints (sitemaps.submit) return 204/empty — don't choke on no JSON.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
 
 // ─── Search Console ──────────────────────────────────────────────────────────

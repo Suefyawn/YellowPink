@@ -35,8 +35,9 @@ export async function submitSitemapAction(): Promise<void> {
   try {
     await submitSitemap(conn!.gsc_site_url!, `${SITE_URL}/sitemap.xml`);
   } catch (err) {
-    log.error('google.submit_sitemap_failed', { error: err instanceof Error ? err.message : String(err) });
-    done(`error=${encodeURIComponent('Could not submit the sitemap. Re-connect Google and try again.')}`);
+    const detail = err instanceof Error ? err.message : String(err);
+    log.error('google.submit_sitemap_failed', { error: detail });
+    done(`error=${encodeURIComponent(`Sitemap submit failed — ${detail.slice(0, 180)}`)}`);
   }
   done('google=sitemap_submitted');
 }
