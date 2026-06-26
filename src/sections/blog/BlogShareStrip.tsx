@@ -78,7 +78,10 @@ export function BlogShareStrip({ title, url, excerpt }: Props) {
       <a
         href={waHref}
         target="_blank"
-        rel="noopener noreferrer"
+        // Share-intent links (wa.me / facebook sharer) are user actions, not
+        // crawlable destinations — nofollow so they don't leak PageRank and
+        // don't register as broken external links in audits.
+        rel="nofollow noopener noreferrer"
         aria-label="Share on WhatsApp"
         style={btnStyle}
       >
@@ -91,7 +94,7 @@ export function BlogShareStrip({ title, url, excerpt }: Props) {
       <a
         href={fbHref}
         target="_blank"
-        rel="noopener noreferrer"
+        rel="nofollow noopener noreferrer"
         aria-label="Share on Facebook"
         style={btnStyle}
       >

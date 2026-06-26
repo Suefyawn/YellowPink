@@ -123,7 +123,7 @@ export function ContactChannels({
           <a
             key={c.key}
             href={c.href}
-            {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+            {...(c.external ? { target: '_blank', rel: 'nofollow noopener noreferrer' } : {})}
             className="contact-channel-card"
             style={{
               display: 'flex', flexDirection: 'column', gap: 10,
