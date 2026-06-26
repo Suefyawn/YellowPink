@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+
+// Revalidate every 5 min so CMS pages reflect edits and, crucially, the live
+// shipping settings substituted into the body. Without a directive the route was
+// frozen in the static cache and kept showing the old hard-coded shipping figure
+// even after the body was tokenised and the admin threshold changed.
+export const revalidate = 300;
 import { supabase, isDemo, getSiteSettings } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
 import { parseCommerceConfig, formatPkr } from '@/lib/commerce';
