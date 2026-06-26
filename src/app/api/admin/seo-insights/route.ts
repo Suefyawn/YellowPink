@@ -103,3 +103,5 @@ export async function GET(req: NextRequest) {
   if (Object.keys(errors).length) out.errors = errors;
   return NextResponse.json(out);
 }
+
+// redeploy nudge: force prod build for seo-insights route
