@@ -171,10 +171,11 @@ export function organizationLd(sameAs: string[] = [], contact: OrgContact = {}) 
     description:
       'Imported beauty, skincare and wellness products delivered across Pakistan with cash-on-delivery.',
     areaServed: { '@type': 'Country', name: 'Pakistan' },
-    // Payment + currency signals for the online store. COD is the primary
-    // method; Easypaisa/JazzCash are the wired digital rails. All prices PKR.
-    currenciesAccepted: 'PKR',
-    paymentAccepted: 'Cash on Delivery, Easypaisa, JazzCash',
+    // NB: currenciesAccepted / paymentAccepted are LocalBusiness properties —
+    // not valid on Organization/OnlineStore (Google + Semrush flag them as
+    // unrecognised markup), so they're deliberately omitted here. Payment
+    // methods belong on the Offer/Product schema, where we already set price
+    // currency.
     sameAs: sameAs.length ? sameAs : undefined,
     contactPoint: contactPointLd(contact),
   };
