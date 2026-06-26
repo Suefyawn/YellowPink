@@ -38,6 +38,7 @@ import { DemoBanner } from '@/components/layout/DemoBanner';
 import { ConsentBanner } from '@/components/legal/ConsentBanner';
 import { NewsletterModal } from '@/components/marketing/NewsletterModal';
 import { getWelcomeOffer } from '@/lib/offers';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { CouponCapture } from '@/components/marketing/CouponCapture';
@@ -191,6 +192,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 without making it a sequential Tab stop. */}
             <div id="main" tabIndex={-1} style={{ outline: 'none' }}>{children}</div>
           </SiteChrome>
+          <SpeedInsights />
         </Providers>
       </body>
     </html>
