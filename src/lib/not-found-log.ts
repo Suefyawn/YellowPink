@@ -19,11 +19,14 @@ const BOT_RE =
   /bot\b|crawl|spider|slurp|googlebot|google-inspectiontool|bingpreview|yandex|baiduspider|duckduck|petalbot|facebookexternalhit|whatsapp|telegrambot|embedly|semrushbot|ahrefsbot|mj12bot|dataforseo|screaming frog/i;
 
 // Structural routes that always exist — never a "broken link", skip the lookup.
+// Keep this in sync when adding a new top-level static route, or it gets
+// logged as a false 404 (single-segment unknowns are treated as genuine).
 const OWNED_EXACT = new Set([
   '/', '/shop', '/blog', '/brands', '/collections', '/k-beauty', '/sitemap',
-  '/medical-review-board', '/cart', '/wishlist', '/track', '/account', '/login',
-  '/forgot-password', '/reset-password', '/checkout', '/thank-you', '/privacy',
-  '/contact', '/faq', '/returns', '/newsletter',
+  '/medical-review-board', '/medical-review-board/apply', '/cart', '/wishlist',
+  '/track', '/account', '/login', '/forgot-password', '/reset-password',
+  '/checkout', '/thank-you', '/privacy', '/contact', '/faq', '/returns',
+  '/newsletter', '/quiz',
 ]);
 
 function isAssetLike(path: string): boolean {
@@ -36,7 +39,7 @@ function isAssetLike(path: string): boolean {
  *  speculatively during a successful render — a false positive to ignore). */
 async function isGenuine404(path: string): Promise<boolean> {
   if (OWNED_EXACT.has(path)) return false;
-  if (path.startsWith('/account') || path.startsWith('/admin')) return false;
+  if (path.startsWith('/account') || path.startsWith('/admin') || path.startsWith('/reviewer')) return false;
   const segs = path.split('/').filter(Boolean);
   if (segs.length < 2) return true;                 // single unknown segment → 404
   const root = segs[0];
