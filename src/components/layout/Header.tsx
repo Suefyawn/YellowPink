@@ -23,6 +23,7 @@ const FLAT_ITEMS = [
   { label: 'Collections', href: '/collections', primary: false },
   { label: 'Brands', href: '/brands', primary: false },
   { label: 'K-Beauty', href: '/k-beauty', primary: false },
+  { label: 'Find Your Match', href: '/quiz', primary: false },
   { label: 'Sale', href: '/shop?on_sale=1', primary: true },
   { label: 'Blog', href: '/blog', primary: false },
 ];

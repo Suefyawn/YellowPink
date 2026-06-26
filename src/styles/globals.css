@@ -854,6 +854,10 @@ a.underline,
   .bl-fix-cell input { width: 100% !important; min-width: 0 !important; box-sizing: border-box; }
 }
 
+/* Quiz answer cards — subtle hover/active affordance. */
+.quiz-card:hover { border-color: var(--brand-pink, #E8487F); background: var(--paper2); }
+.quiz-card:active { transform: translateY(1px); }
+
 /* ── Settings tabs (horizontal) ──────────────────────────────────────────
  * Top tab bar across all viewports; underline marks the active sub-page and
  * the bar scrolls horizontally if it ever overflows (small screens). */

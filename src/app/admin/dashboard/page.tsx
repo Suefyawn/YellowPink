@@ -6,6 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { RevenueChart } from '@/components/admin/RevenueChart';
 import { SentryWidget } from '@/components/admin/SentryWidget';
+import { QuizStatsWidget } from '@/components/admin/QuizStatsWidget';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
@@ -400,6 +401,13 @@ export default async function DashboardPage() {
       {/* Traffic widgets (funnel / PostHog / top pages / top events) now
           live on the Analytics page — the dashboard stays focused on
           today's actionable numbers. */}
+
+      {/* ── Product-finder quiz funnel (overview-gated) ────────────────── */}
+      {canOverview && (
+        <div style={{ marginBottom: 32 }}>
+          <QuizStatsWidget />
+        </div>
+      )}
 
       {/* ── Error monitoring (gated on `analytics_errors`) ─────────────── */}
       {canErrors && (

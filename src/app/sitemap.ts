@@ -22,6 +22,7 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
   { path: '/collections', priority: 0.7, freq: 'weekly' },
   { path: '/brands',     priority: 0.6, freq: 'weekly' },
   { path: '/k-beauty',   priority: 0.8, freq: 'weekly' },
+  { path: '/quiz',       priority: 0.6, freq: 'monthly' },
   { path: '/blog',       priority: 0.7, freq: 'weekly' },
   { path: '/medical-review-board', priority: 0.5, freq: 'monthly' },
   { path: '/sitemap',    priority: 0.3, freq: 'weekly' },
