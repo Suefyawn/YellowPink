@@ -71,6 +71,22 @@ export function Header() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Close any open menu when navigation completes. On a client-side route change
+  // the header persists, and a hover-opened desktop mega-menu (or the mobile
+  // drawer / expanded section) would otherwise linger open over the freshly
+  // loaded page — clicking a dropdown link should land you on the new page with
+  // the menu closed, the industry-standard behaviour.
+  useEffect(() => {
+    // Closing menus in response to an external change (the URL) is exactly what
+    // an effect is for here; the lint rule's cascading-render concern doesn't
+    // apply to a one-shot reset on navigation.
+    /* eslint-disable react-hooks/set-state-in-effect */
+    setOpenMenu(null);
+    setOpenSection(null);
+    setMobileMenu(false);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [pathname, searchParams]);
+
   // Decide which NAV_ITEM is "active" for the current URL. We match on
   // pathname + category query so /shop?category=Makeup highlights "Makeup",
   // but plain /shop highlights "Shop", and any /blog/* highlights "Blog".
