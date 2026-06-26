@@ -67,14 +67,16 @@ export function truncateOnWord(s: string, max: number): string {
 
 export function pageMeta(input: PageMetaInput): Metadata {
   const url = absoluteUrl(input.path ?? '/');
-  // If the caller didn't supply an explicit image, leave `images` undefined so
-  // Next's file-convention auto-discovery picks up the generated
-  // `app/opengraph-image.tsx` (1200x630 branded fallback). Setting any value
-  // here, even a default, would shadow that and force every page to use the
-  // same image.
-  const image = input.image;
-  const ogImages = image ? [{ url: image }] : undefined;
-  const twImages = image ? [image] : undefined;
+  // Share image. Product/brand pages pass an explicit packshot; everything else
+  // falls back to the branded 1200x630 card rendered by app/opengraph-image.tsx.
+  // We point at that route explicitly because Next's file-convention
+  // auto-discovery does NOT reach routes whose generateMetadata returns an
+  // openGraph object (observed live: /shop, /collections, /blog, /brands, /tag
+  // all shipped with no og:image), so WhatsApp/social shares of those landing
+  // pages had no thumbnail. An absolute URL here guarantees one on every page.
+  const image = input.image ?? absoluteUrl('/opengraph-image');
+  const ogImages = [{ url: image }];
+  const twImages = [image];
 
   // Cap title + description so we don't get Semrush "Title element is too
   // long" / "meta description too long" warnings. The original `title` is
