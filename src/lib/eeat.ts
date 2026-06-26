@@ -27,20 +27,6 @@ export interface MedicalReviewer {
   profileSlug?: string;
 }
 
-/** Resolve the store-wide medical reviewer from site_settings, or null when the
- *  owner hasn't configured one yet. */
-export function medicalReviewer(
-  settings: Record<string, string | undefined> | null | undefined,
-): MedicalReviewer | null {
-  const name = settings?.medical_reviewer_name?.trim();
-  if (!name) return null;
-  return {
-    name,
-    credentials: settings?.medical_reviewer_credentials?.trim() || undefined,
-    url: settings?.medical_reviewer_url?.trim() || undefined,
-  };
-}
-
 /** "Dr. Ayesha Khan, PharmD" — name with credentials appended when present. */
 export function reviewerLabel(r: MedicalReviewer): string {
   return r.credentials ? `${r.name}, ${r.credentials}` : r.name;
