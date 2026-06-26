@@ -147,7 +147,7 @@ export function WellnessSection({
         <div style={{ marginTop: 'var(--section-gap)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
             <Overline style={{ color: 'var(--ink-500)' }}>Wellness bestsellers</Overline>
-            <Link href="/shop?taxon=wellness" className="text-link">View all →</Link>
+            <Link href="/shop?taxon=wellness" className="text-link">View all</Link>
           </div>
           <div className="product-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }}>
             {railItems.map((p) => <ProductTile key={p.id} product={p} />)}

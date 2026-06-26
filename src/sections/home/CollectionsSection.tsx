@@ -16,7 +16,7 @@ export function CollectionsSection({ collections }: { collections: Collection[] 
             <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Curated for you</Overline>
             <h2 className="display-l" style={{ fontSize: '2.25rem', margin: 0 }}>Shop by collection</h2>
           </div>
-          <Link href="/collections" className="text-link">View all collections →</Link>
+          <Link href="/collections" className="text-link">View all collections</Link>
         </div>
         <CollectionsGrid collections={collections.slice(0, 3)} />
       </div>
