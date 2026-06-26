@@ -19,6 +19,14 @@ import { taxonForCategory } from '@/lib/category-taxonomy';
 import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import type { Product, ProductImage as ProductImageT, ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
+// Brand → /brand/<slug>. Mirrors brandSlug() in lib/brands.ts, inlined to keep
+// the server Supabase client (which lib/brands imports) out of this client
+// bundle. Keep the two in sync.
+function brandHref(brand: string): string {
+  const slug = brand.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return `/brand/${slug}`;
+}
+
 interface AttributeWithValues extends ProductAttribute {
   values: AttributeValue[];
 }
@@ -464,7 +472,16 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           <Gallery images={galleryToShow} alt={`${product.brand ?? ''} ${displayName}`.trim()} fallback={product.image_url} brandLabel={product.brand ?? undefined} videoUrl={product.video_url} />
 
           <div style={{ minWidth: 0 }}>
-            <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>{product.brand}</Overline>
+            {product.brand && (
+              <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>
+                {/* Link the brand to its archive page — a descriptive internal
+                    link from every PDP to /brand/<slug>, which strengthens the
+                    brand pages (previously linked only from /brands). */}
+                <a href={brandHref(product.brand)} style={{ color: 'inherit', textDecoration: 'none' }}>
+                  {product.brand}
+                </a>
+              </Overline>
+            )}
             <h1 style={{
               fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500,
               letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 8,

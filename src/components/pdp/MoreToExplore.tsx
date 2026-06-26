@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { categoryHref } from '@/lib/category-taxonomy';
+import { brandSlug } from '@/lib/brands';
 import type { Product } from '@/types';
 
 // PDP cross-link rails. The product page otherwise links out only through
@@ -57,7 +58,10 @@ export function MoreToExplore({ brand, category, brandProducts, categoryProducts
         {showBrand && (
           <Rail
             heading={`More from ${brand}`}
-            href={`/shop?brand=${encodeURIComponent(brand as string)}`}
+            // Link the canonical brand archive (/brand/<slug>), not the
+            // /shop?brand= filter URL — the filter now canonicalizes to the
+            // brand page, so internal links should target it directly.
+            href={`/brand/${brandSlug(brand as string)}`}
             linkLabel={`Shop all ${brand} →`}
             products={brandRow}
           />
