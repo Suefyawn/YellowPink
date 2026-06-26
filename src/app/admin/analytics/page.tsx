@@ -16,6 +16,7 @@ import { RetentionWidget } from '@/components/admin/RetentionWidget';
 import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
 import { SearchConsoleWidget } from '@/components/admin/SearchConsoleWidget';
 import { Ga4Widget } from '@/components/admin/Ga4Widget';
+import { WebVitalsWidget } from '@/components/admin/WebVitalsWidget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
@@ -272,6 +273,11 @@ export default async function AnalyticsPage({
               <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
                 <SearchConsoleWidget />
                 <Ga4Widget />
+              </div>
+              {/* Real Core Web Vitals (field p75) captured in-app, honours the
+                  day-range pills above. */}
+              <div style={{ marginBottom: 28 }}>
+                <WebVitalsWidget days={window} />
               </div>
               <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 28 }}>
                 <ConversionFunnelWidget />

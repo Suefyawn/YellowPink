@@ -52,7 +52,7 @@ export default async function MedicalReviewBoardPage() {
             Health is a serious responsibility. Our health and supplement articles are medically
             reviewed by qualified, practising doctors and health professionals to make sure the
             information you read is accurate, balanced and safe. Each reviewer checks the content in
-            their own area of expertise &mdash; you&rsquo;ll see their name and credentials on the
+            their own area of expertise. You&rsquo;ll see their name and credentials on the
             articles they&rsquo;ve reviewed.
           </p>
 
@@ -104,7 +104,7 @@ export default async function MedicalReviewBoardPage() {
 
           <p className="small-text" style={{ color: 'var(--ink-500)', marginTop: 40, lineHeight: 1.6 }}>
             Medical review confirms that an article is accurate and up to date. It is general
-            educational information, not a substitute for personal medical advice &mdash; always
+            educational information, not a substitute for personal medical advice. Always
             consult your own doctor or pharmacist about your health.
           </p>
 

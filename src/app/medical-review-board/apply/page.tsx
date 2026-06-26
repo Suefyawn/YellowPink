@@ -38,7 +38,7 @@ export default function ReviewerApplyPage() {
           <p className="body-text" style={{ color: 'var(--ink-700)', fontSize: '1.0625rem', lineHeight: 1.7, marginBottom: 36 }}>
             If you&rsquo;re a registered doctor or health professional, we&rsquo;d be glad to have you
             review content in your area of expertise. Tell us about yourself below. We verify every
-            applicant&rsquo;s credentials before approving, and reviewing is a volunteer role &mdash; there&rsquo;s
+            applicant&rsquo;s credentials before approving, and reviewing is a volunteer role with
             no obligation and no payment. Once approved, you get a one-time sign-in link to a dashboard
             where you can manage your profile and see the articles credited to you.
           </p>
