@@ -9,8 +9,9 @@ import {
 } from '@/lib/quiz';
 import {
   getQuizRecommendations, recordQuizStart, recordQuizComplete, captureQuizEmail,
-  type QuizPick,
 } from '@/app/quiz/actions';
+import { ProductTile } from '@/components/ui/ProductTile';
+import type { Product } from '@/types';
 
 type Phase = 'intro' | 'questions' | 'loading' | 'results';
 
@@ -30,7 +31,7 @@ export function QuizClient() {
   const [branch, setBranch] = useState<Branch | null>(null);
   const [answers, setAnswers] = useState<QuizAnswers | null>(null);
   const [qIndex, setQIndex] = useState(0);
-  const [picks, setPicks] = useState<QuizPick[]>([]);
+  const [picks, setPicks] = useState<Product[]>([]);
 
   const [email, setEmail] = useState('');
   const [emailState, setEmailState] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
@@ -136,25 +137,8 @@ export function QuizClient() {
       </p>
 
       {picks.length > 0 && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 16, marginBottom: 28 }}>
-          {picks.map(p => (
-            <Link
-              key={p.id}
-              href={`/product/${p.slug}`}
-              onClick={() => capture('quiz_product_clicked', { product_id: p.id, branch })}
-              style={{ textDecoration: 'none', color: 'inherit' }}
-            >
-              <div style={{ aspectRatio: '1', borderRadius: 10, overflow: 'hidden', background: 'var(--paper2)', marginBottom: 8 }}>
-                {p.image_url
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={p.image_url} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  : null}
-              </div>
-              {p.brand && <div className="small-text" style={{ color: 'var(--ink-500)' }}>{p.brand}</div>}
-              <div style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-900)', lineHeight: 1.3 }}>{p.name}</div>
-              <div style={{ fontSize: '0.875rem', color: 'var(--ink-700)', marginTop: 2 }}>Rs {p.price.toLocaleString('en-PK')}</div>
-            </Link>
-          ))}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 20, marginBottom: 28 }}>
+          {picks.map(p => <ProductTile key={p.id} product={p} />)}
         </div>
       )}
 

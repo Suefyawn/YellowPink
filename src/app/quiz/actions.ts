@@ -6,28 +6,22 @@ import { sendNewsletterWelcomeEmail } from '@/lib/email';
 import { captureError } from '@/lib/monitoring';
 import { log } from '@/lib/logger';
 import { categoriesForAnswers, type Branch, type QuizAnswers } from '@/lib/quiz';
-
-export interface QuizPick {
-  id: string;
-  slug: string;
-  name: string;
-  brand: string | null;
-  price: number;
-  image_url: string | null;
-}
+import type { Product } from '@/types';
 
 const MAX_PICKS = 6;
 
 /** Map answers → categories → live products. In-stock first, most specific
- *  category first, de-duplicated, capped. */
-export async function getQuizRecommendations(answers: QuizAnswers): Promise<QuizPick[]> {
+ *  category first, de-duplicated, capped. Returns full Product objects so the
+ *  results screen can render real ProductTiles (add-to-cart, variants, etc.). */
+export async function getQuizRecommendations(answers: QuizAnswers): Promise<Product[]> {
   try {
     const cats = categoriesForAnswers(answers);
     if (cats.length === 0) return [];
     const all = await getProducts(); // published, visibility-filtered
-    const picks: QuizPick[] = [];
+    const picks: Product[] = [];
     const seen = new Set<string>();
-    // Pass 1: in-stock items, walking categories in priority order.
+    // Two passes: in-stock first, then the rest — walking categories in
+    // priority order (most specific answer first).
     for (const inStockOnly of [true, false]) {
       for (const cat of cats) {
         for (const p of all) {
@@ -35,7 +29,7 @@ export async function getQuizRecommendations(answers: QuizAnswers): Promise<Quiz
           const inStock = p.track_inventory === false || p.stock > 0;
           if (inStockOnly && !inStock) continue;
           seen.add(p.id);
-          picks.push({ id: p.id, slug: p.slug, name: p.name, brand: p.brand, price: p.price, image_url: p.image_url ?? null });
+          picks.push(p);
           if (picks.length >= MAX_PICKS) return picks;
         }
       }
