@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from '../actions';
 import {
@@ -225,15 +226,10 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
               </p>
             </div>
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #f3f4f6', paddingTop: 16, marginTop: 4 }}>
-              <label style={lbl}>Medical reviewer (E-E-A-T) — for health/supplement content</label>
-              <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
-                A real, named clinician who reviews your health articles adds a <strong>&ldquo;Medically reviewed by&rdquo;</strong> byline + schema — the strongest trust signal Google looks for on supplement/health content. Leave blank if you don&rsquo;t have one yet (nothing is shown). <em>Only use a genuine reviewer — never a made-up name.</em>
+              <label style={lbl}>Medical reviewers (E-E-A-T) — for health/supplement content</label>
+              <p style={{ margin: '0 0 2px', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                Managed on the <Link href="/admin/reviewers" style={{ color: '#9d174d', fontWeight: 600 }}>Medical Review Board</Link> — add real, credentialed doctors there (or let them apply), set a <strong>default</strong>, and assign reviewers per health post. Their <strong>&ldquo;Medically reviewed by&rdquo;</strong> byline + schema is the strongest trust signal Google looks for on supplement/health content.
               </p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <input name="medical_reviewer_name" defaultValue={g('medical_reviewer_name')} style={inp} placeholder="Name — e.g. Dr. Ayesha Khan" />
-                <input name="medical_reviewer_credentials" defaultValue={g('medical_reviewer_credentials')} style={inp} placeholder="Credentials — e.g. PharmD, MBBS" />
-              </div>
-              <input name="medical_reviewer_url" defaultValue={g('medical_reviewer_url')} style={{ ...inp, marginTop: 12 }} placeholder="Profile URL (LinkedIn / clinic / PMDC) — optional, for verification" />
             </div>
           </div>
           <SaveBar />

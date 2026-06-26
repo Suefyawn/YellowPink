@@ -3,9 +3,9 @@ export const revalidate = 600;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getBlogPostBySlug, getBlogPosts, getProducts, getSiteSettings } from '@/lib/supabase';
+import { getBlogPostBySlug, getBlogPosts, getProducts } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
-import { medicalReviewer, type MedicalReviewer } from '@/lib/eeat';
+import { type MedicalReviewer } from '@/lib/eeat';
 import { getReviewerById, getActiveReviewers } from '@/lib/reviewers';
 import { isHealthCategory } from '@/lib/category-taxonomy';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
@@ -32,19 +32,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BlogPostRoute({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [post, allPosts, allProducts, settings] = await Promise.all([
+  const [post, allPosts, allProducts] = await Promise.all([
     getBlogPostBySlug(slug),
     getBlogPosts(),
     getProducts(),
-    getSiteSettings(),
   ]);
   // Unpublished/renamed post? Honour a manual redirect before 404ing.
   if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
 
   // E-E-A-T: resolve the medical reviewer for YMYL health posts (same gate as
   // the medical disclaimer). Priority: explicit per-post Review Board
-  // assignment → the default board reviewer → the legacy store-wide setting.
-  // null on beauty posts or when none is configured.
+  // assignment → the default board reviewer. null on beauty posts or when no
+  // reviewer is configured. (The legacy store-wide setting was retired — the
+  // Medical Review Board is the single source of truth.)
   let reviewer: MedicalReviewer | null = null;
   if (isHealthCategory(post.category)) {
     const pid = (post as { reviewer_id?: string | null }).reviewer_id;
@@ -52,7 +52,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
     if (!r) r = (await getActiveReviewers()).find(x => x.is_default) ?? null;
     reviewer = r
       ? { name: r.name, credentials: r.credentials ?? undefined, specialty: r.specialty ?? undefined, url: r.profile_url ?? undefined, profileSlug: r.slug }
-      : medicalReviewer(settings);
+      : null;
   }
 
   let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 3);
