@@ -55,6 +55,7 @@ import { CollectionsSection } from '@/sections/home/CollectionsSection';
 import { RealResults } from '@/sections/home/RealResults';
 import { JournalSection } from '@/sections/home/JournalSection';
 import { PressStrip } from '@/sections/home/PressStrip';
+import { QuizBand } from '@/sections/home/QuizBand';
 
 export default async function HomePage() {
   // Pull each rail in parallel. The new helpers all fall back to a stock-
@@ -113,6 +114,7 @@ export default async function HomePage() {
       <HeroSection settings={heroSettings} />
       <TrustBar />
       <FeaturedProducts products={featured.length ? featured.slice(0, 4) : bestsellers.slice(0, 4)} />
+      <QuizBand />
       <KBeautySection products={kBeautyProducts} />
       <EditorialDuo />
       {saleActive && (
