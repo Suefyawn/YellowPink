@@ -778,7 +778,12 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
         const faqItems = effectiveProductFaq(product.faq, { estimatedDays });
         return (
         <section style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }}>
-          <div className="container" style={{ maxWidth: 760 }}>
+          {/* Use the standard page container so the FAQ's left edge lines up
+              with the product content above and the related-products section
+              below; cap the text at a readable width but left-align it (no auto
+              margins) instead of floating it in a narrow centred column. */}
+          <div className="container">
+            <div style={{ maxWidth: 760 }}>
             <Overline style={{ display: 'block', marginBottom: 16 }}>Frequently asked</Overline>
             <h2 className="display-l" style={{ fontSize: '1.75rem', marginBottom: 24 }}>Questions about this product</h2>
             <div style={{ borderTop: '1px solid var(--line)' }}>
@@ -797,6 +802,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                   </div>
                 </details>
               ))}
+            </div>
             </div>
           </div>
         </section>
