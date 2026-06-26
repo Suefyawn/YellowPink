@@ -225,9 +225,7 @@ export function Header() {
             </svg>
           </button>
           <Link
-            href={user ? '/account' : '/login'}
-            rel="nofollow"
-            aria-label={user ? 'My account' : 'Sign in'}
+            href={user ? '/account' : '/login'}            aria-label={user ? 'My account' : 'Sign in'}
             className="header-icon-desktop-only"
             style={{
               color: 'var(--ink-700)', display: 'inline-flex',
@@ -240,9 +238,7 @@ export function Header() {
             </svg>
           </Link>
           <Link
-            href="/wishlist"
-            rel="nofollow"
-            aria-label="My wishlist"
+            href="/wishlist"            aria-label="My wishlist"
             title="Wishlist"
             className="header-icon-desktop-only"
             style={{
@@ -457,9 +453,7 @@ export function Header() {
           {/* Account shortcut card — saves the user from dismissing the
               menu + hitting the tiny header icon. */}
           <Link
-            href={user ? '/account' : '/login'}
-            rel="nofollow"
-            onClick={() => setMobileMenu(false)}
+            href={user ? '/account' : '/login'}            onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}
             style={{
               marginTop: 20, padding: '16px 18px',
@@ -476,9 +470,7 @@ export function Header() {
           </Link>
           {/* Wishlist — moved off the cramped header icon row into the drawer. */}
           <Link
-            href="/wishlist"
-            rel="nofollow"
-            onClick={() => setMobileMenu(false)}
+            href="/wishlist"            onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}
             style={{
               marginTop: 10, padding: '16px 18px',
