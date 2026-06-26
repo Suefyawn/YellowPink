@@ -132,6 +132,25 @@ export function categoryHref(category: string): string {
 // by design: no disease/cure claims. Categories without an entry fall back to
 // the short CATEGORY_DESCRIPTIONS line.
 export const CATEGORY_INTRO: Record<string, string> = {
+  // ── Taxon head-term landing pages ──
+  // These four are the highest-traffic /shop?taxon= pages; give each a full
+  // keyword-led paragraph instead of the short CATEGORY_DESCRIPTIONS one-liner
+  // (CollectionPage renders CATEGORY_INTRO[cat] ?? CATEGORY_DESCRIPTIONS[cat]).
+  'Makeup':
+    "Shop authentic imported makeup at Yellow Pink — foundations, concealers and powders for a flawless base, plus lip and cheek tints, highlighters, eye makeup and brushes from the world's most-loved international and K-beauty brands. Whether you're building an everyday no-makeup look or a bold going-out face, every product here is 100% genuine and sealed, with cash on delivery nationwide across Pakistan.",
+  'Skincare':
+    'Build a routine that actually works for Pakistani skin with our imported and Korean skincare — gentle cleansers, targeted serums, lightweight moisturisers, sunscreens and treatments for acne, pigmentation and dullness. We stock K-beauty favourites alongside trusted international brands, all 100% authentic and sealed, with cash on delivery nationwide across Pakistan.',
+  'Wellness':
+    "Support your health from the inside out with our wellness range — vitamins and supplements for immunity, bone and joint strength, heart health, digestion, and women's and men's wellbeing, from reputable global brands. From everyday multivitamins to targeted fertility and energy support, every product is genuine, sealed and correctly stored, with cash on delivery across Pakistan.",
+  'Bundles':
+    'Get more for your money with our bundles and combo packs — curated sets that pair complementary skincare, makeup and wellness products at a better price than buying each separately. Hand-picked to work well together and ideal for gifting or trying a full routine, all 100% authentic and sealed, with cash on delivery nationwide across Pakistan.',
+  // ── Leaf categories that previously had only a short one-liner ──
+  'Eyes':
+    'Define and finish any eye look with our eye makeup — eyeshadows, eyeliners, mascaras and brow products from popular international and K-beauty brands. From soft everyday definition to a bold smokey eye, every product is 100% authentic and imported, with cash on delivery across Pakistan.',
+  'Brushes & Tools':
+    'Get a smooth, professional finish at home with our makeup brushes, sponges and beauty tools — for flawless blending of foundation, concealer, powder and eye makeup. Durable, easy to clean and chosen to suit every routine, all genuine and imported, with cash on delivery nationwide across Pakistan.',
+  'Hair Care':
+    'Care for stronger, healthier hair with our hair care range — shampoos, conditioners, treatments and hair-support supplements for everyday cleansing, shine, scalp health and reduced hair fall. Sourced from trusted brands and 100% authentic, with cash on delivery nationwide across Pakistan.',
   "Women's Health":
     "Yellow Pink's women's health range covers fertility support, prenatal and postnatal nutrition, hormonal balance, iron and everyday vitality — from trusted international supplement brands. Whether you're planning a pregnancy, managing your cycle, or simply topping up key nutrients, every product here is 100% authentic and sealed, with cash on delivery nationwide across Pakistan.",
   "Men's Health":
