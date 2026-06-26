@@ -44,9 +44,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const page = await loadPage(slug);
   if (!page) return {};
+  // Substitute the same shipping tokens used in the body so the <title>/meta
+  // description never carry a stale hard-coded figure either.
+  const commerce = parseCommerceConfig(await getSiteSettings());
+  const sub = (s: string) => s
+    .replaceAll('{{flat_shipping}}', formatPkr(commerce.defaultShippingRate))
+    .replaceAll('{{free_shipping_threshold}}', formatPkr(commerce.freeShippingThreshold));
   return pageMeta({
-    title: page.meta_title ?? page.title,
-    description: page.meta_description ?? page.excerpt ?? page.title,
+    title: sub(page.meta_title ?? page.title),
+    description: sub(page.meta_description ?? page.excerpt ?? page.title),
     path: `/page/${page.slug}`,
   });
 }
