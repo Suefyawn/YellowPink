@@ -14,6 +14,8 @@ import { FunnelBySourceWidget } from '@/components/admin/FunnelBySourceWidget';
 import { FunnelByDeviceWidget } from '@/components/admin/FunnelByDeviceWidget';
 import { RetentionWidget } from '@/components/admin/RetentionWidget';
 import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
+import { SearchConsoleWidget } from '@/components/admin/SearchConsoleWidget';
+import { Ga4Widget } from '@/components/admin/Ga4Widget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
@@ -266,6 +268,11 @@ export default async function AnalyticsPage({
           {/* Traffic — gated on the analytics_traffic permission. */}
           {canTraffic && (
             <>
+              {/* Live Google Search Console + GA4 (only render once connected). */}
+              <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+                <SearchConsoleWidget />
+                <Ga4Widget />
+              </div>
               <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 28 }}>
                 <ConversionFunnelWidget />
                 <PostHogWidget />
