@@ -620,6 +620,15 @@ a.underline,
   text-transform: uppercase; letter-spacing: 0.03em;
 }
 .blog-body tbody tr:nth-child(even) { background: #faf9fb; }
+/* Base style for every inline link in an article body — internal cross-links,
+   product links and external citations all read as clickable, not plain text.
+   More specific rules below (.blog-product-link, .blog-cta) override this. */
+.blog-body a {
+  color: var(--brand-pink-text);
+  text-decoration: underline; text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.blog-body a:hover { text-decoration-thickness: 2px; }
 /* Inline product mentions auto-linked by linkProductMentions() — make them
    read as shoppable links, not plain body text. */
 .blog-body a.blog-product-link {
