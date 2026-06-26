@@ -39,8 +39,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     ogImage = (img as { image_url?: string } | null)?.image_url || undefined;
   }
   return pageMeta({
-    title: `${tag.name} — Shop`,
-    description: `Shop ${tag.name} at Yellow Pink — authentic, imported skincare, makeup and wellness, with cash-on-delivery nationwide in Pakistan.`,
+    title: `${tag.name}, Shop`,
+    description: `Shop ${tag.name} at Yellow Pink, authentic, imported skincare, makeup and wellness, with cash-on-delivery nationwide in Pakistan.`,
     path: `/tag/${slug}`,
     image: ogImage,
   });
@@ -50,7 +50,7 @@ export default async function TagPage({ params }: { params: Promise<{ slug: stri
   const { slug } = await params;
   const [tag, products] = await Promise.all([loadTag(slug), getProducts()]);
   // Legacy WP taxonomy (incl. /product-tag/* funnelled here by the proxy) often
-  // has no live tag — honour a manual redirect before 404ing.
+  // has no live tag, honour a manual redirect before 404ing.
   if (!tag) { await redirectIfMapped(`/tag/${slug}`); notFound(); }
 
   const list = products.filter(p => tag.productIds.has(p.id));
@@ -85,7 +85,7 @@ export default async function TagPage({ params }: { params: Promise<{ slug: stri
             <ProductBrowser products={list} />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
-              Nothing here yet — <Link href="/shop" className="text-link">browse the full catalogue</Link>.
+              Nothing here yet, <Link href="/shop" className="text-link">browse the full catalogue</Link>.
             </p>
           )}
         </div>

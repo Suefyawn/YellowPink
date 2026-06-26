@@ -19,7 +19,7 @@ const CampaignSchema = z.object({
 });
 
 // Every Supabase call in the send path is wrapped in this timeout. Without it,
-// a slow/unreachable Supabase will hang the action indefinitely — no row
+// a slow/unreachable Supabase will hang the action indefinitely, no row
 // written, no toast, no failure surfaced. 8s is well under Vercel's 60s
 // maxDuration, so we still return a clean error instead of a 504.
 const DB_TIMEOUT_MS = 8000;
@@ -35,7 +35,7 @@ function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T
 // Composes one branded email and mails it to the active subscriber list. The
 // campaign row is written BEFORE the send so a run is never invisible, and the
 // send is bounded to the daily Resend cap so it can't run long enough to hit
-// the serverless function timeout (the bug this addresses — an unbounded loop
+// the serverless function timeout (the bug this addresses, an unbounded loop
 // over the whole list would be killed mid-send, hanging the UI). Anything
 // beyond the cap is left unsent; the campaign row's recipient/sent counts
 // surface the shortfall.
@@ -81,7 +81,7 @@ export async function sendNewsletterCampaign(
     return { ok: false, error: 'There are no active subscribers to send to yet.' };
   }
 
-  // Record the campaign up front, so a send is never invisible — even if the
+  // Record the campaign up front, so a send is never invisible, even if the
   // run fails partway, the owner still sees a row in "Sent newsletters".
   let campaignId: string;
   try {
@@ -107,7 +107,7 @@ export async function sendNewsletterCampaign(
     campaignId = res.data.id as string;
   } catch (err) {
     log.error('newsletter.campaign_insert_timeout', { error: (err as Error).message });
-    return { ok: false, error: 'Could not start the campaign — the database did not respond. Please try again.' };
+    return { ok: false, error: 'Could not start the campaign, the database did not respond. Please try again.' };
   }
 
   // Resend's free tier caps batch/marketing mail at RESEND_DAILY_BATCH_CAP a
@@ -159,7 +159,7 @@ export async function sendNewsletterCampaign(
 }
 
 // ─── Subscriber CRUD ─────────────────────────────────────────────────────────
-// Admin-side management of the subscriber list. "Remove" is soft — sets
+// Admin-side management of the subscriber list. "Remove" is soft, sets
 // unsubscribed_at so the unsubscribe trail matches what the storefront link
 // would produce, and the row stays for history. Email edits normalise to
 // lowercase to match the lookup the storefront signup uses.
@@ -268,7 +268,7 @@ export async function updateSubscriber(
     .eq('id', id);
   if (error) {
     log.error('newsletter.subscriber_update_failed', { error: error.message });
-    // Postgres 23505 — UNIQUE on email
+    // Postgres 23505, UNIQUE on email
     if ((error as { code?: string }).code === '23505') {
       return { ok: false, error: 'Another subscriber already uses that email.' };
     }

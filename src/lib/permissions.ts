@@ -1,6 +1,6 @@
 // ─── Permissions ─────────────────────────────────────────────────────────────
 // Fine-grained capability strings. Owners implicitly hold every permission;
-// staff hold whatever the owner has granted them — either via an assigned role
+// staff hold whatever the owner has granted them, either via an assigned role
 // (the `roles` table) or, for a "Custom" staff member, via their own
 // `staff_members.permissions text[]` column.
 //
@@ -10,7 +10,7 @@
 //   3. Use `can(session, 'new_perm')` at the call-site
 
 export type Permission =
-  // ── Commerce — orders / products / customers are split into view·edit·delete
+  // ── Commerce, orders / products / customers are split into view·edit·delete
   //    so e.g. a support agent can read orders without being able to refund or
   //    cancel them. coupons / returns stay single per-resource permissions. ──
   | 'orders.view'
@@ -61,15 +61,15 @@ export const PERMISSION_META: Record<Permission, {
   group: PermissionGroup;
 }> = {
   // Commerce
-  'orders.view':     { label: 'Orders — View',     icon: '◎', desc: 'View customer orders and their details.',                          group: 'commerce' },
-  'orders.edit':     { label: 'Orders — Manage',   icon: '◎', desc: 'Update status, fulfil, confirm, and dispatch orders; manage vendors.', group: 'commerce' },
-  'orders.delete':   { label: 'Orders — Delete',   icon: '◎', desc: 'Delete vendor records and other order-related data.',               group: 'commerce' },
-  'products.view':   { label: 'Products — View',   icon: '◈', desc: 'Browse the product catalogue and stock levels.',                    group: 'commerce' },
-  'products.edit':   { label: 'Products — Edit',   icon: '◈', desc: 'Create and edit products, variants, and stock.',                     group: 'commerce' },
-  'products.delete': { label: 'Products — Delete', icon: '◈', desc: 'Delete products from the catalogue.',                                group: 'commerce' },
-  'customers.view':   { label: 'Customers — View',   icon: '◉', desc: 'View customer accounts and segment lists.',                        group: 'commerce' },
-  'customers.edit':   { label: 'Customers — Edit',   icon: '◉', desc: 'Edit customer account details.',                                   group: 'commerce' },
-  'customers.delete': { label: 'Customers — Delete', icon: '◉', desc: 'Delete customer accounts.',                                        group: 'commerce' },
+  'orders.view':     { label: 'Orders, View',     icon: '◎', desc: 'View customer orders and their details.',                          group: 'commerce' },
+  'orders.edit':     { label: 'Orders, Manage',   icon: '◎', desc: 'Update status, fulfil, confirm, and dispatch orders; manage vendors.', group: 'commerce' },
+  'orders.delete':   { label: 'Orders, Delete',   icon: '◎', desc: 'Delete vendor records and other order-related data.',               group: 'commerce' },
+  'products.view':   { label: 'Products, View',   icon: '◈', desc: 'Browse the product catalogue and stock levels.',                    group: 'commerce' },
+  'products.edit':   { label: 'Products, Edit',   icon: '◈', desc: 'Create and edit products, variants, and stock.',                     group: 'commerce' },
+  'products.delete': { label: 'Products, Delete', icon: '◈', desc: 'Delete products from the catalogue.',                                group: 'commerce' },
+  'customers.view':   { label: 'Customers, View',   icon: '◉', desc: 'View customer accounts and segment lists.',                        group: 'commerce' },
+  'customers.edit':   { label: 'Customers, Edit',   icon: '◉', desc: 'Edit customer account details.',                                   group: 'commerce' },
+  'customers.delete': { label: 'Customers, Delete', icon: '◉', desc: 'Delete customer accounts.',                                        group: 'commerce' },
   coupons:   { label: 'Coupons',    icon: '◇', desc: 'Issue and manage discount codes.',             group: 'commerce' },
   returns:   { label: 'Returns',    icon: '↩', desc: 'Approve / reject customer return requests.',   group: 'commerce' },
 
@@ -102,7 +102,7 @@ export interface StaffSession {
   id: string;
   email: string;
   name: string;
-  /** Effective permissions — resolved from the assigned role, or the staff
+  /** Effective permissions, resolved from the assigned role, or the staff
    *  member's own permissions column when they have no role ("Custom"). */
   permissions: Permission[];
   isOwner: boolean;
@@ -129,7 +129,7 @@ export function canAny(session: StaffSession | null | undefined, permissions: Pe
 // ─── Legacy permission expansion ────────────────────────────────────────────
 // The single-resource grants 'orders' / 'products' / 'customers' predate the
 // view·edit·delete split. Until migration 125 has expanded every roles row and
-// staff_members row, a stored permission set may still carry one — getStaffSession
+// staff_members row, a stored permission set may still carry one, getStaffSession
 // runs every set through expandLegacyPermissions on read, so the rest of the app
 // only ever sees split tokens. Safe to delete once 125 has run everywhere.
 const LEGACY_PERMISSION_MAP: Record<string, Permission[]> = {

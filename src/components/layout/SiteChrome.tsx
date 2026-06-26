@@ -24,7 +24,7 @@ interface SiteChromeProps {
   promos?: { top_bar: Promo | null; hero_strip: Promo | null } | null;
   /** Server-resolved data for the search overlay. Passed through here
    *  (rather than rendered as its own server-component wrapper) because
-   *  SiteChrome is `'use client'` — an async server component cannot live
+   *  SiteChrome is `'use client'`, an async server component cannot live
    *  inside a client tree without a Suspense boundary. */
   searchTrending: string[];
   searchCategories: string[];

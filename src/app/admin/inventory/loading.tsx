@@ -6,7 +6,7 @@ import {
   SkeletonBlock,
 } from '@/components/admin/Skeleton';
 
-// Loading skeleton for /admin/inventory — "Inventory" header with subtitle, a
+// Loading skeleton for /admin/inventory, "Inventory" header with subtitle, a
 // 3-up stock-summary strip, the stock-levels table, and the movement-history
 // table.
 export default function InventoryLoading() {

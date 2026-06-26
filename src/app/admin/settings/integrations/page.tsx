@@ -11,7 +11,7 @@ import { getGoogleConnection, isGoogleOAuthConfigured, REDIRECT_URI, listSitemap
 import { disconnectGoogleAction, submitSitemapAction, setGscSiteAction, setGa4PropertyAction } from './google-actions';
 import { UrlIndexChecker } from '@/components/admin/UrlIndexChecker';
 
-// IMPORTANT: never render an env-var VALUE on this page — only its presence.
+// IMPORTANT: never render an env-var VALUE on this page, only its presence.
 // All checks happen server-side; only the boolean leaves this module.
 
 interface IntegrationCheck {
@@ -21,7 +21,7 @@ interface IntegrationCheck {
   /** Env vars required for the integration to work. Missing any one =
    *  the integration is considered "Not configured". */
   envVars: string[];
-  /** Env vars that are nice-to-have but not required — missing ones don't
+  /** Env vars that are nice-to-have but not required, missing ones don't
    *  affect the status badge. Used for fallback knobs that an upstream
    *  service can already satisfy without the env var (e.g. a redundant SEO
    *  verification meta tag when DNS verification is already done). */
@@ -29,7 +29,7 @@ interface IntegrationCheck {
   /** Optional analytics_cache key whose updated_at lets us show a freshness
    *  badge ("Last synced 12m ago"). */
   cacheKey?: string;
-  /** Doc-ref shown when the integration is missing — points the owner at the
+  /** Doc-ref shown when the integration is missing, points the owner at the
    *  setup instructions (file path or USER-MANUAL section). */
   setupRef: string;
 }
@@ -43,7 +43,7 @@ const INTEGRATIONS: IntegrationCheck[] = [
   },
   {
     name: 'PostHog analytics',
-    purpose: 'Pageviews, sessions, funnel, top pages, top referrers — the traffic widgets on Analytics.',
+    purpose: 'Pageviews, sessions, funnel, top pages, top referrers, the traffic widgets on Analytics.',
     envVars: ['POSTHOG_PERSONAL_API_KEY'],
     cacheKey: 'posthog',
     setupRef: 'src/app/admin/dashboard/actions.ts',
@@ -98,7 +98,7 @@ interface RenderedVar { name: string; present: boolean; optional: boolean }
 
 interface ResolvedIntegration extends IntegrationCheck {
   status: 'ok' | 'partial' | 'missing';
-  /** Only the missing *required* vars — drives the status badge. */
+  /** Only the missing *required* vars, drives the status badge. */
   missingVars: string[];
   /** Required + optional vars merged into render-ready rows. */
   renderedVars: RenderedVar[];
@@ -108,7 +108,7 @@ interface ResolvedIntegration extends IntegrationCheck {
 async function resolve(integration: IntegrationCheck): Promise<ResolvedIntegration> {
   const missingVars = integration.envVars.filter(v => !process.env[v]);
   // An integration with no required vars (e.g. one whose only knob is an
-  // optional fallback) is considered "ok" — there's nothing to configure for
+  // optional fallback) is considered "ok", there's nothing to configure for
   // it to do its job.
   const status: 'ok' | 'partial' | 'missing' =
     integration.envVars.length === 0 || missingVars.length === 0 ? 'ok' :
@@ -161,7 +161,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
 
   // When connected, fetch the owner's GSC sites + GA4 properties so they can
   // pick the right one from a dropdown (auto-link only guesses). All best-effort
-  // — a Google API hiccup must never break the settings page.
+  //, a Google API hiccup must never break the settings page.
   let gscSites: GscSite[] = [];
   let ga4Props: Ga4Property[] = [];
   let sitemaps: SitemapStatus[] = [];
@@ -196,39 +196,39 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
 
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
 
-      {/* Connect Google — owner-editable, no redeploy needed (saved to
+      {/* Connect Google, owner-editable, no redeploy needed (saved to
           site_settings, read by the root layout). */}
       <Card>
         <form action={saveSettings}>
           <input type="hidden" name="_redirect" value="/admin/settings/integrations" />
-          <Section title="Connect Google" desc="Paste your IDs to link Google Analytics 4 and Search Console directly — changes go live immediately, no redeploy." />
+          <Section title="Connect Google" desc="Paste your IDs to link Google Analytics 4 and Search Console directly, changes go live immediately, no redeploy." />
           <Divider />
           <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
-              <label style={lbl}>Google Analytics 4 — Measurement ID</label>
+              <label style={lbl}>Google Analytics 4, Measurement ID</label>
               <input name="ga_measurement_id" defaultValue={g('ga_measurement_id')} style={inp} placeholder="G-XXXXXXXXXX" />
               <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
                 GA4 → Admin → Data streams → your web stream → <em>Measurement ID</em>.
               </p>
             </div>
             <div>
-              <label style={lbl}>Search Console — verification code</label>
+              <label style={lbl}>Search Console, verification code</label>
               <input name="google_site_verification" defaultValue={g('google_site_verification')} style={inp} placeholder="paste only the content=… value" />
               <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
                 Search Console → add a URL-prefix property → <em>HTML tag</em> method → paste only the <code>content</code> value, then click Verify.
               </p>
             </div>
             <div>
-              <label style={lbl}>Meta (Facebook/Instagram) — domain verification code</label>
+              <label style={lbl}>Meta (Facebook/Instagram), domain verification code</label>
               <input name="facebook_domain_verification" defaultValue={g('facebook_domain_verification')} style={inp} placeholder="paste only the content=… value" />
               <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
                 Business Manager → Brand safety → <em>Domains</em> → add your domain → <em>Meta-tag verification</em> → paste only the <code>content</code> value, then click Verify. Required before running conversion ads.
               </p>
             </div>
             <div style={{ gridColumn: '1 / -1', borderTop: '1px solid #f3f4f6', paddingTop: 16, marginTop: 4 }}>
-              <label style={lbl}>Medical reviewers (E-E-A-T) — for health/supplement content</label>
+              <label style={lbl}>Medical reviewers (E-E-A-T), for health/supplement content</label>
               <p style={{ margin: '0 0 2px', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
-                Managed on the <Link href="/admin/reviewers" style={{ color: '#9d174d', fontWeight: 600 }}>Medical Review Board</Link> — add real, credentialed doctors there (or let them apply), set a <strong>default</strong>, and assign reviewers per health post. Their <strong>&ldquo;Medically reviewed by&rdquo;</strong> byline + schema is the strongest trust signal Google looks for on supplement/health content.
+                Managed on the <Link href="/admin/reviewers" style={{ color: '#9d174d', fontWeight: 600 }}>Medical Review Board</Link>, add real, credentialed doctors there (or let them apply), set a <strong>default</strong>, and assign reviewers per health post. Their <strong>&ldquo;Medically reviewed by&rdquo;</strong> byline + schema is the strongest trust signal Google looks for on supplement/health content.
               </p>
             </div>
           </div>
@@ -236,7 +236,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
         </form>
       </Card>
 
-      {/* Connect Google (OAuth) — live GSC/GA4 + sitemap submission. */}
+      {/* Connect Google (OAuth), live GSC/GA4 + sitemap submission. */}
       {sp.google && googleMsg[sp.google] && (
         <div style={{ marginBottom: 16, padding: '12px 16px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, color: '#166534', fontSize: '0.875rem' }}>
           {googleMsg[sp.google]}
@@ -244,8 +244,8 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
       )}
       <Card>
         <Section
-          title="Connect Google — live data &amp; indexing"
-          desc="Sign in with Google to pull live Search Console &amp; GA4 data into your dashboard and submit your sitemap for indexing — no CSV uploads."
+          title="Connect Google, live data &amp; indexing"
+          desc="Sign in with Google to pull live Search Console &amp; GA4 data into your dashboard and submit your sitemap for indexing, no CSV uploads."
         />
         <Divider />
 
@@ -258,7 +258,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
               <li>Create an <strong>OAuth client (Web)</strong> with this exact redirect URI:</li>
             </ol>
             <code style={{ display: 'block', padding: '8px 12px', background: '#f3f4f6', borderRadius: 6, fontSize: '0.8125rem', wordBreak: 'break-all', marginBottom: 12 }}>{REDIRECT_URI}</code>
-            <p style={{ margin: 0, color: '#6b7280' }}>Then set <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> in Vercel and redeploy — a <strong>Connect</strong> button appears here.</p>
+            <p style={{ margin: 0, color: '#6b7280' }}>Then set <code>GOOGLE_OAUTH_CLIENT_ID</code> and <code>GOOGLE_OAUTH_CLIENT_SECRET</code> in Vercel and redeploy, a <strong>Connect</strong> button appears here.</p>
           </div>
         ) : !googleConn ? (
           <div>
@@ -310,7 +310,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
             <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 16 }}>
               <label style={lbl}>Submit pages for indexing</label>
               <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
-                Submits your full sitemap to Google so it (re)crawls every page. Google still decides what/when to index — there is no API to force-index individual pages, so the sitemap is the supported, scalable nudge.
+                Submits your full sitemap to Google so it (re)crawls every page. Google still decides what/when to index, there is no API to force-index individual pages, so the sitemap is the supported, scalable nudge.
               </p>
               <form action={submitSitemapAction}>
                 <button type="submit" disabled={!googleConn.gsc_site_url} className="adm-btn-primary" style={{ padding: '8px 16px', background: googleConn.gsc_site_url ? '#111827' : '#d1d5db', color: '#fff', border: 'none', borderRadius: 8, cursor: googleConn.gsc_site_url ? 'pointer' : 'not-allowed', fontWeight: 600, fontSize: '0.8125rem' }}>
@@ -385,8 +385,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
                   {i.renderedVars.length === 0 ? (
                     <div style={{ color: '#9ca3af', fontStyle: 'italic' }}>None required</div>
                   ) : i.renderedVars.map(v => {
-                    // Missing-but-optional gets a muted tick mark, not a red ✗ —
-                    // it's a knob, not a gap.
+                    // Missing-but-optional gets a muted tick mark, not a red ✗,                     // it's a knob, not a gap.
                     const colour = v.present ? '#15803d' : (v.optional ? '#9ca3af' : '#dc2626');
                     return (
                       <div key={v.name} style={{ fontFamily: 'monospace' }}>

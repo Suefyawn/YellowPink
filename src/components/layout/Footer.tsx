@@ -7,8 +7,7 @@ import { Overline } from '@/components/ui/Overline';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import type { SocialLink } from '@/lib/socials';
 
-// Footer link list rendered with a consistent "overline-ish" treatment —
-// slightly tighter letter-spacing and weight than body text, so each
+// Footer link list rendered with a consistent "overline-ish" treatment, // slightly tighter letter-spacing and weight than body text, so each
 // column reads as a navigable group rather than a paragraph.
 function FooterLink({ href, label }: { href: string; label: string }) {
   return (
@@ -150,7 +149,7 @@ export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
         <LogoMark size={200} />
       </div>
       <div className="container">
-        {/* Marquee — paused on hover + when prefers-reduced-motion is set
+        {/* Marquee, paused on hover + when prefers-reduced-motion is set
             (see .footer-marquee in globals.css). aria-hidden so screen
             readers don't read the scrolling text. */}
         <div

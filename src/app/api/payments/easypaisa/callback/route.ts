@@ -1,5 +1,5 @@
 // ============================================================================
-// POST /api/payments/easypaisa/callback — verify Easypaisa response, update
+// POST /api/payments/easypaisa/callback, verify Easypaisa response, update
 // payment + order, bounce the user to /thank-you or back to /checkout.
 // ============================================================================
 
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     error_message: verification.status === 'failed' ? verification.responseMessage : null,
   }).eq('gateway', 'easypaisa').eq('order_id', order.id);
 
-  // P0-3: amount-tamper defence — gateway must report what we billed.
+  // P0-3: amount-tamper defence, gateway must report what we billed.
   const orderPaisa = Math.round(Number(order.total) * 100);
   const gatewayPaisa = Math.round(verification.amountPkr * 100);
   if (orderPaisa !== gatewayPaisa) {
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (verification.status === 'succeeded') {
-    // P0-4: idempotent transition — only flip if still waiting.
+    // P0-4: idempotent transition, only flip if still waiting.
     await sb.from('orders').update({ status: 'pending' })
       .eq('id', order.id)
       .eq('status', 'payment_pending');
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       ]);
     }
 
-    // Server-side Meta Purchase (CAPI) — the only conversion signal for paid
+    // Server-side Meta Purchase (CAPI), the only conversion signal for paid
     // orders, which never fire the client Pixel. First transition only.
     if (firstTransition) {
       const paidItems = (order.items as CartItem[]) ?? [];
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
         numItems: paidItems.reduce((s, i) => s + (i.qty ?? 0), 0),
         eventSourceUrl: `${SITE_URL}/thank-you`,
         // Browser redirect back from the gateway carries the Pixel cookies +
-        // IP/UA — pass them for CAPI match quality.
+        // IP/UA, pass them for CAPI match quality.
         fbc: req.cookies.get('_fbc')?.value,
         fbp: req.cookies.get('_fbp')?.value,
         clientIp: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,

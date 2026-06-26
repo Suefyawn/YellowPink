@@ -5,7 +5,7 @@ import { QuizClient } from '@/components/quiz/QuizClient';
 
 export function generateMetadata(): Metadata {
   return pageMeta({
-    title: 'Find your match — skincare & wellness quiz',
+    title: 'Find your match, skincare & wellness quiz',
     description:
       'Take our quick quiz and get personalised skincare and wellness product recommendations, with cash-on-delivery across Pakistan.',
     path: '/quiz',

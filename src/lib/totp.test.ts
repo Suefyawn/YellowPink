@@ -19,7 +19,7 @@ describe('TOTP', () => {
     const code = currentTotp(secret, now);
     expect(verifyTotp(secret, code, now + 25_000)).toBe(true);     // same step
     expect(verifyTotp(secret, code, now + STEP_MS + 5_000)).toBe(true); // next step, accepted via -1 skew
-    expect(verifyTotp(secret, code, now + 2 * STEP_MS)).toBe(false);    // two steps forward — out of window
+    expect(verifyTotp(secret, code, now + 2 * STEP_MS)).toBe(false);    // two steps forward, out of window
   });
 
   it('rejects wrong codes', () => {

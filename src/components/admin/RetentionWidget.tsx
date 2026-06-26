@@ -23,7 +23,7 @@ export async function RetentionWidget() {
           Weekly active users
         </div>
         <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
-          No data yet — refresh analytics to populate.
+          No data yet, refresh analytics to populate.
         </p>
       </div>
     );

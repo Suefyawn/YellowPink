@@ -38,7 +38,7 @@ export async function PostHogWidget() {
           <span style={{ color: '#C5286A', display: 'inline-flex' }}><AdminIcon name="bar-chart" size={18} /></span>
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>PostHog analytics</h2>
         </div>
-        <p style={{ color: '#9ca3af', fontSize: '0.875rem', margin: 0 }}>No data yet — hit Refresh analytics.</p>
+        <p style={{ color: '#9ca3af', fontSize: '0.875rem', margin: 0 }}>No data yet, hit Refresh analytics.</p>
       </div>
     );
   }

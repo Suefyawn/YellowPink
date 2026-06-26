@@ -1,7 +1,7 @@
 'use server';
 
 // Server actions backing the checkout's rewards section (gift card,
-// loyalty points, referral code). All read-only — the actual
+// loyalty points, referral code). All read-only, the actual
 // debit/credit happens after the order RPC succeeds.
 
 import { supabase } from '@/lib/supabase';

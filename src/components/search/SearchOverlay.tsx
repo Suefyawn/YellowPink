@@ -49,7 +49,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   useBodyScrollLock(searchOpen);
   useFocusTrap(searchOpen, panelRef);
 
-  // Recent searches — persisted in localStorage, most-recent first, capped at
+  // Recent searches, persisted in localStorage, most-recent first, capped at
   // 6. Re-read each time the overlay opens so it reflects searches made in
   // other tabs. The store is the external system, so syncing it into state on
   // open is the documented setState-in-effect exception.
@@ -77,7 +77,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
     try { localStorage.removeItem(RECENT_KEY); } catch { /* ignore */ }
   };
 
-  // Sync UI state to the overlay's open/closed external signal — focus the
+  // Sync UI state to the overlay's open/closed external signal, focus the
   // search input when opening, clear the typeahead query when closing.
   useEffect(() => {
     if (searchOpen) {
@@ -114,7 +114,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
       getBrowserClient().rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
         setProducts((data ?? []) as Product[]);
       });
-      // GA4 `search` — fired once the query settles (≥2 chars), so it counts
+      // GA4 `search`, fired once the query settles (≥2 chars), so it counts
       // real search usage (incl. typeahead-only sessions) without spamming a
       // hit per keystroke. The event type existed but was never emitted.
       if (query.trim().length >= 2) track({ name: 'search', payload: { query: query.trim() } });
@@ -134,7 +134,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   const filtered = products;
 
   const goToProduct = (p: Product) => {
-    // GA4 `select_item` — which result the shopper picked, and from what query,
+    // GA4 `select_item`, which result the shopper picked, and from what query,
     // so search → click-through can be measured.
     track({ name: 'select_item', payload: { product_id: p.id, product_name: p.name, query: query.trim() || undefined } });
     if (query.trim()) pushRecent(query);
@@ -209,7 +209,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
               placeholder="Search products…"
               style={{
                 // `minWidth: 0` lets the input shrink past its default
-                // intrinsic content-size inside the flex row — without
+                // intrinsic content-size inside the flex row, without
                 // this the 18 px placeholder pushed the form past the
                 // mobile viewport (the Close button got cropped). The
                 // placeholder is also shorter now ("Search products…")
@@ -291,7 +291,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                       </button>
                     ))}
                   </div>
-                  {/* "See all results" — full search page is the real source
+                  {/* "See all results", full search page is the real source
                       of truth (with sort + filters); the inline list is a
                       typeahead preview only. */}
                   <button

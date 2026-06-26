@@ -4,14 +4,14 @@ import { K_BEAUTY_PAGE_URL } from '@/lib/k-beauty';
 import type { Product } from '@/types';
 
 // The three signature K-beauty claims, rendered as quiet chips between the
-// header and the rail. Copy, not data — they describe the edit, not a product.
+// header and the rail. Copy, not data, they describe the edit, not a product.
 const RITUALS = [
   'Featherweight SPF 50+ PA++++',
   'Fermented, barrier-first formulas',
   'That glass-skin glow',
 ];
 
-/** Homepage K-Beauty edit — a tinted campaign band for products from the
+/** Homepage K-Beauty edit, a tinted campaign band for products from the
  *  curated Korean brand list (lib/k-beauty.ts). Self-hides while the catalog
  *  has no published K-beauty products, so the section can ship ahead of the
  *  range growing. */
@@ -20,7 +20,7 @@ export function KBeautySection({ products }: { products: Product[] }) {
   if (items.length === 0) return null;
   return (
     <section style={{
-      // Blush-to-cream wash — softer than the sale band's flat cream, so the
+      // Blush-to-cream wash, softer than the sale band's flat cream, so the
       // two read as different campaigns when both are on the page.
       background: 'linear-gradient(160deg, #fdf0f4 0%, var(--paper2, #faf6ee) 75%)',
       borderTop: '1px solid var(--line)', borderBottom: '1px solid var(--line)',
@@ -44,7 +44,7 @@ export function KBeautySection({ products }: { products: Product[] }) {
             Glass skin, <em style={{ fontStyle: 'italic' }}>delivered.</em>
           </h2>
           <p className="body-text" style={{ color: 'var(--ink-700)', marginTop: 8, maxWidth: 520, marginInline: 'auto' }}>
-            Cult Korean skincare — imported, 100% authentic, and straight from
+            Cult Korean skincare, imported, 100% authentic, and straight from
             Seoul&apos;s shelves to your doorstep, anywhere in Pakistan.
           </p>
         </div>

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { StaffSession, Permission } from '@/lib/permissions';
 
-// Admin command palette — opens with Cmd/Ctrl+K from anywhere in /admin.
+// Admin command palette, opens with Cmd/Ctrl+K from anywhere in /admin.
 // Lets the operator fuzzy-search any nav destination + a few jump-to-pages
 // without leaving the keyboard. Ranks matches by where in the label they
 // appear; case-insensitive, accent-insensitive enough for this set.
@@ -97,7 +97,7 @@ export function CommandPalette({ session }: { session: StaffSession }) {
   // Derived inline (no effect) keeps it correct on every render.
   const activeIndex = results.length === 0 ? 0 : Math.min(cursor, results.length - 1);
 
-  // Focus the input when the palette opens, and only then — auto-focus on
+  // Focus the input when the palette opens, and only then, auto-focus on
   // mount would steal focus from the page on every admin load.
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
 
@@ -110,7 +110,7 @@ export function CommandPalette({ session }: { session: StaffSession }) {
 
   // Global key handlers. Cmd/Ctrl+K toggles the palette; `?` shows shortcuts;
   // Esc closes whichever overlay is open. Skip when the user is typing in
-  // another input so we don't intercept their keystrokes — except for the
+  // another input so we don't intercept their keystrokes, except for the
   // palette toggle, which should work even from search boxes.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

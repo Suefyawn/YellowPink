@@ -56,7 +56,7 @@ export interface Product {
   /** When false, inventory is managed externally (e.g. a third-party vendor):
    *  the product is always sellable and its stock count is not tracked. */
   track_inventory?: boolean;
-  /** Sourcing vendor (nullable — own-stock products have none). */
+  /** Sourcing vendor (nullable, own-stock products have none). */
   vendor_id?: string | null;
   /** Per-unit cost paid to the vendor; overrides the vendor's commission %. */
   vendor_cost?: number | null;
@@ -77,10 +77,10 @@ export interface Product {
   weight_grams?: number | null;
   wp_product_id?: number | null;
   created_at?: string;
-  // Migration 076 — homepage curation flags.
+  // Migration 076, homepage curation flags.
   is_bestseller?: boolean | null;
   is_featured?: boolean | null;
-  // Migration 081 — admin-controlled SEO + content fields.
+  // Migration 081, admin-controlled SEO + content fields.
   seo_title?: string | null;
   seo_description?: string | null;
   og_image_url?: string | null;
@@ -146,7 +146,7 @@ export interface ProductVariant {
   weight_grams?: number | null;
   enabled: boolean;
   sort_order: number;
-  /** Resolved attribute selections — populated by joins in queries. */
+  /** Resolved attribute selections, populated by joins in queries. */
   attributes?: { attribute_id: string; value_id: string }[];
 }
 
@@ -260,13 +260,13 @@ export interface Order {
   vendor_id?: string | null;
   /** Set when staff forward the order to the assigned vendor. */
   vendor_sent_at?: string | null;
-  /** Per-order fulfilment costs (entered by staff) — feed the Finance P&L. */
+  /** Per-order fulfilment costs (entered by staff), feed the Finance P&L. */
   delivery_cost?: number | null;
   payment_fee?: number | null;
   /** Actual goods cost for this order (drop-ship price varies per order);
    *  overrides the computed COGS in Finance when set. */
   acquisition_cost?: number | null;
-  /** Payment reconciliation (set by staff) — which configured account the
+  /** Payment reconciliation (set by staff), which configured account the
    *  money landed in, when, and who confirmed it. Null = not yet recorded. */
   payment_account?: string | null;
   payment_received_at?: string | null;
@@ -285,7 +285,7 @@ export interface Order {
 export interface Vendor {
   id: string;
   name: string;
-  /** WhatsApp number — any format; normalised when building the wa.me link. */
+  /** WhatsApp number, any format; normalised when building the wa.me link. */
   phone: string;
   notes?: string | null;
   active: boolean;
@@ -315,13 +315,13 @@ export interface VendorSettlement {
 /** A bank / mobile-wallet account customers transfer to for "Bank Transfer"
  *  orders. Stored as a JSON array in site_settings (`pay_bank_accounts`). */
 export interface BankAccount {
-  /** Bank or wallet name — e.g. "Meezan Bank", "Easypaisa", "JazzCash". */
+  /** Bank or wallet name, e.g. "Meezan Bank", "Easypaisa", "JazzCash". */
   label: string;
   /** Account holder name. */
   title: string;
   /** Account number, or the mobile number for a wallet. */
   number: string;
-  /** IBAN — banks only; optional. */
+  /** IBAN, banks only; optional. */
   iban?: string;
 }
 

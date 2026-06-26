@@ -1,7 +1,7 @@
 'use client';
 
 // Simple shimmer/skeleton primitives. Use anywhere we render placeholders
-// while async data loads. Pure CSS — no JS animation.
+// while async data loads. Pure CSS, no JS animation.
 
 import type { CSSProperties } from 'react';
 
@@ -26,7 +26,7 @@ export function Skeleton({ style, width, height, radius = 6 }: {
   );
 }
 
-/** Single product-tile skeleton — matches ProductTile dimensions. */
+/** Single product-tile skeleton, matches ProductTile dimensions. */
 export function ProductTileSkeleton() {
   return (
     <div aria-hidden="true">
@@ -40,7 +40,7 @@ export function ProductTileSkeleton() {
   );
 }
 
-/** A grid of N tile skeletons — drop in while a product list is fetching. */
+/** A grid of N tile skeletons, drop in while a product list is fetching. */
 export function ProductGridSkeleton({ count = 8, columns = 4 }: { count?: number; columns?: number }) {
   return (
     <div

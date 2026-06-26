@@ -46,12 +46,12 @@ function initialsOf(label: string): string {
 export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES, priority = false, label, width, height }: Props) {
   const [errored, setErrored] = useState(false);
   // Fade the image in once it decodes so it doesn't "pop" in on top of the
-  // placeholder background — a small touch that makes the grid feel calmer.
+  // placeholder background, a small touch that makes the grid feel calmer.
   const [loaded, setLoaded] = useState(false);
   const fade: React.CSSProperties = { opacity: loaded ? 1 : 0, transition: 'opacity 300ms ease-out' };
 
   if (src && !errored) {
-    // Fixed-size mode for thumbnails — Next emits a tight srcSet around
+    // Fixed-size mode for thumbnails, Next emits a tight srcSet around
     // the requested dimensions instead of the full deviceSizes ladder.
     if (width && height) {
       return (

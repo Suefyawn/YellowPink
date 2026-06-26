@@ -67,7 +67,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const currentStatus = (o.status ?? 'pending') as OrderStatus;
 
   // Pull the most-recent shipment for this order so the booking form can
-  // toggle into its "already shipped" state. Cheap query — one row max for
+  // toggle into its "already shipped" state. Cheap query, one row max for
   // most orders. Couriers with a configured API adapter (env vars set) get
   // a "Book pickup" button; everything else falls back to manual entry.
   const { data: shipmentRow } = await supabaseAdmin()
@@ -79,7 +79,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .maybeSingle();
   const apiAdapters = configuredAdapterIds();
 
-  // Status history — every transition this order went through, oldest first.
+  // Status history, every transition this order went through, oldest first.
   const { data: eventRows } = await supabaseAdmin()
     .from('order_events')
     .select('id, from_status, to_status, note, actor_kind, created_at')
@@ -103,8 +103,8 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     .eq('order_id', id)
     .maybeSingle();
 
-  // Customer history block — lifetime orders + total spend for the same
-  // (user_id OR phone OR email). Cheap query — admin-only view, no caching
+  // Customer history block, lifetime orders + total spend for the same
+  // (user_id OR phone OR email). Cheap query, admin-only view, no caching
   // needed. Excludes the current order from "previous" + "ltv" so the
   // merchant sees "this is their 3rd order" rather than counting the one
   // they're already looking at.
@@ -119,7 +119,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       .from('orders')
       .select('id, total, status, created_at')
       .or(orFilters)
-      // Lifetime spend counts realized revenue only — drop cancelled, refunded,
+      // Lifetime spend counts realized revenue only, drop cancelled, refunded,
       // returned and payment-failed so the figure (and the customer-detail
       // page's matching Total spend / AOV) reflect money actually taken.
       .not('status', 'in', `(${NON_REVENUE_ORDER_STATUSES.join(',')})`);
@@ -146,7 +146,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   // Prefilled WhatsApp message the owner forwards to the chosen vendor.
   const vendorMessage = [
-    `Yellow Pink — Order ${o.order_number}`,
+    `Yellow Pink, Order ${o.order_number}`,
     '',
     ...items.map(it => {
       const v = it.variant_label ?? it.variant;
@@ -185,9 +185,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     `${custFirst} ${custLast}`,
     `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
     '',
-    `Agar sab kuch theek hai to please reply kar ke confirm kar dein — hum aap ka order foran tayyar kar denge. Koi tabdeeli chahiye to yahin bata dein.`,
+    `Agar sab kuch theek hai to please reply kar ke confirm kar dein, hum aap ka order foran tayyar kar denge. Koi tabdeeli chahiye to yahin bata dein.`,
     '',
-    `Shukriya! — Team Yellow Pink`,
+    `Shukriya!, Team Yellow Pink`,
   ].join('\n');
 
   // Per-order profit: gross amount minus the costs recorded for this order.
@@ -234,7 +234,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div id="order-detail-page" style={{ padding: '32px 36px' }}>
-      {/* Print styles — printing this page outputs ONLY the invoice card.
+      {/* Print styles, printing this page outputs ONLY the invoice card.
           Every other block is a direct child of #order-detail-page, so one
           rule hides them all (and stays correct as sections are added). */}
       <style>{`
@@ -266,7 +266,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 4 }}>{fmtDate(o.created_at)}</span>
         )}
         <div style={{ marginLeft: 'auto', display: 'flex', gap: 10, alignItems: 'center' }}>
-          {/* WhatsApp the customer — uses their phone, prefills the order
+          {/* WhatsApp the customer, uses their phone, prefills the order
               number. One-tap support reply from the order page. */}
           {(() => {
             const href = waUrlForCustomer(o.phone, customerMessage);
@@ -310,7 +310,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </div>
           </div>
         </div>
-        {/* One clear recipient block — billing and shipping are the same
+        {/* One clear recipient block, billing and shipping are the same
             person here, and a courier reading the parcel wants name +
             address + phone together and prominent. */}
         <div style={{ marginBottom: 28 }}>
@@ -332,7 +332,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <tbody>
             {items.map((item, idx) => (
               <tr key={idx} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '10px 0', fontSize: '0.875rem' }}>{brandPlusName(item.brand, item.name)}{(item.variant_label ?? item.variant) ? ` — ${item.variant_label ?? item.variant}` : ''}</td>
+                <td style={{ padding: '10px 0', fontSize: '0.875rem' }}>{brandPlusName(item.brand, item.name)}{(item.variant_label ?? item.variant) ? `, ${item.variant_label ?? item.variant}` : ''}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', textAlign: 'right' }}>{fmt(item.price)}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', textAlign: 'right' }}>{item.qty}</td>
                 <td style={{ padding: '10px 0', fontSize: '0.875rem', fontWeight: 600, textAlign: 'right' }}>{fmt(item.price * item.qty)}</td>
@@ -362,7 +362,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      {/* Confirmation & vendor dispatch — edit-gated */}
+      {/* Confirmation & vendor dispatch, edit-gated */}
       {canEdit && (
       <div style={{ ...section, marginBottom: 20 }}>
         <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Confirmation &amp; vendor</h2>
@@ -445,12 +445,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       </div>
       )}
 
-      {/* Order costs — what we paid to fulfil this order; feeds the Finance P&L. */}
+      {/* Order costs, what we paid to fulfil this order; feeds the Finance P&L. */}
       {canEdit && (
         <div style={{ ...section, marginBottom: 20 }}>
           <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order costs</h2>
           <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
-            Courier charge, payment-gateway fee, and the actual goods (acquisition) cost for this order. These feed the Finance profit &amp; loss. The acquisition cost overrides the estimated cost of goods for this order — useful for drop-ship, where the supplier price varies; leave it blank to use the product&apos;s default cost.
+            Courier charge, payment-gateway fee, and the actual goods (acquisition) cost for this order. These feed the Finance profit &amp; loss. The acquisition cost overrides the estimated cost of goods for this order, useful for drop-ship, where the supplier price varies; leave it blank to use the product&apos;s default cost.
           </p>
           <form action={setOrderCosts.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Acquisition cost / COGS (PKR)<br />
@@ -471,7 +471,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       )}
 
-      {/* Order profit — gross amount less the costs recorded for this order. */}
+      {/* Order profit, gross amount less the costs recorded for this order. */}
       <div style={{ ...section, marginBottom: 20 }}>
         <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order profit</h2>
         <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
@@ -495,7 +495,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </table>
       </div>
 
-      {/* Payment received — manual reconciliation: which configured account the
+      {/* Payment received, manual reconciliation: which configured account the
           money landed in, when, and who confirmed it. Feeds Finance → Revenue
           by account. Reconciliation only; doesn't change the order status. */}
       <div style={{ ...section, marginBottom: 20 }}>
@@ -548,7 +548,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         )}
       </div>
 
-      {/* Internal notes — freeform staff note, admin-only. Distinct from the
+      {/* Internal notes, freeform staff note, admin-only. Distinct from the
           order timeline (which records status-change reasons). */}
       {canEdit && (
         <div style={{ ...section, marginBottom: 20 }}>
@@ -688,7 +688,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         </div>
       </div>
 
-      {/* Shipment booking — edit-gated. Sits above the status update because
+      {/* Shipment booking, edit-gated. Sits above the status update because
           most merchant workflows book a courier first, then mark shipped. */}
       {canEdit && (
       <div style={{ ...section, marginTop: 12 }}>
@@ -706,7 +706,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       </div>
       )}
 
-      {/* Order timeline — full status history from order_events */}
+      {/* Order timeline, full status history from order_events */}
       <div style={{ ...section, marginBottom: 20 }}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order timeline</h2>
         {events.length === 0 ? (
@@ -722,7 +722,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   <div style={{ fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>
                     {e.from_status
                       ? `${statusLabel(e.from_status)} → ${statusLabel(e.to_status)}`
-                      : `Order created — ${statusLabel(e.to_status)}`}
+                      : `Order created, ${statusLabel(e.to_status)}`}
                   </div>
                   {e.note && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{e.note}</div>}
                 </div>
@@ -739,7 +739,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
-        {/* Order Status Management — edit-gated */}
+        {/* Order Status Management, edit-gated */}
         {canEdit && (
         <div style={section}>
           <h2 style={{ margin: '0 0 20px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Update Order</h2>

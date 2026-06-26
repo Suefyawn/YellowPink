@@ -1,6 +1,6 @@
 // Compact star-rating display. Renders five star glyphs with a partial
 // gold fill clipped to the rating, plus an optional "4.8 (12)" label.
-// Presentational only — no hooks, safe in server or client components.
+// Presentational only, no hooks, safe in server or client components.
 //
 // `rating` may arrive as a string: Postgres `numeric` columns come back
 // from supabase-js as strings, so coerce defensively.

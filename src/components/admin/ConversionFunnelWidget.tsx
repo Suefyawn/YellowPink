@@ -38,8 +38,8 @@ export async function ConversionFunnelWidget() {
 
   // Per-step conversion (this step / previous step). First step is always
   // 100% (it's the funnel mouth). Clamped at 100%: this is a lightweight
-  // event-count proxy (see dashboard actions), so a noisier later step — e.g.
-  // several add_to_cart events per product view — can out-count the prior step;
+  // event-count proxy (see dashboard actions), so a noisier later step, e.g.
+  // several add_to_cart events per product view, can out-count the prior step;
   // a funnel conversion can't exceed 100%, so we cap the display.
   const conversions = steps.map((s, i) => {
     if (i === 0) return 100;

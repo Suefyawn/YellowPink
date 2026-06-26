@@ -79,7 +79,7 @@ export default async function EmailLogPage({
   const emails = (rows ?? []) as EmailRow[];
   const sentCount = sent30.count ?? 0;
   const openedCount = opened30.count ?? 0;
-  // Open rate over the same window — '—' when the denominator is zero so the
+  // Open rate over the same window, '—' when the denominator is zero so the
   // card doesn't display 0% / NaN% before any mail has gone out. Stays '—'
   // (with the explainer below) until the Resend webhook is delivering events;
   // sentCount > 0 with openedCount = 0 most often means the webhook isn't wired.
@@ -95,7 +95,7 @@ export default async function EmailLogPage({
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Email log</h1>
       <p style={{ margin: '0 0 24px', color: '#6b7280', fontSize: '0.875rem' }}>
-        Every email the store sends — order updates, newsletters, alerts. Delivered / Opened / Clicked
+        Every email the store sends, order updates, newsletters, alerts. Delivered / Opened / Clicked
         fill in automatically once the Resend webhook is connected.
       </p>
 

@@ -62,8 +62,7 @@ export default async function BrokenLinksPage() {
       <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Broken links</h1>
       <p style={{ margin: '8px 0 24px', fontSize: '0.875rem', color: '#6b7280', maxWidth: 720 }}>
         URLs on the store that returned <strong>404</strong>, captured automatically when a visitor or crawler hits them.
-        Add a redirect to send a dead URL somewhere useful (goes live within a minute, no deploy), or ignore it —
-        a 404 for genuinely removed content is perfectly fine and won&apos;t hurt your ranking.
+        Add a redirect to send a dead URL somewhere useful (goes live within a minute, no deploy), or ignore it,         a 404 for genuinely removed content is perfectly fine and won&apos;t hurt your ranking.
       </p>
 
       <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>

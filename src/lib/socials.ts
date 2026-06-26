@@ -1,5 +1,5 @@
 // ============================================================================
-// Social media links — owner-managed via admin Settings, stored in
+// Social media links, owner-managed via admin Settings, stored in
 // site_settings. The footer and the JSON-LD `sameAs` arrays both read from
 // here so there is one source of truth (no hardcoded handles to drift).
 // ============================================================================
@@ -44,14 +44,14 @@ function normalizeUrl(raw: string): string {
   return `https://${v.replace(/^\/+/, '')}`;
 }
 
-/** Footer social links — every configured platform, in display order. */
+/** Footer social links, every configured platform, in display order. */
 export function socialLinks(settings: Record<string, string>): SocialLink[] {
   return SOCIAL_PLATFORMS
     .map(p => ({ key: p.key, label: p.label, href: normalizeUrl(settings[p.key] ?? '') }))
     .filter(s => s.href.length > 0);
 }
 
-/** schema.org `sameAs` — public profile URLs only (excludes WhatsApp). */
+/** schema.org `sameAs`, public profile URLs only (excludes WhatsApp). */
 export function socialSameAs(settings: Record<string, string>): string[] {
   return SOCIAL_PLATFORMS
     .filter(p => p.schemaProfile)

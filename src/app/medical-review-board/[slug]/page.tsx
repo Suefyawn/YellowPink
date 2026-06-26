@@ -15,7 +15,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!r) return { title: 'Reviewer not found', robots: { index: false, follow: true } };
   const cred = r.credentials ? `, ${r.credentials}` : '';
   return pageMeta({
-    title: `${r.name}${cred} — Medical Reviewer`,
+    title: `${r.name}${cred}, Medical Reviewer`,
     description: r.bio?.slice(0, 160) || `${r.name}${cred} medically reviews Yellow Pink's health and supplement content${r.specialty ? ` in ${r.specialty}` : ''}.`,
     path: `/medical-review-board/${r.slug}`,
     image: r.photo_url ?? undefined,
@@ -40,7 +40,7 @@ export default async function ReviewerProfilePage({ params }: { params: Promise<
 
   const posts = await reviewedPosts(r.id);
 
-  // Person schema — the verifiable expertise node. sameAs points at the
+  // Person schema, the verifiable expertise node. sameAs points at the
   // reviewer's external professional profile (PMDC / hospital / LinkedIn).
   const personLd = {
     '@context': 'https://schema.org',

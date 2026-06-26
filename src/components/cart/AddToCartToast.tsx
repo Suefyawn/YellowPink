@@ -2,7 +2,7 @@
 
 // Small visible toast that confirms an add-to-cart for sighted users.
 // Pairs with CartAnnouncer (which handles screen readers via aria-live).
-// The mini-cart drawer also opens on add — the toast is the at-a-glance
+// The mini-cart drawer also opens on add, the toast is the at-a-glance
 // affordance for when the user is mid-page and not focusing on the drawer.
 //
 // Subscribes to `addCounter` / `lastAdded` on CartContext (not to
@@ -22,7 +22,7 @@ export function AddToCartToast() {
   // Subscribe to addCounter from CartContext (the external store) and queue
   // a toast row whenever it increments. The setState here is the canonical
   // "subscribe to external system" pattern the React Compiler rule documents
-  // as the exception — addCounter is not derivable from props.
+  // as the exception, addCounter is not derivable from props.
   useEffect(() => {
     // addCounter starts at 0 and only increments when addToCart is called.
     // Anything below 1 means we're still in the initial mount / hydration

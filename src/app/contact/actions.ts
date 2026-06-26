@@ -8,7 +8,7 @@ import { contactLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { log } from '@/lib/logger';
 import { sendContactMessageEmail } from '@/lib/email';
 
-// Contact-form server action — wired into the form on /page/contact.
+// Contact-form server action, wired into the form on /page/contact.
 //
 // Writes to the contact_messages table (Admin → Messages) and forwards the
 // submission to the owner via Resend (replyTo = the sender). Mirrors the
@@ -21,14 +21,14 @@ import { sendContactMessageEmail } from '@/lib/email';
 const ContactSchema = z.object({
   name: z.string().trim().min(1, 'Please add your name.').max(120),
   email: z.string().trim().email('Please enter a valid email address.').max(254),
-  // Optional topic (a dropdown on the form) and order number — both folded
+  // Optional topic (a dropdown on the form) and order number, both folded
   // into subject/message below so Admin → Messages + the owner email carry the
   // context without a schema change.
   topic: z.string().trim().max(60).optional(),
   orderNumber: z.string().trim().max(40).optional(),
   subject: z.string().trim().max(200).optional(),
   message: z.string().trim().min(1, 'Please write a message.').max(5000),
-  // Honeypot — bots fill this; real users never see it.
+  // Honeypot, bots fill this; real users never see it.
   website: z.string().max(0).optional(),
 });
 
@@ -46,7 +46,7 @@ export async function submitContactMessage(
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Please check the form and try again.' };
   }
   const { name, email, topic, orderNumber, subject, message, website } = parsed.data;
-  // Honeypot tripped — silent success so the bot moves on without learning anything.
+  // Honeypot tripped, silent success so the bot moves on without learning anything.
   if (website) return { ok: true };
 
   const hdrs = await headers();
@@ -60,12 +60,12 @@ export async function submitContactMessage(
 
   const normalisedEmail = email.toLowerCase();
 
-  // Compose a context-rich subject ("Order help — can't pay") and prepend the
+  // Compose a context-rich subject ("Order help, can't pay") and prepend the
   // order number to the message body, so the owner sees both at a glance.
   const cleanTopic = topic && topic.length > 0 ? topic : null;
   const userSubject = subject && subject.length > 0 ? subject : null;
   const cleanSubject =
-    cleanTopic && userSubject ? `${cleanTopic} — ${userSubject}`
+    cleanTopic && userSubject ? `${cleanTopic}, ${userSubject}`
     : cleanTopic ?? userSubject;
   const cleanOrder = orderNumber && orderNumber.length > 0 ? orderNumber : null;
   const composedMessage = cleanOrder ? `Order #: ${cleanOrder}\n\n${message}` : message;

@@ -3,7 +3,7 @@
 // client. Phase 1.9.
 //
 // Every server action that takes user-controlled FormData should pipe through
-// one of these helpers — the existing validateProduct / validateBlogPost
+// one of these helpers, the existing validateProduct / validateBlogPost
 // inline checks in src/app/admin/actions.ts can migrate to these.
 // ============================================================================
 
@@ -33,7 +33,7 @@ export const positiveInt    = z.coerce.number().int().nonnegative('Must be a who
 
 // ─── Domain schemas ─────────────────────────────────────────────────────────
 export const productInputSchema = z.object({
-  // Brand is optional after migration 077 — own-label Pakistani supplements
+  // Brand is optional after migration 077, own-label Pakistani supplements
   // don't have a consumer-facing brand. An empty string from the form
   // normalises to null at the DB level (NULL is now allowed).
   brand:          z.string().trim().max(80).transform(s => s || null).nullable(),
@@ -46,7 +46,7 @@ export const productInputSchema = z.object({
   subcategory:    z.string().trim().max(120).optional().nullable(),
   // The admin form always submits `tag`, as '' when no tag is chosen.
   // Preprocess '' / null / undefined → null so the enum doesn't reject the
-  // empty option — otherwise saving a product with no tag fails.
+  // empty option, otherwise saving a product with no tag fails.
   tag:            z.preprocess(
                     v => (v === '' || v == null ? null : v),
                     z.enum(['New','Sale','Bestseller','Featured','Limited']).nullable(),
@@ -93,7 +93,7 @@ export const productInputSchema = z.object({
   short_description: z.string().max(1000).optional().nullable(),
   how_to_use:     z.string().max(8000).optional().nullable(),
   ingredients:    z.string().max(8000).optional().nullable(),
-  // Migration 081 — admin-controlled SEO + content fields. Empty string
+  // Migration 081, admin-controlled SEO + content fields. Empty string
   // from the form normalises to null at the DB level.
   seo_title:        z.string().trim().max(120).transform(s => s || null).nullable().optional(),
   seo_description: z.string().trim().max(220).transform(s => s || null).nullable().optional(),
@@ -118,7 +118,7 @@ export const productInputSchema = z.object({
       } catch (e) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `key_benefits must be a JSON array of {icon?, text} — ${(e as Error).message}`,
+          message: `key_benefits must be a JSON array of {icon?, text}, ${(e as Error).message}`,
         });
         return z.NEVER;
       }
@@ -141,7 +141,7 @@ export const productInputSchema = z.object({
       } catch (e) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `faq must be a JSON array of {q, a} — ${(e as Error).message}`,
+          message: `faq must be a JSON array of {q, a}, ${(e as Error).message}`,
         });
         return z.NEVER;
       }
@@ -174,7 +174,7 @@ export const blogPostInputSchema = z.object({
   body:      z.string().optional().nullable(),
   image_url: httpsUrlSchema.optional().or(z.literal('')).nullable(),
   author:    z.string().trim().max(120).optional().or(z.literal('')).nullable(),
-  // Medical Review Board assignment — empty string (the "None" option) → null.
+  // Medical Review Board assignment, empty string (the "None" option) → null.
   reviewer_id: z.preprocess(
     v => (v === '' || v == null ? null : v),
     z.string().uuid().nullable(),
@@ -243,7 +243,7 @@ export function formDataToObject(fd: FormData): Record<string, unknown> {
   for (const [k, v] of fd.entries()) {
     if (typeof v === 'string') obj[k] = v;
   }
-  // checkboxes don't appear in FormData when unchecked — normalise.
+  // checkboxes don't appear in FormData when unchecked, normalise.
   return obj;
 }
 

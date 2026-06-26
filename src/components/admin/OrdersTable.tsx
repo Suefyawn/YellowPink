@@ -13,12 +13,12 @@ const fmtDate = (s: string) =>
 
 // Per-status age thresholds (days). The two waiting-on-us-to-confirm statuses
 // have different SLAs:
-//   • payment_pending — gateway should confirm in seconds; >24h means the
+//   • payment_pending, gateway should confirm in seconds; >24h means the
 //     callback never came back and the payment likely failed silently.
 //     This matches the dashboard "Needs attention" 24h cutoff.
-//   • pending — waiting on us to confirm with the customer. Amber after
+//   • pending, waiting on us to confirm with the customer. Amber after
 //     two days, red after five (matches the prior orders-table behaviour).
-//   • processing — actively being prepared. Same thresholds as pending.
+//   • processing, actively being prepared. Same thresholds as pending.
 // Any status not in this map gets no pill (delivered / cancelled / shipped
 // already moved past us; flagging their age would be noise).
 const AGE_THRESHOLDS: Record<string, { amber: number; red: number; verb: string }> = {
@@ -78,7 +78,7 @@ const BULK_STATUSES: { value: OrderStatus; color: string }[] = [
   { value: 'cancelled',  color: '#c43838' },
 ];
 
-// Statuses offered in the per-card swipe panel — the forward fulfilment
+// Statuses offered in the per-card swipe panel, the forward fulfilment
 // progression. Cancellation stays on the order detail page (destructive).
 const QUICK_STATUSES: { value: OrderStatus; color: string }[] =
   BULK_STATUSES.filter(s => s.value !== 'cancelled');

@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   if (!conn) return NextResponse.json({ error: 'google_not_connected' }, { status: 400 });
 
   const days = Math.min(90, Math.max(7, Number(req.nextUrl.searchParams.get('days') ?? 28)));
-  // GSC data lags ~2–3 days; end the window a few days back so it isn't sparse.
+  // GSC data lags ~2-3 days; end the window a few days back so it isn't sparse.
   const endDate = isoDaysAgo(3);
   const startDate = isoDaysAgo(3 + days);
 

@@ -44,7 +44,7 @@ export function SubmitToIndexButton({ path }: { path: string }) {
   );
 }
 
-/** Bulk "resubmit everything" button — submits the whole catalogue + blog to
+/** Bulk "resubmit everything" button, submits the whole catalogue + blog to
  *  IndexNow in one go. */
 export function ResubmitAllButton() {
   const toast = useToast();

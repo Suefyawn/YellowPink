@@ -1,5 +1,5 @@
 // ============================================================================
-// POST /api/payments/easypaisa — analog of the JazzCash initiator for the
+// POST /api/payments/easypaisa, analog of the JazzCash initiator for the
 // Easypaisa hosted checkout. See route.ts for JazzCash for shape.
 // ============================================================================
 

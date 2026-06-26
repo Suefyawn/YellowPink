@@ -14,7 +14,7 @@ const STATUS_LABEL: Record<string, string> = {
   processing: 'Processing', shipped: 'Out for delivery', delivered: 'Delivered (to collect)',
 };
 
-// Active COD list as a runner/collection manifest — every COD order still in
+// Active COD list as a runner/collection manifest, every COD order still in
 // flight (processing / shipped) plus delivered-but-unconfirmed, with the
 // address + amount. Gated on the same `analytics` permission as the COD page.
 // Service-role read (orders RLS blocks anon).

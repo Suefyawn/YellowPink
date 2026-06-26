@@ -32,7 +32,7 @@ export function FrequentlyBoughtTogether({
   const handleAddAll = () => {
     for (const p of allProducts) {
       if (!checked[p.id]) continue;
-      // Skip the anchor — it's the product the user is already on. They can
+      // Skip the anchor, it's the product the user is already on. They can
       // add it via the main CTA. But if they want to add it directly through
       // the bundle, this still works.
       addToCart({ ...p, qty: 1 });

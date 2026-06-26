@@ -59,7 +59,7 @@ export function MoreToExplore({ brand, category, brandProducts, categoryProducts
           <Rail
             heading={`More from ${brand}`}
             // Link the canonical brand archive (/brand/<slug>), not the
-            // /shop?brand= filter URL — the filter now canonicalizes to the
+            // /shop?brand= filter URL, the filter now canonicalizes to the
             // brand page, so internal links should target it directly.
             href={`/brand/${brandSlug(brand as string)}`}
             linkLabel={`Shop all ${brand} →`}

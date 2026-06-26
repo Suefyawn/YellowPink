@@ -1,8 +1,8 @@
 // Detects the Next.js "stale tab Server Action" failure: a page loaded
 // before a deploy submits a form whose action ID was rehashed by the new
 // build, so the server doesn't recognise it. Pre-deploy customers with an
-// open tab hit this on their next submit. It's not a real bug — a reload
-// fixes it instantly — so the error boundary treats it specially instead
+// open tab hit this on their next submit. It's not a real bug, a reload
+// fixes it instantly, so the error boundary treats it specially instead
 // of rendering "Critical error" and emitting Sentry noise.
 //
 // Match on both name and message because Next.js wraps the underlying

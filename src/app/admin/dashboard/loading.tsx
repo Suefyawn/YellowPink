@@ -6,7 +6,7 @@ import {
   SkeletonBlock,
 } from '@/components/admin/Skeleton';
 
-// Loading skeleton for /admin/dashboard — mirrors its layout: a "Dashboard"
+// Loading skeleton for /admin/dashboard, mirrors its layout: a "Dashboard"
 // header with subtitle, a 4-up stat-card row, a tall revenue-chart card and a
 // two-column "Orders by Status" / "Top products" block.
 export default function DashboardLoading() {

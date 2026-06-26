@@ -2,7 +2,7 @@
 // `npm run dev` produce a browsable storefront on a fresh clone for
 // design / a11y / responsive review.
 //
-// Never returned in production — gated on `isDemo` in lib/supabase.ts.
+// Never returned in production, gated on `isDemo` in lib/supabase.ts.
 
 import type { BlogPost, Product, Category, Page } from '@/types';
 
@@ -13,8 +13,8 @@ export const DEMO_PRODUCTS: Product[] = [
     id: 'demo-1', brand: 'CeraVe', name: 'Moisturising Cream', slug: 'demo-cerave-moisturising-cream',
     variant: '454g', price: 4500, original_price: 5800, category: 'Skincare', subcategory: 'Moisturizers',
     tag: 'Bestseller', stock: 32, image_url: undefined,
-    description: 'A rich, non-greasy moisturizer formulated with 3 essential ceramides + hyaluronic acid. Suitable for face and body — restores the protective skin barrier.',
-    short_description: 'Restores the skin barrier — for face and body.',
+    description: 'A rich, non-greasy moisturizer formulated with 3 essential ceramides + hyaluronic acid. Suitable for face and body, restores the protective skin barrier.',
+    short_description: 'Restores the skin barrier, for face and body.',
     how_to_use: 'Apply liberally to face and body as often as needed.',
     ingredients: 'Aqua, Glycerin, Cetyl Alcohol, Capric Triglyceride, Ceramide NP, Ceramide AP, Ceramide EOP, Niacinamide.',
     kind: 'simple', status: 'published', created_at: TS,
@@ -31,7 +31,7 @@ export const DEMO_PRODUCTS: Product[] = [
     id: 'demo-3', brand: 'PIXI', name: 'Glow Tonic', slug: 'demo-pixi-glow-tonic',
     variant: '250ml', price: 3800, category: 'Skincare', subcategory: 'Skincare',
     tag: 'Bestseller', stock: 0, image_url: undefined,
-    description: '5% glycolic acid + aloe vera + ginseng — refines pores, evens tone, and gives skin that hero glow.',
+    description: '5% glycolic acid + aloe vera + ginseng, refines pores, evens tone, and gives skin that hero glow.',
     short_description: '5% glycolic exfoliating toner.',
     kind: 'simple', status: 'published', created_at: TS,
   },
@@ -107,17 +107,17 @@ export const DEMO_BLOG_POSTS: BlogPost[] = [
   },
   {
     id: 'demo-blog-2', slug: 'demo-melasma-truth', title: 'The truth about melasma',
-    excerpt: 'What actually helps fade melasma — and why most products don\'t.', category: 'Skincare',
+    excerpt: 'What actually helps fade melasma, and why most products don\'t.', category: 'Skincare',
     date: '2026-05-04', read_time: '6 min read', featured: false, body: undefined, image_url: undefined, created_at: TS,
   },
   {
     id: 'demo-blog-3', slug: 'demo-supplements-101', title: 'Supplements 101 for South Asian women',
-    excerpt: 'Why vitamin D, B12, and iron deficiencies are so common — and what to do.', category: 'Wellness',
+    excerpt: 'Why vitamin D, B12, and iron deficiencies are so common, and what to do.', category: 'Wellness',
     date: '2026-04-28', read_time: '5 min read', featured: false, body: undefined, image_url: undefined, created_at: TS,
   },
 ];
 
-// CMS-like pages — match the slugs in `src/lib/page-faqs.ts` so the FAQ
+// CMS-like pages, match the slugs in `src/lib/page-faqs.ts` so the FAQ
 // JSON-LD + accordion can preview end-to-end without a database.
 export const DEMO_PAGES: Page[] = [
   {
@@ -134,7 +134,7 @@ export const DEMO_PAGES: Page[] = [
     meta_title: 'Returns & Refunds | Yellow Pink',
     meta_description: 'Our 7-day return window, who pays for return shipping, and how refunds are issued.',
     excerpt: 'How returns and refunds work.',
-    body_html: '<p>You can request a return within 7 days of delivery for unopened items in their original packaging. Damaged or wrong-item shipments are returned at our cost; other reasons are returned at the customer\'s cost.</p><p>Refunds are issued as store credit by default — fast, with no payment-processor delay. Cash refunds for COD orders are available on request and take up to 5 working days.</p>',
+    body_html: '<p>You can request a return within 7 days of delivery for unopened items in their original packaging. Damaged or wrong-item shipments are returned at our cost; other reasons are returned at the customer\'s cost.</p><p>Refunds are issued as store credit by default, fast, with no payment-processor delay. Cash refunds for COD orders are available on request and take up to 5 working days.</p>',
   },
   {
     id: 'demo-page-faq', slug: 'faq', title: 'Frequently Asked Questions',
@@ -150,7 +150,7 @@ export const DEMO_PAGES: Page[] = [
     meta_title: 'About Us | Yellow Pink',
     meta_description: 'Yellow Pink imports beauty, skincare and wellness from international brands and delivers across Pakistan with COD.',
     excerpt: 'Imported beauty & wellness for Pakistan.',
-    body_html: '<p>Yellow Pink imports skincare, makeup, and clinical-grade nutraceuticals from international brands and delivers them across Pakistan with cash on delivery. Real beauty starts with real ingredients — and real results.</p>',
+    body_html: '<p>Yellow Pink imports skincare, makeup, and clinical-grade nutraceuticals from international brands and delivers them across Pakistan with cash on delivery. Real beauty starts with real ingredients, and real results.</p>',
   },
   {
     id: 'demo-page-contact', slug: 'contact', title: 'Contact Us',

@@ -22,7 +22,7 @@ const card: React.CSSProperties = {
 };
 
 function capture(name: string, props?: Record<string, unknown>) {
-  try { posthog.capture(name, props); } catch { /* posthog not ready — ignore */ }
+  try { posthog.capture(name, props); } catch { /* posthog not ready, ignore */ }
 }
 
 export function QuizClient() {
@@ -133,7 +133,7 @@ export function QuizClient() {
       <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24 }}>
         {picks.length > 0
           ? 'Based on your answers, here&rsquo;s what we&rsquo;d start with:'
-          : 'We couldn&rsquo;t find an exact match — browse the full range instead:'}
+          : 'We couldn&rsquo;t find an exact match, browse the full range instead:'}
       </p>
 
       {picks.length > 0 && (
@@ -149,7 +149,7 @@ export function QuizClient() {
         </div>
       ) : (
         <form onSubmit={submitEmail} style={{ padding: '18px 20px', background: 'var(--paper2)', border: '1px solid var(--line)', borderRadius: 12, marginBottom: 20 }}>
-          <div style={{ fontWeight: 600, marginBottom: 4 }}>Want these emailed to you — with a welcome discount?</div>
+          <div style={{ fontWeight: 600, marginBottom: 4 }}>Want these emailed to you, with a welcome discount?</div>
           <p className="small-text" style={{ color: 'var(--ink-500)', margin: '0 0 12px' }}>We&rsquo;ll send your picks and a one-time code. No spam.</p>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
             <input

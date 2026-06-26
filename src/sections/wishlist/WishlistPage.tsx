@@ -34,13 +34,13 @@ export function WishlistPage() {
       .then(({ data }) => {
         if (data) setProducts(data as Product[]);
       })
-      // Always clear the spinner — flaky mobile data shouldn't strand
+      // Always clear the spinner, flaky mobile data shouldn't strand
       // the user staring at a skeleton forever.
       .then(undefined, () => undefined)
       .then(() => setLoading(false));
   }, [wishlist]);
 
-  // Totals shown above the grid — both number-of-items and rolling sum so the
+  // Totals shown above the grid, both number-of-items and rolling sum so the
   // visitor sees the wishlist as a real basket-in-waiting.
   const summary = useMemo(() => {
     const inStock = products.filter(p => p.track_inventory === false || p.stock > 0);
@@ -67,7 +67,7 @@ export function WishlistPage() {
       try {
         await navigator.share({ url, title: 'My Yellow Pink wishlist' });
         return;
-      } catch { /* user cancelled — fall through */ }
+      } catch { /* user cancelled, fall through */ }
     }
     try {
       await navigator.clipboard.writeText(url);

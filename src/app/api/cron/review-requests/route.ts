@@ -1,11 +1,11 @@
 // ============================================================================
-// Vercel Cron: ask customers to review orders delivered 3–30 days ago.
+// Vercel Cron: ask customers to review orders delivered 3-30 days ago.
 //
 // The delivery timestamp lives in order_events (to_status = 'delivered'),
-// not on orders. This job finds delivered events inside the 3–30 day
+// not on orders. This job finds delivered events inside the 3-30 day
 // window, emails each customer a review nudge linking every purchased
 // product to its PDP review form, then stamps orders.review_request_sent_at
-// so nobody is asked twice. Older deliveries are skipped — a "how was it?"
+// so nobody is asked twice. Older deliveries are skipped, a "how was it?"
 // for a months-old order reads as spam.
 //
 // Invoked by the consolidated daily cron (src/app/api/cron/daily).
@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
     { auth: { persistSession: false } }
   );
 
-  // Loyalty points granted per approved review — named in the email so the
+  // Loyalty points granted per approved review, named in the email so the
   // nudge is concrete ("earn 25 points") rather than vague.
   const { data: setting } = await sb
     .from('site_settings').select('value').eq('key', 'loyalty_review_points').maybeSingle();
@@ -60,7 +60,7 @@ export async function GET(req: NextRequest) {
   const windowOpen = new Date(now - 30 * DAY_MS).toISOString();
   const windowClose = new Date(now - 3 * DAY_MS).toISOString();
 
-  // Orders whose delivery event landed in the 3–30 day window.
+  // Orders whose delivery event landed in the 3-30 day window.
   const { data: events, error: evErr } = await sb
     .from('order_events')
     .select('order_id')

@@ -10,7 +10,7 @@ const SETTINGS = `${SITE_URL}/admin/settings/integrations`;
 // Return an HTML page that client-side navigates to `to`, instead of a 30x
 // redirect. The admin's staff_session cookie is sameSite=strict, so the FIRST
 // request after returning from accounts.google.com (a cross-site-initiated
-// navigation) omits it — a server redirect would land on /admin looking like a
+// navigation) omits it, a server redirect would land on /admin looking like a
 // logout. This static page carries no auth; the location.replace it runs is a
 // same-site navigation, so the strict cookie IS sent and the session survives.
 function htmlRedirect(to: string, clearState: boolean): NextResponse {
@@ -19,7 +19,7 @@ function htmlRedirect(to: string, clearState: boolean): NextResponse {
     `<meta http-equiv="refresh" content="0;url=${to.replace(/"/g, '&quot;')}">` +
     `<title>Returning…</title>` +
     `<body style="font-family:system-ui,sans-serif;padding:48px;text-align:center;color:#374151">` +
-    `Connected — returning to your dashboard…` +
+    `Connected, returning to your dashboard…` +
     `<script>location.replace(${JSON.stringify(to)})</script></body>`,
     { headers: { 'content-type': 'text/html; charset=utf-8' } },
   );

@@ -217,7 +217,7 @@ function TwoFactorCard({ enabled }: { enabled: boolean }) {
       {phase === 'done' && backup && (
         <div style={{ marginTop: 8 }}>
           <p style={{ fontSize: '0.875rem', color: '#16a34a', fontWeight: 600, margin: '0 0 12px' }}>
-            ✓ 2FA enabled. Save these one-time backup codes somewhere safe — each works once if you lose your authenticator app.
+            ✓ 2FA enabled. Save these one-time backup codes somewhere safe, each works once if you lose your authenticator app.
           </p>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, fontFamily: 'monospace', fontSize: '0.8125rem', padding: 12, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 6 }}>
             {backup.map(c => <div key={c}>{c}</div>)}

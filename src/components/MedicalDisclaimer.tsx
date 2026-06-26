@@ -1,12 +1,12 @@
-// Medical/health disclaimer — a YMYL (Your Money or Your Life) safeguard shown
+// Medical/health disclaimer, a YMYL (Your Money or Your Life) safeguard shown
 // on supplement product pages and health/wellness journal posts. Required-bar
 // content for a health store: it keeps editorial and product copy compliant
 // with search-engine quality policies and sets honest expectations for readers.
 //
 // Two variants:
-//   • "editorial" — for blog/journal articles (educational, not advice).
-//   • "product"   — for supplement PDPs (food supplement, not a medicine).
-// Render it only for health categories — see isHealthCategory() in
+//   • "editorial", for blog/journal articles (educational, not advice).
+//   • "product"  , for supplement PDPs (food supplement, not a medicine).
+// Render it only for health categories, see isHealthCategory() in
 // lib/category-taxonomy. Beauty/cosmetic pages must not show it.
 
 import Link from 'next/link';
@@ -15,11 +15,11 @@ const COPY: Record<'editorial' | 'product', string> = {
   editorial:
     'This article is for general educational purposes only and is not medical advice. ' +
     'It is not intended to diagnose, treat, cure, or prevent any disease. Supplements affect ' +
-    'everyone differently — always consult a qualified doctor or pharmacist before starting any ' +
+    'everyone differently, always consult a qualified doctor or pharmacist before starting any ' +
     'supplement or changing your health routine, especially if you are pregnant, breastfeeding, ' +
     'taking medication, or managing a medical condition.',
   product:
-    'Food supplement — not a medicine. This product is not intended to diagnose, treat, cure, or ' +
+    'Food supplement, not a medicine. This product is not intended to diagnose, treat, cure, or ' +
     'prevent any disease, and these statements have not been evaluated by a medicines regulatory ' +
     'authority. Do not exceed the recommended daily dose. Consult a qualified doctor or pharmacist ' +
     'before use if you are pregnant, breastfeeding, taking medication, or managing a health ' +

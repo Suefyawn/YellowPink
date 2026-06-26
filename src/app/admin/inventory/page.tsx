@@ -69,7 +69,7 @@ export default async function InventoryPage({
   if (reasonFilter && reasonFilter !== 'all') ledgerQuery = ledgerQuery.eq('reason', reasonFilter);
 
   // Pull every product so the manual-adjustment form has a dropdown.
-  // 109 SKUs today — well under any sane limit.
+  // 109 SKUs today, well under any sane limit.
   const [{ data: ledgerData }, { data: productData }] = await Promise.all([
     ledgerQuery,
     admin.from('products').select('id, name, brand, stock, reorder_point, vendor_id, track_inventory').order('name'),
@@ -77,12 +77,12 @@ export default async function InventoryPage({
   const rows = (ledgerData ?? []) as LedgerRow[];
   const allProducts = (productData ?? []) as ProductLite[];
   const productMap = new Map<string, ProductLite>(allProducts.map(p => [p.id, p]));
-  // Only tracked products belong on the inventory screen — untracked products
+  // Only tracked products belong on the inventory screen, untracked products
   // have their stock managed by an external vendor, so there is nothing here
   // to count or adjust.
   const products = allProducts.filter(p => p.track_inventory !== false);
 
-  // Stock overview — buckets + the lowest-first sorted list.
+  // Stock overview, buckets + the lowest-first sorted list.
   const outOfStock = products.filter(p => p.stock <= 0);
   const lowStock = products.filter(p => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD);
   const healthyCount = products.length - outOfStock.length - lowStock.length;
@@ -164,7 +164,7 @@ export default async function InventoryPage({
               Reorder needed · {reorderList.length} product{reorderList.length === 1 ? '' : 's'}
             </h2>
             <p style={{ margin: '2px 0 0', fontSize: '0.75rem', color: '#b45309' }}>
-              At or below their reorder point. Grouped by vendor — send a purchase order on WhatsApp in one tap.
+              At or below their reorder point. Grouped by vendor, send a purchase order on WhatsApp in one tap.
             </p>
           </div>
           <div style={{ padding: '8px 16px 16px' }}>
@@ -172,7 +172,7 @@ export default async function InventoryPage({
               const vendor = key === 'none' ? null : vendorMap.get(key);
               const vendorName = vendor?.name ?? 'No vendor assigned';
               const poMessage = [
-                'Yellow Pink — Reorder request',
+                'Yellow Pink, Reorder request',
                 '',
                 ...items.map(p => `• ${suggestQty(p)}× ${brandPlusName(p.brand, p.name)} (in stock: ${p.stock})`),
               ].join('\n');
@@ -289,7 +289,7 @@ export default async function InventoryPage({
             <option value="" disabled>Choose a product</option>
             {products.map(p => (
               <option key={p.id} value={p.id}>
-                {brandPlusName(p.brand, p.name)} — {p.stock} in stock
+                {brandPlusName(p.brand, p.name)}, {p.stock} in stock
               </option>
             ))}
           </select>

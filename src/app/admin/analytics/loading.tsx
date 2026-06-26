@@ -6,7 +6,7 @@ import {
   SkeletonBlock,
 } from '@/components/admin/Skeleton';
 
-// Loading skeleton for /admin/analytics — "Analytics" header, a 5-up KPI
+// Loading skeleton for /admin/analytics, "Analytics" header, a 5-up KPI
 // strip, a wide chart card, and two-column metric panels.
 export default function AnalyticsLoading() {
   return (

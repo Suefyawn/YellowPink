@@ -79,7 +79,7 @@ export function CollectionProductPicker({
           }}>{pending ? 'Saving…' : 'Save products'}</button>
         </div>
       </div>
-      <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>Search to add products, then reorder — the order here is the order shoppers see.</p>
+      <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>Search to add products, then reorder, the order here is the order shoppers see.</p>
 
       {error && <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '8px 12px', marginBottom: 12, color: '#dc2626', fontSize: '0.75rem' }}>{error}</div>}
 
@@ -105,7 +105,7 @@ export function CollectionProductPicker({
       {/* Selected, ordered */}
       {selected.length === 0 ? (
         <div style={{ padding: '24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.8125rem', border: '1px dashed #e5e7eb', borderRadius: 8 }}>
-          No products yet — search above to add some.
+          No products yet, search above to add some.
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>

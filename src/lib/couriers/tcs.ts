@@ -1,5 +1,5 @@
 // ============================================================================
-// TCS Courier (Pakistan) — COD-API adapter.
+// TCS Courier (Pakistan), COD-API adapter.
 //
 // Spec: envio.tcscourier.com/COD-API-UserManual.pdf (copy in
 // .audit/tcs-cod-api-spec.txt). Two-tier auth: the bearer-token endpoint
@@ -10,12 +10,12 @@
 // Sandbox/UAT: https://devconnect.tcscourier.com
 //
 // Required env vars (set in Vercel + .env.local):
-//   TCS_BASE_URL          — pick prod or dev
+//   TCS_BASE_URL         , pick prod or dev
 //
 // Auth (one of these two modes is required):
 //   A) Pre-issued bearer token mode (recommended; what TCS Envio's
 //      "Bearer Token for API Access" email gives you):
-//        TCS_BEARER_TOKEN  — the long-lived JWT TCS issued for your account
+//        TCS_BEARER_TOKEN , the long-lived JWT TCS issued for your account
 //      The token carries `clientid` + `services` claims and expires after
 //      ~3 years. The adapter uses it directly and skips /auth/api/auth.
 //
@@ -26,20 +26,20 @@
 //      The adapter hits /auth/api/auth on first call and caches the
 //      resulting short-lived token.
 //
-//   TCS_TCS_ACCOUNT       — your TCS account number (the "tcsaccount" field
+//   TCS_TCS_ACCOUNT      , your TCS account number (the "tcsaccount" field
 //                           in every booking; sometimes called "shipper account")
-//   TCS_COST_CENTER_CODE  — assigned by TCS, required on every booking
-//   TCS_SHIPPER_NAME      — your company name (printed on the label)
-//   TCS_SHIPPER_ADDRESS   — pickup address line 1
-//   TCS_SHIPPER_CITY_CODE — TCS city code (e.g. 'KHI'). Use /setup/areacode
+//   TCS_COST_CENTER_CODE , assigned by TCS, required on every booking
+//   TCS_SHIPPER_NAME     , your company name (printed on the label)
+//   TCS_SHIPPER_ADDRESS  , pickup address line 1
+//   TCS_SHIPPER_CITY_CODE, TCS city code (e.g. 'KHI'). Use /setup/areacode
 //                           to look up if unsure.
-//   TCS_SHIPPER_CITY_NAME — human-readable city name (printed on the label)
-//   TCS_SHIPPER_MOBILE    — your contact phone (03xxxxxxxxx)
-//   TCS_SERVICE_CODE      — e.g. 'O' for Overnight. Optional, defaults to 'O'.
+//   TCS_SHIPPER_CITY_NAME, human-readable city name (printed on the label)
+//   TCS_SHIPPER_MOBILE   , your contact phone (03xxxxxxxxx)
+//   TCS_SERVICE_CODE     , e.g. 'O' for Overnight. Optional, defaults to 'O'.
 //
 // If any of the required vars are missing, `isConfigured()` returns false
 // and the booking UI falls back to manual tracking-number entry. We never
-// throw — `book` / `cancel` / `track` always resolve with `Result<…>`.
+// throw, `book` / `cancel` / `track` always resolve with `Result<…>`.
 // ============================================================================
 
 import type {
@@ -90,9 +90,9 @@ let cachedToken: { value: string; expiresAt: number } | null = null;
 const TOKEN_GRACE_SEC = 60;
 
 async function getBearerToken(): Promise<Result<string>> {
-  // Mode A — pre-issued token. Skip the auth round-trip; TCS gives us
+  // Mode A, pre-issued token. Skip the auth round-trip; TCS gives us
   // a JWT good for ~3 years on the account's services list. We don't
-  // try to decode the `exp` claim here — if TCS rejects an expired
+  // try to decode the `exp` claim here, if TCS rejects an expired
   // token, the per-call endpoints surface the 401 in their own
   // Result<…> error path.
   const preIssued = env('TCS_BEARER_TOKEN');
@@ -126,7 +126,7 @@ async function getBearerToken(): Promise<Result<string>> {
         raw: body,
       };
     }
-    // expiry comes back as ISO like "2027-01-04T05:08:47Z" — convert to epoch.
+    // expiry comes back as ISO like "2027-01-04T05:08:47Z", convert to epoch.
     const expiresAt = body.result.expiry
       ? Math.floor(new Date(body.result.expiry).getTime() / 1000)
       : now + 60 * 60; // fallback: trust for 1 hour
@@ -135,7 +135,7 @@ async function getBearerToken(): Promise<Result<string>> {
   } catch (err) {
     return {
       ok: false,
-      message: 'TCS auth network error — check TCS_BASE_URL + connectivity',
+      message: 'TCS auth network error, check TCS_BASE_URL + connectivity',
       code: 'network',
       raw: (err as Error).message,
     };
@@ -150,7 +150,7 @@ function isErr<T>(r: Result<T>): r is Extract<Result<T>, { ok: false }> {
 // ─── Booking creation ──────────────────────────────────────────────────────
 async function book(input: BookingInput): Promise<Result<BookingResult>> {
   if (!isConfigured()) {
-    return { ok: false, message: 'TCS adapter is not configured — set TCS_* env vars.', code: 'not_configured' };
+    return { ok: false, message: 'TCS adapter is not configured, set TCS_* env vars.', code: 'not_configured' };
   }
   const tokenOrErr = await getBearerToken();
   if (isErr(tokenOrErr)) return tokenOrErr;
@@ -181,7 +181,7 @@ async function book(input: BookingInput): Promise<Result<BookingResult>> {
 
   const body = {
     accesstoken: token,
-    // We let TCS assign the consignment number — pass empty per the spec example.
+    // We let TCS assign the consignment number, pass empty per the spec example.
     consignmentno: '',
     shipperinfo: {
       tcsaccount:  env('TCS_TCS_ACCOUNT'),
@@ -294,7 +294,7 @@ async function track(trackingNumber: string): Promise<Result<TrackResult>> {
   if (isErr(tokenOrErr)) return tokenOrErr;
   const baseUrl = env('TCS_BASE_URL')!;
   try {
-    // The spec shows `consignee` as the param name and an array body for GET — but a
+    // The spec shows `consignee` as the param name and an array body for GET, but a
     // GET with a JSON body is not standard. Real-world TCS implementations call it
     // as a POST with the JSON in body. Try POST first, fall back to GET.
     const url = `${baseUrl.replace(/\/$/, '')}/tracking/api/Tracking/GetDynamicTrackDetail`;
@@ -341,7 +341,7 @@ function sanitisePkMobile(raw: string): string {
 
 function parseTcsDate(s: string | undefined | null): string | null {
   if (!s) return null;
-  // TCS returns "Thursday Oct 17, 2024 12:58" — Date can parse most variants.
+  // TCS returns "Thursday Oct 17, 2024 12:58", Date can parse most variants.
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }

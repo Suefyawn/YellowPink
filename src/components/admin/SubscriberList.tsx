@@ -18,8 +18,7 @@ export interface Subscriber {
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
-// Source values stored by the signup flows ('footer', 'modal', 'checkout', …) —
-// shown as a friendlier label where one is known.
+// Source values stored by the signup flows ('footer', 'modal', 'checkout', …), // shown as a friendlier label where one is known.
 const SOURCE_LABEL: Record<string, string> = {
   footer: 'Footer form',
   modal: 'Popup',
@@ -138,7 +137,7 @@ export function SubscriberList({ subscribers }: { subscribers: Subscriber[] }) {
 
       {subscribers.length === 0 ? (
         <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-          No subscribers yet — sign-ups from the footer, popup, and checkout will appear here.
+          No subscribers yet, sign-ups from the footer, popup, and checkout will appear here.
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>

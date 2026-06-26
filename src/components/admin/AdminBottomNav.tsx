@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { StaffSession, Permission } from '@/lib/permissions';
 
-// Mobile-only bottom navigation bar — the 4 most-used admin destinations
+// Mobile-only bottom navigation bar, the 4 most-used admin destinations
 // plus a "More" button that opens the full sidebar drawer. Hidden on
 // desktop (the permanent sidebar covers navigation there).
 interface NavSlot {

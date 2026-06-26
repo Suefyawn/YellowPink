@@ -20,7 +20,7 @@ export async function getQuizRecommendations(answers: QuizAnswers): Promise<Prod
     const all = await getProducts(); // published, visibility-filtered
     const picks: Product[] = [];
     const seen = new Set<string>();
-    // Two passes: in-stock first, then the rest — walking categories in
+    // Two passes: in-stock first, then the rest, walking categories in
     // priority order (most specific answer first).
     for (const inStockOnly of [true, false]) {
       for (const cat of cats) {

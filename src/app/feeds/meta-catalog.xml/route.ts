@@ -1,6 +1,6 @@
-// Meta (Facebook / Instagram) product catalog feed — RSS 2.0 + g: namespace.
+// Meta (Facebook / Instagram) product catalog feed, RSS 2.0 + g: namespace.
 //
-// Submit this URL — https://www.yellowpink.pk/feeds/meta-catalog.xml — in Meta
+// Submit this URL, https://www.yellowpink.pk/feeds/meta-catalog.xml, in Meta
 // Commerce Manager → Catalog → Data sources → Add items → Use a data feed →
 // Scheduled feed. Meta re-fetches on the schedule you set (hourly–daily). The
 // same catalog powers the Facebook/Instagram Shop and Advantage+ catalog ads.
@@ -20,7 +20,7 @@ import { SITE_NAME, SITE_URL, absoluteUrl } from '@/lib/seo';
 import { googleProductCategory } from '@/lib/google-product-category';
 import { loadFeedVariants, type FeedVariant } from '@/lib/product-feed';
 
-export const revalidate = 3600; // 1h — Meta polls on a schedule; this is plenty.
+export const revalidate = 3600; // 1h, Meta polls on a schedule; this is plenty.
 
 interface FeedProduct {
   id: string;
@@ -48,7 +48,7 @@ function xmlEscape(s: string): string {
 }
 
 // Meta caps the title at 200 chars and the description at 9999; we keep the
-// description to a meaningful 1000-char summary and strip HTML — feed text
+// description to a meaningful 1000-char summary and strip HTML, feed text
 // must be plain.
 function clean(text: string | null, max: number): string {
   if (!text) return '';
@@ -59,8 +59,8 @@ function clean(text: string | null, max: number): string {
 // One <item>. With a `variant`, emits that variant's own row grouped under the
 // parent via item_group_id; otherwise the parent product row.
 function item(p: FeedProduct, variant?: FeedVariant): string {
-  const baseTitle = p.brand ? `${p.brand} — ${p.name}` : p.name;
-  const title = clean(variant ? `${baseTitle} — ${variant.label}` : baseTitle, 150);
+  const baseTitle = p.brand ? `${p.brand}, ${p.name}` : p.name;
+  const title = clean(variant ? `${baseTitle}, ${variant.label}` : baseTitle, 150);
   const description = clean(p.description || p.short_description || p.name, 1000);
   const link = absoluteUrl(`/product/${p.slug}`);
   const imageLink = (variant?.image_url ?? p.image_url) ?? '';
@@ -69,7 +69,7 @@ function item(p: FeedProduct, variant?: FeedVariant): string {
   const available =
     p.track_inventory === false || stock > 0 ? 'in stock' : 'out of stock';
   // g:price is the regular price, g:sale_price the discounted one. When the
-  // compare-at price is higher the item is on sale — emit both so the Shop can
+  // compare-at price is higher the item is on sale, emit both so the Shop can
   // render the strikethrough.
   const basePrice = variant ? variant.price : p.price;
   const compareAt = variant ? variant.compare_at_price : p.original_price;

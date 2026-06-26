@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { getBrowserClient } from '@/lib/supabase-browser';
 
 // Magic-link sign-in for approved Medical Review Board doctors. We never create
-// a user here (shouldCreateUser:false) — accounts are provisioned only when the
-// owner approves an application — so a stranger's email simply gets no link.
+// a user here (shouldCreateUser:false), accounts are provisioned only when the
+// owner approves an application, so a stranger's email simply gets no link.
 // Supabase returns success either way (no email enumeration), so the UI always
 // shows the same "check your inbox" state.
 
@@ -47,7 +47,7 @@ export default function ReviewerLoginPage() {
             <div role="status" aria-live="polite" style={{ padding: '18px 20px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, color: '#166534' }}>
               <strong style={{ display: 'block', marginBottom: 4 }}>Check your inbox.</strong>
               If <strong>{email.trim().toLowerCase()}</strong> is an approved reviewer, a sign-in link is on its way.
-              The link opens your dashboard — no password needed.
+              The link opens your dashboard, no password needed.
             </div>
           ) : (
             <form onSubmit={submit} style={{ display: 'grid', gap: 14 }}>

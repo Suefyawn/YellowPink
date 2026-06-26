@@ -25,7 +25,7 @@ export async function FunnelBySourceWidget() {
           Funnel by source
         </div>
         <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
-          No source data yet — refresh analytics to populate.
+          No source data yet, refresh analytics to populate.
         </p>
       </div>
     );

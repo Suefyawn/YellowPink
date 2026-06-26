@@ -9,8 +9,8 @@ export interface ApplyResult { ok: boolean; error?: string }
 const str = (fd: FormData, k: string) => ((fd.get(k) as string | null) ?? '').trim();
 
 /** Public Medical Review Board application. Inserts a pending row (vetting
- *  inbox) with the service-role client — reviewer_applications RLS is locked,
- *  so there is no anon write path — and alerts the owner to verify & approve. */
+ *  inbox) with the service-role client, reviewer_applications RLS is locked,
+ *  so there is no anon write path, and alerts the owner to verify & approve. */
 export async function submitReviewerApplication(
   _prev: ApplyResult | null,
   formData: FormData,
@@ -32,7 +32,7 @@ export async function submitReviewerApplication(
   const { data: dupe } = await admin
     .from('reviewer_applications')
     .select('id').eq('email', email).eq('status', 'pending').maybeSingle();
-  if (dupe) return { ok: true }; // already in the queue — show the same thank-you
+  if (dupe) return { ok: true }; // already in the queue, show the same thank-you
 
   const { error } = await admin.from('reviewer_applications').insert({
     name, email, credentials, pmdc_number, specialty,
@@ -47,7 +47,7 @@ export async function submitReviewerApplication(
     return { ok: false, error: 'Something went wrong. Please try again.' };
   }
 
-  // Best-effort owner alert — never fail the application if email is down.
+  // Best-effort owner alert, never fail the application if email is down.
   try {
     await sendReviewerApplicationEmail({ name, email, credentials, specialty, pmdc_number, profile_url });
   } catch (err) {

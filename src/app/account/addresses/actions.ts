@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { createServerSupabase as authedClient } from '@/lib/supabase-server';
 import { addressSchema, parseForm, firstError } from '@/lib/validators';
 
-// authedClient() is the @supabase/ssr server client — it reads the customer's
+// authedClient() is the @supabase/ssr server client, it reads the customer's
 // session from cookies so RLS on `addresses` (auth.uid() = user_id) applies.
 
 export type AddressActionResult = { error: string } | { success: true } | null;

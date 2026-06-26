@@ -4,7 +4,7 @@
 //
 // The cache is populated by `refreshAnalytics()` in
 // src/app/admin/dashboard/actions.ts. Each key holds a JSON blob whose
-// shape is owned by the caller — typed at the call site, not here.
+// shape is owned by the caller, typed at the call site, not here.
 
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';

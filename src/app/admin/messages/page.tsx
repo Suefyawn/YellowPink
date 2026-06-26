@@ -154,7 +154,7 @@ export default async function MessagesPage({ searchParams }: { searchParams?: Pr
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Messages</h1>
       <p style={{ margin: '0 0 28px', color: '#6b7280', fontSize: '0.875rem' }}>
         Conversations from the contact form and inbound email, threaded by customer. Reply here and it sends from your
-        store address — the whole exchange stays on record.
+        store address, the whole exchange stays on record.
       </p>
 
       {sp.error && (

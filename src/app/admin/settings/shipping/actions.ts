@@ -122,7 +122,7 @@ export async function updateZone(id: string, formData: FormData): Promise<void> 
     err(zoneErr.message);
   }
 
-  // Upsert the rate by zone_id — assume a single rate per zone for now.
+  // Upsert the rate by zone_id, assume a single rate per zone for now.
   // If a row exists, update it; otherwise insert a fresh one.
   const { data: existingRate } = await sb
     .from('shipping_rates')

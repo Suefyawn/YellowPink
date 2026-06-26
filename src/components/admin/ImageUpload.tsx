@@ -7,7 +7,7 @@ interface Props {
   currentUrl?: string | null;
   label?: string;
   aspect?: number; // width/height ratio, default 1
-  /** 'image' (default) or 'video' — switches the accepted types, size cap and
+  /** 'image' (default) or 'video', switches the accepted types, size cap and
    *  preview element. Both upload through the same /api/upload endpoint. */
   kind?: 'image' | 'video';
 }
@@ -48,7 +48,7 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1, kin
       if (!res.ok) { setError(data.error ?? 'Upload failed'); }
       else { setUrl(data.url); }
     } catch {
-      setError('Upload failed — check your connection');
+      setError('Upload failed, check your connection');
     } finally {
       setUploading(false);
       setTimeout(() => setProgress(0), 600);

@@ -25,23 +25,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // Missing product → notFound() (the page does the same). Note: because this
   // route has a loading.tsx skeleton, Next streams a 200 shell before this
   // resolves, so an invalid slug is a soft-404 (HTTP 200 + the noindex'd
-  // not-found UI) rather than a hard 404. That's an accepted trade-off —
-  // keeping the PDP loading skeleton over a pristine status on phantom,
+  // not-found UI) rather than a hard 404. That's an accepted trade-off,   // keeping the PDP loading skeleton over a pristine status on phantom,
   // unlinked, noindexed URLs. Removing loading.tsx would restore the 404.
   if (!product) notFound();
   // Use the dedupe-aware composer so WP imports that already prefix the
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
   const displayName = brandPlusName(product.brand, product.name);
-  const autoTitleBase = `${displayName}${product.variant ? ` — ${product.variant}` : ''}`;
+  const autoTitleBase = `${displayName}${product.variant ? `, ${product.variant}` : ''}`;
   // SERP CTR: short branded SKUs (e.g. "Semofer", "M-Sol Sachet") were ranking
-  // page-1 but getting ~0 % CTR with a bare "<name> | Yellow Pink" title — the
+  // page-1 but getting ~0 % CTR with a bare "<name> | Yellow Pink" title, the
   // SERP gave a searcher no reason to click (GSC, 2026-06). Append a localized
   // intent cue. Supplement/medicine SKUs draw heavy *informational* intent
-  // ("calin g tablet uses", "m-sol sachet uses", "meth d tab" — GSC, 2026-06),
+  // ("calin g tablet uses", "m-sol sachet uses", "meth d tab", GSC, 2026-06),
   // so wellness products lead the cue with "Uses" before the commercial "Price
   // in Pakistan"; beauty products keep the price-only cue. We pick the richest
-  // cue that still fits Google's ~60-char render budget — the root template adds
-  // " | Yellow Pink" (14 chars), so the base is capped at 46 — and only when
+  // cue that still fits Google's ~60-char render budget, the root template adds
+  // " | Yellow Pink" (14 chars), so the base is capped at 46, and only when
   // there's no variant suffix and the name doesn't already imply geo. Longer,
   // already-descriptive titles (most skincare imports) are left untouched, and
   // an admin `seo_title` override always wins (applied below).
@@ -60,10 +59,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // into duplicate meta descriptions.
   const leadDescription = baseDescription.toLowerCase().startsWith(displayName.toLowerCase())
     ? baseDescription
-    : `${displayName} — ${baseDescription}`;
+    : `${displayName}, ${baseDescription}`;
   // Keep meta descriptions in the ~155-char sweet spot Google renders, on a
   // word boundary, and append an authenticity/COD value line when there's room
-  // and it isn't already implied — improves SERP CTR without changing on-page
+  // and it isn't already implied, improves SERP CTR without changing on-page
   // copy. (Composed only from existing fields, so it stays accurate.)
   const TAIL = ' Authentic, with cash on delivery across Pakistan.';
   const autoDescription = (() => {
@@ -262,7 +261,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   ];
 
   return (
-    // minHeight: 100vh — guarantees the PDP block fills the viewport before
+    // minHeight: 100vh, guarantees the PDP block fills the viewport before
     // the gallery image decodes. Without it, on mobile between SSR delivery
     // and image-decode, the main column can be shorter than the screen and
     // the Footer (next in DOM) flashes above the fold. Pair with the same
@@ -290,7 +289,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       />
       {/* Keyed on the product id so a related-product click (product→product
           navigation, which otherwise reuses this client component) remounts
-          PDPPage — resetting the variant picker and quantity to the new
+          PDPPage, resetting the variant picker and quantity to the new
           product's defaults instead of carrying the previous selection. */}
       <PDPPage
         key={product.id}

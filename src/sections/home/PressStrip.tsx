@@ -1,5 +1,5 @@
 // "As featured in" pre-footer strip. Each outlet links to its own site (opens
-// in a new tab). On mobile the row stays on a single line — it shrinks and,
+// in a new tab). On mobile the row stays on a single line, it shrinks and,
 // on very narrow phones, scrolls horizontally rather than wrapping.
 const CHANNELS: { name: string; url: string }[] = [
   { name: 'ELLE', url: 'https://www.elle.com' },
@@ -34,7 +34,7 @@ export function PressStrip() {
       `}</style>
       <div className="container press-strip">
         {CHANNELS.map(c => (
-          <a key={c.name} href={c.url} target="_blank" rel="noopener noreferrer" aria-label={`${c.name} — opens in a new tab`}>
+          <a key={c.name} href={c.url} target="_blank" rel="noopener noreferrer" aria-label={`${c.name}, opens in a new tab`}>
             {c.name}
           </a>
         ))}

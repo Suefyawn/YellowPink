@@ -2,7 +2,7 @@
 // Pakistan courier registry + adapter resolver.
 //
 // Each PK courier has:
-//   (a) A CourierProfile — display name + the public tracking-URL builder
+//   (a) A CourierProfile, display name + the public tracking-URL builder
 //       used by the /track page so customers can deep-link to the courier's
 //       site.
 //   (b) Optionally, an API-backed CourierAdapter (see types.ts + tcs.ts)

@@ -6,12 +6,12 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { fmtPKR as fmt } from '@/lib/money';
 
-// COD reconciliation — the cash side of the business that's hardest to track.
+// COD reconciliation, the cash side of the business that's hardest to track.
 // "Payment received" lives per-order on the order page; this page rolls it up
 // so the owner can see, at a glance:
-//   • Outstanding — delivered COD orders not yet marked paid (cash to confirm)
-//   • Collected   — delivered COD orders reconciled to an account
-//   • In transit  — COD value still out for delivery (expected to collect)
+//   • Outstanding, delivered COD orders not yet marked paid (cash to confirm)
+//   • Collected  , delivered COD orders reconciled to an account
+//   • In transit , COD value still out for delivery (expected to collect)
 // Gated on the same `analytics` permission as Finance.
 
 interface CodOrder {
@@ -88,13 +88,13 @@ export default async function CodReconciliationPage() {
       </div>
 
       <div style={card}>
-        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Outstanding — delivered, not yet confirmed</h2>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Outstanding, delivered, not yet confirmed</h2>
         <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
           These parcels were delivered but the cash hasn&apos;t been marked received. Open each to record payment.
         </p>
         {outstanding.length === 0 ? (
           <div style={{ padding: '28px 0', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            All caught up — every delivered COD order is reconciled. 🎉
+            All caught up, every delivered COD order is reconciled. 🎉
           </div>
         ) : (
           <div className="adm-table-scroll">

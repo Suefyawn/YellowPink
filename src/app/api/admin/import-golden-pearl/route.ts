@@ -4,7 +4,7 @@
 // DRAFT in our catalogue, with all its images.
 //
 // Idempotent: products are matched by slug, so re-running only inserts items
-// that aren't already present — existing drafts (and any edits an admin has
+// that aren't already present, existing drafts (and any edits an admin has
 // made) are left untouched. Guarded by CRON_SECRET; nothing runs unless the
 // caller presents the bearer token.
 //

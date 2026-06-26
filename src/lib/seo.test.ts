@@ -97,7 +97,7 @@ describe('SEO JSON-LD helpers', () => {
     });
 
     it('hard-cuts when no word boundary is reachable', () => {
-      // Single-word string longer than the cap — should still terminate cleanly.
+      // Single-word string longer than the cap, should still terminate cleanly.
       const out = truncateOnWord('SuperCalifragilisticExpialidocious', 12);
       expect(out.endsWith('…')).toBe(true);
     });

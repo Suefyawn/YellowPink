@@ -140,7 +140,7 @@ function VariantPicker({
 // ─── Multi-image gallery ───────────────────────────────────────────────────
 // Hover-zoom wrapper. Tracks mouse position over the container, sets
 // transform-origin to the cursor, and scales the inner image. Pointer-events
-// only — touch users get the native pinch-zoom from the OS instead.
+// only, touch users get the native pinch-zoom from the OS instead.
 function ZoomableImage({ src, alt, label, fallback }: { src: string | null; alt: string; label?: string; fallback?: string | null }) {
   const [zoomed, setZoomed] = useState(false);
   const [origin, setOrigin] = useState({ x: 50, y: 50 });
@@ -215,7 +215,7 @@ function Gallery({
     // Desktop: vertical thumbnail rail on the left + main image. Mobile (per
     // .pdp-gallery in globals.css): flip to column-reverse so the main image
     // gets the full width and the thumbnails sit underneath as a horizontal
-    // strip — no more 64px sidebar stealing space on a phone.
+    // strip, no more 64px sidebar stealing space on a phone.
     <div className="pdp-gallery" style={{ display: 'flex', gap: 12, flex: 1 }}>
       <div className="pdp-gallery-thumbs" role="group" aria-label="Product images" style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64, flexShrink: 0 }}>
         {images.map(img => {
@@ -269,7 +269,7 @@ function Gallery({
           className="pdp-hero"
           style={{ flex: 1, aspectRatio: '1 / 1', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: '#000' }}
         >
-          {/* Lazy: preload="none" + no autoplay — the clip is only fetched once
+          {/* Lazy: preload="none" + no autoplay, the clip is only fetched once
               the shopper taps play, so it never weighs on the initial PDP load
               or the LCP. The hero image stands in as the poster. */}
           <video
@@ -302,8 +302,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // Free-shipping copy tracks the owner's live setting (threshold + on/off).
   const { freeShippingEnabled, freeShippingThreshold } = useCommerceSettings();
   const freeShipLabel = formatPkr(freeShippingThreshold);
-  // Wellness/supplement products need different trust signals than makeup —
-  // "tested for Pakistani skin tones" is nonsensical on a supplement, so the
+  // Wellness/supplement products need different trust signals than makeup,   // "tested for Pakistani skin tones" is nonsensical on a supplement, so the
   // "Why Yellow Pink" block swaps to authenticity/expiry copy for this taxon.
   const isWellness = taxonForCategory(product.category)?.key === 'wellness';
   const shippingContent = freeShippingEnabled
@@ -339,7 +338,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
     return () => { root.style.removeProperty('--fab-bottom-offset'); };
   }, [showStickyBar]);
 
-  // view_item analytics — fires once per product visit.
+  // view_item analytics, fires once per product visit.
   useEffect(() => {
     track({
       name: 'view_item',
@@ -398,7 +397,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const displayOriginal       = activeVariant?.compare_at_price ?? product.original_price ?? null;
   const displayStock          = activeVariant?.stock ?? product.stock;
   const displayImageOverride  = activeVariant?.image_url ?? null;
-  // Loyalty nudge — points earned for the current price × quantity. Mirrors
+  // Loyalty nudge, points earned for the current price × quantity. Mirrors
   // the server-side earn trigger (points_per_pkr) so the figure matches what
   // actually lands in the customer's balance after the order.
   const pointsEarned = pointsPerPkr > 0 ? Math.round(displayPrice * qty * pointsPerPkr) : 0;
@@ -444,8 +443,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
     setTimeout(() => setAddedFlash(false), 400);
   };
 
-  // Untracked products (inventory managed externally) are always sellable —
-  // their stock count is meaningless, so a 0 must not disable the buy button.
+  // Untracked products (inventory managed externally) are always sellable,   // their stock count is meaningless, so a 0 must not disable the buy button.
   const outOfStock = product.track_inventory !== false && displayStock === 0;
   const ctaDisabled = outOfStock || (variants.length > 0 && !activeVariant);
 
@@ -461,11 +459,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
     <div>
       <div className="container" style={{ borderTop: '1px solid var(--line)' }}>
         {/* minmax(0,1fr) lets each column shrink below its content's intrinsic
-            width — without it a long product name forced the grid wider than
+            width, without it a long product name forced the grid wider than
             the viewport. maxWidth caps the image column so the gallery isn't
             a ~700px monster on a wide desktop. */}
         {/* alignItems:start so the gallery cell sizes to the image and does
-            NOT stretch to the row height — otherwise opening an accordion in
+            NOT stretch to the row height, otherwise opening an accordion in
             the right column grows the row and the aspect-ratio image scales
             up/down with it. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto', alignItems: 'start' }} className="pdp-grid">
@@ -474,7 +472,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           <div style={{ minWidth: 0 }}>
             {product.brand && (
               <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>
-                {/* Link the brand to its archive page — a descriptive internal
+                {/* Link the brand to its archive page, a descriptive internal
                     link from every PDP to /brand/<slug>, which strengthens the
                     brand pages (previously linked only from /brands). */}
                 <a href={brandHref(product.brand)} style={{ color: 'inherit', textDecoration: 'none' }}>
@@ -491,7 +489,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               <a
                 href="#reviews"
                 style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginBottom: 12, textDecoration: 'none' }}
-                aria-label={`${product.review_count} customer review${product.review_count === 1 ? '' : 's'} — read reviews`}
+                aria-label={`${product.review_count} customer review${product.review_count === 1 ? '' : 's'}, read reviews`}
               >
                 <StarRating rating={product.rating} count={product.review_count} size={15} />
                 <span className="small-text" style={{ color: 'var(--brand-pink-text)', fontWeight: 600, whiteSpace: 'nowrap' }}>
@@ -561,7 +559,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </p>
             )}
 
-            {/* WhatsApp CTA — pre-fills the merchant chat with this product's
+            {/* WhatsApp CTA, pre-fills the merchant chat with this product's
                 name so any "do you have shade X?" / "is this authentic?"
                 question lands with full context. Hides if the env var
                 isn't set. */}
@@ -591,7 +589,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               );
             })()}
 
-            {/* Migration 081 — key benefits bar (admin-curated). High-leverage
+            {/* Migration 081, key benefits bar (admin-curated). High-leverage
                 content block: scannable in 2 seconds, keyword-rich, and the
                 emoji icons are pure design without hitting the bundle. */}
             {Array.isArray(product.key_benefits) && product.key_benefits.length > 0 && (
@@ -629,7 +627,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </div>
             )}
 
-            {/* Migration 081 — short testimonial / press quote, rendered as a
+            {/* Migration 081, short testimonial / press quote, rendered as a
                 paper2 callout so it reads as social signal rather than body
                 copy. */}
             {product.social_proof && (
@@ -686,7 +684,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           overflow: 'hidden',
         }}
       >
-        {/* Decorative brand-tint blobs — replaces the missing editorial
+        {/* Decorative brand-tint blobs, replaces the missing editorial
             photo placeholder with something that always looks intentional. */}
         <div
           aria-hidden="true"
@@ -766,14 +764,14 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
         </div>
       </section>
 
-      {/* Migration 081 — FAQ section. Renders below the gallery split so the
+      {/* Migration 081, FAQ section. Renders below the gallery split so the
           accordion is the first thing the visitor sees after deciding to
           scroll past the buy-bar. FAQPage schema is emitted by the route
           (see app/product/[slug]/page.tsx) so the rich-result is paired
           with visible content. */}
       {(() => {
         // Show the admin-authored FAQ when present, else the store-fact
-        // fallback — so every product page has a FAQ block (and matching
+        // fallback, so every product page has a FAQ block (and matching
         // FAQPage schema emitted by the route).
         const faqItems = effectiveProductFaq(product.faq, { estimatedDays });
         return (
@@ -822,7 +820,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
         </section>
       )}
 
-      {/* Sticky mobile buy-bar — fixed to the bottom of the viewport once the
+      {/* Sticky mobile buy-bar, fixed to the bottom of the viewport once the
           in-page buy panel scrolls off the top. Mobile-only via the
           `pdp-sticky-bar` CSS class (display:none ≥768px). Reuses the same
           qty + handleAdd as the in-page panel so state stays in sync. */}

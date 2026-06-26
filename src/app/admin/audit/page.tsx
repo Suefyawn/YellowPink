@@ -91,7 +91,7 @@ export default async function ActivityLogPage({
     <div style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 6px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Activity log</h1>
       <p style={{ margin: '0 0 20px', fontSize: '0.8125rem', color: '#6b7280' }}>
-        Everything happening across the store — orders, signups, reviews, subscriptions and staff actions.
+        Everything happening across the store, orders, signups, reviews, subscriptions and staff actions.
         Showing the {ROW_LIMIT} most recent events. Owner-only.
       </p>
 
@@ -127,7 +127,7 @@ export default async function ActivityLogPage({
           type="search"
           name="q"
           defaultValue={search}
-          placeholder="Search action — e.g. order, review, product"
+          placeholder="Search action, e.g. order, review, product"
           style={{
             flex: 1, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8,
             fontSize: '0.8125rem', color: '#111827',

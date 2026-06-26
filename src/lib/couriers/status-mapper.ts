@@ -1,7 +1,6 @@
 // ============================================================================
 // Courier-status string → our internal enum mapper. Each PK courier reports
-// status in slightly different language ("Delivered" vs "OK" vs "POD") —
-// this normaliser absorbs the variation so shipment_events rows always
+// status in slightly different language ("Delivered" vs "OK" vs "POD"), // this normaliser absorbs the variation so shipment_events rows always
 // carry one of: created, picked_up, in_transit, out_for_delivery,
 // delivered, returned, failed, cancelled.
 // ============================================================================

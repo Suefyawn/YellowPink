@@ -6,7 +6,7 @@ import { STAFF_SESSION_SECRET } from '@/lib/session-secret';
 import { log } from '@/lib/logger';
 
 // ============================================================================
-// Google account connection (owner-level) — OAuth + Search Console / GA4 reads.
+// Google account connection (owner-level), OAuth + Search Console / GA4 reads.
 //
 // Custom server-side OAuth (not Supabase's provider) because we need an OFFLINE
 // refresh token and read scopes to call the Search Console + GA4 APIs on the
@@ -56,7 +56,7 @@ function decrypt(b64: string | null): string | null {
     decipher.setAuthTag(tag);
     return Buffer.concat([decipher.update(enc), decipher.final()]).toString('utf8');
   } catch {
-    return null; // wrong key / corrupt — treat as disconnected
+    return null; // wrong key / corrupt, treat as disconnected
   }
 }
 
@@ -190,7 +190,7 @@ async function getAccessToken(): Promise<string> {
 
 async function gapi<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken();
-  // Only set JSON content-type when there's a body — an empty PUT (e.g.
+  // Only set JSON content-type when there's a body, an empty PUT (e.g.
   // sitemaps.submit) with Content-Type: application/json makes Google try to
   // parse the empty body as JSON and 400 with "Unexpected end of input".
   const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
@@ -201,7 +201,7 @@ async function gapi<T>(url: string, init?: RequestInit): Promise<T> {
     cache: 'no-store',
   });
   if (!res.ok) throw new Error(`google api ${res.status}: ${await res.text()}`);
-  // Some endpoints (sitemaps.submit) return 204/empty — don't choke on no JSON.
+  // Some endpoints (sitemaps.submit) return 204/empty, don't choke on no JSON.
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
 }
@@ -257,7 +257,7 @@ export async function listSitemaps(siteUrl: string): Promise<SitemapStatus[]> {
 }
 
 /** Submit (or re-submit) a sitemap so Google re-crawls every listed page. This
- *  is the supported, scalable way to "submit pages for indexing" — Google still
+ *  is the supported, scalable way to "submit pages for indexing", Google still
  *  decides what/when to index, but this is the programmatic nudge. */
 export async function submitSitemap(siteUrl: string, sitemapUrl: string): Promise<void> {
   await gapi<void>(
@@ -273,7 +273,7 @@ export interface UrlIndexStatus {
   googleCanonical: string | null;
 }
 
-/** Check whether a specific URL is indexed (read-only — there is no API to
+/** Check whether a specific URL is indexed (read-only, there is no API to
  *  *force* indexing of an arbitrary page; this reports current status). */
 export async function inspectUrl(siteUrl: string, inspectionUrl: string): Promise<UrlIndexStatus> {
   const data = await gapi<{ inspectionResult?: { indexStatusResult?: { verdict?: string; coverageState?: string; lastCrawlTime?: string; googleCanonical?: string } } }>(

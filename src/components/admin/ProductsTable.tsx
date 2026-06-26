@@ -224,7 +224,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                         <Link href={`/admin/products/${p.id}`} style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{p.name}</Link>
                         {p.variant && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{p.variant}</div>}
                       </td>
-                      {/* Price — inline editable */}
+                      {/* Price, inline editable */}
                       <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>
                         {editingPrice ? editInput : (
                           <button type="button" onClick={() => openEdit(p.id, 'price', p.price)} title="Click to edit price" style={editCellBtn}>
@@ -233,7 +233,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                           </button>
                         )}
                       </td>
-                      {/* Stock — inline editable (only when tracked) */}
+                      {/* Stock, inline editable (only when tracked) */}
                       <td style={{ padding: '12px 16px' }}>
                         {p.track_inventory === false ? (
                           <StockBadge product={p} />
@@ -243,7 +243,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                           </button>
                         )}
                       </td>
-                      {/* Status — inline select */}
+                      {/* Status, inline select */}
                       <td style={{ padding: '12px 16px' }}>
                         <select
                           value={p.status ?? 'published'}
@@ -351,7 +351,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
   );
 }
 
-// Sortable column header — clicking cycles desc → asc → off (newest).
+// Sortable column header, clicking cycles desc → asc → off (newest).
 function SortHeader({ label, asc, desc, align = 'left', sort, onSort }: {
   label: string; asc: string; desc: string; align?: 'left' | 'right'; sort: string; onSort: (k: string) => void;
 }) {

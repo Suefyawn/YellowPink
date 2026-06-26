@@ -1,4 +1,4 @@
-// Serves /llms.txt — the emerging convention for guiding LLM crawlers
+// Serves /llms.txt, the emerging convention for guiding LLM crawlers
 // (similar to robots.txt but for AI assistants). Format reference:
 // https://llmstxt.org
 //
@@ -69,7 +69,7 @@ export async function GET() {
   }
 
   // ─── A sampling of the catalogue ──────────────────────────────────────────
-  // Don't dump 200+ products — they're already in sitemap.xml. List a curated
+  // Don't dump 200+ products, they're already in sitemap.xml. List a curated
   // top-N so a model has anchor URLs to walk from.
   if (products.length > 0) {
     lines.push('## Sample products');

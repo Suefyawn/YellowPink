@@ -15,7 +15,7 @@ export function CopyButton({ value, label = 'Copy', title, iconOnly = false }: {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      /* clipboard blocked — no-op */
+      /* clipboard blocked, no-op */
     }
   };
 

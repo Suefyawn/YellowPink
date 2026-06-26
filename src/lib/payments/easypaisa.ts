@@ -34,7 +34,7 @@ function pad(n: number, len: number): string {
 }
 
 function epExpiry(d: Date): string {
-  // YYYYMMDD HHMMSS — space-separated per spec.
+  // YYYYMMDD HHMMSS, space-separated per spec.
   return [
     d.getFullYear(),
     pad(d.getMonth() + 1, 2),

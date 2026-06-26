@@ -16,7 +16,7 @@ const lbl: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', font
 
 // Map Supabase SDK / URL error strings to user-friendly copy. We never want to
 // render the raw SDK message (e.g. "PKCE code verifier not found in
-// storage… use @supabase/ssr") to end users — it's developer jargon that
+// storage… use @supabase/ssr") to end users, it's developer jargon that
 // suggests something is broken when in fact the link is just stale or being
 // opened on a different device. Log the raw message to console for debug.
 function friendlyLinkError(raw: string | null | undefined): string {
@@ -52,10 +52,10 @@ function ResetPasswordInner() {
   useEffect(() => {
     // Supabase has two recovery flows depending on @supabase/ssr / supabase-js
     // version + project config:
-    //   1. Legacy implicit flow — redirects with `#access_token=...&type=recovery`
+    //   1. Legacy implicit flow, redirects with `#access_token=...&type=recovery`
     //      in the hash. supabase-js auto-detects on first load and fires
     //      onAuthStateChange('PASSWORD_RECOVERY').
-    //   2. PKCE flow — redirects with `?code=...` in the query. The browser
+    //   2. PKCE flow, redirects with `?code=...` in the query. The browser
     //      client does NOT auto-exchange in all client constructions;
     //      we have to call exchangeCodeForSession(code) explicitly.
     //
@@ -94,7 +94,7 @@ function ResetPasswordInner() {
         return;
       }
 
-      // No code — fall back to existing session (covers implicit flow whose
+      // No code, fall back to existing session (covers implicit flow whose
       // hash was already consumed by an earlier auto-detect).
       const { data: { session } } = await sb.auth.getSession();
       if (cancelled) return;
@@ -279,7 +279,7 @@ function ResetPasswordInner() {
   );
 }
 
-// useSearchParams() forces this page into client-side rendering — Next 16
+// useSearchParams() forces this page into client-side rendering, Next 16
 // requires a Suspense boundary around it so the page can still be server-
 // prerendered (showing the shell until the params arrive on the client).
 export default function ResetPasswordPage() {

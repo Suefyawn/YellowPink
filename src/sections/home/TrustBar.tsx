@@ -20,13 +20,13 @@ function TrustIcon({ name }: { name: IconName }) {
     'aria-hidden': true,
   };
   switch (name) {
-    case 'authentic': // shield + check — genuine / verified
+    case 'authentic': // shield + check, genuine / verified
       return <svg {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="M9 12l2 2 4-4" /></svg>;
     case 'delivery': // delivery van
       return <svg {...p}><rect x="1" y="3" width="15" height="13" rx="1" /><path d="M16 8h4l3 3v5h-7V8z" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>;
-    case 'cod': // banknote — cash on delivery
+    case 'cod': // banknote, cash on delivery
       return <svg {...p}><rect x="2" y="6" width="20" height="12" rx="2" /><circle cx="12" cy="12" r="2.5" /><path d="M6 12h.01" /><path d="M18 12h.01" /></svg>;
-    case 'returns': // counter-clockwise arrow — returns
+    case 'returns': // counter-clockwise arrow, returns
       return <svg {...p}><path d="M3 12a9 9 0 1 0 2.7-6.4" /><path d="M3 4v5h5" /></svg>;
   }
 }

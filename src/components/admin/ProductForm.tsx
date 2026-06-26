@@ -29,7 +29,7 @@ const row3: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1
 
 // One titled block of the form. Sections are separated by a hairline so a
 // long product edit reads as grouped steps, not one undifferentiated wall.
-// Section titles in render order — also drives the "jump to" nav. Keep in
+// Section titles in render order, also drives the "jump to" nav. Keep in
 // sync with the <Section> blocks below.
 const FORM_SECTIONS = ['Basics', 'Merchandising', 'Pricing & stock', 'Vendor & sourcing', 'Page link', 'Product image', 'Product-page content', 'Search & social'];
 
@@ -57,7 +57,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
   const [state, action, pending] = useActionState(boundAction, null);
 
   // Warn before leaving with unsaved edits (tab close / refresh / external
-  // nav). Suppressed while submitting — a successful save redirects away.
+  // nav). Suppressed while submitting, a successful save redirects away.
   const [dirty, setDirty] = useState(false);
   useEffect(() => {
     if (!dirty || pending) return;
@@ -102,7 +102,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
       </div>
 
       <div style={{ background: 'white', borderRadius: 10, padding: '28px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', maxWidth: 820 }}>
-        {/* Jump-to nav — a long product edit is a lot of scrolling; these
+        {/* Jump-to nav, a long product edit is a lot of scrolling; these
             anchor chips drop you straight to a section. Sticky so they stay
             reachable as you scroll. */}
         <nav aria-label="Jump to section" style={{
@@ -130,7 +130,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
             <div style={row2}>
               <div style={fieldWrap}>
                 <label style={lbl}>Brand</label>
-                <input name="brand" defaultValue={product?.brand ?? ''} style={inp} placeholder="e.g. CeraVe — blank for own-label" />
+                <input name="brand" defaultValue={product?.brand ?? ''} style={inp} placeholder="e.g. CeraVe, blank for own-label" />
               </div>
               <div style={fieldWrap}>
                 <label style={lbl}>Product Name *</label>
@@ -247,7 +247,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
               <span>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Inventory managed externally</span>
                 <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
-                  For products fulfilled by a third-party vendor. Yellow Pink won&apos;t track stock — the product stays sellable and orders never decrement its count.
+                  For products fulfilled by a third-party vendor. Yellow Pink won&apos;t track stock, the product stays sellable and orders never decrement its count.
                 </span>
               </span>
             </label>
@@ -343,7 +343,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
           </Section>
 
           {/* ── Video ──────────────────────────────────────────────────── */}
-          <Section title="Product video" desc="Optional short clip (e.g. a makeup swatch). Shown as a tap-to-play slide in the gallery — never autoplays, lazy-loaded so it doesn't slow the page. MP4/WebM, max 30 MB.">
+          <Section title="Product video" desc="Optional short clip (e.g. a makeup swatch). Shown as a tap-to-play slide in the gallery, never autoplays, lazy-loaded so it doesn't slow the page. MP4/WebM, max 30 MB.">
             <ImageUpload name="video_url" kind="video" currentUrl={product?.video_url} label="" aspect={1} />
           </Section>
 
@@ -403,7 +403,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
               <div style={fieldWrap}>
                 <label style={lbl}>SEO title</label>
                 <input name="seo_title" type="text" defaultValue={product?.seo_title ?? ''} maxLength={120}
-                  placeholder='e.g. "CeraVe Hydrating Cleanser — Buy in Pakistan"' style={inp} />
+                  placeholder='e.g. "CeraVe Hydrating Cleanser, Buy in Pakistan"' style={inp} />
                 <span style={hint}>Auto-default: brand + name. ≤60 chars ideal.</span>
               </div>
               <div style={fieldWrap}>
@@ -421,7 +421,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
             </div>
           </Section>
 
-          {/* Sticky save bar — pins to the bottom of the viewport while the
+          {/* Sticky save bar, pins to the bottom of the viewport while the
               admin scrolls long product edits. */}
           <div
             className="adm-sticky-actions"

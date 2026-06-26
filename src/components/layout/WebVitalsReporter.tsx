@@ -6,8 +6,8 @@ import { useConsent } from '@/lib/consent';
 
 // Reports Core Web Vitals (LCP, CLS, INP, etc.) using Next.js' built-in
 // reportWebVitals hook via useReportWebVitals. We forward to:
-//   • console (dev) — always, regardless of consent (developer signal only)
-//   • Sentry / captureMessage (prod) — ONLY when the visitor has opted in
+//   • console (dev), always, regardless of consent (developer signal only)
+//   • Sentry / captureMessage (prod), ONLY when the visitor has opted in
 //     via the cookie-consent banner (`consent.analytics === true`)
 //
 // Next 16 ships useReportWebVitals via 'next/web-vitals'.
@@ -27,7 +27,7 @@ export function WebVitalsReporter() {
   const analyticsAllowed = consent?.analytics === true;
 
   useReportWebVitals((metric: Metric) => {
-    // Dev console is always-on — pure developer signal, no PII leaves the
+    // Dev console is always-on, pure developer signal, no PII leaves the
     // browser. Production reporting is gated on consent.
     if (process.env.NODE_ENV !== 'production') {
       console.debug('[vitals]', metric.name, Math.round(metric.value), metric.rating);
@@ -39,7 +39,7 @@ export function WebVitalsReporter() {
     }
   });
 
-  // Render nothing — it's a side-effect-only component.
+  // Render nothing, it's a side-effect-only component.
   useEffect(() => () => undefined, []);
   return null;
 }

@@ -6,7 +6,7 @@ import { useState } from 'react';
 import { SectionDivider } from '@/components/ui/SectionDivider';
 import { Overline } from '@/components/ui/Overline';
 
-// Editorial duo: one makeup-led card and one wellness-led card — the two
+// Editorial duo: one makeup-led card and one wellness-led card, the two
 // highest-demand PK themes (makeup 18k, supplements/ashwagandha/magnesium).
 // Original generated banners served from /public (no remote host / demo-mode
 // gap, and they're tiny ~48 KB webp so they don't weigh on the homepage).
@@ -18,7 +18,7 @@ const CARDS = [
     href: '/shop?taxon=makeup',
     img: '/editorial/makeup-edit.webp',
     fallbackColor: '#fbe9ef',
-    alt: 'Imported makeup in Pakistan — lipstick, lip tints, blush, highlighter and brushes',
+    alt: 'Imported makeup in Pakistan, lipstick, lip tints, blush, highlighter and brushes',
   },
   {
     title: 'Wellness & Supplements',
@@ -27,7 +27,7 @@ const CARDS = [
     href: '/shop?taxon=wellness',
     img: '/editorial/wellness-edit.webp',
     fallbackColor: '#eef3ec',
-    alt: 'Health supplements and vitamins in Pakistan — multivitamins, ashwagandha, magnesium and omega-3',
+    alt: 'Health supplements and vitamins in Pakistan, multivitamins, ashwagandha, magnesium and omega-3',
   },
 ];
 
@@ -46,7 +46,7 @@ function DuoCard({ title, subtitle, cta, href, img, alt, fallbackColor }: typeof
             <Image
               src={img} alt={alt}
               fill
-              // Two-up grid below the hero — half-width on desktop, full on
+              // Two-up grid below the hero, half-width on desktop, full on
               // phone (per the .duo-grid mobile rule in globals.css).
               sizes="(max-width: 900px) 100vw, 50vw"
               onError={() => setImgFailed(true)}

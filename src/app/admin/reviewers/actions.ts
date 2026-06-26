@@ -8,7 +8,7 @@ import { log } from '@/lib/logger';
 import { sendReviewerApprovedEmail } from '@/lib/email';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-// The Medical Review Board rides the `blog` permission — it's content/editorial
+// The Medical Review Board rides the `blog` permission, it's content/editorial
 // governance, the same surface as the journal it reviews.
 async function assertBlog() {
   const session = await getStaffSession();
@@ -105,7 +105,7 @@ async function uniqueReviewerSlug(admin: SupabaseClient, base: string): Promise<
   return `${root}-${Date.now()}`;
 }
 
-/** Find an existing auth user by email (paginated) — used when a reviewer's
+/** Find an existing auth user by email (paginated), used when a reviewer's
  *  email already has a customer account, so we link instead of re-creating. */
 async function findAuthUserByEmail(admin: SupabaseClient, email: string): Promise<string | null> {
   const target = email.toLowerCase();

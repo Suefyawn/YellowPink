@@ -25,7 +25,7 @@ export default async function SettingsLoyaltyPage({ searchParams }: { searchPara
         <input type="hidden" name="_redirect" value={PATH} />
 
         <Card>
-          <Section title="Earn & redeem" desc="Live values — the next order or sign-up uses whatever you save here." />
+          <Section title="Earn & redeem" desc="Live values, the next order or sign-up uses whatever you save here." />
           <Divider />
           <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
             <div>

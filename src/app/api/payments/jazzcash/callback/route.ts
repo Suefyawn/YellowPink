@@ -1,5 +1,5 @@
 // ============================================================================
-// POST /api/payments/jazzcash/callback — JazzCash POSTs here after the user
+// POST /api/payments/jazzcash/callback, JazzCash POSTs here after the user
 // finishes (or aborts) payment. We verify the signature, update the matching
 // payment row, advance the order status, and bounce the user to the
 // thank-you or checkout-failed page.
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
       .eq('status', 'payment_pending');
 
     // If the order already moved past payment_pending (success replay), the
-    // UPDATE was a no-op — still redirect to thank-you so the user lands
+    // UPDATE was a no-op, still redirect to thank-you so the user lands
     // somewhere sensible. Only send confirmation emails on the FIRST
     // transition (status was still payment_pending when we loaded it).
     const firstTransition = order.status === 'payment_pending';
@@ -126,7 +126,7 @@ export async function POST(req: NextRequest) {
         numItems: paidItems.reduce((s, i) => s + (i.qty ?? 0), 0),
         eventSourceUrl: `${SITE_URL}/thank-you`,
         // The shopper is redirected back here in their browser, so the Pixel
-        // cookies + IP/UA are present — pass them for CAPI match quality.
+        // cookies + IP/UA are present, pass them for CAPI match quality.
         fbc: req.cookies.get('_fbc')?.value,
         fbp: req.cookies.get('_fbp')?.value,
         clientIp: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || undefined,

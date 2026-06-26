@@ -49,7 +49,7 @@ export async function updateBrand(id: string, formData: FormData): Promise<void>
   // The slug controls the public /brand/<slug> URL AND the join key against
   // products.brand. Editing it after launch breaks the storefront link from
   // products to the brand metadata until product rows are renamed, so we
-  // intentionally do not expose a slug field on the edit form — the slug is
+  // intentionally do not expose a slug field on the edit form, the slug is
   // set at creation and frozen here.
   const status = str(formData, 'status') === 'published' ? 'published' : 'draft';
 

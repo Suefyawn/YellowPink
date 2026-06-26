@@ -1,5 +1,5 @@
 // ============================================================================
-// /api/blog/[id] — single-post endpoints for the blog management API.
+// /api/blog/[id], single-post endpoints for the blog management API.
 // [id] may be either the row UUID or the post slug.
 //   GET    → fetch one post
 //   PATCH  → partial update (any subset of fields)

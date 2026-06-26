@@ -7,9 +7,8 @@ import { sendWelcomeEmail } from '@/lib/email';
 // .signUp), so the login form calls this right after a successful signup,
 // passing the new user's id from the signUp response.
 //
-// The id is re-verified here against the auth record via the service role —
-// the recipient address is read from that verified row, never from the
-// client — and we only send for an account created in the last few minutes.
+// The id is re-verified here against the auth record via the service role, // the recipient address is read from that verified row, never from the
+// client, and we only send for an account created in the last few minutes.
 // That keeps this from being usable to blast arbitrary addresses.
 const FRESH_SIGNUP_MS = 10 * 60 * 1000;
 
@@ -25,6 +24,6 @@ export async function sendSignupWelcomeEmail(userId: string): Promise<void> {
 
     await sendWelcomeEmail({ email: user.email });
   } catch {
-    // Best-effort — a failed welcome email must never affect signup.
+    // Best-effort, a failed welcome email must never affect signup.
   }
 }

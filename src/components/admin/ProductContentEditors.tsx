@@ -5,7 +5,7 @@ import type { ProductKeyBenefit, ProductFaqItem } from '@/types';
 
 // Friendly add/remove row editors for the product's Key benefits and FAQ.
 // Each keeps a hidden <input> holding the JSON the server action already
-// expects — so the owner never hand-writes JSON, but the schema is unchanged.
+// expects, so the owner never hand-writes JSON, but the schema is unchanged.
 
 const BENEFIT_ICONS = [
   'shield', 'leaf', 'sparkle', 'droplet', 'pulse', 'flower', 'bottle',
@@ -37,7 +37,7 @@ export function KeyBenefitsEditor({ name, initial }: { name: string; initial?: P
   return (
     <div>
       <input type="hidden" name={name} value={serialised} />
-      {rows.length === 0 && <p style={emptyNote}>No benefits yet — these show as the badge bar at the top of the product page.</p>}
+      {rows.length === 0 && <p style={emptyNote}>No benefits yet, these show as the badge bar at the top of the product page.</p>}
       {rows.map((row, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
           <select
@@ -73,7 +73,7 @@ export function FaqEditor({ name, initial }: { name: string; initial?: ProductFa
   return (
     <div>
       <input type="hidden" name={name} value={serialised} />
-      {rows.length === 0 && <p style={emptyNote}>No questions yet — these power the FAQ section on the product page.</p>}
+      {rows.length === 0 && <p style={emptyNote}>No questions yet, these power the FAQ section on the product page.</p>}
       {rows.map((row, i) => (
         <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 10, alignItems: 'flex-start' }}>
           <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -81,7 +81,7 @@ export function FaqEditor({ name, initial }: { name: string; initial?: ProductFa
               aria-label="Question"
               value={row.q}
               onChange={e => setRows(r => r.map((x, idx) => idx === i ? { ...x, q: e.target.value } : x))}
-              placeholder="Question — e.g. Is it suitable for oily skin?"
+              placeholder="Question, e.g. Is it suitable for oily skin?"
               style={{ ...inp, width: '100%' }}
             />
             <textarea

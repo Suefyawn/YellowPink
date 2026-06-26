@@ -91,8 +91,8 @@ export default async function UsersPage({
   const activity: ActivityKey = ACTIVITY_KEYS.includes(activityParam as ActivityKey) ? (activityParam as ActivityKey) : 'all';
 
   // Three SECURITY DEFINER RPCs, all called via the service-role client: the
-  // account list (get_admin_users — auth.users PII), per-account order
-  // aggregates (get_customer_order_stats — revenue data) and guest buyers
+  // account list (get_admin_users, auth.users PII), per-account order
+  // aggregates (get_customer_order_stats, revenue data) and guest buyers
   // derived from unclaimed orders (get_guest_customers). All are revoked from
   // anon/authenticated by the security_revoke_anon_rpc migration.
   const admin = supabaseAdmin();
@@ -120,7 +120,7 @@ export default async function UsersPage({
   // phone for the rare emailless order), base64url-encoded into the id so the
   // value is path-safe (a raw "guest:<email>" segment with a colon does not
   // match the [id] route on Vercel). The detail page decodes the `guest-`
-  // prefix. `created_at` stands in for "joined" — their first order.
+  // prefix. `created_at` stands in for "joined", their first order.
   const guestRows: CustomerRow[] = ((guests ?? []) as GuestCustomer[]).map(g => ({
     id: `guest-${Buffer.from(g.guest_key, 'utf8').toString('base64url')}`,
     kind: 'guest' as const,
@@ -169,7 +169,7 @@ export default async function UsersPage({
         u.last_name?.toLowerCase().includes(lower) ||
         `${u.first_name ?? ''} ${u.last_name ?? ''}`.toLowerCase().includes(lower) ||
         u.phone?.toLowerCase().includes(lower);
-      // Phone numbers arrive in many shapes ("0300 123…", "+92300…") — also
+      // Phone numbers arrive in many shapes ("0300 123…", "+92300…"), also
       // match on digits-only so a spaced/prefixed query still finds them.
       const phoneHit = qDigits.length >= 3 && (u.phone ?? '').replace(/\D+/g, '').includes(qDigits);
       return Boolean(textHit || phoneHit);
@@ -191,8 +191,7 @@ export default async function UsersPage({
   const paginated = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const hasFilters = !!q || type !== 'all' || activity !== 'all' || sort !== 'recent';
 
-  // Build a href that preserves search + sort while setting type/activity —
-  // used by the clickable summary cards.
+  // Build a href that preserves search + sort while setting type/activity,   // used by the clickable summary cards.
   const cardHref = (next: { type?: TypeKey; activity?: ActivityKey }) => {
     const p = new URLSearchParams();
     if (q) p.set('q', q);
@@ -241,7 +240,7 @@ export default async function UsersPage({
         </a>
       </div>
 
-      {/* Summary cards — also act as quick filters. */}
+      {/* Summary cards, also act as quick filters. */}
       <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {cards.map(c => (
           <Link key={c.label} href={c.href} style={{

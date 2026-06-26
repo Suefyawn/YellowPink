@@ -14,9 +14,9 @@ const SESSION_TTL_MS = 10 * 60 * 60 * 1000; // 10h
 // "scrypt$N$r$p$saltHex$keyHex". password_salt is left empty for scrypt rows.
 //
 // Legacy SHA-256 hashes (existing rows) are still accepted; on successful
-// login we transparently upgrade to scrypt — see verifyPassword().
+// login we transparently upgrade to scrypt, see verifyPassword().
 
-const SCRYPT_N = 2 ** 15;    // 32 768 — ~50ms on a modest server
+const SCRYPT_N = 2 ** 15;    // 32 768, ~50ms on a modest server
 const SCRYPT_R = 8;
 const SCRYPT_P = 1;
 const SCRYPT_KEYLEN = 64;
@@ -35,7 +35,7 @@ export function generateTempPassword(): string {
 
 // Returns a scrypt hash string. The signature stays compatible with the
 // legacy `hashPassword(password, salt)` so existing actions still compile,
-// but the `salt` arg is now optional — when omitted a fresh salt is generated.
+// but the `salt` arg is now optional, when omitted a fresh salt is generated.
 export function hashPassword(password: string, salt?: string): string {
   const useSalt = salt ?? generateSalt();
   const key = scryptSync(password, useSalt, SCRYPT_KEYLEN, {
@@ -55,7 +55,7 @@ interface VerifyResult {
 }
 
 // Returns { ok: true } on match. If the stored hash is in the legacy
-// SHA-256 format, also returns `upgraded.newHash` — the caller should write
+// SHA-256 format, also returns `upgraded.newHash`, the caller should write
 // it back to swap in the stronger scrypt hash.
 export function verifyPassword(
   password: string,
@@ -72,7 +72,7 @@ export function verifyPassword(
     return { ok: timingSafeEqual(computed, expected) };
   }
 
-  // Legacy SHA-256 — verify, then upgrade.
+  // Legacy SHA-256, verify, then upgrade.
   if (!legacySalt) return { ok: false };
   const legacyHash = legacySha256(password, legacySalt);
   const a = Buffer.from(legacyHash, 'hex');
@@ -115,7 +115,7 @@ export async function setStaffCookie(staffId: string): Promise<void> {
   const store = await cookies();
   store.set(STAFF_COOKIE, signToken(staffId), {
     httpOnly: true,
-    // Hardcode secure — the admin surface is HTTPS-only on every deployment
+    // Hardcode secure, the admin surface is HTTPS-only on every deployment
     // we run (Vercel preview included), and the owner cookie (signed-cookie
     // alongside) already sets this unconditionally. Tying it to NODE_ENV
     // left a footgun if the env var ever flipped on a build.
@@ -140,7 +140,7 @@ export async function clearStaffCookie(): Promise<void> {
 export async function getStaffSession(): Promise<StaffSession | null> {
   const store = await cookies();
 
-  // Owner session (legacy single-password auth — kept until full migration to
+  // Owner session (legacy single-password auth, kept until full migration to
   // staff_members). The owner password is checked in actions.ts:loginAdmin,
   // which writes an HMAC-signed cookie via signed-cookie.ts. We just verify.
   const adminCookie = store.get('admin_session')?.value;

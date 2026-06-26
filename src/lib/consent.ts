@@ -1,6 +1,6 @@
 'use client';
 
-// Cookie / tracking consent. Three buckets — `essential` is always on (we
+// Cookie / tracking consent. Three buckets, `essential` is always on (we
 // need it for cart, login, CSRF), the other two are opt-in. Persisted to
 // localStorage and a cookie (the cookie is so server actions and edge
 // middleware can also see the preference without round-tripping the client).
@@ -89,7 +89,7 @@ export function rejectAll(): Consent {
 }
 
 /** React subscriber. Returns the current consent or null if the user
- *  hasn't chosen yet — `null` means the banner should be shown. */
+ *  hasn't chosen yet, `null` means the banner should be shown. */
 export function useConsent(): {
   consent: Consent | null;
   setConsent: (c: Partial<Consent>) => void;

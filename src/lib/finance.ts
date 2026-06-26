@@ -25,7 +25,7 @@ export function resolveRange(key?: string) {
 }
 
 /** ISO timestamp `days` ago, or null for "all time". Uses `new Date()` (not
- *  Date.now()) — the react-hooks purity lint rejects Date.now() in render. */
+ *  Date.now()), the react-hooks purity lint rejects Date.now() in render. */
 export function rangeStartISO(days: number | null): string | null {
   return days ? new Date(new Date().getTime() - days * 86_400_000).toISOString() : null;
 }
@@ -56,14 +56,14 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
   const cogsByOrder = new Map<string, number>();
   const ids = orders.map(o => o.id);
   if (ids.length) {
-    // Vendor COGS — the snapshot recorded when each order was dispatched.
+    // Vendor COGS, the snapshot recorded when each order was dispatched.
     const { data: settle } = await admin.from('vendor_settlements').select('order_id, vendor_cost').in('order_id', ids);
     const set = new Set(ids);
     for (const s of (settle ?? []) as { order_id: string; vendor_cost: number | null }[]) {
       if (set.has(s.order_id)) cogsByOrder.set(s.order_id, (cogsByOrder.get(s.order_id) ?? 0) + Number(s.vendor_cost ?? 0));
     }
 
-    // Own-stock COGS — acquisition cost of every line whose product isn't
+    // Own-stock COGS, acquisition cost of every line whose product isn't
     // vendor-sourced (vendor lines are already covered above).
     const productIds = new Set<string>();
     for (const o of orders) for (const it of o.items ?? []) if (it?.id) productIds.add(it.id);
@@ -88,7 +88,7 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
   }
 
   // Per-order acquisition cost (staff-entered actual goods cost) overrides the
-  // computed vendor+own-stock estimate — drop-ship prices vary per order.
+  // computed vendor+own-stock estimate, drop-ship prices vary per order.
   for (const o of orders) {
     if (o.acquisition_cost != null) cogsByOrder.set(o.id, Number(o.acquisition_cost));
   }

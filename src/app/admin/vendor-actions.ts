@@ -15,7 +15,7 @@ function bounceVendors(error: string): never {
   redirect(`/admin/vendors?error=${encodeURIComponent(error)}`);
 }
 
-/** Parse the commission % field — blank → null, otherwise clamped 0–100. */
+/** Parse the commission % field, blank → null, otherwise clamped 0-100. */
 function parseCommission(raw: FormDataEntryValue | null): number | null {
   const s = (raw as string | null)?.trim();
   if (!s) return null;
@@ -86,7 +86,7 @@ export async function deleteVendor(formData: FormData) {
     log.error('vendor.delete_failed', { id, error: error.message });
     // FK from vendor_settlements / products is the realistic failure here.
     if ((error as { code?: string }).code === '23503') {
-      bounceVendors(`Cannot delete "${target?.name ?? 'vendor'}" — it still has linked orders, products or settlements.`);
+      bounceVendors(`Cannot delete "${target?.name ?? 'vendor'}", it still has linked orders, products or settlements.`);
     }
     bounceVendors(`Could not delete vendor: ${error.message}`);
   }

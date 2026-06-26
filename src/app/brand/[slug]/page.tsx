@@ -18,18 +18,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const [products, record] = await Promise.all([getProducts(), getBrandRecord(slug)]);
   const brand = record?.name ?? brandNameFromSlug(slug, products);
   if (!brand) return pageMeta({ title: 'Brand', description: 'Shop by brand at Yellow Pink.', path: `/brand/${slug}` });
-  // Lead the title with "Buy <brand> in Pakistan" — PK shoppers search the
+  // Lead the title with "Buy <brand> in Pakistan", PK shoppers search the
   // brand name + "pakistan" (e.g. "cerave pakistan", "the ordinary pakistan"),
-  // so front-loading that intent beats a bare "<brand> — Shop".
+  // so front-loading that intent beats a bare "<brand>, Shop".
   return pageMeta({
-    title: record?.seo_title || `Buy ${brand} in Pakistan — Authentic`,
+    title: record?.seo_title || `Buy ${brand} in Pakistan, Authentic`,
     description: record?.seo_description
       || record?.description
-      || `Shop authentic, imported ${brand} in Pakistan at Yellow Pink — original products at the best prices, with cash on delivery nationwide.`,
+      || `Shop authentic, imported ${brand} in Pakistan at Yellow Pink, original products at the best prices, with cash on delivery nationwide.`,
     path: `/brand/${brandSlug(brand)}`,
     keywords: [brand, `${brand} Pakistan`, `${brand} price in Pakistan`, 'COD'],
     // Representative packshot as the share image (products already fetched
-    // above, so this is free) — bespoke social card per brand instead of the
+    // above, so this is free), bespoke social card per brand instead of the
     // generic fallback. Falls through to app/opengraph-image.tsx if none.
     image: products.find(p => p.brand === brand && p.image_url)?.image_url || undefined,
   });
@@ -48,7 +48,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
     { name: brand, path: `/brand/${brandSlug(brand)}` },
   ];
 
-  // Hero cover — uploaded brand hero, otherwise auto-fall back to the brand's
+  // Hero cover, uploaded brand hero, otherwise auto-fall back to the brand's
   // first product image so the page is never a bare text header. The card grid
   // uses the same idea.
   const heroImage = record?.hero_image_url
@@ -58,7 +58,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   // two-sentence keyword-led fallback so the page carries real body text for
   // shoppers and search engines rather than a single generic line.
   const description = record?.description
-    || `Discover ${brand} at Yellow Pink — every ${brand} product we stock is 100% authentic and imported, sourced from authorised channels for the Pakistani market, never a counterfeit. Browse the full ${brand} lineup below in sealed packaging at fair prices, with cash on delivery nationwide across Pakistan.`;
+    || `Discover ${brand} at Yellow Pink, every ${brand} product we stock is 100% authentic and imported, sourced from authorised channels for the Pakistani market, never a counterfeit. Browse the full ${brand} lineup below in sealed packaging at fair prices, with cash on delivery nationwide across Pakistan.`;
 
   return (
     <main className="fade-in">
@@ -126,7 +126,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
             <ProductBrowser products={list} />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
-              This brand is restocking — <Link href="/shop" className="text-link">browse the full catalogue</Link> in the meantime.
+              This brand is restocking, <Link href="/shop" className="text-link">browse the full catalogue</Link> in the meantime.
             </p>
           )}
         </div>

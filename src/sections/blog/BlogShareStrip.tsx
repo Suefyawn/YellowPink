@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 
 interface Props {
   title: string;
-  /** Absolute, canonical URL of the post — e.g.
+  /** Absolute, canonical URL of the post, e.g.
    *  "https://www.yellowpink.pk/blog/<slug>". Must be absolute: Facebook's
    *  sharer 500s on a relative `u=` param, and the link is server-rendered
    *  so a relative path would ship to crawlers. The server caller builds it
@@ -24,7 +24,7 @@ interface Props {
 
 export function BlogShareStrip({ title, url, excerpt }: Props) {
   const [copied, setCopied] = useState(false);
-  // navigator.share is browser-only — detect it after mount so the server
+  // navigator.share is browser-only, detect it after mount so the server
   // render and the first client render agree (only the mount-gated "More"
   // button depends on it). The share URL itself is a prop, so it is
   // byte-identical on both sides and needs no mount gate.
@@ -34,7 +34,7 @@ export function BlogShareStrip({ title, url, excerpt }: Props) {
     setMounted(true);
   }, []);
 
-  const text = excerpt ? `${title} — ${excerpt}` : title;
+  const text = excerpt ? `${title}, ${excerpt}` : title;
 
   const waHref = `https://wa.me/?text=${encodeURIComponent(`${text}\n\n${url}`)}`;
   const fbHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`;
@@ -45,7 +45,7 @@ export function BlogShareStrip({ title, url, excerpt }: Props) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 1500);
     } catch {
-      // Older browsers without Permission for clipboard — degrade silently;
+      // Older browsers without Permission for clipboard, degrade silently;
       // the link is already visible in the URL bar.
     }
   };
@@ -79,7 +79,7 @@ export function BlogShareStrip({ title, url, excerpt }: Props) {
         href={waHref}
         target="_blank"
         // Share-intent links (wa.me / facebook sharer) are user actions, not
-        // crawlable destinations — nofollow so they don't leak PageRank and
+        // crawlable destinations, nofollow so they don't leak PageRank and
         // don't register as broken external links in audits.
         rel="nofollow noopener noreferrer"
         aria-label="Share on WhatsApp"

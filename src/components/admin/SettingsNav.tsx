@@ -11,7 +11,7 @@ import type { ReactNode } from 'react';
 
 type Item = { href: string; label: string; icon: ReactNode };
 
-// 16px lucide-style glyphs — inherit colour from the tab via currentColor.
+// 16px lucide-style glyphs, inherit colour from the tab via currentColor.
 const I = (paths: ReactNode) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
     strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths}</svg>

@@ -17,7 +17,7 @@ async function assertProducts(action: 'edit' | 'delete' = 'edit') {
 }
 
 // Every write checks its error and returns it to the caller (ProductsTable
-// shows a toast) instead of silently revalidating — see issue #191.
+// shows a toast) instead of silently revalidating, see issue #191.
 
 // ─── Single-row inline quick edit (price / stock / status) ─────────────────
 export async function quickUpdateProduct(
@@ -84,7 +84,7 @@ export async function bulkDeleteProducts(ids: string[]): Promise<{ deleted: numb
   const session = await assertProducts('delete');
   if (ids.length === 0) return { deleted: 0, archived: 0 };
 
-  // Products with order history are archived, not hard-deleted — see
+  // Products with order history are archived, not hard-deleted, see
   // src/lib/product-archive.ts for why. The rest are deleted as requested.
   const { productsWithOrderHistory } = await import('@/lib/product-archive');
   const referenced = await productsWithOrderHistory(ids);

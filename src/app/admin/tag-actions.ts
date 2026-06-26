@@ -26,7 +26,7 @@ function slugifyTag(s: string): string {
 // ─── Per-product tag assignment (free-type + reuse) ────────────────────────
 // Replaces a product's full tag set. Any name without an existing tag is
 // created on the fly (deduplicated by slug), so the editor never needs a
-// separate "create tag" step — exactly like WooCommerce / Shopify tagging.
+// separate "create tag" step, exactly like WooCommerce / Shopify tagging.
 export async function setProductTags(productId: string, names: string[]): Promise<{ error?: string }> {
   const session = await assertProducts();
   const admin = supabaseAdmin();

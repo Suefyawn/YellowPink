@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { submitContactMessage, type ContactState } from '@/app/contact/actions';
 
-// Storefront contact form — rendered on /page/contact (see app/page/[slug]).
+// Storefront contact form, rendered on /page/contact (see app/page/[slug]).
 // Submissions land in the contact_messages table (Admin → Messages) and are
 // forwarded to the owner via Resend. Mirrors the newsletter form's
 // useActionState pattern.
@@ -65,7 +65,7 @@ export function ContactForm() {
           fontFamily: 'var(--font-ui)',
         }}
       >
-        Thanks for reaching out — we&apos;ve got your message and will reply by
+        Thanks for reaching out, we&apos;ve got your message and will reply by
         email, usually within one working day.
       </div>
     );
@@ -73,7 +73,7 @@ export function ContactForm() {
 
   return (
     <form action={formAction} aria-label="Contact form" noValidate>
-      {/* Honeypot — hidden from real users; bots fill it and get a silent no-op. */}
+      {/* Honeypot, hidden from real users; bots fill it and get a silent no-op. */}
       <input
         type="text" name="website" tabIndex={-1} autoComplete="off"
         aria-hidden="true"

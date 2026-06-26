@@ -3,7 +3,7 @@
 // shipment. Each adapter returns normalised events; we insert them into
 // shipment_events and update shipments.status. The shipments_sync_order
 // trigger (migration 20260521_040_shipments.sql) then cascades the status
-// change to orders.status — which fires the order-status-change emails
+// change to orders.status, which fires the order-status-change emails
 // (shipped / delivered).
 //
 // Scheduled hourly in vercel.json. Safe to run more often; the adapter
@@ -12,7 +12,7 @@
 //
 // Status filter: we only poll shipments that are NOT in a terminal state
 // ('delivered', 'returned', 'cancelled', 'failed'). Anything that's been
-// terminal more than 7 days ago gets skipped permanently — those rarely
+// terminal more than 7 days ago gets skipped permanently, those rarely
 // move and the courier APIs sometimes 404 on aged consignments.
 // ============================================================================
 
@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
       noAdapter.push(`${courier} (no track capability)`);
       continue;
     }
-    // Run them in parallel but cap concurrency — a slow courier shouldn't
+    // Run them in parallel but cap concurrency, a slow courier shouldn't
     // tie up the whole loop. 8 in flight is a safe default for PK
     // couriers that typically return in <500 ms.
     const CONCURRENCY = 8;

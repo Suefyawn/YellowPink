@@ -3,7 +3,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import type { BlogPost } from '@/types';
 
-/** Homepage "From the Journal" rail — the three most recent posts, linking
+/** Homepage "From the Journal" rail, the three most recent posts, linking
  *  through to the full blog. Self-hides when there are no posts. */
 export function JournalSection({ posts }: { posts: BlogPost[] }) {
   const items = posts.slice(0, 3);

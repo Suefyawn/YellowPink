@@ -111,7 +111,7 @@ export function ReturnsQueue({ rows, orderMap }: {
                     if (!window.confirm('Mark this return as received and restock the items?')) return;
                     startTransition(async () => {
                       const res = await markReturnReceived(r.id);
-                      if ('success' in res && res.success) toast('Return marked received — stock restored', 'success');
+                      if ('success' in res && res.success) toast('Return marked received, stock restored', 'success');
                       else toast(('error' in res && res.error) ? res.error : 'Failed', 'error');
                     });
                   }}
@@ -230,7 +230,7 @@ function ApproveForm({
   );
 }
 
-// Inline reject panel — replaces the bare window.prompt with an on-brand
+// Inline reject panel, replaces the bare window.prompt with an on-brand
 // textarea (optional reason) so the reason is visible while typing and the
 // flow matches the approve panel.
 function RejectForm({

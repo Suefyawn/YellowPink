@@ -1,15 +1,15 @@
 // ============================================================================
 // Transactional email via Resend. Phase 1.4.
 //
-// Every send is best-effort and never throws — email failure must not break
+// Every send is best-effort and never throws, email failure must not break
 // an order placement or any other commit. Add new templates by exporting a
 // `send<Thing>Email` function; keep the HTML inline (no JSX runtime cost on
 // server actions).
 //
 // Required env:
-//   RESEND_API_KEY   — server-only
-//   OWNER_EMAIL      — where internal notifications go (new orders, low stock)
-//   EMAIL_FROM       — verified Resend "from" address (default: orders@yellowpink.pk)
+//   RESEND_API_KEY  , server-only
+//   OWNER_EMAIL     , where internal notifications go (new orders, low stock)
+//   EMAIL_FROM      , verified Resend "from" address (default: orders@yellowpink.pk)
 // ============================================================================
 
 import { Resend } from 'resend';
@@ -34,12 +34,12 @@ const FROM = process.env.EMAIL_FROM ?? 'Yellow Pink Orders <orders@yellowpink.pk
 // Resend free tier is 100 emails/day. Batch/marketing mail stops claiming
 // slots at this cap so transactional order emails keep their headroom.
 export const RESEND_DAILY_BATCH_CAP = 90;
-// Hard ceiling on a single Resend API call — keeps a stalled request from
+// Hard ceiling on a single Resend API call, keeps a stalled request from
 // hanging the caller (e.g. the newsletter send loop) forever.
 const SEND_TIMEOUT_MS = 12000;
 // Hard ceiling on the best-effort Supabase calls in the send path (the
 // quota-claim RPC and the email_log insert). Without it, a stalled DB call
-// could hang an email send — and a newsletter blast — indefinitely, which
+// could hang an email send, and a newsletter blast, indefinitely, which
 // is exactly the admin-UI freeze the post-launch QA flagged.
 const DB_TIMEOUT_MS = 8000;
 const BRAND_PINK = '#E8487F';
@@ -50,7 +50,7 @@ const INK_700 = '#374151';
 const MUTED = '#6b7280';
 const LINE = '#e5e7eb';
 
-// Logo URL — Resend lets us link to any public image. Using the same flower
+// Logo URL, Resend lets us link to any public image. Using the same flower
 // mark that the live site uses as its favicon so the email feels on-brand
 // from the inbox preview onward.
 const LOGO_URL = `${SITE_URL}/icon-192.png`;
@@ -79,7 +79,7 @@ function money(n: number): string {
 
 // Build the unsubscribe link for a given recipient. Marketing emails (the
 // newsletter sender) MUST pass the recipient's email; transactional emails
-// (order confirmation, etc.) should NOT — they're not opt-in.
+// (order confirmation, etc.) should NOT, they're not opt-in.
 function unsubscribeFooter(recipient?: string): string {
   if (!recipient) return '';
   // Import lazily inside the function to avoid a top-level dep that would
@@ -95,7 +95,7 @@ function unsubscribeFooter(recipient?: string): string {
 }
 
 interface ShellOpts {
-  /** Marketing-mail recipient — adds the unsubscribe link to the footer.
+  /** Marketing-mail recipient, adds the unsubscribe link to the footer.
    *  Leave undefined for transactional mail (order confirmations etc.). */
   marketingRecipient?: string;
 }
@@ -130,8 +130,8 @@ function shell(inner: string, opts: ShellOpts = {}): string {
 }
 
 // The Resend SDK's `emails.send` returns `{ data, error }` and only throws on
-// transport/network failures. Validation errors — including the "domain not
-// verified" / "invalid from address" failure modes — arrive on `result.error`
+// transport/network failures. Validation errors, including the "domain not
+// verified" / "invalid from address" failure modes, arrive on `result.error`
 // and were silently swallowed by the old try/catch. We now surface every
 // failure to Sentry with stable tags so the alert rule for
 // `tags[resend_domain_unverified]:true` can fire before customers report
@@ -143,7 +143,7 @@ export function fromDomain(from: string): string {
   return bare ? bare[1] : 'unknown';
 }
 
-// Append a row to email_log for every send attempt. Best-effort — a logging
+// Append a row to email_log for every send attempt. Best-effort, a logging
 // failure must never break (or slow to the point of failing) an email send.
 // `resend_id` ties the row to later Resend webhook events (delivered/opened).
 async function recordEmailLog(
@@ -179,7 +179,7 @@ async function send(opts: {
   from?: string;
   /** 'batch' mail (cron digests, marketing) yields once the daily Resend
    *  free-tier budget is nearly spent. Defaults to 'transactional', which
-   *  always sends — order confirmations must never be dropped. */
+   *  always sends, order confirmations must never be dropped. */
   kind?: 'transactional' | 'batch';
 }): Promise<boolean> {
   if (!resend) {
@@ -187,7 +187,7 @@ async function send(opts: {
     await recordEmailLog(opts, 'skipped', { error: 'RESEND_API_KEY not set' });
     return false;
   }
-  // Free-tier guard: claim a slot in today's send budget. Fails open — a
+  // Free-tier guard: claim a slot in today's send budget. Fails open, a
   // quota-check error must never block an email from going out.
   try {
     const { data: allowed } = await withTimeout(
@@ -216,8 +216,7 @@ async function send(opts: {
       html: opts.html,
       replyTo: opts.replyTo,
     });
-    // If the timeout wins the race, the original call still settles later —
-    // swallow a late rejection so it isn't flagged as unhandled.
+    // If the timeout wins the race, the original call still settles later,     // swallow a late rejection so it isn't flagged as unhandled.
     sendCall.catch(() => {});
     const result = await Promise.race([
       sendCall,
@@ -301,7 +300,7 @@ function renderItemsTable(items: OrderItemLine[]): string {
 // ─── 1. Internal: new order (for the merchant) ──────────────────────────────
 export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
   const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:18px">New order — ${escapeHtml(order.order_number)}</h2>
+    <h2 style="margin:0 0 12px;font-size:18px">New order, ${escapeHtml(order.order_number)}</h2>
     <p style="margin:0 0 4px"><strong>Customer:</strong> ${escapeHtml(stripEmoji(order.first_name))} ${escapeHtml(stripEmoji(order.last_name))}</p>
     <p style="margin:0 0 4px"><strong>Phone:</strong> ${escapeHtml(order.phone)}</p>
     <p style="margin:0 0 4px"><strong>City:</strong> ${escapeHtml(order.city)}${order.province ? `, ${escapeHtml(order.province)}` : ''}</p>
@@ -313,7 +312,7 @@ export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
   const recipients = await getRecipientsForEvent('order.new');
   await send({
     to: recipients,
-    subject: `New order ${order.order_number} — ${money(order.total)}`,
+    subject: `New order ${order.order_number}, ${money(order.total)}`,
     html,
   });
 }
@@ -343,7 +342,7 @@ export async function sendContactMessageEmail(args: {
   await send({
     to: recipients,
     replyTo: args.email,
-    subject: `New message from ${args.name}${subjectLine ? ` — ${subjectLine}` : ''}`,
+    subject: `New message from ${args.name}${subjectLine ? `, ${subjectLine}` : ''}`,
     html,
   });
 }
@@ -387,7 +386,7 @@ export async function sendOrderConfirmationEmail(args: OrderSummary & { email: s
   `);
   await send({
     to: args.email,
-    subject: `Order ${args.order_number} confirmed — Yellow Pink`,
+    subject: `Order ${args.order_number} confirmed, Yellow Pink`,
     html,
   });
 }
@@ -396,10 +395,10 @@ export async function sendOrderConfirmationEmail(args: OrderSummary & { email: s
 export async function sendPaymentReceivedEmail(args: { email: string; first_name: string; order_number: string; total: number; method: string }) {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Payment received</h2>
-    <p>Hi ${escapeHtml(stripEmoji(args.first_name))} — we've received your ${escapeHtml(args.method)} payment of <strong>${money(args.total)}</strong> for order <strong>${escapeHtml(args.order_number)}</strong>.</p>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))}, we've received your ${escapeHtml(args.method)} payment of <strong>${money(args.total)}</strong> for order <strong>${escapeHtml(args.order_number)}</strong>.</p>
     <p>We're now preparing your order for shipment.</p>
   `);
-  await send({ to: args.email, subject: `Payment received — ${args.order_number}`, html });
+  await send({ to: args.email, subject: `Payment received, ${args.order_number}`, html });
 }
 
 // ─── 4. Customer: shipped ────────────────────────────────────────────────────
@@ -409,34 +408,34 @@ export async function sendShippedEmail(args: { email: string; first_name: string
     : '';
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Your order is on its way</h2>
-    <p>Hi ${escapeHtml(stripEmoji(args.first_name))} — your order <strong>${escapeHtml(args.order_number)}</strong> just shipped.</p>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))}, your order <strong>${escapeHtml(args.order_number)}</strong> just shipped.</p>
     ${trackInfo}
     <p style="margin:20px 0 0">
       <a href="${SITE_URL}/track" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track shipment</a>
     </p>
   `);
-  await send({ to: args.email, subject: `Shipped — ${args.order_number}`, html });
+  await send({ to: args.email, subject: `Shipped, ${args.order_number}`, html });
 }
 
 // ─── 5. Customer: delivered ─────────────────────────────────────────────────
 export async function sendDeliveredEmail(args: { email: string; first_name: string; order_number: string }) {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Delivered</h2>
-    <p>Hi ${escapeHtml(stripEmoji(args.first_name))} — your order <strong>${escapeHtml(args.order_number)}</strong> has been delivered. We hope you love it!</p>
-    <p>Got a minute? <a href="${SITE_URL}/account/orders" style="color:${BRAND_PINK}">Leave a review</a> — it really helps other shoppers.</p>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))}, your order <strong>${escapeHtml(args.order_number)}</strong> has been delivered. We hope you love it!</p>
+    <p>Got a minute? <a href="${SITE_URL}/account/orders" style="color:${BRAND_PINK}">Leave a review</a>, it really helps other shoppers.</p>
   `);
-  await send({ to: args.email, subject: `Delivered — ${args.order_number}`, html });
+  await send({ to: args.email, subject: `Delivered, ${args.order_number}`, html });
 }
 
 // ─── 6. Customer: cancelled ─────────────────────────────────────────────────
 export async function sendCancelledEmail(args: { email: string; first_name: string; order_number: string; reason?: string }) {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Order cancelled</h2>
-    <p>Hi ${escapeHtml(stripEmoji(args.first_name))} — order <strong>${escapeHtml(args.order_number)}</strong> has been cancelled.</p>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))}, order <strong>${escapeHtml(args.order_number)}</strong> has been cancelled.</p>
     ${args.reason ? `<p>Reason: ${escapeHtml(args.reason)}</p>` : ''}
     <p>If you didn't request this, reply to this email and we'll look into it.</p>
   `);
-  await send({ to: args.email, subject: `Cancelled — ${args.order_number}`, html, replyTo: OWNER_EMAIL });
+  await send({ to: args.email, subject: `Cancelled, ${args.order_number}`, html, replyTo: OWNER_EMAIL });
 }
 
 // ─── 7. Customer: welcome (post-signup) ─────────────────────────────────────
@@ -452,7 +451,7 @@ export async function sendWelcomeEmail(args: { email: string; first_name?: strin
 export async function sendStaffTempPasswordEmail(args: { email: string; name: string; tempPassword: string }) {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Your Yellow Pink admin access</h2>
-    <p>Hi ${escapeHtml(args.name)} — your temporary password is:</p>
+    <p>Hi ${escapeHtml(args.name)}, your temporary password is:</p>
     <p style="margin:16px 0;padding:12px 16px;background:#f3f4f6;border-radius:6px;font-family:monospace;font-size:18px"><strong>${escapeHtml(args.tempPassword)}</strong></p>
     <p>Log in at <a href="${SITE_URL}/admin" style="color:${BRAND_PINK}">${SITE_URL}/admin</a> and change it right away from your profile page.</p>
   `);
@@ -481,15 +480,15 @@ export async function sendReviewerApplicationEmail(args: {
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/reviewers" style="color:${BRAND_PINK};font-weight:600">→ Review &amp; approve</a></p>
   `);
   const recipients = await getRecipientsForEvent('order.new');
-  await send({ to: recipients, subject: `Reviewer application — ${args.name}`, html, kind: 'batch' });
+  await send({ to: recipients, subject: `Reviewer application, ${args.name}`, html, kind: 'batch' });
 }
 
 // Doctor notification once the owner approves their application.
 export async function sendReviewerApprovedEmail(args: { name: string; email: string }): Promise<void> {
   const html = shell(`
-    <h2 style="margin:0 0 12px;font-size:18px">You're approved — welcome to the board</h2>
+    <h2 style="margin:0 0 12px;font-size:18px">You're approved, welcome to the board</h2>
     <p>Hi ${escapeHtml(args.name)}, thank you for joining the Yellow Pink Medical Review Board.</p>
-    <p>You can now sign in to your reviewer dashboard to complete your profile and see the articles credited to you. We'll email you a one-time sign-in link each time — no password to remember.</p>
+    <p>You can now sign in to your reviewer dashboard to complete your profile and see the articles credited to you. We'll email you a one-time sign-in link each time, no password to remember.</p>
     <p style="margin:20px 0 0"><a href="${SITE_URL}/reviewer/login" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Sign in to your dashboard →</a></p>
     <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Sign in at ${SITE_URL}/reviewer/login using this email address (${escapeHtml(args.email)}).</p>
   `);
@@ -508,10 +507,10 @@ export async function sendAbandonedCartEmail(args: {
   discount_pct?: number;
 }): Promise<void> {
   const intro = args.tier === 1
-    ? `Hi${args.first_name ? ` ${escapeHtml(stripEmoji(args.first_name))}` : ''} — you left some things in your cart. They're still here whenever you're ready.`
+    ? `Hi${args.first_name ? ` ${escapeHtml(stripEmoji(args.first_name))}` : ''}, you left some things in your cart. They're still here whenever you're ready.`
     : args.tier === 2
-    ? `Just a friendly nudge — your cart's still waiting. Tap the button below to pick up where you left off.`
-    : `Last chance — your cart's about to expire.${args.discount_code ? ` Use code <strong>${escapeHtml(args.discount_code)}</strong> for ${args.discount_pct ?? 10}% off when you complete your order.` : ''}`;
+    ? `Just a friendly nudge, your cart's still waiting. Tap the button below to pick up where you left off.`
+    : `Last chance, your cart's about to expire.${args.discount_code ? ` Use code <strong>${escapeHtml(args.discount_code)}</strong> for ${args.discount_pct ?? 10}% off when you complete your order.` : ''}`;
 
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">${args.tier === 3 ? 'Last chance' : 'You left something behind'}</h2>
@@ -525,7 +524,7 @@ export async function sendAbandonedCartEmail(args: {
   await send({
     to: args.email,
     subject: args.tier === 3
-      ? `Last chance — your cart is about to expire`
+      ? `Last chance, your cart is about to expire`
       : args.tier === 2
       ? `Still thinking it over? Your cart's waiting`
       : `You left some things in your cart`,
@@ -545,7 +544,7 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
     <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">You're in</h2>
     <p style="margin:0 0 14px">Thanks for joining the Yellow Pink list. Here's what you can expect:</p>
     <ul style="margin:0 0 20px;padding-left:20px;color:${INK_700}">
-      <li style="margin-bottom:6px"><strong>One email a fortnight</strong> — we never blast.</li>
+      <li style="margin-bottom:6px"><strong>One email a fortnight</strong>, we never blast.</li>
       <li style="margin-bottom:6px">New drops, restock alerts, and a tightly-edited offer or two.</li>
       <li style="margin-bottom:6px">Pakistan-specific routine tips from our editorial team.</li>
     </ul>
@@ -569,7 +568,7 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
   `, { marketingRecipient: args.email });
   await send({
     to: args.email,
-    subject: 'Welcome to Yellow Pink — your fortnightly edit starts here',
+    subject: 'Welcome to Yellow Pink, your fortnightly edit starts here',
     html,
     kind: 'batch',
   });
@@ -614,7 +613,7 @@ export async function sendReviewRequestEmail(args: {
   first_name?: string;
   order_number: string;
   products: { name: string; slug: string; image_url?: string | null }[];
-  /** Loyalty points granted per approved review — named explicitly in the
+  /** Loyalty points granted per approved review, named explicitly in the
    *  email when > 0 (a concrete "earn 25 points" reads far stronger than a
    *  vague "earn points" and is what actually lifts review volume). */
   rewardPoints?: number;
@@ -638,15 +637,15 @@ export async function sendReviewRequestEmail(args: {
 
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">How did it go?</h2>
-    <p style="margin:0 0 14px">Hi ${escapeHtml(args.first_name ?? 'there')} — your order <strong>${escapeHtml(args.order_number)}</strong> landed a few days ago, so you've had a chance to try it out.</p>
-    <p style="margin:0 0 18px">A quick, honest review helps other shoppers in Pakistan choose well — and it only takes a minute.</p>
+    <p style="margin:0 0 14px">Hi ${escapeHtml(args.first_name ?? 'there')}, your order <strong>${escapeHtml(args.order_number)}</strong> landed a few days ago, so you've had a chance to try it out.</p>
+    <p style="margin:0 0 18px">A quick, honest review helps other shoppers in Pakistan choose well, and it only takes a minute.</p>
     <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 8px">${rows}</table>
     ${pts > 0 ? `
     <p style="margin:18px 0 0;padding:12px 16px;background:#fdf2f8;border:1px solid #fbcfe8;border-radius:10px;color:#9d174d;font-size:14px;font-weight:600">
-      ★ Earn ${pts} loyalty points for each approved review — our thank-you for sharing.
+      ★ Earn ${pts} loyalty points for each approved review, our thank-you for sharing.
     </p>` : `
     <p style="margin:22px 0 0;color:${MUTED};font-size:12px;line-height:1.5">
-      Approved reviews earn loyalty points — a small thank-you for sharing.
+      Approved reviews earn loyalty points, a small thank-you for sharing.
     </p>`}
   `, { marketingRecipient: args.email });
   await send({
@@ -659,7 +658,7 @@ export async function sendReviewRequestEmail(args: {
 
 // ─── 11b. Owner: stuck-payment alert (background job) ───────────────────────
 // Orders that started an online payment but never completed sit in
-// `payment_pending` indefinitely — invisible unless someone scans the orders
+// `payment_pending` indefinitely, invisible unless someone scans the orders
 // list. This digest surfaces them so the owner can cancel or follow up before
 // the customer re-pays and gets double-charged.
 export async function sendStuckPaymentsAlertEmail(args: {
@@ -675,17 +674,17 @@ export async function sendStuckPaymentsAlertEmail(args: {
   ).join('');
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Payments stuck pending</h2>
-    <p>${args.orders.length} order${args.orders.length === 1 ? '' : 's'} have been waiting on an online payment for over 2 hours — the customer likely abandoned the gateway or it timed out. Check before they re-pay (and get double-charged), then cancel or follow up.</p>
+    <p>${args.orders.length} order${args.orders.length === 1 ? '' : 's'} have been waiting on an online payment for over 2 hours, the customer likely abandoned the gateway or it timed out. Check before they re-pay (and get double-charged), then cancel or follow up.</p>
     <table style="width:100%;border-collapse:collapse;margin-top:12px">
       <tr><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Order</th><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Customer</th><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Method</th><th align="right" style="padding:6px 8px;font-size:12px;color:#6b7280">Total</th><th align="right" style="padding:6px 8px;font-size:12px;color:#6b7280">Age</th></tr>
       ${rows}
     </table>
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/orders?status=payment_pending" style="color:${BRAND_PINK};font-weight:600">→ Review pending payments</a></p>
   `);
-  await send({ to: OWNER_EMAIL, subject: `Action needed — ${args.orders.length} payment${args.orders.length === 1 ? '' : 's'} stuck pending`, html, kind: 'batch' });
+  await send({ to: OWNER_EMAIL, subject: `Action needed, ${args.orders.length} payment${args.orders.length === 1 ? '' : 's'} stuck pending`, html, kind: 'batch' });
 }
 
-// Broken-link (404) digest — the daily cron passes only NEW, unresolved misses
+// Broken-link (404) digest, the daily cron passes only NEW, unresolved misses
 // (already deduped per-path), so this just renders. No-op when the list is
 // empty, so a clean day is silent.
 export async function sendBrokenLinksDigestEmail(args: {
@@ -703,7 +702,7 @@ export async function sendBrokenLinksDigestEmail(args: {
   const n = args.items.length;
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">${n} new broken link${n === 1 ? '' : 's'} (404)</h2>
-    <p>${n === 1 ? 'A URL' : 'These URLs'} started returning 404 — a visitor or crawler hit a dead link.
+    <p>${n === 1 ? 'A URL' : 'These URLs'} started returning 404, a visitor or crawler hit a dead link.
        Review and one-click redirect any that should point somewhere:</p>
     <table style="width:100%;border-collapse:collapse;margin-top:12px">
       <tr><th style="text-align:left;padding:6px 8px;font-size:11px;color:#6b7280;text-transform:uppercase">Path</th>
@@ -712,7 +711,7 @@ export async function sendBrokenLinksDigestEmail(args: {
       ${rows}
     </table>
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/broken-links" style="color:${BRAND_PINK};font-weight:600">→ Review &amp; fix in admin</a></p>
-    <p style="margin:12px 0 0;font-size:12px;color:#9ca3af">A 404 for genuinely removed content is fine to ignore — this digest just makes sure none slip past you.</p>
+    <p style="margin:12px 0 0;font-size:12px;color:#9ca3af">A 404 for genuinely removed content is fine to ignore, this digest just makes sure none slip past you.</p>
   `);
   const recipients = await getRecipientsForEvent('seo.broken_links');
   await send({ to: recipients, subject: `${n} new broken link${n === 1 ? '' : 's'} on the store`, html, kind: 'batch' });

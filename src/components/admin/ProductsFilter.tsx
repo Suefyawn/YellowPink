@@ -99,7 +99,7 @@ export function ProductsFilter({ total, statusCounts, categories, brands }: Prop
 
   return (
     <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {/* Status tabs — manage draft vs live at a glance. */}
+      {/* Status tabs, manage draft vs live at a glance. */}
       <div className="adm-status-tabs" style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e5e7eb', flexWrap: 'wrap' }}>
         {STATUS_TABS.map(t => {
           const active = status === t.value;
@@ -140,7 +140,7 @@ export function ProductsFilter({ total, statusCounts, categories, brands }: Prop
           }}
         />
 
-        {/* Category — taxon groups + their leaves, plus any extra catalogue values. */}
+        {/* Category, taxon groups + their leaves, plus any extra catalogue values. */}
         <select value={categoryValue} onChange={e => setParam('category', e.target.value)} style={selectStyle} aria-label="Filter by category">
           <option value="">All categories</option>
           {TAXONS.map(tx => (

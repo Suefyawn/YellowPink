@@ -86,7 +86,7 @@ export default async function EditBrandPage({
 
         <div style={{ marginBottom: 14 }}>
           <label style={lbl}>Description</label>
-          <textarea name="description" defaultValue={b.description ?? ''} rows={4} style={{ ...inp, resize: 'vertical' }} placeholder="One short paragraph for the landing-page hero. Speak to who the brand is and what it's known for — keep it factual." />
+          <textarea name="description" defaultValue={b.description ?? ''} rows={4} style={{ ...inp, resize: 'vertical' }} placeholder="One short paragraph for the landing-page hero. Speak to who the brand is and what it's known for, keep it factual." />
           <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>If empty, the page falls back to a generic one-liner.</p>
         </div>
 
@@ -106,13 +106,13 @@ export default async function EditBrandPage({
         <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div><label style={lbl}>Sort order</label><input name="sort_order" type="number" defaultValue={b.sort_order} style={inp} /></div>
           <div /> {/* spacer */}
-          <div><label style={lbl}>SEO title</label><input name="seo_title" defaultValue={b.seo_title ?? ''} style={inp} placeholder="defaults to “Brand — Shop”" /></div>
+          <div><label style={lbl}>SEO title</label><input name="seo_title" defaultValue={b.seo_title ?? ''} style={inp} placeholder="defaults to “Brand, Shop”" /></div>
           <div><label style={lbl}>SEO description</label><input name="seo_description" defaultValue={b.seo_description ?? ''} style={inp} /></div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, paddingTop: 12, borderTop: '1px solid #f3f4f6' }}>
           <p style={{ margin: 0, fontSize: '0.6875rem', color: '#9ca3af' }}>
-            The slug <code>{b.slug}</code> is frozen at creation — changing it would orphan the products that join by this name.
+            The slug <code>{b.slug}</code> is frozen at creation, changing it would orphan the products that join by this name.
           </p>
           <button type="submit" style={{ padding: '8px 18px', background: '#C5286A', color: 'white', border: 'none', borderRadius: 7, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>Save</button>
         </div>

@@ -1,5 +1,5 @@
 // ============================================================================
-// POST /api/payments/jazzcash — initiate a JazzCash hosted-checkout for an
+// POST /api/payments/jazzcash, initiate a JazzCash hosted-checkout for an
 // existing order. The order must be in `payment_pending` status (placed via
 // the place_order RPC with pay_method='jazzcash').
 //

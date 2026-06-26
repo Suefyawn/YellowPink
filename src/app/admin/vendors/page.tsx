@@ -37,7 +37,7 @@ export default async function VendorsPage({
   const { error: feedbackError } = (await searchParams) ?? {};
 
   const admin = supabaseAdmin();
-  // vendors / vendor_settlements RLS has no policy — admin reads need service role.
+  // vendors / vendor_settlements RLS has no policy, admin reads need service role.
   const [{ data: vendorData }, { data: settlementData }] = await Promise.all([
     admin.from('vendors').select('*').order('created_at', { ascending: false }),
     admin.from('vendor_settlements').select('*').order('created_at', { ascending: false }).limit(200),
@@ -102,8 +102,8 @@ export default async function VendorsPage({
           <div>
             <label htmlFor="vendor-settlement_direction" style={lbl}>Who collects payment</label>
             <select id="vendor-settlement_direction" name="settlement_direction" defaultValue="we_collect" style={{ ...inp, width: 200 }}>
-              <option value="we_collect">We collect — we pay the vendor</option>
-              <option value="vendor_collects">Vendor collects — they pay us</option>
+              <option value="we_collect">We collect, we pay the vendor</option>
+              <option value="vendor_collects">Vendor collects, they pay us</option>
             </select>
           </div>
           <div style={{ flex: 1, minWidth: 140 }}>
@@ -123,7 +123,7 @@ export default async function VendorsPage({
       <div style={{ ...card, marginBottom: 32 }}>
         {vendors.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            No vendors yet — add your first supplier above.
+            No vendors yet, add your first supplier above.
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -193,7 +193,7 @@ export default async function VendorsPage({
       {/* ── Payouts ─────────────────────────────────────────────────────── */}
       <h2 style={{ margin: '0 0 4px', fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>Payouts</h2>
       <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
-        One row per order dispatched to a vendor — the margin earned and the amount still to settle.
+        One row per order dispatched to a vendor, the margin earned and the amount still to settle.
       </p>
       {settlements.length === 0 ? (
         <div style={{ ...card, padding: '48px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>

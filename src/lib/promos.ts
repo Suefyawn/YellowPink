@@ -1,4 +1,4 @@
-// Promo resolver — given the visitor's audience, returns the single best-fit
+// Promo resolver, given the visitor's audience, returns the single best-fit
 // promo for each slot (top_bar, hero_strip) for the current request. Falls
 // back to site_settings if the `promos` table is missing / empty, so the
 // storefront keeps something on the bar even before the merchant edits any

@@ -6,7 +6,7 @@
 // live in src/styles/globals.css under `:root[data-theme="<key>"]`.
 //
 // To add a theme: add an entry here AND a matching block in globals.css.
-// Keep the two in sync — this registry drives the admin picker, the CSS
+// Keep the two in sync, this registry drives the admin picker, the CSS
 // drives the actual colours.
 
 export interface StoreTheme {

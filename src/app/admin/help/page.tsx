@@ -11,7 +11,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 // of truth (project rule: keep the manual accurate); this page reads it at
 // request time rather than duplicating its content. The file is force-included
 // in the serverless trace for this route via `outputFileTracingIncludes` in
-// next.config.ts — without that, fs can't find it on Vercel.
+// next.config.ts, without that, fs can't find it on Vercel.
 export default async function AdminHelpPage() {
   // Staff-only: the manual is internal operating documentation. getStaffSession
   // returns null when unauthenticated, so bounce anonymous hits to the login.
@@ -33,7 +33,7 @@ export default async function AdminHelpPage() {
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>User manual</h1>
         <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
           How the storefront works and how to run the store. This is the same manual that ships with the
-          codebase (<code>docs/USER-MANUAL.md</code>) — it&apos;s kept up to date as features change.
+          codebase (<code>docs/USER-MANUAL.md</code>), it&apos;s kept up to date as features change.
         </p>
       </div>
 

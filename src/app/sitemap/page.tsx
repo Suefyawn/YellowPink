@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: 'Sitemap',
     description:
-      'Browse everything at Yellow Pink in one place — shop categories, brands, collections and our beauty & wellness journal. Authentic imported products with cash on delivery across Pakistan.',
+      'Browse everything at Yellow Pink in one place, shop categories, brands, collections and our beauty & wellness journal. Authentic imported products with cash on delivery across Pakistan.',
     path: '/sitemap',
   });
 }
@@ -64,7 +64,7 @@ export default async function HtmlSitemapPage() {
   // Every product, grouped by category. The whole point of this HTML hub is
   // crawl/indexing: linking each PDP directly here puts every product one click
   // from a crawlable page, so nothing is buried on page 2+ of a paginated
-  // category listing (the usual cause of "discovered/crawled — not indexed").
+  // category listing (the usual cause of "discovered/crawled, not indexed").
   const productsByCategory = new Map<string, typeof products>();
   for (const p of products) {
     const key = p.category || 'Other';
@@ -84,7 +84,7 @@ export default async function HtmlSitemapPage() {
   }
   const blogGroups = [...postsByCategory.entries()].sort((a, b) => a[0].localeCompare(b[0]));
 
-  // Published collections + CMS pages (direct query — no dedicated helper).
+  // Published collections + CMS pages (direct query, no dedicated helper).
   let collections: { slug: string; title: string }[] = [];
   let cmsPages: { slug: string; title: string }[] = [];
   if (!isDemo) {
@@ -109,7 +109,7 @@ export default async function HtmlSitemapPage() {
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Everything in one place</Overline>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500, letterSpacing: '-0.025em', marginBottom: 8 }}>Sitemap</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 640, marginBottom: 40 }}>
-            Browse every part of Yellow Pink — shop categories, brands, collections and our journal.
+            Browse every part of Yellow Pink, shop categories, brands, collections and our journal.
           </p>
 
           {/* Main pages */}
@@ -170,7 +170,7 @@ export default async function HtmlSitemapPage() {
             </div>
           )}
 
-          {/* All products — flat link hub so every PDP is one click from a
+          {/* All products, flat link hub so every PDP is one click from a
               crawlable page (helps Google index the full catalogue). */}
           {productGroups.length > 0 && (
             <div style={sectionStyle}>

@@ -1,5 +1,5 @@
 // Shared Sentry beforeSend scrubber. Customer PII (emails, Pakistani phone
-// numbers) routinely appears in error messages and breadcrumbs — e.g. Supabase
+// numbers) routinely appears in error messages and breadcrumbs, e.g. Supabase
 // errors quoting a row, or fetch breadcrumbs carrying ?email= params. Redact
 // the patterns rather than trying to enumerate every field that might carry
 // them. Replay-side masking is configured separately in sentry.client.config.

@@ -8,7 +8,7 @@ import { brandPlusName } from '@/lib/product-display';
  * Visually-hidden aria-live region that announces cart additions /
  * removals to screen readers. Without this, a sighted user gets the
  * "Added ✓" button flash + the cart drawer opening, but a VoiceOver /
- * NVDA user gets nothing — there's no audible confirmation that an
+ * NVDA user gets nothing, there's no audible confirmation that an
  * add-to-cart click did anything.
  *
  * Mounted once in app/layout.tsx so it lives outside any modal.

@@ -1,22 +1,22 @@
 // ============================================================================
 // Consolidated daily cron. Runs these jobs sequentially:
-//   1. abandoned-cart       — drip emails to carts left for 24 h / 72 h
-//   2. courier-sync         — poll courier APIs for in-transit shipments
-//   3. review-requests      — ask for reviews on orders delivered 3–30 days ago
-//   4. stuck-payments       — flag orders stuck mid-payment for follow-up
-//   5. not-found-digest     — email the owner newly-broken (404) URLs
-//   6. analytics-refresh    — refresh PostHog + Sentry dashboard widgets
+//   1. abandoned-cart      , drip emails to carts left for 24 h / 72 h
+//   2. courier-sync        , poll courier APIs for in-transit shipments
+//   3. review-requests     , ask for reviews on orders delivered 3-30 days ago
+//   4. stuck-payments      , flag orders stuck mid-payment for follow-up
+//   5. not-found-digest    , email the owner newly-broken (404) URLs
+//   6. analytics-refresh   , refresh PostHog + Sentry dashboard widgets
 //
 // Removed: low-stock + back-in-stock. The store runs a dropship model, so
 // shelf stock isn't tracked and there's nothing to restock-alert or notify
-// watchers about — those jobs (and their email senders + routes) were deleted.
+// watchers about, those jobs (and their email senders + routes) were deleted.
 //
 // Vercel Hobby allows only 2 cron entries per project and only at
 // daily-or-less-frequent schedules. The previous setup (three crons,
 // one hourly) tripped both limits, so the deploy was rejected before a
 // build event ever fired. This route consolidates everything into one
 // vercel.json cron entry and delegates to the three existing route
-// handlers via in-process fetch — keeps the per-job logic untouched.
+// handlers via in-process fetch, keeps the per-job logic untouched.
 //
 // Upgrade path: when the project moves to Vercel Pro, split this back
 // into separate crons (e.g. `abandoned-cart` daily, `courier-sync`
@@ -27,7 +27,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-// Bump the function timeout — courier-sync alone can touch up to 200
+// Bump the function timeout, courier-sync alone can touch up to 200
 // shipments × 1 API round-trip each; combined with the two email jobs
 // the default 10 s budget is too tight.
 export const maxDuration = 60;
@@ -54,7 +54,7 @@ async function runJob(req: NextRequest, path: string): Promise<SubJobResult> {
     const res = await fetch(url, {
       method: 'GET',
       headers: { authorization: req.headers.get('authorization') ?? '' },
-      // No caching — these are mutating jobs.
+      // No caching, these are mutating jobs.
       cache: 'no-store',
     });
     let body: unknown = null;

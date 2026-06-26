@@ -1,6 +1,6 @@
 // Fallback FAQ for products that don't have an admin-authored one. These are
-// store-level facts (authenticity, COD, delivery, returns) — true for every
-// product and deliberately free of any product-specific claim — so they're safe
+// store-level facts (authenticity, COD, delivery, returns), true for every
+// product and deliberately free of any product-specific claim, so they're safe
 // to show and to emit as FAQPage structured data on every PDP. Deliberately
 // avoids quoting a free-shipping threshold, which is now an owner-toggleable
 // setting; "calculated at checkout" stays accurate either way.
@@ -21,11 +21,11 @@ const deliveryRange = (d?: { min: number; max: number } | null) =>
 const storeFactFaq = (opts?: ProductFaqOptions): ProductFaqItem[] => [
   {
     q: 'Is this product 100% authentic?',
-    a: 'Yes. Every product at Yellow Pink is genuine, imported and sourced from authorised distributors — never counterfeit.',
+    a: 'Yes. Every product at Yellow Pink is genuine, imported and sourced from authorised distributors, never counterfeit.',
   },
   {
     q: 'Do you deliver across Pakistan?',
-    a: `Yes — we ship nationwide with cash on delivery (COD) available everywhere. Orders typically arrive in ${deliveryRange(opts?.estimatedDays)} working days.`,
+    a: `Yes, we ship nationwide with cash on delivery (COD) available everywhere. Orders typically arrive in ${deliveryRange(opts?.estimatedDays)} working days.`,
   },
   {
     q: 'How is shipping charged?',

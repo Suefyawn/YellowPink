@@ -48,7 +48,7 @@ export function PHProvider({ children }: { children: React.ReactNode }) {
       capture_pageleave: true,
       person_profiles: 'identified_only',
       // Drop every event that happens inside /admin. Staff working in the
-      // dashboard is not real storefront traffic — capturing it skews the
+      // dashboard is not real storefront traffic, capturing it skews the
       // pageview / top-pages / funnel analytics the owner reads.
       before_send: (event) => {
         if (event) {

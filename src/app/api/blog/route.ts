@@ -1,5 +1,5 @@
 // ============================================================================
-// /api/blog — collection endpoints for the blog management API.
+// /api/blog, collection endpoints for the blog management API.
 //   GET  → list posts (newest first; filter by category / featured / search)
 //   POST → create a post
 // See src/lib/blog-api.ts for auth + validation. Authorize with
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status });
   }
 
-  // Blog posts go live immediately — nudge the search engines (best-effort).
+  // Blog posts go live immediately, nudge the search engines (best-effort).
   await submitToSearchEnginesQuietly([`/blog/${(data as { slug: string }).slug}`]);
   return NextResponse.json({ post: data }, { status: 201 });
 }

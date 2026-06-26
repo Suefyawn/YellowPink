@@ -53,7 +53,7 @@ export function AddReviewToggle({ products }: { products: ProductOption[] }) {
               <select name="product_id" required style={{ ...fieldStyle, width: '100%' }} defaultValue="">
                 <option value="" disabled>Select a product…</option>
                 {products.map(p => (
-                  <option key={p.id} value={p.id}>{p.brand} — {p.name}</option>
+                  <option key={p.id} value={p.id}>{p.brand}, {p.name}</option>
                 ))}
               </select>
             </div>

@@ -1,5 +1,5 @@
 // ============================================================================
-// SEO helpers — JSON-LD generators, OG/Twitter card builders, canonical URLs.
+// SEO helpers, JSON-LD generators, OG/Twitter card builders, canonical URLs.
 // Phase 1.10. Used by app/layout.tsx, product/[slug]/page.tsx, blog/[slug]/page.tsx.
 // ============================================================================
 
@@ -15,7 +15,7 @@ import type { MedicalReviewer } from '@/lib/eeat';
 //
 // normalizeOrigin() guarantees a scheme. Both NEXT_PUBLIC_SITE_URL and
 // VERCEL_PROJECT_PRODUCTION_URL are routinely set as a bare host
-// ("www.yellowpink.pk") — and a scheme-less value makes `new URL()` throw,
+// ("www.yellowpink.pk"), and a scheme-less value makes `new URL()` throw,
 // which breaks the production build (metadataBase in app/layout.tsx).
 function normalizeOrigin(value: string | undefined | null): string | null {
   const v = value?.trim().replace(/\/+$/, '');
@@ -70,7 +70,7 @@ export function pageMeta(input: PageMetaInput): Metadata {
   // If the caller didn't supply an explicit image, leave `images` undefined so
   // Next's file-convention auto-discovery picks up the generated
   // `app/opengraph-image.tsx` (1200x630 branded fallback). Setting any value
-  // here — even a default — would shadow that and force every page to use the
+  // here, even a default, would shadow that and force every page to use the
   // same image.
   const image = input.image;
   const ogImages = image ? [{ url: image }] : undefined;
@@ -145,11 +145,11 @@ function contactPointLd(contact: OrgContact) {
 
 // The single canonical merchant node, rendered site-wide by the root
 // layout. `sameAs` is the merchant's social profiles and `contact` the
-// store phone/email — both owner-managed via admin Settings. Empty values
+// store phone/email, both owner-managed via admin Settings. Empty values
 // are omitted rather than emitted as null/empty (which markup validators
 // flag as errors).
 //
-// @type is `OnlineStore` — the schema.org subtype of Organization for an
+// @type is `OnlineStore`, the schema.org subtype of Organization for an
 // online-only merchant. We deliberately do NOT use LocalBusiness: that type
 // requires a physical address + geo, and Yellow Pink is an online store with
 // nationwide COD and no storefront, so a LocalBusiness node would be
@@ -171,8 +171,7 @@ export function organizationLd(sameAs: string[] = [], contact: OrgContact = {}) 
     description:
       'Imported beauty, skincare and wellness products delivered across Pakistan with cash-on-delivery.',
     areaServed: { '@type': 'Country', name: 'Pakistan' },
-    // NB: currenciesAccepted / paymentAccepted are LocalBusiness properties —
-    // not valid on Organization/OnlineStore (Google + Semrush flag them as
+    // NB: currenciesAccepted / paymentAccepted are LocalBusiness properties,     // not valid on Organization/OnlineStore (Google + Semrush flag them as
     // unrecognised markup), so they're deliberately omitted here. Payment
     // methods belong on the Offer/Product schema, where we already set price
     // currency.
@@ -191,7 +190,7 @@ export function websiteLd() {
     publisher: { '@id': ORGANIZATION_ID },
     potentialAction: {
       '@type': 'SearchAction',
-      // EntryPoint form — the current schema.org/Google recommendation;
+      // EntryPoint form, the current schema.org/Google recommendation;
       // a bare string `target` is the legacy syntax.
       target: {
         '@type': 'EntryPoint',
@@ -202,7 +201,7 @@ export function websiteLd() {
   };
 }
 
-// Reviews used for individual `review` entries — up to 5, most recent / highest signal.
+// Reviews used for individual `review` entries, up to 5, most recent / highest signal.
 // Only `rating` is required (the aggregate computes from that); the rest are
 // nice-to-have so callers that only have ratings can still pass through.
 type ReviewForLd = Pick<ProductReview, 'rating'>
@@ -232,7 +231,7 @@ export function productLd(
   const anyVariantInStock = product.track_inventory === false
     || enabledVariants.some(v => v.stock > 0) || product.stock > 0;
 
-  // Shipping + return policies — these qualify the listing for richer
+  // Shipping + return policies, these qualify the listing for richer
   // free-shipping / 30-day-returns annotations in Google Shopping.
   const shippingDetails = {
     '@type': 'OfferShippingDetails',
@@ -296,7 +295,7 @@ export function productLd(
         hasMerchantReturnPolicy: returnPolicy,
       };
 
-  // Top reviews (up to 5) for the `review` array — Google uses these to
+  // Top reviews (up to 5) for the `review` array, Google uses these to
   // surface review snippets even when there's no aggregate yet.
   const topReviews = reviews
     .slice(0, 5)
@@ -321,7 +320,7 @@ export function productLd(
     description: product.description ?? undefined,
     image: product.image_url ?? undefined,
     sku: product.id,
-    // Omit `brand` entirely when the product has none — emitting
+    // Omit `brand` entirely when the product has none, emitting
     // `{ name: null }` is an invalid-markup error. Many imported products
     // (generic/local SKUs) legitimately have no brand.
     brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
@@ -341,7 +340,7 @@ export function productLd(
 }
 
 // A byline naming a team/desk/staff is an Organization; a personal name is a
-// Person. Picking the right @type matters — Google's Article guidance wants a
+// Person. Picking the right @type matters, Google's Article guidance wants a
 // Person for individual authors (E-E-A-T), but flags a Person whose name is
 // clearly an organisation. Defaults to Organization when no author is set.
 function articleAuthorLd(author?: string | null) {
@@ -368,7 +367,7 @@ export function articleLd(post: BlogPost, opts?: { reviewer?: MedicalReviewer | 
     author: articleAuthorLd(post.author),
     // E-E-A-T: a credentialed medical reviewer is the strongest trust signal
     // for YMYL health content. Emitted only when the store has configured a
-    // real reviewer (see lib/eeat.ts) — never fabricated.
+    // real reviewer (see lib/eeat.ts), never fabricated.
     ...(reviewer
       ? {
           reviewedBy: {
@@ -423,8 +422,7 @@ export function itemListLd(
   items: Array<{ name: string; path: string }>,
 ) {
   // A summary-page ItemList: each entry is a ListItem pointing at its detail
-  // page via `url`. We deliberately do NOT embed partial Product objects —
-  // an incomplete Product (no offers/review/rating) is flagged as a markup
+  // page via `url`. We deliberately do NOT embed partial Product objects,   // an incomplete Product (no offers/review/rating) is flagged as a markup
   // error by validators, and a blog post is not a Product at all. The full
   // Product schema lives on each PDP via `productLd`.
   return {
@@ -441,7 +439,7 @@ export function itemListLd(
   };
 }
 
-// FAQ schema — pass an array of plain Q/A pairs. Google will surface the
+// FAQ schema, pass an array of plain Q/A pairs. Google will surface the
 // matching pairs as expandable cards in the SERP for the source URL.
 export function faqLd(items: { question: string; answer: string }[]) {
   return {
@@ -458,7 +456,7 @@ export function faqLd(items: { question: string; answer: string }[]) {
   };
 }
 
-// Lightweight CMS-page Article schema — for editorial /page/* content that
+// Lightweight CMS-page Article schema, for editorial /page/* content that
 // isn't a blog post (about, returns policy, shipping policy, etc.). Optional
 // `dateModified` if the CMS exposes it; falls back to `datePublished`.
 export function pageArticleLd(input: {

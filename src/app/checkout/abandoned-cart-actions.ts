@@ -2,7 +2,7 @@
 
 // Anon-callable server action to capture an abandoned cart. Called from
 // CheckoutPage when the user enters their email and has at least one cart
-// item. Idempotent — the underlying RPC upserts on email.
+// item. Idempotent, the underlying RPC upserts on email.
 
 import { headers } from 'next/headers';
 import { supabase } from '@/lib/supabase';

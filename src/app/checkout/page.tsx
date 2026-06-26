@@ -5,7 +5,7 @@ import { parseBankAccounts } from '@/lib/bank-accounts';
 import type { PayMethod } from '@/types';
 
 // Cart→checkout pages must not be indexed (audit SEV-2). Also override the
-// page title — without this it inherits the homepage default.
+// page title, without this it inherits the homepage default.
 export const metadata: Metadata = {
   title: 'Checkout',
   robots: { index: false, follow: false },
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default async function CheckoutRoute() {
   // Read which payment methods the merchant has toggled on in admin settings.
-  // Default: all on (matching the historical hard-coded behaviour) — so a
+  // Default: all on (matching the historical hard-coded behaviour), so a
   // fresh install or a row that isn't in site_settings yet still works.
   const settings = await getSiteSettings();
   const isEnabled = (key: string) => settings[key] !== 'false';
@@ -23,8 +23,7 @@ export default async function CheckoutRoute() {
     isEnabled('pay_jazzcash_enabled')  && 'jazzcash',
     isEnabled('pay_easypaisa_enabled') && 'easypaisa',
     isEnabled('pay_card_enabled')      && 'card',
-    // Bank Transfer is only offered once at least one account is configured —
-    // otherwise the customer reaches a dead end with nowhere to pay.
+    // Bank Transfer is only offered once at least one account is configured,     // otherwise the customer reaches a dead end with nowhere to pay.
     (isEnabled('pay_bank_enabled') && bankAccounts.length > 0) && 'bank',
   ].filter(Boolean) as PayMethod[];
 

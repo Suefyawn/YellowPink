@@ -24,7 +24,7 @@ interface CartContextValue {
    *  subscribes to this rather than `cartCount` so it doesn't flash on
    *  page-load hydration of a saved cart. */
   addCounter: number;
-  /** The last item the user explicitly added — paired with `addCounter`
+  /** The last item the user explicitly added, paired with `addCounter`
    *  so the toast can read the brand+name without re-deriving from the
    *  end of `cartItems` (which is wrong if the add merged into an
    *  existing line). */
@@ -70,7 +70,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // store (localStorage) and we sync it into React state at mount.
   useEffect(() => {
     // The applied coupon is persisted alongside the cart so it survives a
-    // refresh or a full page load on the way from /cart to /checkout — the
+    // refresh or a full page load on the way from /cart to /checkout, the
     // server still re-validates the code at order time.
     /* eslint-disable react-hooks/set-state-in-effect */
     setCartItems(loadCart());
@@ -108,7 +108,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       if (existing >= 0) {
         const current = prev[existing].qty;
         const next = Math.min(current + requested, stockCap);
-        if (next === current) return prev; // already at cap — silently ignore
+        if (next === current) return prev; // already at cap, silently ignore
         const updated = [...prev];
         updated[existing] = { ...updated[existing], qty: next };
         return updated;
@@ -152,7 +152,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const item = updated[idx];
       // P1: clamp upper bound against stock if known. Lower bound stays 1
       // (use removeFromCart to clear the line). The cart item carries the
-      // stock value snapshotted at add-time — fresh enough for the qty
+      // stock value snapshotted at add-time, fresh enough for the qty
       // stepper; the RPC re-validates at submit.
       const stockCap = item.track_inventory === false || typeof item.stock !== 'number'
         ? Infinity

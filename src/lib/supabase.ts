@@ -17,7 +17,7 @@ const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabaseUrl = envUrl || 'https://demo.invalid';
 const supabaseAnonKey = envKey || 'demo-anon-key';
 
-// Anonymous storefront read client. It NEVER manages a user session — the
+// Anonymous storefront read client. It NEVER manages a user session, the
 // logged-in customer session is owned exclusively by the @supabase/ssr
 // cookie client (lib/supabase-browser + lib/supabase-server). persistSession
 // / autoRefreshToken are off so that, even if this module is ever pulled
@@ -30,7 +30,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 // ─── Service-role client (server-only) ──────────────────────────────────────
 // Use for sensitive tables that have RLS enabled with service-role-only
 // policies (`staff_members`, `audit_log`, `analytics_*`). NEVER import from a
-// `'use client'` file — the service-role key would leak into the JS bundle.
+// `'use client'` file, the service-role key would leak into the JS bundle.
 //
 // Lazy getter so a client-bundled import of this module doesn't trip the
 // missing-env-var path at module-evaluation time. Throws on first call if
@@ -51,7 +51,7 @@ export function supabaseAdmin() {
 
 // ─── Resilience layer ───────────────────────────────────────────────────────
 // Every public storefront getter routes through this so a missing-table or
-// RLS-denied error returns the demo fallback instead of throwing — that way a
+// RLS-denied error returns the demo fallback instead of throwing, that way a
 // half-configured production (env vars set but schema not yet migrated) still
 // renders pages instead of triggering the global-error boundary on every
 // page that touches the database. Errors are logged so the deployment can
@@ -65,7 +65,7 @@ async function safe<T>(
   try {
     return await fn();
   } catch (err) {
-    // Don't spam the demo client with errors — demo mode is opt-in for offline
+    // Don't spam the demo client with errors, demo mode is opt-in for offline
     // rendering and the placeholder URL deliberately can't be reached.
     if (!isDemo) {
       console.warn(`[supabase] ${label} failed; falling back. ${(err as Error).message}`);
@@ -74,7 +74,7 @@ async function safe<T>(
   }
 }
 
-// Tile-projection for collection / listing pages — narrow on purpose so
+// Tile-projection for collection / listing pages, narrow on purpose so
 // the inline RSC payload that ships every Product to the client doesn't
 // carry per-row description / how_to_use / ingredients / key_benefits /
 // faq strings. P0-3 finding in the 2026-05-19 launch audit: /shop was
@@ -90,7 +90,7 @@ export async function getProducts(): Promise<Product[]> {
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
-      // Storefront catalogue — published only. Draft products aren't live
+      // Storefront catalogue, published only. Draft products aren't live
       // yet, and archived products (a soft-deleted product with order
       // history) must drop off the storefront while keeping their row for
       // Analytics + order detail.
@@ -104,7 +104,7 @@ export async function getProducts(): Promise<Product[]> {
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (isDemo) return DEMO_PRODUCTS.find(p => p.slug === slug) ?? null;
   return safe('getProductBySlug', async () => {
-    // Published only — an archived/draft product has no live PDP; the page
+    // Published only, an archived/draft product has no live PDP; the page
     // 404s on a null product (see product/[slug]/page.tsx).
     const { data } = await supabase
       .from('products')
@@ -129,7 +129,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 
 /** Editorial bestsellers, flagged by `is_bestseller=true`. Falls back to
  *  the highest-stock published products if the flag hasn't been seeded yet
- *  — homepage rails should never go empty. */
+ * , homepage rails should never go empty. */
 export async function getBestsellers(limit = 8): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
   return safe('getBestsellers', async () => {
@@ -249,7 +249,7 @@ export async function getWellnessProducts(): Promise<Product[]> {
   }, DEMO_PRODUCTS.filter(p => cats.includes(p.category)));
 }
 
-/** Products from a single brand — powers the "More from {brand}" rail on
+/** Products from a single brand, powers the "More from {brand}" rail on
  *  the PDP. Published only; returns [] for a missing brand so the rail
  *  collapses cleanly. */
 export async function getProductsByBrand(brand: string | null | undefined, limit = 8): Promise<Product[]> {
@@ -268,7 +268,7 @@ export async function getProductsByBrand(brand: string | null | undefined, limit
   }, []);
 }
 
-/** Products across a curated brand list — powers brand edits like the
+/** Products across a curated brand list, powers brand edits like the
  *  homepage K-Beauty section (see lib/k-beauty.ts). Published only, newest
  *  first. No catalog-wide fallback: an empty result hides the section, which
  *  beats padding a "Korean beauty" rail with non-Korean products. */
@@ -290,7 +290,7 @@ export async function getProductsByBrands(brands: readonly string[], limit = 4):
 
 // Tile-projection for the blog index. P0-2 finding in the 2026-05-19
 // launch audit: /blog was shipping 1.95 MB of HTML, ~1.76 MB of which
-// was the full WP body of every post embedded in the RSC payload — the
+// was the full WP body of every post embedded in the RSC payload, the
 // tile component only renders title / excerpt / image / category /
 // date. Narrowing the select cuts /blog from ~2 MB to ~150 KB.
 const BLOG_TILE_COLUMNS =

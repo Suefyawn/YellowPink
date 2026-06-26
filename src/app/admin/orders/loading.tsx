@@ -5,7 +5,7 @@ import {
   SkeletonTable,
 } from '@/components/admin/Skeleton';
 
-// Loading skeleton for /admin/orders — header with an Export button, a filter
+// Loading skeleton for /admin/orders, header with an Export button, a filter
 // bar, then the orders table.
 export default function OrdersLoading() {
   return (

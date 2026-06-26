@@ -7,7 +7,7 @@ import { log } from '@/lib/logger';
 // log_not_found RPC). Called from app/not-found.tsx inside after().
 //
 // IMPORTANT: Next renders the not-found boundary *speculatively* as part of a
-// successful page's SSR tree, so this runs on valid pages too — naively logging
+// successful page's SSR tree, so this runs on valid pages too, naively logging
 // every render produced false 404s for live URLs (/, /shop, /product/<live>…).
 // So before recording, we verify the path genuinely resolves to nothing. The
 // check runs in after() (post-response), so it never adds visitor latency.
@@ -18,7 +18,7 @@ import { log } from '@/lib/logger';
 const BOT_RE =
   /bot\b|crawl|spider|slurp|googlebot|google-inspectiontool|bingpreview|yandex|baiduspider|duckduck|petalbot|facebookexternalhit|whatsapp|telegrambot|embedly|semrushbot|ahrefsbot|mj12bot|dataforseo|screaming frog/i;
 
-// Structural routes that always exist — never a "broken link", skip the lookup.
+// Structural routes that always exist, never a "broken link", skip the lookup.
 // Keep this in sync when adding a new top-level static route, or it gets
 // logged as a false 404 (single-segment unknowns are treated as genuine).
 const OWNED_EXACT = new Set([
@@ -36,7 +36,7 @@ function isAssetLike(path: string): boolean {
 
 /** True only when the path resolves to NO live content (a real 404). False when
  *  it maps to a live route/record (the not-found boundary rendered
- *  speculatively during a successful render — a false positive to ignore). */
+ *  speculatively during a successful render, a false positive to ignore). */
 async function isGenuine404(path: string): Promise<boolean> {
   if (OWNED_EXACT.has(path)) return false;
   if (path.startsWith('/account') || path.startsWith('/admin') || path.startsWith('/reviewer')) return false;
@@ -73,7 +73,7 @@ async function isGenuine404(path: string): Promise<boolean> {
       default: return true;                          // unknown root → genuine 404
     }
   } catch {
-    // On a lookup error, don't record — better to miss a real 404 than to log a
+    // On a lookup error, don't record, better to miss a real 404 than to log a
     // false one (which is the exact bug we're fixing).
     return false;
   }
@@ -92,7 +92,7 @@ export async function logNotFound(input: {
     if (!path || !path.startsWith('/')) return;
     if (input.isPrefetch) return;                                   // router prefetches aren't real misses
     if (path.startsWith('/_next') || path.startsWith('/api/')) return;
-    if (isAssetLike(path)) return;                                  // .php/.map/.env probes — noise
+    if (isAssetLike(path)) return;                                  // .php/.map/.env probes, noise
     if (path.length > 512) return;                                  // overflow / junk
 
     // Speculative-render guard: only record paths that genuinely 404.

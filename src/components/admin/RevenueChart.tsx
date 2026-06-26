@@ -24,7 +24,7 @@ export function RevenueChart({ days }: { days: DayRevenue[] }) {
   }
 
   // Layout in viewBox units. A left gutter holds the y-axis scale and a
-  // bottom gutter holds the date labels — both kept clear of the plot so
+  // bottom gutter holds the date labels, both kept clear of the plot so
   // nothing overlaps however wide the card renders.
   const PAD_L = 42, PAD_R = 10, PAD_T = 14, PAD_B = 24;
   const W = 680, H = 220;
@@ -64,7 +64,7 @@ export function RevenueChart({ days }: { days: DayRevenue[] }) {
         );
       })}
 
-      {/* Bars — the most recent day is highlighted in brand pink */}
+      {/* Bars, the most recent day is highlighted in brand pink */}
       {days.map((d, i) => {
         const cx = PAD_L + slot * i + slot / 2;
         const barH = Math.max(1, (d.revenue / max) * plotH);
@@ -82,7 +82,7 @@ export function RevenueChart({ days }: { days: DayRevenue[] }) {
               rx={2}
               fill={isLast ? '#C5286A' : '#f6bcd5'}
             >
-              <title>{`${fmtDate(d.date)} — PKR ${Math.round(d.revenue).toLocaleString()}`}</title>
+              <title>{`${fmtDate(d.date)}, PKR ${Math.round(d.revenue).toLocaleString()}`}</title>
             </rect>
             {ticks.has(i) && (
               <text x={labelX} y={H - 7} textAnchor={labelAnchor} fontSize="10" fill="#9ca3af">

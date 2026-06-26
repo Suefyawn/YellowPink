@@ -87,7 +87,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
         Liked this one? Get the next in your inbox.
       </h3>
       <p className="small-text" style={{ marginBottom: 14, color: 'var(--ink-700)', lineHeight: 1.55 }}>
-        One fortnightly note from the editors — new pieces, restocks, and the routines we&apos;re actually using. Unsubscribe any time.
+        One fortnightly note from the editors, new pieces, restocks, and the routines we&apos;re actually using. Unsubscribe any time.
       </p>
       <NewsletterSignup source="footer" variant="light" ctaLabel="Sign up" />
     </div>
@@ -111,7 +111,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
           (educational, not advice). Beauty posts don't. */}
       {isHealthCategory(post.category) && <MedicalDisclaimer variant="editorial" />}
 
-      {/* Bottom-of-post share strip — catches the reader who finishes the
+      {/* Bottom-of-post share strip, catches the reader who finishes the
           article and is most likely to share. */}
       <BlogShareStrip title={post.title} url={absoluteUrl(`/blog/${post.slug}`)} excerpt={post.excerpt} />
 

@@ -1,6 +1,6 @@
 // Single comprehensive sitemap. The catalog (a few hundred URLs) is far
 // below Google's 50,000-per-sitemap cap, so one flat sitemap is the
-// recommended shape — simpler than a sitemap index, and submitting
+// recommended shape, simpler than a sitemap index, and submitting
 // /sitemap.xml in Search Console discovers every page in one pass.
 
 import type { MetadataRoute } from 'next';
@@ -14,8 +14,7 @@ import { brandSlug } from '@/lib/brands';
 // as new content is published.
 export const revalidate = 3600;
 
-// Robots-disallowed (utility / private) routes are deliberately excluded —
-// listing them would send a conflicting signal to crawlers.
+// Robots-disallowed (utility / private) routes are deliberately excluded, // listing them would send a conflicting signal to crawlers.
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
   { path: '/',           priority: 1.0, freq: 'daily' },
   { path: '/shop',       priority: 0.9, freq: 'daily' },
@@ -26,7 +25,7 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
   { path: '/blog',       priority: 0.7, freq: 'weekly' },
   { path: '/medical-review-board', priority: 0.5, freq: 'monthly' },
   { path: '/sitemap',    priority: 0.3, freq: 'weekly' },
-  // NOTE: /faq is intentionally NOT listed — it 301-redirects to the CMS page
+  // NOTE: /faq is intentionally NOT listed, it 301-redirects to the CMS page
   // /page/faq (see proxy.ts PAGE_SLUG_MAP), which is already emitted in the
   // published-pages section below. Listing the redirecting URL would be a
   // self-referential crawl waste.
@@ -70,7 +69,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }));
     pages = DEMO_PAGES.map(p => ({ slug: p.slug, updated_at: null, created_at: null }));
   } else {
-    // Only published products / pages — drafts and archived rows must not
+    // Only published products / pages, drafts and archived rows must not
     // appear in the sitemap (they 404 or noindex).
     const [prod, blog, cms] = await Promise.all([
       supabase.from('products').select('slug, brand, category, image_url, updated_at, created_at').eq('status', 'published'),
@@ -82,8 +81,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     pages = (cms.data ?? []) as PageRow[];
   }
 
-  // Tag archive pages (/tag/[slug]) — every tag that has at least one product.
-  // Collection pages (/collection/[slug]) — published collections only.
+  // Tag archive pages (/tag/[slug]), every tag that has at least one product.
+  // Collection pages (/collection/[slug]), published collections only.
   let tagSlugs: string[] = [];
   let collectionSlugs: string[] = [];
   let reviewerSlugs: string[] = [];
@@ -105,7 +104,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: r.priority,
   }));
 
-  // Category landing pages — ?category= matches what canonical / breadcrumb /
+  // Category landing pages, ?category= matches what canonical / breadcrumb /
   // footer links emit, so the sitemap and the canonical agree.
   const categories = Array.from(
     new Set(products.map(p => p.category).filter((c): c is string => Boolean(c))),
@@ -115,14 +114,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // (URLSearchParams → space "+", "'" "%27"). Using encodeURIComponent here
     // produced "%20"/raw "'", which differs from the canonical, so GSC flagged
     // every multi-word category ("Women's Health", "Face Makeup", …) as
-    // "Alternate page with proper canonical tag" — the sitemap "errors".
+    // "Alternate page with proper canonical tag", the sitemap "errors".
     url: `${SITE_URL}/shop?${new URLSearchParams({ category: cat }).toString()}`,
     lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.7,
   }));
 
-  // Brand archive pages (/brand/[slug]) — one per distinct brand.
+  // Brand archive pages (/brand/[slug]), one per distinct brand.
   const brands = Array.from(new Set(products.map(p => p.brand).filter((b): b is string => Boolean(b))));
   const brandUrls: MetadataRoute.Sitemap = brands.map(brand => ({
     url: absoluteUrl(`/brand/${brandSlug(brand)}`),
@@ -147,7 +146,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  // Medical Review Board profile pages (/medical-review-board/[slug]) — E-E-A-T
+  // Medical Review Board profile pages (/medical-review-board/[slug]), E-E-A-T
   // expertise nodes, worth crawling/indexing.
   const reviewerUrls: MetadataRoute.Sitemap = reviewerSlugs.map(slug => ({
     url: absoluteUrl(`/medical-review-board/${slug}`),

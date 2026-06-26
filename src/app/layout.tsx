@@ -12,7 +12,7 @@ import '@/styles/globals.css';
 import { Providers } from '@/context/Providers';
 
 // next/font/google self-hosts the woff2 + emits preload links automatically.
-// CSS bridges via the `variable` option — globals.css reads
+// CSS bridges via the `variable` option, globals.css reads
 // --font-display / --font-ui and applies them to .display-*, .h*, body.
 const fontDisplay = Fraunces({
   subsets: ['latin'],
@@ -56,17 +56,17 @@ export const metadata: Metadata = {
     // Homepage title leads with the concrete high-volume PK head nouns
     // ("skincare", "makeup", "supplements") + the geo keyword, so the root
     // domain is a clear landing target for "skincare/skin care products/
-    // korean skincare/makeup Pakistan" queries — not just the brand name.
+    // korean skincare/makeup Pakistan" queries, not just the brand name.
     // Child pages use the template and supply their own title.
-    default: `${SITE_NAME} — Skincare, Makeup & Supplements in Pakistan`,
+    default: `${SITE_NAME}, Skincare, Makeup & Supplements in Pakistan`,
     template: `%s | ${SITE_NAME}`,
   },
   description:
-    'Shop authentic imported skincare, Korean beauty, makeup and wellness supplements in Pakistan — 100% genuine brands like CeraVe, Anua & The Ordinary, with COD.',
+    'Shop authentic imported skincare, Korean beauty, makeup and wellness supplements in Pakistan, 100% genuine brands like CeraVe, Anua & The Ordinary, with COD.',
   applicationName: SITE_NAME,
   // We deleted /icon.svg when installing the flower favicon. Next.js
   // auto-generates /icon and /apple-icon link tags from
-  // src/app/icon.png + apple-icon.png, so we don't list them here — listing
+  // src/app/icon.png + apple-icon.png, so we don't list them here, listing
   // /icon.svg explicitly was causing a 404'd <link rel="apple-touch-icon">.
   // The .ico is picked up automatically from src/app/favicon.ico too.
   openGraph: {
@@ -112,16 +112,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // working. Reading them here means changing the IDs needs no redeploy.
   const gaMeasurementId = settings.ga_measurement_id?.trim() || undefined;
   const gscVerification = settings.google_site_verification?.trim() || process.env.GOOGLE_SITE_VERIFICATION || undefined;
-  // Meta (Facebook/Instagram) domain verification — required in Business Manager
+  // Meta (Facebook/Instagram) domain verification, required in Business Manager
   // to claim the domain for Aggregated Event Measurement and to control which
   // ad accounts may run conversion events for it. Owner-set in admin, env
   // fallback; rendered as a runtime <meta> like the GSC tag above.
   const fbDomainVerification = settings.facebook_domain_verification?.trim() || process.env.FACEBOOK_DOMAIN_VERIFICATION || undefined;
   // Single source of truth for free-shipping copy/threshold across the
-  // storefront — seeds the client CommerceSettings provider so the cart,
+  // storefront, seeds the client CommerceSettings provider so the cart,
   // mini-cart, PDP and checkout never drift from the owner's setting.
   const commerce = parseCommerceConfig(settings);
-  // Origin that serves catalogue/blog images — used for an early preconnect.
+  // Origin that serves catalogue/blog images, used for an early preconnect.
   const supabaseOrigin = (() => {
     try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').origin; } catch { return null; }
   })();
@@ -129,14 +129,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html
       lang="en"
       // The seasonal makeover (palette + background motif) is gated by the
-      // season_active toggle in admin Settings — a pre-selected season stays
+      // season_active toggle in admin Settings, a pre-selected season stays
       // dormant until the owner switches it on.
       data-theme={settings.season_active === 'true' ? normalizeTheme(settings.active_theme) : 'default'}
       className={`${fontDisplay.variable} ${fontUI.variable}`}
     >
       <head>
         {/* Preconnect to the image CDN (images.weserv.nl) that serves every
-            catalogue/blog image AND the LCP hero — the single most important
+            catalogue/blog image AND the LCP hero, the single most important
             early connection for mobile LCP. The Supabase origin is also
             preconnected: weserv fetches the original from there, and the
             Supabase JS client hits it for data/API. */}
@@ -155,7 +155,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {fbDomainVerification && <meta name="facebook-domain-verification" content={fbDomainVerification} />}
         {/* Site-wide JSON-LD: a single Organization node (@id-referenced by
             WebSite.publisher) plus WebSite for the sitelinks search box.
-            Both render on every page — the duplication-across-pages pattern
+            Both render on every page, the duplication-across-pages pattern
             is what Google expects for this class of markup. */}
         <script
           type="application/ld+json"

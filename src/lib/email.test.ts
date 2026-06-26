@@ -1,7 +1,7 @@
 // Regression coverage for the bug fixed in the "Resend failure visibility"
 // commit: the Resend SDK returns `{ data, error }` on validation errors
 // rather than throwing, so the prior try/catch was a no-op. These tests pin
-// the new behaviour — every Resend failure ends in a Sentry capture with the
+// the new behaviour, every Resend failure ends in a Sentry capture with the
 // tags the alert rule filters on.
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';

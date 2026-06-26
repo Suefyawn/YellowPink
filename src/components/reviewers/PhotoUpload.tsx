@@ -3,7 +3,7 @@
 import { useState } from 'react';
 
 // Direct photo upload for the Medical Review Board (apply form + reviewer
-// dashboard) — a clinician attaches an image instead of pasting a URL. Uploads
+// dashboard), a clinician attaches an image instead of pasting a URL. Uploads
 // to /api/upload/reviewer and keeps the resulting public URL in a hidden input
 // (name defaults to `photo_url`) so it submits with the surrounding form. Works
 // inside a plain server-action <form> because it's a self-contained client

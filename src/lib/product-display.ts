@@ -4,13 +4,12 @@
 // awkward duplicates ("Kiko Milano Kiko Milano 3D Hydra Lip Gloss"). These
 // helpers normalize the casing and dedupe.
 //
-// Pure functions, no side effects — safe to call in server components and
+// Pure functions, no side effects, safe to call in server components and
 // metadata factories.
 
 /**
  * Strip a leading brand prefix from `name` if it already matches `brand`
- * (case-insensitive, whitespace-tolerant). Returns the trimmed name —
- * if the name doesn't start with the brand, returns the name unchanged.
+ * (case-insensitive, whitespace-tolerant). Returns the trimmed name,  * if the name doesn't start with the brand, returns the name unchanged.
  */
 export function stripBrandPrefix(brand: string | null | undefined, name: string): string {
   if (!brand || !name) return (name ?? '').trim();
@@ -36,7 +35,7 @@ export function stripBrandPrefix(brand: string | null | undefined, name: string)
   // Eat any trailing separators ( spaces, dashes, dots, etc.)
   while (i < trimmedName.length && /[\s\-–—·.,:]/.test(trimmedName[i])) i++;
   const stripped = trimmedName.slice(i).trim();
-  // Never return empty — fall back to the original name if the brand IS the name.
+  // Never return empty, fall back to the original name if the brand IS the name.
   return stripped || trimmedName;
 }
 
@@ -47,7 +46,7 @@ export function stripBrandPrefix(brand: string | null | undefined, name: string)
  * Three modes:
  *   • No brand              → return the name as-is.
  *   • Name IS the brand     → return just `brand` (avoids "Argivital
- *                             Argivital" — the bug that motivated this
+ *                             Argivital", the bug that motivated this
  *                             helper's strict equality guard).
  *   • Name starts with brand → strip the prefix, then re-prepend so the
  *                             casing is canonical ("CeraVe Hydrating
@@ -63,7 +62,7 @@ export function brandPlusName(brand: string | null | undefined, name: string): s
 
   const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
   if (normalize(trimmedBrand) === normalize(trimmedName)) {
-    // The product name IS the brand — return one copy, not "X X".
+    // The product name IS the brand, return one copy, not "X X".
     return trimmedBrand;
   }
 

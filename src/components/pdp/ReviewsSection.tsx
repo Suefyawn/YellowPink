@@ -260,7 +260,7 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true, rewar
                   No reviews yet
                 </p>
                 <p style={{ margin: '4px 0 0', color: 'var(--ink-500)', fontSize: '0.8125rem' }}>
-                  Tried it? Write the first review — other shoppers count on it.
+                  Tried it? Write the first review, other shoppers count on it.
                 </p>
               </div>
             ) : (
@@ -315,7 +315,7 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true, rewar
               Write a Review
             </h2>
 
-            {/* Loyalty incentive — the approval trigger (reviews_award_points)
+            {/* Loyalty incentive, the approval trigger (reviews_award_points)
                 grants these points to signed-in reviewers; advertising it is
                 what actually drives review volume (and thus ★ rich snippets). */}
             {rewardPoints > 0 && (

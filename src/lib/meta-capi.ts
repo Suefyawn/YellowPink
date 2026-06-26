@@ -1,10 +1,10 @@
-// Meta Conversions API (server-side) — sends the Purchase event straight from
+// Meta Conversions API (server-side), sends the Purchase event straight from
 // our server to Meta, so conversions are measured even when the browser Pixel
 // is blocked, and (crucially) for gateway-paid orders where the client-side
 // purchase event never fires (the shopper is on the gateway, not our site).
 //
 // Dedup: the event_id is the order number, matching the eventID we attach to
-// the client Pixel's Purchase — Meta collapses the pair into one conversion.
+// the client Pixel's Purchase, Meta collapses the pair into one conversion.
 //
 // No-ops unless both NEXT_PUBLIC_META_PIXEL_ID and META_CAPI_ACCESS_TOKEN are
 // set. Best-effort: it never throws, so it can't block the order flow.
@@ -25,7 +25,7 @@ const hashPhone = (v: string) => {
 };
 
 export interface MetaPurchaseInput {
-  /** Order number — used as the dedup event_id. */
+  /** Order number, used as the dedup event_id. */
   orderNumber: string;
   value: number;
   currency?: string;
@@ -85,6 +85,6 @@ export async function sendMetaPurchaseEvent(input: MetaPurchaseInput): Promise<v
       { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) },
     );
   } catch {
-    /* best-effort — never block the order flow on an analytics call */
+    /* best-effort, never block the order flow on an analytics call */
   }
 }

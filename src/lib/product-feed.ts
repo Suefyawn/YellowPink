@@ -6,7 +6,7 @@
 // data the PDP variant picker uses), e.g. "Shade 828" or "Red · Large".
 
 // Anon client (not service-role): the feed routes are statically prerendered
-// at build time, where SUPABASE_SERVICE_ROLE_KEY isn't available — using the
+// at build time, where SUPABASE_SERVICE_ROLE_KEY isn't available, using the
 // admin client there crashes the build. The variant/attribute tables are
 // anon-readable (the public PDP reads them the same way), so the anon client
 // is both correct and build-safe.

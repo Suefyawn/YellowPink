@@ -8,7 +8,7 @@ import { log } from '@/lib/logger';
 //
 // `hello@yellowpink.pk` has no mailbox; Resend receives mail for the domain
 // and POSTs an `email.received` event here. That event carries metadata only
-// (from / to / subject / email_id) — the body is fetched separately with
+// (from / to / subject / email_id), the body is fetched separately with
 // resend.emails.receiving.get(email_id). We insert the message into the same
 // `contact_messages` table the contact form uses (source='email'), so the
 // notify_new_message trigger lights up the admin bell and the owner replies
@@ -19,7 +19,7 @@ import { log } from '@/lib/logger';
 //   2. Resend → Webhooks → add an endpoint for the `email.received` event
 //      pointing at https://www.yellowpink.pk/api/inbound-email, and copy its
 //      signing secret into RESEND_INBOUND_WEBHOOK_SECRET (Vercel env).
-//   (RESEND_API_KEY — already set for sending — is reused to fetch the body.)
+//   (RESEND_API_KEY, already set for sending, is reused to fetch the body.)
 //
 // Auth: Resend's Svix signature (same scheme as /api/webhooks/resend). The
 // endpoint is closed (503) until RESEND_INBOUND_WEBHOOK_SECRET is set.
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  // Event has metadata only — fetch the body via the receiving API.
+  // Event has metadata only, fetch the body via the receiving API.
   let fromRaw: unknown = event.data.from;
   let subject = event.data.subject ?? '';
   let text = '';
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
     });
   if (error) {
     log.error('inbound_email.insert_failed', { error: error.message });
-    // Valid event, our write failed — tell Resend to retry.
+    // Valid event, our write failed, tell Resend to retry.
     return NextResponse.json({ error: 'insert failed' }, { status: 500 });
   }
 

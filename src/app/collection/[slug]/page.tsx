@@ -27,8 +27,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const c = await loadCollection(slug);
   if (!c) return pageMeta({ title: 'Collection', description: 'Shop our curated collections.', path: `/collection/${slug}` });
   return pageMeta({
-    title: c.seo_title || `${c.title} — Shop`,
-    description: c.seo_description || c.description || `Shop the ${c.title} collection at Yellow Pink — authentic, imported, with cash-on-delivery nationwide in Pakistan.`,
+    title: c.seo_title || `${c.title}, Shop`,
+    description: c.seo_description || c.description || `Shop the ${c.title} collection at Yellow Pink, authentic, imported, with cash-on-delivery nationwide in Pakistan.`,
     path: `/collection/${c.slug}`,
     // Use the collection's own hero as the share image so social cards /
     // SERP thumbnails are bespoke per collection instead of the generic
@@ -55,7 +55,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
   const list = resolveCollectionProducts(c, products, { manualOrder, productTagMap: tagData.productTagMap });
 
   // Hero cover: the collection's own hero_image_url when set, otherwise the
-  // first member product's image — the same fallback the collection cards use
+  // first member product's image, the same fallback the collection cards use
   // (getPublishedCollectionsWithCovers), so the detail hero is never a bare
   // text block while every collection still has a null hero in the DB.
   const heroImage = c.hero_image_url || list.find(p => p.image_url)?.image_url || null;
@@ -113,7 +113,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
             </div>
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
-              This collection is being curated — <Link href="/shop" className="text-link">browse the full catalogue</Link> in the meantime.
+              This collection is being curated, <Link href="/shop" className="text-link">browse the full catalogue</Link> in the meantime.
             </p>
           )}
         </div>

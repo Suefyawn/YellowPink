@@ -16,7 +16,7 @@ interface Review {
   location: string;
   product: { brand: string; name: string };
   verified: boolean;
-  /** Visual variant — each card gets a different on-brand colour treatment.
+  /** Visual variant, each card gets a different on-brand colour treatment.
    *  Tint draws from the brand palette (yellow / pink / paper) so the cards
    *  feel like they belong on this site, not like generic Google reviews. */
   accent: 'yellow' | 'pink' | 'cream';
@@ -46,7 +46,7 @@ const REVIEWS: Review[] = [
   {
     rating: 5,
     headline: "My colleagues keep asking what I changed",
-    body:    "The shade match is unreal — I have undertones that everyone else gets wrong. Stays on through Lahore summer.",
+    body:    "The shade match is unreal, I have undertones that everyone else gets wrong. Stays on through Lahore summer.",
     author:  'Ayesha K.',
     location: 'Islamabad',
     product: { brand: 'NARS',   name: 'Light Reflecting Foundation' },
@@ -121,7 +121,7 @@ function initials(name: string): string {
 
 export function RealResults() {
   // Active slide index for the mobile slider's dot indicator. Updated by
-  // an IntersectionObserver watching each card — pure read-only, the
+  // an IntersectionObserver watching each card, pure read-only, the
   // dots are presentational (tapping them is a nice-to-have we can add
   // later without breaking the swipe interaction).
   const gridRef = useRef<HTMLDivElement | null>(null);
@@ -131,15 +131,14 @@ export function RealResults() {
   useEffect(() => {
     const root = gridRef.current;
     if (!root) return;
-    // Suppress on desktop — the static grid renders all cards at once and
+    // Suppress on desktop, the static grid renders all cards at once and
     // IntersectionObserver would report whichever happens to be intersecting
     // most, which is meaningless.
     if (window.matchMedia('(min-width: 721px)').matches) return;
 
     const observer = new IntersectionObserver(
       entries => {
-        // Pick the entry with the largest intersectionRatio that's >= 0.5 —
-        // that's the card that "owns" the viewport right now.
+        // Pick the entry with the largest intersectionRatio that's >= 0.5,         // that's the card that "owns" the viewport right now.
         let best: { idx: number; ratio: number } | null = null;
         for (const e of entries) {
           if (!e.isIntersecting) continue;
@@ -197,7 +196,7 @@ export function RealResults() {
               position: 'relative', overflow: 'hidden',
             }}
           >
-            {/* Decorative diagonal accent — picks up the brand tone without
+            {/* Decorative diagonal accent, picks up the brand tone without
                 competing with the numerals. */}
             <div
               aria-hidden="true"
@@ -238,7 +237,7 @@ export function RealResults() {
 
           {/* ─── Review cards ────────────────────────────────────────────
               Desktop: 3-col grid. Mobile (≤720px): horizontal CSS scroll-snap
-              slider — one card per view with the next card peeking. Override
+              slider, one card per view with the next card peeking. Override
               + slider styles live in .results-grid in globals.css. */}
           <div
             ref={gridRef}
@@ -267,7 +266,7 @@ export function RealResults() {
                     overflow: 'hidden',
                   }}
                 >
-                  {/* Oversized opening quote — a single editorial flourish per
+                  {/* Oversized opening quote, a single editorial flourish per
                       card, drawn in the card's accent colour. */}
                   <span
                     aria-hidden="true"
@@ -367,7 +366,7 @@ export function RealResults() {
             })}
           </div>
 
-          {/* Slide indicator — only visible on the mobile slider via CSS in
+          {/* Slide indicator, only visible on the mobile slider via CSS in
               globals.css. Each dot is a real button so a keyboard or AT user
               can jump between slides without horizontal scrolling. */}
           <div

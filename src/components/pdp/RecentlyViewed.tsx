@@ -1,6 +1,6 @@
 'use client';
 
-// Tiny localStorage-backed "recently viewed" tracker. Mount on PDP — it
+// Tiny localStorage-backed "recently viewed" tracker. Mount on PDP, it
 // records the current product, then renders the previous 4 distinct
 // product ids the user looked at.
 

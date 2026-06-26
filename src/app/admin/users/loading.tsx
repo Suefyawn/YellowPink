@@ -5,7 +5,7 @@ import {
   SkeletonTable,
 } from '@/components/admin/Skeleton';
 
-// Loading skeleton for /admin/users (Customers) — header with a count
+// Loading skeleton for /admin/users (Customers), header with a count
 // subtitle, a filter bar, then the customers table.
 export default function UsersLoading() {
   return (

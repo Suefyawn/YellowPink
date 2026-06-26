@@ -54,11 +54,11 @@ export async function loginAdmin(
   const store = await cookies();
   store.set(OWNER_COOKIE_NAME, token, {
     httpOnly: true,
-    // Always secure — even on Vercel previews this rides HTTPS.
+    // Always secure, even on Vercel previews this rides HTTPS.
     secure: true,
     maxAge: OWNER_COOKIE_TTL_SEC,
     path: '/',
-    // strict, matching the staff cookie — see setStaffCookie for rationale.
+    // strict, matching the staff cookie, see setStaffCookie for rationale.
     sameSite: 'strict',
   });
   redirect('/admin/dashboard');
@@ -101,7 +101,7 @@ export async function loginStaff(
       // Backup codes are stored as SHA-256(lowercased, whitespace-stripped)
       // since the 2fa-actions enrollment switch. Compute the hash of the
       // submitted code and look it up in the stored hash list. Old plaintext
-      // codes from before the switch will fail to match — staff will have to
+      // codes from before the switch will fail to match, staff will have to
       // re-enroll once. Hash strings are 64-char lowercase hex so they can't
       // collide with the old 8-char hex plaintext.
       const cleaned = totpCode.replace(/\s+/g, '').toLowerCase();
@@ -229,7 +229,7 @@ export async function deleteProduct(formData: FormData) {
   redirect('/admin/products?deleted=1');
 }
 
-// ─── Orders / customers — destructive deletes ──────────────────────────────────
+// ─── Orders / customers, destructive deletes ──────────────────────────────────
 
 /** Permanently delete an order. Dependent rows are handled by the FK rules:
  *  payments / order_events / shipments / return_requests / vendor_settlements
@@ -254,7 +254,7 @@ export async function deleteCustomer(formData: FormData) {
   const session = await assertPermission('customers.delete');
   const id = formData.get('id') as string;
   if (!id || id.startsWith('guest-')) {
-    redirect('/admin/users?err=' + encodeURIComponent('Guest buyers have no account to delete — remove their individual orders instead.'));
+    redirect('/admin/users?err=' + encodeURIComponent('Guest buyers have no account to delete, remove their individual orders instead.'));
   }
   const admin = supabaseAdmin();
   // Preserve financial history: detach the customer's orders before removing
@@ -287,7 +287,7 @@ export async function createBlogPost(
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { error } = await supabaseAdmin().from('blog_posts').insert(parsed.data);
   if (error) return { error: error.message };
-  // Blog posts go live immediately — ping search engines (best-effort).
+  // Blog posts go live immediately, ping search engines (best-effort).
   const slug = (parsed.data as { slug?: string }).slug;
   if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   revalidatePath('/admin/blog');
@@ -334,7 +334,7 @@ export async function requestIndexing(path: string): Promise<{ ok: boolean; mess
 }
 
 /** Re-submit the entire live catalogue + blog to IndexNow in one request.
- *  Google is intentionally skipped here — its publish quota (~200/day) is too
+ *  Google is intentionally skipped here, its publish quota (~200/day) is too
  *  small for a full-site resubmit; auto-on-publish covers Google per-item. */
 export async function resubmitAllUrls(): Promise<{ ok: boolean; message: string }> {
   await assertPermission('products.edit');
@@ -371,7 +371,7 @@ export async function deleteBlogPost(formData: FormData) {
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
-/** Resend the order confirmation email — for customers who say they never
+/** Resend the order confirmation email, for customers who say they never
  *  received the original (deliverability, spam, typo). Logs the resend so it
  *  shows up in the order's audit trail.
  *  Gated on orders.edit (same as status changes / payment recording).  */
@@ -440,7 +440,7 @@ export async function updateOrderStatus(
 
   // Tracking number + courier are owned exclusively by the Shipment
   // section (the `shipments` table syncs them onto `orders` via trigger).
-  // This action only moves order status — writing tracking here would
+  // This action only moves order status, writing tracking here would
   // null out a booked shipment whenever the merchant changes status.
   const { error } = await admin
     .from('orders')

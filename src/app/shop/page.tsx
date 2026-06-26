@@ -23,13 +23,13 @@ function landingFaqs(label: string, estimatedDays?: { min: number; max: number }
   const deliveryRange = estimatedDays ? `${estimatedDays.min}–${estimatedDays.max}` : 'a few';
   return [
     { q: `Are your ${c} products authentic?`,
-      a: `Yes — every ${c} product at Yellow Pink is 100% genuine, sourced from authorised channels and imported for the Pakistani market. We never sell counterfeits.` },
+      a: `Yes, every ${c} product at Yellow Pink is 100% genuine, sourced from authorised channels and imported for the Pakistani market. We never sell counterfeits.` },
     { q: `Is cash on delivery (COD) available for ${c}?`,
       a: `Absolutely. You can order any ${c} product with cash on delivery nationwide across Pakistan, and pay only when your parcel arrives.` },
     { q: `How long does delivery take?`,
       a: `Orders are typically delivered in ${deliveryRange} working days, with tracking shared on WhatsApp once your order ships.` },
     { q: `Can I return ${c} products?`,
-      a: `Yes — unused items can be returned within ${RETURNS_WINDOW_DAYS} days of delivery. Start a return from your account or message us on WhatsApp and we'll help.` },
+      a: `Yes, unused items can be returned within ${RETURNS_WINDOW_DAYS} days of delivery. Start a return from your account or message us on WhatsApp and we'll help.` },
   ];
 }
 import { loadFacetData, loadTagData } from '@/lib/shop-facets';
@@ -39,16 +39,21 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // Resolve ?category= (or the legacy ?cat=) to its canonical label, so the
   // slug form (?category=combo-packs) and the label form (?category=Combo
   // Packs) collapse onto ONE title + canonical URL instead of two duplicates.
-  const resolvedCategory = canonicalCategory(category ?? cat);
+  // If ?category= is actually a TAXON label (e.g. ?category=Wellness), treat it
+  // as the taxon — otherwise /shop?category=Wellness becomes a duplicate of the
+  // dedicated /shop?taxon=wellness page (same products, two self-canonicals).
+  const categoryTaxon = findTaxon(category ?? cat);
+  const resolvedCategory = categoryTaxon ? null : canonicalCategory(category ?? cat);
   // ?subcategory= is always a leaf category, so it gets the SAME slug-or-label
-  // normalisation — otherwise ?subcategory=combo-packs and ?subcategory=Combo
+  // normalisation, otherwise ?subcategory=combo-packs and ?subcategory=Combo
   // Packs would render two different titles + canonicals for the same page.
   const resolvedSubcategory = canonicalCategory(subcategory);
   // The four top-level nav landing pages (/shop?taxon=makeup|skincare|…) are
-  // real index targets — give each its own title/description/self-canonical
+  // real index targets, give each its own title/description/self-canonical
   // instead of the generic "Shop All Products" + a canonical back to /shop.
-  // Only when no (sub)category is set, since those are more specific.
-  const resolvedTaxon = !resolvedCategory && !resolvedSubcategory ? findTaxon(taxon) : null;
+  // Only when no (sub)category is set, since those are more specific. A taxon
+  // reached via ?category=<label> resolves to the same dedicated taxon page.
+  const resolvedTaxon = !resolvedCategory && !resolvedSubcategory ? (findTaxon(taxon) ?? categoryTaxon) : null;
   // Sanitise free-text params before interpolating them into the title /
   // description / og:title (audit SEV-2: raw `<img onerror=…>` once ended up
   // in the og:title `content` attribute). Strip every character with
@@ -61,34 +66,37 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // gets a distinct, human-readable title (good for SERPs).
   let title: string;
   if (trimmedQ)                 title = `Search: ${trimmedQ}`;
-  else if (resolvedSubcategory) title = `${resolvedSubcategory} — Shop`;
-  else if (resolvedCategory)    title = `${resolvedCategory} — Shop`;
+  else if (resolvedSubcategory) title = `Shop ${resolvedSubcategory}`;
+  else if (resolvedCategory)    title = `Shop ${resolvedCategory}`;
   else if (resolvedTaxon)       title = TAXON_SEO[resolvedTaxon.key].title;
-  else if (trimmedBrand)        title = `${trimmedBrand} — Shop`;
+  else if (trimmedBrand)        title = `Shop ${trimmedBrand}`;
   else                          title = 'Shop Imported Beauty & Wellness in Pakistan';
 
   // Canonical strategy:
   //   • `/shop` and `/shop?category=Foo` (`?subcategory=Bar`) are real index
-  //     targets — each canonicalizes to itself, category in canonical label form.
+  //     targets, each canonicalizes to itself, category in canonical label form.
   //   • A pure `/shop?brand=Baz` filter canonicalizes to the dedicated
   //     `/brand/<slug>` archive page, NOT to itself. `/shop?brand=` and
   //     `/brand/<slug>` show the same products, so self-canonicalizing the
   //     filter URL split signals across two near-duplicate pages and left the
   //     filter URL weakly linked (Semrush #213). Consolidating onto the
-  //     brand page — which has bespoke copy, metadata and a sitemap entry —
-  //     ends the cannibalization. The filter URL keeps working for shoppers;
+  //     brand page, which has bespoke copy, metadata and a sitemap entry,   //     ends the cannibalization. The filter URL keeps working for shoppers;
   //     only the canonical hint changes (no redirect, so the in-page brand
   //     filter UX is untouched).
   //   • Free-text searches, attr/price/stock filters, sort, pagination, and
-  //     brand+category combos are variations of the same set — they
+  //     brand+category combos are variations of the same set, they
   //     canonicalize back to `/shop` (or the matching category root), so
   //     Google never indexes every brand×category permutation.
   const brandOnly = Boolean(
     trimmedBrand && !resolvedCategory && !resolvedSubcategory && !resolvedTaxon && !trimmedQ,
   );
+  // A subcategory IS a leaf category that also lives at /shop?category=<leaf>,
+  // so `/shop?category=Wellness&subcategory=Immunity` and `/shop?category=Immunity`
+  // are the same page. Canonicalize the subcategory form onto the leaf-category
+  // URL (drop the parent param) so the two don't compete as duplicates.
   const canonicalParams = new URLSearchParams();
-  if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
-  if (resolvedSubcategory) canonicalParams.set('subcategory', resolvedSubcategory);
+  if (resolvedSubcategory) canonicalParams.set('category', resolvedSubcategory);
+  else if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
   else if (resolvedTaxon) canonicalParams.set('taxon', resolvedTaxon.key);
   const qs = canonicalParams.toString();
   // Slug from the RAW brand param, not the sanitised `trimmedBrand`: the
@@ -105,7 +113,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // description rather than silently inheriting its parent taxon's.
   let description: string;
   if (trimmedQ) {
-    description = `Search results for "${trimmedQ}" — imported skincare, makeup, and wellness products. COD nationwide in Pakistan.`;
+    description = `Search results for "${trimmedQ}", imported skincare, makeup, and wellness products. COD nationwide in Pakistan.`;
   } else if (resolvedSubcategory && CATEGORY_DESCRIPTIONS[resolvedSubcategory]) {
     description = CATEGORY_DESCRIPTIONS[resolvedSubcategory];
   } else if (resolvedCategory && CATEGORY_DESCRIPTIONS[resolvedCategory]) {
@@ -113,9 +121,9 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   } else if (resolvedTaxon) {
     description = TAXON_SEO[resolvedTaxon.key].description;
   } else if (trimmedBrand) {
-    description = `Shop the ${trimmedBrand} range at Yellow Pink — 100% authentic, imported ${trimmedBrand}, with cash-on-delivery nationwide in Pakistan.`;
+    description = `Shop the ${trimmedBrand} range at Yellow Pink, 100% authentic, imported ${trimmedBrand}, with cash-on-delivery nationwide in Pakistan.`;
   } else {
-    description = 'Browse authentic imported skincare, makeup and wellness supplements at Yellow Pink — 100% genuine international brands, with cash on delivery nationwide in Pakistan.';
+    description = 'Browse authentic imported skincare, makeup and wellness supplements at Yellow Pink, 100% genuine international brands, with cash on delivery nationwide in Pakistan.';
   }
 
   return pageMeta({
@@ -148,7 +156,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   const { findTaxon } = await import('@/lib/category-taxonomy');
   const taxonObj = findTaxon(taxon);
 
-  // Scope the JSON-LD ItemList to whatever the URL implies — taxon →
+  // Scope the JSON-LD ItemList to whatever the URL implies, taxon →
   // products in those categories, single category → that category, else
   // top of the catalog. We cap at 24 to keep the schema lean.
   const scopedProducts = taxonObj
@@ -175,7 +183,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       <Breadcrumbs items={breadcrumb} />
       {/* Only emit the ItemList when it actually has items. Taxon-level
           category labels (e.g. ?category=Skincare) have no exact leaf-category
-          match server-side, which otherwise produced an empty ItemList — a
+          match server-side, which otherwise produced an empty ItemList, a
           structured-data markup error flagged by SEO audits. */}
       {scopedProducts.length > 0 && (
         <script
@@ -192,8 +200,8 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         />
       )}
       {/* `key` on the destination params remounts CollectionPage on a genuine
-          listing change — switching taxon/category/subcategory, a ?q= search,
-          or ?on_sale=1 — so its URL-seeded state re-initialises. Client-side
+          listing change, switching taxon/category/subcategory, a ?q= search,
+          or ?on_sale=1, so its URL-seeded state re-initialises. Client-side
           navigation between two /shop?… URLs otherwise reuses the instance and
           leaves the view stale until a hard refresh. The component writes its
           OWN filter params (brand/price/sort/page) which are deliberately NOT
@@ -213,7 +221,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         initialFeatured={searchParamsFeatured}
         initialBestseller={searchParamsBestseller}
       />
-      {/* Category-landing FAQ — only on a genuine category/taxon/subcategory
+      {/* Category-landing FAQ, only on a genuine category/taxon/subcategory
           landing (not search or brand-filtered views, which canonicalise away),
           so the indexable landing pages carry FAQPage structured data + on-page
           E-A-T copy. */}
@@ -230,7 +238,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
               dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(faqs.map(f => ({ question: f.q, answer: f.a })))) }}
             />
             <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 16px' }}>
-              {landingLabel} — frequently asked
+              {landingLabel}, frequently asked
             </h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 760 }}>
               {faqs.map((f, i) => (

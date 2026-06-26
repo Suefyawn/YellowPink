@@ -18,7 +18,7 @@ export async function submitReview(
 ): Promise<{ error: string } | { success: true }> {
   const h = await headers();
   const { success: rateOk } = await reviewLimiter.limit(ipFromHeaders(h));
-  if (!rateOk) return { error: 'Please slow down — try again in a minute.' };
+  if (!rateOk) return { error: 'Please slow down, try again in a minute.' };
 
   const parsed = parseForm(reviewSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
@@ -110,7 +110,7 @@ export async function voteReviewHelpful(reviewId: string): Promise<{ ok: boolean
     review_id: reviewId, voter_key: voterKey,
   });
   if (insErr) {
-    if (insErr.code === '23505') return { ok: true };   // already voted — no-op
+    if (insErr.code === '23505') return { ok: true };   // already voted, no-op
     return { ok: false, error: insErr.message };
   }
 

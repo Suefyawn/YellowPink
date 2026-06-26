@@ -6,7 +6,7 @@
 //
 // Fallback when UPSTASH_* env vars are missing: an in-memory limiter so dev
 // and self-hosted environments don't crash. The in-memory fallback is *per
-// instance* and resets on cold start — fine for local dev, not safe for prod.
+// instance* and resets on cold start, fine for local dev, not safe for prod.
 // ============================================================================
 
 import { Ratelimit } from '@upstash/ratelimit';

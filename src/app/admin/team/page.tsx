@@ -3,7 +3,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { supabaseAdmin } from '@/lib/supabase';
 import { TeamPage } from '@/components/admin/TeamPage';
 
-export const metadata = { title: 'Team — Admin' };
+export const metadata = { title: 'Team, Admin' };
 
 export default async function Page() {
   const session = await getStaffSession();

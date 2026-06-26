@@ -16,7 +16,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
   const session = await assertOwner();
 
   // Deduplicate: last value wins, so checkbox "true" overrides hidden "false".
-  // Also drop any key starting with '$' — those are Next.js server-action
+  // Also drop any key starting with '$', those are Next.js server-action
   // binding inputs ($ACTION_ID_…, $ACTION_REF_…, etc.) that should never
   // end up in the site_settings table (audit SEV-2). The DB now also has
   // a CHECK constraint refusing these keys; this is belt-and-braces.
@@ -53,7 +53,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
   });
 
   revalidatePath('/', 'layout');
-  // Explicit page-level revalidation of the homepage too — the sale toggle
+  // Explicit page-level revalidation of the homepage too, the sale toggle
   // and other settings drive homepage sections, and the layout-level call
   // alone has been unreliable at refreshing the index render.
   revalidatePath('/', 'page');

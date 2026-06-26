@@ -96,7 +96,7 @@ export function StatusBanner({ saved, saveError }: { saved: boolean; saveError?:
         padding: '12px 16px', marginBottom: 24, color: '#15803d',
         fontSize: '0.875rem', fontWeight: 500, display: 'flex', alignItems: 'center', gap: 8,
       }}>
-        <span>✓</span> Settings saved — changes are live on the site.
+        <span>✓</span> Settings saved, changes are live on the site.
       </div>
     );
   }

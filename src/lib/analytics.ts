@@ -50,7 +50,7 @@ export function track(event: TrackEvent): void {
 
   // Dispatch a DOM event so an in-page analytics snippet (the PostHog
   // forwarder in PostHogProvider, a GA4 snippet, etc.) can forward without us
-  // hard-depending on any vendor. Dispatched unconditionally — PostHog already
+  // hard-depending on any vendor. Dispatched unconditionally, PostHog already
   // captures $pageview / $autocapture for every visitor regardless of the
   // cookie-banner choice, so gating only the ecommerce subset would zero out
   // the funnel for unconsenting traffic while leaving the rest of PostHog

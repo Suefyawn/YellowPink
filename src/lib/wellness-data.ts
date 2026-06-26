@@ -1,5 +1,5 @@
 // ============================================================================
-// Homepage wellness showcase — data shaping.
+// Homepage wellness showcase, data shaping.
 //
 // The storefront sells nutraceuticals across eight health concerns (see the
 // `wellness` taxon in category-taxonomy.ts). This module turns the live
@@ -30,7 +30,7 @@ export interface WellnessConcern {
 // Display order + copy + icon key for each wellness concern. Order is curated
 // (broad, high-volume concerns first) rather than alphabetical so the grid
 // reads as a considered range, not a data dump. Icon keys map to the inline
-// SVGs in WellnessSection (lucide-style, per the project icon guidance — no
+// SVGs in WellnessSection (lucide-style, per the project icon guidance, no
 // emoji). Every label here must exist in the `wellness` taxon.
 const CONCERN_META: { label: string; key: string; tagline: string }[] = [
   { label: "Women's Health",     key: 'womens-health',  tagline: 'Fertility, prenatal & hormonal balance' },

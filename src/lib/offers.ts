@@ -1,6 +1,6 @@
 // Server-side resolver for the newsletter welcome offer. Reads the live figures
 // off the WELCOME10 coupon so the storefront modal and the welcome email always
-// reflect what the coupon is actually set to — change the coupon's percentage
+// reflect what the coupon is actually set to, change the coupon's percentage
 // (or min order) in admin and the customer-facing copy follows, no deploy. The
 // actual discount applied at checkout has always come from the coupon row; this
 // just keeps the *advertised* number in sync with it.
@@ -24,7 +24,7 @@ const FALLBACK: WelcomeOffer = {
 
 // `cache` dedupes within a request (e.g. layout render). Falls back to the
 // seeded defaults if the row is missing, inactive, not a percentage coupon, or
-// unreadable — so the modal/email never advertise a wrong or empty number.
+// unreadable, so the modal/email never advertise a wrong or empty number.
 export const getWelcomeOffer = cache(async (): Promise<WelcomeOffer> => {
   try {
     const { data } = await supabase

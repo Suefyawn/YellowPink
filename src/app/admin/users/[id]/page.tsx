@@ -109,7 +109,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     const [{ data: userData }, { data: orders }, { data: activity }] = await Promise.all([
       admin.rpc('get_admin_user' as never, { p_id: id } as never),
       admin.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
-      // The customer's own journey — activity_log rows where they are the actor
+      // The customer's own journey, activity_log rows where they are the actor
       // (signup, orders, reviews, subscriptions). See migration 090.
       admin.from('audit_log')
         .select('id, action, entity, entity_id, diff, created_at')
@@ -118,7 +118,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         .limit(50),
     ]);
 
-    // get_admin_user RETURNS TABLE — a set-returning RPC, so `.rpc()` yields an
+    // get_admin_user RETURNS TABLE, a set-returning RPC, so `.rpc()` yields an
     // array even for a single match. Take the first row.
     user = ((userData ?? []) as AdminUser[])[0];
     if (!user) notFound();
@@ -127,7 +127,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     activityRows = (activity ?? []) as ActivityRow[];
   }
   // Lifetime spend + AOV are revenue figures, so they count only realized
-  // orders — a cancelled / refunded / returned / payment-failed order brought
+  // orders, a cancelled / refunded / returned / payment-failed order brought
   // in no money and would otherwise inflate both numbers (and AOV especially,
   // since it divides by the order count). "Orders" below still shows the full
   // count so the customer's total activity is visible.
@@ -139,7 +139,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   const aov = revenueOrders.length ? Math.round(totalSpend / revenueOrders.length) : 0;
   const customerName = [user.first_name, user.last_name].filter(Boolean).join(' ').trim()
     || user.email || user.phone || 'there';
-  const waMessage = `Hi ${customerName.split(' ')[0]}, hope you're well — message from Yellow Pink.`;
+  const waMessage = `Hi ${customerName.split(' ')[0]}, hope you're well, message from Yellow Pink.`;
   const waHref = whatsappUrlForCustomer(user.phone, waMessage);
 
   const section: React.CSSProperties = {
@@ -312,7 +312,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      {/* Activity timeline — the customer's journey */}
+      {/* Activity timeline, the customer's journey */}
       <div style={{ ...section, marginTop: 20 }}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
           {isGuest ? 'Order activity' : 'Activity timeline'}

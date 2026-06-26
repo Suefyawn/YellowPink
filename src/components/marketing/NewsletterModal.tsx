@@ -6,7 +6,7 @@ import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBo
 import { readConsent } from '@/lib/consent';
 import { WELCOME_DISCOUNT_PCT } from '@/lib/commerce';
 
-// Newsletter modal — appears on either:
+// Newsletter modal, appears on either:
 //   1. Exit-intent (desktop only): mouse exits the top edge of the viewport
 //   2. Timed fallback: 60s on page with no interaction
 //
@@ -15,7 +15,7 @@ import { WELCOME_DISCOUNT_PCT } from '@/lib/commerce';
 //   • Already subscribed (yp_newsletter_signed_up)
 //   • Has explicitly rejected marketing cookies
 //   • Is on an admin / checkout page (mounted elsewhere)
-//   • Is on a small screen — phones rely on the footer + post-purchase opt-in
+//   • Is on a small screen, phones rely on the footer + post-purchase opt-in
 //
 // Mounted once in src/app/layout.tsx so it's available globally; component
 // no-ops if any suppression rule triggers.
@@ -33,9 +33,9 @@ function shouldSuppress(): boolean {
     const dismissed = Number(window.localStorage.getItem(DISMISS_KEY) ?? 0);
     if (dismissed && Date.now() - dismissed < DISMISS_WINDOW) return true;
   } catch {}
-  // Don't pop on phones — too disruptive on small screens.
+  // Don't pop on phones, too disruptive on small screens.
   if (window.innerWidth < MOBILE_BREAKPOINT) return true;
-  // Don't pop until the visitor has decided on cookies — stacking modals is rude.
+  // Don't pop until the visitor has decided on cookies, stacking modals is rude.
   if (!readConsent()) return true;
   // Don't pop on these high-intent flows (signup/login/checkout).
   const p = window.location.pathname;
@@ -62,8 +62,7 @@ export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discou
 
     let armed = true;
     const onLeave = (e: MouseEvent) => {
-      // Exit-intent only fires when the cursor leaves through the top edge —
-      // distinguishes "switching tabs" from "moving down the page".
+      // Exit-intent only fires when the cursor leaves through the top edge,       // distinguishes "switching tabs" from "moving down the page".
       if (!armed) return;
       if (e.clientY <= 0) {
         armed = false;
@@ -150,7 +149,7 @@ export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discou
           {discountPct}% off your first order
         </h2>
         <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 20, fontSize: '0.9375rem' }}>
-          Sign up and we&apos;ll send a welcome code, plus one thoughtful email a fortnight — new arrivals, restocks, and Pakistan-specific routine tips.
+          Sign up and we&apos;ll send a welcome code, plus one thoughtful email a fortnight, new arrivals, restocks, and Pakistan-specific routine tips.
         </p>
         <NewsletterSignup source="modal" variant="light" ctaLabel="Sign up" />
         <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--ink-500)' }}>

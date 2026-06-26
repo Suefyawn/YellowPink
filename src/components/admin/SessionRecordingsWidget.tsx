@@ -40,7 +40,7 @@ export async function SessionRecordingsWidget() {
           Latest session recordings
         </div>
         <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
-          No recordings yet — refresh analytics or verify session-recording is enabled in PostHog.
+          No recordings yet, refresh analytics or verify session-recording is enabled in PostHog.
         </p>
       </div>
     );

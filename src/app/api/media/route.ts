@@ -1,13 +1,13 @@
 // ============================================================================
-// /api/media — token-authed image upload for the blog/automation API.
+// /api/media, token-authed image upload for the blog/automation API.
 //
 // Companion to /api/blog: an automation or AI content pipeline POSTs an image
 // file here and gets back a public URL to use as a post's `image_url`. This
-// makes the API self-contained — no admin session needed to host an image.
+// makes the API self-contained, no admin session needed to host an image.
 //
 // Auth: the same BLOG_API_TOKEN bearer token as /api/blog (see lib/blog-api).
 // Storage: the existing public Supabase "images" bucket, mirroring the admin
-// uploader (/api/upload) — same allowed types and size cap — but namespaced
+// uploader (/api/upload), same allowed types and size cap, but namespaced
 // under blog/ so automation uploads stay tidy.
 // ============================================================================
 
@@ -26,7 +26,7 @@ const EXT_BY_TYPE: Record<string, string> = {
   'image/avif': 'avif',
 };
 
-// POST /api/media — multipart/form-data with a "file" field. Returns { url }.
+// POST /api/media, multipart/form-data with a "file" field. Returns { url }.
 export async function POST(req: NextRequest) {
   const denied = authorizeBlogApi(req);
   if (denied) return denied;

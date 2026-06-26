@@ -20,7 +20,7 @@ export function ConsentBanner() {
   const [analytics, setAnalytics] = useState(true);
   const [marketing, setMarketing] = useState(true);
 
-  // Mount-time gate so we don't render the banner during SSR — the consent
+  // Mount-time gate so we don't render the banner during SSR, the consent
   // state lives in document.cookie (external), and only the client side
   // knows whether to surface the banner.
   useEffect(() => {

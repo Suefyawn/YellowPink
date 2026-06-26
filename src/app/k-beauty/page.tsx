@@ -1,4 +1,4 @@
-// 5-min ISR, same cadence as the homepage — the edit changes only when
+// 5-min ISR, same cadence as the homepage, the edit changes only when
 // products are published or the brand list grows.
 export const revalidate = 300;
 
@@ -9,9 +9,9 @@ import { KBeautyCollection } from '@/sections/kbeauty/KBeautyCollection';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd, absoluteUrl } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
-  title: 'K-Beauty — Authentic Korean Skincare in Pakistan',
+  title: 'K-Beauty, Authentic Korean Skincare in Pakistan',
   description:
-    'Shop the K-Beauty Edit: Beauty of Joseon, SKIN1004 and more — authentic Korean sunscreens, ampoules and glass-skin essentials with COD nationwide in Pakistan.',
+    'Shop the K-Beauty Edit: Beauty of Joseon, SKIN1004 and more, authentic Korean sunscreens, ampoules and glass-skin essentials with COD nationwide in Pakistan.',
   path: K_BEAUTY_PAGE_URL,
   image: absoluteUrl('/k-beauty/hero.webp'),
 });

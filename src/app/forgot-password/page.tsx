@@ -31,7 +31,7 @@ export default function ForgotPasswordPage() {
       if (error) { setError(error.message); return; }
       setSent(true);
     } catch (err) {
-      // Network/CORS rejection — without this catch the button stays stuck
+      // Network/CORS rejection, without this catch the button stays stuck
       // on "Sending…" indefinitely.
       setError((err as Error).message || 'Could not send reset email. Try again.');
     } finally {

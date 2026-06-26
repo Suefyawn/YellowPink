@@ -11,7 +11,7 @@ export interface Reviewer {
   specialty: string | null;
   bio: string | null;
   photo_url: string | null;
-  profile_url: string | null;   // PMDC / hospital / LinkedIn — schema sameAs
+  profile_url: string | null;   // PMDC / hospital / LinkedIn, schema sameAs
   review_topics: string[];
   is_default: boolean;
   sort_order: number;

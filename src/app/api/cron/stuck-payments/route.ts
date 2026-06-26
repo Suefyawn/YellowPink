@@ -2,7 +2,7 @@
 // Vercel Cron: alert the owner about orders stuck in `payment_pending`.
 //
 // An online-payment order (JazzCash / Easypaisa / card) that the customer
-// never finishes sits in `payment_pending` forever — invisible unless someone
+// never finishes sits in `payment_pending` forever, invisible unless someone
 // scans the orders list. If unnoticed the customer often re-pays and gets
 // double-charged. This finds orders pending for >2h (and <14 days, so we don't
 // re-alert ancient ones indefinitely) and emails the owner a digest.

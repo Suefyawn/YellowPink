@@ -16,7 +16,7 @@ export function BestsellersBand({ products }: { products: Product[] }) {
               What everyone&apos;s buying.
             </h2>
             <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 20, maxWidth: 320 }}>
-              The products our customers keep coming back to — tried, tested, loved.
+              The products our customers keep coming back to, tried, tested, loved.
             </p>
             <Link href="/shop" className="btn-secondary">Shop Bestsellers</Link>
           </div>

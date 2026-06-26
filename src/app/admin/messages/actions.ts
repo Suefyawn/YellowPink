@@ -81,7 +81,7 @@ export async function sendReply(formData: FormData): Promise<void> {
     : 'Re: your message to Yellow Pink';
 
   const sent = await sendCustomerReplyEmail({ to: email, customerName: name, subject, body, from, replyTo: support });
-  if (!sent) bounce('Reply could not be sent — check the email (Resend) configuration.');
+  if (!sent) bounce('Reply could not be sent, check the email (Resend) configuration.');
 
   const admin = supabaseAdmin();
   const { error } = await admin.from('contact_messages').insert({

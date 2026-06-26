@@ -43,7 +43,7 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
     productBrandCounts.set(r.brand, (productBrandCounts.get(r.brand) ?? 0) + 1);
   }
 
-  // Detect product.brand strings that have no metadata row — orphans the
+  // Detect product.brand strings that have no metadata row, orphans the
   // owner can either add a row for, or fix the typo on the products.
   const knownNames = new Set(brands.map(b => b.name));
   const orphanBrandStrings = [...productBrandCounts.entries()]
@@ -52,7 +52,7 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
 
   const canEdit = session.isOwner || session.permissions.includes('products.edit');
 
-  // Backfill counters — the "incomplete" set the owner can plough through.
+  // Backfill counters, the "incomplete" set the owner can plough through.
   const needsDescription = brands.filter(b => !b.description).length;
   const needsLogo = brands.filter(b => !b.logo_url).length;
   const needsHero = brands.filter(b => !b.hero_image_url).length;
@@ -68,7 +68,7 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Brands</h1>
       </div>
       <p style={{ margin: '0 0 24px', fontSize: '0.875rem', color: '#6b7280', maxWidth: 720 }}>
-        {brands.length} brand{brands.length !== 1 ? 's' : ''} · Each brand gets a landing page at <code>/brand/&lt;slug&gt;</code> built from the products that carry its name. Add a description, logo, and hero to make the page sing — until then the page falls back to a templated description and a representative product image.
+        {brands.length} brand{brands.length !== 1 ? 's' : ''} · Each brand gets a landing page at <code>/brand/&lt;slug&gt;</code> built from the products that carry its name. Add a description, logo, and hero to make the page sing, until then the page falls back to a templated description and a representative product image.
       </p>
 
       {sp.error && (
@@ -100,11 +100,11 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
           <h2 style={{ margin: '0 0 12px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>New brand</h2>
           <form action={createBrand} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <input name="name" required placeholder="e.g. CeraVe" style={{ ...inp, minWidth: 220 }} />
-            <input name="slug" placeholder="optional — auto from name" style={{ ...inp, minWidth: 200, fontFamily: 'monospace' }} />
+            <input name="slug" placeholder="optional, auto from name" style={{ ...inp, minWidth: 200, fontFamily: 'monospace' }} />
             <button type="submit" style={{ padding: '8px 18px', background: '#C5286A', color: 'white', border: 'none', borderRadius: 7, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>+ Create</button>
           </form>
           <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-            The slug is the public URL (<code>/brand/&lt;slug&gt;</code>) and the join key. It must match products&apos; <code>brand</code> string when slugified — leave blank to auto-derive.
+            The slug is the public URL (<code>/brand/&lt;slug&gt;</code>) and the join key. It must match products&apos; <code>brand</code> string when slugified, leave blank to auto-derive.
           </p>
         </div>
       )}
@@ -116,7 +116,7 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
             {orphanBrandStrings.length} brand{orphanBrandStrings.length === 1 ? '' : 's'} on products without metadata
           </h2>
           <p style={{ margin: '0 0 10px', fontSize: '0.8125rem', color: '#92400e' }}>
-            These brand strings appear on published products but have no row here — add one to enable a proper landing page.
+            These brand strings appear on published products but have no row here, add one to enable a proper landing page.
           </p>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {orphanBrandStrings.map(([name, count]) => (

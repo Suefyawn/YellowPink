@@ -6,10 +6,10 @@ import { COURIER_LIST, courierTrackingUrl } from '@/lib/couriers';
 
 interface Props {
   orderId: string;
-  /** Couriers we have a configured API adapter for — server passes this in
+  /** Couriers we have a configured API adapter for, server passes this in
    *  via the page so the UI can show "Book pickup" vs "Enter manually". */
   apiAdapters: string[];
-  /** Existing shipment (if any) — render-cancellation + tracking link. */
+  /** Existing shipment (if any), render-cancellation + tracking link. */
   shipment?: {
     id: string;
     courier: string;
@@ -35,7 +35,7 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
   const [manualState, manualAction, manualPending] = useActionState(createShipment, null);
   const [cancelState, cancelAction, cancelPending] = useActionState(cancelShipment, null);
 
-  // ─── Already shipped — show tracking + cancel options ────────────────────
+  // ─── Already shipped, show tracking + cancel options ────────────────────
   if (shipment && shipment.status !== 'cancelled') {
     const trackUrl = courierTrackingUrl(shipment.courier, shipment.tracking_number);
     return (
@@ -83,7 +83,7 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
     );
   }
 
-  // ─── Not yet shipped — picker + mode-switcher ────────────────────────────
+  // ─── Not yet shipped, picker + mode-switcher ────────────────────────────
   const hasApi = apiAdapters.includes(courier);
   return (
     <div>
@@ -110,7 +110,7 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
         <p style={{ fontSize: '0.6875rem', color: '#6b7280', margin: '4px 0 0' }}>
           {apiAdapters.length > 0
             ? `API-backed: ${apiAdapters.join(', ')}. Others need a tracking number entered manually.`
-            : 'No courier API is configured — pick a courier and enter the tracking number manually.'}
+            : 'No courier API is configured, pick a courier and enter the tracking number manually.'}
         </p>
       </div>
 

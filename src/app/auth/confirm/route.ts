@@ -5,7 +5,7 @@ import { SITE_URL } from '@/lib/seo';
 // Landing route for Supabase email links (customer "Confirm signup" and the
 // doctor magic-link sign-in). Supabase verifies the emailed token, then
 // redirects here with a PKCE `code`. We exchange it for a session server-side
-// — which sets the auth cookies — so the visitor lands already signed in, with
+//, which sets the auth cookies, so the visitor lands already signed in, with
 // no client-side session race.
 //
 // `?next=` lets a flow pick where to land (must be a same-origin path). The
@@ -25,6 +25,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // No code, or an expired / already-used link — send them to sign in.
+  // No code, or an expired / already-used link, send them to sign in.
   return NextResponse.redirect(`${SITE_URL}${signIn}`);
 }
