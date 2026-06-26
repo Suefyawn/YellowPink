@@ -32,6 +32,7 @@ import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { MetaPixel } from '@/components/analytics/MetaPixel';
 import { AttributionCapture } from '@/components/analytics/AttributionCapture';
 import { Analytics } from '@vercel/analytics/next';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
 import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
 import { PWAInstallPrompt } from '@/components/layout/PWAInstallPrompt';
@@ -177,6 +178,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <AttributionCapture />
         <WebVitalsReporter />
         <Analytics />
+        <SpeedInsights />
         <ServiceWorkerRegister />
         <PWAInstallPrompt />
         <Providers commerce={commerce}>
