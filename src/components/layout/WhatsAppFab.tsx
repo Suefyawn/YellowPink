@@ -25,7 +25,11 @@ export function WhatsAppFab({ number }: { number?: string }) {
     <a
       href={href}
       target="_blank"
-      rel="noopener noreferrer"
+      // nofollow: a wa.me chat-intent link, not a destination worth passing
+      // PageRank to. It also sits in site-wide chrome, so without nofollow it
+      // reads to crawlers as a sitewide external link (Semrush flagged 1 per
+      // page, all 429-rate-limited false "broken external link" hits).
+      rel="nofollow noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
       title="Chat with us on WhatsApp"
       onMouseEnter={() => setHover(true)}
