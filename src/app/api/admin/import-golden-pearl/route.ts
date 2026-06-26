@@ -142,8 +142,9 @@ export async function POST(req: NextRequest) {
     rows.push({
       brand: BRAND,
       name: (p.title ?? '').trim().slice(0, 200),
-      price: isFinite(price) ? price : 0,
-      original_price: compare > price ? compare : null,
+      // price / original_price are integer columns (whole PKR).
+      price: Math.round(isFinite(price) ? price : 0),
+      original_price: compare > price ? Math.round(compare) : null,
       category: mapCategory((p.product_type ?? '').trim()),
       subcategory: (p.product_type ?? '').trim() || null,
       slug,
