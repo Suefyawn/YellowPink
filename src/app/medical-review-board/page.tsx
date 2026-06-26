@@ -89,6 +89,19 @@ export default async function MedicalReviewBoardPage() {
             </div>
           )}
 
+          <div style={{ marginTop: 48, padding: '24px 26px', border: '1px solid var(--line)', borderRadius: 14, background: 'var(--paper2)' }}>
+            <div style={{ fontSize: '1.0625rem', fontWeight: 600, color: 'var(--ink-900)', marginBottom: 6 }}>
+              Are you a doctor or health professional?
+            </div>
+            <p className="small-text" style={{ color: 'var(--ink-700)', lineHeight: 1.6, margin: '0 0 14px', maxWidth: 560 }}>
+              We welcome qualified, registered clinicians to review content in their specialty. It&rsquo;s a
+              volunteer role, and you get a profile on this page plus a byline on the articles you review.
+            </p>
+            <Link href="/medical-review-board/apply" className="btn-primary" style={{ display: 'inline-block', padding: '10px 22px' }}>
+              Apply to join the board
+            </Link>
+          </div>
+
           <p className="small-text" style={{ color: 'var(--ink-500)', marginTop: 40, lineHeight: 1.6 }}>
             Medical review confirms that an article is accurate and up to date. It is general
             educational information, not a substitute for personal medical advice &mdash; always
