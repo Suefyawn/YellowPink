@@ -130,7 +130,7 @@ export async function approveReviewerApplication(formData: FormData): Promise<vo
 
   const { data: app } = await admin
     .from('reviewer_applications')
-    .select('id, name, email, credentials, specialty, bio, profile_url, review_topics, status')
+    .select('id, name, email, credentials, specialty, bio, profile_url, photo_url, review_topics, status')
     .eq('id', id).maybeSingle();
   if (!app || app.status !== 'pending') return;
 
@@ -144,6 +144,7 @@ export async function approveReviewerApplication(formData: FormData): Promise<vo
     specialty: app.specialty ?? null,
     bio: app.bio ?? null,
     profile_url: app.profile_url ?? null,
+    photo_url: app.photo_url ?? null,
     review_topics: app.review_topics ?? [],
     active: true,
   }).select('id').single();

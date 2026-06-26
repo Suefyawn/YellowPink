@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSignedInReviewer, getReviewedPosts } from '@/lib/reviewer-portal';
 import { updateReviewerProfile, signOutReviewer } from './actions';
+import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.yellowpink.pk';
 
@@ -83,8 +84,8 @@ export default async function ReviewerDashboard() {
               <input id="d-profile" name="profile_url" type="url" defaultValue={reviewer.profile_url ?? ''} style={field} placeholder="PMDC / hospital / LinkedIn" />
             </div>
             <div>
-              <label htmlFor="d-photo" style={label}>Photo URL</label>
-              <input id="d-photo" name="photo_url" type="url" defaultValue={reviewer.photo_url ?? ''} style={field} placeholder="https://…" />
+              <span style={label}>Photo</span>
+              <PhotoUpload name="photo_url" defaultUrl={reviewer.photo_url ?? ''} />
             </div>
             <div>
               <label htmlFor="d-bio" style={label}>Short bio</label>
