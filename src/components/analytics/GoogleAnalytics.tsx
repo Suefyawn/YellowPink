@@ -36,6 +36,11 @@ function PageviewTracker({ gaId }: { gaId?: string }) {
   const searchParams = useSearchParams();
   useEffect(() => {
     if (!gaId || typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+    // Staff working in the dashboard / reviewer portal is not storefront
+    // traffic — counting it skews GA4 sessions, pageviews and engagement (and
+    // it dwarfs the real catalogue's numbers on a young site). PostHog already
+    // drops these in before_send; keep GA4 consistent.
+    if (pathname.startsWith('/admin') || pathname.startsWith('/reviewer')) return;
     const qs = searchParams?.toString();
     const path = qs ? `${pathname}?${qs}` : pathname;
     window.gtag('event', 'page_view', {
