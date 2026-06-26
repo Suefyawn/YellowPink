@@ -2,7 +2,7 @@
 // Brand helpers.
 //
 // `products.brand` is a free text column; the `brands` table (migration 150)
-// adds optional first-class metadata layered on top — slug, copy, logo, hero,
+// adds optional first-class metadata layered on top, slug, copy, logo, hero,
 // SEO, status. Brand pages keep working without a brands row for a given
 // product (the derived path is the fallback); rows let the owner edit copy
 // and upload assets in admin.
@@ -87,7 +87,7 @@ export async function getBrandDirectory(products: Product[]): Promise<BrandDirec
   for (const r of (data ?? []) as BrandRecord[]) meta.set(r.slug, r);
 
   // Pre-index a representative product image per brand so the index card can
-  // always show something when no real logo is uploaded — same fallback idea
+  // always show something when no real logo is uploaded, same fallback idea
   // collections use.
   const firstImageBySlug = new Map<string, string>();
   for (const p of products) {

@@ -4,8 +4,7 @@
 //
 // Uses the service-role client because audit_log RLS is enabled with no
 // anon INSERT policy (migration 064 / 070 hardening). The previous
-// anon-client insert silently failed and the empty try/catch hid it —
-// the audit table sat at 0 rows for the full lifetime of the audit
+// anon-client insert silently failed and the empty try/catch hid it, // the audit table sat at 0 rows for the full lifetime of the audit
 // instrumentation. Service role is the right credential for an
 // internal infra write that doesn't belong to a Supabase Auth user.
 

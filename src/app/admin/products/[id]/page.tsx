@@ -76,7 +76,7 @@ export default async function EditProductPage({
   const product = rawProduct as Product;
 
   const { attributes, variants } = await loadAttributesAndVariants(product.id);
-  // vendors RLS has no policy — read with the service role.
+  // vendors RLS has no policy, read with the service role.
   const { data: vendorData } = await supabaseAdmin().from('vendors').select('*').order('name');
 
   // Tags: this product's current set + the full tag vocabulary for suggestions.

@@ -63,7 +63,7 @@ function isOwnedPath(pathname: string): boolean {
     pathname.startsWith('/product/') ||
     pathname.startsWith('/blog/') ||
     pathname.startsWith('/page/') ||
-    // Storefront archive routes Next owns directly — must be listed here or the
+    // Storefront archive routes Next owns directly, must be listed here or the
     // legacy WordPress pattern rules below would hijack them (e.g. /brand/<slug>
     // was being 301'd to /shop?category=<slug>, showing "All Products").
     pathname === '/brands' ||
@@ -90,7 +90,7 @@ async function resolveRedirect(pathname: string): Promise<string | null> {
   }
 
   try {
-    // PostgREST direct call — avoids pulling the full SDK into edge middleware.
+    // PostgREST direct call, avoids pulling the full SDK into edge middleware.
     const url = `${sbUrl}/rest/v1/redirects?from_path=eq.${encodeURIComponent(pathname)}&select=to_path&limit=1`;
     const res = await fetch(url, {
       headers: { apikey: sbKey, Authorization: `Bearer ${sbKey}` },
@@ -140,7 +140,7 @@ export async function proxy(request: NextRequest) {
   // We build a server client over the request cookies and call getUser(),
   // which cryptographically verifies the token (and refreshes it if near
   // expiry, writing the new cookies onto the response). No hand-rolled JWT
-  // decode — that couldn't read @supabase/ssr's chunked cookie format, which
+  // decode, that couldn't read @supabase/ssr's chunked cookie format, which
   // is what bounced every signed-in customer back to /login.
   if (pathname.startsWith('/account')) {
     const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -164,7 +164,7 @@ export async function proxy(request: NextRequest) {
       if (!user) {
         return NextResponse.redirect(new URL('/login', request.url));
       }
-      // Authenticated — return the response carrying any refreshed cookies.
+      // Authenticated, return the response carrying any refreshed cookies.
       return res;
     }
   }
@@ -172,7 +172,7 @@ export async function proxy(request: NextRequest) {
   // ─── Canonical query-param 301 (audit SEV-2) ──────────────────────────────
   // The /shop page historically wrote `?cat=` and `?sub=` to the URL, while
   // header nav + sitemap + breadcrumb canonical URLs all use `?category=` /
-  // `?subcategory=`. That dual-URL surface dilutes SEO ranking — fold every
+  // `?subcategory=`. That dual-URL surface dilutes SEO ranking, fold every
   // legacy short-form back to the canonical name.
   if (pathname === '/shop') {
     const url = request.nextUrl;
@@ -194,7 +194,7 @@ export async function proxy(request: NextRequest) {
   // from old product / blog ids).
   //
   // Runs on ALL paths (incl. `/`) because `/?s=foo` is itself a WP redirect
-  // target — `isOwnedPath` would otherwise filter it out before we got here.
+  // target, `isOwnedPath` would otherwise filter it out before we got here.
   {
     const patternTo = wpPatternRedirect(pathname, request.nextUrl.searchParams);
     if (patternTo && patternTo !== pathname + (search ?? '')) {
@@ -230,8 +230,7 @@ export async function proxy(request: NextRequest) {
 }
 
 // Map a known WP-style URL to the Next route, or null if no rule matches and
-// we should fall through to the per-slug `redirects` lookup. Pure function —
-// no DB hits, no async — runs at edge speed.
+// we should fall through to the per-slug `redirects` lookup. Pure function, // no DB hits, no async, runs at edge speed.
 function wpPatternRedirect(pathname: string, params: URLSearchParams): string | null {
   // /shop/page/2/ → /shop?page=2
   const shopPage = pathname.match(/^\/shop\/page\/(\d+)\/?$/);
@@ -242,18 +241,18 @@ function wpPatternRedirect(pathname: string, params: URLSearchParams): string | 
   if (blogPage) return `/blog?page=${blogPage[1]}`;
 
   // /category/<slug>/ → /shop?category=<slug> (legacy WordPress blog/category
-  // URLs). NOTE: /brand/<slug> is NOT handled here any more — it's a real Next
+  // URLs). NOTE: /brand/<slug> is NOT handled here any more, it's a real Next
   // route (the brand archive page), so it's listed in isOwnedPath above and
   // never reaches this function. /product-category/<slug> is also deliberately
-  // excluded — those old WordPress slugs don't match the new taxonomy (e.g.
+  // excluded, those old WordPress slugs don't match the new taxonomy (e.g.
   // bone-health ≠ bone-joint), so they're resolved via the per-slug `redirects`
   // table, with a slug-passthrough fallback in the proxy for anything unmapped.
   const cat = pathname.match(/^\/category\/([^/]+)\/?$/);
   if (cat) return `/shop?category=${encodeURIComponent(cat[1])}`;
 
   // /product-tag/<slug>/… → /tag/<slug>. There's no /product-tag route (it
-  // always 404s), so funnel every legacy WP product-tag URL — including the
-  // /feed/ and ?add-to-cart= variants — into the real tag route, which then
+  // always 404s), so funnel every legacy WP product-tag URL, including the
+  // /feed/ and ?add-to-cart= variants, into the real tag route, which then
   // resolves the tag or honours a manual redirect (redirectIfMapped) at its
   // 404 boundary. Strips any trailing path so /product-tag/x/feed/ → /tag/x.
   const productTag = pathname.match(/^\/product-tag\/([^/]+)(?:\/.*)?$/);

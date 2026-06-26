@@ -10,9 +10,9 @@ export default function Error({ error, reset }: { error: Error & { digest?: stri
 
   useEffect(() => {
     // Stale-tab Server Action mismatches happen after a deploy and a reload
-    // fixes them — they're not real bugs. Don't pollute Sentry with them.
+    // fixes them, they're not real bugs. Don't pollute Sentry with them.
     if (isStale) return;
-    // Fire-and-forget — captureError lazy-loads the Sentry SDK; the page
+    // Fire-and-forget, captureError lazy-loads the Sentry SDK; the page
     // can still re-render before that promise settles.
     void captureError(error, { source: 'app/error.tsx', digest: error.digest });
   }, [error, isStale]);

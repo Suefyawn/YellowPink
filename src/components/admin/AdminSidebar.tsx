@@ -147,7 +147,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0, unreadMe
               return (
                 <Link key={href} href={href} onClick={onClose} className="adm-nav-link" style={{
                   display: 'flex', alignItems: 'center', gap: 12,
-                  // 44 px min tap target for mobile phones — desktop still looks
+                  // 44 px min tap target for mobile phones, desktop still looks
                   // tight because the font size is 0.875rem so the row reads
                   // compactly.
                   padding: '12px 20px',
@@ -190,7 +190,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0, unreadMe
             <span>⚙</span> My Profile
           </Link>
         )}
-        {/* User manual — visible to every signed-in staff member so anyone with
+        {/* User manual, visible to every signed-in staff member so anyone with
             admin access can learn how the store + storefront work. */}
         <Link href="/admin/help" onClick={onClose} style={{
           display: 'flex', alignItems: 'center', gap: 8,

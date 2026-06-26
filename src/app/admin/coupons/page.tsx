@@ -38,7 +38,7 @@ export default async function CouponsPage({
   const sp = (await searchParams) ?? {};
   const feedbackError = sp.error;
   const feedbackCreated = sp.created;
-  // coupons RLS (migration 070) drops anon SELECT — admin reads need
+  // coupons RLS (migration 070) drops anon SELECT, admin reads need
   // the service role.
   const admin = supabaseAdmin();
   const [{ data }, { data: orderRows }] = await Promise.all([

@@ -5,7 +5,7 @@ import {
   SkeletonTable,
 } from '@/components/admin/Skeleton';
 
-// Loading skeleton for /admin/products — header with "Import CSV" / "New
+// Loading skeleton for /admin/products, header with "Import CSV" / "New
 // Product" actions, a filter bar, then the products table.
 export default function ProductsLoading() {
   return (

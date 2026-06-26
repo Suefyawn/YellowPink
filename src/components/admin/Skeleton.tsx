@@ -3,7 +3,7 @@
 // blank/partial) while their async server component fetches data.
 //
 // Visual style matches the admin shell: grey placeholders (#e5e7eb / #f3f4f6),
-// white cards, the `adm-page` padding wrapper. The shimmer is pure CSS — see
+// white cards, the `adm-page` padding wrapper. The shimmer is pure CSS, see
 // the `.adm-skeleton` rule and `adm-skeleton-shimmer` keyframes in
 // src/styles/globals.css. No JS animation, no client component needed.
 
@@ -105,7 +105,7 @@ export function SkeletonStatGrid({
   );
 }
 
-/** A white admin card container — drop placeholder content inside. */
+/** A white admin card container, drop placeholder content inside. */
 export function SkeletonCard({
   children,
   style,
@@ -129,7 +129,7 @@ export function SkeletonCard({
   );
 }
 
-/** A white card holding N list/table rows — stands in for an admin table. */
+/** A white card holding N list/table rows, stands in for an admin table. */
 export function SkeletonTable({ rows = 6 }: { rows?: number }) {
   return (
     <SkeletonCard style={{ padding: 0, overflow: 'hidden' }}>

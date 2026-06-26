@@ -20,7 +20,7 @@ const lbl: React.CSSProperties = {
 };
 
 // PK mobile: optional +92 / 0092 / 0 prefix, then 3xxxxxxxxx. Mirrors
-// `pkPhoneSchema` in src/lib/validators.ts — kept duplicated client-side so
+// `pkPhoneSchema` in src/lib/validators.ts, kept duplicated client-side so
 // we can show inline feedback without an extra round-trip.
 const PK_PHONE = /^(\+92|0092|0)?3\d{9}$/;
 

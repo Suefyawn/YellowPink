@@ -1,4 +1,4 @@
-// 5-min ISR — featured products / new arrivals / hero copy change at most
+// 5-min ISR, featured products / new arrivals / hero copy change at most
 // every few hours, and the global cache header in next.config.ts already
 // puts a CDN in front. Was `force-dynamic` before the 2026-05-24 audit.
 export const revalidate = 300;
@@ -17,14 +17,14 @@ import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 import { buildWellnessShowcase } from '@/lib/wellness-data';
 import { categoryHref } from '@/lib/category-taxonomy';
 
-// Homepage "Shop by category" tiles — four makeup/skincare + four wellness,
+// Homepage "Shop by category" tiles, four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
 const MAKEUP_TILE_CATS = ['Lip & Cheek Tints', 'Highlighters', 'Face Makeup', 'Cleansers & Treatments'];
 const WELLNESS_TILE_CATS = ["Women's Health", "Men's Health", 'Immunity', 'Bone & Joint'];
 
 // Curated editorial image per tile category, hosted in this project's
 // Supabase Storage `images` bucket. Replaces the old approach of surfacing
-// one random in-stock product photo per category — those varied wildly in
+// one random in-stock product photo per category, those varied wildly in
 // framing/lighting and made the section look incoherent. These are
 // purpose-shot on a shared cream backdrop. The base URL is derived from the
 // configured project so a no-Supabase demo build resolves to `undefined` and
@@ -91,7 +91,7 @@ export default async function HomePage() {
     { title: 'Health & Wellness', tiles: WELLNESS_TILE_CATS.map(tile) },
   ];
 
-  // Seasonal hero override — while the seasonal makeover is on, the homepage
+  // Seasonal hero override, while the seasonal makeover is on, the homepage
   // hero uses the season_hero_* settings; any field left blank falls back to
   // the normal hero value. The secondary CTA + brand-logo row aren't seasonal.
   const seasonOn = settings.season_active === 'true';

@@ -19,7 +19,7 @@ export default async function SettingsBrandingPage({ searchParams }: { searchPar
     <>
       <SettingsPageHeader
         title="Branding & theme"
-        subtitle="Brand colours and the seasonal makeover — a one-switch palette + hero swap for Eid, Christmas, and the like."
+        subtitle="Brand colours and the seasonal makeover, a one-switch palette + hero swap for Eid, Christmas, and the like."
       />
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
 
@@ -51,7 +51,7 @@ export default async function SettingsBrandingPage({ searchParams }: { searchPar
         <Card>
           <Section
             title="Seasonal theme"
-            desc="A full seasonal makeover — colour palette, a subtle background motif, and the homepage hero — all behind one switch. Use it for Eid, Christmas and the like; for everyday sales use the Homepage page (Sale / Announcement) instead. Storefront pages are edge-cached, so a change reaches all visitors within a few minutes."
+            desc="A full seasonal makeover, colour palette, a subtle background motif, and the homepage hero, all behind one switch. Use it for Eid, Christmas and the like; for everyday sales use the Homepage page (Sale / Announcement) instead. Storefront pages are edge-cached, so a change reaches all visitors within a few minutes."
           />
           <Divider />
           <div style={{ display: 'grid', gap: 18 }}>
@@ -59,7 +59,7 @@ export default async function SettingsBrandingPage({ searchParams }: { searchPar
               <label style={lbl}>Seasonal mode</label>
               <Toggle name="season_active" checked={g('season_active') === 'true'} />
               <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                While off, the storefront keeps its default palette, no motif and the normal hero — whatever season is picked below stays dormant. Turn this on when the season begins.
+                While off, the storefront keeps its default palette, no motif and the normal hero, whatever season is picked below stays dormant. Turn this on when the season begins.
               </p>
             </div>
 
@@ -72,7 +72,7 @@ export default async function SettingsBrandingPage({ searchParams }: { searchPar
                 style={inp}
               >
                 {STORE_THEMES.map(t => (
-                  <option key={t.key} value={t.key}>{t.label} — {t.hint}</option>
+                  <option key={t.key} value={t.key}>{t.label}, {t.hint}</option>
                 ))}
               </select>
               <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>

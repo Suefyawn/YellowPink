@@ -3,7 +3,7 @@
 //
 // Lives in lib/ (not in components/) because the calling tree starts at
 // app/layout.tsx (a server component). SiteChrome is `'use client'`, so we
-// cannot pass an async server-component wrapper through it — the data has
+// cannot pass an async server-component wrapper through it, the data has
 // to be resolved at the layout level and handed down as plain props.
 
 import { supabase, isDemo } from '@/lib/supabase';

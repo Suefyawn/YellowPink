@@ -48,7 +48,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
   // Every matching card is rendered into the DOM; cards outside the active
   // page are hidden with `display:none` rather than sliced out. This keeps the
   // nice client-side filter/search/pagination UX while leaving a real,
-  // crawlable <a> for every post in the server HTML — so we no longer need a
+  // crawlable <a> for every post in the server HTML, so we no longer need a
   // separate "All articles" link dump to avoid orphaned (un-linked) posts.
   const pageStart = (safePage - 1) * POSTS_PER_PAGE;
   const pageEnd = safePage * POSTS_PER_PAGE;
@@ -60,7 +60,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Journal</Overline>
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>The Edit</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 480 }}>
-            Expert guides, honest reviews, and the science behind beauty and health — no fluff.
+            Expert guides, honest reviews, and the science behind beauty and health, no fluff.
           </p>
         </div>
       </section>
@@ -100,7 +100,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
               type="search"
               value={query}
               onChange={e => { setQuery(e.target.value); setPage(1); }}
-              placeholder="Search the journal — try “PCOS”, “retinol”…"
+              placeholder="Search the journal, try “PCOS”, “retinol”…"
               aria-label="Search blog posts"
               style={{
                 flex: '1 1 280px', maxWidth: 420, minWidth: 220,
@@ -139,7 +139,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
               <Link key={post.id} href={`/blog/${post.slug}`} className="blog-tile" style={{ textDecoration: 'none', color: 'inherit', display: i >= pageStart && i < pageEnd ? undefined : 'none' }}>
                 <article style={{ cursor: 'pointer' }}>
                   {/* Hover lift handled in CSS (.blog-tile:hover .blog-tile-img) instead
-                      of JS onMouseEnter — the old version was a React Compiler
+                      of JS onMouseEnter, the old version was a React Compiler
                       anti-pattern (mutating DOM in event handlers). */}
                   <div className="blog-tile-img" style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden', marginBottom: 16, transition: 'transform 200ms ease-out' }}>
                     <ProductImage src={post.image_url} alt={post.title} sizes="(max-width: 700px) 100vw, 33vw" />

@@ -1,5 +1,5 @@
 export const dynamic = 'force-dynamic';
-// The send action runs from this route — give it headroom over the platform
+// The send action runs from this route, give it headroom over the platform
 // default so a campaign send is never killed mid-flight.
 export const maxDuration = 60;
 
@@ -28,7 +28,7 @@ export default async function NewsletterPage() {
   }
 
   // newsletter_subscribers + newsletter_campaigns are RLS-locked to the
-  // service role — staff-cookie auth needs supabaseAdmin() to read them.
+  // service role, staff-cookie auth needs supabaseAdmin() to read them.
   const admin = supabaseAdmin();
   const [{ count: activeCount }, { data: campaignRows }, { data: subscriberRows }] = await Promise.all([
     admin

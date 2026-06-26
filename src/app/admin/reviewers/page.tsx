@@ -35,9 +35,9 @@ function ReviewerForm({ r }: { r?: ReviewerRow }) {
       <div><label style={lbl}>Credentials</label><input name="credentials" defaultValue={r?.credentials ?? ''} placeholder="MBBS, FCPS (Gynaecology)" style={inp} /></div>
       <div><label style={lbl}>Specialty</label><input name="specialty" defaultValue={r?.specialty ?? ''} placeholder="Obstetrics & Gynaecology" style={inp} /></div>
       <div><label style={lbl}>Slug {r ? '' : '(auto from name if blank)'}</label><input name="slug" defaultValue={r?.slug ?? ''} placeholder="ayesha-khan" style={inp} /></div>
-      <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Bio</label><textarea name="bio" defaultValue={r?.bio ?? ''} rows={2} placeholder="Short professional bio — where they practise, experience." style={{ ...inp, resize: 'vertical' }} /></div>
+      <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Bio</label><textarea name="bio" defaultValue={r?.bio ?? ''} rows={2} placeholder="Short professional bio, where they practise, experience." style={{ ...inp, resize: 'vertical' }} /></div>
       <div><label style={lbl}>Photo URL</label><input name="photo_url" defaultValue={r?.photo_url ?? ''} placeholder="https://…" style={inp} /></div>
-      <div><label style={lbl}>Profile URL (PMDC / LinkedIn — sameAs)</label><input name="profile_url" defaultValue={r?.profile_url ?? ''} placeholder="https://…" style={inp} /></div>
+      <div><label style={lbl}>Profile URL (PMDC / LinkedIn, sameAs)</label><input name="profile_url" defaultValue={r?.profile_url ?? ''} placeholder="https://…" style={inp} /></div>
       <div><label style={lbl}>Review topics (comma-separated)</label><input name="review_topics" defaultValue={r?.review_topics?.join(', ') ?? ''} placeholder="fertility, PCOS, pregnancy" style={inp} /></div>
       <div><label style={lbl}>Sort order</label><input name="sort_order" type="number" defaultValue={r?.sort_order ?? 0} style={inp} /></div>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: '#374151' }}>
@@ -79,8 +79,7 @@ export default async function ReviewersPage() {
       <p style={{ margin: '8px 0 28px', fontSize: '0.875rem', color: '#6b7280', maxWidth: 720 }}>
         Real, qualified doctors who medically review your health/supplement content. They appear on the
         public <Link href="/medical-review-board" style={{ color: '#9d174d', fontWeight: 600 }}>review board</Link> and
-        their name + credentials show on the articles assigned to them. <strong>Only add genuine, consenting reviewers</strong> —
-        verify credentials (PMDC) before publishing.
+        their name + credentials show on the articles assigned to them. <strong>Only add genuine, consenting reviewers</strong>,         verify credentials (PMDC) before publishing.
       </p>
 
       {applications.length > 0 && (

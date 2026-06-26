@@ -14,7 +14,7 @@ export async function generateMetadata(): Promise<Metadata> {
       'The qualified doctors and health professionals who medically review Yellow Pink’s health and supplement content for accuracy.',
     path: '/medical-review-board',
   });
-  // Don't let an empty board get indexed as a thin page — only index once it
+  // Don't let an empty board get indexed as a thin page, only index once it
   // actually lists reviewers.
   if (reviewers.length === 0) meta.robots = { index: false, follow: true };
   return meta;

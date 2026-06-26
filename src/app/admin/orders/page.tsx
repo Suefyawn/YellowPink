@@ -40,7 +40,7 @@ async function OrdersPageInner({
   // CSV export button via orderRangeSinceIso so the query and the export agree.
   const rangeSinceIso = orderRangeSinceIso(range);
 
-  // orders RLS (migration 070) removed the anon SELECT path — the table
+  // orders RLS (migration 070) removed the anon SELECT path, the table
   // is now service-role / authenticated-self-only. Staff-cookie auth
   // doesn't go through Supabase Auth, so admin reads MUST use the
   // service-role client. The anon path returned 0 rows silently.
@@ -59,7 +59,7 @@ async function OrdersPageInner({
   if (q) {
     // Strip characters that would break the PostgREST `.or()` grammar (commas
     // separate conditions; parens group them). Customers are searched by
-    // order number, name, email and phone — support in this market is
+    // order number, name, email and phone, support in this market is
     // phone-first, so matching the contact fields is essential.
     const term = q.replace(/[(),*]/g, ' ').trim();
     const filter = `order_number.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`;

@@ -1,7 +1,7 @@
 import { getGoogleConnection, ga4RunReport } from '@/lib/google';
 
 // Live GA4 metrics (last 28 days) for the connected property. Renders nothing
-// when Google/GA4 isn't connected. Best-effort — never breaks the page.
+// when Google/GA4 isn't connected. Best-effort, never breaks the page.
 
 const card: React.CSSProperties = { background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' };
 
@@ -58,7 +58,7 @@ export async function Ga4Widget() {
           </div>
           {orders === 0 && revenue === 0 && (
             <p style={{ margin: '-8px 0 14px', fontSize: '0.7rem', color: '#9ca3af' }}>
-              Orders/Revenue read 0 — GA4 ecommerce (purchase) events aren’t being received yet.
+              Orders/Revenue read 0, GA4 ecommerce (purchase) events aren’t being received yet.
             </p>
           )}
           {channels.length > 0 && (

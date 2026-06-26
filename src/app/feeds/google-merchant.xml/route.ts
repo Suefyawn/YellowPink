@@ -1,6 +1,6 @@
 // Google Merchant Center product feed (RSS 2.0 + g: namespace).
 //
-// Submit this URL — https://www.yellowpink.pk/feeds/google-merchant.xml — as a
+// Submit this URL, https://www.yellowpink.pk/feeds/google-merchant.xml, as a
 // scheduled-fetch feed in Merchant Center → Products → Feeds. Google re-reads
 // it on whatever cadence you set there; one fetch a day is the typical choice.
 // We don't paginate: the catalogue is well under the 150 000-item-per-feed cap.
@@ -17,7 +17,7 @@ import { SITE_NAME, SITE_URL, absoluteUrl } from '@/lib/seo';
 import { googleProductCategory } from '@/lib/google-product-category';
 import { loadFeedVariants, type FeedVariant } from '@/lib/product-feed';
 
-export const revalidate = 3600; // 1h — Merchant Center polls daily, this is plenty.
+export const revalidate = 3600; // 1h, Merchant Center polls daily, this is plenty.
 
 interface FeedProduct {
   id: string;
@@ -46,7 +46,7 @@ function xmlEscape(s: string): string {
 
 // Merchant Center hard-limits the description at 5000 chars and the title at
 // 150 chars. We keep the description shorter (1000) so it stays a meaningful
-// summary rather than a wall of marketing copy, and we strip HTML — feed text
+// summary rather than a wall of marketing copy, and we strip HTML, feed text
 // must be plain.
 function clean(text: string | null, max: number): string {
   if (!text) return '';
@@ -58,8 +58,8 @@ function clean(text: string | null, max: number): string {
 // (its own id, price, stock, image) grouped under the parent via item_group_id;
 // without one, it's the parent product row (products with no variants).
 function item(p: FeedProduct, variant?: FeedVariant): string {
-  const baseTitle = p.brand ? `${p.brand} — ${p.name}` : p.name;
-  const title = clean(variant ? `${baseTitle} — ${variant.label}` : baseTitle, 150);
+  const baseTitle = p.brand ? `${p.brand}, ${p.name}` : p.name;
+  const title = clean(variant ? `${baseTitle}, ${variant.label}` : baseTitle, 150);
   const description = clean(p.description || p.short_description || p.name, 1000);
   const link = absoluteUrl(`/product/${p.slug}`);
   const imageLink = (variant?.image_url ?? p.image_url) ?? '';
@@ -68,7 +68,7 @@ function item(p: FeedProduct, variant?: FeedVariant): string {
     p.track_inventory === false || stock > 0 ? 'in_stock' : 'out_of_stock';
   // Merchant Center convention: g:price is the regular/MSRP price, g:sale_price
   // is the discounted price. When the compare-at price is higher, the item is
-  // on sale — show both so Shopping can render the strikethrough.
+  // on sale, show both so Shopping can render the strikethrough.
   const basePrice = variant ? variant.price : p.price;
   const compareAt = variant ? variant.compare_at_price : p.original_price;
   const onSale = compareAt != null && compareAt > basePrice;

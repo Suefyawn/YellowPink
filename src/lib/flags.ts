@@ -1,6 +1,6 @@
 // Feature-flag loader. Cached for 30 s per instance to avoid hammering DB.
 //
-// Server-side only — the storefront / admin call await isEnabled('key')
+// Server-side only, the storefront / admin call await isEnabled('key')
 // from a server component or server action. For client components, fetch
 // the flag in the parent server component and pass it down as a prop.
 

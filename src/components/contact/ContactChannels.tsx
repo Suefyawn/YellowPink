@@ -1,7 +1,7 @@
 import { whatsappUrlFromNumber, WA_TEMPLATES } from '@/lib/whatsapp';
 import type { SocialLink } from '@/lib/socials';
 
-// Storefront contact-channel cards — rendered on /page/contact above the form.
+// Storefront contact-channel cards, rendered on /page/contact above the form.
 // WhatsApp-first (the channel PK shoppers reach for), then call / email / track.
 // All values are owner-managed (admin Settings → site_settings); any channel
 // with no configured value is omitted rather than rendered as a dead link.
@@ -92,7 +92,7 @@ export function ContactChannels({
   if (waHref) {
     channels.push({
       key: 'whatsapp', href: waHref, icon: ICON.whatsapp, accent: true, external: true,
-      title: 'WhatsApp us', sub: 'Fastest reply — usually within a few hours, 7 days a week.',
+      title: 'WhatsApp us', sub: 'Fastest reply, usually within a few hours, 7 days a week.',
       action: 'Chat now',
     });
   }
@@ -112,7 +112,7 @@ export function ContactChannels({
   }
   channels.push({
     key: 'track', href: '/track', icon: ICON.track,
-    title: 'Track your order', sub: 'Already ordered? Check its status instantly — no need to message us.',
+    title: 'Track your order', sub: 'Already ordered? Check its status instantly, no need to message us.',
     action: 'Track order',
   });
 

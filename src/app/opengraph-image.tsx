@@ -4,12 +4,12 @@ import { SITE_NAME } from '@/lib/seo';
 // Root-level Open Graph image. Picked up automatically as <meta property="og:image">
 // for every route that does NOT supply its own image (PDP, blog posts can still
 // override via their metadata.openGraph.images). Generated at build time and
-// cached — no per-request cost.
+// cached, no per-request cost.
 //
 // 1200x630 is the canonical OG dimension (also satisfies Twitter `summary_large_image`).
 
 export const runtime = 'nodejs';
-export const alt = `${SITE_NAME} — Imported beauty & wellness in Pakistan`;
+export const alt = `${SITE_NAME}, Imported beauty & wellness in Pakistan`;
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
 
@@ -30,7 +30,7 @@ export default async function OpengraphImage() {
           justifyContent: 'space-between',
           padding: '72px',
           background: PAPER,
-          // Subtle brand colour wash in the corners — same vibe as the hero
+          // Subtle brand colour wash in the corners, same vibe as the hero
           // gradient fallback so a fresh share looks unmistakably "us".
           backgroundImage: `
             radial-gradient(at 88% 12%, ${YELLOW}55, transparent 50%),
@@ -41,7 +41,7 @@ export default async function OpengraphImage() {
           position: 'relative',
         }}
       >
-        {/* Wordmark top-left — large enough to read on a mobile preview */}
+        {/* Wordmark top-left, large enough to read on a mobile preview */}
         <div
           style={{
             display: 'flex',
@@ -56,7 +56,7 @@ export default async function OpengraphImage() {
           <span style={{ color: PINK }}>Pink</span>
         </div>
 
-        {/* Headline — main grab. Display serif feel via heavy weight + tight
+        {/* Headline, main grab. Display serif feel via heavy weight + tight
             tracking; ImageResponse doesn't ship a serif by default so we use
             an "italic-ish" decorative emphasis via colour, not font family. */}
         <div
@@ -94,7 +94,7 @@ export default async function OpengraphImage() {
               maxWidth: 760,
             }}
           >
-            Skincare, makeup & wellness — delivered across Pakistan with cash on delivery.
+            Skincare, makeup & wellness, delivered across Pakistan with cash on delivery.
           </div>
         </div>
 

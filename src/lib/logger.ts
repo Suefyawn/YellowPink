@@ -45,7 +45,7 @@ function emit(level: Level, msg: string, fields: Record<string, unknown> = {}): 
     ...fields,
   };
   // Errors and unknowns: serialise stack + name.
-  // Also grab the first Error so we can forward it to Sentry below — server
+  // Also grab the first Error so we can forward it to Sentry below, server
   // actions that catch + log without re-throwing would otherwise be silent.
   let firstError: Error | null = null;
   for (const [k, v] of Object.entries(payload)) {
@@ -64,7 +64,7 @@ function emit(level: Level, msg: string, fields: Record<string, unknown> = {}): 
   if (level === 'error') {
     import('./monitoring')
       .then(m => m.captureError(firstError ?? new Error(msg), { logger_msg: msg, ...fields }))
-      .catch(() => { /* monitoring unavailable — already logged to stderr */ });
+      .catch(() => { /* monitoring unavailable, already logged to stderr */ });
   }
 }
 

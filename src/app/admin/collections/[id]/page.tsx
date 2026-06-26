@@ -94,7 +94,7 @@ export default async function EditCollectionPage({
 
         {/* SEO */}
         <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-          <div><label style={lbl}>SEO title</label><input name="seo_title" defaultValue={c.seo_title ?? ''} style={inp} placeholder="defaults to “Title — Shop”" /></div>
+          <div><label style={lbl}>SEO title</label><input name="seo_title" defaultValue={c.seo_title ?? ''} style={inp} placeholder="defaults to “Title, Shop”" /></div>
           <div><label style={lbl}>SEO description</label><input name="seo_description" defaultValue={c.seo_description ?? ''} style={inp} /></div>
         </div>
 

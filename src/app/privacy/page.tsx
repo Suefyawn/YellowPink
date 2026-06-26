@@ -28,7 +28,7 @@ export default function PrivacyPage() {
         <p className="body-text" style={{ color: 'var(--ink-700)' }}>
           Yellow Pink is an online beauty and wellness retailer operating in Pakistan. When you
           shop with us we collect the information needed to deliver your order and improve our
-          service — nothing more.
+          service, nothing more.
         </p>
       </section>
 
@@ -48,7 +48,7 @@ export default function PrivacyPage() {
         <ul style={{ color: 'var(--ink-700)', lineHeight: 1.7, paddingLeft: 20 }}>
           <li>To process and deliver your orders, including handing your address to the courier.</li>
           <li>To send you transactional email (order confirmation, shipped, delivered, refund).</li>
-          <li>With your opt-in, to send our newsletter about new products and offers — you can unsubscribe any time.</li>
+          <li>With your opt-in, to send our newsletter about new products and offers, you can unsubscribe any time.</li>
           <li>With your opt-in, to measure which pages help shoppers find what they need.</li>
         </ul>
       </section>

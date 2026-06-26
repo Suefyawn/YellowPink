@@ -37,7 +37,7 @@ export async function submitSitemapAction(): Promise<void> {
   } catch (err) {
     const detail = err instanceof Error ? err.message : String(err);
     log.error('google.submit_sitemap_failed', { error: detail });
-    done(`error=${encodeURIComponent(`Sitemap submit failed — ${detail.slice(0, 180)}`)}`);
+    done(`error=${encodeURIComponent(`Sitemap submit failed, ${detail.slice(0, 180)}`)}`);
   }
   done('google=sitemap_submitted');
 }

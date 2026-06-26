@@ -11,7 +11,7 @@ import { getBrandDirectory } from '@/lib/brands';
 export async function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: 'Beauty, Skincare & Makeup Brands in Pakistan',
-    description: 'Browse every brand at Yellow Pink — authentic imported skincare, makeup and wellness brands like CeraVe, Anua, The Ordinary and Beauty of Joseon, with cash on delivery across Pakistan.',
+    description: 'Browse every brand at Yellow Pink, authentic imported skincare, makeup and wellness brands like CeraVe, Anua, The Ordinary and Beauty of Joseon, with cash on delivery across Pakistan.',
     path: '/brands',
   });
 }
@@ -31,7 +31,7 @@ export default async function BrandsPage() {
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Shop by brand</Overline>
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>All Brands</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 32 }}>
-            {brands.length} {brands.length === 1 ? 'brand' : 'brands'} — every one authentic and imported. Tap a brand to see its range.
+            {brands.length} {brands.length === 1 ? 'brand' : 'brands'}, every one authentic and imported. Tap a brand to see its range.
           </p>
         </div>
       </section>
@@ -40,13 +40,13 @@ export default async function BrandsPage() {
         <div className="container">
           {brands.length === 0 ? (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
-              No brands yet — <Link href="/shop" className="text-link">browse the catalogue</Link>.
+              No brands yet, <Link href="/shop" className="text-link">browse the catalogue</Link>.
             </p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--gutter)' }}>
               {brands.map(b => {
                 // Logo is the uploaded brand asset if set, otherwise the first
-                // product image — same auto-cover idea collections use, so the
+                // product image, same auto-cover idea collections use, so the
                 // grid is never a bare text wall.
                 const tile = b.logo_url || b.product_image_url;
                 return (

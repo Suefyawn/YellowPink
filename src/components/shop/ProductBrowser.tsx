@@ -5,7 +5,7 @@
 // Industry-standard collection-page UX (cf. Sephora/ASOS brand pages): a sort
 // dropdown plus on-page filter facets, rather than bouncing the shopper to the
 // Shop page to refine. It operates purely on the product array it's given
-// (already visibility-filtered server-side) so it needs no URL plumbing — the
+// (already visibility-filtered server-side) so it needs no URL plumbing, the
 // heavyweight, URL-driven /shop CollectionPage stays the place for deep,
 // shareable filtering.
 
@@ -30,7 +30,7 @@ export function ProductBrowser({ products }: { products: Product[] }) {
   const [inStockOnly, setInStockOnly] = useState(false);
   const [activeCats, setActiveCats] = useState<string[]>([]);
 
-  // Category facets — only worth showing when the set spans more than one.
+  // Category facets, only worth showing when the set spans more than one.
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
     for (const p of products) if (p.category) counts.set(p.category, (counts.get(p.category) ?? 0) + 1);

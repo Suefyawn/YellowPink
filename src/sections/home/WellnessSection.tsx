@@ -11,7 +11,7 @@ import type { Product } from '@/types';
 
 // Inline lucide-style icons (24×24, currentColor, strokeWidth 2) keyed by the
 // concern `key` from wellness-data. Per the project icon guidance we never use
-// emoji for these — they pick up the OS emoji font and clash with the brand.
+// emoji for these, they pick up the OS emoji font and clash with the brand.
 const ICON_PATHS: Record<string, React.ReactNode> = {
   'womens-health': <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />,
   'mens-health': <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />,
@@ -32,7 +32,7 @@ function ConcernIcon({ k }: { k: string }) {
   );
 }
 
-// Wellness-specific assurances — supplement buyers care about authenticity and
+// Wellness-specific assurances, supplement buyers care about authenticity and
 // safety (sealed, in-date) more than makeup buyers, so this strip speaks to
 // that anxiety rather than repeating the generic storefront TrustBar.
 const ASSURANCES: { title: string; sub: string; icon: React.ReactNode }[] = [
@@ -61,7 +61,7 @@ export function WellnessSection({
       <div className="container">
         <SectionDivider />
 
-        {/* Editorial intro — copy on the left, atmospheric still life on the
+        {/* Editorial intro, copy on the left, atmospheric still life on the
             right, so the section opens with weight instead of a bare heading. */}
         <div
           className="duo-grid"
@@ -74,7 +74,7 @@ export function WellnessSection({
             </h2>
             <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 440, marginBottom: 20 }}>
               Clinical-grade nutraceuticals for fertility, immunity, bone health and daily
-              vitality — the same authenticity standard as everything else on Yellow Pink.
+              vitality, the same authenticity standard as everything else on Yellow Pink.
               Because real beauty is health, inside out.
             </p>
             <p className="small-text" style={{ color: 'var(--ink-500)', marginBottom: 24 }}>
@@ -103,7 +103,7 @@ export function WellnessSection({
           </div>
         </div>
 
-        {/* Shop by concern — all eight, with live counts + from-prices, so the
+        {/* Shop by concern, all eight, with live counts + from-prices, so the
             range reads as a considered catalogue rather than four taglines. */}
         <div style={{ marginTop: 'var(--section-gap)' }}>
           <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>Shop by health concern</Overline>

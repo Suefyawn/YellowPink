@@ -1,22 +1,22 @@
 // ============================================================================
-// Search-engine indexing submission — IndexNow + Google Indexing API.
+// Search-engine indexing submission, IndexNow + Google Indexing API.
 //
 // Two independent, best-effort channels. Neither ever throws to the caller:
 // indexing is a nice-to-have, so a failure here must never break a publish or
 // an admin save. Each call returns a structured result the admin UI can show.
 //
-//  • IndexNow  — instant ping to Bing / Yandex / Naver / Seznam (one POST
+//  • IndexNow , instant ping to Bing / Yandex / Naver / Seznam (one POST
 //    covers them all). Officially supported, no credentials: it only needs a
 //    public key file at https://<host>/<key>.txt whose contents equal the key.
 //    Works out of the box with the committed default key.
 //
-//  • Google Indexing API — notifies Google directly. Google officially scopes
+//  • Google Indexing API, notifies Google directly. Google officially scopes
 //    this to JobPosting/BroadcastEvent pages, but it is widely used to nudge
 //    crawling of any URL. It needs a Google Cloud service-account key (added
 //    as an Owner of the property in Search Console). Until that's configured
 //    via GOOGLE_INDEXING_CREDENTIALS, this channel is skipped silently.
 //
-// Server-only — imports node:crypto and reads secrets. Never import from a
+// Server-only, imports node:crypto and reads secrets. Never import from a
 // Client Component.
 // ============================================================================
 
@@ -43,7 +43,7 @@ export interface IndexingResult {
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 /** Turn a mix of paths ("/blog/x") and absolute URLs into absolute, same-host
- *  URLs, de-duplicated. Anything pointing at another host is dropped — both
+ *  URLs, de-duplicated. Anything pointing at another host is dropped, both
  *  APIs reject cross-host URLs. */
 export function toAbsoluteUrls(paths: string[]): string[] {
   const host = new URL(SITE_URL).host;
@@ -112,7 +112,7 @@ function base64url(input: Buffer | string): string {
 }
 
 /** Mint a Google OAuth2 access token from a service account via a signed JWT
- *  (RS256). Avoids pulling in google-auth-library — node:crypto does the sign. */
+ *  (RS256). Avoids pulling in google-auth-library, node:crypto does the sign. */
 async function getGoogleAccessToken(sa: ServiceAccount): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const header = base64url(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
@@ -190,7 +190,7 @@ async function submitGoogle(urls: string[]): Promise<ChannelResult> {
 
 /** Submit one or more paths/URLs to every configured search-engine channel.
  *  Best-effort: never throws. Returns a per-channel summary for the UI.
- *  Pass { google: false } for bulk jobs — Google's publish quota is small
+ *  Pass { google: false } for bulk jobs, Google's publish quota is small
  *  (~200/day), so a "resubmit everything" run should go to IndexNow only. */
 export async function submitToSearchEngines(
   paths: string[],
@@ -223,7 +223,7 @@ export async function submitToSearchEnginesQuietly(paths: string[]): Promise<voi
   }
 }
 
-/** Which channels are currently configured — for the admin status panel. */
+/** Which channels are currently configured, for the admin status panel. */
 export function indexingConfig(): { indexnow: boolean; google: boolean } {
   return { indexnow: true, google: !!loadServiceAccount() };
 }

@@ -1,11 +1,11 @@
 'use client';
 
-// Auto-applies a discount code arriving in the URL — e.g. an ad or landing-page
+// Auto-applies a discount code arriving in the URL, e.g. an ad or landing-page
 // link like /product/x?utm_source=facebook&coupon=EID20. The code is validated
 // against the live coupons table (via the lookup_coupon RPC) and, if active,
 // applied to the cart. Because the applied coupon is persisted in the cart
 // context, it survives the whole journey to checkout, so campaign links carry
-// their discount automatically — and the funnel-by-source widget already
+// their discount automatically, and the funnel-by-source widget already
 // measures each campaign by its utm_source/referrer.
 //
 // Accepts ?coupon=, ?discount= or ?code=. Never overrides a coupon the shopper
@@ -35,7 +35,7 @@ function Capture() {
         const rows = (data ?? []) as Coupon[];
         if (rows.length > 0) setAppliedCoupon(rows[0]);
       } catch {
-        /* ignore — a bad code in a link just means no auto-discount */
+        /* ignore, a bad code in a link just means no auto-discount */
       }
     })();
   }, [sp, appliedCoupon, setAppliedCoupon]);

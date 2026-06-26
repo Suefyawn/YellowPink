@@ -44,19 +44,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     );
   }
 
-  // orders + admin_notifications are RLS-locked with no anon SELECT —
-  // staff-cookie auth doesn't go through Supabase Auth, so the public
+  // orders + admin_notifications are RLS-locked with no anon SELECT,   // staff-cookie auth doesn't go through Supabase Auth, so the public
   // client returns 0 rows. The badge count and notification feed need
   // the service role.
   const admin = supabaseAdmin();
   const [{ count: pendingOrderCount }, { count: unreadMessageCount }, { data: rawNotifications }] = await Promise.all([
-    // Orders still needing fulfilment — pending OR processing. Matches the
+    // Orders still needing fulfilment, pending OR processing. Matches the
     // Dashboard's "Orders to fulfill" KPI so the two numbers agree.
     admin
       .from('orders')
       .select('id', { count: 'exact', head: true })
       .in('status', ['pending', 'processing']),
-    // Unread contact messages — drives the Messages sidebar badge.
+    // Unread contact messages, drives the Messages sidebar badge.
     admin
       .from('contact_messages')
       .select('id', { count: 'exact', head: true })
@@ -76,7 +75,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const notifications = allNotifications
     .filter(n => {
       const required = KIND_PERMISSION[n.kind];
-      if (required === undefined) return true;     // unknown kind — let it through
+      if (required === undefined) return true;     // unknown kind, let it through
       if (required === null)      return true;
       return can(session, required);
     })

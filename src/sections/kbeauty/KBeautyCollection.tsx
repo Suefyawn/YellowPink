@@ -8,7 +8,7 @@ import { ProductTile } from '@/components/ui/ProductTile';
 import { K_BEAUTY_BRAND_INFO, K_BEAUTY_FAQ, kBeautyBrandShopUrl } from '@/lib/k-beauty';
 import type { Product } from '@/types';
 
-// Campaign imagery lives in /public/k-beauty — purpose-made editorial shots
+// Campaign imagery lives in /public/k-beauty, purpose-made editorial shots
 // on the brand's cream/blush palette, so the page doesn't depend on which
 // product photos happen to be in the catalog.
 const HERO_IMG = '/k-beauty/hero.webp';
@@ -19,7 +19,7 @@ const RITUAL_STEPS = [
   {
     n: '01',
     title: 'Cleanse, gently',
-    desc: 'Low-pH cleansing that respects the skin barrier instead of stripping it — the foundation of every Korean routine.',
+    desc: 'Low-pH cleansing that respects the skin barrier instead of stripping it, the foundation of every Korean routine.',
   },
   {
     n: '02',
@@ -29,7 +29,7 @@ const RITUAL_STEPS = [
   {
     n: '03',
     title: 'Protect, daily',
-    desc: 'Featherweight SPF 50+ PA++++ every single morning — no white cast, no excuses. The real secret to glass skin.',
+    desc: 'Featherweight SPF 50+ PA++++ every single morning, no white cast, no excuses. The real secret to glass skin.',
   },
 ];
 
@@ -80,7 +80,7 @@ export function KBeautyCollection({ products }: { products: Product[] }) {
         <div style={{ position: 'relative', minHeight: 'clamp(420px, 56vh, 620px)' }}>
           <Image
             src={HERO_IMG}
-            alt="Korean skincare — serums, ampoules and SPF on a cream stone counter"
+            alt="Korean skincare, serums, ampoules and SPF on a cream stone counter"
             fill
             priority
             sizes="100vw"
@@ -98,15 +98,15 @@ export function KBeautyCollection({ products }: { products: Product[] }) {
           }}>
             <div style={{ maxWidth: 520 }}>
               <Overline style={{ display: 'block', marginBottom: 14, color: 'var(--ink-700)' }}>
-                서울의 글로우 — The Seoul Glow
+                서울의 글로우, The Seoul Glow
               </Overline>
               <h1 className="display-l" style={{ fontSize: 'clamp(2.4rem, 5.5vw, 3.5rem)', marginBottom: 16, lineHeight: 1.05 }}>
                 Korean beauty,<br />
                 <em style={{ fontStyle: 'italic', color: 'var(--brand-pink-text)' }}>delivered to Pakistan.</em>
               </h1>
               <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 28, maxWidth: 440 }}>
-                The formulas behind glass skin — fermented rice, single-origin centella,
-                featherweight SPF — imported sealed and authentic, with COD nationwide.
+                The formulas behind glass skin, fermented rice, single-origin centella,
+                featherweight SPF, imported sealed and authentic, with COD nationwide.
               </p>
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap' }}>
                 <a href="#k-beauty-products" className="btn-primary">Shop the Edit</a>
@@ -139,7 +139,7 @@ export function KBeautyCollection({ products }: { products: Product[] }) {
             <div style={{ position: 'relative', borderRadius: 'var(--radius-card)', overflow: 'hidden', aspectRatio: '3/4' }}>
               <Image
                 src={RITUAL_IMG}
-                alt="Dewy glass skin — applying a centella ampoule"
+                alt="Dewy glass skin, applying a centella ampoule"
                 fill
                 sizes="(max-width: 900px) 100vw, 42vw"
                 style={{ objectFit: 'cover' }}
@@ -151,7 +151,7 @@ export function KBeautyCollection({ products }: { products: Product[] }) {
                 Skin first.<br /><em style={{ fontStyle: 'italic' }}>Makeup second.</em>
               </h2>
               <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 28, maxWidth: 460 }}>
-                Korean skincare isn&apos;t about covering skin — it&apos;s about building it:
+                Korean skincare isn&apos;t about covering skin, it&apos;s about building it:
                 gentle formulas, thin layers, and religious sun protection, until skin
                 looks lit from within.
               </p>
@@ -199,7 +199,7 @@ export function KBeautyCollection({ products }: { products: Product[] }) {
               // The edit is data-driven; if every K-beauty product is ever
               // unpublished the grid degrades to a pointer, not a dead end.
               <p className="body-text" style={{ color: 'var(--ink-700)' }}>
-                The Korean shelf is restocking — <Link href="/shop" className="text-link">browse the full catalog</Link> in the meantime.
+                The Korean shelf is restocking, <Link href="/shop" className="text-link">browse the full catalog</Link> in the meantime.
               </p>
             )}
           </div>

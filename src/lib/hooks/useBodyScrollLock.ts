@@ -22,7 +22,7 @@ import { useEffect, type RefObject } from 'react';
 // 3. Survives Fast Refresh: if a component unmounts dirty (HMR, React
 //    error boundary), the inline styles linger but the count goes to
 //    zero on next mount. We always clear when count hits zero, regardless
-//    of who set what — the values stored in dataset are authoritative.
+//    of who set what, the values stored in dataset are authoritative.
 
 const COUNT_KEY    = 'ypScrollLockCount';
 const SCROLLY_KEY  = 'ypScrollLockY';

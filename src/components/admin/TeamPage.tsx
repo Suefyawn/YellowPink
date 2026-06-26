@@ -163,7 +163,7 @@ function miniBtn(color: string, ghost = false): React.CSSProperties {
   };
 }
 
-// Read-only summary of a role's permission set — shown under the role picker
+// Read-only summary of a role's permission set, shown under the role picker
 // in the staff modals so the owner sees what assigning the role grants.
 function RolePermSummary({ role }: { role: Role }) {
   return (
@@ -194,7 +194,7 @@ function RoleModal({ role, onClose }: { role: Role | null; onClose: () => void }
   const [perms, setPerms] = useState<Permission[]>(role?.permissions ?? []);
   const [state, action, pending] = useActionState(editing ? updateRole : createRole, null);
 
-  // Role actions return { ok: true } on success — close once that lands so the
+  // Role actions return { ok: true } on success, close once that lands so the
   // refreshed list (revalidatePath) shows the change.
   useEffect(() => {
     if (state && 'ok' in state) onClose();
@@ -203,7 +203,7 @@ function RoleModal({ role, onClose }: { role: Role | null; onClose: () => void }
   return (
     <form action={action} style={{ padding: 28, borderTop: '1px solid #f3f4f6' }}>
       <div style={{ fontSize: '1.0625rem', fontWeight: 700, marginBottom: 16, color: '#111827' }}>
-        {editing ? `Edit role — ${role!.name}` : 'New role'}
+        {editing ? `Edit role, ${role!.name}` : 'New role'}
       </div>
       {editing && <input type="hidden" name="id" value={role!.id} />}
 
@@ -333,7 +333,7 @@ function RoleField({ roles, value, onChange }: {
     <div>
       <label style={lbl}>Role</label>
       <select name="role_id" value={value} onChange={e => onChange(e.target.value)} style={inp}>
-        <option value="">Custom — pick individual permissions</option>
+        <option value="">Custom, pick individual permissions</option>
         {roles.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
       </select>
       {selected && <RolePermSummary role={selected} />}
@@ -359,7 +359,7 @@ function AddStaffModal({ roles, onClose }: { roles: Role[]; onClose: () => void 
           padding: 16, marginBottom: 20,
         }}>
           <p style={{ margin: '0 0 8px', fontSize: '0.8125rem', fontWeight: 600, color: '#92400e' }}>
-            Temporary password — share this once and ask them to change it:
+            Temporary password, share this once and ask them to change it:
           </p>
           <code style={{
             display: 'block', fontSize: '1.125rem', fontWeight: 700,
@@ -416,8 +416,8 @@ function AddStaffModal({ roles, onClose }: { roles: Role[]; onClose: () => void 
 
 function EditStaffModal({ staff, roles, onClose }: { staff: Staff; roles: Role[]; onClose: () => void }) {
   const [roleId, setRoleId] = useState(staff.role_id ?? '');
-  // Custom-permission grid: seed from the staff member's own perms, or — if
-  // they're role-assigned — from that role's perms, so switching to Custom
+  // Custom-permission grid: seed from the staff member's own perms, or, if
+  // they're role-assigned, from that role's perms, so switching to Custom
   // starts from a sensible baseline rather than an empty grid.
   const [perms, setPerms] = useState<Permission[]>(() => {
     if (staff.permissions.length) return staff.permissions;
@@ -446,7 +446,7 @@ function EditStaffModal({ staff, roles, onClose }: { staff: Staff; roles: Role[]
 
   return (
     <div style={{ padding: 28 }}>
-      <div style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 4 }}>Edit — {staff.name}</div>
+      <div style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 4 }}>Edit, {staff.name}</div>
       <div style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: 20 }}>{staff.email}</div>
 
       <form action={saveAction}>
@@ -542,7 +542,7 @@ function StaffRow({ staff, roles }: { staff: Staff; roles: Role[] }) {
         ) : (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
             {(() => {
-              // Custom staff member — render its own permission badges.
+              // Custom staff member, render its own permission badges.
               // Defence-in-depth: dedupe at render time (migration 070 deduped
               // existing data; this guards against any future regression).
               const uniq = Array.from(new Set(staff.permissions));

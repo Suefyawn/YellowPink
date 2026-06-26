@@ -38,11 +38,11 @@ export default function LoginPage() {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) { setError(error.message); return; }
         router.push('/account');
-        // Don't clear loading on success — the page is about to navigate
+        // Don't clear loading on success, the page is about to navigate
         // and resetting state would briefly flash the unstuck button.
         return;
       }
-      // emailRedirectTo — where Supabase sends the user after they click the
+      // emailRedirectTo, where Supabase sends the user after they click the
       // confirmation link. /auth/confirm exchanges the code for a session.
       const { data, error } = await sb.auth.signUp({
         email,
@@ -55,7 +55,7 @@ export default function LoginPage() {
       if (data.user) void sendSignupWelcomeEmail(data.user.id);
       setMessage('Account created! Check your email to confirm your address.');
     } catch (err) {
-      // Offline / DNS / transient network — surface a message and unstick
+      // Offline / DNS / transient network, surface a message and unstick
       // the button. Without this catch the spinner would spin forever.
       setError((err as Error).message || 'Something went wrong. Please try again.');
     } finally {

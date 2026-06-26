@@ -56,7 +56,7 @@ export function PromoBanner({ label, headline, subline, ctaText, ctaUrl, bgColor
   // chip + headline + subline + CTA all stacked) so the user landed on the
   // home page looking at a promo, not the product hero. Tightened the
   // mobile spacing (12 / 16 / 18 instead of 20 / 24 / 24) and hid the
-  // subline below 600 px — desktop still gets the full editorial card.
+  // subline below 600 px, desktop still gets the full editorial card.
   return (
     <div className="promo-banner" style={{
       background: bgColor, color: textColor,

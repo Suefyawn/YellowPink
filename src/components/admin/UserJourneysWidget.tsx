@@ -23,7 +23,7 @@ export async function UserJourneysWidget() {
           Top user journeys
         </div>
         <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
-          No journey data yet — refresh analytics from the dashboard to populate.
+          No journey data yet, refresh analytics from the dashboard to populate.
         </p>
       </div>
     );

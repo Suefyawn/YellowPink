@@ -29,8 +29,7 @@ export default async function SettingsHomepagePage({ searchParams }: { searchPar
         fontSize: '0.8125rem', lineHeight: 1.5,
       }}>
         <strong>Promotional banners moved.</strong> Scheduled, audience-targeted
-        campaigns now live on the <Link href="/admin/promos" style={{ color: '#1e40af', fontWeight: 600 }}>Promos page</Link> —
-        manage the hero-strip and top-bar promos there.
+        campaigns now live on the <Link href="/admin/promos" style={{ color: '#1e40af', fontWeight: 600 }}>Promos page</Link>,         manage the hero-strip and top-bar promos there.
       </div>
 
       <form action={saveSettings}>
@@ -140,7 +139,7 @@ export default async function SettingsHomepagePage({ searchParams }: { searchPar
             <div>
               <label style={lbl}>Message</label>
               <input name="announcement_text" defaultValue={g('announcement_text')} style={inp}
-                placeholder="Free delivery on orders over PKR 5,000 — COD Nationwide" />
+                placeholder="Free delivery on orders over PKR 5,000, COD Nationwide" />
             </div>
             <div>
               <label style={lbl}>Background colour</label>

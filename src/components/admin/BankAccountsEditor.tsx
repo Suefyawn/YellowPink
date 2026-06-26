@@ -5,7 +5,7 @@ import type { BankAccount } from '@/types';
 
 // Add/remove editor for the bank + mobile-wallet accounts customers transfer
 // to for "Bank Transfer" orders. Keeps a hidden <input> holding the JSON the
-// settings action stores under `pay_bank_accounts` — the owner never writes
+// settings action stores under `pay_bank_accounts`, the owner never writes
 // JSON by hand. Works for banks (with IBAN) and wallets like Easypaisa /
 // JazzCash (IBAN left blank, the number being a mobile number).
 
@@ -49,7 +49,7 @@ export function BankAccountsEditor({ name, initial }: { name: string; initial?: 
       <input type="hidden" name={name} value={serialised} />
       {rows.length === 0 && (
         <p style={{ fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 8px' }}>
-          No accounts yet — add a bank account or a wallet (Easypaisa / JazzCash) below.
+          No accounts yet, add a bank account or a wallet (Easypaisa / JazzCash) below.
         </p>
       )}
       {rows.map((row, i) => (
@@ -61,12 +61,12 @@ export function BankAccountsEditor({ name, initial }: { name: string; initial?: 
             <input
               aria-label="Bank or wallet name" value={row.label}
               onChange={e => set(i, { label: e.target.value })}
-              placeholder="Bank / wallet — e.g. Meezan Bank, Easypaisa" style={inp}
+              placeholder="Bank / wallet, e.g. Meezan Bank, Easypaisa" style={inp}
             />
             <input
               aria-label="Account title" value={row.title}
               onChange={e => set(i, { title: e.target.value })}
-              placeholder="Account title — e.g. Yellow Pink" style={inp}
+              placeholder="Account title, e.g. Yellow Pink" style={inp}
             />
             <input
               aria-label="Account or mobile number" value={row.number}
@@ -76,7 +76,7 @@ export function BankAccountsEditor({ name, initial }: { name: string; initial?: 
             <input
               aria-label="IBAN" value={row.iban ?? ''}
               onChange={e => set(i, { iban: e.target.value })}
-              placeholder="IBAN (banks only — optional)" style={inp}
+              placeholder="IBAN (banks only, optional)" style={inp}
             />
           </div>
           <button

@@ -102,7 +102,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
             <label style={lbl}>Offer free shipping</label>
             <Toggle name="free_shipping_enabled" checked={g('free_shipping_enabled', 'true') !== 'false'} />
             <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-              When off, no order qualifies for free shipping anywhere on the site — the cart progress bar and &ldquo;free over&rdquo; copy disappear, and the flat rate (or zone rate) always applies.
+              When off, no order qualifies for free shipping anywhere on the site, the cart progress bar and &ldquo;free over&rdquo; copy disappear, and the flat rate (or zone rate) always applies.
             </p>
           </div>
           <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
@@ -143,7 +143,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
           background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
           padding: '32px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', marginBottom: 24,
         }}>
-          No zones yet — checkout falls back to the default above. Add one to start charging per region.
+          No zones yet, checkout falls back to the default above. Add one to start charging per region.
         </div>
       ) : (
         zones.map(({ zone, rate }) => (
@@ -198,7 +198,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
       </details>
 
       <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-        Province-to-zone mapping is currently seeded to &ldquo;Pakistan — Nationwide&rdquo; for every province. Per-province mapping UI lands in a follow-up.
+        Province-to-zone mapping is currently seeded to &ldquo;Pakistan, Nationwide&rdquo; for every province. Per-province mapping UI lands in a follow-up.
       </p>
     </>
   );

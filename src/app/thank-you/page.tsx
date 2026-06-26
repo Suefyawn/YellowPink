@@ -10,7 +10,7 @@ import { parseBankAccounts } from '@/lib/bank-accounts';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
 import type { BankAccount } from '@/types';
 
-// Order-confirmation page should never be indexed — leaks order_number
+// Order-confirmation page should never be indexed, leaks order_number
 // existence + lets crawlers guess valid IDs (audit SEV-2 + SEV-3).
 export const metadata: Metadata = {
   title: 'Thank you',
@@ -21,11 +21,11 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   const { order } = await searchParams;
   const orderNumber = order ?? 'YP-??????';
   // Delivery estimate reads the live shipping default so it tracks Admin →
-  // Settings → Shipping instead of a hard-coded "2–4 business days".
+  // Settings → Shipping instead of a hard-coded "2-4 business days".
   const days = await getDefaultEstimatedDays();
   const deliveryEstimate = days ? `${days.min}–${days.max} business days` : 'a few business days';
 
-  // Look up the order (orders RLS blocks anon — service-role read). We use it
+  // Look up the order (orders RLS blocks anon, service-role read). We use it
   // to show the bank accounts for a bank-transfer order AND to render an order
   // summary so the customer sees what they bought without checking their email.
   // The page is noindex and the order number is required, so no new exposure.
@@ -143,7 +143,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             ))}
           </div>
 
-          {/* WhatsApp CTA — pre-types the order number so the merchant can
+          {/* WhatsApp CTA, pre-types the order number so the merchant can
               triage in one tap. Hides if NEXT_PUBLIC_WHATSAPP_NUMBER unset. */}
           <div style={{ marginBottom: 24 }}>
             <WhatsAppButton message={WA_TEMPLATES.orderQuestion(orderNumber)} />
@@ -154,7 +154,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             <Link href="/" className="btn-secondary">Back to Home</Link>
           </div>
 
-          {/* Post-purchase opt-in — soft ask after a successful order. The
+          {/* Post-purchase opt-in, soft ask after a successful order. The
               checkout itself doesn't ship the email to the newsletter list
               (consent must be explicit), this is the explicit moment. */}
           <div

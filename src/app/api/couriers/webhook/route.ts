@@ -4,7 +4,7 @@
 // `Authorization: Bearer <COURIER_WEBHOOK_SECRET>` header so unauthenticated
 // callers can't spoof status updates.
 //
-// Expected JSON body (flexible — couriers vary):
+// Expected JSON body (flexible, couriers vary):
 //   {
 //     "courier": "TCS",
 //     "tracking_number": "1234567",

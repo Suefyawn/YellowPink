@@ -1,9 +1,9 @@
-// Custom next/image loader — routes images through images.weserv.nl, a free
+// Custom next/image loader, routes images through images.weserv.nl, a free
 // image CDN/proxy, for on-the-fly resize + modern-format (WebP) delivery.
 //
 // Why: Vercel's built-in optimiser is metered (we hit the quota on the free
 // plan, so it was disabled with `unoptimized: true`), which meant full-size
-// originals were shipped to phones — the main mobile-LCP drag. weserv resizes
+// originals were shipped to phones, the main mobile-LCP drag. weserv resizes
 // to the requested width and re-encodes to WebP, for free, with no Vercel
 // quota and no Supabase plan change.
 //
@@ -14,7 +14,7 @@
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yellowpink.pk').replace(/\/$/, '');
 
 // The CDN that actually serves every catalogue/blog image (and the LCP hero).
-// Exported so the root layout can <link rel="preconnect"> to it — without it,
+// Exported so the root layout can <link rel="preconnect"> to it, without it,
 // the browser pays a full DNS+TCP+TLS handshake to this host before the LCP
 // image can start downloading.
 export const IMAGE_CDN_ORIGIN = 'https://images.weserv.nl';
@@ -29,7 +29,7 @@ export default function weservLoader({
   quality?: number;
 }): string {
   // Leave data URIs (blur placeholders, inline SVG) and already-proxied URLs
-  // untouched — proxying them is pointless or breaks them.
+  // untouched, proxying them is pointless or breaks them.
   if (src.startsWith('data:') || src.includes('images.weserv.nl')) return src;
 
   // Resolve /public-relative paths to an absolute URL on the canonical host so

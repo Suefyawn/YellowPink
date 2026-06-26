@@ -3,7 +3,7 @@
 import { useActionState } from 'react';
 import { subscribeToNewsletter, type NewsletterState } from '@/app/newsletter/actions';
 
-// Inline newsletter signup — sized + styled to drop into the footer column.
+// Inline newsletter signup, sized + styled to drop into the footer column.
 // `source` is propagated to the server action so we can later A/B which
 // surface (footer / modal / checkout) actually converts.
 
@@ -11,7 +11,7 @@ interface NewsletterSignupProps {
   source?: 'footer' | 'modal' | 'exit_intent' | 'checkout' | 'post_purchase';
   placeholder?: string;
   ctaLabel?: string;
-  /** Dark-on-light or light-on-dark — footer uses dark surface. */
+  /** Dark-on-light or light-on-dark, footer uses dark surface. */
   variant?: 'dark' | 'light';
 }
 
@@ -50,7 +50,7 @@ export function NewsletterSignup({
           lineHeight: 1.5,
         }}
       >
-        Thanks — you&apos;re on the list. Use code{' '}
+        Thanks, you&apos;re on the list. Use code{' '}
         <strong style={{ letterSpacing: '0.04em' }}>WELCOME10</strong> for 10% off
         your first order over PKR 1,500.
       </div>
@@ -60,7 +60,7 @@ export function NewsletterSignup({
   return (
     <form action={formAction} aria-label="Newsletter signup" noValidate>
       <input type="hidden" name="source" value={source} />
-      {/* Honeypot — display:none + tabIndex=-1 so a real keyboard user
+      {/* Honeypot, display:none + tabIndex=-1 so a real keyboard user
           can't accidentally fill it. Spam bots tend to fill every input. */}
       <input
         type="text" name="website" tabIndex={-1} autoComplete="off"

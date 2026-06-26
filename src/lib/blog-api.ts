@@ -1,5 +1,5 @@
 // ============================================================================
-// Blog management API — shared auth, validation and serialization helpers for
+// Blog management API, shared auth, validation and serialization helpers for
 // the /api/blog route handlers.
 //
 // This is a programmatic CRUD surface over the blog_posts table, intended for
@@ -8,7 +8,7 @@
 // actions (same Zod schema, same IndexNow/Google ping on write) so content
 // created either way is identical.
 //
-// Auth: a single static bearer token in BLOG_API_TOKEN — the same pattern the
+// Auth: a single static bearer token in BLOG_API_TOKEN, the same pattern the
 // cron routes use (CRON_SECRET). If the env var is unset the endpoints return
 // 503, so the API is closed-by-default and can never be left wide open.
 //
@@ -20,19 +20,19 @@ import crypto from 'node:crypto';
 import { z } from 'zod';
 import { blogPostInputSchema } from '@/lib/validators';
 
-// Columns returned by every endpoint — the full row minus nothing sensitive
+// Columns returned by every endpoint, the full row minus nothing sensitive
 // (blog_posts has no private columns). Keep in sync with the table.
 export const BLOG_COLUMNS =
   'id, slug, title, excerpt, category, date, read_time, featured, body, image_url, author, created_at, updated_at';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-/** A path segment is either a row UUID or a slug — pick the column to match. */
+/** A path segment is either a row UUID or a slug, pick the column to match. */
 export function idColumn(idOrSlug: string): 'id' | 'slug' {
   return UUID_RE.test(idOrSlug) ? 'id' : 'slug';
 }
 
 // Unlike the admin form (https-only), the API also accepts site-relative image
-// paths (e.g. "/blog-heroes/x.webp") — our own hero assets live under /public.
+// paths (e.g. "/blog-heroes/x.webp"), our own hero assets live under /public.
 const apiImageUrl = z
   .string()
   .refine(

@@ -8,7 +8,7 @@ import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 
 // Errors are surfaced to the user via ?error=... on the coupons page rather
-// than swallowed silently — the previous version dropped insert errors on the
+// than swallowed silently, the previous version dropped insert errors on the
 // floor, leaving the admin with a cleared form and no idea why nothing
 // happened (QA Session 2 finding).
 function bounceCoupons(error: string): never {
@@ -46,7 +46,7 @@ export async function createCoupon(formData: FormData) {
 
   if (error || !created) {
     log.error('coupon.create_failed', { code, error: error?.message });
-    // Postgres 23505 — UNIQUE violation on coupon code.
+    // Postgres 23505, UNIQUE violation on coupon code.
     if ((error as { code?: string } | null)?.code === '23505') {
       bounceCoupons(`A coupon with code "${code}" already exists.`);
     }

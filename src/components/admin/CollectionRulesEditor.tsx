@@ -105,7 +105,7 @@ export function CollectionRulesEditor({
         + Add condition
       </button>
       {conditions.length === 0 && (
-        <p style={{ margin: '10px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>No conditions yet — a smart collection with no rules shows no products.</p>
+        <p style={{ margin: '10px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>No conditions yet, a smart collection with no rules shows no products.</p>
       )}
     </div>
   );

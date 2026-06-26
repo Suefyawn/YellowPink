@@ -7,10 +7,10 @@
 //   * never insert a link inside an existing <a>...</a>
 //   * never link inside <code>, <pre>, <style>, or <script>
 //   * match longest product names first (Kiko Milano 3D Hydra Lip Gloss before "Kiko Milano")
-//   * only the FIRST occurrence of each product becomes a link — repeated
+//   * only the FIRST occurrence of each product becomes a link, repeated
 //     mentions stay as plain text so the post doesn't read like a spam farm
 //
-// Pure function — no DOM, runs server-side. Called from BlogPostPage
+// Pure function, no DOM, runs server-side. Called from BlogPostPage
 // before dangerouslySetInnerHTML.
 
 import type { Product } from '@/types';
@@ -67,7 +67,7 @@ function escapeRegExp(s: string): string {
 
 /**
  * Walk the HTML string, replacing the first occurrence of each product
- * phrase with an anchor — skipping content inside <a> and other "no-go"
+ * phrase with an anchor, skipping content inside <a> and other "no-go"
  * elements. Strings outside any element are also linked.
  */
 export function linkProductMentions(html: string, products: Product[]): string {
@@ -88,7 +88,7 @@ export function linkProductMentions(html: string, products: Product[]): string {
   for (const tok of tokens) {
     if (!tok) continue;
     if (tok.startsWith('<')) {
-      // Tag token — push/pop the stack, then emit unchanged.
+      // Tag token, push/pop the stack, then emit unchanged.
       const closing = /^<\s*\//.test(tok);
       const selfClosing = /\/\s*>$/.test(tok) || /^<\s*(br|hr|img|input|link|meta)\b/i.test(tok);
       const tagMatch = /^<\s*\/?\s*([a-zA-Z][a-zA-Z0-9-]*)/.exec(tok);

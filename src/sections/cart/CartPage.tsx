@@ -28,7 +28,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
   useEffect(() => {
     if (!restoreToken || restored.current) return;
     if (cartItems.length > 0) {
-      // Cart already has items — keep them, but inform the user.
+      // Cart already has items, keep them, but inform the user.
       restored.current = true;
       router.replace('/cart');
       return;
@@ -41,7 +41,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
       const items = (rows[0] as { cart_items?: CartItem[] } | undefined)?.cart_items;
       if (items && items.length) {
         for (const i of items) addToCart({ ...i, qty: i.qty });
-        setRestoreNotice('Welcome back — your cart has been restored.');
+        setRestoreNotice('Welcome back, your cart has been restored.');
       } else {
         setRestoreNotice('This cart link has expired or is no longer valid.');
       }
@@ -89,7 +89,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
   const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate } = useCommerceSettings();
   const progress = Math.min(subtotal / freeShippingThreshold, 1);
   const shipping = freeShippingEnabled && subtotal >= freeShippingThreshold ? 0 : defaultShippingRate;
-  // "You may also like" — bestsellers minus whatever's already in the bag,
+  // "You may also like", bestsellers minus whatever's already in the bag,
   // capped at a single 4-up row.
   const crossSell = recommended.filter(p => !cartItems.some(c => c.id === p.id)).slice(0, 4);
 
@@ -98,7 +98,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
     setCouponError('');
     setCouponLoading(true);
     const sb = getBrowserClient();
-    // coupons has RLS with no anon SELECT (migration 070) — go through the
+    // coupons has RLS with no anon SELECT (migration 070), go through the
     // SECURITY DEFINER lookup_coupon RPC instead of reading the table.
     const { data, error } = await sb.rpc('lookup_coupon' as never, { p_code: couponCode.trim() } as never);
     setCouponLoading(false);
@@ -107,7 +107,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
     if (rows.length === 0) { setCouponError('Invalid or inactive coupon code'); return; }
     const c = rows[0];
 
-    // Cart is anonymous (no email field) — server still enforces per-user
+    // Cart is anonymous (no email field), server still enforces per-user
     // caps + email restrictions at checkout. This is best-effort UX.
     const { validateCoupon } = await import('@/lib/coupon-validation');
     const verdict = validateCoupon({ coupon: c, cartItems, subtotal });
@@ -130,7 +130,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
           <div style={{ fontSize: '3.5rem', marginBottom: 16, opacity: 0.35 }} aria-hidden="true">◎</div>
           <h1 className="h1" style={{ marginTop: 0, marginBottom: 12 }}>Your cart is empty</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 28 }}>
-            Browse the catalog and pick up where you left off — your favourites are one tap away.
+            Browse the catalog and pick up where you left off, your favourites are one tap away.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/shop" className="btn-primary">Start shopping</Link>
@@ -190,7 +190,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, marginTop: 32 }} className="cart-grid">
             <div>
-              {/* Column labels — hidden on mobile via .cart-row-head, replaced
+              {/* Column labels, hidden on mobile via .cart-row-head, replaced
                   by inline labels on each row card. */}
               <div className="cart-row-head" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
                 <Overline style={{ color: 'var(--ink-500)' }}>Product</Overline>
@@ -239,7 +239,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
                     <div>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', fontFamily: 'monospace' }}>{appliedCoupon.code}</span>
                       <span style={{ fontSize: '0.75rem', color: '#15803d', marginLeft: 6 }}>
-                        — {appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `PKR ${appliedCoupon.value.toLocaleString()} off`}
+                       , {appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `PKR ${appliedCoupon.value.toLocaleString()} off`}
                       </span>
                     </div>
                     <button type="button" aria-label="Remove coupon" onClick={removeCoupon} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '1rem', lineHeight: 1, padding: 2 }}>×</button>
@@ -302,7 +302,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
               </div>
               <button className="btn-primary" style={{ width: '100%' }} onClick={() => router.push('/checkout')}>Proceed to Checkout</button>
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)' }}>COD available nationwide</p>
-              {/* Help-on-WhatsApp link — last-mile catch for the visitor who's
+              {/* Help-on-WhatsApp link, last-mile catch for the visitor who's
                   on the cart but hesitating. Hides when no number set. */}
               {(() => {
                 const href = waUrl(WA_T.cart());

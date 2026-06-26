@@ -5,7 +5,7 @@ describe('unsubscribe token', () => {
   it('round-trips a normalised email', () => {
     const t = makeUnsubscribeToken('Hello@Example.COM');
     expect(verifyUnsubscribeToken('hello@example.com', t)).toBe(true);
-    // normalisation is bidirectional — case in either side is fine
+    // normalisation is bidirectional, case in either side is fine
     expect(verifyUnsubscribeToken('Hello@Example.COM', t)).toBe(true);
   });
 

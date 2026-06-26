@@ -5,7 +5,7 @@
 // recipient subscribes to an event, falls back to OWNER_EMAIL so behaviour
 // is unchanged for stores that haven't configured the new UI yet.
 //
-// All callers must be best-effort — a recipient lookup failure must never
+// All callers must be best-effort, a recipient lookup failure must never
 // stall an order placement or block any other commit. On any error we fall
 // back to OWNER_EMAIL too.
 
@@ -39,7 +39,7 @@ export interface NotificationRecipient {
 }
 
 /** Return the email addresses that should receive a given event.
- *  Always returns at least one address — falls back to OWNER_EMAIL when
+ *  Always returns at least one address, falls back to OWNER_EMAIL when
  *  no recipient is configured or on any lookup error. */
 export async function getRecipientsForEvent(event: NotificationEvent): Promise<string[]> {
   try {

@@ -16,7 +16,7 @@ interface ProductTileProps {
 }
 
 // The tile renders its own Link to the PDP so callers don't need to wrap
-// it (the previous pattern produced invalid HTML — a <button> nested
+// it (the previous pattern produced invalid HTML, a <button> nested
 // inside an <a>). The wishlist button is a sibling of the Link, absolutely
 // positioned over the image; click events on it don't trigger navigation.
 //
@@ -136,7 +136,7 @@ export function ProductTile({ product }: ProductTileProps) {
               }}>Only {stock} left</span>
             )}
           </div>
-          {/* Quick-add overlay — opacity-0 on desktop until tile hover (or
+          {/* Quick-add overlay, opacity-0 on desktop until tile hover (or
               button focus), always visible on mobile via the `quick-add-btn`
               CSS class. Sits inside the image container so it absolutes
               against the image bounds, not the whole card. */}
@@ -174,7 +174,7 @@ export function ProductTile({ product }: ProductTileProps) {
             {quickAddLabel}
           </button>
         </div>
-        {/* Brand line — slightly larger (12px) and tighter than the default
+        {/* Brand line, slightly larger (12px) and tighter than the default
             overline (11px) so it actually identifies the brand at a glance
             on a desk-distance browser. Was the smallest readable text on
             the entire homepage. */}
@@ -209,7 +209,7 @@ export function ProductTile({ product }: ProductTileProps) {
         </div>
       </Link>
 
-      {/* Wishlist button — sibling of the Link so it's a discrete focusable
+      {/* Wishlist button, sibling of the Link so it's a discrete focusable
        *  element, not nested inside an <a>. */}
       <button
         type="button"

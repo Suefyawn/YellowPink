@@ -19,7 +19,7 @@ export function nextTierTarget(points: number): { next: LoyaltyTier | null; need
   return { next: null, needed: 0 };
 }
 
-// Earn rules — match site_settings defaults; admin can override in DB.
+// Earn rules, match site_settings defaults; admin can override in DB.
 // The actual server-side awarding is driven by Postgres functions, but the
 // rewards page uses these labels for display.
 export const EARN_RULES: { reason: string; label: string; description: string }[] = [

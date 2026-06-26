@@ -2,7 +2,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // Browser-side Supabase client. Uses @supabase/ssr's createBrowserClient so
-// the session is stored in COOKIES (not localStorage) — that's what lets the
+// the session is stored in COOKIES (not localStorage), that's what lets the
 // middleware and server actions see the logged-in user. A plain createClient
 // stored the session only in localStorage, which the server can't read, so
 // the whole /account area bounced authenticated users back to /login.

@@ -1,11 +1,11 @@
 import type { MetadataRoute } from 'next';
 
-// Web App Manifest — makes the storefront installable as a PWA on mobile.
+// Web App Manifest, makes the storefront installable as a PWA on mobile.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Yellow Pink',
     short_name: 'Yellow Pink',
-    description: 'Imported beauty, skincare, and wellness — Pakistan.',
+    description: 'Imported beauty, skincare, and wellness, Pakistan.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

@@ -26,7 +26,7 @@ export default function robots(): MetadataRoute.Robots {
           '/login',
           '/forgot-password',
           '/reset-password',
-          // P1 audit fixes — user-scoped or utility-only pages should not
+          // P1 audit fixes, user-scoped or utility-only pages should not
           // be in indexes either.
           '/cart',
           '/wishlist',
@@ -35,7 +35,7 @@ export default function robots(): MetadataRoute.Robots {
       },
     ],
     // One comprehensive sitemap covers products, blog posts and CMS pages
-    // (see app/sitemap.ts) — well under Google's 50k-URL cap.
+    // (see app/sitemap.ts), well under Google's 50k-URL cap.
     sitemap: `${SITE_URL}/sitemap.xml`,
     host: SITE_URL.replace(/^https?:\/\//, ''),
   };

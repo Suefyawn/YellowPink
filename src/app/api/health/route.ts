@@ -1,5 +1,5 @@
 // Lightweight diagnostic endpoint. Hit /api/health to see at a glance whether
-// the deployment has the env vars and schema it expects — much faster than
+// the deployment has the env vars and schema it expects, much faster than
 // pulling Vercel logs every time a page starts throwing.
 //
 // Output:
@@ -58,7 +58,7 @@ interface TableCheck {
 }
 
 // P2 audit fix: the endpoint enumerates env-var presence + row counts on
-// every table including staff_members and audit_log — useful intelligence
+// every table including staff_members and audit_log, useful intelligence
 // for an attacker mapping the deployment. Gate behind a shared secret
 // passed as `?key=` or `Authorization: Bearer …`. The legacy unauth path
 // is still allowed in non-production so local debugging stays fast.
@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
   let degraded = isDemo;
 
   if (!isDemo) {
-    // Probe every table with a HEAD-style count query — cheap and reveals
+    // Probe every table with a HEAD-style count query, cheap and reveals
     // whether the table exists + whether RLS lets anon read it.
     const results = await Promise.all(
       TABLES_TO_CHECK.map(async (name): Promise<[string, TableCheck]> => {

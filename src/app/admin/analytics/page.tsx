@@ -76,7 +76,7 @@ export default async function AnalyticsPage({
   const productMap = new Map<string, { brand: string; name: string; slug: string }>();
   if (topIds.length) {
     // Service-role read: top sellers can be archived/draft products, which
-    // the anon client's RLS would hide — leaving a raw UUID in the table.
+    // the anon client's RLS would hide, leaving a raw UUID in the table.
     const { data: prods } = await supabaseAdmin().from('products').select('id, brand, name, slug').in('id', topIds);
     for (const p of (prods ?? []) as Array<{ id: string; brand: string; name: string; slug: string }>) {
       productMap.set(p.id, { brand: p.brand, name: p.name, slug: p.slug });
@@ -86,7 +86,7 @@ export default async function AnalyticsPage({
   // Chart data adapter (RevenueChart already expects [{ date, revenue }]).
   const chartData = daily.map(d => ({ date: d.day, revenue: Number(d.revenue) }));
 
-  // KPI cards split along the Finance / Customers line — money metrics on
+  // KPI cards split along the Finance / Customers line, money metrics on
   // one tab, audience metrics on the other.
   const financeKpis: { label: string; value: string; sub?: string }[] = kpis
     ? [
@@ -148,7 +148,7 @@ export default async function AnalyticsPage({
         </div>
       </div>
 
-      {/* Finance / Customers tab bar — the Shopify-style split between
+      {/* Finance / Customers tab bar, the Shopify-style split between
           money metrics and audience metrics. */}
       <div role="tablist" style={{ display: 'flex', gap: 4, borderBottom: '1px solid #e5e7eb', marginBottom: 28 }}>
         {([['finance', 'Finance'], ['customers', 'Customers & Traffic']] as const).map(([key, label]) => {
@@ -265,7 +265,7 @@ export default async function AnalyticsPage({
             ))}
           </div>
 
-          {/* Traffic — gated on the analytics_traffic permission. */}
+          {/* Traffic, gated on the analytics_traffic permission. */}
           {canTraffic && (
             <>
               {/* Live Google Search Console + GA4 (only render once connected). */}
@@ -282,7 +282,7 @@ export default async function AnalyticsPage({
                 <TopEventsWidget />
               </div>
 
-              {/* User-journey widgets — sessions, paths, funnel slices,
+              {/* User-journey widgets, sessions, paths, funnel slices,
                   retention curve, and PostHog session recordings. */}
               <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 28 }}>
                 <UserJourneysWidget />

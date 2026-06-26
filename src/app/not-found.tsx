@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 // the PostHogProvider that the root layout renders. The cost is one extra
 // SSR per 404 hit which is negligible (404s are rare and uncacheable
 // anyway). This used to be implicit when the layout exported
-// force-dynamic — restored explicitly when the layout opt-out shipped.
+// force-dynamic, restored explicitly when the layout opt-out shipped.
 export const dynamic = 'force-dynamic';
 import { after } from 'next/server';
 import { headers } from 'next/headers';
@@ -15,7 +15,7 @@ import { getProducts } from '@/lib/supabase';
 import { logNotFound } from '@/lib/not-found-log';
 import { ProductTile } from '@/components/ui/ProductTile';
 
-// noindex this page — we never want the SERP to think 404 is a destination.
+// noindex this page, we never want the SERP to think 404 is a destination.
 // Next surfaces the proper 404 HTTP status automatically for this route.
 export const metadata: Metadata = {
   title: 'Page not found',
@@ -38,7 +38,7 @@ export default async function NotFound() {
   // `x-pathname` header set by the middleware (src/proxy.ts); not-found.tsx
   // itself can't otherwise see which URL 404'd. Runs in after() so it never
   // adds latency to (or can break) the 404 render. Prefetch requests are
-  // skipped — the router speculatively prefetches links, which aren't real
+  // skipped, the router speculatively prefetches links, which aren't real
   // dead-ends.
   const h = await headers();
   after(() =>
@@ -53,7 +53,7 @@ export default async function NotFound() {
     }),
   );
 
-  // Light recovery surface — show a handful of products so a misdirected
+  // Light recovery surface, show a handful of products so a misdirected
   // visitor lands on something useful instead of a dead-end.
   const products = (await getProducts().catch(() => [])).slice(0, 4);
 
@@ -77,7 +77,7 @@ export default async function NotFound() {
           </h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 28, maxWidth: 480, margin: '0 auto 28px' }}>
             The page you&apos;re looking for doesn&apos;t exist or has been moved.
-            Try one of the popular destinations below — or jump straight back to the shop.
+            Try one of the popular destinations below, or jump straight back to the shop.
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 32 }}>
             <Link href="/" className="btn-primary">Go Home</Link>

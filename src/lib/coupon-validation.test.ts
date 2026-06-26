@@ -4,7 +4,7 @@ import type { Coupon, CartItem } from '@/types';
 
 // Money-adjacent logic shared by CartPage and CheckoutPage. The place_order
 // RPC is the authority, but this gate decides what discount the customer
-// SEES before submitting — regressions here mean checkout surprises.
+// SEES before submitting, regressions here mean checkout surprises.
 
 function coupon(overrides: Partial<Coupon> = {}): Coupon {
   return {
@@ -62,7 +62,7 @@ describe('validateCoupon', () => {
 
   it('enforces the per-user cap only when the prior count is known', () => {
     const c = coupon({ usage_limit_per_user: 1 });
-    // Guest path — count unknown, server enforces later.
+    // Guest path, count unknown, server enforces later.
     expect(validateCoupon({ coupon: c, ...baseInput }).ok).toBe(true);
     expect(validateCoupon({ coupon: c, ...baseInput, perUserUsedCount: 0 }).ok).toBe(true);
     expect(validateCoupon({ coupon: c, ...baseInput, perUserUsedCount: 1 }).ok).toBe(false);

@@ -20,7 +20,7 @@ interface HeroSettings {
 const DEFAULTS: HeroSettings = {
   overline: 'Beauty & Wellness · Inside Out',
   headline: 'Beautiful skin.<br/><em>Vital health.</em>',
-  subline: 'International skincare, makeup, and clinical-grade nutraceuticals — because real beauty is health from the inside out. Now in Pakistan with COD.',
+  subline: 'International skincare, makeup, and clinical-grade nutraceuticals, because real beauty is health from the inside out. Now in Pakistan with COD.',
   cta1Text: 'Shop Beauty',
   cta1Url: '/shop',
   cta2Text: 'Explore Wellness',
@@ -30,7 +30,7 @@ const DEFAULTS: HeroSettings = {
 };
 
 // Soft, on-brand gradient that stands in for the hero photo until the
-// merchant uploads one in admin/settings. Intentionally text-free — it
+// merchant uploads one in admin/settings. Intentionally text-free, it
 // looks like a deliberate design, not "broken admin chatter on the
 // customer page".
 const GradientFallback = () => (
@@ -87,9 +87,9 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
           {s.imageUrl && !imgFailed ? (
             <Image
               src={s.imageUrl}
-              alt="Yellow Pink — Beauty & Wellness"
+              alt="Yellow Pink, Beauty & Wellness"
               fill
-              // Hero shot is the LCP — mark it `priority` so Next emits a
+              // Hero shot is the LCP, mark it `priority` so Next emits a
               // <link rel="preload"> and skips lazy-loading. `sizes`
               // matches the grid: 90vw on phones (single column), 45vw on
               // desktop (right column of a 1.1fr/0.9fr split).

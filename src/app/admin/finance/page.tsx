@@ -66,7 +66,7 @@ export default async function FinancePage({
   const netProfit = grossProfit - totalOpex;
   const margin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
-  // ROAS — revenue attributable to a paid source (orders carrying a utm_source).
+  // ROAS, revenue attributable to a paid source (orders carrying a utm_source).
   const bySource = new Map<string, { revenue: number; orders: number }>();
   for (const o of orders) {
     if (!o.utm_source) continue;
@@ -99,7 +99,7 @@ export default async function FinancePage({
 
   // Revenue grouped by the account staff reconciled the payment into. Orders
   // with no recorded payment fall into "Unrecorded". `awaiting` counts non-COD
-  // orders still missing a recorded payment — the reconciliation to-do.
+  // orders still missing a recorded payment, the reconciliation to-do.
   const byAccount = new Map<string, { orders: number; revenue: number }>();
   let awaiting = 0;
   for (const o of orders) {
@@ -157,7 +157,7 @@ export default async function FinancePage({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Finance</h1>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Profit &amp; loss, ad spend and ROAS — last {range.label.toLowerCase()}.</p>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Profit &amp; loss, ad spend and ROAS, last {range.label.toLowerCase()}.</p>
         </div>
         <div style={{ display: 'flex', gap: 6 }}>
           {RANGES.map(r => (
@@ -303,7 +303,7 @@ export default async function FinancePage({
         )}
       </div>
 
-      {/* Awaiting payment confirmation — non-COD orders not yet reconciled. */}
+      {/* Awaiting payment confirmation, non-COD orders not yet reconciled. */}
       {awaitingOrders.length > 0 && (
         <div style={{ ...card, marginBottom: 24 }}>
           <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Awaiting payment confirmation ({awaitingOrders.length})</h2>

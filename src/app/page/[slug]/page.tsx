@@ -13,7 +13,7 @@ import { socialLinks } from '@/lib/socials';
 import type { Page } from '@/types';
 
 // Static content imported from WordPress (About, Privacy, Terms, FAQ…).
-// Slugs come from wp_pages.slug — the same slug WP used, so links + redirects
+// Slugs come from wp_pages.slug, the same slug WP used, so links + redirects
 // stay stable.
 
 async function loadPage(slug: string): Promise<Page | null> {
@@ -27,7 +27,7 @@ async function loadPage(slug: string): Promise<Page | null> {
       .maybeSingle();
     return (data as Page | null) ?? null;
   } catch (err) {
-    // Same resilience pattern as the storefront getters — a missing `pages`
+    // Same resilience pattern as the storefront getters, a missing `pages`
     // table shouldn't 404 every CMS slug.
     console.warn(`[supabase] loadPage(${slug}) failed; falling back to null. ${(err as Error).message}`);
     return null;
@@ -49,7 +49,7 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const page = await loadPage(slug);
   // No live page? An old WP URL (e.g. /page/home, a draft import Google still
-  // has indexed) may have a manual redirect — honour it before 404ing.
+  // has indexed) may have a manual redirect, honour it before 404ing.
   if (!page) { await redirectIfMapped(`/page/${slug}`); notFound(); }
 
   const settings = await getSiteSettings();
@@ -155,7 +155,7 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
                           color: 'var(--ink-500)', fontSize: '1.25rem',
                           flexShrink: 0,
                           // Rotates 45° when the details is open via CSS in
-                          // globals.css — turns + into × cleanly.
+                          // globals.css, turns + into × cleanly.
                           transition: 'transform 200ms ease-out',
                           display: 'inline-block',
                         }}

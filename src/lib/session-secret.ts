@@ -1,11 +1,11 @@
-// Lazy session-secret resolver — separate file so it can be imported by
+// Lazy session-secret resolver, separate file so it can be imported by
 // `staff-auth.ts` (Node), the legacy admin login action (Node), and the
 // signed-cookie helper used from middleware (Edge) without dragging the
 // rest of staff-auth's Node-only crypto into the Edge bundle.
 //
 // Behaviour:
 //   - In production (NODE_ENV=production AND VERCEL_ENV=production), throws
-//     if the env var is unset or too short — refuses to start.
+//     if the env var is unset or too short, refuses to start.
 //   - In dev/preview, uses a constant fallback so smoke tests don't break.
 
 const DEV_FALLBACK = 'yp-staff-dev-secret-NOT-FOR-PROD';

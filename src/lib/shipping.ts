@@ -32,7 +32,7 @@ export async function resolveShipping(opts: {
   const { province, subtotal } = opts;
 
   // Owner config: default threshold/rate + the master free-shipping switch.
-  // When free shipping is switched off, no order ever qualifies — even if a
+  // When free shipping is switched off, no order ever qualifies, even if a
   // zone still carries a threshold value.
   const cfg = parseCommerceConfig(await getSiteSettings());
   const DEFAULT_FREE_THRESHOLD = cfg.freeShippingThreshold;
@@ -62,7 +62,7 @@ export async function resolveShipping(opts: {
   }
 
   if (!zoneId) {
-    // No zones configured — use the owner's default threshold/rate.
+    // No zones configured, use the owner's default threshold/rate.
     const free = cfg.freeShippingEnabled && subtotal >= DEFAULT_FREE_THRESHOLD;
     return { rate: free ? 0 : DEFAULT_RATE, free, label: 'Standard' };
   }
@@ -99,7 +99,7 @@ export async function resolveShipping(opts: {
 }
 
 /** Pre-address delivery estimate for storefront surfaces (PDP, cart) that
- *  don't yet know the customer's province — resolves the first active zone's
+ *  don't yet know the customer's province, resolves the first active zone's
  *  standard ETA. Returns null when no zone configures estimated days, so
  *  callers can simply skip the line rather than show a made-up number. */
 export async function getDefaultEstimatedDays(): Promise<{ min: number; max: number } | null> {

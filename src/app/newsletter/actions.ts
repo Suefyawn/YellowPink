@@ -8,7 +8,7 @@ import { newsletterLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { log } from '@/lib/logger';
 import { sendNewsletterWelcomeEmail } from '@/lib/email';
 
-// Newsletter signup server action — wired into the footer form, post-purchase
+// Newsletter signup server action, wired into the footer form, post-purchase
 // opt-in, and the timed / exit-intent modal.
 //
 // Returns a discriminated state for `useActionState`:
@@ -22,7 +22,7 @@ const SOURCE_VALUES = ['footer', 'modal', 'exit_intent', 'checkout', 'post_purch
 const SignupSchema = z.object({
   email: z.string().email().max(254),
   source: z.enum(SOURCE_VALUES).default('footer'),
-  // Honeypot — bots fill this; real users never see it.
+  // Honeypot, bots fill this; real users never see it.
   website: z.string().max(0).optional(),
 });
 
@@ -41,7 +41,7 @@ export async function subscribeToNewsletter(
     return { ok: false, error: 'Please enter a valid email address.' };
   }
   const { email, source, website } = parsed.data;
-  // Honeypot tripped — silent success so the bot moves on without learning anything.
+  // Honeypot tripped, silent success so the bot moves on without learning anything.
   if (website) return { ok: true, email };
 
   const hdrs = await headers();
@@ -55,7 +55,7 @@ export async function subscribeToNewsletter(
 
   if (isDemo) {
     log.info('newsletter.demo_subscribe', { email, source });
-    // Even in demo mode, fire the welcome email — it's how the merchant
+    // Even in demo mode, fire the welcome email, it's how the merchant
     // verifies the template + Resend wiring before going live.
     after(() => sendNewsletterWelcomeEmail({ email, source }));
     return { ok: true, email };
@@ -72,7 +72,7 @@ export async function subscribeToNewsletter(
         ip_address: ip === 'unknown' ? null : ip,
       });
     if (error && error.code === '23505') {
-      // Already subscribed — silently treat as success. We deliberately don't
+      // Already subscribed, silently treat as success. We deliberately don't
       // send a second welcome email here so re-submitting the form (e.g. from
       // a different page) doesn't double-mail them.
       return { ok: true, email };
@@ -81,10 +81,10 @@ export async function subscribeToNewsletter(
       log.error('newsletter.insert_failed', { error: error.message });
       return { ok: false, error: 'Something went wrong. Please try again.' };
     }
-    // Fresh signup — schedule the welcome email to fire after the response is
+    // Fresh signup, schedule the welcome email to fire after the response is
     // sent. `after()` (Next 15+ stable) is needed instead of plain `void`
     // because Vercel can terminate the lambda once the action returns, which
-    // was killing the post-Resend recordEmailLog write — emails arrived but
+    // was killing the post-Resend recordEmailLog write, emails arrived but
     // no email_log row landed, leaving delivered_at unreachable for the
     // webhook handler. `after()` guarantees the work runs to completion
     // without blocking the user-facing response.

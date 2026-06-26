@@ -36,10 +36,10 @@ export async function adjustStock(formData: FormData): Promise<void> {
   // removes it. Only 'adjustment' is free to go either way. Without this
   // a typo'd sign would silently book the opposite movement.
   if (reason === 'restock' && qtyDelta < 0) {
-    redirect('/admin/inventory?error=' + encodeURIComponent('Restock must be a positive quantity — use Damage or Adjustment to remove stock.'));
+    redirect('/admin/inventory?error=' + encodeURIComponent('Restock must be a positive quantity, use Damage or Adjustment to remove stock.'));
   }
   if (reason === 'damage' && qtyDelta > 0) {
-    redirect('/admin/inventory?error=' + encodeURIComponent('Damage must be a negative quantity — use Restock or Adjustment to add stock.'));
+    redirect('/admin/inventory?error=' + encodeURIComponent('Damage must be a negative quantity, use Restock or Adjustment to add stock.'));
   }
 
   const { data, error } = await supabaseAdmin().rpc('record_stock_change' as never, {

@@ -1,5 +1,5 @@
 // ============================================================================
-// Vercel Cron entry point — fires staged abandoned-cart reminders.
+// Vercel Cron entry point, fires staged abandoned-cart reminders.
 //
 // Schedule (every 15 min) configured in vercel.json:
 //   { "crons": [{ "path": "/api/cron/abandoned-cart", "schedule": "*/15 * * * *" }] }
@@ -9,9 +9,9 @@
 // triggered by random web traffic.
 //
 // Reminder tiers:
-//   tier 1 — first email after 1 hour of inactivity
-//   tier 2 — second email after 24 hours
-//   tier 3 — last-chance email with discount code after 72 hours
+//   tier 1, first email after 1 hour of inactivity
+//   tier 2, second email after 24 hours
+//   tier 3, last-chance email with discount code after 72 hours
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';

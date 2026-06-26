@@ -9,7 +9,7 @@ const str = (fd: FormData, k: string) => ((fd.get(k) as string | null) ?? '').tr
 
 // Doctor self-service profile edit. Updates run through the reviewer's OWN
 // session, so RLS (content_reviewers_self_update: auth.uid() = auth_user_id)
-// scopes the write to their row. We additionally whitelist columns here — name,
+// scopes the write to their row. We additionally whitelist columns here, name,
 // active, is_default, slug and the account link are NOT editable by the doctor.
 export async function updateReviewerProfile(formData: FormData): Promise<void> {
   const sb = await createServerSupabase();

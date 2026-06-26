@@ -1,8 +1,8 @@
 // Server-action authorization helpers. Use at the top of every `'use server'`
 // function that mutates admin-scoped data.
 //
-// `assertOwner()` — strict owner-only (team, settings, dangerous CMS edits).
-// `assertPermission('coupons')` — owner OR holder of the named permission.
+// `assertOwner()`, strict owner-only (team, settings, dangerous CMS edits).
+// `assertPermission('coupons')`, owner OR holder of the named permission.
 //
 // Both throw `Error('Unauthorized')` which Next.js surfaces as a 403-ish
 // runtime error and Sentry captures via the global error handler.
@@ -30,7 +30,7 @@ export async function assertPermission(perm: Permission): Promise<StaffSession> 
 /**
  * Page-level "should this surface be hidden?" check.
  *
- * Returns true when the request lacks the required permission — including the
+ * Returns true when the request lacks the required permission, including the
  * crucial **null session** case. The historical pattern at call sites was:
  *
  *   if (session && !session.isOwner && !session.permissions.includes('X')) { ... }

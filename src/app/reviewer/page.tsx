@@ -39,7 +39,7 @@ export default async function ReviewerDashboard() {
               </h1>
               {!reviewer.active && (
                 <span style={{ display: 'inline-block', marginTop: 8, padding: '2px 10px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#b45309' }}>
-                  Profile hidden — being set up
+                  Profile hidden, being set up
                 </span>
               )}
             </div>
@@ -62,7 +62,7 @@ export default async function ReviewerDashboard() {
             <div>
               <label style={label}>Name</label>
               <input value={reviewer.name} disabled style={{ ...field, background: 'var(--paper2)', color: 'var(--ink-500)' }} />
-              <p style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 4 }}>To change your name, contact us — it&rsquo;s tied to your verified credentials.</p>
+              <p style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 4 }}>To change your name, contact us, it&rsquo;s tied to your verified credentials.</p>
             </div>
             <div style={{ display: 'grid', gap: 16, gridTemplateColumns: '1fr 1fr' }}>
               <div>

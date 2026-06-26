@@ -43,7 +43,7 @@ function timingSafeEq(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 export interface SignedPayload {
-  /** Subject — what this cookie identifies (e.g. 'owner'). */
+  /** Subject, what this cookie identifies (e.g. 'owner'). */
   sub: string;
   /** Issued-at, epoch seconds. */
   iat: number;

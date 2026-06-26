@@ -27,7 +27,7 @@ export function ProductsFlash({
       message = error;
       type = 'error';
     } else if (archived) {
-      message = 'Product archived — it has order history, so it was hidden from the store instead of deleted.';
+      message = 'Product archived, it has order history, so it was hidden from the store instead of deleted.';
     } else if (deleted) {
       message = 'Product deleted.';
     }

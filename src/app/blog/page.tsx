@@ -2,19 +2,19 @@ import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { getBlogPosts } from '@/lib/supabase';
 import { BlogPage } from '@/sections/blog/BlogPage';
 
-// 10-min ISR — blog posts publish at most a few times per week.
+// 10-min ISR, blog posts publish at most a few times per week.
 export const revalidate = 600;
 
 export const metadata = pageMeta({
-  title: 'Beauty & Wellness Blog — Skincare & Supplement Guides',
+  title: 'Beauty & Wellness Blog, Skincare & Supplement Guides',
   description:
-    'Skincare, makeup, sleep and supplement guides from the Yellow Pink editors — plain-English, evidence-led advice for Pakistan. No influencer fluff.',
+    'Skincare, makeup, sleep and supplement guides from the Yellow Pink editors, plain-English, evidence-led advice for Pakistan. No influencer fluff.',
   path: '/blog',
 });
 
 export default async function BlogListPage() {
   const posts = await getBlogPosts();
-  // Top 24 posts for the ItemList — newest first matches the listing
+  // Top 24 posts for the ItemList, newest first matches the listing
   // order (getBlogPosts sorts by date desc).
   const itemListPosts = posts.slice(0, 24);
   return (

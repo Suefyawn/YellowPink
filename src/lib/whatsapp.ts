@@ -1,13 +1,13 @@
 // ============================================================================
 // WhatsApp deep-link helpers.
 //
-// The merchant runs the standard WhatsApp Business app on their phone — no
+// The merchant runs the standard WhatsApp Business app on their phone, no
 // paid API, no webhook, no card on file. Buttons across the storefront +
 // admin generate `wa.me` URLs that open the customer's WhatsApp app with
 // the merchant number pre-filled and an optional pre-typed message.
 //
 // Env:
-//   NEXT_PUBLIC_WHATSAPP_NUMBER — merchant's WhatsApp number in
+//   NEXT_PUBLIC_WHATSAPP_NUMBER, merchant's WhatsApp number in
 //     international E.164 format **without** the leading "+" and without
 //     spaces/dashes. Pakistan example: 923001234567 (where 92 is the country
 //     code and 3001234567 is the 10-digit mobile).

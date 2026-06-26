@@ -14,7 +14,7 @@ const SENTRY_PROJECT = 'yellowpink';
 // `createClient` without explicit generics returns a client whose `.from()`
 // inference treats every table as `never`, so .upsert / .insert payloads
 // fail type-check. We don't ship generated DB types, so widen to a
-// permissive shape — the runtime contract is owned by the analytics_cache
+// permissive shape, the runtime contract is owned by the analytics_cache
 // migration.
 type PermissiveSupabase = SupabaseClient<unknown, never, never, never, never>;
 
@@ -45,7 +45,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
 
   const W7  = `timestamp >= now() - interval 7 day`;
   const PV  = `event = '$pageview'`;
-  // Exclude /admin from every panel — staff dashboard activity isn't
+  // Exclude /admin from every panel, staff dashboard activity isn't
   // storefront traffic. (before_send in PostHogProvider stops new admin
   // events; this also drops any already in the 7-day window.)
   const NOT_ADMIN = `NOT startsWith(coalesce(properties.\`$pathname\`, ''), '/admin')`;
@@ -137,7 +137,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       LIMIT 15
     `),
 
-    // ── Funnel sliced by traffic source — top 8 sources by home view
+    // ── Funnel sliced by traffic source, top 8 sources by home view
     phQuery(apiKey, `
       SELECT
         coalesce(nullIf(properties.\`$initial_referring_domain\`, ''), 'direct') as source,
@@ -153,7 +153,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       LIMIT 8
     `),
 
-    // ── Funnel sliced by device type — Mobile vs Desktop. The add-to-cart
+    // ── Funnel sliced by device type, Mobile vs Desktop. The add-to-cart
     // step is where the storefront leaks the most visitors, and mobile vs
     // desktop is the first cut that tells the owner whether it's a phone-
     // layout problem or broad. Same step definitions as the by-source slice.
@@ -212,7 +212,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
   };
 
   // Detect a >50% week-over-week drop in pageviews → notify. (Compare last 3 vs
-  // first 3 days of the trend window — same row of data, cheap, no extra query.)
+  // first 3 days of the trend window, same row of data, cheap, no extra query.)
   const t = core.trend;
   if (t.length >= 6) {
     const recent = t.slice(-3).reduce((s, d) => s + d.count, 0);
@@ -306,7 +306,7 @@ async function refreshSentry(supabase: PermissiveSupabase): Promise<void> {
   const token = process.env.SENTRY_AUTH_TOKEN;
   if (!token) throw new Error('SENTRY_AUTH_TOKEN not configured');
 
-  // Issues list — same shape we had, plus firstSeen so the dedup logic can
+  // Issues list, same shape we had, plus firstSeen so the dedup logic can
   // tell "brand-new issue today" from "still open from last week".
   const issuesRes = await fetch(
     `https://sentry.io/api/0/projects/${SENTRY_ORG}/${SENTRY_PROJECT}/issues/?query=is:unresolved&limit=25`,
@@ -331,7 +331,7 @@ async function refreshSentry(supabase: PermissiveSupabase): Promise<void> {
     }));
   }
 
-  // Top affected URLs (best-effort — collapse the issue list by `url` tag).
+  // Top affected URLs (best-effort, collapse the issue list by `url` tag).
   const urlCounts = new Map<string, number>();
   for (const i of issues) {
     const url = i.tags?.find(t => t.key === 'url')?.value;
@@ -387,7 +387,7 @@ interface NotifyInput {
   title: string;
   body: string;
   link: string;
-  /** Idempotency key — we skip the insert if a row already exists with this
+  /** Idempotency key, we skip the insert if a row already exists with this
    *  value stashed in `entity_id`. Lets the refresher run repeatedly without
    *  duplicating the same notification. */
   dedupKey: string;

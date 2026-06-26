@@ -66,12 +66,12 @@ function TrackForm() {
   const [loading, setLoading] = useState(false);
 
   // If both came in via the URL, auto-submit so the customer hits the page and
-  // sees their status without an extra click. The form remains visible — we
+  // sees their status without an extra click. The form remains visible, we
   // don't trust the URL phone alone, but the RPC guards the actual lookup.
   //
   // Failure handling matters here: a *system* error (RPC/network/deploy blip)
   // must not leave a silent blank form, so we surface a soft retry message.
-  // A genuine no-match on a prefilled link (rare — the link is minted from a
+  // A genuine no-match on a prefilled link (rare, the link is minted from a
   // real order) stays quiet so we don't accuse a legitimate visitor of a bad
   // order number; they can correct the prefilled fields and submit manually.
   useEffect(() => {
@@ -144,7 +144,7 @@ function TrackForm() {
             id="track-order"
             value={orderNumber}
             onChange={e => setOrderNumber(e.target.value)}
-            placeholder="Order number — e.g. YP-A1B2C3"
+            placeholder="Order number, e.g. YP-A1B2C3"
             required
             autoCapitalize="characters"
             autoComplete="off"

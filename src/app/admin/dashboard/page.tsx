@@ -33,29 +33,29 @@ const statusLabels = ['pending', 'processing', 'shipped', 'delivered', 'cancelle
 
 export default async function DashboardPage() {
   const session = await getStaffSession();
-  // Dashboard is the landing surface — anyone with overview OR either of the
+  // Dashboard is the landing surface, anyone with overview OR either of the
   // finer analytics perms can land here; they'll just see fewer widgets.
   if (!session || !canAny(session, ['analytics', 'analytics_traffic', 'analytics_errors'])) {
     return <NoAccess section="Dashboard" />;
   }
   const canOverview = !session || can(session, 'analytics');
   const canErrors   = !session || can(session, 'analytics_errors');
-  // Server components render once per request — pulling the "now" once
+  // Server components render once per request, pulling the "now" once
   // here is fine. The `react-hooks/purity` rule flags Date.now() as impure;
   // that warning is for client components that may be re-rendered by the
   // React Compiler. Async server components don't memoise.
   // eslint-disable-next-line react-hooks/purity
   const nowMs = Date.now();
   const thirtyDaysAgo = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
-  // Prior 30-day window [60d ago, 30d ago) — powers the period-over-period
+  // Prior 30-day window [60d ago, 30d ago), powers the period-over-period
   // trend pills on the KPI cards.
   const sixtyDaysAgo = new Date(nowMs - 60 * 24 * 60 * 60 * 1000).toISOString();
-  // "Stuck" thresholds — orders/returns sitting longer than this are surfaced
+  // "Stuck" thresholds, orders/returns sitting longer than this are surfaced
   // in the Needs-attention card so they don't drift past the operator's eye.
   const oneDayAgo = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString();
   const threeDaysAgo = new Date(nowMs - 3 * 24 * 60 * 60 * 1000).toISOString();
 
-  // orders RLS (migration 070) drops anon SELECT — use the service role
+  // orders RLS (migration 070) drops anon SELECT, use the service role
   // for every orders read on this page. products / blog_posts still
   // allow anon SELECT and can stay on the public client.
   const admin = supabaseAdmin();
@@ -76,7 +76,7 @@ export default async function DashboardPage() {
     // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
     // top products) in one SQL pass via dashboard_kpis() RPC. Previously
     // pulled every orders row + its JSONB items into Node and aggregated in
-    // JS — would degrade linearly with order count.
+    // JS, would degrade linearly with order count.
     admin.rpc('dashboard_kpis' as never) as unknown as Promise<{ data: DashboardKpis | null }>,
     // Cap the low-stock list to 50 so a long-tail catalog with many
     // out-of-stock rows doesn't blow up the dashboard; the card next to it
@@ -84,15 +84,15 @@ export default async function DashboardPage() {
     supabase.from('products').select('*').eq('track_inventory', true).lte('stock', 5).order('stock', { ascending: true }).limit(50),
     supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lte('stock', 5),
     admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
-    // Revenue series reads `v_orders_revenue` — the same view the Analytics
-    // page uses — so the two pages report an identical "Revenue · last 30
+    // Revenue series reads `v_orders_revenue`, the same view the Analytics
+    // page uses, so the two pages report an identical "Revenue · last 30
     // days". The view excludes cancelled / payment_pending / payment_failed
     // orders and zeroes refunds.
     admin.from('v_orders_revenue').select('revenue, created_at').gte('created_at', thirtyDaysAgo),
     // Prior-period comparisons for the trend pills.
     admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
     admin.from('v_orders_revenue').select('revenue').gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
-    // "Needs attention" counters — surface state that's drifted past the
+    // "Needs attention" counters, surface state that's drifted past the
     // expected SLA so the owner can clear it from the dashboard:
     //  • payment_pending older than 24h (gateway likely never confirmed)
     //  • plain pending older than 3 days (waiting on confirmation too long)
@@ -105,7 +105,7 @@ export default async function DashboardPage() {
       .eq('status', 'pending'),
   ]);
 
-  // Build 30-day revenue series — reuse the `nowMs` we pinned above so the
+  // Build 30-day revenue series, reuse the `nowMs` we pinned above so the
   // bucket boundaries match the `thirtyDaysAgo` window we queried with.
   const dayMap: Record<string, number> = {};
   for (let i = 29; i >= 0; i--) {
@@ -131,7 +131,7 @@ export default async function DashboardPage() {
   const topProducts = kpis.top_products.map(p => ({ name: p.name, brand: p.brand, qty: p.qty }));
 
   // Dashboard cards favour actionable, time-bounded numbers over all-time
-  // vanity totals — the things the owner checks each morning.
+  // vanity totals, the things the owner checks each morning.
   const revenue30d = chartDays.reduce((s, d) => s + d.revenue, 0);
   const ordersToFulfill = (statusCounts.pending ?? 0) + (statusCounts.processing ?? 0);
 
@@ -238,7 +238,7 @@ export default async function DashboardPage() {
       {/* Revenue chart */}
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px', marginBottom: 32 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Revenue — Last 30 Days</h2>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Revenue, Last 30 Days</h2>
           <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
             {fmt(chartDays.reduce((s, d) => s + d.revenue, 0))} total
           </span>
@@ -246,7 +246,7 @@ export default async function DashboardPage() {
         <RevenueChart days={chartDays} />
       </div>
 
-      {/* Needs attention — only renders when there's actually something
+      {/* Needs attention, only renders when there's actually something
           actionable. Each row links into the filtered list. */}
       {(() => {
         const items: { count: number; label: string; href: string }[] = [];
@@ -399,7 +399,7 @@ export default async function DashboardPage() {
       {/* ── /Overview block ────────────────────────────────────────────── */}
 
       {/* Traffic widgets (funnel / PostHog / top pages / top events) now
-          live on the Analytics page — the dashboard stays focused on
+          live on the Analytics page, the dashboard stays focused on
           today's actionable numbers. */}
 
       {/* ── Product-finder quiz funnel (overview-gated) ────────────────── */}

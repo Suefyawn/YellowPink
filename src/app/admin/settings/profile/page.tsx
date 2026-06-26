@@ -17,7 +17,7 @@ export default async function SettingsProfilePage({ searchParams }: { searchPara
     <>
       <SettingsPageHeader
         title="Store profile"
-        subtitle="Your store's identity — name, contact details, and links to your social profiles."
+        subtitle="Your store's identity, name, contact details, and links to your social profiles."
       />
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
 
@@ -60,7 +60,7 @@ export default async function SettingsProfilePage({ searchParams }: { searchPara
               <div key={p.key}>
                 <label style={lbl}>{p.label}</label>
                 {/* type="text" (not "url") so a bare handle or scheme-less
-                    URL still submits — normalizeUrl() in lib/socials.ts adds
+                    URL still submits, normalizeUrl() in lib/socials.ts adds
                     https:// when missing. inputMode keeps the URL keyboard. */}
                 <input
                   name={p.key}

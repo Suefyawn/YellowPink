@@ -9,7 +9,7 @@ export interface Crumb {
 /**
  * Visible breadcrumb trail. Pair with `breadcrumbLd(items)` from lib/seo so the
  * on-page trail and the BreadcrumbList JSON-LD stay in lockstep (same array).
- * The last crumb is the current page — rendered as plain text with
+ * The last crumb is the current page, rendered as plain text with
  * aria-current, not a link. Renders nothing for a single-item trail.
  */
 export function Breadcrumbs({ items, className }: { items: Crumb[]; className?: string }) {

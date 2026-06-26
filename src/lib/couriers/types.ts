@@ -3,7 +3,7 @@
 // M&P / BlueEx later) implements this so the admin UI and shipment actions
 // can talk to all of them through the same surface.
 //
-// `null` returns are the "best-effort failed, keep going" signal — the
+// `null` returns are the "best-effort failed, keep going" signal, the
 // caller falls back to manual tracking-number entry. We never throw across
 // this boundary so a single courier outage doesn't bring down the
 // merchant's order flow.
@@ -12,7 +12,7 @@
 export interface BookingInput {
   /** Internal order number (YP-XXXXXX) we'll pass as the courier's reference. */
   orderNumber: string;
-  /** Buyer details — phone is mandatory for COD. */
+  /** Buyer details, phone is mandatory for COD. */
   consignee: {
     firstName: string;
     lastName?: string;
@@ -31,7 +31,7 @@ export interface BookingInput {
   pieces?: number;
   /** Amount to collect on delivery (PKR). 0 for prepaid. */
   codAmount: number;
-  /** Currency — defaults to 'PKR' (which is all the live couriers do anyway). */
+  /** Currency, defaults to 'PKR' (which is all the live couriers do anyway). */
   currency?: string;
   /** SKU lines for the customs / weight breakdown. */
   items: Array<{
@@ -46,7 +46,7 @@ export interface BookingInput {
 
 export interface BookingResult {
   ok: true;
-  /** What the courier issued — store as shipments.tracking_number. */
+  /** What the courier issued, store as shipments.tracking_number. */
   trackingNumber: string;
   /** PDF / URL of the printable label, if the courier returned one. */
   labelUrl?: string | null;
@@ -68,7 +68,7 @@ export interface TrackEvent {
 export interface TrackResult {
   ok: true;
   events: TrackEvent[];
-  /** Latest status — convenience field; same as events[0]?.status. */
+  /** Latest status, convenience field; same as events[0]?.status. */
   current?: string;
   raw?: unknown;
 }

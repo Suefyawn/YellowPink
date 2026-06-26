@@ -16,7 +16,7 @@ interface AttributeWithValues extends ProductAttribute {
 const PAGE_SIZE = 48;
 
 // Top-level shop tabs are the 4 taxons, with "All" first. The sub-category
-// chips below are the active taxon's leaf categories — filtered down to the
+// chips below are the active taxon's leaf categories, filtered down to the
 // ones that actually have products (see `subcats`) so the row can never
 // surface an empty category.
 const TOP_CATEGORY_NAMES = ['All', ...TAXONS.map(t => t.label)];
@@ -28,14 +28,14 @@ interface Props {
   attributes?: AttributeWithValues[];
   /** Map of product_id → list of attribute_value_ids that the product's variants cover. */
   productValueMap?: Record<string, string[]>;
-  /** Initial top tab — a taxon label ("Makeup") or "All". */
+  /** Initial top tab, a taxon label ("Makeup") or "All". */
   initialCategory?: string;
   /** Initial leaf-category chip (one of the 18 product categories). */
   initialSubcategory?: string | null;
   /** Optional pre-applied "on sale" filter, set by `?on_sale=1`. */
   initialOnSaleOnly?: boolean;
   /** Pre-applied brand filter (comma-separated) from `?brand=`. Resolved on the
-   *  server and passed in so it survives prerender/hydration — `useSearchParams`
+   *  server and passed in so it survives prerender/hydration, `useSearchParams`
    *  is empty on the first client render of this statically-generated route, so
    *  reading brand only from the URL there left the filter unapplied on load. */
   initialBrand?: string | null;
@@ -78,8 +78,8 @@ export function CollectionPage({
     // to the short forms as a belt-and-braces safety net (e.g. if someone
     // disables middleware during local dev).
     //
-    // Resolve whatever the URL carries — ?taxon=, ?category= (which may be a
-    // taxon OR a leaf), ?subcategory= — into a (top tab, leaf chip) pair.
+    // Resolve whatever the URL carries, ?taxon=, ?category= (which may be a
+    // taxon OR a leaf), ?subcategory=, into a (top tab, leaf chip) pair.
     // The top tab is always a taxon label; the chip is always a leaf.
     const { cat, sub } = (() => {
       const taxonParam = sp.get('taxon');
@@ -92,7 +92,7 @@ export function CollectionPage({
       if (taxon) {
         topLabel = taxon.label;
       } else if (catParam) {
-        // catParam is a leaf category — normalise the slug/label form to its
+        // catParam is a leaf category, normalise the slug/label form to its
         // canonical label, then map it back to its owning taxon. Without the
         // canonicalCategory() step a slug URL (?category=combo-packs) would
         // never match a taxon's category list and the chip + product filter
@@ -102,7 +102,7 @@ export function CollectionPage({
         if (owner && leafCat) { topLabel = owner.label; leaf = leafCat; }
       }
       if (subParam) {
-        // Same canonicalisation for ?subcategory= — both URL forms collapse
+        // Same canonicalisation for ?subcategory=, both URL forms collapse
         // onto the one canonical leaf label.
         const leafSub = canonicalCategory(subParam);
         if (leafSub) {
@@ -119,7 +119,7 @@ export function CollectionPage({
     // back to the client URL for in-session reads. Resolve each URL token to
     // the catalog's canonical brand string (case/space-insensitive) so a link
     // like ?brand=anua or ?brand=Beauty%20Of%20Joseon still matches the
-    // exact-cased value stored on the products — otherwise a casing drift in
+    // exact-cased value stored on the products, otherwise a casing drift in
     // the URL would silently filter to nothing / everything.
     const brandCanon = new Map<string, string>();
     for (const p of products) {
@@ -140,7 +140,7 @@ export function CollectionPage({
       tags: new Set(tagSlugs),
       featured: sp.get('featured') === '1' || initialFeatured,
       bestseller: sp.get('bestseller') === '1' || initialBestseller,
-      // Free-text search term — populated when the user comes in from the
+      // Free-text search term, populated when the user comes in from the
       // search overlay (`/shop?q=cerave`) or from a WP-style `/?s=foo`
       // redirect (see proxy.ts).
       q: sp.get('q') ?? '',
@@ -155,7 +155,7 @@ export function CollectionPage({
       sale:  sp.get('sale') === '1' || sp.get('on_sale') === '1' || initialOnSaleOnly,
     };
   };
-  // Mount-time only — the useState initialiser runs once. Navigating to a
+  // Mount-time only, the useState initialiser runs once. Navigating to a
   // different listing (another taxon/category/subcategory, a ?q= search, or
   // ?on_sale=1) remounts this component because shop/page.tsx keys it on those
   // destination params, so the snapshot is always re-read for a new listing.
@@ -196,7 +196,7 @@ export function CollectionPage({
     return m;
   }, [allTags]);
 
-  // Per-facet product counts within the current category scope — layered-nav
+  // Per-facet product counts within the current category scope, layered-nav
   // style, so each brand / tag shows how many products carry it.
   const brandCounts = useMemo(() => {
     const m = new Map<string, number>();
@@ -266,7 +266,7 @@ export function CollectionPage({
       const lo = priceMin !== '' ? `PKR ${priceMin}` : '';
       const hi = priceMax !== '' ? `PKR ${priceMax}` : '';
       out.push({
-        key: 'price', label: lo && hi ? `${lo} – ${hi}` : lo ? `≥ ${lo}` : `≤ ${hi}`,
+        key: 'price', label: lo && hi ? `${lo}, ${hi}` : lo ? `≥ ${lo}` : `≤ ${hi}`,
         remove: () => { setPriceMin(''); setPriceMax(''); },
       });
     }
@@ -324,8 +324,7 @@ export function CollectionPage({
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedTags, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly, q]);
   // Brand list rebuilds per-category; when the shopper switches the top tab we
-  // drop brand selections that no longer apply. This must NOT run on mount —
-  // doing so wiped the brand seeded from `?brand=` in the URL (e.g. landing on
+  // drop brand selections that no longer apply. This must NOT run on mount,   // doing so wiped the brand seeded from `?brand=` in the URL (e.g. landing on
   // /shop?brand=Anua from a K-Beauty brand card), flipping the page straight
   // back to "all products". Guard the first run so the initial URL brand
   // survives; only genuine category switches clear the selection.
@@ -341,7 +340,7 @@ export function CollectionPage({
     const sp = new URLSearchParams();
     if (q.trim()) sp.set('q', q.trim());
     // Use `category=` / `subcategory=` (matches header nav + sitemap +
-    // breadcrumb canonical URLs — see audit SEV-2 on cat/category mismatch).
+    // breadcrumb canonical URLs, see audit SEV-2 on cat/category mismatch).
     if (activeCategory && activeCategory !== 'All') sp.set('category', activeCategory);
     if (activeSubcategory) sp.set('subcategory', activeSubcategory);
     if (sortBy !== 'featured') sp.set('sort', sortBy);
@@ -357,7 +356,7 @@ export function CollectionPage({
     if (bestsellerOnly) sp.set('bestseller', '1');
     const qs = sp.toString();
     const url = qs ? `/shop?${qs}` : '/shop';
-    // Replace, not push — filtering shouldn't pile up history entries.
+    // Replace, not push, filtering shouldn't pile up history entries.
     router.replace(url, { scroll: false });
   }, [q, activeCategory, activeSubcategory, sortBy, page, selectedBrands, selectedTags, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly, selectedValueIds, router]);
 
@@ -373,8 +372,7 @@ export function CollectionPage({
     (bestsellerOnly ? 1 : 0);
 
   // Leaf categories that actually have at least one product. The sub-category
-  // chip row is built from this set so it can never show an empty category —
-  // it stays correct automatically as the catalogue changes.
+  // chip row is built from this set so it can never show an empty category,   // it stays correct automatically as the catalogue changes.
   const populatedLeaves = useMemo(
     () => new Set(products.map(p => p.category)),
     [products],
@@ -388,7 +386,7 @@ export function CollectionPage({
   // Pagination clicks must scroll back to the top of the catalogue.
   // `router.replace(..., { scroll: false })` suppresses Next's own scroll
   // restoration, so we scroll explicitly. Deferred one frame so it runs
-  // after the new page's tiles commit, and INSTANT (not smooth) — a smooth
+  // after the new page's tiles commit, and INSTANT (not smooth), a smooth
   // scroll gets aborted by the layout shift as the fresh tiles render,
   // which left the viewport stranded at the foot of the previous page.
   function goToPage(next: number) {
@@ -398,7 +396,7 @@ export function CollectionPage({
 
   // Free-text query is matched case-insensitively against brand + name +
   // category + subcategory + variant. Cheap substring containment is fine
-  // for the catalogue size we run — if it ever gets too big we'll swap in
+  // for the catalogue size we run, if it ever gets too big we'll swap in
   // the `search_products` RPC (pg_trgm) the typeahead overlay already uses.
   const qLower = q.trim().toLowerCase();
   const activeTaxon = findTaxon(activeCategory);
@@ -465,7 +463,7 @@ export function CollectionPage({
     ? activeTaxon.categories.filter(leaf => populatedLeaves.has(leaf))
     : [];
   // A single-brand view with no category filter is effectively that brand's
-  // landing page — show the brand name as the heading and a brand intro line
+  // landing page, show the brand name as the heading and a brand intro line
   // (otherwise the page is the generic "All Products" with no copy of its own).
   const singleBrand = selectedBrands.size === 1 && activeCategory === 'All' && !activeSubcategory
     ? Array.from(selectedBrands)[0]
@@ -482,7 +480,7 @@ export function CollectionPage({
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{pageTitle}</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 560, marginBottom: 32 }}>
             {singleBrand
-              ? `Explore the full ${singleBrand} range at Yellow Pink — 100% authentic, imported, with cash-on-delivery across Pakistan.`
+              ? `Explore the full ${singleBrand} range at Yellow Pink, 100% authentic, imported, with cash-on-delivery across Pakistan.`
               // Prefer the richer keyword-led intro for wellness head-term pages;
               // fall back to the short CATEGORY_DESCRIPTIONS blurb otherwise.
               : (activeSubcategory ? CATEGORY_INTRO[activeSubcategory] ?? CATEGORY_DESCRIPTIONS[activeSubcategory] : undefined)
@@ -547,7 +545,7 @@ export function CollectionPage({
                 Filters{activeFilterCount > 0 ? ` · ${activeFilterCount}` : ''}
               </button>
 
-              {/* Active filter chips — always visible so users know what's applied
+              {/* Active filter chips, always visible so users know what's applied
                   without opening the rail. */}
               {activeChips.map(c => (
                 <button
@@ -611,7 +609,7 @@ export function CollectionPage({
             }}
           />
 
-          {/* Filter rail — fixed slide-in panel from the left, on every viewport.
+          {/* Filter rail, fixed slide-in panel from the left, on every viewport.
               Always in the DOM so opening / closing animates the transform. */}
           <aside
             id="shop-filter-rail"
@@ -794,7 +792,7 @@ export function CollectionPage({
               })}
             </aside>
 
-            {/* ─── Product grid (always full-width — rail floats over the top) ─ */}
+            {/* ─── Product grid (always full-width, rail floats over the top) ─ */}
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
             {paginated.map((p) => (
@@ -831,8 +829,8 @@ export function CollectionPage({
                 {q.trim()
                   ? 'Try a different spelling, a shorter term, or browse a category instead.'
                   : activeFilterCount > 0
-                  ? "Try clearing a filter or two — we'll show you what's available."
-                  : "We're restocking — check back soon or browse another category."}
+                  ? "Try clearing a filter or two, we'll show you what's available."
+                  : "We're restocking, check back soon or browse another category."}
               </p>
               <div style={{ display: 'inline-flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
                 {(q.trim() || activeFilterCount > 0) && (

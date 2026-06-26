@@ -1,4 +1,4 @@
-// Public image upload for Medical Review Board photos — used by the doctor
+// Public image upload for Medical Review Board photos, used by the doctor
 // apply form and the reviewer dashboard so a clinician can attach their photo
 // directly instead of pasting a URL. Same tight limits as the review-photo
 // upload (small max size, anon allowed, per-IP rate limit).

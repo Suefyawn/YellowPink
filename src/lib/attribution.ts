@@ -60,7 +60,7 @@ export function captureAttribution(): void {
     if (ref) {
       try {
         if (new URL(ref).host !== window.location.host) next.referrer = ref.slice(0, 300);
-      } catch { /* malformed referrer — ignore */ }
+      } catch { /* malformed referrer, ignore */ }
     }
     changed = true;
   }

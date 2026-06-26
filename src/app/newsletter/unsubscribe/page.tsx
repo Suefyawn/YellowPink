@@ -6,7 +6,7 @@
 //   2. Flip `unsubscribed_at` on the matching `newsletter_subscribers` row
 //   3. Render a confirmation (or a resubscribe button for an already-off row)
 //
-// We don't expose any other identifier here — the token IS the auth.
+// We don't expose any other identifier here, the token IS the auth.
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,7 @@ import { isDemo } from '@/lib/supabase';
 import { log } from '@/lib/logger';
 
 export const metadata: Metadata = pageMeta({
-  title: 'Newsletter — Unsubscribed',
+  title: 'Newsletter, Unsubscribed',
   description: 'You have been removed from the Yellow Pink mailing list.',
   path: '/newsletter/unsubscribe',
   noIndex: true,
@@ -41,7 +41,7 @@ async function unsubscribeRow(email: string): Promise<{ ok: boolean; alreadyOff:
       .eq('email', email)
       .maybeSingle();
     if (!existing) {
-      // Never on the list — silently treat as success (don't leak whether
+      // Never on the list, silently treat as success (don't leak whether
       // an address is subscribed).
       return { ok: true, alreadyOff: true };
     }
@@ -100,7 +100,7 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
     );
   }
 
-  // Resubscribe path — user is opting back in after unsubscribing.
+  // Resubscribe path, user is opting back in after unsubscribing.
   if (resubscribe === '1') {
     const ok = await resubscribeRow(trimmed);
     return (
@@ -118,7 +118,7 @@ export default async function UnsubscribePage({ searchParams }: { searchParams: 
     );
   }
 
-  // Default path — unsubscribe.
+  // Default path, unsubscribe.
   const { ok, alreadyOff } = await unsubscribeRow(trimmed);
   return (
     <Center>

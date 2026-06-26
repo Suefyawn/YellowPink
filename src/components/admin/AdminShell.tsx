@@ -38,7 +38,7 @@ export function AdminShell({
     return () => mq.removeEventListener('change', sync);
   }, []);
 
-  // Drawer behaves as a modal sheet on mobile only — body scroll lock +
+  // Drawer behaves as a modal sheet on mobile only, body scroll lock +
   // focus trap kick in alongside the slide-in. Desktop ignores them.
   useBodyScrollLock(open);
   useEscapeKey(open, () => setOpen(false));
@@ -58,14 +58,14 @@ export function AdminShell({
     <>
       <style>{`
         .adm-sidebar { position: fixed; left: 0; top: 0; bottom: 0; width: 240px; z-index: 50; transition: transform 0.25s ease; }
-        /* Hide the per-sidebar close (X) button on desktop — the sidebar is
+        /* Hide the per-sidebar close (X) button on desktop, the sidebar is
          * always-mounted at >= 768 px so there's nothing to close. The
          * AdminSidebar component still renders it (the JSX is shared with
          * the mobile drawer), we just hide it visually here. !important
          * is required because the inline button style hard-codes
          * display:inline-flex. */
         .adm-sidebar button[aria-label="Close admin menu"] { display: none !important; }
-        /* Sidebar interactivity polish — inline styles win on their own, so
+        /* Sidebar interactivity polish, inline styles win on their own, so
          * hover affordances are applied here with !important. */
         .adm-sidebar .adm-nav-link:hover { background: rgba(249,168,212,0.07) !important; color: #f9fafb !important; }
         .adm-sidebar .adm-signout:hover { border-color: #ef4444 !important; color: #fca5a5 !important; background: rgba(239,68,68,0.08) !important; }
@@ -80,7 +80,7 @@ export function AdminShell({
         .adm-fab { display: none; }
         .adm-orders-cards { display: none; }
         .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        /* Sticky table headers — long order / inventory / finance lists are
+        /* Sticky table headers, long order / inventory / finance lists are
          * easier to scan when the column labels follow the viewport. */
         .adm-table-scroll thead th {
           position: sticky;
@@ -132,7 +132,7 @@ export function AdminShell({
           /* ── Card hierarchy: lead with the headline fact ──
            * The first identifying cell (order number / product name) becomes a
            * full-width headline block at the top of the card, larger and with
-           * its label dropped — the rest stay compact label/value rows. */
+           * its label dropped, the rest stay compact label/value rows. */
           .adm-table-cards td[data-label="Order #"],
           .adm-table-cards td[data-label="Brand / Name"],
           .adm-table-cards td[data-label="Product"] {
@@ -205,7 +205,7 @@ export function AdminShell({
           .adm-form-brand { grid-template-columns: 1fr !important; }
 
           /* Variant rows on the PDP/admin product edit page were 6 columns wide
-           * — they overflowed on phones. Collapse to a card stack: option +
+           *, they overflowed on phones. Collapse to a card stack: option +
            * SKU on top, price/stock/status flow underneath, Edit/Delete pinned
            * to the right side. */
           .adm-variant-row {
@@ -229,17 +229,17 @@ export function AdminShell({
           .adm-topbar h1, .adm-topbar > span { font-size: 0.875rem !important; }
 
           /* Per-page header rows (h1 + side action button) often use
-           * justifyContent space-between on desktop — let them stack on phones. */
+           * justifyContent space-between on desktop, let them stack on phones. */
           .adm-page-header { flex-wrap: wrap !important; gap: 12px !important; }
           .adm-page-header > * { flex: 1 1 auto; }
 
           /* Sticky bulk-action bars need to hug the screen edge on phones,
-           * not the (now-zero) page padding — and sit clear of the bottom nav. */
+           * not the (now-zero) page padding, and sit clear of the bottom nav. */
           .adm-bulk-bar { margin: 12px -12px 0 !important; border-radius: 0 !important; flex-direction: column; align-items: stretch !important; gap: 8px !important; bottom: 56px !important; }
           /* Sticky save bars (settings, product edit) lift above the nav too. */
           .adm-sticky-actions { bottom: 56px !important; }
 
-          /* Filter pill rows — one horizontally-scrollable strip instead of
+          /* Filter pill rows, one horizontally-scrollable strip instead of
            * wrapping to 2-3 stacked rows that eat vertical space. Bleeds to
            * the screen edge so the last pill cues scrollability. */
           .adm-filter-pills {
@@ -279,7 +279,7 @@ export function AdminShell({
             display: flex; align-items: center; justify-content: center;
           }
 
-          /* Floating action button — primary "create" action, clear of the
+          /* Floating action button, primary "create" action, clear of the
            * bottom nav. */
           .adm-fab {
             display: flex; align-items: center; justify-content: center;
@@ -294,7 +294,7 @@ export function AdminShell({
 
           /* ── Swipeable order cards ──
            * The desktop table is hidden; orders render as cards. Each card is
-           * a native horizontal scroll-snap track — swiping left reveals a
+           * a native horizontal scroll-snap track, swiping left reveals a
            * quick status-action panel. Native scroll, so it never fights
            * vertical page scrolling. */
           .adm-orders-table { display: none; }

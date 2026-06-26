@@ -1,7 +1,6 @@
 // ============================================================================
 // Branded inline-SVG icon set for admin-only surfaces (NotificationsBell,
-// PostHogWidget, SentryWidget, NoAccess, etc.). Same shape as BenefitIcon —
-// 24-unit viewBox, currentColor stroke, no external dependencies. The
+// PostHogWidget, SentryWidget, NoAccess, etc.). Same shape as BenefitIcon, // 24-unit viewBox, currentColor stroke, no external dependencies. The
 // admin set covers utility icons (bell, lock, bar-chart, bug) the
 // storefront benefit icons don't need.
 // ============================================================================

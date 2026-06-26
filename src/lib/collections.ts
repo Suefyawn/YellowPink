@@ -1,5 +1,5 @@
 // ============================================================================
-// Collections — types + membership resolution.
+// Collections, types + membership resolution.
 //
 // A collection groups products for a /collection/[slug] landing page. Manual
 // collections list products explicitly (ordered); smart collections evaluate a

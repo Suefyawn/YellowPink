@@ -17,7 +17,7 @@ export async function getPublishedCollections(limit?: number): Promise<Collectio
 // image: its own hero_image_url when set, otherwise the first member product's
 // image. Keeps the homepage band + /collections index off the bare gradient
 // placeholder, and stays correct automatically as membership changes (no
-// per-collection image to maintain). For the card surfaces only — the
+// per-collection image to maintain). For the card surfaces only, the
 // collection detail page resolves its own hero separately.
 export async function getPublishedCollectionsWithCovers(limit?: number): Promise<Collection[]> {
   const collections = await getPublishedCollections(limit);

@@ -6,7 +6,7 @@ interface WishlistContextValue {
   wishlist: string[];
   toggle: (id: string) => void;
   isWishlisted: (id: string) => boolean;
-  /** Remove every id from the list — used by the "Clear all" affordance
+  /** Remove every id from the list, used by the "Clear all" affordance
    *  on the wishlist page. */
   clear: () => void;
 }
@@ -23,7 +23,7 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   // Start empty so the first client render matches the server-rendered HTML.
   // Initialising from localStorage synchronously made them differ (server =
   // empty, client = stored), which triggered React hydration errors (#418)
-  // and broke interactivity site-wide — the heart on every product tile
+  // and broke interactivity site-wide, the heart on every product tile
   // renders from this state. localStorage is an external store; it is
   // synced in after mount. (CartContext already does exactly this.)
   const [wishlist, setWishlist] = useState<string[]>([]);

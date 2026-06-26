@@ -1,7 +1,7 @@
 import type { BankAccount } from '@/types';
 
 // Presentational list of bank / wallet accounts for manual "Bank Transfer"
-// orders. No hooks — safe to render from both the (client) checkout page and
+// orders. No hooks, safe to render from both the (client) checkout page and
 // the (server) thank-you page. Self-hides when there are no accounts.
 export function BankAccountsList({ accounts, notes, reference }: {
   accounts: BankAccount[];

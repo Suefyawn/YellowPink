@@ -16,7 +16,7 @@ import { TAXONS, categoryHref } from '@/lib/category-taxonomy';
 //
 // `primary` items show in the (space-constrained) desktop top bar; the rest
 // were demoting it into a 9-item row that read as cluttered. Everything still
-// appears in the mobile drawer (which has room) and in the footer — so only
+// appears in the mobile drawer (which has room) and in the footer, so only
 // Sale stays in the desktop bar alongside the four taxons. Collections / Brands
 // / K-Beauty / Blog are one scroll away in the footer.
 const FLAT_ITEMS = [
@@ -30,8 +30,7 @@ const FLAT_ITEMS = [
 
 function navLinkStyle(active: boolean): React.CSSProperties {
   return {
-    // `inline-block` so the 4px vertical padding counts toward the box —
-    // taxon links are wrapped in a div, flat links aren't, and as plain
+    // `inline-block` so the 4px vertical padding counts toward the box,     // taxon links are wrapped in a div, flat links aren't, and as plain
     // inline anchors that padding was ignored only for the wrapped ones,
     // leaving Sale/Blog sitting higher than the rest.
     display: 'inline-block',
@@ -49,7 +48,7 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);
   // Hydration gate for the cart-count badge. The cart loads from
-  // localStorage in CartProvider's mount effect — and because Header sits
+  // localStorage in CartProvider's mount effect, and because Header sits
   // inside a <Suspense> boundary in SiteChrome, its hydration is deferred
   // until *after* that effect has already run. Reading cartCount directly
   // would render "2 items" on the client while the server rendered "0",
@@ -61,7 +60,7 @@ export function Header() {
   const drawerRef = useRef<HTMLDivElement | null>(null);
   // Mobile-menu modal behaviour: lock body scroll, trap focus inside the
   // drawer, close on Escape. Without scroll-lock the page underneath
-  // would keep scrolling behind the open menu — a confusing UX.
+  // would keep scrolling behind the open menu, a confusing UX.
   useBodyScrollLock(mobileMenu);
   useEscapeKey(mobileMenu, () => setMobileMenu(false));
   useFocusTrap(mobileMenu, drawerRef);
@@ -74,7 +73,7 @@ export function Header() {
   // Close any open menu when navigation completes. On a client-side route change
   // the header persists, and a hover-opened desktop mega-menu (or the mobile
   // drawer / expanded section) would otherwise linger open over the freshly
-  // loaded page — clicking a dropdown link should land you on the new page with
+  // loaded page, clicking a dropdown link should land you on the new page with
   // the menu closed, the industry-standard behaviour.
   useEffect(() => {
     // Closing menus in response to an external change (the URL) is exactly what
@@ -118,17 +117,17 @@ export function Header() {
     setMounted(true);
   }, []);
 
-  // Close the mobile menu whenever the route changes — otherwise a tap on a
+  // Close the mobile menu whenever the route changes, otherwise a tap on a
   // nav item navigates but leaves the menu open underneath the new page.
   // The setState is intentional: pathname is from the routing system (an
   // external store), and the desired effect is to reset internal UI state
-  // when the URL changes — there's no prop-derived equivalent.
+  // when the URL changes, there's no prop-derived equivalent.
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMobileMenu(false);
   }, [pathname, searchParams]);
 
-  // Suppress the cart count until mounted — see the `mounted` state above.
+  // Suppress the cart count until mounted, see the `mounted` state above.
   const cartBadgeCount = mounted ? cartCount : 0;
 
   return (
@@ -171,7 +170,7 @@ export function Header() {
                 >{t.label}</Link>
                 {open && (
                   // Outer wrapper sits flush against the link (top:100%) and
-                  // its transparent paddingTop bridges the visual gap — so the
+                  // its transparent paddingTop bridges the visual gap, so the
                   // cursor never crosses a dead zone that would fire mouseleave
                   // and close the menu before a dropdown item can be clicked.
                   <div style={{ position: 'absolute', top: '100%', left: 0, paddingTop: 10, zIndex: 200 }}>
@@ -225,7 +224,7 @@ export function Header() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Each header icon button gets a 40x40 hit area (10px padding around
               an 18-20px glyph) so it satisfies WCAG 2.5.5 / 2.5.8 minimum tap
-              target without changing the visual look — the SVG still appears
+              target without changing the visual look, the SVG still appears
               the same size, but the clickable surface is much larger. */}
           <button
             onClick={() => setSearchOpen(true)}
@@ -312,7 +311,7 @@ export function Header() {
       {/* Mobile-menu sheet: covers the full viewport when open. We use a
           full-screen sheet instead of a header-anchored dropdown so we
           don't have to coordinate with the announcement bar / promo banner
-          / sticky-header heights — those vary per page and per scroll
+          / sticky-header heights, those vary per page and per scroll
           position. The sheet has its own close button so the user always
           knows how to dismiss it. */}
       <div
@@ -349,7 +348,7 @@ export function Header() {
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        {/* Sheet header — logo + close button. Mirrors the storefront
+        {/* Sheet header, logo + close button. Mirrors the storefront
             header so the user has a consistent reference frame when the
             sheet is open. */}
         <div style={{
@@ -360,7 +359,7 @@ export function Header() {
             href="/"
             onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}
-            aria-label="Yellow Pink — home"
+            aria-label="Yellow Pink, home"
             style={{ textDecoration: 'none', color: 'inherit', display: 'inline-flex' }}
           >
             <LogoWordmark />
@@ -466,7 +465,7 @@ export function Header() {
               >{item.label}</Link>
             );
           })}
-          {/* Account shortcut card — saves the user from dismissing the
+          {/* Account shortcut card, saves the user from dismissing the
               menu + hitting the tiny header icon. */}
           <Link
             href={user ? '/account' : '/login'}            onClick={() => setMobileMenu(false)}
@@ -484,7 +483,7 @@ export function Header() {
             </svg>
             {user ? 'My account' : 'Sign in / Create account'}
           </Link>
-          {/* Wishlist — moved off the cramped header icon row into the drawer. */}
+          {/* Wishlist, moved off the cramped header icon row into the drawer. */}
           <Link
             href="/wishlist"            onClick={() => setMobileMenu(false)}
             tabIndex={mobileMenu ? 0 : -1}

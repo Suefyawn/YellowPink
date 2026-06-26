@@ -1,5 +1,5 @@
 // ============================================================================
-// Product-finder quiz — shared definitions (client + server safe, no imports).
+// Product-finder quiz, shared definitions (client + server safe, no imports).
 //
 // A combined finder: first pick a path (skincare vs wellness), then a couple
 // of quick questions, then we map the answers to live product CATEGORIES and
@@ -89,7 +89,7 @@ export function questionsFor(branch: Branch): QuizQuestion[] {
 export function categoriesForAnswers(answers: QuizAnswers): string[] {
   const branch = answers.branch;
   const qs = questionsFor(branch);
-  // Concern/goal (last question) first, then skin type — more specific wins.
+  // Concern/goal (last question) first, then skin type, more specific wins.
   const ordered = [...qs].reverse();
   const cats: string[] = [];
   for (const q of ordered) {

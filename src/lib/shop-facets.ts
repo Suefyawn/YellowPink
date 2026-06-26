@@ -2,8 +2,7 @@
 // Shared shop facet loaders.
 //
 // Used by /shop and the /brand/[slug] + /tag/[slug] archive pages so they all
-// render the same filter rail (variant attributes + tags). Kept server-only —
-// these read Supabase directly.
+// render the same filter rail (variant attributes + tags). Kept server-only, // these read Supabase directly.
 // ============================================================================
 
 import { supabase, isDemo } from '@/lib/supabase';

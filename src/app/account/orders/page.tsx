@@ -31,8 +31,8 @@ export default function AccountOrdersPage() {
   const [reorderNote, setReorderNote] = useState<{ orderId: string; message: string } | null>(null);
 
   // Reorder = re-add every line from a past order to the current cart.
-  // The order's items snapshot doesn't carry a live `stock` field — only the
-  // products row does — so we fetch the current stock + track_inventory for
+  // The order's items snapshot doesn't carry a live `stock` field, only the
+  // products row does, so we fetch the current stock + track_inventory for
   // every line, drop the ones that are tracked-and-empty, and only feed the
   // survivors to addToCart. The customer sees only items they can actually
   // buy land in the cart, with a small note if anything was filtered out.
@@ -91,7 +91,7 @@ export default function AccountOrdersPage() {
     const sb = getBrowserClient();
     (async () => {
       // Back-fill user_id onto any guest orders placed with this account's
-      // email so they appear in the history below. Idempotent — once the
+      // email so they appear in the history below. Idempotent, once the
       // orders are claimed it matches zero rows.
       await sb.rpc('claim_guest_orders' as never);
       const { data } = await sb

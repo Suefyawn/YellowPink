@@ -1,6 +1,6 @@
 // HMAC-signed unsubscribe tokens. Lets us put a one-click unsubscribe link
 // in every transactional email without exposing a user id or relying on
-// auth — the email itself is the identifier.
+// auth, the email itself is the identifier.
 //
 // Token format: base64url(hmac256(secret, email)).slice(0, 32)
 // Validation: re-compute the HMAC and compare (constant time).
@@ -37,7 +37,7 @@ export function verifyUnsubscribeToken(email: string, token: string): boolean {
 }
 
 /** Build the absolute unsubscribe URL for `email`. Drop into transactional
- *  + newsletter emails — clicking the link 1-click unsubscribes and lands the
+ *  + newsletter emails, clicking the link 1-click unsubscribes and lands the
  *  user on a confirmation page. */
 export function unsubscribeUrl(siteUrl: string, email: string): string {
   const t = makeUnsubscribeToken(email);

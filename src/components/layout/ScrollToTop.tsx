@@ -5,8 +5,7 @@ import { useEffect, useRef } from 'react';
 
 // Next's App Router scroll-to-top is unreliable when the destination route
 // has a loading.tsx: the skeleton can be shorter than the offset you left,
-// the browser clamps the scroll, and the new page opens part-way down —
-// often at the footer. This forces scroll-to-top on every forward
+// the browser clamps the scroll, and the new page opens part-way down, // often at the footer. This forces scroll-to-top on every forward
 // navigation. Back/forward (popstate) navigations are left untouched so the
 // browser still restores their position, and #anchor links are honoured.
 export function ScrollToTop() {

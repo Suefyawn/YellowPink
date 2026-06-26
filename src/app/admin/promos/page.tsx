@@ -10,7 +10,7 @@ import type { Promo } from '@/lib/promos';
 
 // Lightweight CMS for the top-bar + hero-strip promos. Authors a row in
 // `promos`; the storefront's getActivePromos() picks the best fit per slot
-// per request. Schedule + audience are optional — leave both blank and
+// per request. Schedule + audience are optional, leave both blank and
 // the row is treated as always-live + everyone-targeted.
 
 const fmtDateTime = (s: string | null) =>
@@ -55,7 +55,7 @@ function PromoFields({ promo }: { promo?: Promo }) {
         <input id="label" name="label" placeholder="NEW" defaultValue={promo?.label ?? ''} style={inp} />
       </Field>
       <Field label="Headline" wide htmlFor="headline">
-        <input id="headline" name="headline" required placeholder="Free delivery over PKR 5,000 — COD nationwide" defaultValue={promo?.headline ?? ''} style={inp} />
+        <input id="headline" name="headline" required placeholder="Free delivery over PKR 5,000, COD nationwide" defaultValue={promo?.headline ?? ''} style={inp} />
       </Field>
       <Field label="Subline" wide htmlFor="subline">
         <input id="subline" name="subline" placeholder="(optional)" defaultValue={promo?.subline ?? ''} style={inp} />
@@ -194,7 +194,7 @@ export default async function AdminPromosPage({
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {rows.length === 0 ? (
           <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            No promos yet — the storefront falls back to the legacy site-settings bars until you create one.
+            No promos yet, the storefront falls back to the legacy site-settings bars until you create one.
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>

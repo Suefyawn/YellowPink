@@ -2,11 +2,11 @@
 // IDs (https://www.google.com/basepages/producttype/taxonomy-with-ids.en-US.txt).
 //
 // Why this exists: Merchant Center + Meta Commerce require `google_product_category`
-// to be a value from *Google's* taxonomy — a numeric ID or the exact full path.
+// to be a value from *Google's* taxonomy, a numeric ID or the exact full path.
 // The feeds previously emitted our own internal label (e.g. "Face Makeup"), which
 // Google ignores/disapproves. Numeric IDs are language-independent and the least
 // error-prone, so we map to IDs and fall back to the top-level Health & Beauty
-// node (469) for anything unmapped — the whole catalogue is health/beauty, so a
+// node (469) for anything unmapped, the whole catalogue is health/beauty, so a
 // generic-but-valid category is always safe and better than an invalid one.
 //
 // `g:product_type` keeps the internal category (it's a free-form, store-owned

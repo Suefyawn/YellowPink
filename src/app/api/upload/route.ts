@@ -4,7 +4,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { uploadLimiter, ipFromHeaders } from '@/lib/ratelimit';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
-// Short product clips only — a hard 30 MB cap keeps PDP videos light so they
+// Short product clips only, a hard 30 MB cap keeps PDP videos light so they
 // don't hurt performance (they're lazy-loaded + never autoplay on the storefront).
 const MAX_VIDEO_SIZE = 30 * 1024 * 1024;
 // content-type -> file extension. Extension is derived from the type, never the

@@ -18,8 +18,7 @@ export function BlogToc({ headings }: { headings: TocHeading[] }) {
       .filter((el): el is HTMLElement => el !== null);
     if (els.length === 0) return;
 
-    // The active band is a thin strip just below the sticky site header —
-    // a heading becomes "active" as it scrolls up into that strip.
+    // The active band is a thin strip just below the sticky site header,     // a heading becomes "active" as it scrolls up into that strip.
     const observer = new IntersectionObserver(
       entries => {
         for (const entry of entries) {

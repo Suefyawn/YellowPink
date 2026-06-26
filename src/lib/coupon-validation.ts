@@ -12,7 +12,7 @@ export interface ValidateCouponInput {
   coupon: Coupon;
   cartItems: CartItem[];
   subtotal: number;
-  /** Logged-in user's email, if any — needed for `email_restrictions`. */
+  /** Logged-in user's email, if any, needed for `email_restrictions`. */
   email?: string | null;
   /** Number of times THIS user has redeemed THIS coupon in the past. */
   perUserUsedCount?: number;
@@ -36,7 +36,7 @@ export function validateCoupon({
     return { ok: false, error: 'This coupon has reached its usage limit.' };
   }
   // Per-user usage cap (only enforceable when the caller knows the user's
-  // prior count — guests bypass this and the server will catch them).
+  // prior count, guests bypass this and the server will catch them).
   if (
     typeof c.usage_limit_per_user === 'number' &&
     c.usage_limit_per_user > 0 &&
@@ -52,7 +52,7 @@ export function validateCoupon({
   if (typeof c.max_order === 'number' && c.max_order > 0 && subtotal > c.max_order) {
     return { ok: false, error: `This coupon only applies to orders up to PKR ${c.max_order.toLocaleString()}.` };
   }
-  // Email allowlist (substring or domain match — Woo-style: an entry
+  // Email allowlist (substring or domain match, Woo-style: an entry
   // starting with `*@` is a domain wildcard, e.g. `*@yellowpink.pk`).
   if (c.email_restrictions && c.email_restrictions.length > 0) {
     const e = (email ?? '').trim().toLowerCase();
@@ -79,11 +79,11 @@ export function validateCoupon({
   // Per-category allowlist / denylist. We don't have a categories[] on
   // CartItem (storefront uses `category` string), so match by single category.
   if (c.category_ids && c.category_ids.length > 0) {
-    // category_ids contains category UUIDs, not slugs — until we surface the
+    // category_ids contains category UUIDs, not slugs, until we surface the
     // category id on CartItem we can only enforce this server-side. Skip.
   }
   if (c.excluded_category_ids && c.excluded_category_ids.length > 0) {
-    // Same caveat — server enforces.
+    // Same caveat, server enforces.
   }
   return { ok: true };
 }

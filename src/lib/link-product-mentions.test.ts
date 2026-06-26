@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { linkProductMentions } from './link-product-mentions';
 import type { Product } from '@/types';
 
-// Minimal Product stub — only the fields linkProductMentions reads.
+// Minimal Product stub, only the fields linkProductMentions reads.
 function p(slug: string, brand: string, name: string): Product {
   return {
     id: slug,
@@ -77,7 +77,7 @@ describe('linkProductMentions', () => {
   });
 
   it('handles punctuation around the phrase', () => {
-    const html = "<p>(CeraVe Hydrating Cleanser) — try it.</p>";
+    const html = "<p>(CeraVe Hydrating Cleanser), try it.</p>";
     const out = linkProductMentions(html, [cerave]);
     expect(out).toContain('blog-product-link');
   });

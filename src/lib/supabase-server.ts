@@ -7,7 +7,7 @@ import { createServerClient } from '@supabase/ssr';
 // order returns) sees the logged-in user.
 //
 // Replaces the old hand-rolled authedClient() helpers that manually parsed
-// the sb-*-auth-token cookie — that parsing didn't understand @supabase/ssr's
+// the sb-*-auth-token cookie, that parsing didn't understand @supabase/ssr's
 // chunked / base64-prefixed cookie format.
 export async function createServerSupabase() {
   const cookieStore = await cookies();
@@ -21,14 +21,14 @@ export async function createServerSupabase() {
       },
       setAll(cookiesToSet) {
         // Server actions CAN set cookies (session refresh); a Server
-        // Component render cannot — the throw there is expected and safe
+        // Component render cannot, the throw there is expected and safe
         // to swallow because the middleware refreshes the session cookie.
         try {
           for (const { name, value, options } of cookiesToSet) {
             cookieStore.set(name, value, options);
           }
         } catch {
-          /* read-only cookie context — ignore */
+          /* read-only cookie context, ignore */
         }
       },
     },

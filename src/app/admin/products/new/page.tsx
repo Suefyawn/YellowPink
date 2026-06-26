@@ -9,7 +9,7 @@ export default async function NewProductPage() {
   if (!session || (!session.isOwner && !session.permissions.includes('products.edit'))) {
     return <NoAccess section="Products" />;
   }
-  // vendors RLS has no policy — read with the service role.
+  // vendors RLS has no policy, read with the service role.
   const { data } = await supabaseAdmin().from('vendors').select('*').order('name');
   return <ProductForm vendors={(data ?? []) as Vendor[]} />;
 }

@@ -7,7 +7,7 @@ import { getSiteSettings } from '@/lib/supabase';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { parseCommerceConfig, formatPkr, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 
-// Plain content page — no migrations, no DB writes. Lives under /admin so
+// Plain content page, no migrations, no DB writes. Lives under /admin so
 // only staff can see the setup instructions for the merchant phone.
 
 export default async function WhatsAppHelpPage() {
@@ -31,7 +31,7 @@ export default async function WhatsAppHelpPage() {
     <div style={{ padding: '32px 36px', maxWidth: 820 }}>
       <h1 style={{ margin: '0 0 6px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>WhatsApp setup</h1>
       <p style={{ margin: '0 0 24px', fontSize: '0.875rem', color: '#6b7280' }}>
-        {'Yellow Pink uses free wa.me deep links — no Cloud API, no card. Customers tap any "Chat on WhatsApp" button on the storefront and their app opens with your number pre-filled. You reply from the standard WhatsApp Business app on your phone.'}
+        {'Yellow Pink uses free wa.me deep links, no Cloud API, no card. Customers tap any "Chat on WhatsApp" button on the storefront and their app opens with your number pre-filled. You reply from the standard WhatsApp Business app on your phone.'}
       </p>
 
       <section style={card}>
@@ -64,30 +64,30 @@ export default async function WhatsAppHelpPage() {
       </section>
 
       <section style={card}>
-        <h2 style={h2}>Step 1 — install WhatsApp Business on the merchant phone</h2>
+        <h2 style={h2}>Step 1, install WhatsApp Business on the merchant phone</h2>
         <ol style={ol}>
-          <li>{'Download WhatsApp Business from the Play Store or App Store. It is separate from the regular WhatsApp app — both can coexist if the merchant number is on a different SIM.'}</li>
+          <li>{'Download WhatsApp Business from the Play Store or App Store. It is separate from the regular WhatsApp app, both can coexist if the merchant number is on a different SIM.'}</li>
           <li>{'Open the app and verify the merchant phone number (the same number you put in NEXT_PUBLIC_WHATSAPP_NUMBER, including the +92 country code).'}</li>
           <li>{'Fill in the business profile: name Yellow Pink, address, hours, website (https://yellowpink.pk), category Beauty & Personal Care.'}</li>
         </ol>
       </section>
 
       <section style={card}>
-        <h2 style={h2}>Step 2 — set up auto-replies (no AI needed)</h2>
+        <h2 style={h2}>Step 2, set up auto-replies (no AI needed)</h2>
         <p style={p}>
           {'In the Business app, go to Settings → Business tools. Three auto-reply features cover most of what an AI agent would do for $0:'}
         </p>
         <ul style={ul}>
           <li>
-            <strong>Greeting message</strong>{' — sent automatically the first time a customer DMs you. Suggested copy: '}
+            <strong>Greeting message</strong>{', sent automatically the first time a customer DMs you. Suggested copy: '}
             <em>{'Hi! Thanks for reaching out to Yellow Pink. We typically reply within an hour during 10am–10pm Pakistan time. For order tracking, please share your order number (starts with YP-).'}</em>
           </li>
           <li>
-            <strong>Away message</strong>{' — sent when you are offline. Suggested copy: '}
+            <strong>Away message</strong>{', sent when you are offline. Suggested copy: '}
             <em>{'We are away right now. We will get back to you first thing in the morning. For urgent order issues, please email orders@yellowpink.pk.'}</em>
           </li>
           <li>
-            <strong>Quick replies</strong>{' — type a shortcut to expand a saved message. Set these up:'}
+            <strong>Quick replies</strong>{', type a shortcut to expand a saved message. Set these up:'}
             <ul style={{ ...ul, marginTop: 6 }}>
               <li><code>/track</code>{' → Please share your order number (starts with YP-) and I will check the status.'}</li>
               <li><code>/shipping</code>{` → ${freeShipSentence} COD nationwide. Delivery takes ${deliveryRange} business days.`}</li>
@@ -99,29 +99,29 @@ export default async function WhatsAppHelpPage() {
       </section>
 
       <section style={card}>
-        <h2 style={h2}>Step 3 — connect your catalog (optional)</h2>
+        <h2 style={h2}>Step 3, connect your catalog (optional)</h2>
         <p style={p}>
-          {'In the Business app, go to Settings → Business tools → Catalog. Add your 5–10 bestsellers manually or sync from Meta Commerce Manager (free). Once set, customers can browse products inside the chat — useful for shade enquiries.'}
+          {'In the Business app, go to Settings → Business tools → Catalog. Add your 5-10 bestsellers manually or sync from Meta Commerce Manager (free). Once set, customers can browse products inside the chat, useful for shade enquiries.'}
         </p>
       </section>
 
       <section style={card}>
         <h2 style={h2}>Where buttons appear on the site</h2>
         <ul style={ul}>
-          <li><strong>Header (every page)</strong>{' — small green icon next to the search/account icons.'}</li>
-          <li><strong>Product page</strong>{' — "Ask about this on WhatsApp" pill below the buy bar, pre-fills the product name.'}</li>
-          <li><strong>Cart page</strong>{' — "Need help?" link under the checkout button.'}</li>
-          <li><strong>Thank-you page</strong>{' — full-width CTA after the customer places an order, pre-fills the order number.'}</li>
-          <li><strong>Admin order page</strong>{' — green "WhatsApp" button next to "Print invoice" — opens chat with the customer phone, pre-fills the order number for one-tap support reply.'}</li>
+          <li><strong>Header (every page)</strong>{', small green icon next to the search/account icons.'}</li>
+          <li><strong>Product page</strong>{', "Ask about this on WhatsApp" pill below the buy bar, pre-fills the product name.'}</li>
+          <li><strong>Cart page</strong>{', "Need help?" link under the checkout button.'}</li>
+          <li><strong>Thank-you page</strong>{', full-width CTA after the customer places an order, pre-fills the order number.'}</li>
+          <li><strong>Admin order page</strong>{', green "WhatsApp" button next to "Print invoice", opens chat with the customer phone, pre-fills the order number for one-tap support reply.'}</li>
         </ul>
       </section>
 
       <section style={{ ...card, background: '#fef3c7', border: '1px solid #fde68a' }}>
-        <h2 style={{ ...h2, color: '#92400e' }}>Important — what this does NOT do</h2>
+        <h2 style={{ ...h2, color: '#92400e' }}>Important, what this does NOT do</h2>
         <ul style={{ ...ul, color: '#92400e' }}>
-          <li>{'No automation — every customer reply is manual from the Business app.'}</li>
-          <li>{'No outbound order-status pushes — those require the paid Cloud API.'}</li>
-          <li>{'No AI-generated replies — also Cloud API + LLM.'}</li>
+          <li>{'No automation, every customer reply is manual from the Business app.'}</li>
+          <li>{'No outbound order-status pushes, those require the paid Cloud API.'}</li>
+          <li>{'No AI-generated replies, also Cloud API + LLM.'}</li>
         </ul>
         <p style={{ ...p, color: '#92400e', marginTop: 8 }}>
           {'Move to the Cloud API path when you are ready to spend ~PKR 600/month for those capabilities.'}

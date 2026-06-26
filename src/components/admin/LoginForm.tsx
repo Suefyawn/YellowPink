@@ -9,7 +9,7 @@ const inp: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 const btn: React.CSSProperties = {
-  // Brand pink CTA (#C5286A) — passes WCAG AA at 15 px / 600 wt.
+  // Brand pink CTA (#C5286A), passes WCAG AA at 15 px / 600 wt.
   // Was Tailwind pink-500 (#ec4899), which fails 4.5:1 with white text.
   width: '100%', padding: 11,
   background: '#C5286A', color: 'white',

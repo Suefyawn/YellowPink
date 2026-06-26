@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { whatsappUrlFromNumber, WA_TEMPLATES } from '@/lib/whatsapp';
 
-// Persistent floating "Chat on WhatsApp" button — the live-chat affordance PK
+// Persistent floating "Chat on WhatsApp" button, the live-chat affordance PK
 // shoppers expect, but it opens WhatsApp (where they already are) instead of a
 // staffed web widget. It's just an <a> + inline SVG, so it adds no script
 // weight and never blocks rendering. The number is the owner's store number,
@@ -47,7 +47,7 @@ export function WhatsAppFab({ number }: { number?: string }) {
         textDecoration: 'none',
       }}
     >
-      {/* Desktop hover label — touch devices just see the bubble. */}
+      {/* Desktop hover label, touch devices just see the bubble. */}
       <span
         aria-hidden="true"
         style={{

@@ -156,7 +156,7 @@ export default function RewardsPage() {
               <tbody>
                 {ledger.map(l => (
                   <tr key={l.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                    <td style={{ padding: '8px 0', color: 'var(--ink-900)' }}>{REASON_LABELS[l.reason] ?? l.reason}{l.note ? ` — ${l.note}` : ''}</td>
+                    <td style={{ padding: '8px 0', color: 'var(--ink-900)' }}>{REASON_LABELS[l.reason] ?? l.reason}{l.note ? `, ${l.note}` : ''}</td>
                     <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 600, color: l.delta > 0 ? '#15803d' : '#dc2626' }}>
                       {l.delta > 0 ? '+' : ''}{l.delta}
                     </td>

@@ -85,7 +85,7 @@ export async function setOrderCosts(orderId: string, formData: FormData): Promis
   redirect(`/admin/orders/${orderId}?costs=saved`);
 }
 
-// Record that a payment was received against an order — which configured
+// Record that a payment was received against an order, which configured
 // account the money landed in, and when. Lets Finance reconcile bank/wallet
 // transfers and break revenue down by account. Gated on orders.edit.
 export async function recordPayment(orderId: string, formData: FormData): Promise<void> {
@@ -97,7 +97,7 @@ export async function recordPayment(orderId: string, formData: FormData): Promis
   if (!account) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Pick the account the payment landed in'));
   }
-  // Optional date (defaults to now). A bare yyyy-mm-dd is fine — Postgres
+  // Optional date (defaults to now). A bare yyyy-mm-dd is fine, Postgres
   // widens it to midnight of that day in the column's timezone.
   const dateRaw = String(formData.get('received_on') || '').trim();
   const received_at = dateRaw ? new Date(dateRaw).toISOString() : new Date().toISOString();

@@ -43,7 +43,7 @@ export async function addRecipient(formData: FormData): Promise<void> {
   const email = parseEmail(formData);
   const events = parseEvents(formData);
 
-  // .select('id').single() so the audit row can carry entity_id — without it
+  // .select('id').single() so the audit row can carry entity_id, without it
   // an audit reader has to grep diff.email to find which recipient was added.
   const { data: created, error } = await supabaseAdmin()
     .from('notification_recipients')
@@ -53,7 +53,7 @@ export async function addRecipient(formData: FormData): Promise<void> {
 
   if (error) {
     // 23505 = unique_violation on the email constraint.
-    if (error.code === '23505') err(`${email} is already on the list — edit it instead.`);
+    if (error.code === '23505') err(`${email} is already on the list, edit it instead.`);
     err(error.message);
   }
 

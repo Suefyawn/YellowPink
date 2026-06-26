@@ -77,7 +77,7 @@ export default async function ProductsPage({
     }
   }
 
-  // Apply every filter EXCEPT status — shared by the data query and the
+  // Apply every filter EXCEPT status, shared by the data query and the
   // per-status count queries (so the status tabs reflect the other filters).
   const applyShared = <T,>(qb: T): T => {
     let b = qb as unknown as FilterBuilder;

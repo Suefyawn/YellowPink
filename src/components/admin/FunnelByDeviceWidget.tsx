@@ -25,7 +25,7 @@ export async function FunnelByDeviceWidget() {
           Funnel by device
         </div>
         <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
-          No device data yet — refresh analytics to populate.
+          No device data yet, refresh analytics to populate.
         </p>
       </div>
     );

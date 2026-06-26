@@ -43,7 +43,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   // E-E-A-T: resolve the medical reviewer for YMYL health posts (same gate as
   // the medical disclaimer). Priority: explicit per-post Review Board
   // assignment → the default board reviewer. null on beauty posts or when no
-  // reviewer is configured. (The legacy store-wide setting was retired — the
+  // reviewer is configured. (The legacy store-wide setting was retired, the
   // Medical Review Board is the single source of truth.)
   let reviewer: MedicalReviewer | null = null;
   if (isHealthCategory(post.category)) {
@@ -57,8 +57,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
 
   let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 3);
   if (relatedPosts.length < 3) {
-    // Top up with other recent posts so every post links out to three others —
-    // keeps posts in thin categories from being near-orphaned internally
+    // Top up with other recent posts so every post links out to three others,     // keeps posts in thin categories from being near-orphaned internally
     // (SEO audit: "pages with only one internal link") and spreads more crawl
     // equity per article.
     const have = new Set([post.slug, ...relatedPosts.map(p => p.slug)]);

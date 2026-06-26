@@ -3,7 +3,7 @@ import { Overline } from '@/components/ui/Overline';
 import { CollectionsGrid } from '@/components/ui/CollectionsGrid';
 import type { Collection } from '@/lib/collections';
 
-// "Shop by collection" — surfaces the curated edits on the homepage. Renders
+// "Shop by collection", surfaces the curated edits on the homepage. Renders
 // nothing when there are no published collections, so the homepage degrades
 // cleanly before any are created.
 export function CollectionsSection({ collections }: { collections: Collection[] }) {

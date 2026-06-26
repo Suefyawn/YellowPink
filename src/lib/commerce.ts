@@ -2,7 +2,7 @@
 // the shopper BEFORE the per-zone shipping rate is resolved server-side (see
 // lib/shipping.ts, which seeds its own defaults from here). The cart,
 // mini-cart and checkout all read these so the free-shipping promise can never
-// drift between surfaces — previously each hard-coded `2500`/`200`, so an
+// drift between surfaces, previously each hard-coded `2500`/`200`, so an
 // admin change to the threshold silently left the cart copy out of date.
 //
 // The real, province-aware rate still comes from shipping_rates in the DB;
@@ -12,9 +12,9 @@ export const DEFAULT_SHIPPING_RATE = 200;
 
 /** Resolved free-shipping / shipping configuration, derived from the
  *  owner-editable site settings (admin → Settings → Shipping). This is the
- *  single source of truth the whole system reads — storefront copy, the cart
+ *  single source of truth the whole system reads, storefront copy, the cart
  *  progress bar, checkout's optimistic estimate, and the server-side rate
- *  resolver — so changing the threshold (or switching free shipping off)
+ *  resolver, so changing the threshold (or switching free shipping off)
  *  reflects everywhere at once. */
 export interface CommerceConfig {
   /** Master switch. When false, free shipping is never offered anywhere and
@@ -57,7 +57,7 @@ export const formatPkr = (n: number) => `PKR ${n.toLocaleString()}`;
 // ── Config-derived customer copy ────────────────────────────────────────────
 // Every surface that mentions the free-shipping promise builds its wording
 // from these helpers + the live CommerceConfig, so the threshold (and the
-// on/off switch) is typed once in Admin and read everywhere — no surface ever
+// on/off switch) is typed once in Admin and read everywhere, no surface ever
 // hard-codes the number. Server pages pass parseCommerceConfig(settings);
 // client components read it from useCommerceSettings().
 
@@ -69,7 +69,7 @@ export const freeShippingShort = (c: CommerceConfig) =>
  *  Falls back to a COD line when free shipping is switched off. */
 export const freeShippingSentence = (c: CommerceConfig) =>
   c.freeShippingEnabled
-    ? `Free delivery on orders over ${formatPkr(c.freeShippingThreshold)} — COD Nationwide`
+    ? `Free delivery on orders over ${formatPkr(c.freeShippingThreshold)}, COD Nationwide`
     : 'Cash on delivery nationwide';
 
 /** Customer-facing returns window, in days. Shared by the PDP trust copy, the

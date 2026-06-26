@@ -16,7 +16,7 @@ function today() {
 
 // Canonical blog taxonomy. Kept as a fixed dropdown (not free text) so the
 // category list can't drift back into the WP-import mess of near-duplicate
-// values — see migrations 100 and 189. Add a new category here when one is
+// values, see migrations 100 and 189. Add a new category here when one is
 // needed (and migrate existing rows onto it).
 const BLOG_CATEGORIES = [
   'Skincare',
@@ -131,7 +131,7 @@ export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?
             </span>
           </div>
 
-          {/* Medical reviewer (E-E-A-T) — assign a board doctor to health posts. */}
+          {/* Medical reviewer (E-E-A-T), assign a board doctor to health posts. */}
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Medically reviewed by</label>
             <select name="reviewer_id" defaultValue={(post as { reviewer_id?: string | null } | undefined)?.reviewer_id ?? ''} style={inp}>

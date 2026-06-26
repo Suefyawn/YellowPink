@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ProductTile } from '@/components/ui/ProductTile';
 import type { Product } from '@/types';
 
-/** Homepage featured sale collection — shown only while a sale is switched
+/** Homepage featured sale collection, shown only while a sale is switched
  *  on in Admin → Settings → Sale. It surfaces every discounted product
  *  (those with an original price above the current price) under the sale's
  *  title, in a tinted band so it reads as a distinct campaign. */

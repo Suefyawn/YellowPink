@@ -25,7 +25,7 @@ export async function createStaffMember(
   const name = (formData.get('name') as string).trim();
   const roleId = ((formData.get('role_id') as string) ?? '').trim();
   // A staff member is either role-assigned (permissions inherited from the
-  // role) or "Custom" (its own permissions column) — never both.
+  // role) or "Custom" (its own permissions column), never both.
   const permissions = roleId ? [] : (formData.getAll('permissions') as Permission[]);
 
   if (!email || !name) return { error: 'Name and email are required' };

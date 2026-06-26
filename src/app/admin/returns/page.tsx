@@ -55,7 +55,7 @@ export default async function ReturnsPage() {
   }
 
   // ─── Returns insights ───────────────────────────────────────────────────
-  // Aggregate over ALL returns (a small table) for accurate KPIs — the queue
+  // Aggregate over ALL returns (a small table) for accurate KPIs, the queue
   // above is capped at 200 for display. Surfaces which products come back most
   // and why, so the owner can act on a QA / expectations-mismatch problem.
   const { data: allReturns } = await admin

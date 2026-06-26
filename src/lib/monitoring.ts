@@ -35,7 +35,7 @@ async function maybeInit(): Promise<void> {
     const mod = await (Function('return import("@sentry/nextjs")')() as Promise<SentryLike>);
     sentry = mod;
   } catch {
-    // @sentry/nextjs not installed yet — no-op.
+    // @sentry/nextjs not installed yet, no-op.
   }
 }
 

@@ -8,7 +8,7 @@ import { Skeleton } from '@/components/ui/Skeleton';
 // transition and image decode), which lets the Footer (next in the DOM)
 // flash into view above the fold. With min-height set, the footer always
 // sits below the fold while the page is loading. Aspect-ratio on the
-// gallery placeholder is `4/5` to match the real PDPPage gallery — same
+// gallery placeholder is `4/5` to match the real PDPPage gallery, same
 // reason: same height through skeleton → real-content swap means zero
 // layout shift.
 

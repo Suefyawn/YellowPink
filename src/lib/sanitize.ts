@@ -13,8 +13,8 @@ const OWN_HOST = /^https?:\/\/(www\.)?yellowpink\.pk(\/|$)/i;
 
 // Add rel="nofollow noopener noreferrer" + target="_blank" to absolute external
 // links in user/imported content (blog bodies, CMS pages). Keeps our own and
-// relative links untouched. SEO hygiene: don't pass link equity to — or take
-// responsibility for — third-party URLs embedded in content.
+// relative links untouched. SEO hygiene: don't pass link equity to, or take
+// responsibility for, third-party URLs embedded in content.
 function markExternalLinks(html: string): string {
   return html.replace(/<a\b([^>]*)>/gi, (whole, attrs: string) => {
     const href = attrs.match(/href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);

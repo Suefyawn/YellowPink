@@ -45,7 +45,7 @@ function isDuplicateOrderNumber(message: string): boolean {
   return message.includes('duplicate key') || message.includes('23505');
 }
 
-// Server-resolved props from /checkout/page.tsx — which payment methods
+// Server-resolved props from /checkout/page.tsx, which payment methods
 // the merchant has enabled in admin settings, plus the bank-transfer
 // instructions to show on the thank-you page.
 interface CheckoutPageProps {
@@ -61,7 +61,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
 
   // Filter the hard-coded PAY_METHODS by what's actually enabled in admin
   // settings. If `enabledMethods` is undefined (server didn't pass one, e.g.
-  // demo mode), default to all on — same as before this prop existed.
+  // demo mode), default to all on, same as before this prop existed.
   const visiblePayMethods = enabledMethods && enabledMethods.length > 0
     ? PAY_METHODS.filter(([m]) => enabledMethods.includes(m))
     : PAY_METHODS;
@@ -74,7 +74,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   // The applied coupon lives in CartProvider (persisted to localStorage), so a
-  // coupon added on /cart survives the trip to checkout — including a refresh
+  // coupon added on /cart survives the trip to checkout, including a refresh
   // or full page load. `couponCode` is just the local text-input value.
   const [couponCode, setCouponCode] = useState(cartCoupon?.code ?? '');
   const [couponError, setCouponError] = useState('');
@@ -93,13 +93,13 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
 
   // ─── Rewards: loyalty points ────────────────────────────────────────────
   // Gift-card and referral redemption are hidden from checkout until those
-  // programmes have a customer-facing way to obtain a code — the server
+  // programmes have a customer-facing way to obtain a code, the server
   // actions remain in place for when they do.
   const [loyalty, setLoyalty]               = useState<LoyaltyAccount | null>(null);
   const [pointsRedeemInput, setPointsRedeemInput] = useState<number | ''>('');
   const [pointsRedeem, setPointsRedeem]     = useState(0);
 
-  // Pull loyalty balance for signed-in users — the Supabase query is an
+  // Pull loyalty balance for signed-in users, the Supabase query is an
   // external system, so syncing the result into React state is the
   // documented exception to the no-setState-in-effect rule.
   useEffect(() => {
@@ -118,7 +118,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   // and made the funnel skip this step for everyone who bailed (#193). Fires
   // once per page visit, after the cart has hydrated from localStorage.
   // Focus the first field on mount so the customer can start typing without a
-  // tap — one less interaction, and on mobile it brings the keyboard up.
+  // tap, one less interaction, and on mobile it brings the keyboard up.
   const emailRef = useRef<HTMLInputElement>(null);
   useEffect(() => { emailRef.current?.focus(); }, []);
 
@@ -151,7 +151,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   const shipping = shippingInfo.rate;
   const beforeRewards = lineTotal + shipping;
 
-  // Loyalty points redemption — capped at the payable amount.
+  // Loyalty points redemption, capped at the payable amount.
   const pointsCovers = Math.min(pointsRedeem, beforeRewards);
   const total        = Math.max(0, beforeRewards - pointsCovers);
 
@@ -221,7 +221,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     setCouponError('');
     setCouponLoading(true);
     const sb = getBrowserClient();
-    // coupons has RLS with no anon SELECT (migration 070) — go through the
+    // coupons has RLS with no anon SELECT (migration 070), go through the
     // SECURITY DEFINER lookup_coupon RPC instead of reading the table.
     const { data, error } = await sb.rpc('lookup_coupon' as never, { p_code: couponCode.trim() } as never);
 
@@ -234,7 +234,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     if (rows.length === 0) { setCouponLoading(false); setCouponError('Invalid or expired coupon code'); return; }
     const c = rows[0];
 
-    // Per-user usage cap — pull prior redemption count when we know the user.
+    // Per-user usage cap, pull prior redemption count when we know the user.
     let perUserUsedCount: number | undefined;
     if (formData.email && typeof c.usage_limit_per_user === 'number' && c.usage_limit_per_user > 0) {
       const { count } = await sb.from('coupon_redemptions')
@@ -258,8 +258,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
 
   const handleSubmit = async () => {
     // Guard against double-submit: the button is disabled while `submitting`,
-    // but a fast double-click can fire two handlers before React re-renders —
-    // and the rate-gate await below used to run with the button still live.
+    // but a fast double-click can fire two handlers before React re-renders,     // and the rate-gate await below used to run with the button still live.
     if (submitting) return;
     if (!validate()) return;
 
@@ -295,7 +294,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
             pay_method: payMethod,
             subtotal,
             shipping,
-            total: beforeRewards,                  // pre-rewards order total — points decrement separately
+            total: beforeRewards,                  // pre-rewards order total, points decrement separately
             items: cartItems,
             status: 'pending',
             user_id: user?.id || '',
@@ -338,7 +337,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
         return;
       }
 
-      // COD / bank / gift_card path — fire customer + owner emails, then thank-you.
+      // COD / bank / gift_card path, fire customer + owner emails, then thank-you.
       void notifyNewOrder({
         order_number: orderNumber,
         email: formData.email || undefined,
@@ -593,7 +592,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)', display: 'inline-flex', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
                 <span aria-hidden="true" style={{ lineHeight: 1 }}>🔒</span> Secure checkout · COD available
               </p>
-              {/* Reassurance strip at the decision point — checkout previously
+              {/* Reassurance strip at the decision point, checkout previously
                   carried no trust signals, a known driver of COD-market
                   abandonment. Plain text + ticks, no new assets. */}
               <ul style={{

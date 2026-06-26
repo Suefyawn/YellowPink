@@ -29,7 +29,7 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
   const focus = segment ?? null;
 
   // v_customer_segments is built over orders, whose RLS blocks the anon
-  // client — read it through the service role (this page is staff-gated).
+  // client, read it through the service role (this page is staff-gated).
   const admin = supabaseAdmin();
   let query = admin.from('v_customer_segments').select('*').order('revenue', { ascending: false }).limit(500);
   if (focus) query = query.eq('segment', focus);

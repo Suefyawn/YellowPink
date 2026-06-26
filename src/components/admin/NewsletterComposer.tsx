@@ -39,7 +39,7 @@ export function NewsletterComposer({ activeCount }: { activeCount: number }) {
         return;
       }
       if (res.sentCount === 0) {
-        toast('Sent to 0 subscribers — check the email (Resend) setup.', 'error');
+        toast('Sent to 0 subscribers, check the email (Resend) setup.', 'error');
       } else {
         toast(`Newsletter sent to ${res.sentCount} of ${res.recipientCount} subscriber${res.recipientCount === 1 ? '' : 's'}.`, 'success');
         setSubject('');
@@ -96,7 +96,7 @@ export function NewsletterComposer({ activeCount }: { activeCount: number }) {
           {pending ? 'Sending…' : `Send to ${activeCount} subscriber${activeCount === 1 ? '' : 's'}`}
         </button>
         {pending && (
-          <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Sending emails — this can take a few seconds.</span>
+          <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Sending emails, this can take a few seconds.</span>
         )}
       </div>
     </div>

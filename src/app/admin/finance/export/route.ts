@@ -12,7 +12,7 @@ function cell(v: string | number | null | undefined): string {
 const day = (s: string | null) => (s ? new Date(s).toISOString().slice(0, 10) : '');
 
 // Exports the per-order finance table (full set, not capped) for the chosen
-// range + optional payment-method filter — the same rows the Finance page
+// range + optional payment-method filter, the same rows the Finance page
 // shows, via the shared helpers. Gated on the same permission as the page.
 export async function GET(req: NextRequest) {
   const session = await getStaffSession();

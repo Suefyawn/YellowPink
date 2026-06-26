@@ -39,7 +39,7 @@ export async function SentryWidget() {
           <span style={{ color: '#C5286A', display: 'inline-flex' }}><AdminIcon name="bug" size={18} /></span>
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Sentry error tracking</h2>
         </div>
-        <p style={{ color: '#9ca3af', fontSize: '0.875rem', margin: 0 }}>No data yet — hit Refresh analytics.</p>
+        <p style={{ color: '#9ca3af', fontSize: '0.875rem', margin: 0 }}>No data yet, hit Refresh analytics.</p>
       </div>
     );
   }
@@ -82,7 +82,7 @@ export async function SentryWidget() {
         ))}
       </div>
 
-      {/* 14-day trend — only render when we have a meaningful shape. */}
+      {/* 14-day trend, only render when we have a meaningful shape. */}
       {stats.trend && stats.trend.length > 1 && (
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
@@ -168,7 +168,7 @@ export async function SentryWidget() {
   );
 }
 
-// Inline 14-bar trend chart. SVG, no JS, no client component — just a row
+// Inline 14-bar trend chart. SVG, no JS, no client component, just a row
 // of red bars scaled to the max value in the series.
 function TrendBars({ data }: { data: { date: string; count: number }[] }) {
   const max = Math.max(...data.map(d => d.count), 1);
@@ -178,7 +178,7 @@ function TrendBars({ data }: { data: { date: string; count: number }[] }) {
   return (
     <svg
       width="100%" height={H} viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none"
-      role="img" aria-label={`Errors per day — last ${data.length} days`}
+      role="img" aria-label={`Errors per day, last ${data.length} days`}
       style={{ display: 'block' }}
     >
       {data.map((d, i) => {

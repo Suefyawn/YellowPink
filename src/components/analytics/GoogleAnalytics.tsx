@@ -1,6 +1,6 @@
 'use client';
 
-// Google tag (gtag.js) loader — GA4 analytics AND Google Ads (conversions +
+// Google tag (gtag.js) loader, GA4 analytics AND Google Ads (conversions +
 // remarketing). Activated by a GA4 Measurement ID and/or Google Ads ID, which
 // the owner can set in Admin → Settings → Integrations (stored in
 // site_settings and passed in as props by the root layout) OR via the
@@ -30,14 +30,14 @@ declare global {
 }
 
 // Fires a manual `page_view` on every route change (App Router doesn't auto-fire
-// on soft nav). GA4 only — no-op when GA4 isn't configured.
+// on soft nav). GA4 only, no-op when GA4 isn't configured.
 function PageviewTracker({ gaId }: { gaId?: string }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   useEffect(() => {
     if (!gaId || typeof window === 'undefined' || typeof window.gtag !== 'function') return;
     // Staff working in the dashboard / reviewer portal is not storefront
-    // traffic — counting it skews GA4 sessions, pageviews and engagement (and
+    // traffic, counting it skews GA4 sessions, pageviews and engagement (and
     // it dwarfs the real catalogue's numbers on a young site). PostHog already
     // drops these in before_send; keep GA4 consistent.
     if (pathname.startsWith('/admin') || pathname.startsWith('/reviewer')) return;

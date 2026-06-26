@@ -32,7 +32,7 @@ export function ReviewerApplyForm() {
         padding: '20px 22px', background: '#f0fdf4', border: '1px solid #bbf7d0',
         borderRadius: 10, color: '#166534',
       }}>
-        <strong style={{ display: 'block', marginBottom: 6, fontSize: '1rem' }}>Thank you — application received.</strong>
+        <strong style={{ display: 'block', marginBottom: 6, fontSize: '1rem' }}>Thank you, application received.</strong>
         We review every application personally and verify credentials before approving. If it&apos;s a fit,
         we&apos;ll email you a sign-in link to your reviewer dashboard.
       </div>
@@ -72,7 +72,7 @@ export function ReviewerApplyForm() {
       <div>
         <label htmlFor="r-profile" style={labelStyle}>Verifiable profile link</label>
         <input id="r-profile" name="profile_url" type="url" style={fieldStyle} placeholder="PMDC / hospital page / LinkedIn" />
-        <p style={hint}>Helps us verify you — and becomes your public profile link if approved.</p>
+        <p style={hint}>Helps us verify you, and becomes your public profile link if approved.</p>
       </div>
       <div>
         <span style={labelStyle}>Photo</span>

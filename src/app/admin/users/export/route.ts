@@ -1,6 +1,6 @@
 // Customer CSV export for ad-platform Custom Audiences (Meta / TikTok / Google).
-// Outputs the columns those platforms accept for matching — email, phone, first
-// name, last name, country — plus order count + spend for convenience. The
+// Outputs the columns those platforms accept for matching, email, phone, first
+// name, last name, country, plus order count + spend for convenience. The
 // platform hashes the PII on upload; we just hand over the plaintext CSV.
 //
 // Honours the same filters as the Customers page (?q, ?type, ?activity) so the

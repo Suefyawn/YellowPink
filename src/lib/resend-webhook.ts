@@ -10,7 +10,7 @@ export function verifyResendSignature(secret: string, headers: Headers, body: st
   const signature = headers.get('svix-signature');
   if (!id || !timestamp || !signature) return false;
 
-  // Replay protection — reject deliveries older/newer than 5 minutes.
+  // Replay protection, reject deliveries older/newer than 5 minutes.
   const ts = Number(timestamp);
   if (!Number.isFinite(ts) || Math.abs(Date.now() / 1000 - ts) > 300) return false;
 

@@ -11,14 +11,14 @@ import { brandPlusName } from '@/lib/product-display';
 // A stored return line, reconstructed server-side from the order snapshot.
 interface ReturnItem { product_id: string; qty: number; name: string; price: number; variant_id: string | null }
 
-// authedClient() is the @supabase/ssr server client — reads the customer's
+// authedClient() is the @supabase/ssr server client, reads the customer's
 // session from cookies so RLS on order returns applies.
 
 export async function requestReturn(args: {
   order_id: string;
   reason: string;
   /** Indexes into the order's items array + the qty being returned for each.
-   *  We deliberately DON'T take price/name from the client — those are read
+   *  We deliberately DON'T take price/name from the client, those are read
    *  back from the order so a tampered payload can't inflate a refund. */
   items: { index: number; qty: number }[];
 }): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
@@ -36,7 +36,7 @@ export async function requestReturn(args: {
 
   // ── Server-side eligibility: never trust the client. The /new form gates on
   // these too, but a direct action call bypasses the UI. The RLS insert policy
-  // only checks user_id, NOT that the order belongs to the user — so without
+  // only checks user_id, NOT that the order belongs to the user, so without
   // this block a customer could file a return against someone else's order. ──
   const admin = supabaseAdmin();
   const { data: order } = await admin
@@ -53,7 +53,7 @@ export async function requestReturn(args: {
 
   // Returns window is measured from the delivery date (the order_events row for
   // the delivered transition); fall back to the order date if that event is
-  // missing. Only reject when we can positively place it past the window — a
+  // missing. Only reject when we can positively place it past the window, a
   // missing timestamp shouldn't block a legitimate return.
   const { data: deliveredEvt } = await admin
     .from('order_events')
@@ -128,7 +128,7 @@ export async function approveReturn(args: {
   const session = await assertOrders();
   if (args.refund_amount < 0) return { error: 'refund_amount must be >= 0' };
 
-  // return_requests + loyalty_ledger are RLS-locked — staff-cookie auth
+  // return_requests + loyalty_ledger are RLS-locked, staff-cookie auth
   // doesn't go through Supabase Auth, so we need the service-role client.
   const admin = supabaseAdmin();
   const { data: row } = await admin
@@ -209,7 +209,7 @@ export async function markReturnReceived(id: string): Promise<{ error?: string; 
     .single();
   if (!row) return { error: 'return request not found' };
   if (row.status !== 'approved') {
-    return { error: `cannot mark a ${row.status} return as received — approve it first` };
+    return { error: `cannot mark a ${row.status} return as received, approve it first` };
   }
 
   const items = (row.items ?? []) as Array<{ product_id: string; qty: number; variant_id?: string | null }>;

@@ -1,5 +1,4 @@
-// Resend webhook receiver. Resend POSTs delivery-lifecycle events here —
-// delivered, opened, clicked, bounced, complained — and we stamp the matching
+// Resend webhook receiver. Resend POSTs delivery-lifecycle events here, // delivered, opened, clicked, bounced, complained, and we stamp the matching
 // email_log row (matched on resend_id) so the admin Email log shows what
 // happened to each message.
 //
@@ -7,7 +6,7 @@
 // <site>/api/webhooks/resend, enable open + click tracking, and copy the
 // signing secret into the RESEND_WEBHOOK_SECRET env var.
 //
-// Requests are authenticated with Resend's Svix signature scheme — the
+// Requests are authenticated with Resend's Svix signature scheme, the
 // endpoint refuses anything it can't verify.
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest) {
 
   const column = event.type ? EVENT_COLUMN[event.type] : undefined;
   const emailId = event.data?.email_id;
-  // Unhandled event type, or an email we never logged — ack and move on.
+  // Unhandled event type, or an email we never logged, ack and move on.
   if (!column || !emailId) return NextResponse.json({ ok: true });
 
   const at = event.data?.created_at ?? new Date().toISOString();
@@ -53,7 +52,7 @@ export async function POST(req: NextRequest) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
-    // First event wins — `.is(column, null)` keeps the original timestamp if a
+    // First event wins, `.is(column, null)` keeps the original timestamp if a
     // later duplicate event arrives (e.g. a second open).
     await admin
       .from('email_log')
@@ -62,7 +61,7 @@ export async function POST(req: NextRequest) {
       .is(column, null);
   } catch (err) {
     log.error('resend_webhook.update_failed', { error: (err as Error).message });
-    // Tell Resend to retry — the event was valid, our write failed.
+    // Tell Resend to retry, the event was valid, our write failed.
     return NextResponse.json({ error: 'update failed' }, { status: 500 });
   }
 

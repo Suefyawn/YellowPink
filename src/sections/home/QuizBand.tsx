@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 
 // Homepage entry point for the product-finder quiz (/quiz). A distinct band so
-// it stands out from the product rails — the quiz is an engagement + lead-gen
+// it stands out from the product rails, the quiz is an engagement + lead-gen
 // driver, so it earns a prominent, single-purpose CTA.
 export function QuizBand() {
   return (
@@ -27,8 +27,7 @@ export function QuizBand() {
               Not sure where to start?
             </h2>
             <p className="body-text" style={{ color: 'var(--ink-700)', lineHeight: 1.6, margin: 0 }}>
-              Take our 30-second quiz and get skincare or wellness picks chosen for you —
-              plus a welcome discount when you save your results.
+              Take our 30-second quiz and get skincare or wellness picks chosen for you,               plus a welcome discount when you save your results.
             </p>
           </div>
           <Link

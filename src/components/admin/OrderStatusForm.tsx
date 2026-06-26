@@ -5,7 +5,7 @@ import { useToast } from '@/components/admin/Toast';
 import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types';
 
 // Drive the dropdown off the shared label map so it can't drift from the
-// timeline / Orders list / Analytics — those showed "Order received" /
+// timeline / Orders list / Analytics, those showed "Order received" /
 // "Preparing" while this select said "Pending" / "Processing".
 const STATUSES: { value: OrderStatus; label: string }[] =
   (Object.keys(ORDER_STATUS_LABELS) as OrderStatus[])
@@ -50,8 +50,7 @@ export function OrderStatusForm({ orderId, currentStatus }: {
           Order Status
         </label>
         {/* key on currentStatus so the uncontrolled select re-mounts and
-            picks up the new defaultValue after a status change is saved —
-            otherwise the dropdown drifts out of sync with the order. */}
+            picks up the new defaultValue after a status change is saved,             otherwise the dropdown drifts out of sync with the order. */}
         <select id="status" key={currentStatus} name="status" defaultValue={currentStatus} style={{ ...inp }}>
           {STATUSES.map(s => (
             <option key={s.value} value={s.value}>{s.label}</option>

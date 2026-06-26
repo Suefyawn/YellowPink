@@ -58,7 +58,7 @@ export default async function SettingsPaymentsPage({ searchParams }: { searchPar
               name="pay_bank_enabled"
               checked={g('pay_bank_enabled', 'true') !== 'false'}
               label="Bank transfer"
-              desc="Manual: the customer transfers to one of your accounts, then you confirm and ship. Add your accounts below — they show at checkout and on the order confirmation page."
+              desc="Manual: the customer transfers to one of your accounts, then you confirm and ship. Add your accounts below, they show at checkout and on the order confirmation page."
             />
           </div>
         </Card>

@@ -13,7 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendBrokenLinksDigestEmail } from '@/lib/email';
 
-// Don't alert on a single stray hit — wait until a dead URL is hit at least
+// Don't alert on a single stray hit, wait until a dead URL is hit at least
 // twice (a real link, a crawler retry) so one-off junk probes stay quiet.
 const MIN_HITS = 2;
 const MAX_PER_DIGEST = 50;

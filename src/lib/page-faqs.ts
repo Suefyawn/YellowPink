@@ -5,7 +5,7 @@
 //
 // Keep the questions and answers in sync with the human-readable copy on the
 // CMS page itself. Google's FAQ guidelines require the JSON-LD answer text to
-// be visible on the rendered page — paste-equivalents only, no exclusive content.
+// be visible on the rendered page, paste-equivalents only, no exclusive content.
 //
 // To add coverage for a new page, append a new key here and ensure the same
 // Q/A pairs are present in the CMS page body.
@@ -42,7 +42,7 @@ const buildFaqs = (p: FaqPolicy): Record<string, FaqEntry[]> => ({
     {
       question: 'Do you offer cash on delivery (COD)?',
       answer:
-        'Yes — cash on delivery is available across Pakistan. You pay the courier at the doorstep when your order arrives. No advance payment required for COD orders.',
+        'Yes, cash on delivery is available across Pakistan. You pay the courier at the doorstep when your order arrives. No advance payment required for COD orders.',
     },
     {
       question: 'When does free shipping apply?',
@@ -84,7 +84,7 @@ const buildFaqs = (p: FaqPolicy): Record<string, FaqEntry[]> => ({
     {
       question: 'Are your products authentic?',
       answer:
-        'Yes — every product we list is sourced from authorised distributors or direct from international brand websites. We do not stock counterfeits, and serial-coded items can be verified on the brand website.',
+        'Yes, every product we list is sourced from authorised distributors or direct from international brand websites. We do not stock counterfeits, and serial-coded items can be verified on the brand website.',
     },
     {
       question: 'How do I track my order?',

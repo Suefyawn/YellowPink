@@ -38,7 +38,7 @@ export function OrderStatusTimeline({ status, events, compact = false }: OrderSt
   const isTerminal = status === 'cancelled' || status === 'returned' || status === 'refunded';
 
   // Terminal states (cancelled/returned/refunded) render a single dimmed
-  // stamp instead of a 4-step rail — there's no "progress" to show.
+  // stamp instead of a 4-step rail, there's no "progress" to show.
   if (isTerminal) {
     return (
       <div style={{
@@ -68,7 +68,7 @@ export function OrderStatusTimeline({ status, events, compact = false }: OrderSt
   }
 
   // The 4-step rail. payment_pending / payment_failed render as the first
-  // dot with their own icon — anything else maps onto ORDER_TIMELINE_STEPS.
+  // dot with their own icon, anything else maps onto ORDER_TIMELINE_STEPS.
   const effectiveStatus: OrderStatus =
     status === 'payment_pending' || status === 'payment_failed' ? 'pending' : status;
   const stepIdx = ORDER_TIMELINE_STEPS.indexOf(effectiveStatus);

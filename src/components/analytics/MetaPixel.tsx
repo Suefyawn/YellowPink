@@ -2,7 +2,7 @@
 
 // Meta (Facebook/Instagram) Pixel loader. Activated by NEXT_PUBLIC_META_PIXEL_ID
 // and gated on MARKETING consent (the Pixel powers ad targeting/measurement, so
-// it belongs to the marketing bucket — GA4 sits in the analytics bucket). When
+// it belongs to the marketing bucket, GA4 sits in the analytics bucket). When
 // no Pixel ID is set, or the visitor hasn't opted into marketing cookies, the
 // script never loads.
 //

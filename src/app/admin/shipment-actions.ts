@@ -62,7 +62,7 @@ export async function createShipment(
 //   3. Pull the order from Supabase so we have the consignee details.
 //   4. Call adapter.book(...). On success, persist a shipment row with the
 //      tracking number the courier assigned. On failure, return the
-//      adapter's message verbatim — the UI shows it to the merchant.
+//      adapter's message verbatim, the UI shows it to the merchant.
 //
 // The merchant ALWAYS has the manual `createShipment` fallback above, so a
 // courier outage / API hiccup never blocks fulfillment.
@@ -79,7 +79,7 @@ export async function bookShipment(
 
   const adapter = getAdapter(courier);
   if (!adapter) {
-    return { error: `${courier} has no API adapter configured — use manual entry instead.` };
+    return { error: `${courier} has no API adapter configured, use manual entry instead.` };
   }
 
   // Pull the order so we can give the courier the consignee + line items.
@@ -186,7 +186,7 @@ export async function cancelShipment(
     .single();
   if (lookupErr || !shipment) return { error: lookupErr?.message ?? 'Shipment not found' };
 
-  // Try the API first; if there's no adapter, that's fine — we still mark
+  // Try the API first; if there's no adapter, that's fine, we still mark
   // the DB row cancelled (the merchant has presumably called the courier
   // by phone or used the courier's web portal).
   const adapter = getAdapter(shipment.courier);
@@ -194,7 +194,7 @@ export async function cancelShipment(
   if (adapter) {
     const r = await adapter.cancel(shipment.tracking_number);
     if (!('ok' in r) || !r.ok) {
-      // Don't fail the action — the merchant explicitly asked to cancel.
+      // Don't fail the action, the merchant explicitly asked to cancel.
       // Log it and continue with the local update.
       apiNote = `API cancel failed: ${r.message}`;
     } else {

@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 // (localStorage); once the user accepts or installs, it never shows again.
 //
 // Only fires on browsers that support installable PWAs (Chrome / Edge /
-// some Android browsers). Safari users get nothing here — we'd need to
+// some Android browsers). Safari users get nothing here, we'd need to
 // build a "tap the share icon" hint specifically for iOS.
 
 interface BeforeInstallPromptEvent extends Event {

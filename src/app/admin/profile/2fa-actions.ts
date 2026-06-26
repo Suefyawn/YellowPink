@@ -9,7 +9,7 @@ import { logAudit } from '@/lib/audit';
 
 async function assertSelfStaff() {
   const session = await getStaffSession();
-  if (!session || session.isOwner) throw new Error('Owner uses legacy admin password — 2FA not applicable.');
+  if (!session || session.isOwner) throw new Error('Owner uses legacy admin password, 2FA not applicable.');
   return session;
 }
 
@@ -26,7 +26,7 @@ export async function begin2faEnrollment(): Promise<{
 }> {
   const session = await assertSelfStaff();
   const secret = generateSecret();
-  // Store as a *staged* secret — only commit it once the user verifies a code.
+  // Store as a *staged* secret, only commit it once the user verifies a code.
   await supabaseAdmin()
     .from('staff_members')
     .update({ totp_secret: secret, totp_enabled: false })
@@ -46,7 +46,7 @@ export async function confirm2faEnrollment(code: string): Promise<{ error?: stri
 
   // Generate 10 plaintext backup codes for the user to write down, but only
   // store their SHA-256 hashes in the DB. The plaintext set is returned once
-  // and never recoverable — user must save them now.
+  // and never recoverable, user must save them now.
   const plaintext = Array.from({ length: 10 }, () => randomBytes(4).toString('hex'));
   const hashed = plaintext.map(hashBackupCode);
   await supabaseAdmin()
@@ -60,7 +60,7 @@ export async function confirm2faEnrollment(code: string): Promise<{ error?: stri
 
 export async function disable2fa(currentPassword: string): Promise<{ error?: string; success?: boolean }> {
   const session = await assertSelfStaff();
-  // We don't re-verify the password here for brevity — the session itself is the
+  // We don't re-verify the password here for brevity, the session itself is the
   // proof of authentication. In production you'd want a recent-auth check.
   void currentPassword;
   await supabaseAdmin()

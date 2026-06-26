@@ -3,7 +3,7 @@
 // laid-out "What's inside / bullets / Directions / Disclaimer" content imported
 // from the catalogue rendered as one unreadable blob).
 //
-// It's intentionally forgiving — the catalogue's descriptions come from a mix
+// It's intentionally forgiving, the catalogue's descriptions come from a mix
 // of sources, so we infer structure from light conventions rather than require
 // Markdown:
 //   • / - / *  lines            → grouped into a bullet list
@@ -48,11 +48,11 @@ function parse(text: string): Block[] {
   return blocks;
 }
 
-/** Bold the lead of a "Name — detail" bullet (e.g. the product name in a combo
+/** Bold the lead of a "Name, detail" bullet (e.g. the product name in a combo
  *  "What's inside" list) so the eye can scan the items. */
 function renderItem(item: string): React.ReactNode {
   const m = item.match(/^(.{2,40}?)\s+[—–-]\s+(.*)$/);
-  if (m) return (<><strong style={{ fontWeight: 600 }}>{m[1]}</strong>{' — '}{m[2]}</>);
+  if (m) return (<><strong style={{ fontWeight: 600 }}>{m[1]}</strong>{', '}{m[2]}</>);
   return item;
 }
 
