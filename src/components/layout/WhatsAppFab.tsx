@@ -33,7 +33,9 @@ export function WhatsAppFab({ number }: { number?: string }) {
       style={{
         position: 'fixed',
         right: 'max(16px, env(safe-area-inset-right))',
-        bottom: 'max(16px, env(safe-area-inset-bottom))',
+        // --fab-bottom-offset is set by the PDP sticky buy-bar while it's up, so
+        // the FAB lifts above the bar on mobile instead of overlapping it.
+        bottom: 'calc(max(16px, env(safe-area-inset-bottom)) + var(--fab-bottom-offset, 0px))',
         zIndex: 90,
         display: 'inline-flex',
         alignItems: 'center',
