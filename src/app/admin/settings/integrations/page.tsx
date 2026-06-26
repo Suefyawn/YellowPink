@@ -8,6 +8,7 @@ import {
 import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
 import { getGoogleConnection, isGoogleOAuthConfigured, REDIRECT_URI, listSitemaps, listGscSites, listGa4Properties, type SitemapStatus, type GscSite, type Ga4Property } from '@/lib/google';
 import { disconnectGoogleAction, submitSitemapAction, setGscSiteAction, setGa4PropertyAction } from './google-actions';
+import { UrlIndexChecker } from '@/components/admin/UrlIndexChecker';
 
 // IMPORTANT: never render an env-var VALUE on this page — only its presence.
 // All checks happen server-side; only the boolean leaves this module.
@@ -328,6 +329,8 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
                 </p>
               )}
             </div>
+
+            <UrlIndexChecker />
           </div>
         )}
       </Card>

@@ -6,7 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { SITE_URL } from '@/lib/seo';
 import { log } from '@/lib/logger';
 import {
-  getGoogleConnection, disconnectGoogle, submitSitemap, setGscSite, setGa4Property,
+  getGoogleConnection, disconnectGoogle, submitSitemap, setGscSite, setGa4Property, inspectUrl,
 } from '@/lib/google';
 
 const PATH = '/admin/settings/integrations';
@@ -47,6 +47,29 @@ export async function setGscSiteAction(formData: FormData): Promise<void> {
   const site = str(formData, 'gsc_site_url');
   if (site) await setGscSite(site);
   done('google=saved');
+}
+
+/** Check a single URL's Google index status via the URL Inspection API.
+ *  Accepts a full URL or a path ("/blog/x"). Called imperatively from the
+ *  client checker. */
+export async function checkUrlIndexStatus(rawUrl: string): Promise<{
+  ok: boolean; url?: string; verdict?: string; coverage?: string; lastCrawl?: string | null; error?: string;
+}> {
+  await assertSettings();
+  const conn = await getGoogleConnection();
+  if (!conn?.gsc_site_url) return { ok: false, error: 'Connect a Search Console site first.' };
+  let url = (rawUrl ?? '').trim();
+  if (!url) return { ok: false, error: 'Enter a URL or path.' };
+  if (url.startsWith('/')) url = `${SITE_URL}${url}`;
+  else if (!/^https?:\/\//i.test(url)) url = `${SITE_URL}/${url}`;
+  try {
+    const r = await inspectUrl(conn.gsc_site_url, url);
+    return { ok: true, url, verdict: r.verdict, coverage: r.coverageState, lastCrawl: r.lastCrawlTime };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : String(err);
+    log.error('google.inspect_url_failed', { error: detail });
+    return { ok: false, error: detail.slice(0, 180) };
+  }
 }
 
 export async function setGa4PropertyAction(formData: FormData): Promise<void> {

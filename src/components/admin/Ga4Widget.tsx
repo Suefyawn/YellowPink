@@ -18,16 +18,16 @@ export async function Ga4Widget() {
   const conn = await getGoogleConnection();
   if (!conn?.ga4_property_id) return null;
 
-  let sessions = 0, users = 0, views = 0;
+  let sessions = 0, users = 0, views = 0, orders = 0, revenue = 0;
   let channels: { name: string; sessions: number }[] = [];
   let failed = false;
   try {
     const [totals, byChannel] = await Promise.all([
-      ga4RunReport({ propertyId: conn.ga4_property_id, startDate: '28daysAgo', endDate: 'today', metrics: ['sessions', 'totalUsers', 'screenPageViews'] }),
+      ga4RunReport({ propertyId: conn.ga4_property_id, startDate: '28daysAgo', endDate: 'today', metrics: ['sessions', 'totalUsers', 'screenPageViews', 'transactions', 'purchaseRevenue'] }),
       ga4RunReport({ propertyId: conn.ga4_property_id, startDate: '28daysAgo', endDate: 'today', dimensions: ['sessionDefaultChannelGroup'], metrics: ['sessions'], limit: 6 }),
     ]);
     const m = totals[0]?.metrics ?? [];
-    sessions = m[0] ?? 0; users = m[1] ?? 0; views = m[2] ?? 0;
+    sessions = m[0] ?? 0; users = m[1] ?? 0; views = m[2] ?? 0; orders = m[3] ?? 0; revenue = m[4] ?? 0;
     channels = byChannel.map(r => ({ name: r.dimensions[0] || '(other)', sessions: r.metrics[0] ?? 0 }))
       .sort((a, b) => b.sessions - a.sessions);
   } catch { failed = true; }
@@ -53,7 +53,14 @@ export async function Ga4Widget() {
             <Stat label="Sessions" value={sessions.toLocaleString()} />
             <Stat label="Users" value={users.toLocaleString()} />
             <Stat label="Pageviews" value={views.toLocaleString()} />
+            <Stat label="Orders" value={orders.toLocaleString()} />
+            <Stat label="Revenue" value={`Rs ${Math.round(revenue).toLocaleString()}`} />
           </div>
+          {orders === 0 && revenue === 0 && (
+            <p style={{ margin: '-8px 0 14px', fontSize: '0.7rem', color: '#9ca3af' }}>
+              Orders/Revenue read 0 — GA4 ecommerce (purchase) events aren’t being received yet.
+            </p>
+          )}
           {channels.length > 0 && (
             <>
               <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Sessions by channel</div>
