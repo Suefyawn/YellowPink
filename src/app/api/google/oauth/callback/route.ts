@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { getStaffSession } from '@/lib/staff-auth';
 import { exchangeCodeAndStore, autoLinkProperties } from '@/lib/google';
 import { SITE_URL } from '@/lib/seo';
 import { log } from '@/lib/logger';
@@ -8,14 +7,13 @@ export const runtime = 'nodejs';
 
 const SETTINGS = `${SITE_URL}/admin/settings/integrations`;
 
-// OAuth redirect target. Verifies state + staff session, stores the refresh
-// token, and auto-links the GSC site + GA4 property.
+// OAuth redirect target. We do NOT re-check the staff session here: this is a
+// cross-site navigation back from accounts.google.com, and the staff_session
+// cookie is sameSite=strict so it isn't sent on that request (re-checking it
+// would always fail and bounce the owner to /admin — looking like a logout).
+// CSRF/auth is enforced by the random `g_oauth_state` cookie set in /start
+// (which IS staff-gated); only a flow that began there has the matching state.
 export async function GET(req: NextRequest) {
-  const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
-    return NextResponse.redirect(`${SITE_URL}/admin`);
-  }
-
   const url = req.nextUrl;
   const error = url.searchParams.get('error');
   if (error) return NextResponse.redirect(`${SETTINGS}?error=${encodeURIComponent(`Google: ${error}`)}`);
