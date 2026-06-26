@@ -54,8 +54,11 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   const heroImage = record?.hero_image_url
     || list.find(p => p.image_url)?.image_url
     || null;
+  // Visible brand intro. Admin-authored copy (brands table) wins; otherwise a
+  // two-sentence keyword-led fallback so the page carries real body text for
+  // shoppers and search engines rather than a single generic line.
   const description = record?.description
-    || `Explore the full ${brand} range at Yellow Pink — 100% authentic, imported, with cash-on-delivery across Pakistan.`;
+    || `Discover ${brand} at Yellow Pink — every ${brand} product we stock is 100% authentic and imported, sourced from authorised channels for the Pakistani market, never a counterfeit. Browse the full ${brand} lineup below in sealed packaging at fair prices, with cash on delivery nationwide across Pakistan.`;
 
   return (
     <main className="fade-in">
