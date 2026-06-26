@@ -39,7 +39,11 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // Resolve ?category= (or the legacy ?cat=) to its canonical label, so the
   // slug form (?category=combo-packs) and the label form (?category=Combo
   // Packs) collapse onto ONE title + canonical URL instead of two duplicates.
-  const resolvedCategory = canonicalCategory(category ?? cat);
+  // If ?category= is actually a TAXON label (e.g. ?category=Wellness), treat it
+  // as the taxon — otherwise /shop?category=Wellness becomes a duplicate of the
+  // dedicated /shop?taxon=wellness page (same products, two self-canonicals).
+  const categoryTaxon = findTaxon(category ?? cat);
+  const resolvedCategory = categoryTaxon ? null : canonicalCategory(category ?? cat);
   // ?subcategory= is always a leaf category, so it gets the SAME slug-or-label
   // normalisation, otherwise ?subcategory=combo-packs and ?subcategory=Combo
   // Packs would render two different titles + canonicals for the same page.
@@ -47,8 +51,9 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // The four top-level nav landing pages (/shop?taxon=makeup|skincare|…) are
   // real index targets, give each its own title/description/self-canonical
   // instead of the generic "Shop All Products" + a canonical back to /shop.
-  // Only when no (sub)category is set, since those are more specific.
-  const resolvedTaxon = !resolvedCategory && !resolvedSubcategory ? findTaxon(taxon) : null;
+  // Only when no (sub)category is set, since those are more specific. A taxon
+  // reached via ?category=<label> resolves to the same dedicated taxon page.
+  const resolvedTaxon = !resolvedCategory && !resolvedSubcategory ? (findTaxon(taxon) ?? categoryTaxon) : null;
   // Sanitise free-text params before interpolating them into the title /
   // description / og:title (audit SEV-2: raw `<img onerror=…>` once ended up
   // in the og:title `content` attribute). Strip every character with
