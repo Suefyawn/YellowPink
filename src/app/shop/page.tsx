@@ -9,6 +9,7 @@ import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref } from '@/lib/category-taxonomy';
+import { brandSlug } from '@/lib/brands';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 
@@ -67,19 +68,37 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   else                          title = 'Shop Imported Beauty & Wellness in Pakistan';
 
   // Canonical strategy:
-  //   • `/shop`, `/shop?category=Foo` (`?subcategory=Bar`) and a pure
-  //     `/shop?brand=Baz` are real index targets — each canonicalizes to
-  //     itself, with the category in its canonical label form.
+  //   • `/shop` and `/shop?category=Foo` (`?subcategory=Bar`) are real index
+  //     targets — each canonicalizes to itself, category in canonical label form.
+  //   • A pure `/shop?brand=Baz` filter canonicalizes to the dedicated
+  //     `/brand/<slug>` archive page, NOT to itself. `/shop?brand=` and
+  //     `/brand/<slug>` show the same products, so self-canonicalizing the
+  //     filter URL split signals across two near-duplicate pages and left the
+  //     filter URL weakly linked (Semrush #213). Consolidating onto the
+  //     brand page — which has bespoke copy, metadata and a sitemap entry —
+  //     ends the cannibalization. The filter URL keeps working for shoppers;
+  //     only the canonical hint changes (no redirect, so the in-page brand
+  //     filter UX is untouched).
   //   • Free-text searches, attr/price/stock filters, sort, pagination, and
   //     brand+category combos are variations of the same set — they
   //     canonicalize back to `/shop` (or the matching category root), so
   //     Google never indexes every brand×category permutation.
+  const brandOnly = Boolean(
+    trimmedBrand && !resolvedCategory && !resolvedSubcategory && !resolvedTaxon && !trimmedQ,
+  );
   const canonicalParams = new URLSearchParams();
   if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
   if (resolvedSubcategory) canonicalParams.set('subcategory', resolvedSubcategory);
   else if (resolvedTaxon) canonicalParams.set('taxon', resolvedTaxon.key);
-  if (trimmedBrand && !resolvedCategory && !resolvedSubcategory && !resolvedTaxon) canonicalParams.set('brand', trimmedBrand);
   const qs = canonicalParams.toString();
+  // Slug from the RAW brand param, not the sanitised `trimmedBrand`: the
+  // sanitiser strips apostrophes ("Nature's Bounty" → "Natures Bounty"), which
+  // would yield `natures-bounty` and miss the real `/brand/nature-s-bounty`
+  // page. brandSlug() does its own char-stripping, so the raw value is safe and
+  // matches how /brand/[slug] (and the sitemap) derive the slug.
+  const canonicalPath = brandOnly
+    ? `/brand/${brandSlug(brand ?? trimmedBrand)}`
+    : `/shop${qs ? `?${qs}` : ''}`;
 
   // Description: search > subcategory copy > category landing copy > brand
   // line > generic. Every category, subcategory and brand page gets its OWN
@@ -102,7 +121,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   return pageMeta({
     title,
     description,
-    path: `/shop${qs ? `?${qs}` : ''}`,
+    path: canonicalPath,
     // Block free-text searches from being indexed (they're infinite-state).
     noIndex: Boolean(trimmedQ),
   });
