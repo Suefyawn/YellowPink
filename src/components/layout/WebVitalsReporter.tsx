@@ -15,6 +15,7 @@ import { useConsent } from '@/lib/consent';
 // Next 16 ships useReportWebVitals via 'next/web-vitals'.
 
 import { useReportWebVitals } from 'next/web-vitals';
+import { isInternalTraffic } from '@/lib/internal-traffic';
 
 interface Metric {
   name: string;
@@ -56,6 +57,8 @@ export function WebVitalsReporter() {
       return;
     }
     if (!analyticsAllowed) return;
+    // Staff/owner testing skews the field p75; drop their samples too.
+    if (isInternalTraffic()) return;
 
     // Persist every Core Web Vital for the in-app dashboard. Pathname only (no
     // query string) so routes group cleanly and no token/email rides along.
