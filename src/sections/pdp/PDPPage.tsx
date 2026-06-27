@@ -446,6 +446,21 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // Untracked products (inventory managed externally) are always sellable,   // their stock count is meaningless, so a 0 must not disable the buy button.
   const outOfStock = product.track_inventory !== false && displayStock === 0;
   const ctaDisabled = outOfStock || (variants.length > 0 && !activeVariant);
+  // True when the only thing blocking the add is an unmade variant choice.
+  const needsSelection = !outOfStock && variants.length > 0 && !allAttrsSelected;
+
+  // Sticky-bar CTA. The bar has no variant picker of its own, so when a choice
+  // is still required, tapping it must take the shopper *back to the picker*
+  // (which lives in the in-page buy panel) instead of being a disabled
+  // dead-end, the previous behaviour left mobile users tapping a greyed
+  // "Select options" button with no on-screen way to act.
+  const handleStickyCta = () => {
+    if (needsSelection) {
+      buyPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    handleAdd();
+  };
 
   // WP imports often include the brand inside the name (e.g. brand="Kiko Milano",
   // name="Kiko Milano 3D Hydra Lip Gloss"). Strip the brand prefix for the visible
@@ -858,18 +873,20 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           <button type="button" aria-label="Increase quantity" onClick={() => setQty(qty + 1)} style={{ width: 34, height: 40, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>+</button>
         </div>
         <button
-          onClick={handleAdd}
-          disabled={ctaDisabled}
+          onClick={handleStickyCta}
+          // Only a genuine out-of-stock disables the bar. When a variant choice
+          // is still needed the button stays tappable and scrolls to the picker.
+          disabled={outOfStock}
           className="btn-primary"
           style={{
             flex: 1, minWidth: 0, padding: '12px 16px',
-            background: ctaDisabled ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink-cta)',
-            cursor: ctaDisabled ? 'not-allowed' : 'pointer',
+            background: outOfStock ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink-cta)',
+            cursor: outOfStock ? 'not-allowed' : 'pointer',
             transition: 'background 100ms ease-out',
           }}
         >
           {outOfStock ? 'Out of Stock'
-            : variants.length > 0 && !allAttrsSelected ? 'Select options'
+            : needsSelection ? 'Select options'
             : addedFlash ? 'Added ✓'
             : 'Add to Cart'}
         </button>
