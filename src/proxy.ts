@@ -206,7 +206,14 @@ export async function proxy(request: NextRequest) {
   // Only run on paths we don't already own to avoid useless work and any
   // potential loops with route-handler-owned URLs.
   if (!isOwnedPath(pathname)) {
-    const to = await resolveRedirect(pathname);
+    // Resolve `/x/` and `/x` against the same redirect entry (the table stores
+    // the slash-less form). Without this, an indexed legacy URL like
+    // `/best-prenatal-vitamins-pakistan-guide/` first 308-strips its trailing
+    // slash, THEN 301s to /blog/… — a needless 2-hop chain (3 from non-www)
+    // that slows Google's consolidation of the duplicate. Look up the
+    // normalised path so it's a single 301 straight to the destination.
+    const lookupPath = pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname;
+    const to = await resolveRedirect(lookupPath);
     if (to && to !== pathname) {
       // to_path already carries its own query (?category=… / ?taxon=…); only
       // append the request's search when to_path has none, to avoid `??`.
