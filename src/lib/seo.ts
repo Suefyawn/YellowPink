@@ -356,7 +356,13 @@ export function articleLd(post: BlogPost, opts?: { reviewer?: MedicalReviewer | 
   const reviewer = opts?.reviewer;
   return {
     '@context': 'https://schema.org',
-    '@type': 'Article',
+    // `reviewedBy` / `lastReviewed` are MedicalWebPage properties, not Article
+    // ones — emitting them on a plain Article made Google + Semrush flag them as
+    // unrecognised (72 "structured data markup errors" in the site audit). When
+    // a medical reviewer is set, multi-type the node as both Article and
+    // MedicalWebPage (the pattern health publishers use) so those E-E-A-T
+    // properties are valid; otherwise it stays a plain Article.
+    '@type': reviewer ? ['Article', 'MedicalWebPage'] : 'Article',
     headline: post.title,
     description: post.excerpt,
     image: post.image_url ?? undefined,
