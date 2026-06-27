@@ -10,6 +10,7 @@ import { getBrowserClient } from '@/lib/supabase-browser';
 import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/checkout/actions';
 import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
+import { PK_CITIES, normalizeCity } from '@/lib/pk-cities';
 import { brandPlusName } from '@/lib/product-display';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
@@ -288,7 +289,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
             last_name: formData.lastName,
             phone: formData.phone.trim(),
             address: formData.address,
-            city: formData.city,
+            city: normalizeCity(formData.city),
             province: formData.province || '',
             zip: formData.zip || '',
             pay_method: payMethod,
@@ -344,7 +345,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
         first_name: formData.firstName,
         last_name: formData.lastName,
         phone: formData.phone.trim(),
-        city: formData.city,
+        city: normalizeCity(formData.city),
         province: formData.province || undefined,
         total,
         items: cartItems.map(i => ({
@@ -432,7 +433,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }} className="addr-grid-3">
                 <div>
                   <label htmlFor="co-city" style={labelStyle}>City *</label>
-                  <input id="co-city" autoComplete="address-level2" value={formData.city} onChange={e => update('city', e.target.value)} style={inputStyle('city')} aria-invalid={!!errors.city} aria-describedby={errors.city ? 'co-city-error' : undefined} />
+                  <input id="co-city" list="pk-cities" autoComplete="address-level2" value={formData.city} onChange={e => update('city', e.target.value)} onBlur={e => update('city', normalizeCity(e.target.value))} style={inputStyle('city')} aria-invalid={!!errors.city} aria-describedby={errors.city ? 'co-city-error' : undefined} />
+                  <datalist id="pk-cities">
+                    {PK_CITIES.map(c => <option key={c} value={c} />)}
+                  </datalist>
                   {errors.city && <span id="co-city-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.city}</span>}
                 </div>
                 <div>
