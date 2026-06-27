@@ -5,6 +5,7 @@ import { AdminBottomNav } from './AdminBottomNav';
 import { CommandPalette } from './CommandPalette';
 import { NotificationsBell } from './NotificationsBell';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
+import { markInternalTraffic } from '@/lib/internal-traffic';
 import type { StaffSession } from '@/lib/permissions';
 
 interface Notification {
@@ -28,6 +29,11 @@ export function AdminShell({
   // mobile load). The next effect tick flips it correctly.
   const [isMobile, setIsMobile] = useState(false);
   const drawerRef = useRef<HTMLDivElement | null>(null);
+
+  // This is a staff member: flag the browser so their *storefront* browsing is
+  // dropped from PostHog + Web Vitals. Reaching the admin shell means the
+  // session already validated server-side, so this only ever runs for staff.
+  useEffect(() => { markInternalTraffic(); }, []);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

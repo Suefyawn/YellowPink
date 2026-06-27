@@ -4,6 +4,7 @@ import posthog from 'posthog-js';
 import { PostHogProvider } from 'posthog-js/react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, Suspense } from 'react';
+import { isInternalTraffic } from '@/lib/internal-traffic';
 
 function PageViewTracker() {
   const pathname = usePathname();
@@ -47,11 +48,15 @@ export function PHProvider({ children }: { children: React.ReactNode }) {
       capture_pageview: false,
       capture_pageleave: true,
       person_profiles: 'identified_only',
-      // Drop every event that happens inside /admin. Staff working in the
-      // dashboard is not real storefront traffic, capturing it skews the
-      // pageview / top-pages / funnel analytics the owner reads.
+      // Drop events that aren't real storefront customer behaviour, so the
+      // funnel/top-pages numbers the owner reads aren't skewed:
+      //  1. Anything inside /admin (staff working in the dashboard).
+      //  2. Any browser flagged internal (staff who also browse the storefront
+      //     to test — the dominant source of "direct" long sessions and the
+      //     reason the funnel looked broken). Flag is set by the admin shell.
       before_send: (event) => {
         if (event) {
+          if (isInternalTraffic()) return null;
           const raw = event.properties?.['$current_url'] ?? event.properties?.['$pathname'];
           let path = '';
           if (typeof raw === 'string') {
