@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
-import { getGoogleConnection, gscQuery, ga4RunReport } from '@/lib/google';
+import { getGoogleConnection, gscQuery, ga4RunReport, listSitemaps } from '@/lib/google';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
@@ -466,6 +466,78 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
   }
 }
 
+// Persist a per-DAY GSC + GA4 trend into seo_daily_metrics so the admin can see
+// whether organic clicks/impressions/position + sessions + indexation are
+// improving over time (refreshGoogle only caches an overwriting snapshot).
+// Upsert per day → idempotent, and late-arriving GSC data (it lags ~2-3 days)
+// backfills on the next run. Best-effort: never throws into the refresh.
+async function refreshSeoTrend(supabase: PermissiveSupabase): Promise<void> {
+  const conn = await getGoogleConnection();
+  if (!conn) return;
+
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  // GSC YYYY-MM-DD ↔ GA4 YYYYMMDD.
+  const ga4Day = (s: string) => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+  const now = Date.now();
+  // Re-capture the last 14 days every run so the GSC reporting lag self-heals.
+  const end = new Date(now - 2 * 86_400_000);
+  const start = new Date(end.getTime() - 14 * 86_400_000);
+
+  // day -> partial metrics row, merged from GSC + GA4 then upserted.
+  const rows = new Map<string, Record<string, number | null>>();
+  const touch = (day: string) => {
+    let r = rows.get(day);
+    if (!r) { r = {}; rows.set(day, r); }
+    return r;
+  };
+
+  // ── GSC: per-day clicks / impressions / ctr / position ──
+  if (conn.gsc_site_url) {
+    try {
+      const daily = await gscQuery({ siteUrl: conn.gsc_site_url, startDate: fmt(start), endDate: fmt(end), dimensions: ['date'], rowLimit: 30 });
+      for (const d of daily) {
+        const r = touch(d.keys[0]);
+        r.gsc_clicks = Math.round(d.clicks ?? 0);
+        r.gsc_impressions = Math.round(d.impressions ?? 0);
+        r.gsc_ctr = d.ctr ?? null;
+        r.gsc_position = d.position ?? null;
+      }
+    } catch { /* keep GA4 alive even if GSC errors */ }
+
+    // Indexation proxy: how many URLs Google has accepted from the sitemap.
+    try {
+      const sm = await listSitemaps(conn.gsc_site_url);
+      const submitted = sm.reduce((n, s) => n + (s.submittedUrls ?? 0), 0);
+      if (submitted > 0) touch(fmt(end)).sitemap_submitted = submitted;
+    } catch { /* best-effort */ }
+  }
+
+  // ── GA4: per-day sessions + users, and the Organic Search split ──
+  if (conn.ga4_property_id) {
+    try {
+      const totals = await ga4RunReport({ propertyId: conn.ga4_property_id, startDate: fmt(start), endDate: fmt(end), dimensions: ['date'], metrics: ['sessions', 'totalUsers'], limit: 60 });
+      for (const row of totals) {
+        const r = touch(ga4Day(row.dimensions[0]));
+        r.ga4_sessions = Math.round(row.metrics[0] ?? 0);
+        r.ga4_users = Math.round(row.metrics[1] ?? 0);
+      }
+      const byChannel = await ga4RunReport({ propertyId: conn.ga4_property_id, startDate: fmt(start), endDate: fmt(end), dimensions: ['date', 'sessionDefaultChannelGroup'], metrics: ['sessions'], limit: 400 });
+      const organic = new Map<string, number>();
+      for (const row of byChannel) {
+        if ((row.dimensions[1] || '').toLowerCase() === 'organic search') {
+          organic.set(ga4Day(row.dimensions[0]), Math.round(row.metrics[0] ?? 0));
+        }
+      }
+      for (const [day, n] of organic) touch(day).ga4_organic_sessions = n;
+    } catch { /* best-effort */ }
+  }
+
+  if (rows.size === 0) return;
+  const payload = [...rows.entries()].map(([day, m]) => ({ day, ...m, captured_at: new Date().toISOString() }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from('seo_daily_metrics') as any).upsert(payload, { onConflict: 'day' });
+}
+
 export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: string[] }> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -476,6 +548,7 @@ export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: str
     refreshPostHog(supabase),
     refreshSentry(supabase),
     refreshGoogle(supabase),
+    refreshSeoTrend(supabase),
   ]);
 
   const errors = results

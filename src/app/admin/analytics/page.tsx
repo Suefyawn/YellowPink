@@ -17,6 +17,7 @@ import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWid
 import { SearchConsoleWidget } from '@/components/admin/SearchConsoleWidget';
 import { Ga4Widget } from '@/components/admin/Ga4Widget';
 import { WebVitalsWidget } from '@/components/admin/WebVitalsWidget';
+import { SeoTrendWidget } from '@/components/admin/SeoTrendWidget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
@@ -269,6 +270,11 @@ export default async function AnalyticsPage({
           {/* Traffic, gated on the analytics_traffic permission. */}
           {canTraffic && (
             <>
+              {/* SEO trend over time (GSC + GA4 daily series) — answers
+                  "is organic traffic / indexation improving?". */}
+              <div style={{ marginBottom: 28 }}>
+                <SeoTrendWidget days={90} />
+              </div>
               {/* Live Google Search Console + GA4 (only render once connected). */}
               <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
                 <SearchConsoleWidget />
