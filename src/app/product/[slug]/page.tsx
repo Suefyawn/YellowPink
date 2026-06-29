@@ -3,8 +3,21 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductBySlug, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings } from '@/lib/supabase';
+import { getProductBySlug, getProducts, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
+
+// Pre-render every published product at build so PDPs are served as static CDN
+// HTML (fast TTFB worldwide, incl. Pakistan) instead of cold on-demand renders.
+// Field data showed TTFB ~1.5s / LCP ~3.8s — with low, spread-out traffic most
+// per-slug ISR entries were cold on each hit. dynamicParams stays true
+// (default), so products added after a build still render on demand then cache.
+// Returns [] in demo / if the catalogue can't be read (getProducts is
+// error-safe), falling back to the previous on-demand behaviour.
+export async function generateStaticParams() {
+  if (isDemo) return [];
+  const products = await getProducts();
+  return products.map(p => ({ slug: p.slug }));
+}
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';

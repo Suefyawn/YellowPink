@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
+import { getGoogleConnection, gscQuery, ga4RunReport } from '@/lib/google';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
@@ -414,6 +415,57 @@ async function notifyAdmin(supabase: PermissiveSupabase, input: NotifyInput): Pr
 // Pure data-refresh path. Both the staff-facing server action and the
 // CRON_SECRET-gated cron route call this. Auth/audit/revalidate is the
 // caller's responsibility.
+// ─── refreshGoogle (GA4 + Search Console) ───────────────────────────────────
+// Cache GA4 traffic + GSC search performance into analytics_cache so the data
+// is queryable server-side (and survives the live widgets' per-request fetch).
+// Best-effort: if Google isn't connected we skip silently; per-API failures are
+// swallowed so one source can't block the other.
+async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
+  const conn = await getGoogleConnection();
+  if (!conn) return; // not connected — nothing to cache, not an error
+
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  // GSC data lags ~2-3 days; query a 28-day window ending 3 days ago.
+  const now = Date.now();
+  const end = new Date(now - 3 * 86_400_000);
+  const start = new Date(end.getTime() - 28 * 86_400_000);
+
+  if (conn.gsc_site_url) {
+    try {
+      const [queries, pages] = await Promise.all([
+        gscQuery({ siteUrl: conn.gsc_site_url, startDate: fmt(start), endDate: fmt(end), dimensions: ['query'], rowLimit: 25 }),
+        gscQuery({ siteUrl: conn.gsc_site_url, startDate: fmt(start), endDate: fmt(end), dimensions: ['page'],  rowLimit: 25 }),
+      ]);
+      await upsertCache(supabase, 'gsc', {
+        site: conn.gsc_site_url,
+        range: { start: fmt(start), end: fmt(end) },
+        totals: {
+          clicks: queries.reduce((s, r) => s + (r.clicks ?? 0), 0),
+          impressions: queries.reduce((s, r) => s + (r.impressions ?? 0), 0),
+        },
+        queries: queries.map(r => ({ query: r.keys[0], clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position })),
+        pages:   pages.map(r =>   ({ url:   r.keys[0], clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position })),
+      });
+    } catch { /* best-effort: keep GA4 alive even if GSC errors */ }
+  }
+
+  if (conn.ga4_property_id) {
+    try {
+      const [totals, byChannel] = await Promise.all([
+        ga4RunReport({ propertyId: conn.ga4_property_id, startDate: '28daysAgo', endDate: 'today', metrics: ['sessions', 'totalUsers', 'screenPageViews', 'transactions', 'purchaseRevenue'] }),
+        ga4RunReport({ propertyId: conn.ga4_property_id, startDate: '28daysAgo', endDate: 'today', dimensions: ['sessionDefaultChannelGroup'], metrics: ['sessions'], limit: 8 }),
+      ]);
+      const m = totals[0]?.metrics ?? [];
+      await upsertCache(supabase, 'ga4', {
+        property: conn.ga4_property_name ?? conn.ga4_property_id,
+        sessions: m[0] ?? 0, users: m[1] ?? 0, views: m[2] ?? 0, orders: m[3] ?? 0, revenue: m[4] ?? 0,
+        channels: byChannel.map(r => ({ name: r.dimensions[0] || '(other)', sessions: r.metrics[0] ?? 0 }))
+          .sort((a, b) => b.sessions - a.sessions),
+      });
+    } catch { /* best-effort */ }
+  }
+}
+
 export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: string[] }> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -423,6 +475,7 @@ export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: str
   const results = await Promise.allSettled([
     refreshPostHog(supabase),
     refreshSentry(supabase),
+    refreshGoogle(supabase),
   ]);
 
   const errors = results

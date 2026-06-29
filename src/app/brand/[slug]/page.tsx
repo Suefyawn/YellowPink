@@ -13,6 +13,18 @@ import { brandNameFromSlug, brandSlug, getBrandRecord } from '@/lib/brands';
 import { redirectIfMapped } from '@/lib/redirects';
 import type { Product } from '@/types';
 
+// Pre-render every brand archive at build (one per distinct brand) so they're
+// static CDN HTML rather than cold on-demand renders. dynamicParams stays true
+// for any brand added later. getProducts is error-safe (→ on-demand fallback).
+export async function generateStaticParams() {
+  const products = await getProducts();
+  const slugs = new Set<string>();
+  for (const p of products) {
+    if (p.brand) slugs.add(brandSlug(p.brand));
+  }
+  return [...slugs].map(slug => ({ slug }));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const [products, record] = await Promise.all([getProducts(), getBrandRecord(slug)]);
