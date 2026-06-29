@@ -1,15 +1,12 @@
--- Match NB Sons' own retail prices (nbsons.com). Compared all 57 NB Sons SKUs
--- against nbsons.com/products.json; 45 already matched. These 5 differed and
--- are aligned to the brand owner's price:
+-- Match NB Sons' own retail prices (nbsons.com) where we were charging MORE
+-- than the brand owner. Compared all 57 NB Sons SKUs against
+-- nbsons.com/products.json; 45 already matched. We lower the two we were
+-- overpricing:
 --   argivital-sachet  4100 -> 3500  (NB Sons 3500, strikethrough 6500)
 --   trimo-m           2499 -> 1790
---   ultrapin           595 -> 350   (matched to NB Sons' single unit)
---   puratin            510 -> 700   (we were under NB Sons; raised to match)
---   stevoice           950 -> 1800  (NB Sons 1800, strikethrough 3500)
--- original_price set to NB Sons' compare_at where they show one, else cleared
--- so the strikethrough stays valid (>= price).
+-- Deliberately NOT matched (owner's decision to stay cheaper / variant call):
+--   puratin, stevoice  — we sell below NB Sons; keep undercutting them.
+--   ultrapin           — ours is the 2-pack (595 = NB Sons' double-pack), not
+--                        the 350 single.
 update products set price = 3500, original_price = 6500 where slug = 'argivital-sachet';
 update products set price = 1790                          where slug = 'trimo-m';
-update products set price = 350,  original_price = null   where slug = 'ultrapin';
-update products set price = 700,  original_price = null   where slug = 'puratin';
-update products set price = 1800, original_price = 3500   where slug = 'stevoice';
