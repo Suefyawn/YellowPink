@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
-import { RevenueChart } from '@/components/admin/RevenueChart';
+import { OverviewChart, type OverviewDay } from '@/components/admin/OverviewChart';
 import { SentryWidget } from '@/components/admin/SentryWidget';
 import { QuizStatsWidget } from '@/components/admin/QuizStatsWidget';
 import { brandPlusName } from '@/lib/product-display';
@@ -65,9 +65,7 @@ export default async function DashboardPage() {
     { data: lowStockProducts },
     { count: lowStockCount },
     { count: newCustomerCount },
-    { data: recentOrdersForChart },
     { count: prevCustomerCount },
-    { data: prevRevenueRows },
     { count: stuckPaymentCount },
     { count: stalePendingCount },
     { count: openReturnsCount },
@@ -84,14 +82,9 @@ export default async function DashboardPage() {
     supabase.from('products').select('*').eq('track_inventory', true).lte('stock', 5).order('stock', { ascending: true }).limit(50),
     supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lte('stock', 5),
     admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
-    // Revenue series reads `v_orders_revenue`, the same view the Analytics
-    // page uses, so the two pages report an identical "Revenue · last 30
-    // days". The view excludes cancelled / payment_pending / payment_failed
-    // orders and zeroes refunds.
-    admin.from('v_orders_revenue').select('revenue, created_at').gte('created_at', thirtyDaysAgo),
-    // Prior-period comparisons for the trend pills.
+    // Prior-period customer comparison for the trend pill (revenue/orders/
+    // sessions trends are computed in the Overview chart from its own series).
     admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
-    admin.from('v_orders_revenue').select('revenue').gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
     // "Needs attention" counters, surface state that's drifted past the
     // expected SLA so the owner can clear it from the dashboard:
     //  • payment_pending older than 24h (gateway likely never confirmed)
@@ -105,18 +98,28 @@ export default async function DashboardPage() {
       .eq('status', 'pending'),
   ]);
 
-  // Build 30-day revenue series, reuse the `nowMs` we pinned above so the
-  // bucket boundaries match the `thirtyDaysAgo` window we queried with.
-  const dayMap: Record<string, number> = {};
-  for (let i = 29; i >= 0; i--) {
-    const d = new Date(nowMs - i * 24 * 60 * 60 * 1000);
-    dayMap[d.toISOString().slice(0, 10)] = 0;
+  // 180-day daily series for the interactive Overview chart (it shows up to a
+  // 90-day window plus the prior 90-day comparison). Pulls orders/revenue from
+  // analytics_daily and sessions from the SEO trend table, then zero-fills every
+  // day so the line is continuous even on no-sale days.
+  const [{ data: dailyRows }, { data: seoRows }] = await Promise.all([
+    admin.rpc('analytics_daily' as never, { p_days: 180 } as never) as unknown as Promise<{ data: Array<{ day: string; orders: number; revenue: number }> | null }>,
+    admin.rpc('seo_metrics_trend' as never, { p_days: 180 } as never) as unknown as Promise<{ data: Array<{ day: string; ga4_sessions: number | null }> | null }>,
+  ]);
+  const seriesMap = new Map<string, OverviewDay>();
+  for (let i = 179; i >= 0; i--) {
+    const d = new Date(nowMs - i * 86_400_000).toISOString().slice(0, 10);
+    seriesMap.set(d, { date: d, revenue: 0, orders: 0, sessions: null });
   }
-  for (const o of (recentOrdersForChart ?? []) as Array<{ revenue: number; created_at: string }>) {
-    const day = o.created_at.slice(0, 10);
-    if (day in dayMap) dayMap[day] += Number(o.revenue) || 0;
+  for (const r of (dailyRows ?? [])) {
+    const e = seriesMap.get(String(r.day).slice(0, 10));
+    if (e) { e.revenue = Number(r.revenue) || 0; e.orders = Number(r.orders) || 0; }
   }
-  const chartDays = Object.entries(dayMap).map(([date, revenue]) => ({ date, revenue }));
+  for (const r of (seoRows ?? [])) {
+    const e = seriesMap.get(String(r.day).slice(0, 10));
+    if (e && r.ga4_sessions != null) e.sessions = Number(r.ga4_sessions);
+  }
+  const overviewSeries: OverviewDay[] = [...seriesMap.values()];
 
   // Unpack the aggregated KPIs. RPC returns one jsonb object; default to
   // empty shape if it ever returns null (RLS denied, table missing, etc.).
@@ -130,36 +133,19 @@ export default async function DashboardPage() {
   }, {});
   const topProducts = kpis.top_products.map(p => ({ name: p.name, brand: p.brand, qty: p.qty }));
 
-  // Dashboard cards favour actionable, time-bounded numbers over all-time
-  // vanity totals, the things the owner checks each morning.
-  const revenue30d = chartDays.reduce((s, d) => s + d.revenue, 0);
   const ordersToFulfill = (statusCounts.pending ?? 0) + (statusCounts.processing ?? 0);
 
-  // Period-over-period deltas (current 30d vs the prior 30d). null = no
-  // meaningful comparison (snapshot metrics like "orders to fulfill" and
-  // "low stock" are point-in-time, so they carry no trend).
-  const revenuePrev30d = ((prevRevenueRows ?? []) as Array<{ revenue: number }>)
-    .reduce((s, r) => s + (Number(r.revenue) || 0), 0);
+  // Period-over-period customer delta for the quick-stat hint.
   const pctChange = (cur: number, prev: number): number | null => {
     if (prev <= 0) return cur > 0 ? 100 : null;
     return Math.round(((cur - prev) / prev) * 100);
   };
   type Trend = { pct: number; goodWhenUp: boolean } | null;
-  const revenueTrend: Trend = (() => {
-    const p = pctChange(revenue30d, revenuePrev30d);
-    return p === null ? null : { pct: p, goodWhenUp: true };
-  })();
   const customerTrend: Trend = (() => {
     const p = pctChange(newCustomerCount ?? 0, prevCustomerCount ?? 0);
     return p === null ? null : { pct: p, goodWhenUp: true };
   })();
 
-  const stats: { label: string; value: string | number; icon: string; color: string; href: string; trend: Trend; hint?: string }[] = [
-    { label: 'Revenue · last 30 days', value: fmt(revenue30d), icon: '₨', color: '#10b981', href: '/admin/analytics', trend: revenueTrend },
-    { label: 'Orders to fulfill', value: ordersToFulfill, icon: '◎', color: '#C5286A', href: '/admin/orders', trend: null, hint: ordersToFulfill > 0 ? 'Needs action' : 'All clear' },
-    { label: 'New customers · 30 days', value: newCustomerCount ?? 0, icon: '◉', color: '#6366f1', href: '/admin/users', trend: customerTrend },
-    { label: 'Low stock items', value: lowStockCount ?? 0, icon: '⧉', color: '#f59e0b', href: '/admin/inventory', trend: null, hint: (lowStockCount ?? 0) > 0 ? 'Restock soon' : 'Healthy' },
-  ];
 
   const greeting = (() => {
     const h = new Date(nowMs).getUTCHours();
@@ -183,67 +169,29 @@ export default async function DashboardPage() {
       {/* ── Overview block (gated on `analytics` permission) ────────────── */}
       {canOverview && (
       <>
-      {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20, marginBottom: 32 }} className="adm-stat-grid">
-        {stats.map(s => {
-          const up = s.trend ? s.trend.pct >= 0 : false;
-          const positive = s.trend ? (s.trend.goodWhenUp ? up : !up) : false;
-          const trendColor = positive ? '#059669' : '#dc2626';
-          const trendBg = positive ? '#ecfdf5' : '#fef2f2';
-          return (
-          <Link key={s.label} href={s.href} className="adm-kpi-card" style={{
-            position: 'relative', overflow: 'hidden',
-            background: 'white', borderRadius: 14, padding: '22px 22px 20px',
-            border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
-            display: 'flex', flexDirection: 'column', gap: 14,
-            textDecoration: 'none', color: 'inherit',
-            transition: 'transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
-          }}>
-            {/* coloured accent rail */}
-            <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 4, background: s.color }} />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500 }}>{s.label}</span>
-              <span style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: s.color + '18',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '1.05rem', color: s.color,
-              }}>{s.icon}</span>
-            </div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>
-              {s.value}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minHeight: 22 }}>
-              {s.trend ? (
-                <>
-                  <span style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 3,
-                    padding: '2px 8px', borderRadius: 20,
-                    background: trendBg, color: trendColor,
-                    fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
-                  }}>
-                    {up ? '▲' : '▼'} {Math.abs(s.trend.pct)}%
-                  </span>
-                  <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>vs prev 30d</span>
-                </>
-              ) : s.hint ? (
-                <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{s.hint}</span>
-              ) : null}
-            </div>
-          </Link>
-          );
-        })}
-      </div>
+      {/* Interactive overview: clickable Sales / Orders / AOV / Sessions tiles
+          driving one chart with a previous-period comparison line + hover. */}
+      <OverviewChart series={overviewSeries} />
 
-      {/* Revenue chart */}
-      <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px', marginBottom: 32 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Revenue, Last 30 Days</h2>
-          <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-            {fmt(chartDays.reduce((s, d) => s + d.revenue, 0))} total
-          </span>
-        </div>
-        <RevenueChart days={chartDays} />
+      {/* Compact operational quick-stats, the at-a-glance numbers that aren't
+          time-series (point-in-time counts). Each links into its filtered list. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 }} className="adm-stat-grid">
+        {([
+          { label: 'Orders to fulfill', value: ordersToFulfill,        href: '/admin/orders',    color: '#C5286A', hint: ordersToFulfill > 0 ? 'Needs action' : 'All clear' },
+          { label: 'Low stock items',   value: lowStockCount ?? 0,     href: '/admin/inventory', color: '#f59e0b', hint: (lowStockCount ?? 0) > 0 ? 'Restock soon' : 'Healthy' },
+          { label: 'New customers · 30d', value: newCustomerCount ?? 0, href: '/admin/users',     color: '#6366f1', hint: customerTrend ? `${customerTrend.pct >= 0 ? '▲' : '▼'} ${Math.abs(customerTrend.pct)}% vs prev 30d` : undefined },
+        ] as const).map(s => (
+          <Link key={s.label} href={s.href} className="adm-kpi-card" style={{
+            position: 'relative', overflow: 'hidden', background: 'white', borderRadius: 12,
+            padding: '16px 18px', border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
+            display: 'flex', flexDirection: 'column', gap: 6, textDecoration: 'none', color: 'inherit',
+          }}>
+            <span aria-hidden="true" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, background: s.color }} />
+            <span style={{ color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500 }}>{s.label}</span>
+            <span style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums', lineHeight: 1.1 }}>{s.value}</span>
+            {s.hint && <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{s.hint}</span>}
+          </Link>
+        ))}
       </div>
 
       {/* Needs attention, only renders when there's actually something
