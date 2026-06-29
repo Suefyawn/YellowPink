@@ -12,6 +12,15 @@ import { BlogPostPage } from '@/sections/blog/BlogPostPage';
 import { pageMeta, jsonLd, articleLd, breadcrumbLd } from '@/lib/seo';
 import type { Product } from '@/types';
 
+// Pre-render every blog post at build so articles are static CDN HTML (fast
+// TTFB) rather than cold on-demand renders. dynamicParams stays true, so new
+// posts still render on demand then cache. getBlogPosts is error-safe (returns
+// [] on failure → on-demand fallback).
+export async function generateStaticParams() {
+  const posts = await getBlogPosts();
+  return posts.map(p => ({ slug: p.slug }));
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
