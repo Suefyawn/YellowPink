@@ -72,7 +72,7 @@ export function ReturnsQueue({ rows, orderMap }: {
               <strong>Reason:</strong> {r.reason}
             </div>
 
-            <table style={{ width: '100%', marginTop: 10, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <div className="adm-table-scroll"><table style={{ width: '100%', marginTop: 10, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <th scope="col" style={{ padding: '6px 0', textAlign: 'left', color: '#6b7280', fontWeight: 600 }}>Item</th>
@@ -93,7 +93,7 @@ export function ReturnsQueue({ rows, orderMap }: {
                   <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 700 }}>PKR {requestedAmount.toLocaleString()}</td>
                 </tr>
               </tbody>
-            </table>
+            </table></div>
 
             {r.admin_note && (
               <div style={{ marginTop: 10, padding: '8px 12px', background: '#f9fafb', borderRadius: 6, fontSize: '0.75rem', color: '#374151' }}>
