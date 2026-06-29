@@ -22,16 +22,12 @@ import { categoryHref } from '@/lib/category-taxonomy';
 const MAKEUP_TILE_CATS = ['Lip & Cheek Tints', 'Highlighters', 'Face Makeup', 'Cleansers & Treatments'];
 const WELLNESS_TILE_CATS = ["Women's Health", "Men's Health", 'Immunity', 'Bone & Joint'];
 
-// Curated editorial image per tile category, hosted in this project's
-// Supabase Storage `images` bucket. Replaces the old approach of surfacing
-// one random in-stock product photo per category, those varied wildly in
-// framing/lighting and made the section look incoherent. These are
-// purpose-shot on a shared cream backdrop. The base URL is derived from the
-// configured project so a no-Supabase demo build resolves to `undefined` and
-// the tile falls back to its gradient placeholder instead of 404-ing.
-const CATEGORY_IMAGE_BASE = process.env.NEXT_PUBLIC_SUPABASE_URL
-  ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/images/categories`
-  : null;
+// Curated editorial image per tile category, served from /public/categories.
+// Vibrant, modern, in-context lifestyle/macro shots (glossy lips, golden
+// highlighter, fresh fruit, active people) that read clearly at a glance on a
+// phone — a refresh of the older cream-backdrop product stills. Kept in the
+// repo (not Supabase Storage) so they deploy and version with the code.
+const CATEGORY_IMAGE_BASE = '/categories';
 const CATEGORY_TILE_FILES: Record<string, string> = {
   'Lip & Cheek Tints': 'lip-cheek-tints.webp',
   Highlighters: 'highlighters.webp',
