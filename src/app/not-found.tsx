@@ -1,18 +1,16 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 
-// Force dynamic so prerender doesn't choke on the useSearchParams() inside
-// the PostHogProvider that the root layout renders. The cost is one extra
-// SSR per 404 hit which is negligible (404s are rare and uncacheable
-// anyway). This used to be implicit when the layout exported
-// force-dynamic, restored explicitly when the layout opt-out shipped.
-export const dynamic = 'force-dynamic';
-import { after } from 'next/server';
-import { headers } from 'next/headers';
+// IMPORTANT: keep this file static. The root not-found boundary is part of
+// every route's render tree, so any dynamic API here (headers()/cookies() or
+// `export const dynamic = 'force-dynamic'`) poisons the WHOLE site into dynamic
+// rendering — which killed the static/ISR edge cache and pushed TTFB to ~1.5s.
+// The missed path is now reported by the <NotFoundBeacon/> client component to
+// /api/404 (server-side logging + bot detection still happen there).
 import { LogoMark } from '@/components/ui/LogoMark';
 import { Overline } from '@/components/ui/Overline';
 import { getProducts } from '@/lib/supabase';
-import { logNotFound } from '@/lib/not-found-log';
+import { NotFoundBeacon } from '@/components/layout/NotFoundBeacon';
 import { ProductTile } from '@/components/ui/ProductTile';
 
 // noindex this page, we never want the SERP to think 404 is a destination.
@@ -34,31 +32,16 @@ const POPULAR_LINKS = [
 ];
 
 export default async function NotFound() {
-  // Record the miss for the 404 monitor. The requested path is carried on the
-  // `x-pathname` header set by the middleware (src/proxy.ts); not-found.tsx
-  // itself can't otherwise see which URL 404'd. Runs in after() so it never
-  // adds latency to (or can break) the 404 render. Prefetch requests are
-  // skipped, the router speculatively prefetches links, which aren't real
-  // dead-ends.
-  const h = await headers();
-  after(() =>
-    logNotFound({
-      path: h.get('x-pathname'),
-      referer: h.get('referer'),
-      userAgent: h.get('user-agent'),
-      isPrefetch:
-        h.get('next-router-prefetch') === '1' ||
-        h.get('purpose') === 'prefetch' ||
-        h.get('x-middleware-prefetch') === '1',
-    }),
-  );
-
   // Light recovery surface, show a handful of products so a misdirected
-  // visitor lands on something useful instead of a dead-end.
+  // visitor lands on something useful instead of a dead-end. getProducts is
+  // build-time data here (this page is static), so it adds no per-request cost.
   const products = (await getProducts().catch(() => [])).slice(0, 4);
 
   return (
     <main>
+      {/* Report the missed path to /api/404 (server-side logging lives there,
+          off the static render path). */}
+      <NotFoundBeacon />
       <section style={{ padding: '80px 0 48px', textAlign: 'center' }}>
         <div className="container" style={{ maxWidth: 640 }}>
           <div style={{ marginBottom: 24, display: 'inline-flex' }}>

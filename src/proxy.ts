@@ -228,12 +228,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // Carry the requested path forward so app/not-found.tsx can record which URL
-  // 404'd (the 404 boundary can't otherwise read the original pathname). This
-  // is the only signal the 404 monitor needs; it costs one request header.
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set('x-pathname', pathname);
-  return NextResponse.next({ request: { headers: requestHeaders } });
+  // Plain pass-through. (We no longer inject an x-pathname request header for
+  // the 404 monitor — the not-found page is now static and beacons the missed
+  // path to /api/404 client-side, so the middleware doesn't mutate the request.)
+  return NextResponse.next();
 }
 
 // Map a known WP-style URL to the Next route, or null if no rule matches and
