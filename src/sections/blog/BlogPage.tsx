@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
@@ -31,6 +31,9 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
   const [activeFilter, setActiveFilter] = useState('All');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
+  // Anchor for pagination: clicking a page number should land the reader at the
+  // top of the results, not leave them at the bottom where the controls are.
+  const listTopRef = useRef<HTMLElement>(null);
 
   const featured = posts.find(p => p.featured);
   const filtered = useMemo(() => {
@@ -52,6 +55,13 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
   // separate "All articles" link dump to avoid orphaned (un-linked) posts.
   const pageStart = (safePage - 1) * POSTS_PER_PAGE;
   const pageEnd = safePage * POSTS_PER_PAGE;
+
+  const goToPage = (p: number) => {
+    setPage(Math.min(Math.max(p, 1), totalPages));
+    // Scroll the results back to the top so the new page reads from its first
+    // card. scrollMarginTop on the section keeps it clear of the sticky header.
+    listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <div>
@@ -92,7 +102,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
         </section>
       )}
 
-      <section style={{ padding: 'var(--section-gap) 0' }}>
+      <section ref={listTopRef} style={{ padding: 'var(--section-gap) 0', scrollMarginTop: 80 }}>
         <div className="container">
           {/* Search + filter rail */}
           <div style={{ display: 'flex', gap: 16, marginBottom: 32, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -164,7 +174,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
               style={{ display: 'flex', justifyContent: 'center', gap: 6, marginTop: 32 }}
             >
               <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
+                onClick={() => goToPage(safePage - 1)}
                 disabled={safePage <= 1}
                 aria-label="Previous page"
                 style={pageBtnStyle(false)}
@@ -174,7 +184,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
               {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
                 <button
                   key={p}
-                  onClick={() => setPage(p)}
+                  onClick={() => goToPage(p)}
                   aria-current={p === safePage ? 'page' : undefined}
                   aria-label={`Page ${p}`}
                   style={pageBtnStyle(p === safePage)}
@@ -183,7 +193,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
                 </button>
               ))}
               <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                onClick={() => goToPage(safePage + 1)}
                 disabled={safePage >= totalPages}
                 aria-label="Next page"
                 style={pageBtnStyle(false)}
