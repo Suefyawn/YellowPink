@@ -58,7 +58,7 @@ export async function ProductInventoryHistory({ productId }: { productId: string
           No stock movements recorded yet.
         </div>
       ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+        <div className="adm-table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
           <thead>
             <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
               {['When', 'Δ', 'Balance', 'Reason', 'Actor', 'Note'].map(h => (
@@ -99,7 +99,7 @@ export async function ProductInventoryHistory({ productId }: { productId: string
               );
             })}
           </tbody>
-        </table>
+        </table></div>
       )}
     </section>
   );

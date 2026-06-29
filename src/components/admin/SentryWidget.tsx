@@ -66,7 +66,7 @@ export async function SentryWidget() {
         Unresolved issues · refreshed {timeAgoShort(updatedAt)}
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginBottom: 16 }}>
         {[
           { label: 'Total issues', value: stats.total, color: '#6366f1' },
           { label: 'Errors',       value: stats.errors, color: '#ef4444' },

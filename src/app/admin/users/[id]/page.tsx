@@ -248,7 +248,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               No orders yet
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <div className="adm-table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #f3f4f6' }}>
                   {['Order #', 'Date', 'Items', 'Total', 'Status', 'Payment', ''].map(h => (
@@ -307,7 +307,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                   );
                 })}
               </tbody>
-            </table>
+            </table></div>
           )}
         </div>
       </div>

@@ -57,7 +57,7 @@ export async function SearchConsoleWidget() {
           {queries.length > 0 && (
             <>
               <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Top queries</div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+              <div className="adm-table-scroll"><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
                 <thead>
                   <tr style={{ color: '#9ca3af', textAlign: 'right' }}>
                     <th style={{ textAlign: 'left', fontWeight: 600, padding: '2px 0' }}>Query</th>
@@ -76,7 +76,7 @@ export async function SearchConsoleWidget() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             </>
           )}
         </div>

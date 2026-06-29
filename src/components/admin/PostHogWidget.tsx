@@ -70,7 +70,7 @@ export async function PostHogWidget() {
         Last 7 days · refreshed {timeAgoShort(updatedAt)}
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginBottom: 20 }}>
         {statItems.map(s => (
           <div key={s.label} style={{
             background: s.color + '10', borderRadius: 8, padding: '12px',

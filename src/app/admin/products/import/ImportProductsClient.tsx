@@ -109,7 +109,7 @@ export function ImportProductsClient() {
       {result && (
         <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 24 }}>
           <h2 style={{ margin: '0 0 12px', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Import result</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 12, marginBottom: 16 }}>
             <Stat label="Parsed"    value={result.parsed}   color="#374151" />
             <Stat label="Imported"  value={result.imported} color="#16a34a" />
             <Stat label="Skipped"   value={result.skipped}  color="#d97706" />

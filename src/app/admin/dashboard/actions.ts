@@ -473,8 +473,10 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
 // Upsert per day → idempotent, and late-arriving GSC data (it lags ~2-3 days)
 // backfills on the next run. Best-effort: never throws into the refresh.
 async function refreshSeoTrend(supabase: PermissiveSupabase): Promise<void> {
+  // Google powers the GSC/GA4 columns; PostHog powers the sessions column.
+  // Either source alone is enough to produce a useful trend, so we don't bail
+  // when Google is absent, we just skip the blocks that need it.
   const conn = await getGoogleConnection();
-  if (!conn) return;
 
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
   // GSC YYYY-MM-DD ↔ GA4 YYYYMMDD.
@@ -493,7 +495,7 @@ async function refreshSeoTrend(supabase: PermissiveSupabase): Promise<void> {
   };
 
   // ── GSC: per-day clicks / impressions / ctr / position ──
-  if (conn.gsc_site_url) {
+  if (conn?.gsc_site_url) {
     try {
       const daily = await gscQuery({ siteUrl: conn.gsc_site_url, startDate: fmt(start), endDate: fmt(end), dimensions: ['date'], rowLimit: 30 });
       for (const d of daily) {
@@ -514,7 +516,7 @@ async function refreshSeoTrend(supabase: PermissiveSupabase): Promise<void> {
   }
 
   // ── GA4: per-day sessions + users, and the Organic Search split ──
-  if (conn.ga4_property_id) {
+  if (conn?.ga4_property_id) {
     try {
       const totals = await ga4RunReport({ propertyId: conn.ga4_property_id, startDate: fmt(start), endDate: fmt(end), dimensions: ['date'], metrics: ['sessions', 'totalUsers'], limit: 60 });
       for (const row of totals) {
@@ -531,6 +533,31 @@ async function refreshSeoTrend(supabase: PermissiveSupabase): Promise<void> {
       }
       for (const [day, n] of organic) touch(day).ga4_organic_sessions = n;
     } catch { /* best-effort */ }
+  }
+
+  // ── PostHog: per-day sessions ──
+  // PostHog is the site's primary, most-complete traffic source (GA4 here
+  // under-counts), so it drives the Overview chart's "Sessions" metric. We
+  // write into ga4_sessions so the existing RPC/widgets read it unchanged;
+  // PostHog overrides any GA4 value for the same day. Best-effort.
+  const phKey = process.env.POSTHOG_PERSONAL_API_KEY;
+  if (phKey) {
+    try {
+      const endPlus1 = fmt(new Date(end.getTime() + 86_400_000));
+      const sessRows = await phQuery(phKey, `
+        SELECT toDate(timestamp) AS day, count(DISTINCT properties.$session_id) AS sessions
+        FROM events
+        WHERE event = '$pageview'
+          AND timestamp >= toDateTime('${fmt(start)} 00:00:00')
+          AND timestamp <  toDateTime('${endPlus1} 00:00:00')
+        GROUP BY day
+        ORDER BY day
+      `);
+      for (const row of sessRows) {
+        const day = String(row[0]).slice(0, 10);
+        touch(day).ga4_sessions = Math.round(Number(row[1] ?? 0));
+      }
+    } catch { /* best-effort: keep GSC/GA4 data even if PostHog errors */ }
   }
 
   if (rows.size === 0) return;

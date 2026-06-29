@@ -83,8 +83,22 @@ export function OverviewChart({ series }: { series: OverviewDay[] }) {
 
   return (
     <div style={{ background: 'white', borderRadius: 12, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden', marginBottom: 32 }}>
+      {/* Mobile: the 4-up metric tiles collapse to a 2×2 grid with tighter
+          padding so each value stays legible on a phone. */}
+      <style>{`
+        @media (max-width: 640px) {
+          .adm-overview-tiles { grid-template-columns: repeat(2, 1fr) !important; }
+          .adm-overview-tiles > button { padding: 12px 14px !important; }
+          .adm-overview-tiles > button:nth-child(even) { border-right: none !important; }
+          .adm-overview-tiles > button:nth-child(-n+2) { border-bottom: 1px solid #f3f4f6 !important; }
+          .adm-ov-val { font-size: 1.2rem !important; }
+          .adm-ov-head { padding: 14px 16px 0 !important; }
+          .adm-ov-chart { padding: 14px 12px 6px !important; }
+          .adm-ov-legend { padding: 0 16px 14px !important; }
+        }
+      `}</style>
       {/* Range toggle */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 0', flexWrap: 'wrap', gap: 8 }}>
+      <div className="adm-ov-head" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px 0', flexWrap: 'wrap', gap: 8 }}>
         <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#111827' }}>Overview</h2>
         <div style={{ display: 'flex', gap: 4 }}>
           {RANGES.map(r => {
@@ -120,7 +134,7 @@ export function OverviewChart({ series }: { series: OverviewDay[] }) {
               }}
             >
               <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{m.label}</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
+              <div className="adm-ov-val" style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginTop: 4, fontVariantNumeric: 'tabular-nums' }}>
                 {disabled ? '—' : m.fmt(value)}
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, minHeight: 18 }}>
@@ -144,8 +158,8 @@ export function OverviewChart({ series }: { series: OverviewDay[] }) {
       </div>
 
       {/* Big interactive chart */}
-      <div style={{ padding: '18px 20px 8px', position: 'relative' }}>
-        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block' }} role="img" aria-label={`${metric.label} over ${range} days`}
+      <div className="adm-ov-chart" style={{ padding: '18px 20px 8px', position: 'relative' }}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 'auto', display: 'block', touchAction: 'pan-y' }} role="img" aria-label={`${metric.label} over ${range} days`}
           onMouseLeave={() => setHover(null)}
           onMouseMove={e => {
             const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
@@ -153,6 +167,21 @@ export function OverviewChart({ series }: { series: OverviewDay[] }) {
             const i = Math.round(((px - PAD_L) / plotW) * (n - 1));
             setHover(Math.max(0, Math.min(n - 1, i)));
           }}
+          onTouchStart={e => {
+            const t = e.touches[0]; if (!t) return;
+            const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+            const px = ((t.clientX - rect.left) / rect.width) * W;
+            const i = Math.round(((px - PAD_L) / plotW) * (n - 1));
+            setHover(Math.max(0, Math.min(n - 1, i)));
+          }}
+          onTouchMove={e => {
+            const t = e.touches[0]; if (!t) return;
+            const rect = (e.currentTarget as SVGSVGElement).getBoundingClientRect();
+            const px = ((t.clientX - rect.left) / rect.width) * W;
+            const i = Math.round(((px - PAD_L) / plotW) * (n - 1));
+            setHover(Math.max(0, Math.min(n - 1, i)));
+          }}
+          onTouchEnd={() => setHover(null)}
         >
           {/* y gridlines + scale */}
           {[0, 0.5, 1].map(f => {
@@ -195,7 +224,7 @@ export function OverviewChart({ series }: { series: OverviewDay[] }) {
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 16, padding: '0 20px 16px', fontSize: '0.7rem', color: '#9ca3af' }}>
+      <div className="adm-ov-legend" style={{ display: 'flex', gap: 16, padding: '0 20px 16px', fontSize: '0.7rem', color: '#9ca3af' }}>
         <span><span style={{ display: 'inline-block', width: 10, height: 2, background: metric.color, verticalAlign: 'middle', marginRight: 4 }} />This period</span>
         <span><span style={{ display: 'inline-block', width: 10, height: 0, borderTop: '2px dashed #cbd5e1', verticalAlign: 'middle', marginRight: 4 }} />Previous period</span>
       </div>
