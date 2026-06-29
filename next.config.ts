@@ -157,6 +157,17 @@ const nextConfig: NextConfig = {
       { source: '/blog/:slug',       headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
       { source: '/page/:slug',       headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
       { source: '/privacy',          headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      // Remaining public archive routes (all static/ISR now). They were already
+      // edge-cached via Next's own ISR headers; list them explicitly so the
+      // emitted Cache-Control matches the rest of the catalog (s-maxage + SWR).
+      { source: '/brands',                       headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/brand/:slug',                  headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/collections',                  headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/collection/:slug',             headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/tag/:slug',                    headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/k-beauty',                     headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/medical-review-board',         headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/medical-review-board/:slug',   headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
 
       // Crawler endpoints — longer s-maxage. Note: /llms.txt sets its own
       // 24 h Cache-Control inside the route handler, so we don't override
