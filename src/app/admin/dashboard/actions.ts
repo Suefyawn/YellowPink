@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
-import { getGoogleConnection, gscQuery, ga4RunReport, listSitemaps } from '@/lib/google';
+import { getGoogleConnection, gscQuery, ga4RunReport, listSitemaps, submitSitemap } from '@/lib/google';
+import { SITE_URL } from '@/lib/seo';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
@@ -538,6 +539,18 @@ async function refreshSeoTrend(supabase: PermissiveSupabase): Promise<void> {
   await (supabase.from('seo_daily_metrics') as any).upsert(payload, { onConflict: 'day' });
 }
 
+// Re-submit the sitemap to Search Console on every refresh so Google re-fetches
+// it and discovers newly-published posts/products within a day, instead of
+// waiting for an organic re-crawl. Submitting an already-registered sitemap is
+// idempotent and just nudges a re-read. Best-effort: never throws.
+async function resubmitSitemap(): Promise<void> {
+  const conn = await getGoogleConnection();
+  if (!conn?.gsc_site_url) return;
+  try {
+    await submitSitemap(conn.gsc_site_url, `${SITE_URL}/sitemap.xml`);
+  } catch { /* best-effort */ }
+}
+
 export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: string[] }> {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -549,6 +562,7 @@ export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: str
     refreshSentry(supabase),
     refreshGoogle(supabase),
     refreshSeoTrend(supabase),
+    resubmitSitemap(),
   ]);
 
   const errors = results
