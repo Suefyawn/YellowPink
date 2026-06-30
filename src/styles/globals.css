@@ -652,6 +652,20 @@ a.underline,
 @media (hover: hover) {
   .blog-body a.blog-cta:hover { background: var(--brand-pink-text, #9d174d); transform: translateY(-1px); }
 }
+
+/* Blog FAQ accordion (rendered from the post's FAQ section, see blog-faq.ts).
+   Hide the native disclosure triangle and rotate the "+" into an "×" on open
+   so it reads as a proper, branded FAQ rather than a list of headings. */
+.blog-faq { scroll-margin-top: 96px; }
+.blog-faq-item summary { list-style: none; }
+.blog-faq-item summary::-webkit-details-marker { display: none; }
+.blog-faq-item[open] .blog-faq-icon { transform: rotate(45deg); }
+.blog-faq-item .blog-faq-answer p:first-child { margin-top: 0; }
+.blog-faq-item .blog-faq-answer a { color: var(--brand-pink-text, #9d174d); text-decoration: underline; text-underline-offset: 2px; }
+@media (hover: hover) {
+  .blog-faq-item summary:hover { color: var(--brand-pink-text, #9d174d); }
+}
+
 @media (max-width: 1023px) {
   .blog-article-grid { display: block; }
   .blog-article-main { margin: 0 auto; }
