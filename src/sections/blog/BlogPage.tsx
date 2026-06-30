@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { formatBlogDate } from '@/lib/dates';
 import type { BlogPost } from '@/types';
 
 const PAGE_SIZE = 12;
@@ -145,7 +146,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
                   <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.15, marginBottom: 12 }}>{featured.title}</h2>
                   <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 16 }}>{featured.excerpt}</p>
                   <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                    <span className="small-text">{featured.date}</span>
+                    <span className="small-text">{formatBlogDate(featured.date)}</span>
                     <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-500)' }} />
                     <span className="small-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}><ClockIcon />{featured.read_time}</span>
                   </div>
@@ -158,9 +159,12 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
 
       <section ref={listTopRef} style={{ padding: 'var(--section-gap) 0', scrollMarginTop: 80 }}>
         <div className="container">
-          {/* Search + sort row */}
-          <div style={{ display: 'flex', gap: 16, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ position: 'relative', flex: '1 1 280px', maxWidth: 420, minWidth: 220 }}>
+          {/* Search row, full-width on its own line at every breakpoint so it
+              never has to share space with the sort control (that fought
+              for room on narrow screens and got pushed onto an awkward,
+              isolated right-aligned line). */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ position: 'relative', maxWidth: 420 }}>
               <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
                 style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-500)', pointerEvents: 'none' }}>
                 <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
@@ -178,22 +182,6 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
                   outline: 'none',
                 }}
               />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
-              <label htmlFor="blog-sort" className="small-text" style={{ color: 'var(--ink-500)' }}>Sort</label>
-              <select
-                id="blog-sort"
-                value={sortMode}
-                onChange={e => updateSort(e.target.value as SortMode)}
-                style={{
-                  padding: '8px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
-                  fontSize: '0.8125rem', fontFamily: 'var(--font-ui)', background: 'transparent', color: 'var(--ink-700)',
-                  cursor: 'pointer', outline: 'none',
-                }}
-              >
-                <option value="newest">Newest</option>
-                <option value="quick">Quickest read</option>
-              </select>
             </div>
           </div>
 
@@ -213,28 +201,49 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
             ))}
           </div>
 
-          {/* Results count + active filters */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
-            <span className="small-text" style={{ color: 'var(--ink-500)' }}>
-              {filtered.length} {filtered.length === 1 ? 'article' : 'articles'}
-            </span>
-            {(activeFilter !== 'All' || query) && (
-              <>
-                {activeFilter !== 'All' && (
-                  <button onClick={() => updateFilter('All')} style={activePillStyle}>
-                    {activeFilter} <span aria-hidden="true">×</span>
+          {/* Results count + active filters (left) / sort (right) — paired on
+              one row since they're both about "what you're looking at", and
+              this is the row with room to spare now sort isn't crammed next
+              to the search input. */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <span className="small-text" style={{ color: 'var(--ink-500)' }}>
+                {filtered.length} {filtered.length === 1 ? 'article' : 'articles'}
+              </span>
+              {(activeFilter !== 'All' || query) && (
+                <>
+                  {activeFilter !== 'All' && (
+                    <button onClick={() => updateFilter('All')} style={activePillStyle}>
+                      {activeFilter} <span aria-hidden="true">×</span>
+                    </button>
+                  )}
+                  {query && (
+                    <button onClick={() => updateQuery('')} style={activePillStyle}>
+                      “{query}” <span aria-hidden="true">×</span>
+                    </button>
+                  )}
+                  <button onClick={clearAll} className="text-link small-text" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                    Clear all
                   </button>
-                )}
-                {query && (
-                  <button onClick={() => updateQuery('')} style={activePillStyle}>
-                    “{query}” <span aria-hidden="true">×</span>
-                  </button>
-                )}
-                <button onClick={clearAll} className="text-link small-text" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                  Clear all
-                </button>
-              </>
-            )}
+                </>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <label htmlFor="blog-sort" className="small-text" style={{ color: 'var(--ink-500)' }}>Sort</label>
+              <select
+                id="blog-sort"
+                value={sortMode}
+                onChange={e => updateSort(e.target.value as SortMode)}
+                style={{
+                  padding: '8px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
+                  fontSize: '0.8125rem', fontFamily: 'var(--font-ui)', background: 'transparent', color: 'var(--ink-700)',
+                  cursor: 'pointer', outline: 'none',
+                }}
+              >
+                <option value="newest">Newest</option>
+                <option value="quick">Quickest read</option>
+              </select>
+            </div>
           </div>
 
           {filtered.length === 0 ? (
@@ -276,7 +285,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
                     <h3 style={{ fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3, marginBottom: 8 }}>{post.title}</h3>
                     <p className="small-text" style={{ marginBottom: 8, lineHeight: 1.5 }}>{post.excerpt}</p>
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <span className="small-text" style={{ fontSize: '0.75rem' }}>{post.date}</span>
+                      <span className="small-text" style={{ fontSize: '0.75rem' }}>{formatBlogDate(post.date)}</span>
                       <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-500)' }} />
                       <span className="small-text" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}><ClockIcon />{post.read_time}</span>
                     </div>

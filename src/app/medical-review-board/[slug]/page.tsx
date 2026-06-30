@@ -30,6 +30,7 @@ async function reviewedPosts(reviewerId: string): Promise<{ slug: string; title:
     .select('slug, title')
     .eq('reviewer_id', reviewerId)
     .order('date', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(50);
   return (data ?? []) as { slug: string; title: string }[];
 }

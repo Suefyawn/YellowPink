@@ -175,7 +175,11 @@ export const blogPostInputSchema = z.object({
   slug:      slugSchema,
   excerpt:   z.string().trim().min(1, 'Excerpt is required').max(300),
   category:  z.string().trim().min(1, 'Category is required'),
-  date:      z.string().min(1, 'Date is required'),
+  // ISO 'YYYY-MM-DD' only, matching the admin form's native <input type="date">.
+  // A free-text field here previously let imported rows in as e.g. "June 30,
+  // 2026", a value that sorts wrong against ISO dates as plain text and isn't
+  // valid ISO 8601 for the Article datePublished structured data.
+  date:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   read_time: z.string().trim().default('3 min read'),
   featured:  z.boolean().default(false),
   body:      z.string().optional().nullable(),

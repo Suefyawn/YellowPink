@@ -11,6 +11,7 @@ import { AdminFab } from '@/components/admin/AdminFab';
 import { ResubmitAllButton } from '@/components/admin/IndexingButtons';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { formatBlogDate } from '@/lib/dates';
 import type { BlogPost } from '@/types';
 
 const PAGE_SIZE = 20;
@@ -34,7 +35,7 @@ export default async function BlogAdminPage({
   const categories = Array.from(new Set((allPosts ?? []).map((p: { category: string }) => p.category))).sort() as string[];
 
   let countQuery = supabase.from('blog_posts').select('*', { count: 'exact', head: true });
-  let dataQuery = supabase.from('blog_posts').select('*').order('date', { ascending: false }).range(from, to);
+  let dataQuery = supabase.from('blog_posts').select('*').order('date', { ascending: false }).order('created_at', { ascending: false }).range(from, to);
 
   if (category && category !== 'All') {
     countQuery = countQuery.eq('category', category);
@@ -97,7 +98,7 @@ export default async function BlogAdminPage({
                     <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2, fontFamily: 'monospace' }} title={p.slug}>{p.slug}</div>
                   </td>
                   <td data-label="Category" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>{p.category}</td>
-                  <td data-label="Date" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{p.date}</td>
+                  <td data-label="Date" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{formatBlogDate(p.date)}</td>
                   <td data-label="Read time" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>{p.read_time}</td>
                   <td data-label="Featured" style={{ padding: '12px 16px', textAlign: 'center' }}>
                     {p.featured ? (

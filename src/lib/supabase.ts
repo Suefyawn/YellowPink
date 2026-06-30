@@ -302,7 +302,12 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
     const { data, error } = await supabase
       .from('blog_posts')
       .select(BLOG_TILE_COLUMNS)
-      .order('date', { ascending: false });
+      // Secondary tiebreak on created_at: several posts share the same
+      // editorial date (e.g. a whole batch published the same day), and
+      // `date` alone leaves Postgres to pick an arbitrary, unstable order
+      // among them.
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []) as unknown as BlogPost[];
   }, DEMO_BLOG_POSTS);

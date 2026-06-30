@@ -46,7 +46,9 @@ const apiImageUrl = z
 // defaults it to today) and image_url is relaxed per above.
 export const blogApiCreateSchema = blogPostInputSchema.extend({
   image_url: apiImageUrl,
-  date: z.string().trim().min(1).optional(),
+  // Same ISO 'YYYY-MM-DD' constraint as the base schema, just optional (the
+  // route defaults it to today when omitted).
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').optional(),
 });
 
 // Update: every field optional (partial PATCH). `slug` is still validated when

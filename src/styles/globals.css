@@ -633,6 +633,15 @@ a.underline,
   .cms-prose h3 { font-size: 1.15rem; }
 }
 
+/* The cms-prose typography rules above give blog articles real paragraph/
+   heading rhythm (added alongside .blog-body in BlogPostPage.tsx, previously
+   the article HTML had no base typography at all and fell back to cramped
+   browser defaults). A touch of extra letter-spacing on running text makes
+   long-form reading feel less dense, scoped to .blog-body so the shared
+   .cms-prose rules used by the static CMS pages (Privacy, Terms, etc) are
+   untouched. */
+.blog-body p, .blog-body li { letter-spacing: 0.01em; }
+
 /* Anchor jumps land clear of the sticky site header. */
 .blog-body h2 { scroll-margin-top: 96px; }
 /* Comparison tables in long-form posts. The sanitizer strips the wp-block-table

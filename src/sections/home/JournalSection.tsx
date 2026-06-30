@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { formatBlogDate } from '@/lib/dates';
 import type { BlogPost } from '@/types';
 
 /** Homepage "From the Journal" rail, the three most recent posts, linking
@@ -26,7 +27,7 @@ export function JournalSection({ posts }: { posts: BlogPost[] }) {
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3, marginBottom: 8 }}>{post.title}</h3>
                 <p className="small-text" style={{ marginBottom: 8, lineHeight: 1.5 }}>{post.excerpt}</p>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  <span className="small-text" style={{ fontSize: '0.75rem' }}>{post.date}</span>
+                  <span className="small-text" style={{ fontSize: '0.75rem' }}>{formatBlogDate(post.date)}</span>
                   <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-500)' }} />
                   <span className="small-text" style={{ fontSize: '0.75rem' }}>{post.read_time}</span>
                 </div>
