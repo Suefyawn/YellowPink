@@ -10,6 +10,7 @@ import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
 import { absoluteUrl, jsonLd, faqLd } from '@/lib/seo';
+import { formatBlogDate } from '@/lib/dates';
 import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import { isHealthCategory } from '@/lib/category-taxonomy';
 import { reviewerLabel, type MedicalReviewer } from '@/lib/eeat';
@@ -115,14 +116,13 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
       {post.body ? (
         bodyRest ? (
           <>
-            <div className="blog-body" style={{ lineHeight: 1.8, color: 'var(--ink-700)' }} dangerouslySetInnerHTML={{ __html: bodyTop }} />
+            <div className="blog-body cms-prose" dangerouslySetInnerHTML={{ __html: bodyTop }} />
             <BlogProductNudge products={relatedProducts} />
-            <div className="blog-body" style={{ lineHeight: 1.8, color: 'var(--ink-700)' }} dangerouslySetInnerHTML={{ __html: bodyRest }} />
+            <div className="blog-body cms-prose" dangerouslySetInnerHTML={{ __html: bodyRest }} />
           </>
         ) : (
           <div
-            className="blog-body"
-            style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}
+            className="blog-body cms-prose"
             dangerouslySetInnerHTML={{ __html: bodyHtml }}
           />
         )
@@ -217,7 +217,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
                 <div>
                   <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>By {author}</div>
                   <div className="small-text">
-                    {post.date}
+                    {formatBlogDate(post.date)}
                     {reviewer && <> · Medically reviewed</>}
                   </div>
                 </div>
@@ -253,7 +253,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
                   <strong style={{ color: 'var(--ink-900)' }}>{reviewerLabel(reviewer)}</strong>
                 )}
                 {reviewer.specialty ? ` · ${reviewer.specialty}` : ''}
-                {' '}· Last reviewed {post.updated_at ? new Date(post.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : post.date}
+                {' '}· Last reviewed {post.updated_at ? new Date(post.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : formatBlogDate(post.date)}
               </span>
             </div>
           )}
@@ -308,7 +308,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
                         </div>
                         <Overline style={{ color: 'var(--ink-500)', display: 'block', marginBottom: 4 }}>{rp.category}</Overline>
                         <h3 className="h3" style={{ marginBottom: 4 }}>{rp.title}</h3>
-                        <span className="small-text">{rp.date} · {rp.read_time}</span>
+                        <span className="small-text">{formatBlogDate(rp.date)} · {rp.read_time}</span>
                       </article>
                     </Link>
                   ))}

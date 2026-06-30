@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     const safe = q.replace(/[,%_]/g, m => `\\${m}`);
     query = query.or(`title.ilike.%${safe}%,excerpt.ilike.%${safe}%`);
   }
-  query = query.order('date', { ascending: false }).range(offset, offset + limit - 1);
+  query = query.order('date', { ascending: false }).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
 
   const { data, error, count } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
