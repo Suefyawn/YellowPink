@@ -495,6 +495,20 @@ export async function sendReviewerApprovedEmail(args: { name: string; email: str
   await send({ to: args.email, subject: 'Your Yellow Pink reviewer access', html });
 }
 
+/** Nudge a reviewer to sign in and complete their public profile (photo, bio,
+ *  specialty, experience, languages). Sent from the admin board when a profile
+ *  is thin. The login itself is a one-time email link, no password. */
+export async function sendReviewerProfileInviteEmail(args: { name: string; email: string }): Promise<void> {
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">Please complete your reviewer profile</h2>
+    <p>Hi ${escapeHtml(args.name)}, your profile on the Yellow Pink Medical Review Board is live, but a few details are still missing.</p>
+    <p>A complete profile (a photo, a short bio, your specialty, years of experience and languages) builds trust with readers and shows your expertise clearly on the articles you review. It only takes a couple of minutes.</p>
+    <p style="margin:20px 0 0"><a href="${SITE_URL}/reviewer/login" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Sign in and complete your profile →</a></p>
+    <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Sign in at ${SITE_URL}/reviewer/login using this email address (${escapeHtml(args.email)}). We send a one-time link each time, so there is no password to remember.</p>
+  `);
+  await send({ to: args.email, subject: 'Complete your Yellow Pink reviewer profile', html });
+}
+
 // ─── 9. Customer: abandoned cart reminder ──────────────────────────────────
 export async function sendAbandonedCartEmail(args: {
   email: string;

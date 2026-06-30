@@ -5,7 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
-import { sendReviewerApprovedEmail } from '@/lib/email';
+import { sendReviewerApprovedEmail, sendReviewerProfileInviteEmail } from '@/lib/email';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // The Medical Review Board rides the `blog` permission, it's content/editorial
@@ -57,6 +57,7 @@ export async function saveReviewer(formData: FormData): Promise<void> {
     education: str(formData, 'education') || null,
     experience_years: Number.isFinite(years) && years > 0 ? years : null,
     languages,
+    email: str(formData, 'email').toLowerCase() || null,
     review_topics: topics,
     active: formData.get('active') != null,
     sort_order: Number(str(formData, 'sort_order')) || 0,
@@ -73,6 +74,38 @@ export async function saveReviewer(formData: FormData): Promise<void> {
     await logAudit(session, { action: 'reviewer.create', entity: 'content_reviewer', diff: { name, slug } });
   }
   revalidateAll();
+}
+
+/** Provision (or link) a login for a reviewer if they don't have one yet, then
+ *  email them an invite to sign in and complete their public profile. No-op if
+ *  the reviewer has no email on file, add one via the edit form first. */
+export async function sendReviewerInvite(formData: FormData): Promise<void> {
+  const session = await assertBlog();
+  const id = str(formData, 'id');
+  if (!id) return;
+  const admin = supabaseAdmin();
+
+  const { data: r } = await admin
+    .from('content_reviewers')
+    .select('id, name, email, auth_user_id')
+    .eq('id', id).maybeSingle();
+  if (!r || !r.email) { log.warn('reviewer.invite_no_email', { id }); return; }
+  const email = (r.email as string).toLowerCase();
+
+  // Ensure a login exists so /reviewer/login works for them.
+  if (!r.auth_user_id) {
+    let authUserId: string | null = null;
+    const { data: createdUser, error: cuErr } = await admin.auth.admin.createUser({ email, email_confirm: true });
+    if (createdUser?.user) authUserId = createdUser.user.id;
+    else { if (cuErr) log.warn('reviewer.invite_createuser', { error: cuErr.message }); authUserId = await findAuthUserByEmail(admin, email); }
+    if (authUserId) await admin.from('content_reviewers').update({ auth_user_id: authUserId }).eq('id', id);
+  }
+
+  try { await sendReviewerProfileInviteEmail({ name: r.name as string, email }); }
+  catch (err) { log.warn('reviewer.invite_email_failed', { err: err instanceof Error ? err.message : String(err) }); }
+
+  await logAudit(session, { action: 'reviewer.invite', entity: 'content_reviewer', entity_id: id, diff: { email } });
+  revalidatePath('/admin/reviewers');
 }
 
 /** Make one reviewer the default (fallback for health posts with no explicit
