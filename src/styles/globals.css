@@ -657,6 +657,7 @@ a.underline,
    Hide the native disclosure triangle and rotate the "+" into an "×" on open
    so it reads as a proper, branded FAQ rather than a list of headings. */
 .blog-faq { scroll-margin-top: 96px; }
+@media (max-width: 600px) { .blog-nudge-grid { grid-template-columns: 1fr !important; } }
 .blog-faq-item summary { list-style: none; }
 .blog-faq-item summary::-webkit-details-marker { display: none; }
 .blog-faq-item[open] .blog-faq-icon { transform: rotate(45deg); }
