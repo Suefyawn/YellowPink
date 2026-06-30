@@ -297,7 +297,12 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // Sticky mobile buy-bar: shown once the in-page buy panel scrolls out of
   // view so the Add-to-Cart action is always one tap away on a phone.
   const buyPanelRef = useRef<HTMLDivElement | null>(null);
+  const variantPickerRef = useRef<HTMLDivElement | null>(null);
   const stickyBarRef = useRef<HTMLDivElement | null>(null);
+  // Brief highlight on the variant picker when the sticky bar sends a shopper
+  // up to choose options, so it's obvious *what* needs picking (otherwise the
+  // "Select options" tap can feel like a dead scroll).
+  const [flashPicker, setFlashPicker] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const { addToCart } = useCart();
   // Free-shipping copy tracks the owner's live setting (threshold + on/off).
@@ -457,7 +462,10 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // "Select options" button with no on-screen way to act.
   const handleStickyCta = () => {
     if (needsSelection) {
-      buyPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      // Scroll to the picker itself (not the buy row below it) and flash it.
+      (variantPickerRef.current ?? buyPanelRef.current)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setFlashPicker(true);
+      setTimeout(() => setFlashPicker(false), 1400);
       return;
     }
     handleAdd();
@@ -542,12 +550,18 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             <hr className="hairline" style={{ marginBottom: 24 }} />
 
             {attributes.length > 0 && (
-              <VariantPicker
-                attributes={attributes}
-                variants={variants}
-                selected={selected}
-                onChange={setSelected}
-              />
+              <div
+                ref={variantPickerRef}
+                className={flashPicker ? 'pdp-picker-flash' : undefined}
+                style={{ scrollMarginTop: 80, borderRadius: 12, transition: 'box-shadow 200ms, background 200ms', marginBottom: 4 }}
+              >
+                <VariantPicker
+                  attributes={attributes}
+                  variants={variants}
+                  selected={selected}
+                  onChange={setSelected}
+                />
+              </div>
             )}
 
             <div ref={buyPanelRef} style={{ display: 'flex', gap: 12, marginBottom: 24 }}>

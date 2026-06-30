@@ -656,6 +656,14 @@ a.underline,
 /* Blog FAQ accordion (rendered from the post's FAQ section, see blog-faq.ts).
    Hide the native disclosure triangle and rotate the "+" into an "×" on open
    so it reads as a proper, branded FAQ rather than a list of headings. */
+/* PDP: transient highlight on the variant picker when the mobile sticky bar
+   sends a shopper up to choose options. */
+@keyframes pdp-picker-flash {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(197,40,106,0); background: transparent; }
+  20%, 60% { box-shadow: 0 0 0 3px rgba(197,40,106,0.35); background: rgba(197,40,106,0.05); }
+}
+.pdp-picker-flash { animation: pdp-picker-flash 1.4s ease-in-out; }
+
 .blog-faq { scroll-margin-top: 96px; }
 @media (max-width: 600px) { .blog-nudge-grid { grid-template-columns: 1fr !important; } }
 .blog-faq-item summary { list-style: none; }
