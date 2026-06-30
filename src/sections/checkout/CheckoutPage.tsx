@@ -84,7 +84,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   // qualifying cart shows FREE immediately instead of flashing "PKR 200"
   // before calculateShipping resolves. The effect below corrects it against
   // the real zone/rate config (and the customer's province).
-  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate } = useCommerceSettings();
+  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate, loyaltyPkrPerPoint } = useCommerceSettings();
   const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string }>(() => {
     const sub = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
     return freeShippingEnabled && sub >= freeShippingThreshold
@@ -152,9 +152,17 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   const shipping = shippingInfo.rate;
   const beforeRewards = lineTotal + shipping;
 
-  // Loyalty points redemption, capped at the payable amount.
-  const pointsCovers = Math.min(pointsRedeem, beforeRewards);
-  const total        = Math.max(0, beforeRewards - pointsCovers);
+  // Loyalty points redemption. `pointsRedeem` is a raw points count, converted
+  // to a PKR discount using the admin-configured rate (Settings → Loyalty →
+  // "PKR per point at redemption", defaults to 1:1), capped at the payable
+  // amount. `pointsToDebit` is the actual integer points spent server-side,
+  // rounded up just enough to cover the (possibly-capped) discount, never more
+  // than the customer asked to redeem.
+  const pointsDiscount = Math.min(pointsRedeem * loyaltyPkrPerPoint, beforeRewards);
+  const pointsToDebit  = loyaltyPkrPerPoint > 0
+    ? Math.min(pointsRedeem, Math.ceil(pointsDiscount / loyaltyPkrPerPoint))
+    : 0;
+  const total = Math.max(0, beforeRewards - pointsDiscount);
 
   // Recompute shipping whenever subtotal or province changes.
   const [shippingLoading, setShippingLoading] = useState(false);
@@ -306,7 +314,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
             ...(readAttribution() ?? {}),
           },
           gift_card_code:   null,
-          points_redeem:    pointsCovers > 0 ? pointsCovers : null,
+          points_redeem:    pointsToDebit > 0 ? pointsToDebit : null,
           referred_by_code: null,
         } as never);
         if (!error) break;
@@ -532,18 +540,27 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                 </div>
               )}
 
-              {/* Loyalty points redemption (only when signed in with balance) */}
-              {loyalty && loyalty.points_balance > 0 && (
+              {/* Loyalty points redemption (only when signed in with balance).
+                  maxPoints is rate-aware: the most points that are either
+                  available or needed to fully cover the payable amount. */}
+              {loyalty && loyalty.points_balance > 0 && (() => {
+                const maxPoints = loyaltyPkrPerPoint > 0
+                  ? Math.min(loyalty.points_balance, Math.ceil(beforeRewards / loyaltyPkrPerPoint))
+                  : loyalty.points_balance;
+                return (
                 <div style={{ marginBottom: 12, padding: '8px 10px', background: '#fffbeb', borderRadius: 6, border: '1px solid #fde68a' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                    <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600 }}>★ {loyalty.points_balance.toLocaleString()} points available</span>
+                    <span style={{ fontSize: '0.75rem', color: '#92400e', fontWeight: 600 }}>
+                      ★ {loyalty.points_balance.toLocaleString()} points available
+                      {loyaltyPkrPerPoint !== 1 && <> (1 point = PKR {loyaltyPkrPerPoint})</>}
+                    </span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input
                         aria-label="Points to redeem"
-                        type="number" min={0} max={Math.min(loyalty.points_balance, beforeRewards)}
+                        type="number" min={0} max={maxPoints}
                         value={pointsRedeemInput}
                         onChange={e => {
-                          const n = e.target.value === '' ? '' : Math.max(0, Math.min(loyalty.points_balance, Number(e.target.value)));
+                          const n = e.target.value === '' ? '' : Math.max(0, Math.min(maxPoints, Number(e.target.value)));
                           setPointsRedeemInput(n);
                           setPointsRedeem(typeof n === 'number' ? n : 0);
                         }}
@@ -551,14 +568,14 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                         style={{ width: 70, padding: '4px 6px', fontSize: '0.75rem', border: '1px solid #fde68a', borderRadius: 4, background: 'white', fontFamily: 'monospace' }}
                       />
                       <button aria-label="Use maximum available points" onClick={() => {
-                        const max = Math.min(loyalty.points_balance, beforeRewards);
-                        setPointsRedeemInput(max);
-                        setPointsRedeem(max);
+                        setPointsRedeemInput(maxPoints);
+                        setPointsRedeem(maxPoints);
                       }} style={{ background: 'none', border: 'none', color: '#92400e', cursor: 'pointer', fontSize: '0.6875rem', fontWeight: 600 }}>Use max</button>
                     </div>
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                 <span className="small-text">Subtotal</span>
@@ -574,10 +591,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                 <span className="small-text">Shipping{shippingInfo.label ? ` (${shippingInfo.label})` : ''}</span>
                 <span className="small-text tabular-nums" aria-live="polite" style={{ fontWeight: 500, color: shippingLoading ? 'var(--ink-500)' : shipping === 0 ? 'var(--success)' : 'inherit' }}>{shippingLoading ? 'updating…' : shipping === 0 ? 'FREE' : `PKR ${shipping}`}</span>
               </div>
-              {pointsCovers > 0 && (
+              {pointsDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                   <span className="small-text" style={{ color: '#92400e' }}>Loyalty points</span>
-                  <span className="small-text tabular-nums" style={{ fontWeight: 500, color: '#92400e' }}>− PKR {pointsCovers.toLocaleString()}</span>
+                  <span className="small-text tabular-nums" style={{ fontWeight: 500, color: '#92400e' }}>− PKR {pointsDiscount.toLocaleString()}</span>
                 </div>
               )}
               <hr className="hairline" style={{ margin: '16px 0' }} />

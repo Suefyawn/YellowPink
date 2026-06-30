@@ -829,6 +829,20 @@ a.underline,
   .adm-form-3col { grid-template-columns: 1fr !important; }
   .adm-variant-attrs { grid-template-columns: 1fr 1fr !important; }
   .adm-variant-row { grid-template-columns: 1fr 1fr !important; }
+  /* Inventory → "Log a stock change" form: 5 columns (product/qty/reason/
+   * note/submit) crams unusably on a phone, stack to one field per row. */
+  .adm-stock-form { grid-template-columns: 1fr !important; }
+}
+
+/* Admin small/summary tables that don't use the stacked-card pattern (P&L,
+ * ROAS, COD reconciliation, inventory ledger, dashboard comparison widgets):
+ * scroll horizontally on phones instead of squashing columns unreadably or
+ * overflowing the page. `.adm-table-scroll` is a wrapper div around the
+ * `<table>`. (Was referenced in several pages with no matching rule, a no-op
+ * that left those tables to overflow uncontained, fixed here.) */
+.adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 767px) {
+  .adm-table-scroll table { min-width: 480px; }
 }
 
 /* Admin data tables → stacked cards on phones.

@@ -281,6 +281,7 @@ export default async function InventoryPage({
       <h2 style={{ margin: '0 0 10px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Log a stock change</h2>
       <form
         action={adjustStock}
+        className="adm-stock-form"
         style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 16, marginBottom: 24, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr auto', gap: 12, alignItems: 'end' }}
       >
         <div>
