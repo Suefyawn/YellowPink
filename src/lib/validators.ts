@@ -28,6 +28,13 @@ export const pkPhoneSchema = z.string()
 export const httpsUrlSchema = z.string()
   .refine(u => /^https?:\/\//i.test(u), 'URL must start with http:// or https://');
 
+// Like httpsUrlSchema but also accepts a site-relative path (e.g.
+// /blog-heroes/foo.webp). Locally-hosted hero/cover images are stored as
+// root-relative paths, so an absolute https URL must not be required, otherwise
+// editing such a post in the admin fails validation on the image field.
+export const imageRefSchema = z.string()
+  .refine(u => /^https?:\/\//i.test(u) || u.startsWith('/'), 'Must be an https URL or a /path');
+
 export const positiveNumber = z.coerce.number().nonnegative('Must be 0 or more');
 export const positiveInt    = z.coerce.number().int().nonnegative('Must be a whole number');
 
@@ -172,7 +179,7 @@ export const blogPostInputSchema = z.object({
   read_time: z.string().trim().default('3 min read'),
   featured:  z.boolean().default(false),
   body:      z.string().optional().nullable(),
-  image_url: httpsUrlSchema.optional().or(z.literal('')).nullable(),
+  image_url: imageRefSchema.optional().or(z.literal('')).nullable(),
   author:    z.string().trim().max(120).optional().or(z.literal('')).nullable(),
   // Medical Review Board assignment, empty string (the "None" option) → null.
   reviewer_id: z.preprocess(

@@ -49,16 +49,20 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   // Unpublished/renamed post? Honour a manual redirect before 404ing.
   if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
 
-  // E-E-A-T: resolve the medical reviewer for YMYL health posts (same gate as
-  // the medical disclaimer). Priority: explicit per-post Review Board
-  // assignment → the default board reviewer. null on beauty posts or when no
-  // reviewer is configured. (The legacy store-wide setting was retired, the
-  // Medical Review Board is the single source of truth.)
+  // E-E-A-T: resolve the medical reviewer. An explicit per-post Review Board
+  // assignment always wins and always shows, even on a post whose category
+  // isn't auto-classified as health (e.g. a minoxidil piece filed under
+  // "Hair"), that's exactly the admin saying "this needs a doctor's name". The
+  // default board reviewer is only used as a fallback on health-category posts
+  // that haven't been assigned one. null otherwise. (The Medical Review Board
+  // is the single source of truth; the legacy store-wide setting was retired.)
   let reviewer: MedicalReviewer | null = null;
-  if (isHealthCategory(post.category)) {
+  {
     const pid = (post as { reviewer_id?: string | null }).reviewer_id;
     let r = pid ? await getReviewerById(pid) : null;
-    if (!r) r = (await getActiveReviewers()).find(x => x.is_default) ?? null;
+    if (!r && isHealthCategory(post.category)) {
+      r = (await getActiveReviewers()).find(x => x.is_default) ?? null;
+    }
     reviewer = r
       ? { name: r.name, credentials: r.credentials ?? undefined, specialty: r.specialty ?? undefined, url: r.profile_url ?? undefined, profileSlug: r.slug }
       : null;
