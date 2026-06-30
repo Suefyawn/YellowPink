@@ -4,10 +4,11 @@ import { ProductTile } from '@/components/ui/ProductTile';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { linkProductMentions } from '@/lib/link-product-mentions';
+import { extractBlogFaq } from '@/lib/blog-faq';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
-import { absoluteUrl } from '@/lib/seo';
+import { absoluteUrl, jsonLd, faqLd } from '@/lib/seo';
 import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import { isHealthCategory } from '@/lib/category-taxonomy';
 import { reviewerLabel, type MedicalReviewer } from '@/lib/eeat';
@@ -63,10 +64,17 @@ function extractHeadings(html: string): { html: string; headings: TocHeading[] }
 }
 
 export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: BlogPostPageProps) {
-  const { html: withIds, headings } = post.body
-    ? extractHeadings(sanitizeHtml(post.body))
+  // Lift the FAQ block out of the prose first, so it renders as a real
+  // accordion (and powers FAQPage structured data) instead of a run of
+  // headings. extractBlogFaq returns the body unchanged when there's no FAQ.
+  const sanitized = post.body ? sanitizeHtml(post.body) : '';
+  const { html: bodyNoFaq, faqs } = extractBlogFaq(sanitized);
+  const { html: withIds, headings } = bodyNoFaq
+    ? extractHeadings(bodyNoFaq)
     : { html: '', headings: [] as TocHeading[] };
-  const bodyHtml = post.body ? linkProductMentions(withIds, relatedProducts) : '';
+  const bodyHtml = bodyNoFaq ? linkProductMentions(withIds, relatedProducts) : '';
+  // Keep the FAQ reachable from the table of contents.
+  if (faqs.length > 0) headings.push({ id: 'faq', text: 'Frequently asked questions' });
   const showToc = headings.length >= 2;
 
   const newsletterCard = (
@@ -105,6 +113,44 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
         <p className="body-text" style={{ color: 'var(--ink-500)', fontStyle: 'italic' }}>
           No content yet.
         </p>
+      )}
+
+      {/* FAQ rendered as an accordion (lifted out of the prose above) + FAQPage
+          structured data, so the questions read as a real FAQ and are eligible
+          for Google's Q&A / structured-snippet treatment. */}
+      {faqs.length > 0 && (
+        <section id="faq" className="blog-faq" style={{ marginTop: 44 }} aria-label="Frequently asked questions">
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(faqs.map(f => ({ question: f.question, answer: f.answerText })))) }}
+          />
+          <h2 className="wp-block-heading" style={{ marginBottom: 8 }}>Frequently asked questions</h2>
+          <div>
+            {faqs.map((f, i) => (
+              <details
+                key={i}
+                className="blog-faq-item"
+                style={{ borderBottom: '1px solid var(--line)', padding: '16px 2px' }}
+              >
+                <summary
+                  style={{
+                    cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center',
+                    justifyContent: 'space-between', gap: 16, fontWeight: 600, fontSize: '1.0625rem',
+                    color: 'var(--ink-900)', lineHeight: 1.4,
+                  }}
+                >
+                  <span>{f.question}</span>
+                  <span className="blog-faq-icon" aria-hidden="true" style={{ flexShrink: 0, color: 'var(--brand-pink-text, #9d174d)', fontSize: '1.5rem', lineHeight: 1, transition: 'transform 0.2s' }}>+</span>
+                </summary>
+                <div
+                  className="blog-faq-answer"
+                  style={{ marginTop: 12, lineHeight: 1.8, color: 'var(--ink-700)' }}
+                  dangerouslySetInnerHTML={{ __html: f.answerHtml }}
+                />
+              </details>
+            ))}
+          </div>
+        </section>
       )}
 
       {/* YMYL safeguard: health/wellness articles carry a medical disclaimer
