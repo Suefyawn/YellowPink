@@ -5,14 +5,15 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
-import { saveReviewer, setDefaultReviewer, deleteReviewer, approveReviewerApplication, rejectReviewerApplication } from './actions';
+import { saveReviewer, setDefaultReviewer, deleteReviewer, sendReviewerInvite, approveReviewerApplication, rejectReviewerApplication } from './actions';
 
 interface ReviewerRow {
   id: string; slug: string; name: string;
   credentials: string | null; specialty: string | null; bio: string | null;
   photo_url: string | null; profile_url: string | null;
   affiliation: string | null; education: string | null;
-  experience_years: number | null; languages: string[];
+  experience_years: number | null; languages: string[]; email: string | null;
+  auth_user_id: string | null;
   review_topics: string[]; is_default: boolean; active: boolean; sort_order: number;
 }
 
@@ -40,6 +41,7 @@ function ReviewerForm({ r }: { r?: ReviewerRow }) {
       <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Bio</label><textarea name="bio" defaultValue={r?.bio ?? ''} rows={2} placeholder="Short professional bio, where they practise, experience." style={{ ...inp, resize: 'vertical' }} /></div>
       <div><label style={lbl}>Photo URL</label><input name="photo_url" defaultValue={r?.photo_url ?? ''} placeholder="https://…" style={inp} /></div>
       <div><label style={lbl}>Profile URL (PMDC / LinkedIn, sameAs)</label><input name="profile_url" defaultValue={r?.profile_url ?? ''} placeholder="https://…" style={inp} /></div>
+      <div><label style={lbl}>Email (for portal sign-in &amp; invites)</label><input name="email" type="email" defaultValue={r?.email ?? ''} placeholder="doctor@example.com" style={inp} /></div>
       <div><label style={lbl}>Clinic / hospital</label><input name="affiliation" defaultValue={r?.affiliation ?? ''} placeholder="Aga Khan University Hospital" style={inp} /></div>
       <div><label style={lbl}>Education / training</label><input name="education" defaultValue={r?.education ?? ''} placeholder="King Edward Medical University" style={inp} /></div>
       <div><label style={lbl}>Years of experience</label><input name="experience_years" type="number" min="0" defaultValue={r?.experience_years ?? ''} placeholder="8" style={inp} /></div>
@@ -68,7 +70,7 @@ export default async function ReviewersPage() {
   const [{ data }, { data: apps }] = await Promise.all([
     admin
       .from('content_reviewers')
-      .select('id, slug, name, credentials, specialty, bio, photo_url, profile_url, affiliation, education, experience_years, languages, review_topics, is_default, active, sort_order')
+      .select('id, slug, name, credentials, specialty, bio, photo_url, profile_url, affiliation, education, experience_years, languages, email, auth_user_id, review_topics, is_default, active, sort_order')
       .order('sort_order').order('name'),
     admin
       .from('reviewer_applications')
@@ -148,6 +150,14 @@ export default async function ReviewersPage() {
                   {!r.active && <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', background: '#f3f4f6', padding: '2px 8px', borderRadius: 999, marginLeft: 6 }}>HIDDEN</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                  {r.email && (
+                    <form action={sendReviewerInvite}>
+                      <input type="hidden" name="id" value={r.id} />
+                      <button type="submit" style={{ background: 'none', border: 'none', color: '#9d174d', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>
+                        {r.auth_user_id ? 'Email profile invite' : 'Provision login & invite'}
+                      </button>
+                    </form>
+                  )}
                   {!r.is_default && (
                     <form action={setDefaultReviewer}>
                       <input type="hidden" name="id" value={r.id} />
