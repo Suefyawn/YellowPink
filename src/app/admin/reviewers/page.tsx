@@ -6,6 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
+import { AdminCollapsible } from '@/components/admin/AdminCollapsible';
 import { saveReviewer, setDefaultReviewer, deleteReviewer, sendReviewerInvite, approveReviewerApplication, rejectReviewerApplication } from './actions';
 
 interface ReviewerRow {
@@ -61,6 +62,63 @@ function ReviewerForm({ r }: { r?: ReviewerRow }) {
   );
 }
 
+function initials(name: string): string {
+  return name.replace(/^(dr|prof|mr|ms|mrs)\.?\s+/i, '').split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || 'YP';
+}
+
+function Pill({ children, tone = 'grey' }: { children: React.ReactNode; tone?: 'pink' | 'grey' | 'green' | 'amber' }) {
+  const t = { pink: ['#9d174d', '#fdf2f8'], grey: ['#6b7280', '#f3f4f6'], green: ['#15803d', '#f0fdf4'], amber: ['#b45309', '#fffbeb'] }[tone];
+  return <span style={{ fontSize: '0.625rem', fontWeight: 700, color: t[0], background: t[1], padding: '2px 8px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>{children}</span>;
+}
+
+const quickLink: React.CSSProperties = { background: 'none', border: 'none', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 };
+
+// Compact one-line summary for each reviewer: avatar, name + credentials,
+// status pills, article count and the quick actions (invite, make default,
+// remove). The big edit form lives in the collapsible body.
+function ReviewerHeader({ r, count }: { r: ReviewerRow; count: number }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+        {r.photo_url
+          // eslint-disable-next-line @next/next/no-img-element
+          ? <img src={r.photo_url} alt={r.name} width={40} height={40} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }} />
+          : <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: '#f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8125rem', fontWeight: 700, color: '#6b7280' }}>{initials(r.name)}</div>}
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>{r.name}</span>
+            {r.credentials && <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{r.credentials}</span>}
+            {r.is_default && <Pill tone="pink">Default</Pill>}
+            {!r.active && <Pill tone="amber">Hidden</Pill>}
+            {!r.auth_user_id && <Pill tone="grey">No login</Pill>}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2, fontSize: '0.75rem', color: '#9ca3af', flexWrap: 'wrap' }}>
+            {r.specialty && <span style={{ color: '#9d174d', fontWeight: 600 }}>{r.specialty}</span>}
+            <span>{count} article{count === 1 ? '' : 's'}</span>
+            {!r.photo_url && <span style={{ color: '#b45309' }}>needs photo</span>}
+            {!r.bio && <span style={{ color: '#b45309' }}>needs bio</span>}
+          </div>
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
+        {r.email && (
+          <form action={sendReviewerInvite}>
+            <input type="hidden" name="id" value={r.id} />
+            <button type="submit" style={{ ...quickLink, color: '#9d174d' }}>{r.auth_user_id ? 'Invite' : 'Provision login'}</button>
+          </form>
+        )}
+        {!r.is_default && (
+          <form action={setDefaultReviewer}>
+            <input type="hidden" name="id" value={r.id} />
+            <button type="submit" style={{ ...quickLink, color: '#6b7280' }}>Make default</button>
+          </form>
+        )}
+        <DeleteButton id={r.id} action={deleteReviewer} confirmMsg={`Remove ${r.name} from the review board?`} />
+      </div>
+    </div>
+  );
+}
+
 export default async function ReviewersPage() {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('blog'))) {
@@ -68,7 +126,7 @@ export default async function ReviewersPage() {
   }
 
   const admin = supabaseAdmin();
-  const [{ data }, { data: apps }] = await Promise.all([
+  const [{ data }, { data: apps }, { data: postRows }] = await Promise.all([
     admin
       .from('content_reviewers')
       .select('id, slug, name, credentials, specialty, bio, photo_url, profile_url, affiliation, education, experience_years, languages, email, auth_user_id, review_topics, is_default, active, sort_order')
@@ -78,9 +136,16 @@ export default async function ReviewersPage() {
       .select('id, name, email, credentials, specialty, pmdc_number, bio, profile_url, photo_url, review_topics, message, created_at')
       .eq('status', 'pending')
       .order('created_at', { ascending: true }),
+    admin.from('blog_posts').select('reviewer_id'),
   ]);
   const reviewers = (data ?? []) as ReviewerRow[];
   const applications = (apps ?? []) as ApplicationRow[];
+
+  // Tally how many posts each reviewer is credited on, for the header summary.
+  const countByReviewer = new Map<string, number>();
+  for (const p of (postRows ?? []) as { reviewer_id: string | null }[]) {
+    if (p.reviewer_id) countByReviewer.set(p.reviewer_id, (countByReviewer.get(p.reviewer_id) ?? 0) + 1);
+  }
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 1000 }}>
@@ -142,42 +207,31 @@ export default async function ReviewersPage() {
       )}
 
       {reviewers.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           {reviewers.map(r => (
-            <div key={r.id} style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, background: '#fff' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>
-                  {r.name} {r.is_default && <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9d174d', background: '#fdf2f8', padding: '2px 8px', borderRadius: 999, marginLeft: 6 }}>DEFAULT</span>}
-                  {!r.active && <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', background: '#f3f4f6', padding: '2px 8px', borderRadius: 999, marginLeft: 6 }}>HIDDEN</span>}
-                </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                  {r.email && (
-                    <form action={sendReviewerInvite}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <button type="submit" style={{ background: 'none', border: 'none', color: '#9d174d', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>
-                        {r.auth_user_id ? 'Email profile invite' : 'Provision login & invite'}
-                      </button>
-                    </form>
-                  )}
-                  {!r.is_default && (
-                    <form action={setDefaultReviewer}>
-                      <input type="hidden" name="id" value={r.id} />
-                      <button type="submit" style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>Make default</button>
-                    </form>
-                  )}
-                  <DeleteButton id={r.id} action={deleteReviewer} confirmMsg={`Remove ${r.name} from the review board?`} />
-                </div>
-              </div>
+            <AdminCollapsible key={r.id} header={<ReviewerHeader r={r} count={countByReviewer.get(r.id) ?? 0} />}>
               <ReviewerForm r={r} />
-            </div>
+            </AdminCollapsible>
           ))}
         </div>
       )}
 
-      <div style={{ border: '1px dashed #d1d5db', borderRadius: 12, padding: 20, background: '#fafafa' }}>
-        <h2 style={{ margin: '0 0 14px', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Add a reviewer</h2>
+      <AdminCollapsible
+        openLabel="Add reviewer"
+        closeLabel="Cancel"
+        defaultOpen={reviewers.length === 0}
+        header={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 40, height: 40, borderRadius: '50%', flexShrink: 0, background: '#fdf2f8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9d174d', fontSize: '1.25rem', fontWeight: 700 }}>+</div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>Add a reviewer</div>
+              <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>Only genuine, consenting doctors. Verify PMDC before publishing.</div>
+            </div>
+          </div>
+        }
+      >
         <ReviewerForm />
-      </div>
+      </AdminCollapsible>
     </div>
   );
 }
