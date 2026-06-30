@@ -43,6 +43,10 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
+  // Keyboard navigation through the typeahead results. -1 = nothing
+  // highlighted (focus stays in the input). Indexes 0..n-1 are the result
+  // rows; index n (one past the last result) is the "See all results" link.
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -93,8 +97,9 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   // the overlay actually returns something on a fresh clone. setState-in-effect
   // is intentional: results come from the network (external system).
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setHighlightedIndex(-1);
     if (!searchOpen || query.trim().length === 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setProducts([]);
       return;
     }
@@ -122,16 +127,12 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
     return () => clearTimeout(handle);
   }, [query, searchOpen]);
 
-  useEffect(() => {
-    const fn = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && searchOpen) setSearchOpen(false);
-    };
-    window.addEventListener('keydown', fn);
-    return () => window.removeEventListener('keydown', fn);
-  }, [searchOpen, setSearchOpen]);
-
   // Server already filtered + ranked via pg_trgm. Just rename for the JSX.
   const filtered = products;
+  const visibleResults = filtered.slice(0, 6);
+  // One past the last result row is the "See all results" link, so the
+  // navigable range is 0..visibleResults.length inclusive.
+  const maxIndex = visibleResults.length > 0 ? visibleResults.length : -1;
 
   const goToProduct = (p: Product) => {
     // GA4 `select_item`, which result the shopper picked, and from what query,
@@ -157,6 +158,35 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
     setSearchOpen(false);
     router.push(categoryHref(cat));
   };
+
+  // Escape closes the overlay; ArrowUp/ArrowDown move a highlighted index
+  // through the visible result rows (plus the "See all results" link one
+  // past the last row); Enter on a highlighted row activates it instead of
+  // letting the form's default submit run a full /shop?q=… search.
+  useEffect(() => {
+    const fn = (e: KeyboardEvent) => {
+      if (!searchOpen) return;
+      if (e.key === 'Escape') { setSearchOpen(false); return; }
+      if (maxIndex < 0) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setHighlightedIndex(i => Math.min(i + 1, maxIndex));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setHighlightedIndex(i => Math.max(i - 1, -1));
+      } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+        e.preventDefault();
+        if (highlightedIndex < visibleResults.length) goToProduct(visibleResults[highlightedIndex]);
+        else goToSearch(query);
+      }
+    };
+    window.addEventListener('keydown', fn);
+    return () => window.removeEventListener('keydown', fn);
+    // goToProduct/goToSearch only close over query/searchOpen/router, already
+    // covered by the listed deps; omitted to avoid tearing the listener down
+    // and rebuilding it on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchOpen, setSearchOpen, highlightedIndex, maxIndex, query, visibleResults]);
 
   return (
     <>
@@ -266,17 +296,17 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                     {filtered.length} Result{filtered.length !== 1 ? 's' : ''}
                   </Overline>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {filtered.slice(0, 6).map((p) => (
+                    {visibleResults.map((p, i) => (
                       <button key={p.id}
                         type="button"
                         onClick={() => goToProduct(p)}
+                        onMouseEnter={() => setHighlightedIndex(i)}
                         style={{
                           display: 'flex', alignItems: 'center', gap: 12, width: '100%', textAlign: 'left',
-                          font: 'inherit', color: 'inherit', background: 'transparent', border: 'none',
+                          font: 'inherit', color: 'inherit', border: 'none',
                           padding: '12px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer',
+                          background: highlightedIndex === i ? 'var(--paper2)' : 'transparent',
                         }}
-                        onMouseEnter={e => (e.currentTarget.style.background = 'var(--paper2)')}
-                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
                         <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
                           <ProductImage src={p.image_url} alt={brandPlusName(p.brand, p.name)} width={48} height={48} />
@@ -296,6 +326,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                       typeahead preview only. */}
                   <button
                     onClick={() => goToSearch(query)}
+                    onMouseEnter={() => setHighlightedIndex(visibleResults.length)}
                     style={{
                       marginTop: 14, padding: '10px 16px',
                       background: 'var(--ink-900)', color: 'var(--paper)',
@@ -303,6 +334,8 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                       fontFamily: 'var(--font-ui)', fontSize: '0.75rem', fontWeight: 600,
                       letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer',
                       display: 'inline-flex', alignItems: 'center', gap: 8,
+                      outline: highlightedIndex === visibleResults.length ? '2px solid var(--brand-pink-cta, #C5286A)' : 'none',
+                      outlineOffset: 2,
                     }}
                   >
                     See all results for &ldquo;{query}&rdquo; →

@@ -26,6 +26,10 @@ export interface CommerceConfig {
   /** Flat shipping rate (PKR) charged when the order doesn't qualify for free
    *  shipping and no shipping zone overrides it. */
   defaultShippingRate: number;
+  /** PKR value of one loyalty point at redemption (admin → Settings → Loyalty
+   *  → "PKR per point at redemption"). Checkout converts a customer's points
+   *  input to a PKR discount using this rate instead of assuming 1:1. */
+  loyaltyPkrPerPoint: number;
 }
 
 /** Parse the raw site_settings key/value map into a typed CommerceConfig,
@@ -35,20 +39,27 @@ export interface CommerceConfig {
 export function parseCommerceConfig(settings: Record<string, string>): CommerceConfig {
   const threshold = Number(settings.free_shipping_threshold);
   const rate = Number(settings.default_shipping_rate);
+  const pkrPerPoint = Number(settings.loyalty_pkr_per_point);
   return {
     freeShippingEnabled: settings.free_shipping_enabled !== 'false',
     freeShippingThreshold:
       Number.isFinite(threshold) && threshold > 0 ? threshold : FREE_SHIPPING_THRESHOLD,
     defaultShippingRate:
       Number.isFinite(rate) && rate >= 0 ? rate : DEFAULT_SHIPPING_RATE,
+    loyaltyPkrPerPoint:
+      Number.isFinite(pkrPerPoint) && pkrPerPoint > 0 ? pkrPerPoint : DEFAULT_LOYALTY_PKR_PER_POINT,
   };
 }
+
+/** Falls back to the admin settings page's own default (1 PKR per point). */
+export const DEFAULT_LOYALTY_PKR_PER_POINT = 1;
 
 /** Default config used by client context fallbacks and tests. */
 export const DEFAULT_COMMERCE_CONFIG: CommerceConfig = {
   freeShippingEnabled: true,
   freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
   defaultShippingRate: DEFAULT_SHIPPING_RATE,
+  loyaltyPkrPerPoint: DEFAULT_LOYALTY_PKR_PER_POINT,
 };
 
 /** Format a threshold (PKR) as shoppers see it, e.g. "PKR 5,000". */
