@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 import { saveReviewer, setDefaultReviewer, deleteReviewer, sendReviewerInvite, approveReviewerApplication, rejectReviewerApplication } from './actions';
 
 interface ReviewerRow {
@@ -39,7 +40,7 @@ function ReviewerForm({ r }: { r?: ReviewerRow }) {
       <div><label style={lbl}>Specialty</label><input name="specialty" defaultValue={r?.specialty ?? ''} placeholder="Obstetrics & Gynaecology" style={inp} /></div>
       <div><label style={lbl}>Slug {r ? '' : '(auto from name if blank)'}</label><input name="slug" defaultValue={r?.slug ?? ''} placeholder="ayesha-khan" style={inp} /></div>
       <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Bio</label><textarea name="bio" defaultValue={r?.bio ?? ''} rows={2} placeholder="Short professional bio, where they practise, experience." style={{ ...inp, resize: 'vertical' }} /></div>
-      <div><label style={lbl}>Photo URL</label><input name="photo_url" defaultValue={r?.photo_url ?? ''} placeholder="https://…" style={inp} /></div>
+      <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Photo</label><PhotoUpload name="photo_url" defaultUrl={r?.photo_url ?? ''} /></div>
       <div><label style={lbl}>Profile URL (PMDC / LinkedIn, sameAs)</label><input name="profile_url" defaultValue={r?.profile_url ?? ''} placeholder="https://…" style={inp} /></div>
       <div><label style={lbl}>Email (for portal sign-in &amp; invites)</label><input name="email" type="email" defaultValue={r?.email ?? ''} placeholder="doctor@example.com" style={inp} /></div>
       <div><label style={lbl}>Clinic / hospital</label><input name="affiliation" defaultValue={r?.affiliation ?? ''} placeholder="Aga Khan University Hospital" style={inp} /></div>
