@@ -153,9 +153,10 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
         </section>
       )}
 
-      {/* YMYL safeguard: health/wellness articles carry a medical disclaimer
-          (educational, not advice). Beauty posts don't. */}
-      {isHealthCategory(post.category) && <MedicalDisclaimer variant="editorial" />}
+      {/* YMYL safeguard: health/wellness articles, and any post a doctor has
+          been assigned to review, carry a medical disclaimer (educational, not
+          advice). Pure beauty posts don't. */}
+      {(isHealthCategory(post.category) || reviewer) && <MedicalDisclaimer variant="editorial" />}
 
       {/* Bottom-of-post share strip, catches the reader who finishes the
           article and is most likely to share. */}
