@@ -5,6 +5,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { StarRating } from '@/components/ui/StarRating';
+import { TrustStrip } from '@/components/pdp/TrustStrip';
 import { useCart } from '@/context/CartContext';
 import { ProductDescription } from '@/components/pdp/ProductDescription';
 import { track } from '@/lib/analytics';
@@ -570,9 +571,14 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
 
             {!outOfStock && estimatedDays && (
               <p className="small-text" style={{ marginTop: -8, marginBottom: 24, color: 'var(--ink-700)' }}>
-                Delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min}–{estimatedDays.max} working days</strong> · COD nationwide
+                Delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min} to {estimatedDays.max} working days</strong> · COD nationwide
               </p>
             )}
+
+            {/* Always-on trust strip: answers "genuine? / pay on delivery? /
+                returnable?" at the add-to-cart moment. Matters most on the ~95%
+                of products that have no reviews yet (cold-traffic confidence). */}
+            <TrustStrip />
 
             {/* WhatsApp CTA, pre-fills the merchant chat with this product's
                 name so any "do you have shade X?" / "is this authentic?"
