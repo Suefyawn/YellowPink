@@ -237,6 +237,19 @@ export async function proxy(request: NextRequest) {
 // Map a known WP-style URL to the Next route, or null if no rule matches and
 // we should fall through to the per-slug `redirects` lookup. Pure function, // no DB hits, no async, runs at edge speed.
 function wpPatternRedirect(pathname: string, params: URLSearchParams): string | null {
+  // <any>/feed (or /feed/) → <any>. WordPress exposes an RSS feed at a /feed
+  // suffix on every URL (the site root, every post, product, tag and category),
+  // and crawlers still probe those dead endpoints, e.g. /feed,
+  // /product/calin-g/feed, /tag/digestion/feed, /old-wp-slug/feed. None exist
+  // here, so they 404 and clutter the broken-link monitor. Strip the suffix and
+  // let the cleaned path resolve normally (owned route, or the per-slug
+  // `redirects` table for legacy slugs). Runs first so it also unwraps feeds on
+  // owned prefixes the later rules would never see.
+  const feed = pathname.match(/^(\/.*?)\/feed\/?$/);
+  if (feed) return feed[1] || '/';
+  // Bare /feed → home.
+  if (pathname === '/feed' || pathname === '/feed/') return '/';
+
   // /shop/page/2/ → /shop?page=2
   const shopPage = pathname.match(/^\/shop\/page\/(\d+)\/?$/);
   if (shopPage) return `/shop?page=${shopPage[1]}`;
