@@ -42,6 +42,8 @@ export async function saveReviewer(formData: FormData): Promise<void> {
   const slug = str(formData, 'slug') ? slugify(str(formData, 'slug')) : slugify(name);
   const topics = str(formData, 'review_topics')
     .split(',').map(t => t.trim()).filter(Boolean);
+  const languages = str(formData, 'languages').split(',').map(t => t.trim()).filter(Boolean);
+  const years = parseInt(str(formData, 'experience_years'), 10);
 
   const row = {
     slug,
@@ -51,6 +53,10 @@ export async function saveReviewer(formData: FormData): Promise<void> {
     bio: str(formData, 'bio') || null,
     photo_url: str(formData, 'photo_url') || null,
     profile_url: str(formData, 'profile_url') || null,
+    affiliation: str(formData, 'affiliation') || null,
+    education: str(formData, 'education') || null,
+    experience_years: Number.isFinite(years) && years > 0 ? years : null,
+    languages,
     review_topics: topics,
     active: formData.get('active') != null,
     sort_order: Number(str(formData, 'sort_order')) || 0,

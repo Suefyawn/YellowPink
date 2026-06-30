@@ -16,13 +16,17 @@ export interface ReviewerSelf {
   bio: string | null;
   photo_url: string | null;
   profile_url: string | null;
+  affiliation: string | null;
+  education: string | null;
+  experience_years: number | null;
+  languages: string[];
   review_topics: string[];
   active: boolean;
   email: string | null;
 }
 
 const SELF_COLS =
-  'id, slug, name, credentials, specialty, bio, photo_url, profile_url, review_topics, active, email';
+  'id, slug, name, credentials, specialty, bio, photo_url, profile_url, affiliation, education, experience_years, languages, review_topics, active, email';
 
 /** The signed-in doctor's own reviewer row (via RLS self_read), or null when
  *  the visitor isn't signed in or isn't a linked/approved reviewer. */

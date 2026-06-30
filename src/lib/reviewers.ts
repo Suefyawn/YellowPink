@@ -12,12 +12,16 @@ export interface Reviewer {
   bio: string | null;
   photo_url: string | null;
   profile_url: string | null;   // PMDC / hospital / LinkedIn, schema sameAs
+  affiliation: string | null;   // current clinic / hospital / practice
+  education: string | null;     // medical school / training (schema alumniOf)
+  experience_years: number | null;
+  languages: string[];
   review_topics: string[];
   is_default: boolean;
   sort_order: number;
 }
 
-const COLS = 'id, slug, name, credentials, specialty, bio, photo_url, profile_url, review_topics, is_default, sort_order';
+const COLS = 'id, slug, name, credentials, specialty, bio, photo_url, profile_url, affiliation, education, experience_years, languages, review_topics, is_default, sort_order';
 
 export async function getActiveReviewers(): Promise<Reviewer[]> {
   if (isDemo) return [];
