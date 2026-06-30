@@ -499,8 +499,41 @@ a.underline,
    Compiler-clean (no DOM mutation in event handlers) and stays smooth
    on touch devices via the @media (hover) gate. */
 .blog-tile .blog-tile-img { transition: transform 200ms ease-out, box-shadow 200ms ease-out; }
+.blog-tile .blog-tile-img img { transition: transform 500ms ease-out; }
+.blog-featured-img img { transition: transform 600ms ease-out; }
 @media (hover: hover) {
   .blog-tile:hover .blog-tile-img { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(26, 26, 26, 0.08); }
+  .blog-tile:hover .blog-tile-img img { transform: scale(1.06); }
+  .blog-featured-link:hover .blog-featured-img img { transform: scale(1.04); }
+  .blog-filter-chip:hover { border-color: var(--ink-900) !important; }
+  .blog-load-more:hover { background: var(--ink-900) !important; color: var(--paper) !important; }
+}
+
+/* Card entrance: each tile fades + rises in when it first paints, including
+   newly revealed cards after "Show more" (toggling display:none -> flex
+   restarts the animation, since the box wasn't generated while hidden). Kept
+   to opacity + a small translateY (not the page-level fade-in's opacity-only
+   rule) because these are plain grid items with no fixed-position descendants
+   to worry about. The global prefers-reduced-motion override already
+   collapses all animation-duration to 0.01ms, so no separate guard needed here. */
+@keyframes blog-card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.blog-card-in { animation: blog-card-in 420ms ease-out both; }
+
+/* Category filter rail: horizontally scrollable on narrow screens with the
+   scrollbar hidden (the chips themselves are the affordance), full chip
+   list still reachable via swipe/trackpad. */
+.blog-filter-rail { scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+.blog-filter-rail::-webkit-scrollbar { display: none; }
+
+.blog-load-more {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 24px; border-radius: var(--radius-pill);
+  border: 1px solid var(--ink-900); background: transparent; color: var(--ink-900);
+  font-family: var(--font-ui); font-size: 0.875rem; font-weight: 600;
+  cursor: pointer; transition: all 150ms ease-out;
 }
 
 /* Blog article body: a sticky table-of-contents rail fills the left margin
