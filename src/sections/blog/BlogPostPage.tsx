@@ -5,6 +5,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { linkProductMentions } from '@/lib/link-product-mentions';
 import { extractBlogFaq } from '@/lib/blog-faq';
+import { BlogProductNudge } from '@/components/blog/BlogProductNudge';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
@@ -73,6 +74,14 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
     ? extractHeadings(bodyNoFaq)
     : { html: '', headings: [] as TocHeading[] };
   const bodyHtml = bodyNoFaq ? linkProductMentions(withIds, relatedProducts) : '';
+  // Split the body at the first H2 so a buyable product nudge can sit right
+  // after the intro (above the fold for single-page blog visitors), without
+  // touching the prose. Falls back to a single block when there's no H2 or no
+  // products to recommend.
+  const showNudge = relatedProducts.length > 0 && bodyHtml.length > 0;
+  const firstH2 = showNudge ? bodyHtml.search(/<h2\b/i) : -1;
+  const bodyTop = firstH2 > 0 ? bodyHtml.slice(0, firstH2) : bodyHtml;
+  const bodyRest = firstH2 > 0 ? bodyHtml.slice(firstH2) : '';
   // Keep the FAQ reachable from the table of contents.
   if (faqs.length > 0) headings.push({ id: 'faq', text: 'Frequently asked questions' });
   const showToc = headings.length >= 2;
@@ -104,11 +113,19 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
   const bodyInner = (
     <div className="blog-article-main">
       {post.body ? (
-        <div
-          className="blog-body"
-          style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}
-          dangerouslySetInnerHTML={{ __html: bodyHtml }}
-        />
+        bodyRest ? (
+          <>
+            <div className="blog-body" style={{ lineHeight: 1.8, color: 'var(--ink-700)' }} dangerouslySetInnerHTML={{ __html: bodyTop }} />
+            <BlogProductNudge products={relatedProducts} />
+            <div className="blog-body" style={{ lineHeight: 1.8, color: 'var(--ink-700)' }} dangerouslySetInnerHTML={{ __html: bodyRest }} />
+          </>
+        ) : (
+          <div
+            className="blog-body"
+            style={{ lineHeight: 1.8, color: 'var(--ink-700)' }}
+            dangerouslySetInnerHTML={{ __html: bodyHtml }}
+          />
+        )
       ) : (
         <p className="body-text" style={{ color: 'var(--ink-500)', fontStyle: 'italic' }}>
           No content yet.
