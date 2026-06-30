@@ -15,6 +15,9 @@ const field: React.CSSProperties = {
 const label: React.CSSProperties = {
   display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-700)', marginBottom: 6,
 };
+const statCard: React.CSSProperties = { padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--paper)', textAlign: 'center' };
+const statNum: React.CSSProperties = { fontSize: '1.375rem', fontWeight: 700, color: 'var(--ink-900)', lineHeight: 1.1 };
+const statLbl: React.CSSProperties = { fontSize: '0.7rem', color: 'var(--ink-500)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: 2 };
 
 function ago(iso: string): string {
   const d = new Date(iso);
@@ -26,6 +29,14 @@ export default async function ReviewerDashboard() {
   if (!reviewer) redirect('/reviewer/login');
 
   const posts = await getReviewedPosts(reviewer.id);
+  const publishedCount = posts.filter(p => p.status === 'published').length;
+  // Profile completeness encourages a rich, trustworthy public profile.
+  const checks = [
+    !!reviewer.credentials, !!reviewer.specialty, !!reviewer.bio, !!reviewer.photo_url,
+    !!reviewer.profile_url, !!reviewer.affiliation, !!reviewer.education,
+    !!reviewer.experience_years, reviewer.languages.length > 0, reviewer.review_topics.length > 0,
+  ];
+  const completeness = Math.round((checks.filter(Boolean).length / checks.length) * 100);
 
   return (
     <main className="fade-in">
@@ -56,7 +67,24 @@ export default async function ReviewerDashboard() {
             </p>
           )}
 
-          {/* ── Profile editor ─────────────────────────────────────────── */}
+          {/* Stats + profile completeness */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, margin: '0 0 18px' }}>
+            <div style={statCard}><div style={statNum}>{posts.length}</div><div style={statLbl}>Assigned</div></div>
+            <div style={statCard}><div style={statNum}>{publishedCount}</div><div style={statLbl}>Published</div></div>
+            <div style={statCard}><div style={statNum}>{completeness}%</div><div style={statLbl}>Profile complete</div></div>
+          </div>
+          {completeness < 100 && (
+            <div style={{ margin: '0 0 24px' }}>
+              <div style={{ height: 8, background: 'var(--paper2)', borderRadius: 99, overflow: 'hidden' }}>
+                <div style={{ width: `${completeness}%`, height: '100%', background: 'var(--brand-pink-text, #9d174d)' }} />
+              </div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 6 }}>
+                A complete profile builds more trust with readers and search engines. Fill in the fields below.
+              </p>
+            </div>
+          )}
+
+          {/* Profile editor */}
           <h2 className="h2" style={{ fontSize: '1.25rem', margin: '24px 0 16px' }}>Your profile</h2>
           <form action={updateReviewerProfile} style={{ display: 'grid', gap: 16, padding: 22, border: '1px solid var(--line)', borderRadius: 12, background: 'var(--paper)' }}>
             <div>
@@ -82,6 +110,27 @@ export default async function ReviewerDashboard() {
             <div>
               <label htmlFor="d-profile" style={label}>Verifiable profile link</label>
               <input id="d-profile" name="profile_url" type="url" defaultValue={reviewer.profile_url ?? ''} style={field} placeholder="PMDC / hospital / LinkedIn" />
+            </div>
+            <div style={{ display: 'grid', gap: 16, gridTemplateColumns: '1fr 1fr' }}>
+              <div>
+                <label htmlFor="d-affil" style={label}>Clinic / hospital</label>
+                <input id="d-affil" name="affiliation" defaultValue={reviewer.affiliation ?? ''} style={field} placeholder="Aga Khan University Hospital" />
+              </div>
+              <div>
+                <label htmlFor="d-exp" style={label}>Years of experience</label>
+                <input id="d-exp" name="experience_years" type="number" min="0" defaultValue={reviewer.experience_years ?? ''} style={field} placeholder="8" />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gap: 16, gridTemplateColumns: '1fr 1fr' }}>
+              <div>
+                <label htmlFor="d-edu" style={label}>Education / training</label>
+                <input id="d-edu" name="education" defaultValue={reviewer.education ?? ''} style={field} placeholder="King Edward Medical University" />
+              </div>
+              <div>
+                <label htmlFor="d-lang" style={label}>Languages</label>
+                <input id="d-lang" name="languages" defaultValue={reviewer.languages.join(', ')} style={field} placeholder="English, Urdu" />
+                <p style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 4 }}>Comma-separated.</p>
+              </div>
             </div>
             <div>
               <span style={label}>Photo</span>
@@ -123,6 +172,26 @@ export default async function ReviewerDashboard() {
               ))}
             </ul>
           )}
+
+          {/* Account */}
+          <h2 className="h2" style={{ fontSize: '1.25rem', margin: '40px 0 16px' }}>Account</h2>
+          <div style={{ padding: 20, border: '1px solid var(--line)', borderRadius: 12, background: 'var(--paper)', display: 'grid', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: '0.9375rem' }}>
+              <span style={{ color: 'var(--ink-500)', fontWeight: 600 }}>Email</span>
+              <span style={{ color: 'var(--ink-900)' }}>{reviewer.email ?? 'Not set'}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: '0.9375rem' }}>
+              <span style={{ color: 'var(--ink-500)', fontWeight: 600 }}>Sign-in</span>
+              <span style={{ color: 'var(--ink-900)' }}>Secure email link (no password)</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', fontSize: '0.9375rem' }}>
+              <span style={{ color: 'var(--ink-500)', fontWeight: 600 }}>Status</span>
+              <span style={{ color: reviewer.active ? '#15803d' : '#b45309', fontWeight: 600 }}>{reviewer.active ? 'Active, visible on the board' : 'Hidden, being set up'}</span>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--ink-500)', margin: 0, lineHeight: 1.6 }}>
+              You sign in with a one-time link sent to your email, so there is no password to manage. To change your email or close your account, contact us.
+            </p>
+          </div>
         </div>
       </section>
     </main>

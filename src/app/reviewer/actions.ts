@@ -17,6 +17,8 @@ export async function updateReviewerProfile(formData: FormData): Promise<void> {
   if (!user) redirect('/reviewer/login');
 
   const topics = str(formData, 'review_topics').split(',').map(t => t.trim()).filter(Boolean);
+  const languages = str(formData, 'languages').split(',').map(t => t.trim()).filter(Boolean);
+  const years = parseInt(str(formData, 'experience_years'), 10);
   const { error } = await sb
     .from('content_reviewers')
     .update({
@@ -25,6 +27,10 @@ export async function updateReviewerProfile(formData: FormData): Promise<void> {
       bio: str(formData, 'bio') || null,
       photo_url: str(formData, 'photo_url') || null,
       profile_url: str(formData, 'profile_url') || null,
+      affiliation: str(formData, 'affiliation') || null,
+      education: str(formData, 'education') || null,
+      experience_years: Number.isFinite(years) && years > 0 ? years : null,
+      languages,
       review_topics: topics,
     })
     .eq('auth_user_id', user.id);

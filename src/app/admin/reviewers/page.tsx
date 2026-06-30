@@ -11,6 +11,8 @@ interface ReviewerRow {
   id: string; slug: string; name: string;
   credentials: string | null; specialty: string | null; bio: string | null;
   photo_url: string | null; profile_url: string | null;
+  affiliation: string | null; education: string | null;
+  experience_years: number | null; languages: string[];
   review_topics: string[]; is_default: boolean; active: boolean; sort_order: number;
 }
 
@@ -38,6 +40,10 @@ function ReviewerForm({ r }: { r?: ReviewerRow }) {
       <div style={{ gridColumn: '1 / -1' }}><label style={lbl}>Bio</label><textarea name="bio" defaultValue={r?.bio ?? ''} rows={2} placeholder="Short professional bio, where they practise, experience." style={{ ...inp, resize: 'vertical' }} /></div>
       <div><label style={lbl}>Photo URL</label><input name="photo_url" defaultValue={r?.photo_url ?? ''} placeholder="https://…" style={inp} /></div>
       <div><label style={lbl}>Profile URL (PMDC / LinkedIn, sameAs)</label><input name="profile_url" defaultValue={r?.profile_url ?? ''} placeholder="https://…" style={inp} /></div>
+      <div><label style={lbl}>Clinic / hospital</label><input name="affiliation" defaultValue={r?.affiliation ?? ''} placeholder="Aga Khan University Hospital" style={inp} /></div>
+      <div><label style={lbl}>Education / training</label><input name="education" defaultValue={r?.education ?? ''} placeholder="King Edward Medical University" style={inp} /></div>
+      <div><label style={lbl}>Years of experience</label><input name="experience_years" type="number" min="0" defaultValue={r?.experience_years ?? ''} placeholder="8" style={inp} /></div>
+      <div><label style={lbl}>Languages (comma-separated)</label><input name="languages" defaultValue={r?.languages?.join(', ') ?? ''} placeholder="English, Urdu" style={inp} /></div>
       <div><label style={lbl}>Review topics (comma-separated)</label><input name="review_topics" defaultValue={r?.review_topics?.join(', ') ?? ''} placeholder="fertility, PCOS, pregnancy" style={inp} /></div>
       <div><label style={lbl}>Sort order</label><input name="sort_order" type="number" defaultValue={r?.sort_order ?? 0} style={inp} /></div>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: '#374151' }}>
@@ -62,7 +68,7 @@ export default async function ReviewersPage() {
   const [{ data }, { data: apps }] = await Promise.all([
     admin
       .from('content_reviewers')
-      .select('id, slug, name, credentials, specialty, bio, photo_url, profile_url, review_topics, is_default, active, sort_order')
+      .select('id, slug, name, credentials, specialty, bio, photo_url, profile_url, affiliation, education, experience_years, languages, review_topics, is_default, active, sort_order')
       .order('sort_order').order('name'),
     admin
       .from('reviewer_applications')
