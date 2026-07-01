@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { getGoogleConnection } from '@/lib/google';
-import { absoluteUrl } from '@/lib/seo';
+import { getQuotaState } from '@/lib/indexing-status';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { checkIndexingNow, addTrackedUrl } from './actions';
 
@@ -15,6 +15,7 @@ interface Row {
   first_seen_at: string;
   last_checked_at: string | null;
   checks: number;
+  inspection_link: string | null;
 }
 
 function ago(iso: string | null): string {
@@ -28,15 +29,6 @@ function ago(iso: string | null): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-/** Deep link straight to Search Console's URL Inspection tool for one exact
- *  URL, pre-filled, so the manual "Request Indexing" click (the one step
- *  Google doesn't let us automate) takes one click instead of pasting the
- *  URL in by hand. */
-function inspectionUrl(siteUrl: string, fullUrl: string): string {
-  const params = new URLSearchParams({ resource_id: siteUrl, id: fullUrl });
-  return `https://search.google.com/search-console/inspect?${params.toString()}`;
-}
-
 export default async function IndexingPage() {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
@@ -45,12 +37,15 @@ export default async function IndexingPage() {
 
   const conn = await getGoogleConnection();
   const admin = supabaseAdmin();
-  const { data } = await admin
-    .from('gsc_url_index_status')
-    .select('path, coverage_state, verdict, is_indexed, first_seen_at, last_checked_at, checks')
-    .order('is_indexed', { ascending: true })
-    .order('first_seen_at', { ascending: false })
-    .limit(500);
+  const [{ data }, apiQuota] = await Promise.all([
+    admin
+      .from('gsc_url_index_status')
+      .select('path, coverage_state, verdict, is_indexed, first_seen_at, last_checked_at, checks, inspection_link')
+      .order('is_indexed', { ascending: true })
+      .order('first_seen_at', { ascending: false })
+      .limit(500),
+    getQuotaState(),
+  ]);
 
   const rows = (data ?? []) as Row[];
   const pending = rows.filter(r => !r.is_indexed);
@@ -83,6 +78,14 @@ export default async function IndexingPage() {
         </div>
       ) : (
         <>
+          {apiQuota?.exceeded && (
+            <div style={{ padding: '14px 18px', marginBottom: 16, background: '#fef3f2', border: '1px solid #fecaca', borderRadius: 10, color: '#991b1b', fontSize: '0.8125rem' }}>
+              <strong>Search Console API quota exceeded</strong> ({ago(apiQuota.at)}). The automated
+              status check paused itself instead of burning the rest of the quota on calls that
+              would also fail. It will pick back up on its own once Google&apos;s daily API limit
+              resets.
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <Stat label="Tracked" value={rows.length} />
             <Stat label="Indexed" value={indexed.length} />
@@ -128,13 +131,17 @@ export default async function IndexingPage() {
                     <td data-label="First seen" style={{ ...td, whiteSpace: 'nowrap', color: '#6b7280' }}>{ago(r.first_seen_at)}</td>
                     <td data-label="Last checked" style={{ ...td, whiteSpace: 'nowrap', color: '#6b7280' }}>{ago(r.last_checked_at)}</td>
                     <td style={td}>
-                      <a
-                        href={inspectionUrl(gscSite, absoluteUrl(r.path))}
-                        target="_blank" rel="noopener noreferrer"
-                        style={{ fontSize: '0.75rem', color: '#C5286A', fontWeight: 600, textDecoration: 'underline' }}
-                      >
-                        Inspect in GSC →
-                      </a>
+                      {r.inspection_link ? (
+                        <a
+                          href={r.inspection_link}
+                          target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: '0.75rem', color: '#C5286A', fontWeight: 600, textDecoration: 'underline' }}
+                        >
+                          Inspect in GSC →
+                        </a>
+                      ) : (
+                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Run &ldquo;Check now&rdquo; first</span>
+                      )}
                     </td>
                   </tr>
                 ))}
