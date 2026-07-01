@@ -269,7 +269,16 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
 
         {showToc ? (
           <div className="container blog-article-grid" style={{ maxWidth: 1120, padding: '0 var(--side) 48px' }}>
-            <BlogToc headings={headings} />
+            <aside className="blog-article-sidebar">
+              <BlogToc headings={headings} />
+              <div className="blog-sidebar-card blog-sidebar-card-compact">
+                <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--brand-pink-text)' }}>The fortnight edit</Overline>
+                <p style={{ margin: '0 0 12px', fontFamily: 'var(--font-display)', fontSize: '1rem', fontWeight: 500, letterSpacing: '-0.01em', lineHeight: 1.3 }}>
+                  Get the next guide in your inbox.
+                </p>
+                <NewsletterSignup source="blog" variant="light" ctaLabel="Sign up" />
+              </div>
+            </aside>
             {bodyInner}
           </div>
         ) : (

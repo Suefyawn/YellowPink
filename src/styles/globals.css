@@ -536,18 +536,67 @@ a.underline,
   cursor: pointer; transition: all 150ms ease-out;
 }
 
+/* Blog listing sidebar (categories / newsletter / latest), the same
+   content-first-plus-utility-rail pattern as the article page's TOC, see
+   .blog-article-grid below. Hidden below 1024px, the horizontal filter-chip
+   rail does the category-browsing job there instead so it isn't duplicated
+   on a narrow screen. */
+.blog-list-sidebar { display: none; }
+.blog-list-card-grid { grid-template-columns: repeat(3, 1fr); }
+@media (min-width: 1024px) {
+  .blog-list-grid { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 56px; align-items: start; }
+  .blog-filter-rail { display: none !important; }
+  .blog-list-sidebar { display: flex; flex-direction: column; gap: 24px; position: sticky; top: 96px; }
+  .blog-list-card-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.blog-sidebar-card {
+  padding: 20px; border: 1px solid var(--line); border-radius: var(--radius-card);
+  background: var(--paper);
+}
+.blog-sidebar-cat-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.blog-sidebar-cat-list button {
+  width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 6px; border: none; background: none; border-radius: 8px;
+  font-family: var(--font-ui); font-size: 0.8125rem; color: var(--ink-700);
+  cursor: pointer; transition: background 120ms ease-out, color 120ms ease-out;
+}
+.blog-sidebar-cat-list button span:first-child { display: inline-flex; align-items: center; gap: 8px; }
+.blog-sidebar-cat-list button.is-active { background: var(--paper2, #faf6ee); color: var(--ink-900); font-weight: 600; }
+@media (hover: hover) { .blog-sidebar-cat-list button:hover { background: var(--paper2, #faf6ee); } }
+.blog-sidebar-cat-count { font-size: 0.6875rem; color: var(--ink-500); }
+.blog-sidebar-cat-list button.is-active .blog-sidebar-cat-count { color: var(--ink-700); }
+
+.blog-sidebar-latest-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.blog-sidebar-latest-list a {
+  display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit;
+}
+.blog-sidebar-latest-thumb {
+  flex-shrink: 0; width: 56px; height: 56px; border-radius: 8px; overflow: hidden;
+  position: relative; display: block;
+}
+.blog-sidebar-latest-title {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  font-size: 0.8125rem; font-weight: 600; line-height: 1.35; color: var(--ink-900); margin-bottom: 3px;
+}
+@media (hover: hover) { .blog-sidebar-latest-list a:hover .blog-sidebar-latest-title { color: var(--brand-pink-text); } }
+
 /* Blog article body: a sticky table-of-contents rail fills the left margin
    on desktop so the long-form column isn't marooned in white space. The
    rail collapses away below 1024px and the body re-centres. */
 .blog-article-grid {
   display: grid;
-  grid-template-columns: 248px minmax(0, 720px);
-  gap: 64px;
+  grid-template-columns: 272px minmax(0, 720px);
+  gap: 56px;
   justify-content: start;
   align-items: start;
 }
 .blog-article-main { max-width: 720px; }
-.blog-toc { position: sticky; top: 96px; font-family: var(--font-ui); }
+/* Sidebar wraps the TOC nav plus a compact newsletter card, both stick
+   together as one unit so the card travels with the nav instead of trailing
+   off below the viewport on a long article. */
+.blog-article-sidebar { position: sticky; top: 96px; display: flex; flex-direction: column; gap: 20px; }
+.blog-toc { font-family: var(--font-ui); }
+.blog-sidebar-card-compact { padding: 16px; }
 .blog-toc-title {
   margin: 0 0 12px;
   font-size: 0.6875rem; font-weight: 700;
@@ -720,7 +769,7 @@ a.underline,
 @media (max-width: 1023px) {
   .blog-article-grid { display: block; }
   .blog-article-main { margin: 0 auto; }
-  .blog-toc { display: none; }
+  .blog-article-sidebar { display: none; }
 }
 
 @media (max-width: 600px) {

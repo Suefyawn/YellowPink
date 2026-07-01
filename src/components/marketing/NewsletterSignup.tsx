@@ -8,7 +8,7 @@ import { subscribeToNewsletter, type NewsletterState } from '@/app/newsletter/ac
 // surface (footer / modal / checkout) actually converts.
 
 interface NewsletterSignupProps {
-  source?: 'footer' | 'modal' | 'exit_intent' | 'checkout' | 'post_purchase';
+  source?: 'footer' | 'modal' | 'exit_intent' | 'checkout' | 'post_purchase' | 'blog';
   placeholder?: string;
   ctaLabel?: string;
   /** Dark-on-light or light-on-dark, footer uses dark surface. */

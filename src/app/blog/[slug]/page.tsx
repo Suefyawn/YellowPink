@@ -8,6 +8,7 @@ import { redirectIfMapped } from '@/lib/redirects';
 import { type MedicalReviewer } from '@/lib/eeat';
 import { getReviewerById, getActiveReviewers } from '@/lib/reviewers';
 import { isHealthCategory } from '@/lib/category-taxonomy';
+import { selectRelatedProducts } from '@/lib/related-products';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
 import { pageMeta, jsonLd, articleLd, breadcrumbLd } from '@/lib/seo';
 import type { Product } from '@/types';
@@ -93,18 +94,18 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   const blogCat = (post.category ?? '').toLowerCase();
   const isWellness = /health|wellness|fertility|sleep|immun|bone|nutrition|men |women |female/.test(blogCat);
   const isBeauty = /skin|makeup|beauty|lip|cheek|highlight|brush|foundation/.test(blogCat);
-  let relatedProducts: Product[] = allProducts.filter(p => {
+  const categoryPool: Product[] = allProducts.filter(p => {
     if (isWellness) return wellnessCats.includes(p.category);
     if (isBeauty)   return beautyCats.includes(p.category);
     return false;
-  }).slice(0, 3);
-  if (relatedProducts.length === 0) {
-    // Fallback: a few featured/bestseller products so the section
-    // always has something on niche / Uncategorized posts.
-    relatedProducts = allProducts
-      .filter(p => p.is_featured || p.is_bestseller)
-      .slice(0, 3);
-  }
+  });
+  // Fallback pool when the post's own category bucket is empty (a niche /
+  // Uncategorized post): a few featured/bestseller products so the section
+  // always has something.
+  const fallbackPool = categoryPool.length > 0 ? categoryPool : allProducts.filter(p => p.is_featured || p.is_bestseller);
+  // Prefer products actually named in this specific post over a flat
+  // category-wide slice, see lib/related-products.ts.
+  const relatedProducts = selectRelatedProducts(post, allProducts, fallbackPool, 3);
 
   return (
     <main className="fade-in">

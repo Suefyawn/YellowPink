@@ -18,7 +18,7 @@ import { sendNewsletterWelcomeEmail } from '@/lib/email';
 // In demo mode (no Supabase env) we still validate + rate-limit, but skip the
 // DB insert and log the would-be subscription so the form feels real.
 
-const SOURCE_VALUES = ['footer', 'modal', 'exit_intent', 'checkout', 'post_purchase'] as const;
+const SOURCE_VALUES = ['footer', 'modal', 'exit_intent', 'checkout', 'post_purchase', 'blog'] as const;
 const SignupSchema = z.object({
   email: z.string().email().max(254),
   source: z.enum(SOURCE_VALUES).default('footer'),
