@@ -4,10 +4,12 @@ import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
+import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { formatBlogDate } from '@/lib/dates';
 import type { BlogPost } from '@/types';
 
 const PAGE_SIZE = 12;
+const SIDEBAR_LATEST_COUNT = 4;
 
 /** Lucide-style 24x24 stroke icons, one per top-level blog category, so the
  *  filter rail reads at a glance instead of as a wall of text chips. New
@@ -68,8 +70,8 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
       if (!p.category) continue;
       counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
     }
-    // Keep only categories with 2+ posts so the filter rail doesn't
-    // explode into a long single-post-per-category list.
+    // Keep only categories with 2+ posts so the rail doesn't explode into a
+    // long single-post-per-category list.
     return [...counts.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1]);
   }, [posts]);
 
@@ -82,6 +84,12 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
   const listTopRef = useRef<HTMLElement>(null);
 
   const featured = posts.find(p => p.featured);
+  // The sidebar's "Latest" widget skips the featured post (already shown big,
+  // above) so it isn't repeated twice on the same screen.
+  const latestForSidebar = useMemo(
+    () => posts.filter(p => p.id !== featured?.id).slice(0, SIDEBAR_LATEST_COUNT),
+    [posts, featured],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -158,155 +166,222 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
       )}
 
       <section ref={listTopRef} style={{ padding: 'var(--section-gap) 0', scrollMarginTop: 80 }}>
-        <div className="container">
-          {/* Search row, full-width on its own line at every breakpoint so it
-              never has to share space with the sort control (that fought
-              for room on narrow screens and got pushed onto an awkward,
-              isolated right-aligned line). */}
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ position: 'relative', maxWidth: 420 }}>
-              <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
-                style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-500)', pointerEvents: 'none' }}>
-                <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
-              </svg>
-              <input
-                type="search"
-                value={query}
-                onChange={e => updateQuery(e.target.value)}
-                placeholder="Search the journal, try “PCOS”, “retinol”…"
-                aria-label="Search blog posts"
-                style={{
-                  width: '100%',
-                  padding: '10px 14px 10px 38px', border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
-                  fontSize: '0.875rem', fontFamily: 'var(--font-ui)', background: 'var(--paper2, #faf6ee)',
-                  outline: 'none',
-                }}
-              />
-            </div>
-          </div>
-
-          {/* Category filter rail */}
-          <div className="blog-filter-rail" style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }}>
-            <button onClick={() => updateFilter('All')} className="blog-filter-chip" style={chipStyle(activeFilter === 'All')}>
-              <CategoryIcon category="All" />
-              All
-              <span style={countBadgeStyle(activeFilter === 'All')}>{posts.length}</span>
-            </button>
-            {categoryCounts.map(([cat, count]) => (
-              <button key={cat} onClick={() => updateFilter(cat)} className="blog-filter-chip" style={chipStyle(activeFilter === cat)}>
-                <CategoryIcon category={cat} />
-                {cat}
-                <span style={countBadgeStyle(activeFilter === cat)}>{count}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Results count + active filters (left) / sort (right) — paired on
-              one row since they're both about "what you're looking at", and
-              this is the row with room to spare now sort isn't crammed next
-              to the search input. */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <span className="small-text" style={{ color: 'var(--ink-500)' }}>
-                {filtered.length} {filtered.length === 1 ? 'article' : 'articles'}
-              </span>
-              {(activeFilter !== 'All' || query) && (
-                <>
-                  {activeFilter !== 'All' && (
-                    <button onClick={() => updateFilter('All')} style={activePillStyle}>
-                      {activeFilter} <span aria-hidden="true">×</span>
-                    </button>
-                  )}
-                  {query && (
-                    <button onClick={() => updateQuery('')} style={activePillStyle}>
-                      “{query}” <span aria-hidden="true">×</span>
-                    </button>
-                  )}
-                  <button onClick={clearAll} className="text-link small-text" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-                    Clear all
-                  </button>
-                </>
-              )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <label htmlFor="blog-sort" className="small-text" style={{ color: 'var(--ink-500)' }}>Sort</label>
-              <select
-                id="blog-sort"
-                value={sortMode}
-                onChange={e => updateSort(e.target.value as SortMode)}
-                style={{
-                  padding: '8px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
-                  fontSize: '0.8125rem', fontFamily: 'var(--font-ui)', background: 'transparent', color: 'var(--ink-700)',
-                  cursor: 'pointer', outline: 'none',
-                }}
-              >
-                <option value="newest">Newest</option>
-                <option value="quick">Quickest read</option>
-              </select>
-            </div>
-          </div>
-
-          {filtered.length === 0 ? (
-            <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--ink-500)' }}>
-              <p className="body-text" style={{ marginBottom: 6 }}>No posts match that filter.</p>
-              <button
-                onClick={clearAll}
-                style={{ background: 'none', border: 'none', color: 'var(--brand-pink-text)', cursor: 'pointer', fontWeight: 600 }}
-              >
-                Clear search
-              </button>
-            </div>
-          ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="blog-grid">
-            {filtered.map((post, i) => {
-              const visible = i < visibleCount;
-              return (
-                <Link
-                  key={post.id}
-                  href={`/blog/${post.slug}`}
-                  className="blog-tile blog-card-in"
+        {/* blog-list-grid: content + a slim utility sidebar (categories,
+            newsletter, latest posts) on wide screens, the same content-first
+            pattern as the article page's TOC rail. Collapses to a single
+            column below 1024px, the sidebar's job there is done by the
+            horizontal filter-chip rail instead (no point repeating category
+            navigation twice on a narrow screen). */}
+        <div className="container blog-list-grid">
+          <div className="blog-list-main">
+            {/* Search row, full-width on its own line at every breakpoint so it
+                never has to share space with the sort control (that fought
+                for room on narrow screens and got pushed onto an awkward,
+                isolated right-aligned line). */}
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ position: 'relative', maxWidth: 420 }}>
+                <svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+                  style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-500)', pointerEvents: 'none' }}>
+                  <circle cx="11" cy="11" r="7" /><path d="m21 21-4.3-4.3" />
+                </svg>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={e => updateQuery(e.target.value)}
+                  placeholder="Search the journal, try “PCOS”, “retinol”…"
+                  aria-label="Search blog posts"
                   style={{
-                    textDecoration: 'none', color: 'inherit',
-                    display: visible ? undefined : 'none',
-                    animationDelay: `${(i % PAGE_SIZE) * 40}ms`,
+                    width: '100%',
+                    padding: '10px 14px 10px 38px', border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.875rem', fontFamily: 'var(--font-ui)', background: 'var(--paper2, #faf6ee)',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Category filter rail: the primary filter UI below 1024px, the
+                sidebar's category list takes over above that (see
+                .blog-list-sidebar-categories / .blog-filter-rail CSS). */}
+            <div className="blog-filter-rail" style={{ display: 'flex', gap: 8, flexWrap: 'nowrap', overflowX: 'auto', marginBottom: 16, paddingBottom: 4 }}>
+              <button onClick={() => updateFilter('All')} className="blog-filter-chip" style={chipStyle(activeFilter === 'All')}>
+                <CategoryIcon category="All" />
+                All
+                <span style={countBadgeStyle(activeFilter === 'All')}>{posts.length}</span>
+              </button>
+              {categoryCounts.map(([cat, count]) => (
+                <button key={cat} onClick={() => updateFilter(cat)} className="blog-filter-chip" style={chipStyle(activeFilter === cat)}>
+                  <CategoryIcon category={cat} />
+                  {cat}
+                  <span style={countBadgeStyle(activeFilter === cat)}>{count}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Results count + active filters (left) / sort (right) — paired on
+                one row since they're both about "what you're looking at", and
+                this is the row with room to spare now sort isn't crammed next
+                to the search input. */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <span className="small-text" style={{ color: 'var(--ink-500)' }}>
+                  {filtered.length} {filtered.length === 1 ? 'article' : 'articles'}
+                </span>
+                {(activeFilter !== 'All' || query) && (
+                  <>
+                    {activeFilter !== 'All' && (
+                      <button onClick={() => updateFilter('All')} style={activePillStyle}>
+                        {activeFilter} <span aria-hidden="true">×</span>
+                      </button>
+                    )}
+                    {query && (
+                      <button onClick={() => updateQuery('')} style={activePillStyle}>
+                        “{query}” <span aria-hidden="true">×</span>
+                      </button>
+                    )}
+                    <button onClick={clearAll} className="text-link small-text" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+                      Clear all
+                    </button>
+                  </>
+                )}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <label htmlFor="blog-sort" className="small-text" style={{ color: 'var(--ink-500)' }}>Sort</label>
+                <select
+                  id="blog-sort"
+                  value={sortMode}
+                  onChange={e => updateSort(e.target.value as SortMode)}
+                  style={{
+                    padding: '8px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
+                    fontSize: '0.8125rem', fontFamily: 'var(--font-ui)', background: 'transparent', color: 'var(--ink-700)',
+                    cursor: 'pointer', outline: 'none',
                   }}
                 >
-                  <article style={{ cursor: 'pointer' }}>
-                    {/* Hover lift + image zoom handled in CSS (.blog-tile:hover) instead
-                        of JS onMouseEnter, the old version was a React Compiler
-                        anti-pattern (mutating DOM in event handlers). */}
-                    <div className="blog-tile-img" style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden', marginBottom: 16, transition: 'transform 200ms ease-out' }}>
-                      <ProductImage src={post.image_url} alt={post.title} sizes="(max-width: 700px) 100vw, 33vw" />
-                    </div>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 6, color: 'var(--ink-500)' }}>
-                      <CategoryIcon category={post.category} />
-                      <Overline style={{ color: 'var(--ink-500)' }}>{post.category}</Overline>
-                    </span>
-                    <h3 style={{ fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3, marginBottom: 8 }}>{post.title}</h3>
-                    <p className="small-text" style={{ marginBottom: 8, lineHeight: 1.5 }}>{post.excerpt}</p>
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-                      <span className="small-text" style={{ fontSize: '0.75rem' }}>{formatBlogDate(post.date)}</span>
-                      <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-500)' }} />
-                      <span className="small-text" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}><ClockIcon />{post.read_time}</span>
-                    </div>
-                  </article>
-                </Link>
-              );
-            })}
-          </div>
-          )}
-
-          {hasMore && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40 }}>
-              <button onClick={showMore} className="blog-load-more">
-                Show more articles
-                <span className="small-text" style={{ color: 'var(--ink-500)', fontWeight: 400 }}>
-                  ({filtered.length - visibleCount} more)
-                </span>
-              </button>
+                  <option value="newest">Newest</option>
+                  <option value="quick">Quickest read</option>
+                </select>
+              </div>
             </div>
-          )}
 
+            {filtered.length === 0 ? (
+              <div style={{ padding: '48px 0', textAlign: 'center', color: 'var(--ink-500)' }}>
+                <p className="body-text" style={{ marginBottom: 6 }}>No posts match that filter.</p>
+                <button
+                  onClick={clearAll}
+                  style={{ background: 'none', border: 'none', color: 'var(--brand-pink-text)', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Clear search
+                </button>
+              </div>
+            ) : (
+            <div style={{ display: 'grid', gap: 'var(--gutter)' }} className="blog-grid blog-list-card-grid">
+              {filtered.map((post, i) => {
+                const visible = i < visibleCount;
+                return (
+                  <Link
+                    key={post.id}
+                    href={`/blog/${post.slug}`}
+                    className="blog-tile blog-card-in"
+                    style={{
+                      textDecoration: 'none', color: 'inherit',
+                      display: visible ? undefined : 'none',
+                      animationDelay: `${(i % PAGE_SIZE) * 40}ms`,
+                    }}
+                  >
+                    <article style={{ cursor: 'pointer' }}>
+                      {/* Hover lift + image zoom handled in CSS (.blog-tile:hover) instead
+                          of JS onMouseEnter, the old version was a React Compiler
+                          anti-pattern (mutating DOM in event handlers). */}
+                      <div className="blog-tile-img" style={{ aspectRatio: '16/10', borderRadius: 'var(--radius-card)', overflow: 'hidden', marginBottom: 16, transition: 'transform 200ms ease-out' }}>
+                        <ProductImage src={post.image_url} alt={post.title} sizes="(max-width: 700px) 100vw, 33vw" />
+                      </div>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, marginBottom: 6, color: 'var(--ink-500)' }}>
+                        <CategoryIcon category={post.category} />
+                        <Overline style={{ color: 'var(--ink-500)' }}>{post.category}</Overline>
+                      </span>
+                      <h3 style={{ fontSize: '1.125rem', fontWeight: 600, letterSpacing: '-0.01em', lineHeight: 1.3, marginBottom: 8 }}>{post.title}</h3>
+                      <p className="small-text" style={{ marginBottom: 8, lineHeight: 1.5 }}>{post.excerpt}</p>
+                      <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+                        <span className="small-text" style={{ fontSize: '0.75rem' }}>{formatBlogDate(post.date)}</span>
+                        <span style={{ width: 3, height: 3, borderRadius: '50%', background: 'var(--ink-500)' }} />
+                        <span className="small-text" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}><ClockIcon />{post.read_time}</span>
+                      </div>
+                    </article>
+                  </Link>
+                );
+              })}
+            </div>
+            )}
+
+            {hasMore && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40 }}>
+                <button onClick={showMore} className="blog-load-more">
+                  Show more articles
+                  <span className="small-text" style={{ color: 'var(--ink-500)', fontWeight: 400 }}>
+                    ({filtered.length - visibleCount} more)
+                  </span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Sidebar: desktop-only (≥1024px), see .blog-list-sidebar CSS. Three
+              cards, browse by category, subscribe, and a "what's new" rail,
+              the same triad most editorial blogs (Stripe, Vercel, a16z) put in
+              the margin instead of burying it below the fold. */}
+          <aside className="blog-list-sidebar">
+            <div className="blog-sidebar-card">
+              <p className="blog-toc-title">Browse by topic</p>
+              <ul className="blog-sidebar-cat-list">
+                <li>
+                  <button onClick={() => updateFilter('All')} className={activeFilter === 'All' ? 'is-active' : undefined}>
+                    <span><CategoryIcon category="All" /> All articles</span>
+                    <span className="blog-sidebar-cat-count">{posts.length}</span>
+                  </button>
+                </li>
+                {categoryCounts.map(([cat, count]) => (
+                  <li key={cat}>
+                    <button onClick={() => updateFilter(cat)} className={activeFilter === cat ? 'is-active' : undefined}>
+                      <span><CategoryIcon category={cat} /> {cat}</span>
+                      <span className="blog-sidebar-cat-count">{count}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="blog-sidebar-card">
+              <Overline style={{ display: 'block', marginBottom: 6, color: 'var(--brand-pink-text)' }}>The fortnight edit</Overline>
+              <h3 style={{ margin: '0 0 8px', fontFamily: 'var(--font-display)', fontSize: '1.125rem', fontWeight: 500, letterSpacing: '-0.01em' }}>
+                New pieces in your inbox.
+              </h3>
+              <p className="small-text" style={{ marginBottom: 14, color: 'var(--ink-700)', lineHeight: 1.55 }}>
+                One fortnightly note, new guides, restocks, the routines we&apos;re actually using.
+              </p>
+              <NewsletterSignup source="blog" variant="light" ctaLabel="Sign up" />
+            </div>
+
+            {latestForSidebar.length > 0 && (
+              <div className="blog-sidebar-card">
+                <p className="blog-toc-title">Latest</p>
+                <ul className="blog-sidebar-latest-list">
+                  {latestForSidebar.map(p => (
+                    <li key={p.id}>
+                      <Link href={`/blog/${p.slug}`}>
+                        <span className="blog-sidebar-latest-thumb">
+                          <ProductImage src={p.image_url} alt={p.title} width={56} height={56} sizes="56px" />
+                        </span>
+                        <span>
+                          <span className="blog-sidebar-latest-title">{p.title}</span>
+                          <span className="small-text" style={{ fontSize: '0.75rem' }}>{formatBlogDate(p.date)}</span>
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </aside>
         </div>
       </section>
     </div>
