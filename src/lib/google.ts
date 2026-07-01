@@ -188,6 +188,23 @@ async function getAccessToken(): Promise<string> {
   return tok.access_token;
 }
 
+// Thrown by gapi() on a rate-limit/quota response (HTTP 429, or 403 with a
+// quota-flavoured reason) so callers can tell "quota exceeded" apart from a
+// generic failure and stop retrying instead of burning the rest of the quota
+// on further failed calls.
+export class GoogleQuotaError extends Error {
+  constructor(public status: number, body: string) {
+    super(`google api quota exceeded (${status}): ${body}`);
+    this.name = 'GoogleQuotaError';
+  }
+}
+
+function isQuotaResponse(status: number, body: string): boolean {
+  if (status === 429) return true;
+  if (status === 403) return /quota|rate.?limit/i.test(body);
+  return false;
+}
+
 async function gapi<T>(url: string, init?: RequestInit): Promise<T> {
   const token = await getAccessToken();
   // Only set JSON content-type when there's a body, an empty PUT (e.g.
@@ -200,7 +217,11 @@ async function gapi<T>(url: string, init?: RequestInit): Promise<T> {
     headers: { ...headers, ...((init?.headers as Record<string, string>) ?? {}) },
     cache: 'no-store',
   });
-  if (!res.ok) throw new Error(`google api ${res.status}: ${await res.text()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    if (isQuotaResponse(res.status, body)) throw new GoogleQuotaError(res.status, body);
+    throw new Error(`google api ${res.status}: ${body}`);
+  }
   // Some endpoints (sitemaps.submit) return 204/empty, don't choke on no JSON.
   const text = await res.text();
   return (text ? JSON.parse(text) : undefined) as T;
@@ -271,12 +292,17 @@ export interface UrlIndexStatus {
   coverageState: string;      // e.g. "Submitted and indexed", "Crawled - currently not indexed"
   lastCrawlTime: string | null;
   googleCanonical: string | null;
+  // Deep link straight into the Search Console UI for this exact inspection.
+  // The `id` in this URL is an opaque token Google mints per-inspection, NOT
+  // the page URL, constructing this link by hand (e.g. `id=<the page URL>`)
+  // 404s. Always use the link the API itself returns.
+  inspectionResultLink: string | null;
 }
 
 /** Check whether a specific URL is indexed (read-only, there is no API to
  *  *force* indexing of an arbitrary page; this reports current status). */
 export async function inspectUrl(siteUrl: string, inspectionUrl: string): Promise<UrlIndexStatus> {
-  const data = await gapi<{ inspectionResult?: { indexStatusResult?: { verdict?: string; coverageState?: string; lastCrawlTime?: string; googleCanonical?: string } } }>(
+  const data = await gapi<{ inspectionResult?: { indexStatusResult?: { verdict?: string; coverageState?: string; lastCrawlTime?: string; googleCanonical?: string }; inspectionResultLink?: string } }>(
     'https://searchconsole.googleapis.com/v1/urlInspection/index:inspect',
     { method: 'POST', body: JSON.stringify({ inspectionUrl, siteUrl }) },
   );
@@ -286,6 +312,7 @@ export async function inspectUrl(siteUrl: string, inspectionUrl: string): Promis
     coverageState: r.coverageState ?? 'Unknown',
     lastCrawlTime: r.lastCrawlTime ?? null,
     googleCanonical: r.googleCanonical ?? null,
+    inspectionResultLink: data.inspectionResult?.inspectionResultLink ?? null,
   };
 }
 

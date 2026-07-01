@@ -1,6 +1,6 @@
 import 'server-only';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getGoogleConnection, inspectUrl } from '@/lib/google';
+import { getGoogleConnection, inspectUrl, GoogleQuotaError } from '@/lib/google';
 import { SITE_URL } from '@/lib/seo';
 
 // ============================================================================
@@ -78,20 +78,68 @@ async function pickBatch(limit: number): Promise<CandidateRow[]> {
   return rows;
 }
 
+// ─── quota tracking ──────────────────────────────────────────────────────────
+// This only tracks OUR OWN urlInspection API calls (Google enforces ~2000/day,
+// 600/min per property on that API and returns 429/403 when exceeded, which
+// GoogleQuotaError surfaces). It cannot see the SEPARATE, undocumented daily
+// limit Google puts on manual "Request Indexing" clicks inside the Search
+// Console website itself, that limit lives entirely in Google's own UI with
+// no API to query it, so hitting it while clicking through by hand won't show
+// up here. The admin page explains this distinction so staff don't assume the
+// two are the same counter.
+export interface GscQuotaState { exceeded: boolean; at: string | null; message: string | null }
+
+async function setQuotaState(state: GscQuotaState): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabaseAdmin().from('analytics_cache') as any)
+    .upsert({ key: 'gsc_quota', data: state, updated_at: new Date().toISOString() });
+}
+
+export async function getQuotaState(): Promise<GscQuotaState | null> {
+  const { data } = await supabaseAdmin().from('analytics_cache').select('data').eq('key', 'gsc_quota').maybeSingle();
+  return (data as { data: GscQuotaState } | null)?.data ?? null;
+}
+
+// The daily limit on manual "Request Indexing" clicks inside the Search
+// Console website is Google's own, undocumented, and has no API, there is no
+// way for this app to detect it was hit. Self-reporting is the only option:
+// staff mark it here when Google blocks them in the GSC UI, so the reminder
+// at least shows up somewhere instead of everyone re-discovering it by
+// getting blocked again.
+export interface ManualQuotaState { reportedAt: string }
+
+export async function reportManualQuotaHit(): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabaseAdmin().from('analytics_cache') as any)
+    .upsert({ key: 'gsc_manual_quota', data: { reportedAt: new Date().toISOString() }, updated_at: new Date().toISOString() });
+}
+
+export async function clearManualQuotaHit(): Promise<void> {
+  await supabaseAdmin().from('analytics_cache').delete().eq('key', 'gsc_manual_quota');
+}
+
+export async function getManualQuotaState(): Promise<ManualQuotaState | null> {
+  const { data } = await supabaseAdmin().from('analytics_cache').select('data').eq('key', 'gsc_manual_quota').maybeSingle();
+  return (data as { data: ManualQuotaState } | null)?.data ?? null;
+}
+
 /** Refresh indexing status for a capped batch of tracked URLs. Best-effort:
  *  a missing Google connection or a single failed inspection never throws,
- *  since this runs unattended from a cron. Returns how many it checked. */
-export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ checked: number }> {
+ *  since this runs unattended from a cron. Stops the batch immediately on a
+ *  quota error instead of burning the rest of it on calls that will also
+ *  fail. Returns how many it checked and whether quota was hit this run. */
+export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ checked: number; quotaExceeded: boolean }> {
   const conn = await getGoogleConnection();
-  if (!conn?.gsc_site_url) return { checked: 0 };
+  if (!conn?.gsc_site_url) return { checked: 0, quotaExceeded: false };
 
   await seedRecentBlogPosts().catch(() => {});
 
   const rows = await pickBatch(batch);
-  if (rows.length === 0) return { checked: 0 };
+  if (rows.length === 0) return { checked: 0, quotaExceeded: false };
 
   const admin = supabaseAdmin();
   let checked = 0;
+  let quotaExceeded = false;
   for (const row of rows) {
     try {
       const status = await inspectUrl(conn.gsc_site_url, pathToUrl(row.path));
@@ -102,12 +150,23 @@ export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ ch
           verdict: status.verdict,
           google_canonical: status.googleCanonical,
           last_crawl_time: status.lastCrawlTime,
+          inspection_link: status.inspectionResultLink,
           last_checked_at: new Date().toISOString(),
           checks: (row.checks ?? 0) + 1,
         })
         .eq('path', row.path);
       checked++;
-    } catch { /* best-effort: one failed inspection shouldn't stop the batch */ }
+    } catch (err) {
+      if (err instanceof GoogleQuotaError) {
+        quotaExceeded = true;
+        await setQuotaState({ exceeded: true, at: new Date().toISOString(), message: err.message }).catch(() => {});
+        break; // further calls will also 429, stop spending the batch
+      }
+      /* best-effort: one failed (non-quota) inspection shouldn't stop the batch */
+    }
   }
-  return { checked };
+  if (checked > 0 && !quotaExceeded) {
+    await setQuotaState({ exceeded: false, at: new Date().toISOString(), message: null }).catch(() => {});
+  }
+  return { checked, quotaExceeded };
 }
