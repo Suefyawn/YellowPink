@@ -100,29 +100,6 @@ export async function getQuotaState(): Promise<GscQuotaState | null> {
   return (data as { data: GscQuotaState } | null)?.data ?? null;
 }
 
-// The daily limit on manual "Request Indexing" clicks inside the Search
-// Console website is Google's own, undocumented, and has no API, there is no
-// way for this app to detect it was hit. Self-reporting is the only option:
-// staff mark it here when Google blocks them in the GSC UI, so the reminder
-// at least shows up somewhere instead of everyone re-discovering it by
-// getting blocked again.
-export interface ManualQuotaState { reportedAt: string }
-
-export async function reportManualQuotaHit(): Promise<void> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabaseAdmin().from('analytics_cache') as any)
-    .upsert({ key: 'gsc_manual_quota', data: { reportedAt: new Date().toISOString() }, updated_at: new Date().toISOString() });
-}
-
-export async function clearManualQuotaHit(): Promise<void> {
-  await supabaseAdmin().from('analytics_cache').delete().eq('key', 'gsc_manual_quota');
-}
-
-export async function getManualQuotaState(): Promise<ManualQuotaState | null> {
-  const { data } = await supabaseAdmin().from('analytics_cache').select('data').eq('key', 'gsc_manual_quota').maybeSingle();
-  return (data as { data: ManualQuotaState } | null)?.data ?? null;
-}
-
 /** Refresh indexing status for a capped batch of tracked URLs. Best-effort:
  *  a missing Google connection or a single failed inspection never throws,
  *  since this runs unattended from a cron. Stops the batch immediately on a

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
-import { refreshIndexingStatus, trackUrl, reportManualQuotaHit, clearManualQuotaHit } from '@/lib/indexing-status';
+import { refreshIndexingStatus, trackUrl } from '@/lib/indexing-status';
 
 async function assertSettings() {
   const session = await getStaffSession();
@@ -40,27 +40,5 @@ export async function addTrackedUrl(formData: FormData): Promise<void> {
   if (!path) return;
   await trackUrl(path);
   await logAudit(session, { action: 'indexing.track_url', entity: 'gsc_url_index_status', diff: { path } });
-  revalidatePath('/admin/indexing');
-}
-
-/** Self-report: staff clicked "Request Indexing" in the GSC website itself
- *  and got blocked by Google's own (undocumented, unqueryable) daily limit on
- *  that button. There is no API to detect this automatically, this is the
- *  only way it ever gets recorded, so the reminder shows up here instead of
- *  everyone rediscovering the limit by hitting it again. */
-export async function reportManualQuota(): Promise<void> {
-  const session = await assertSettings();
-  await reportManualQuotaHit();
-  await logAudit(session, { action: 'indexing.report_manual_quota', entity: 'gsc_url_index_status' });
-  revalidatePath('/admin/indexing');
-}
-
-/** Dismiss the manual-quota reminder once it's no longer relevant (Google's
- *  own reset time isn't published, so this is a manual "I can tell it reset"
- *  action rather than something we can time automatically). */
-export async function clearManualQuota(): Promise<void> {
-  const session = await assertSettings();
-  await clearManualQuotaHit();
-  await logAudit(session, { action: 'indexing.clear_manual_quota', entity: 'gsc_url_index_status' });
   revalidatePath('/admin/indexing');
 }

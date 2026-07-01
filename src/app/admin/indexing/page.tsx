@@ -3,9 +3,9 @@ export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { getGoogleConnection } from '@/lib/google';
-import { getQuotaState, getManualQuotaState } from '@/lib/indexing-status';
+import { getQuotaState } from '@/lib/indexing-status';
 import { NoAccess } from '@/components/admin/NoAccess';
-import { checkIndexingNow, addTrackedUrl, reportManualQuota, clearManualQuota } from './actions';
+import { checkIndexingNow, addTrackedUrl } from './actions';
 
 interface Row {
   path: string;
@@ -37,7 +37,7 @@ export default async function IndexingPage() {
 
   const conn = await getGoogleConnection();
   const admin = supabaseAdmin();
-  const [{ data }, apiQuota, manualQuota] = await Promise.all([
+  const [{ data }, apiQuota] = await Promise.all([
     admin
       .from('gsc_url_index_status')
       .select('path, coverage_state, verdict, is_indexed, first_seen_at, last_checked_at, checks, inspection_link')
@@ -45,7 +45,6 @@ export default async function IndexingPage() {
       .order('first_seen_at', { ascending: false })
       .limit(500),
     getQuotaState(),
-    getManualQuotaState(),
   ]);
 
   const rows = (data ?? []) as Row[];
@@ -87,22 +86,6 @@ export default async function IndexingPage() {
               resets.
             </div>
           )}
-          {manualQuota && (
-            <div style={{ padding: '14px 18px', marginBottom: 16, background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, color: '#92400e', fontSize: '0.8125rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <span>
-                <strong>Manual &ldquo;Request Indexing&rdquo; limit reported {ago(manualQuota.reportedAt)}.</strong> This
-                is Google&apos;s own daily limit on the button inside Search Console itself, there is no
-                API to detect it automatically (this is only here because someone marked it), and
-                Google doesn&apos;t publish exactly when it resets, typically around 24 hours.
-              </span>
-              <form action={clearManualQuota}>
-                <button type="submit" style={{ padding: '6px 12px', fontSize: '0.75rem', borderRadius: 6, background: '#fff', color: '#92400e', border: '1px solid #fde68a', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                  Clear
-                </button>
-              </form>
-            </div>
-          )}
-
           <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
             <Stat label="Tracked" value={rows.length} />
             <Stat label="Indexed" value={indexed.length} />
@@ -113,17 +96,6 @@ export default async function IndexingPage() {
                 Check now
               </button>
             </form>
-            {!manualQuota && (
-              <form action={reportManualQuota}>
-                <button
-                  type="submit"
-                  title="Google gives no API to detect this, click here if the Request Indexing button in Search Console just told you you're out for today"
-                  style={{ padding: '10px 16px', fontSize: '0.8125rem', borderRadius: 8, background: '#fff', color: '#92400e', border: '1px solid #fde68a', cursor: 'pointer', fontWeight: 600, height: 44 }}
-                >
-                  I hit Google&apos;s manual limit
-                </button>
-              </form>
-            )}
           </div>
 
           <form action={addTrackedUrl} style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
