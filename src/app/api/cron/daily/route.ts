@@ -6,6 +6,7 @@
 //   4. stuck-payments      , flag orders stuck mid-payment for follow-up
 //   5. not-found-digest    , email the owner newly-broken (404) URLs
 //   6. analytics-refresh   , refresh PostHog + Sentry dashboard widgets
+//   7. indexing-check      , refresh GSC indexing status for new pages
 //
 // Removed: low-stock + back-in-stock. The store runs a dropship model, so
 // shelf stock isn't tracked and there's nothing to restock-alert or notify
@@ -82,6 +83,7 @@ export async function GET(req: NextRequest) {
   results.push(await runJob(req, '/api/cron/stuck-payments'));
   results.push(await runJob(req, '/api/cron/not-found-digest'));
   results.push(await runJob(req, '/api/cron/analytics-refresh'));
+  results.push(await runJob(req, '/api/cron/indexing-check'));
 
   const allOk = results.every(r => r.ok);
   return NextResponse.json(
