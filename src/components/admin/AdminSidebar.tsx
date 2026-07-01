@@ -52,6 +52,7 @@ const GROUPS: NavGroup[] = [
   ]},
   { label: 'Store', items: [
     { href: '/admin/broken-links', label: 'Broken links', icon: '⊘', permission: 'settings' },
+    { href: '/admin/indexing', label: 'Indexing', icon: '◍', permission: 'settings' },
     { href: '/admin/audit',     label: 'Activity log', icon: '◉', ownerOnly: true },
     { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
     { href: '/admin/settings',  label: 'Settings',  icon: '⚙', permission: 'settings' },
