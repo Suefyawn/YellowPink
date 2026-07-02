@@ -110,6 +110,9 @@ function VariantForm({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', paddingTop: 18 }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', cursor: 'pointer' }}>
+            {/* Hidden 'false' before the checkbox so an unticked box submits a
+                value and can actually disable the variant (see variantInputSchema). */}
+            <input type="hidden" name="enabled" value="false" />
             <input name="enabled" type="checkbox" defaultChecked={variant?.enabled ?? true} value="true" />
             Enabled
           </label>

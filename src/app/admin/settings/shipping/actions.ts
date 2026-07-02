@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
+import { boolField } from '@/lib/validators';
 
 const PATH = '/admin/settings/shipping';
 
@@ -59,7 +60,9 @@ function parseZone(formData: FormData): ZoneFields {
 
   return {
     name,
-    active: formData.get('active') === 'true',
+    // The `active` Toggle submits a hidden 'false' before the checkbox 'true';
+    // read it with boolField so the checkbox (last value) wins, not the hidden.
+    active: boolField(formData, 'active'),
     sort_order,
     rate,
     free_shipping_threshold,

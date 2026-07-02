@@ -14,6 +14,7 @@ import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
 import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
+import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { log } from '@/lib/logger';
 import { verifyTotp } from '@/lib/totp';
 import { orderRangeSinceIso } from '@/lib/order-range';
@@ -172,6 +173,7 @@ export async function createProduct(
     await submitToSearchEnginesQuietly([`/product/${created.slug}`]);
   }
   revalidatePath('/admin/products');
+  revalidateStorefrontCatalog();
   redirect('/admin/products');
 }
 
@@ -195,6 +197,7 @@ export async function updateProduct(
     await submitToSearchEnginesQuietly([`/product/${live.slug}`]);
   }
   revalidatePath('/admin/products');
+  revalidateStorefrontCatalog();
   redirect('/admin/products');
 }
 
@@ -218,6 +221,7 @@ export async function deleteProduct(formData: FormData) {
     }
     await logAudit(session, { action: 'product.archive', entity: 'product', entity_id: id, diff: { reason: 'has_order_history' } });
     revalidatePath('/admin/products');
+    revalidateStorefrontCatalog();
     redirect('/admin/products?archived=1');
   }
 
@@ -228,6 +232,7 @@ export async function deleteProduct(formData: FormData) {
   }
   await logAudit(session, { action: 'product.delete', entity: 'product', entity_id: id });
   revalidatePath('/admin/products');
+  revalidateStorefrontCatalog();
   redirect('/admin/products?deleted=1');
 }
 
@@ -279,13 +284,9 @@ export async function createBlogPost(
   formData: FormData
 ): Promise<{ error: string } | null> {
   await assertPermission('blog');
-  // checkbox quirk: when unchecked, `featured` is absent from FormData.
-  const normalized = new FormData();
-  for (const [k, v] of formData.entries()) normalized.append(k, v);
-  if (!normalized.has('featured')) normalized.append('featured', 'false');
-  else normalized.set('featured', normalized.get('featured') === 'on' ? 'true' : String(normalized.get('featured')));
-
-  const parsed = parseForm(blogPostInputSchema, normalized);
+  // `featured` arrives as a checkbox ('on' when ticked, absent otherwise);
+  // blogPostInputSchema coerces it to a real boolean.
+  const parsed = parseForm(blogPostInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { error } = await supabaseAdmin().from('blog_posts').insert(parsed.data);
   if (error) return { error: error.message };
@@ -302,12 +303,8 @@ export async function updateBlogPost(
   formData: FormData
 ): Promise<{ error: string } | null> {
   await assertPermission('blog');
-  const normalized = new FormData();
-  for (const [k, v] of formData.entries()) normalized.append(k, v);
-  if (!normalized.has('featured')) normalized.append('featured', 'false');
-  else normalized.set('featured', normalized.get('featured') === 'on' ? 'true' : String(normalized.get('featured')));
-
-  const parsed = parseForm(blogPostInputSchema, normalized);
+  // See createBlogPost: `featured` is a checkbox coerced by the schema.
+  const parsed = parseForm(blogPostInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { error } = await supabaseAdmin().from('blog_posts').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };

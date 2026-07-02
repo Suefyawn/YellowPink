@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
+import { boolField } from '@/lib/validators';
 import type { NotificationEvent } from '@/lib/notification-recipients';
 
 const VALID_EVENTS: NotificationEvent[] = ['order.new', 'seo.broken_links'];
@@ -69,7 +70,10 @@ export async function addRecipient(formData: FormData): Promise<void> {
 export async function updateRecipient(id: string, formData: FormData): Promise<void> {
   const session = await assertOwner();
   const events = parseEvents(formData);
-  const enabled = formData.get('enabled') === 'true';
+  // The Active/Paused toggle submits a hidden 'false' before the checkbox
+  // 'true'; boolField lets the checkbox (last value) win so a recipient can be
+  // re-enabled — formData.get() would always read the leading 'false'.
+  const enabled = boolField(formData, 'enabled');
 
   const { error } = await supabaseAdmin()
     .from('notification_recipients')
