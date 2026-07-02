@@ -369,18 +369,11 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
         })),
         pay_method: payMethod,
       });
-      track({
-        name: 'purchase',
-        payload: {
-          transaction_id: orderNumber,
-          value: total, currency: 'PKR',
-          items: cartItems.map(i => ({
-            product_id: i.id, product_name: i.name, brand: i.brand ?? undefined,
-            category: i.category, variant: i.variant_label ?? i.variant,
-            price: i.price, qty: i.qty, currency: 'PKR',
-          })),
-        },
-      });
+      // NOTE: the `purchase` analytics event is intentionally NOT fired here.
+      // It's fired once on /thank-you (see app/thank-you/ThankYouPurchase.tsx),
+      // which BOTH this COD path (router.push below) and gateway callbacks
+      // reach — so every order fires exactly one client `purchase`, deduped on
+      // the order number, with no COD double-count.
       clearCart();
       router.push(dest.url);
     } catch (err) {

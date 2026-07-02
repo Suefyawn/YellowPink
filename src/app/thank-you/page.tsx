@@ -8,6 +8,7 @@ import { getSiteSettings, supabaseAdmin } from '@/lib/supabase';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
+import { ThankYouPurchase } from './ThankYouPurchase';
 import type { BankAccount } from '@/types';
 
 // Order-confirmation page should never be indexed, leaks order_number
@@ -29,7 +30,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   // to show the bank accounts for a bank-transfer order AND to render an order
   // summary so the customer sees what they bought without checking their email.
   // The page is noindex and the order number is required, so no new exposure.
-  type OrderItem = { name: string; qty: number; price: number; variant?: string | null; variant_label?: string | null };
+  type OrderItem = { id?: string; name: string; brand?: string | null; category?: string | null; qty: number; price: number; variant?: string | null; variant_label?: string | null };
   type OrderRow = {
     pay_method: string | null;
     items: OrderItem[] | null;
@@ -37,6 +38,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
     shipping: number | null;
     discount_amount: number | null;
     total: number | null;
+    coupon_code: string | null;
   };
   let bankAccounts: BankAccount[] = [];
   let bankNotes = '';
@@ -44,7 +46,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   if (order) {
     const { data: row } = await supabaseAdmin()
       .from('orders')
-      .select('pay_method, items, subtotal, shipping, discount_amount, total')
+      .select('pay_method, items, subtotal, shipping, discount_amount, total, coupon_code')
       .eq('order_number', order)
       .maybeSingle();
     summary = (row as OrderRow | null) ?? null;
@@ -56,8 +58,32 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   }
   const summaryItems = Array.isArray(summary?.items) ? summary!.items! : [];
 
+  // Fire the canonical client `purchase` exactly once per completed order, but
+  // only when we actually resolved a real order (never on a direct/naked visit
+  // or a missing order). Works for both COD and gateway returns since both land
+  // here; the client component dedupes on the order number.
+  const firePurchase = Boolean(order) && summary != null && summary.total != null;
+  const purchaseItems = summaryItems.map((it) => ({
+    product_id: it.id,
+    product_name: it.name,
+    brand: it.brand ?? undefined,
+    category: it.category ?? undefined,
+    variant: it.variant_label ?? it.variant ?? undefined,
+    price: it.price,
+    qty: it.qty,
+    currency: 'PKR',
+  }));
+
   return (
     <main className="fade-in">
+      {firePurchase && (
+        <ThankYouPurchase
+          orderNumber={order!}
+          value={summary!.total!}
+          items={purchaseItems}
+          coupon={summary!.coupon_code || undefined}
+        />
+      )}
       <section style={{ padding: 'var(--section-gap) 0', textAlign: 'center' }}>
         <div className="container" style={{ maxWidth: 560 }}>
           <div style={{ marginBottom: 24 }}>
