@@ -2,16 +2,20 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { logoutAdmin } from '@/app/admin/actions';
+import { AdminIcon, type AdminIconName } from '@/components/ui/AdminIcon';
 import type { StaffSession, Permission } from '@/lib/permissions';
 
 // `permissionsAny` = nav item visible if the session holds ANY of these perms
 // (mirrors the canAny() helper). Use the array form for surfaces that can be
 // granted via multiple permissions (e.g. dashboard reachable via any of three
 // analytics perms). Single-permission rows use `permission` for brevity.
+// Icons are inline SVGs from AdminIcon (lucide-style, currentColor) — never
+// Unicode glyphs/emoji, which pick up the OS emoji font and clash with the
+// brand.
 type NavItem = {
   href: string;
   label: string;
-  icon: string;
+  icon: AdminIconName;
   permission?: Permission;
   permissionsAny?: Permission[];
   ownerOnly?: boolean;
@@ -21,41 +25,41 @@ type NavGroup = { label: string; items: NavItem[] };
 
 const GROUPS: NavGroup[] = [
   { label: 'Insights', items: [
-    { href: '/admin/dashboard', label: 'Dashboard', icon: '▣', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
-    { href: '/admin/analytics', label: 'Analytics', icon: '◐', permission: 'analytics' },
-    { href: '/admin/finance',   label: 'Finance',   icon: '₨', permission: 'analytics' },
-    { href: '/admin/finance/cod', label: 'COD',     icon: '⛁', permission: 'analytics' },
+    { href: '/admin/dashboard', label: 'Dashboard', icon: 'layout-dashboard', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
+    { href: '/admin/analytics', label: 'Analytics', icon: 'pie-chart', permission: 'analytics' },
+    { href: '/admin/finance',   label: 'Finance',   icon: 'banknote', permission: 'analytics' },
+    { href: '/admin/finance/cod', label: 'COD',     icon: 'coins', permission: 'analytics' },
   ]},
   { label: 'Sell', items: [
-    { href: '/admin/orders',    label: 'Orders',    icon: '◎', permission: 'orders.view' },
-    { href: '/admin/products',  label: 'Products',  icon: '◈', permission: 'products.view' },
-    { href: '/admin/tags',      label: 'Tags',      icon: '#', permission: 'products.view' },
-    { href: '/admin/collections', label: 'Collections', icon: '▤', permission: 'products.view' },
-    { href: '/admin/brands',    label: 'Brands',    icon: '◇', permission: 'products.view' },
-    { href: '/admin/inventory', label: 'Inventory', icon: '⧉', permission: 'products.view' },
-    { href: '/admin/vendors',   label: 'Vendors',   icon: '▦', permission: 'orders.view' },
-    { href: '/admin/returns',   label: 'Returns',   icon: '↩', permission: 'returns' },
+    { href: '/admin/orders',    label: 'Orders',    icon: 'shopping-bag', permission: 'orders.view' },
+    { href: '/admin/products',  label: 'Products',  icon: 'package', permission: 'products.view' },
+    { href: '/admin/tags',      label: 'Tags',      icon: 'tag', permission: 'products.view' },
+    { href: '/admin/collections', label: 'Collections', icon: 'layers', permission: 'products.view' },
+    { href: '/admin/brands',    label: 'Brands',    icon: 'gem', permission: 'products.view' },
+    { href: '/admin/inventory', label: 'Inventory', icon: 'clipboard-list', permission: 'products.view' },
+    { href: '/admin/vendors',   label: 'Vendors',   icon: 'truck', permission: 'orders.view' },
+    { href: '/admin/returns',   label: 'Returns',   icon: 'undo', permission: 'returns' },
   ]},
   { label: 'People', items: [
-    { href: '/admin/users',     label: 'Customers', icon: '◉', permission: 'customers.view' },
-    { href: '/admin/segments',  label: 'Segments',  icon: '◐', permission: 'customers.view' },
-    { href: '/admin/coupons',   label: 'Coupons',   icon: '◇', permission: 'coupons' },
+    { href: '/admin/users',     label: 'Customers', icon: 'users', permission: 'customers.view' },
+    { href: '/admin/segments',  label: 'Segments',  icon: 'target', permission: 'customers.view' },
+    { href: '/admin/coupons',   label: 'Coupons',   icon: 'ticket', permission: 'coupons' },
   ]},
   { label: 'Marketing', items: [
-    { href: '/admin/promos',    label: 'Promos',    icon: '✧', permission: 'promos' },
-    { href: '/admin/blog',      label: 'Blog',      icon: '✦', permission: 'blog' },
-    { href: '/admin/reviewers', label: 'Review Board', icon: '✚', permission: 'blog' },
-    { href: '/admin/reviews',   label: 'Reviews',   icon: '★', permission: 'reviews' },
-    { href: '/admin/messages',  label: 'Messages',  icon: '◫', permission: 'messages' },
-    { href: '/admin/newsletter', label: 'Newsletter', icon: '✉', permission: 'newsletter' },
-    { href: '/admin/emails',    label: 'Email log', icon: '❏', permission: 'settings' },
+    { href: '/admin/promos',    label: 'Promos',    icon: 'megaphone', permission: 'promos' },
+    { href: '/admin/blog',      label: 'Blog',      icon: 'pen-line', permission: 'blog' },
+    { href: '/admin/reviewers', label: 'Review Board', icon: 'shield-check', permission: 'blog' },
+    { href: '/admin/reviews',   label: 'Reviews',   icon: 'star', permission: 'reviews' },
+    { href: '/admin/messages',  label: 'Messages',  icon: 'message-circle', permission: 'messages' },
+    { href: '/admin/newsletter', label: 'Newsletter', icon: 'mail', permission: 'newsletter' },
+    { href: '/admin/emails',    label: 'Email log', icon: 'inbox', permission: 'settings' },
   ]},
   { label: 'Store', items: [
-    { href: '/admin/broken-links', label: 'Broken links', icon: '⊘', permission: 'settings' },
-    { href: '/admin/indexing', label: 'Indexing', icon: '◍', permission: 'settings' },
-    { href: '/admin/audit',     label: 'Activity log', icon: '◉', ownerOnly: true },
-    { href: '/admin/team',      label: 'Team',      icon: '⬡', ownerOnly: true },
-    { href: '/admin/settings',  label: 'Settings',  icon: '⚙', permission: 'settings' },
+    { href: '/admin/broken-links', label: 'Broken links', icon: 'link-off', permission: 'settings' },
+    { href: '/admin/indexing', label: 'Indexing', icon: 'search', permission: 'settings' },
+    { href: '/admin/audit',     label: 'Activity log', icon: 'history', ownerOnly: true },
+    { href: '/admin/team',      label: 'Team',      icon: 'user-check', ownerOnly: true },
+    { href: '/admin/settings',  label: 'Settings',  icon: 'settings', permission: 'settings' },
   ]},
 ];
 
@@ -96,12 +100,12 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0, unreadMe
             aria-label="Close admin menu"
             style={{
               background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer',
-              fontSize: '1.25rem', lineHeight: 1,
+              lineHeight: 1,
               width: 40, height: 40, borderRadius: 8,
               display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
               marginRight: -8,
             }}
-          >✕</button>
+          ><AdminIcon name="x" size={16} strokeWidth={2} /></button>
         )}
       </div>
 
@@ -160,7 +164,9 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0, unreadMe
                   borderLeft: `3px solid ${active ? '#f472b6' : 'transparent'}`,
                   transition: 'all 0.15s',
                 }}>
-                  <span style={{ fontSize: '1rem', opacity: active ? 1 : 0.6 }}>{icon}</span>
+                  <span style={{ display: 'inline-flex', opacity: active ? 1 : 0.6 }}>
+                    <AdminIcon name={icon} size={16} strokeWidth={2} />
+                  </span>
                   <span style={{ flex: 1 }}>{label}</span>
                   {badgeCount > 0 && (
                     <span style={{
@@ -188,7 +194,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0, unreadMe
             padding: '8px 0', color: '#9ca3af', textDecoration: 'none',
             fontSize: '0.8125rem',
           }}>
-            <span>⚙</span> My Profile
+            <AdminIcon name="user" size={14} strokeWidth={2} style={{ flexShrink: 0 }} /> My Profile
           </Link>
         )}
         {/* User manual, visible to every signed-in staff member so anyone with
@@ -198,21 +204,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0, unreadMe
           padding: '8px 0', color: '#9ca3af', textDecoration: 'none',
           fontSize: '0.8125rem', borderTop: '1px solid #1f2937', marginTop: 8,
         }}>
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            style={{ flexShrink: 0 }}
-          >
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
-          </svg>
+          <AdminIcon name="book-open" size={14} strokeWidth={2} style={{ flexShrink: 0 }} />
           User manual
         </Link>
       </div>
@@ -226,7 +218,7 @@ export function AdminSidebar({ session, onClose, pendingOrderCount = 0, unreadMe
             color: '#9ca3af', cursor: 'pointer', fontSize: '0.8125rem',
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            <span>↩</span> Sign out
+            <AdminIcon name="log-out" size={14} strokeWidth={2} style={{ flexShrink: 0 }} /> Sign out
           </button>
         </form>
       </div>

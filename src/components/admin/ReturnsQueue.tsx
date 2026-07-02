@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { approveReturn, rejectReturn, markReturnReceived } from '@/app/account/orders/returns/actions';
+import { approveReturn, rejectReturn, markReturnReceived, markReturnRefunded } from '@/app/account/orders/returns/actions';
 import { useToast } from '@/components/admin/Toast';
 
 interface ReturnRow {
@@ -22,6 +22,12 @@ interface ReturnRow {
 const STATUS_COLOR: Record<string, string> = {
   pending: '#d97706', approved: '#10b981', rejected: '#ef4444',
   received: '#3b82f6', refunded: '#8b5cf6', cancelled: '#6b7280',
+};
+
+// Human labels for refund_method, used in the refund confirmation prompt.
+const REFUND_METHOD_LABELS: Record<string, string> = {
+  store_credit: 'store credit', coupon: 'a coupon code',
+  original: 'the original payment method', cod_deduct: 'a COD deduction',
 };
 
 export function ReturnsQueue({ rows, orderMap }: {
@@ -119,6 +125,30 @@ export function ReturnsQueue({ rows, orderMap }: {
                   style={{ padding: '6px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Mark as received & restock
+                </button>
+              </div>
+            )}
+
+            {r.status === 'received' && (
+              <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+                {/* Final lifecycle step: the refund has actually been paid
+                    out. Moves the request to `refunded` and the linked order
+                    to `refunded` so its revenue drops out of Finance. */}
+                <button
+                  onClick={() => {
+                    const amount = r.refund_amount != null ? `PKR ${Number(r.refund_amount).toLocaleString()}` : 'the agreed amount';
+                    const method = r.refund_method ? (REFUND_METHOD_LABELS[r.refund_method] ?? r.refund_method) : 'the agreed method';
+                    if (!window.confirm(`Mark this return as refunded? Confirms ${amount} was refunded via ${method}, and marks the order refunded.`)) return;
+                    startTransition(async () => {
+                      const res = await markReturnRefunded(r.id);
+                      if ('success' in res && res.success) toast('Return marked refunded', 'success');
+                      else toast(('error' in res && res.error) ? res.error : 'Failed', 'error');
+                    });
+                  }}
+                  disabled={acting}
+                  style={{ padding: '6px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  Mark as refunded
                 </button>
               </div>
             )}

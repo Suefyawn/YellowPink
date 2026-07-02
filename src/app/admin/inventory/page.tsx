@@ -50,13 +50,13 @@ function stockBadge(stock: number): { label: string; bg: string; fg: string } {
 
 export default async function InventoryPage({
   searchParams,
-}: { searchParams: Promise<{ product?: string; reason?: string; error?: string; ok?: string; view?: string; q?: string }> }) {
+}: { searchParams: Promise<{ product?: string; reason?: string; error?: string; ok?: string; warn?: string; view?: string; q?: string }> }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('products.view'))) {
     return <NoAccess section="Inventory" />;
   }
 
-  const { product: productFilter, reason: reasonFilter, error: errMsg, ok: okMsg, view, q } = await searchParams;
+  const { product: productFilter, reason: reasonFilter, error: errMsg, ok: okMsg, warn: warnMsg, view, q } = await searchParams;
   const stockQuery = (q ?? '').trim().toLowerCase();
   const admin = supabaseAdmin();
 
@@ -137,6 +137,9 @@ export default async function InventoryPage({
 
       {errMsg && (
         <div role="alert" style={{ background: '#fee2e2', color: '#991b1b', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>{errMsg}</div>
+      )}
+      {warnMsg && (
+        <div role="alert" style={{ background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>{warnMsg}</div>
       )}
       {okMsg && (
         <div role="status" style={{ background: '#d1fae5', color: '#065f46', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: '0.875rem' }}>Stock updated.</div>

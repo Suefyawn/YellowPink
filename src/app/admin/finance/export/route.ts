@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getStaffSession } from '@/lib/staff-auth';
-import { resolveRange, rangeStartISO, loadFinanceOrders, toOrderFinanceRow, PAY_METHOD_LABELS } from '@/lib/finance';
+import { resolveRange, rangeStartISO, loadFinanceOrders, toOrderFinanceRow } from '@/lib/finance';
+import { PAY_METHOD_LABELS } from '@/types';
 
 export const dynamic = 'force-dynamic';
 

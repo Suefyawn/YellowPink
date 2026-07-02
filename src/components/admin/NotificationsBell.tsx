@@ -15,15 +15,17 @@ interface Notification {
   created_at: string;
 }
 
-// Geometric symbols (◎ ⚠ ✕ ↩ ★ ⬡) render in the current text font and
-// match the admin's monochrome aesthetic. The picture-emoji entries that
-// used to live here (bug / chart-up / chart-down) drift colour and weight
-// across devices, so we render those three through AdminIcon by SVG name.
-const KIND_ICON: Record<string, string> = {
-  new_order: '◎', low_stock: '⚠', payment_failed: '✕',
-  return_request: '↩', new_review: '★', staff_added: '⬡',
-};
+// Every notification kind renders through AdminIcon (inline SVG,
+// currentColor). The Unicode glyphs that used to cover the store kinds
+// (◎ ⚠ ✕ ↩ ★ ⬡) picked up the OS text/emoji font and drifted in colour and
+// weight across devices, so they're SVG names now like the widget kinds.
 const KIND_SVG: Record<string, AdminIconName> = {
+  new_order: 'shopping-bag',
+  low_stock: 'alert-triangle',
+  payment_failed: 'x-circle',
+  return_request: 'undo',
+  new_review: 'star',
+  staff_added: 'user-plus',
   sentry_issue: 'bug',
   posthog_spike: 'trend-up',
   posthog_drop: 'trend-down',
@@ -100,10 +102,8 @@ export function NotificationsBell({ notifications }: { notifications: Notificati
                       background: n.read ? 'white' : '#fdf2f8',
                     }}
                   >
-                    <span style={{ fontSize: '1rem', color: '#C5286A', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>
-                      {KIND_SVG[n.kind]
-                        ? <AdminIcon name={KIND_SVG[n.kind]} size={16} />
-                        : (KIND_ICON[n.kind] ?? '•')}
+                    <span style={{ color: '#C5286A', flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18 }}>
+                      <AdminIcon name={KIND_SVG[n.kind] ?? 'bell'} size={16} />
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</div>

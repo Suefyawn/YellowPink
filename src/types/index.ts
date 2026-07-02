@@ -15,6 +15,16 @@ export type OrderStatus =
 
 export type PayMethod = 'cod' | 'card' | 'bank' | 'jazzcash' | 'easypaisa' | 'gift_card';
 
+// Customer-facing labels for the orders.pay_method enum. The one shared map,
+// used by every admin surface (dashboard, orders list/detail, printed
+// invoice, WhatsApp texts, Finance) so no surface can leak a raw enum value
+// like "jazzcash". Lives here (not lib/finance) so client components can
+// import it without dragging in server-only Supabase code.
+export const PAY_METHOD_LABELS: Record<string, string> = {
+  cod: 'Cash on Delivery', card: 'Card', bank: 'Bank Transfer',
+  jazzcash: 'JazzCash', easypaisa: 'Easypaisa', gift_card: 'Gift card', unknown: 'Unknown',
+};
+
 // Customer-facing labels for each status. Used on /track, account/orders, admin order detail.
 export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   payment_pending: 'Awaiting payment',

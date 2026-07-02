@@ -4,7 +4,9 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { fmtPKR as fmt } from '@/lib/money';
-import { FINANCE_RANGES as RANGES, PAY_METHOD_LABELS, resolveRange, rangeStartISO, loadFinanceOrders, toOrderFinanceRow } from '@/lib/finance';
+import { FINANCE_RANGES as RANGES, resolveRange, rangeStartISO, loadFinanceOrders, toOrderFinanceRow } from '@/lib/finance';
+import { PAY_METHOD_LABELS } from '@/types';
+import { DeleteButton } from '@/components/admin/DeleteButton';
 import { addExpense, deleteExpense } from './actions';
 
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -55,8 +57,13 @@ export default async function FinancePage({
   const adByChannel = new Map<string, number>();
   for (const e of expenses) {
     const amt = num(e.amount);
-    expByCat.set(e.category, (expByCat.get(e.category) ?? 0) + amt);
-    if (e.category === 'Ads') {
+    // Match categories case-insensitively: rows imported or written with a
+    // different casing ("ads") previously fell out of the Ads bucket, showing
+    // Ad spend PKR 0 / ROAS "—" despite logged spend. Normalise to the
+    // canonical label so the P&L groups them under one line too.
+    const category = EXPENSE_CATEGORIES.find(c => c.toLowerCase() === (e.category ?? '').trim().toLowerCase()) ?? e.category;
+    expByCat.set(category, (expByCat.get(category) ?? 0) + amt);
+    if (category === 'Ads') {
       adSpend += amt;
       const ch = e.channel || 'Other';
       adByChannel.set(ch, (adByChannel.get(ch) ?? 0) + amt);
@@ -428,9 +435,11 @@ export default async function FinancePage({
                   <td data-label="Amount" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(Number(e.amount))}</td>
                   <td data-label="Note" style={{ padding: '8px 10px', color: '#6b7280' }}>{e.note ?? ''}</td>
                   <td style={{ padding: '8px 10px', textAlign: 'right' }}>
-                    <form action={deleteExpense.bind(null, e.id)}>
-                      <button type="submit" style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '0.8125rem' }} title="Delete">✕ Delete</button>
-                    </form>
+                    <DeleteButton
+                      id={e.id}
+                      action={deleteExpense}
+                      confirmMsg={`Delete this ${fmt(Number(e.amount))} ${e.category} expense? This can't be undone.`}
+                    />
                   </td>
                 </tr>
               ))}

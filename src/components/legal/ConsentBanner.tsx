@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { readConsent, writeConsent, acceptAll, rejectAll } from '@/lib/consent';
 
 // Bottom-left consent prompt shown until the user makes a choice. We keep
@@ -14,6 +15,7 @@ import { readConsent, writeConsent, acceptAll, rejectAll } from '@/lib/consent';
 const ESCAPE_DELAY_MS = 600;
 
 export function ConsentBanner() {
+  const pathname = usePathname();
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -32,6 +34,11 @@ export function ConsentBanner() {
     }, ESCAPE_DELAY_MS);
     return () => clearTimeout(t);
   }, []);
+
+  // Staff-only surface: the admin panel drops no analytics/marketing cookies
+  // (staff traffic is flagged internal), and the storefront banner floating
+  // over the admin UI was pure noise. Staff still see it on the storefront.
+  if (pathname?.startsWith('/admin')) return null;
 
   if (!mounted || !visible) return null;
 

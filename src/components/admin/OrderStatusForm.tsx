@@ -43,8 +43,19 @@ export function OrderStatusForm({ orderId, currentStatus }: {
     if (state?.error) toast(state.error, 'error');
   }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Cancelling restocks the order's items, emails the customer, and drops the
+  // order from revenue — confirm the transition like other destructive
+  // actions before the form action fires (preventDefault stops the dispatch).
+  const confirmCancel = (e: React.FormEvent<HTMLFormElement>) => {
+    const sel = (e.currentTarget.elements.namedItem('status') as HTMLSelectElement | null)?.value;
+    if (sel === 'cancelled' && currentStatus !== 'cancelled'
+        && !window.confirm('Cancel this order? Its items will be returned to stock and the customer will be emailed.')) {
+      e.preventDefault();
+    }
+  };
+
   return (
-    <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <form action={action} onSubmit={confirmCancel} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div>
         <label htmlFor="status" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
           Order Status

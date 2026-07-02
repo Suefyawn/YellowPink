@@ -80,11 +80,15 @@ export default async function ReturnsPage() {
   }
   const topProducts = [...productCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
   const topReasons = [...reasonCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-  // Return rate proxy: returns raised in the last 90d ÷ orders delivered in the
-  // same window.
+  // Return rate proxy: returns raised in the last 90d ÷ orders that reached
+  // the customer in the same window. The denominator must include orders that
+  // were delivered and THEN returned/refunded (their status is no longer
+  // `delivered`), otherwise every completed return shrinks the denominator
+  // while still counting in the numerator and the rate can exceed 100%.
   const { count: deliveredCount } = await admin
     .from('orders').select('*', { count: 'exact', head: true })
-    .eq('status', 'delivered').gte('created_at', new Date(since90).toISOString());
+    .in('status', ['delivered', 'returned', 'refunded'])
+    .gte('created_at', new Date(since90).toISOString());
   const returnRate = deliveredCount && deliveredCount > 0 ? (last90 / deliveredCount) * 100 : null;
 
   const kpi: React.CSSProperties = { background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' };

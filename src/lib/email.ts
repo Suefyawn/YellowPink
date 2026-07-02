@@ -371,7 +371,10 @@ export async function sendCustomerReplyEmail(args: {
 }
 
 // ─── 2. Customer: order confirmation ────────────────────────────────────────
-export async function sendOrderConfirmationEmail(args: OrderSummary & { email: string }): Promise<void> {
+/** Returns true when Resend accepted the email; false when the send was
+ *  skipped (no API key, daily cap) or rejected. Checkout callers fire and
+ *  forget, but the admin "Resend confirmation" button surfaces the result. */
+export async function sendOrderConfirmationEmail(args: OrderSummary & { email: string }): Promise<boolean> {
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Thanks for your order, ${escapeHtml(stripEmoji(args.first_name))}!</h2>
     <p style="margin:0 0 16px;color:${INK};line-height:1.5">
@@ -384,7 +387,7 @@ export async function sendOrderConfirmationEmail(args: OrderSummary & { email: s
       <a href="${SITE_URL}/track?order=${encodeURIComponent(args.order_number)}${args.phone ? `&phone=${encodeURIComponent(args.phone)}` : ''}" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track your order</a>
     </p>
   `);
-  await send({
+  return send({
     to: args.email,
     subject: `Order ${args.order_number} confirmed, Yellow Pink`,
     html,

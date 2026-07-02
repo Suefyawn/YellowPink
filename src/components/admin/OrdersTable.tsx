@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { bulkUpdateOrderStatus } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
-import { ORDER_STATUS_LABELS } from '@/types';
+import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import type { Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -97,7 +97,9 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function PayBadge({ method }: { method: string }) {
-  const badge = payBadge[method] ?? { bg: '#f3f4f6', color: '#374151', label: method };
+  // Methods without a bespoke badge colour (JazzCash, Easypaisa, …) fall back
+  // to the shared label map rather than showing the raw enum value.
+  const badge = payBadge[method] ?? { bg: '#f3f4f6', color: '#374151', label: PAY_METHOD_LABELS[method] ?? method };
   return (
     <span style={{ display: 'inline-block', padding: '3px 10px', background: badge.bg, color: badge.color, borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>
       {badge.label}
@@ -123,6 +125,11 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
   const bulk = (status: OrderStatus) => {
     if (selected.size === 0) return;
     const count = selected.size;
+    // Cancellation is destructive (emails nothing here, but it restocks the
+    // items and drops the orders from revenue) — confirm it like delete does.
+    if (status === 'cancelled' && !window.confirm(
+      `Cancel ${count} selected order${count !== 1 ? 's' : ''}? Their items will be returned to stock.`
+    )) return;
     startTransition(async () => {
       const result = await bulkUpdateOrderStatus(Array.from(selected), status);
       if (result.error) {

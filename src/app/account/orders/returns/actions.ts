@@ -239,6 +239,16 @@ export async function markReturnReceived(id: string): Promise<{ error?: string; 
     .eq('id', id);
   if (error) return { error: error.message };
 
+  // Reflect the return on the linked order: a delivered order whose goods
+  // came back is `returned` (migration 001's state machine). Guarded so we
+  // never clobber an unrelated state (e.g. an order cancelled in the
+  // meantime); the status trigger logs the transition to order_events.
+  await admin
+    .from('orders')
+    .update({ status: 'returned' })
+    .eq('id', row.order_id)
+    .eq('status', 'delivered');
+
   await logAudit(session, {
     action: 'return.received',
     entity: 'return_request',
@@ -247,5 +257,55 @@ export async function markReturnReceived(id: string): Promise<{ error?: string; 
   });
   revalidatePath('/admin/returns');
   revalidatePath('/admin/inventory');
+  revalidatePath(`/admin/orders/${row.order_id}`);
+  revalidatePath('/admin/orders');
+  return { success: true };
+}
+
+// Final step of the return lifecycle: the refund (store credit, coupon,
+// original method or COD deduction — executed per refund_method outside this
+// action where applicable) has actually been given. Marks the request
+// `refunded` and moves the linked order to `refunded` so Finance/Analytics
+// stop counting its revenue.
+export async function markReturnRefunded(id: string): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertOrders();
+  const admin = supabaseAdmin();
+
+  const { data: row } = await admin
+    .from('return_requests')
+    .select('id, status, order_id, refund_amount, refund_method')
+    .eq('id', id)
+    .single();
+  if (!row) return { error: 'return request not found' };
+  if (row.status !== 'received') {
+    return { error: `cannot mark a ${row.status} return as refunded, mark it received first` };
+  }
+
+  const { error } = await admin
+    .from('return_requests')
+    .update({ status: 'refunded' })
+    .eq('id', id);
+  if (error) return { error: error.message };
+
+  // The linked order was moved to `returned` when the parcel came back;
+  // `refunded` is the terminal state once the money/credit has gone out.
+  // Guarded to the two expected prior states so an unrelated transition
+  // isn't overwritten.
+  await admin
+    .from('orders')
+    .update({ status: 'refunded' })
+    .eq('id', row.order_id)
+    .in('status', ['returned', 'delivered']);
+
+  await logAudit(session, {
+    action: 'return.refunded',
+    entity: 'return_request',
+    entity_id: id,
+    diff: { refund_amount: row.refund_amount, refund_method: row.refund_method },
+  });
+  revalidatePath('/admin/returns');
+  revalidatePath(`/admin/orders/${row.order_id}`);
+  revalidatePath('/admin/orders');
+  revalidatePath('/admin/finance');
   return { success: true };
 }

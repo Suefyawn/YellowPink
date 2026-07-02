@@ -9,7 +9,7 @@ import { SentryWidget } from '@/components/admin/SentryWidget';
 import { QuizStatsWidget } from '@/components/admin/QuizStatsWidget';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
-import { ORDER_STATUS_LABELS } from '@/types';
+import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import type { Order, OrderStatus, Product } from '@/types';
 
 interface DashboardKpis {
@@ -23,13 +23,18 @@ const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
-const payLabel: Record<string, string> = { cod: 'COD', card: 'Card', bank: 'Bank' };
-
 const statusColors: Record<string, string> = {
-  pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444',
+  payment_pending: '#9ca3af', payment_failed: '#e11d48',
+  pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981',
+  cancelled: '#ef4444', returned: '#64748b', refunded: '#a855f7',
 };
 
-const statusLabels = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'] as const;
+// Every order status, in lifecycle order, so the "Orders by Status" bars
+// account for the whole order book and the percentages sum to 100%. The old
+// five-status subset silently dropped payment_pending / payment_failed /
+// returned / refunded while still dividing by ALL orders, so the bars only
+// summed to ~72%.
+const statusLabels = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
 
 export default async function DashboardPage() {
   const session = await getStaffSession();
@@ -148,7 +153,9 @@ export default async function DashboardPage() {
 
 
   const greeting = (() => {
-    const h = new Date(nowMs).getUTCHours();
+    // Store-local (Asia/Karachi, fixed UTC+5, no DST) hour — the server runs
+    // in UTC, so getUTCHours() greeted the operator 5 hours behind.
+    const h = new Date(nowMs + 5 * 60 * 60 * 1000).getUTCHours();
     if (h < 12) return 'Good morning';
     if (h < 17) return 'Good afternoon';
     return 'Good evening';
@@ -299,7 +306,12 @@ export default async function DashboardPage() {
         <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '24px' }}>
           <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Orders by Status</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {statusLabels.map(s => {
+            {/* The five fulfilment statuses always render; the payment/return
+                edge statuses only when they actually hold orders, so the card
+                stays compact without hiding any order from the maths. */}
+            {statusLabels.filter(s =>
+              ['pending', 'processing', 'shipped', 'delivered', 'cancelled'].includes(s) || (statusCounts[s] ?? 0) > 0
+            ).map(s => {
               const count = statusCounts[s] ?? 0;
               const pct = orderCount ? Math.round((count / orderCount) * 100) : 0;
               return (
@@ -416,7 +428,7 @@ export default async function DashboardPage() {
                         background: '#f3f4f6', borderRadius: 20,
                         fontSize: '0.75rem', fontWeight: 500, color: '#374151',
                       }}>
-                        {payLabel[o.pay_method] ?? o.pay_method}
+                        {PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method}
                       </span>
                     </td>
                     <td data-label="Date" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>

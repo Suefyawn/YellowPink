@@ -9,14 +9,15 @@ export const FINANCE_RANGES: { key: string; label: string; days: number | null }
   { key: 'all', label: 'All time', days: null },
 ];
 
-// Customer-facing labels for the order.pay_method enum.
-export const PAY_METHOD_LABELS: Record<string, string> = {
-  cod: 'Cash on Delivery', card: 'Card', bank: 'Bank Transfer',
-  jazzcash: 'JazzCash', easypaisa: 'Easypaisa', gift_card: 'Gift card', unknown: 'Unknown',
-};
+// Canonical pay-method labels moved to @/types (PAY_METHOD_LABELS) so client
+// components can share them; import from there.
 
-// Orders in these states never count as revenue.
-const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'refunded']);
+// Orders in these states never count as revenue. Matches the Analytics
+// revenue view (migration 023 v_orders_revenue): `payment_pending` orders
+// are unpaid — the gateway never confirmed — so counting them inflated the
+// "Revenue (paid orders)" P&L line. Analytics zeroes `refunded` revenue;
+// excluding the row here is equivalent.
+const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'payment_pending', 'refunded']);
 
 export const fnum = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
 
