@@ -64,7 +64,9 @@ export default async function AdminHelpPage() {
         .yp-manual ul, .yp-manual ol { margin: 0 0 12px; padding-left: 22px; }
         .yp-manual li { margin: 3px 0; }
         .yp-manual a { color: #C5286A; text-decoration: underline; }
-        .yp-manual code { background: #f3f4f6; border-radius: 4px; padding: 1px 5px; font-size: 0.85em; }
+        /* overflow-wrap lets long unbreakable inline code (URLs, env vars)
+           wrap instead of pushing the page wider than the viewport. */
+        .yp-manual code { background: #f3f4f6; border-radius: 4px; padding: 1px 5px; font-size: 0.85em; overflow-wrap: anywhere; }
         .yp-manual pre { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px 16px; overflow-x: auto; max-width: 100%; }
         .yp-manual pre code { background: none; padding: 0; }
         .yp-manual img { max-width: 100%; height: auto; }

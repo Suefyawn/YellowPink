@@ -104,6 +104,10 @@ export function AdminShell({
          * and below 768 px the table reflows into one stacked card per row
          * with the label inline. Avoids horizontal scroll on phones. */
         @media (max-width: 767px) {
+          /* globals.css gives tables inside .adm-table-scroll a 480px floor so
+           * scrolling tables stay readable, but a table that reflows into
+           * cards must NOT keep that floor (the cards would overflow). */
+          .adm-table-scroll table.adm-table-cards { min-width: 0; }
           .adm-table-cards thead { display: none; }
           .adm-table-cards, .adm-table-cards tbody { display: block; width: 100%; }
           .adm-table-cards tr {

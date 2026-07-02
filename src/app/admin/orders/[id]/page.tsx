@@ -135,13 +135,17 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     customerStats = { count: orderCount, total, first };
   }
 
+  // minWidth: 0 on the cards (grid items of .adm-analytics-grid) and on <dd>
+  // values so long unbreakable values (emails, phone numbers) wrap inside the
+  // card on phones instead of widening the whole page.
   const section: React.CSSProperties = {
     background: 'white', borderRadius: 10,
     padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+    minWidth: 0,
   };
   const dl: React.CSSProperties = { display: 'grid', gridTemplateColumns: '140px 1fr', gap: '10px 16px', margin: 0 };
   const dt: React.CSSProperties = { fontSize: '0.8125rem', color: '#6b7280', fontWeight: 500 };
-  const dd: React.CSSProperties = { fontSize: '0.875rem', color: '#111827', margin: 0 };
+  const dd: React.CSSProperties = { fontSize: '0.875rem', color: '#111827', margin: 0, minWidth: 0, overflowWrap: 'anywhere' };
 
   // Customer name, emoji-stripped, for the WhatsApp messages we send out.
   const custFirst = stripEmoji(o.first_name ?? '');

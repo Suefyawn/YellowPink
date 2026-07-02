@@ -91,7 +91,10 @@ export default async function ReturnsPage() {
     .gte('created_at', new Date(since90).toISOString());
   const returnRate = deliveredCount && deliveredCount > 0 ? (last90 / deliveredCount) * 100 : null;
 
-  const kpi: React.CSSProperties = { background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px' };
+  // minWidth: 0 lets the KPI cards (grid items) shrink below their content's
+  // intrinsic width on phones, the long product/reason labels then truncate
+  // with their ellipsis instead of widening the page.
+  const kpi: React.CSSProperties = { background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', minWidth: 0 };
   const kpiLabel: React.CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' };
   const kpiVal: React.CSSProperties = { fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginTop: 2 };
 

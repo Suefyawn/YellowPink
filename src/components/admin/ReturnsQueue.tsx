@@ -82,7 +82,10 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
               <strong>Reason:</strong> {r.reason}
             </div>
 
-            <div className="adm-table-scroll"><table style={{ width: '100%', marginTop: 10, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            {/* No .adm-table-scroll wrapper: globals gives scrolled tables a
+                480px floor which clipped the amounts on phones. This 3-column
+                table fits any viewport, item names simply wrap. */}
+            <table style={{ width: '100%', marginTop: 10, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <th scope="col" style={{ padding: '6px 0', textAlign: 'left', color: '#6b7280', fontWeight: 600 }}>Item</th>
@@ -99,7 +102,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                   </tr>
                 ))}
               </tbody>
-            </table></div>
+            </table>
 
             {/* The requested total lives outside the item table so it wraps
                 on narrow screens instead of being clipped in the scroller. */}
