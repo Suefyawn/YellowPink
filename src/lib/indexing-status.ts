@@ -117,7 +117,15 @@ export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ ch
   const admin = supabaseAdmin();
   let checked = 0;
   let quotaExceeded = false;
+  // Bound the whole batch: inspections run serially and Google can be slow,
+  // so without a budget a big batch can exceed the serverless function limit
+  // (observed: 300s timeout on "Check now"). Unchecked rows simply wait for
+  // the next run. Also stop after repeated consecutive failures — if Google
+  // is erroring, the rest of the batch will fail the same way.
+  const deadline = Date.now() + 45_000;
+  let consecutiveFailures = 0;
   for (const row of rows) {
+    if (Date.now() > deadline || consecutiveFailures >= 3) break;
     try {
       const status = await inspectUrl(conn.gsc_site_url, pathToUrl(row.path));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -133,7 +141,9 @@ export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ ch
         })
         .eq('path', row.path);
       checked++;
+      consecutiveFailures = 0;
     } catch (err) {
+      consecutiveFailures++;
       if (err instanceof GoogleQuotaError) {
         quotaExceeded = true;
         await setQuotaState({ exceeded: true, at: new Date().toISOString(), message: err.message }).catch(() => {});
