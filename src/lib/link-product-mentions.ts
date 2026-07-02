@@ -3,6 +3,10 @@
 // PDP. Cheap internal-linking win: keeps editorial flow intact, but every
 // post gets a few keyword-rich links pointing into the catalogue.
 //
+// Two tiers: the curated `products` (this post's related picks) link on any
+// phrase including the bare brand; the optional `catalog` (whole published
+// range) links on name phrases only, capped at `maxCatalogLinks` per post.
+//
 // Constraints we respect:
 //   * never insert a link inside an existing <a>...</a>
 //   * never link inside <code>, <pre>, <style>, or <script>
@@ -26,36 +30,51 @@ interface Candidate {
   needle: string;
   /** Regex with word-boundary safety, case-insensitive, single-match. */
   pattern: RegExp;
+  /** True for catalogue-wide candidates (counted against the link cap). */
+  fromCatalog: boolean;
 }
 
 /** Build the candidate list, sorted longest-needle-first so "Kiko Milano 3D
- *  Hydra" gets a shot before "Kiko Milano". Each product contributes up to
- *  two candidates: the full "brand + name" phrase and the bare brand. */
-function buildCandidates(products: Product[]): Candidate[] {
+ *  Hydra" gets a shot before "Kiko Milano". Each priority product contributes
+ *  up to three candidates: the full "brand + name" phrase, the bare name and
+ *  the bare brand. Catalogue products skip the bare-brand phrase — with the
+ *  whole shop in play, "CeraVe" alone would link to whichever CeraVe product
+ *  happened to sort first, which misleads more than it helps — and require a
+ *  slightly longer needle so generic short names don't spray links. */
+function buildCandidates(products: Product[], catalog: Product[]): Candidate[] {
   const seen = new Set<string>();
+  const priority = new Set(products.map(p => p?.slug).filter(Boolean));
   const out: Candidate[] = [];
+
+  const add = (p: Product, phrase: string, minLen: number, fromCatalog: boolean) => {
+    const norm = phrase.toLowerCase().trim();
+    if (norm.length < minLen) return;
+    if (seen.has(norm)) return;
+    seen.add(norm);
+    out.push({
+      product: p,
+      needle: norm,
+      // \b doesn't always behave with unicode/punctuation; bracket on
+      // non-alphanumeric instead so "CeraVe's" and "(CeraVe)" both match.
+      pattern: new RegExp(`(^|[^A-Za-z0-9])(${escapeRegExp(phrase)})(?=$|[^A-Za-z0-9])`, 'i'),
+      fromCatalog,
+    });
+  };
 
   for (const p of products) {
     if (!p?.slug || !p?.name || !p?.brand) continue;
     const cleanName = stripBrandPrefix(p.brand, p.name).trim();
-    const phrases = [
-      `${p.brand} ${cleanName}`.trim(),
-      cleanName,
-      p.brand,
-    ].filter(Boolean);
-    for (const phrase of phrases) {
-      const norm = phrase.toLowerCase().trim();
-      if (norm.length < 4) continue;          // skip super-short matches
-      if (seen.has(norm)) continue;
-      seen.add(norm);
-      out.push({
-        product: p,
-        needle: norm,
-        // \b doesn't always behave with unicode/punctuation; bracket on
-        // non-alphanumeric instead so "CeraVe's" and "(CeraVe)" both match.
-        pattern: new RegExp(`(^|[^A-Za-z0-9])(${escapeRegExp(phrase)})(?=$|[^A-Za-z0-9])`, 'i'),
-      });
-    }
+    add(p, `${p.brand} ${cleanName}`.trim(), 4, false);
+    add(p, cleanName, 4, false);
+    add(p, p.brand, 4, false);
+  }
+
+  for (const p of catalog) {
+    if (!p?.slug || !p?.name || !p?.brand) continue;
+    if (priority.has(p.slug)) continue;
+    const cleanName = stripBrandPrefix(p.brand, p.name).trim();
+    add(p, `${p.brand} ${cleanName}`.trim(), 5, true);
+    add(p, cleanName, 5, true);
   }
 
   return out.sort((a, b) => b.needle.length - a.needle.length);
@@ -70,13 +89,22 @@ function escapeRegExp(s: string): string {
  * phrase with an anchor, skipping content inside <a> and other "no-go"
  * elements. Strings outside any element are also linked.
  */
-export function linkProductMentions(html: string, products: Product[]): string {
-  if (!html || products.length === 0) return html;
-  const candidates = buildCandidates(products);
+export function linkProductMentions(
+  html: string,
+  products: Product[],
+  /** Optional catalogue-wide pool. Mentions of these also become links, but
+   *  brand-only phrases are skipped and at most `maxCatalogLinks` are added
+   *  so a long post doesn't turn into a link farm. */
+  catalog: Product[] = [],
+  maxCatalogLinks = 6,
+): string {
+  if (!html || (products.length === 0 && catalog.length === 0)) return html;
+  const candidates = buildCandidates(products, catalog);
   if (candidates.length === 0) return html;
 
   // Track which products have already been linked (one anchor per product max).
   const linkedSlugs = new Set<string>();
+  let catalogLinks = 0;
 
   // Tokenise: split into a sequence of tags + text. Anything matching
   // <[/!]?tag …> is a tag token; everything else is a text token.
@@ -116,6 +144,7 @@ export function linkProductMentions(html: string, products: Product[]): string {
     let text = tok;
     for (const c of candidates) {
       if (linkedSlugs.has(c.product.slug)) continue;
+      if (c.fromCatalog && catalogLinks >= maxCatalogLinks) continue;
       const m = c.pattern.exec(text);
       if (!m) continue;
       const before = text.slice(0, m.index);
@@ -126,6 +155,7 @@ export function linkProductMentions(html: string, products: Product[]): string {
       const anchor = `<a href="${href}" class="blog-product-link">${escapeHtml(phrase)}</a>`;
       text = `${before}${sep}${anchor}${after}`;
       linkedSlugs.add(c.product.slug);
+      if (c.fromCatalog) catalogLinks++;
     }
     linked.push(text);
   }

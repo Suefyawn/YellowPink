@@ -138,7 +138,15 @@ function SocialRow({ socials }: { socials: SocialLink[] }) {
   );
 }
 
-export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
+interface FooterProps {
+  socials?: SocialLink[];
+  /** Published collections for the Collections column; column is omitted
+   *  entirely when none are published (the static /collections link in the
+   *  Shop column still covers discovery). */
+  collections?: { slug: string; title: string }[];
+}
+
+export function Footer({ socials = [], collections = [] }: FooterProps) {
   return (
     <footer
       role="contentinfo"
@@ -189,6 +197,16 @@ export function Footer({ socials = [] }: { socials?: SocialLink[] }) {
               {SHOP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
             </ul>
           </nav>
+
+          {collections.length > 0 && (
+            <nav aria-label="Collections">
+              <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Collections</Overline>
+              <ul style={{ padding: 0, margin: 0 }}>
+                {collections.map(c => <FooterLink key={c.slug} href={`/collection/${c.slug}`} label={c.title} />)}
+                <FooterLink href="/collections" label="View all" />
+              </ul>
+            </nav>
+          )}
 
           <nav aria-label="Company">
             <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Company</Overline>

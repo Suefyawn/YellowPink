@@ -27,6 +27,10 @@ interface BlogPostPageProps {
   relatedProductsMentioned?: boolean;
   /** Store-wide medical reviewer (health posts only); null otherwise. */
   reviewer?: MedicalReviewer | null;
+  /** Full published catalogue for the in-prose auto-linker. Mentions of any
+   *  of these become PDP links (capped, name-phrases only) on top of the
+   *  curated relatedProducts. Optional so bespoke callers can skip it. */
+  catalogProducts?: Product[];
 }
 
 function decodeEntities(s: string): string {
@@ -70,7 +74,7 @@ function extractHeadings(html: string): { html: string; headings: TocHeading[] }
   return { html: out, headings };
 }
 
-export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProductsMentioned = true, reviewer }: BlogPostPageProps) {
+export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProductsMentioned = true, reviewer, catalogProducts = [] }: BlogPostPageProps) {
   // Lift the FAQ block out of the prose first, so it renders as a real
   // accordion (and powers FAQPage structured data) instead of a run of
   // headings. extractBlogFaq returns the body unchanged when there's no FAQ.
@@ -79,7 +83,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProdu
   const { html: withIds, headings } = bodyNoFaq
     ? extractHeadings(bodyNoFaq)
     : { html: '', headings: [] as TocHeading[] };
-  const bodyHtml = bodyNoFaq ? linkProductMentions(withIds, relatedProducts) : '';
+  const bodyHtml = bodyNoFaq ? linkProductMentions(withIds, relatedProducts, catalogProducts) : '';
   // Split the body at the first H2 so a buyable product nudge can sit right
   // after the intro (above the fold for single-page blog visitors), without
   // touching the prose. Falls back to a single block when there's no H2 or no

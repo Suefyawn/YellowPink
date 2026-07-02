@@ -320,6 +320,32 @@ export async function getBlogPosts(): Promise<BlogPost[]> {
   }, DEMO_BLOG_POSTS);
 }
 
+/** Posts whose body links to a product's PDP — the reverse of the blog's
+ *  house convention of inline `<a href="/product/<slug>">` links. Powers the
+ *  "From the blog" rail on PDPs. The LIKE scan over ~180 rows is fine at this
+ *  scale and stays fresh through the PDP's ISR window. */
+export async function getPostsLinkingProduct(slug: string, limit = 3): Promise<BlogPost[]> {
+  if (isDemo || !slug) return [];
+  return safe('getPostsLinkingProduct', async () => {
+    // Select body too so we can boundary-check: a plain LIKE would let
+    // "melatonin" match a link to "melatonin-plus". Slugs are [a-z0-9-],
+    // so any of " ' / ? # after the slug means the link really ends there.
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select(`${BLOG_TILE_COLUMNS}, body`)
+      .like('body', `%/product/${slug}%`)
+      .order('date', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit * 3);
+    if (error) throw error;
+    const exact = new RegExp(`/product/${slug}(?![a-z0-9-])`);
+    return (data ?? [])
+      .filter(p => exact.test((p as { body?: string }).body ?? ''))
+      .slice(0, limit)
+      .map(({ body: _body, ...tile }) => tile) as unknown as BlogPost[];
+  }, []);
+}
+
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   if (isDemo) return DEMO_BLOG_POSTS.find(p => p.slug === slug) ?? null;
   return safe('getBlogPostBySlug', async () => {

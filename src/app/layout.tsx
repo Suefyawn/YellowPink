@@ -49,6 +49,7 @@ import { IMAGE_CDN_ORIGIN } from '@/lib/image-loader';
 import { normalizeTheme } from '@/lib/themes';
 import { getActivePromos, audienceFor } from '@/lib/promos';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
+import { getPublishedCollections } from '@/lib/collections-data';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
 import { socialSameAs } from '@/lib/socials';
 
@@ -93,7 +94,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [settings, promos, searchTrending, searchCategories, welcomeOffer] = await Promise.all([
+  const [settings, promos, searchTrending, searchCategories, welcomeOffer, footerCollections] = await Promise.all([
     getSiteSettings(),
     // TODO: read auth session + lifetime-order count to refine the audience.
     // For now everyone is treated as 'guest' so any null-audience or
@@ -104,6 +105,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     loadTrendingBrands(),
     loadPopularCategories(),
     getWelcomeOffer(),
+    // Footer "Collections" column: published collections, curated order.
+    // Slimmed to {slug,title} below so the client chrome payload stays tiny.
+    getPublishedCollections(6),
   ]);
   // Social profiles + store contact are owner-managed (admin Settings); the
   // JSON-LD reads from the same source as the footer.
@@ -190,6 +194,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             promos={promos}
             searchTrending={searchTrending}
             searchCategories={searchCategories}
+            footerCollections={footerCollections.map(c => ({ slug: c.slug, title: c.title }))}
           >
             {/* tabindex=-1 so the skip-link can focus #main programmatically
                 without making it a sequential Tab stop. */}
