@@ -2,19 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getStaffSession } from '@/lib/staff-auth';
+import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 
 // Broken-link triage rides the `settings` permission, it manages site-wide
-// redirects, the same surface as other store-config work.
-async function assertSettings() {
-  const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
-    throw new Error('Unauthorized');
-  }
-  return session;
-}
+// redirects, the same surface as other store-config work. Same gate the
+// Settings pages use — covered by the matrix suite in lib/admin-auth.test.ts.
+const assertSettings = () => assertPermission('settings');
 
 // A redirect target must be an on-site absolute path ("/product/x"). We don't
 // allow off-site destinations, the redirects table preserves internal SEO

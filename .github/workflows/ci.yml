@@ -29,6 +29,44 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  db:
+    # Two guarantees in one job: (a) the migration chain stays reproducible
+    # from scratch — schema/policy/function changes made outside migrations
+    # (the root cause of the 2026-07-02 drift findings) fail here instead of
+    # lurking until a rebuild; (b) the place_order forgery matrix keeps the
+    # order-hardening honest (see supabase/tests/place_order_matrix.sql).
+    name: Migrations from scratch + place_order matrix
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: '5432'
+      PGUSER: postgres
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Supabase-compat prelude
+        run: psql -d postgres -v ON_ERROR_STOP=1 -q -f supabase/tests/supabase-prelude.sql
+      - name: Apply every migration in order
+        run: |
+          for f in supabase/migrations/*.sql; do
+            echo "== $f"
+            psql -d postgres -v ON_ERROR_STOP=1 -q -f "$f"
+          done
+      - name: place_order forgery matrix
+        run: psql -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/place_order_matrix.sql
+
   e2e:
     name: Playwright e2e (demo mode)
     runs-on: ubuntu-latest

@@ -1,17 +1,13 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { getStaffSession } from '@/lib/staff-auth';
+import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
 import { refreshIndexingStatus, trackUrl } from '@/lib/indexing-status';
 
-async function assertSettings() {
-  const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
-    throw new Error('Unauthorized');
-  }
-  return session;
-}
+// Same gate the Settings pages use — one implementation, covered by the
+// permission-matrix suite in lib/admin-auth.test.ts.
+const assertSettings = () => assertPermission('settings');
 
 // A tracked path must be an on-site absolute path ("/product/x"), same rule
 // as the broken-links redirect target, this isn't a place to paste an

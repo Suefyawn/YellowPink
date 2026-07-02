@@ -342,7 +342,8 @@ export async function getPostsLinkingProduct(slug: string, limit = 3): Promise<B
     return (data ?? [])
       .filter(p => exact.test((p as { body?: string }).body ?? ''))
       .slice(0, limit)
-      .map(({ body: _body, ...tile }) => tile) as unknown as BlogPost[];
+      // Drop the heavy body column before the rows enter the RSC payload.
+      .map(p => { const tile = { ...(p as Record<string, unknown>) }; delete tile.body; return tile; }) as unknown as BlogPost[];
   }, []);
 }
 
