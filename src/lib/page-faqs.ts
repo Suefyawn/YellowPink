@@ -65,19 +65,23 @@ const buildFaqs = (p: FaqPolicy): Record<string, FaqEntry[]> => ({
       answer: returnsWindowAnswer(),
     },
     {
+      // Matches the CMS returns policy: returns start on WhatsApp, not from a
+      // self-serve account flow.
       question: 'How do I request a return?',
       answer:
-        'Sign in to your account, open the relevant order, and tap "Request return". A confirmation email is sent once our team approves the request, along with pickup or drop-off instructions.',
+        'Message us on WhatsApp with your order number and the reason for the return. Our team confirms eligibility and shares the return instructions, full details are in the returns policy above.',
     },
     {
       question: 'Who pays for return shipping?',
       answer:
-        'For damaged, defective, or wrong-item shipments, we cover the return courier fee. For other reasons (changed mind, wrong shade), the customer arranges the return at their own cost.',
+        'If your order arrived damaged, defective, or incorrect, we cover the cost, message us within 48 hours of delivery with a photo and we will arrange a replacement or refund at no cost to you.',
     },
     {
+      // Matches the CMS returns policy: original payment method, or bank
+      // transfer for COD orders, within 5-7 working days.
       question: 'How are refunds issued?',
       answer:
-        'Refunds are issued as store credit by default, usable on any future order. If you prefer a cash refund for a COD order, we deduct the COD courier fee from the refunded amount and arrange a bank transfer within 5 working days of receiving the returned item.',
+        'Approved refunds go back to your original payment method, or as a bank transfer for Cash on Delivery orders, within 5 to 7 working days of us receiving the returned item.',
     },
   ],
   faq: [
@@ -92,9 +96,13 @@ const buildFaqs = (p: FaqPolicy): Record<string, FaqEntry[]> => ({
         'Open the Track Order page and enter your order number along with the email or phone number used at checkout. You will see the live courier status plus a link directly to the courier tracking page.',
     },
     {
+      // Payment claims deliberately stop at COD: it is the only method
+      // currently enabled at checkout (pay_jazzcash_enabled /
+      // pay_easypaisa_enabled are off). Don't enumerate gateways here, that
+      // copy drifts the moment the owner toggles a payment method.
       question: 'Do you ship outside Pakistan?',
       answer:
-        'Not at the moment. We ship only within Pakistan, with cash-on-delivery available in all major cities and online payment via JazzCash and Easypaisa.',
+        'Not at the moment. We ship only within Pakistan, with cash on delivery available nationwide. Any additional payment options we support are shown at checkout.',
     },
     {
       question: 'How can I contact customer support?',

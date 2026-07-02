@@ -28,6 +28,9 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  // TEMP-VERIFY: widen the Turbopack root so the symlinked node_modules
+  // (worktree) resolves. Removed before hand-off.
+  turbopack: { root: '/home/user' },
   // The admin "User manual" page (/admin/help) reads docs/USER-MANUAL.md from
   // disk at request time. That file isn't statically imported, so Next's trace
   // wouldn't bundle it into the serverless function — force-include it for this

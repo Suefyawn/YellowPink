@@ -11,6 +11,16 @@ import { useCart } from '@/context/CartContext';
 import { brandPlusName } from '@/lib/product-display';
 import type { Product } from '@/types';
 
+/** A product the bundle can actually sell. Mirrors ProductTile's sold-out
+ *  logic: tracked inventory at zero stock is unbuyable; externally-managed
+ *  inventory (track_inventory === false) is always purchasable. Sold-out
+ *  items are excluded from the widget entirely, adding one produced a
+ *  quantity-0 phantom cart line (addToCart clamps to stock) that dead-ended
+ *  checkout. */
+function isPurchasable(p: Product): boolean {
+  return !(p.track_inventory !== false && typeof p.stock === 'number' && p.stock <= 0);
+}
+
 export function FrequentlyBoughtTogether({
   anchor, suggestions,
 }: {
@@ -18,13 +28,20 @@ export function FrequentlyBoughtTogether({
   suggestions: Product[];
 }) {
   const { addToCart } = useCart();
+  // Only in-stock items take part in the bundle. If the anchor itself is
+  // sold out it's dropped too, the shopper can't buy it from the main CTA
+  // either, so bundling it would only manufacture broken cart lines.
+  const [bundle] = useState<Product[]>(() =>
+    [anchor, ...suggestions].filter(isPurchasable)
+  );
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries([anchor, ...suggestions].map(p => [p.id, true]))
+    Object.fromEntries(bundle.map(p => [p.id, true]))
   );
 
-  if (suggestions.length === 0) return null;
+  // Nothing to pair (or only the anchor survived the stock filter) → no widget.
+  if (bundle.length < 2) return null;
 
-  const allProducts = [anchor, ...suggestions];
+  const allProducts = bundle;
   const total = allProducts
     .filter(p => checked[p.id])
     .reduce((s, p) => s + p.price, 0);

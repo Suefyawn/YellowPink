@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
@@ -107,22 +107,29 @@ function PromoFields({ promo }: { promo?: Promo }) {
 export default async function AdminPromosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ edit?: string; error?: string }>;
+  searchParams: Promise<{ edit?: string; error?: string; saved?: string; created?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('promos'))) {
     return <NoAccess section="Promos" />;
   }
 
-  const { data } = await supabase
+  // promos RLS only exposes enabled + currently-live rows to the anon client
+  // (storefront needs). The admin list must show every promo — paused and
+  // scheduled ones included — so it reads via the service role, staff-gated
+  // above like the sibling admin pages.
+  const { data } = await supabaseAdmin()
     .from('promos')
     .select('*')
     .order('priority', { ascending: false })
     .order('created_at', { ascending: false });
 
   const rows = (data ?? []) as Promo[];
-  const { edit, error: feedbackError } = await searchParams;
+  const { edit, error: feedbackError, saved, created } = await searchParams;
   const editingPromo = edit ? rows.find(p => p.id === edit) ?? null : null;
+  const feedbackSuccess = feedbackError
+    ? null
+    : saved ? 'Promo saved.' : created ? 'Promo created.' : null;
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -135,15 +142,17 @@ export default async function AdminPromosPage({
         </div>
       </div>
 
-      {feedbackError && (
+      {(feedbackError || feedbackSuccess) && (
         <div
           role="status"
           style={{
             marginBottom: 16, padding: '10px 14px', borderRadius: 8, fontSize: '0.875rem',
-            background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca',
+            background: feedbackError ? '#fef2f2' : '#f0fdf4',
+            color: feedbackError ? '#991b1b' : '#166534',
+            border: `1px solid ${feedbackError ? '#fecaca' : '#bbf7d0'}`,
           }}
         >
-          {feedbackError}
+          {feedbackError ?? feedbackSuccess}
         </div>
       )}
 

@@ -15,32 +15,54 @@ function bounceCoupons(error: string): never {
   redirect(`/admin/coupons?error=${encodeURIComponent(error)}`);
 }
 
+// The form's Type select covers the legacy `type` values plus free shipping.
+// A free-shipping coupon carries no line discount: it's stored as
+// value = 0 + free_shipping = true + discount_type = 'free_shipping'
+// (migration 014 columns; place_order zeroes the delivery charge for it).
+type CouponFormType = 'percent' | 'fixed' | 'free_shipping';
+
+function couponColumns(type: CouponFormType, value: number) {
+  if (type === 'free_shipping') {
+    return { type: 'fixed' as const, value: 0, discount_type: 'free_shipping', free_shipping: true };
+  }
+  return {
+    type,
+    value,
+    discount_type: type === 'percent' ? 'percent' : 'fixed_cart',
+    free_shipping: false,
+  };
+}
+
 export async function createCoupon(formData: FormData) {
   const session = await assertPermission('coupons');
   const code = ((formData.get('code') as string) ?? '').trim().toUpperCase();
-  const type = formData.get('type') as 'percent' | 'fixed';
+  const type = formData.get('type') as CouponFormType;
   const valueRaw = formData.get('value');
   const value = Number(valueRaw);
   const min_order = Number(formData.get('min_order') ?? 0);
   const max_uses = formData.get('max_uses') ? Number(formData.get('max_uses')) : null;
   const expires_at = (formData.get('expires_at') as string) || null;
+  const isFreeShipping = type === 'free_shipping';
 
   if (!code) bounceCoupons('Code is required.');
   if (!type) bounceCoupons('Type is required.');
-  if (!valueRaw || !Number.isFinite(value)) bounceCoupons('Value is required.');
   if (!/^[A-Z0-9_-]+$/.test(code)) {
     bounceCoupons('Code may only contain letters, numbers, - and _.');
   }
-  if (value <= 0) bounceCoupons('Value must be greater than zero.');
-  if (type === 'percent' && value > 100) {
-    bounceCoupons('A percentage discount cannot exceed 100%.');
+  // Free-shipping coupons have no monetary value; skip the value checks.
+  if (!isFreeShipping) {
+    if (!valueRaw || !Number.isFinite(value)) bounceCoupons('Value is required.');
+    if (value <= 0) bounceCoupons('Value must be greater than zero.');
+    if (type === 'percent' && value > 100) {
+      bounceCoupons('A percentage discount cannot exceed 100%.');
+    }
   }
 
   // coupons RLS bars anon write/read after migration 070; admin
   // mutations must go through the service role.
   const { data: created, error } = await supabaseAdmin()
     .from('coupons')
-    .insert({ code, type, value, min_order, max_uses, expires_at })
+    .insert({ code, ...couponColumns(type, value), min_order, max_uses, expires_at })
     .select('id')
     .single();
 
@@ -68,27 +90,30 @@ export async function updateCoupon(
   const session = await assertPermission('coupons');
   const id = formData.get('id') as string;
   const code = (formData.get('code') as string).trim().toUpperCase();
-  const type = formData.get('type') as 'percent' | 'fixed';
+  const type = formData.get('type') as CouponFormType;
   const value = Number(formData.get('value'));
   const min_order = Number(formData.get('min_order') ?? 0);
   const max_uses = formData.get('max_uses') ? Number(formData.get('max_uses')) : null;
   const expires_at = (formData.get('expires_at') as string) || null;
+  const isFreeShipping = type === 'free_shipping';
 
   if (!id) return { error: 'Missing coupon id.' };
-  if (!code || !type || !value) return { error: 'Code, type and value are required.' };
+  if (!code || !type || (!isFreeShipping && !value)) return { error: 'Code, type and value are required.' };
   if (!/^[A-Z0-9_-]+$/.test(code)) return { error: 'Code may only contain letters, numbers, - and _.' };
-  if (value <= 0) return { error: 'Value must be greater than zero.' };
-  if (type === 'percent' && value > 100) return { error: 'A percentage discount cannot exceed 100%.' };
+  if (!isFreeShipping) {
+    if (value <= 0) return { error: 'Value must be greater than zero.' };
+    if (type === 'percent' && value > 100) return { error: 'A percentage discount cannot exceed 100%.' };
+  }
 
   const { error } = await supabaseAdmin()
     .from('coupons')
-    .update({ code, type, value, min_order, max_uses, expires_at })
+    .update({ code, ...couponColumns(type, value), min_order, max_uses, expires_at })
     .eq('id', id);
   if (error) return { error: error.message };
 
   void logAudit(session, {
     action: 'coupon.update', entity: 'coupons', entity_id: id,
-    diff: { code, type, value, min_order, max_uses, expires_at },
+    diff: { code, type, value: isFreeShipping ? 0 : value, min_order, max_uses, expires_at },
   });
   revalidatePath('/admin/coupons');
   return { ok: true };

@@ -59,6 +59,11 @@ export const productInputSchema = z.object({
                     z.enum(['New','Sale','Bestseller','Featured','Limited']).nullable(),
                   ),
   slug:           slugSchema,
+  // Publication status. The admin form always submits it (new products
+  // default to 'draft' there); optional so older callers that never sent a
+  // status keep the DB value untouched (undefined keys are dropped by
+  // supabase-js, so an update without status leaves it as-is).
+  status:         z.enum(['draft','published','archived']).optional(),
   stock:          positiveInt,
   // Per-product reorder point (0 = off → global low-stock threshold). The form
   // always submits it; '' / missing normalises to 0.

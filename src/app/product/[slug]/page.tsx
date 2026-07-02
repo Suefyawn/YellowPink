@@ -188,7 +188,13 @@ async function loadFrequentlyBoughtTogether(productId: string): Promise<Product[
   const rows = (data ?? []) as Array<{ product_id: string; co_count: number }>;
   if (rows.length === 0) return [];
   const ids = rows.map(r => r.product_id);
-  const { data: products } = await supabase.from('products').select('*').in('id', ids);
+  // Published only: a draft/archived co-purchase must not surface a dead PDP
+  // link (or an unbuyable bundle line) on a live product page.
+  const { data: products } = await supabase
+    .from('products')
+    .select('*')
+    .in('id', ids)
+    .eq('status', 'published');
   const map = new Map(((products ?? []) as Product[]).map(p => [p.id, p]));
   // Preserve RPC order.
   return ids.map(id => map.get(id)).filter((p): p is Product => Boolean(p));
@@ -212,16 +218,23 @@ async function loadCrossSells(productId: string, fallbackCategory: string): Prom
   const relatedIds = Array.from(new Set((rels ?? []).map(r => r.related_product_id as string)));
 
   if (relatedIds.length > 0) {
-    const { data } = await supabase.from('products').select('*').in('id', relatedIds);
+    // Published only, an admin-curated cross-sell that has since been
+    // drafted/archived must not render as a dead "Pairs with" link.
+    const { data } = await supabase
+      .from('products')
+      .select('*')
+      .in('id', relatedIds)
+      .eq('status', 'published');
     const map = new Map(((data ?? []) as Product[]).map(p => [p.id, p]));
     return relatedIds.map(id => map.get(id)).filter((p): p is Product => Boolean(p)).slice(0, 4);
   }
 
-  // Fallback: same category.
+  // Fallback: same category, published only.
   const { data } = await supabase
     .from('products')
     .select('*')
     .eq('category', fallbackCategory)
+    .eq('status', 'published')
     .neq('id', productId)
     .limit(8);
   return ((data ?? []) as Product[]).sort(() => Math.random() - 0.5).slice(0, 4);
