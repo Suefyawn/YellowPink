@@ -138,61 +138,6 @@ export default async function SettingsHomepagePage({ searchParams }: { searchPar
           </div>
         </Card>
 
-        <Card>
-          <Section
-            title="Promo strip"
-            desc="A richer banner under the announcement bar: label, headline, button, and an optional countdown. Good for a sale or launch week — switch it off when the moment passes."
-          />
-          <Divider />
-          <div style={{ display: 'grid', gap: 14 }}>
-            <div>
-              <label style={lbl}>Status</label>
-              <Toggle name="promo_active" checked={g('promo_active') === 'true'} />
-            </div>
-            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={lbl}>Label (small badge)</label>
-                <input name="promo_label" defaultValue={g('promo_label', 'Sale')} style={inp} placeholder="Sale" />
-              </div>
-              <div>
-                <label style={lbl}>Headline</label>
-                <input name="promo_headline" defaultValue={g('promo_headline')} style={inp} placeholder="Up to 30% off summer picks" />
-              </div>
-            </div>
-            <div>
-              <label style={lbl}>Sub-text</label>
-              <input name="promo_subline" defaultValue={g('promo_subline')} style={inp} placeholder="Ends Sunday · COD nationwide" />
-            </div>
-            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={lbl}>Button text</label>
-                <input name="promo_cta_text" defaultValue={g('promo_cta_text', 'Shop Sale')} style={inp} />
-              </div>
-              <div>
-                <label style={lbl}>Button URL</label>
-                <input name="promo_cta_url" defaultValue={g('promo_cta_url', '/shop?sale=1')} style={inp} />
-              </div>
-            </div>
-            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={lbl}>Background colour</label>
-                <ColorPicker name="promo_bg_color" value={g('promo_bg_color', '#E8487F')} label="Strip background" />
-              </div>
-              <div>
-                <label style={lbl}>Text colour</label>
-                <ColorPicker name="promo_text_color" value={g('promo_text_color', '#ffffff')} label="Strip text" />
-              </div>
-            </div>
-            <div>
-              <label style={lbl}>Countdown end date (optional)</label>
-              <input name="promo_end_date" type="datetime-local" defaultValue={g('promo_end_date')} style={inp} />
-              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                When set, the strip shows a live countdown to this moment. Leave blank for no countdown.
-              </p>
-            </div>
-          </div>
-        </Card>
-
         <SaveBar />
       </form>
     </>

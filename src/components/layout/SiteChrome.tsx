@@ -2,7 +2,6 @@
 import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnnouncementBar } from './AnnouncementBar';
-import { PromoBanner } from './PromoBanner';
 import { Header } from './Header';
 import { Footer } from './Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -32,12 +31,11 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
   const pathname = usePathname();
   if (pathname.startsWith('/admin')) return <>{children}</>;
 
-  // Both bars are settings-driven (Admin → Settings → Homepage). The
-  // audience-targeted promos table that used to take precedence here was
-  // removed 2026-07-02 — it was never used (zero rows authored) and
-  // duplicated these simpler settings.
+  // The one storefront banner: the settings-driven announcement bar
+  // (Admin → Settings → Homepage). The promos table AND the richer
+  // settings-driven promo strip were removed 2026-07-02 — neither was
+  // used, and the owner explicitly retired the strip.
   const topBarActive = settings.announcement_active === 'true';
-  const heroStripActive = settings.promo_active === 'true';
 
   return (
     <>
@@ -46,19 +44,6 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
         <AnnouncementBar
           text={settings.announcement_text ?? freeShippingSentence(parseCommerceConfig(settings))}
           bgColor={settings.announcement_color ?? '#111827'}
-        />
-      )}
-
-      {heroStripActive && (
-        <PromoBanner
-          label={settings.promo_label ?? 'Sale'}
-          headline={settings.promo_headline ?? ''}
-          subline={settings.promo_subline ?? ''}
-          ctaText={settings.promo_cta_text ?? 'Shop Sale'}
-          ctaUrl={settings.promo_cta_url ?? '/shop'}
-          bgColor={settings.promo_bg_color ?? '#E8487F'}
-          textColor={settings.promo_text_color ?? '#ffffff'}
-          endDate={settings.promo_end_date ?? ''}
         />
       )}
 
