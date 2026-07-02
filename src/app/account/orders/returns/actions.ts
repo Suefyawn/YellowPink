@@ -112,8 +112,15 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 
 async function assertOrders() {
+  // The Returns section is governed by the 'returns' permission; 'orders.edit'
+  // also satisfies it for existing staff who only hold order permissions.
+  // Previously this demanded 'orders.edit' alone, which made the 'returns'
+  // permission non-functional (a returns agent could open the queue but every
+  // decision threw a 500).
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
+  if (!session || (!session.isOwner
+      && !session.permissions.includes('returns')
+      && !session.permissions.includes('orders.edit'))) {
     throw new Error('Unauthorized');
   }
   return session;

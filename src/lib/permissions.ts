@@ -38,6 +38,7 @@ export type Permission =
   | 'analytics_traffic'     // PostHog widgets: funnel, top pages/events, referrers
   | 'analytics_errors'      // Sentry widgets: trend, issues, top routes
   | 'analytics_refresh'     // can hit the "Refresh analytics" button
+  | 'finance'               // P&L, expenses, profit margins, COD cash reconciliation
 
   // ── Store admin ──
   | 'settings';             // store settings (shipping, tax, store info)
@@ -49,6 +50,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'coupons', 'returns',
   'blog', 'promos', 'reviews', 'newsletter', 'messages',
   'analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh',
+  'finance',
   'settings',
 ];
 
@@ -85,6 +87,7 @@ export const PERMISSION_META: Record<Permission, {
   analytics_traffic:   { label: 'Traffic insights',   icon: '▦', desc: 'PostHog stats: pageviews, conversion funnel, top pages, top events, referrers.', group: 'analytics' },
   analytics_errors:    { label: 'Error monitoring',   icon: '⚠', desc: 'Sentry stats: error trend, unresolved issues, top affected URLs. Receives Sentry notifications.', group: 'analytics' },
   analytics_refresh:   { label: 'Refresh analytics',  icon: '⟳', desc: 'Trigger a manual PostHog + Sentry data refresh.', group: 'analytics' },
+  finance:             { label: 'Finance & reports',  icon: '▤', desc: 'Profit & loss, expenses, margins, and COD cash reconciliation. Sensitive financial data.', group: 'analytics' },
 
   // Store admin
   settings: { label: 'Store settings', icon: '⚙', desc: 'Edit store profile, shipping zones, tax rules, email templates.', group: 'store' },

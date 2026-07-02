@@ -1,8 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { headers } from 'next/headers';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { assertPermission } from '@/lib/admin-auth';
+import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { getGoogleConnection, gscQuery, ga4RunReport, listSitemaps, submitSitemap } from '@/lib/google';
 import { SITE_URL } from '@/lib/seo';
@@ -578,7 +580,27 @@ async function resubmitSitemap(): Promise<void> {
   } catch { /* best-effort */ }
 }
 
+// In a 'use server' module every exported async function is an addressable
+// endpoint, so this must authorize itself — otherwise it bypasses the
+// permission-gated `refreshAnalytics` wrapper and the CRON_SECRET-gated cron
+// route, letting an unauthenticated caller burn PostHog/Sentry quota and spam
+// service-role writes. Allow either a permitted staff session or the cron
+// bearer; both are the legitimate callers.
+async function assertAnalyticsRefreshAllowed(): Promise<void> {
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret) {
+    try {
+      const auth = (await headers()).get('authorization');
+      if (auth === `Bearer ${cronSecret}`) return;
+    } catch { /* no request scope — fall through to session check */ }
+  }
+  const session = await getStaffSession();
+  if (session && (session.isOwner || session.permissions.includes('analytics_refresh'))) return;
+  throw new Error('Unauthorized');
+}
+
 export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: string[] }> {
+  await assertAnalyticsRefreshAllowed();
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

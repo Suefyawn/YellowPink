@@ -12,7 +12,7 @@ const EXPENSE_CATEGORIES = ['Ads', 'Salaries', 'Packaging', 'Marketing', 'Rent &
 
 export async function addExpense(formData: FormData): Promise<void> {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
     redirect('/admin/finance?err=' + encodeURIComponent('Not authorized'));
   }
 
@@ -46,7 +46,7 @@ export async function addExpense(formData: FormData): Promise<void> {
 // provides the inline confirmation step every destructive action gets.
 export async function deleteExpense(formData: FormData): Promise<void> {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
     redirect('/admin/finance?err=' + encodeURIComponent('Not authorized'));
   }
   const id = formData.get('id') as string;

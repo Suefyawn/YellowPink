@@ -133,7 +133,11 @@ export default async function ReturnsPage() {
         </section>
       )}
 
-      <ReturnsQueue rows={rows} orderMap={Object.fromEntries(orderMap)} />
+      <ReturnsQueue
+        rows={rows}
+        orderMap={Object.fromEntries(orderMap)}
+        canManage={session.isOwner || session.permissions.includes('returns') || session.permissions.includes('orders.edit')}
+      />
     </div>
   );
 }

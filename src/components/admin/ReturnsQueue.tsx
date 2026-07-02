@@ -30,9 +30,13 @@ const REFUND_METHOD_LABELS: Record<string, string> = {
   original: 'the original payment method', cod_deduct: 'a COD deduction',
 };
 
-export function ReturnsQueue({ rows, orderMap }: {
+export function ReturnsQueue({ rows, orderMap, canManage }: {
   rows: ReturnRow[];
   orderMap: Record<string, { order_number: string; first_name: string; last_name: string; total: number }>;
+  /** Whether the viewer can act on returns (owner / returns / orders.edit).
+   *  A read-only viewer (e.g. orders.view) sees the queue without the
+   *  decision controls, so they never hit an action that would 500. */
+  canManage: boolean;
 }) {
   const [acting, startTransition] = useTransition();
   const toast = useToast();
@@ -107,7 +111,7 @@ export function ReturnsQueue({ rows, orderMap }: {
               </div>
             )}
 
-            {r.status === 'approved' && (
+            {canManage && r.status === 'approved' && (
               <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
                 {/* "Mark as received" restocks the items via the inventory
                     ledger (record_stock_change reason='return'). This is the
@@ -129,7 +133,7 @@ export function ReturnsQueue({ rows, orderMap }: {
               </div>
             )}
 
-            {r.status === 'received' && (
+            {canManage && r.status === 'received' && (
               <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
                 {/* Final lifecycle step: the refund has actually been paid
                     out. Moves the request to `refunded` and the linked order
@@ -153,7 +157,7 @@ export function ReturnsQueue({ rows, orderMap }: {
               </div>
             )}
 
-            {r.status === 'pending' && (
+            {canManage && r.status === 'pending' && (
               <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
                 {isOpen ? (
                   <ApproveForm

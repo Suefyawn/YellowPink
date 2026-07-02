@@ -22,7 +22,7 @@ export default async function FinancePage({
   searchParams: Promise<{ range?: string; method?: string; err?: string; ok?: string; costs?: string }>;
 }) {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
     return <NoAccess section="Finance" />;
   }
 
