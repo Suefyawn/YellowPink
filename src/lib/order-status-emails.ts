@@ -13,6 +13,11 @@ export interface StatusEmailOrder {
   courier?: string | null;
 }
 
+// Lazy-load the email module (it constructs the Resend client at import
+// time) exactly once; concurrent senders share the same in-flight promise.
+let emailModule: Promise<typeof import('@/lib/email')> | null = null;
+const getEmailModule = () => (emailModule ??= import('@/lib/email'));
+
 /** Send the transition email for a status change (shipped / delivered /
  *  cancelled; other statuses are a no-op). Never throws — these are
  *  best-effort notifications and must not fail the mutation that triggered
@@ -20,7 +25,7 @@ export interface StatusEmailOrder {
 export async function sendStatusTransitionEmail(order: StatusEmailOrder, status: OrderStatus): Promise<void> {
   if (!order.email) return;
   try {
-    const { sendShippedEmail, sendDeliveredEmail, sendCancelledEmail } = await import('@/lib/email');
+    const { sendShippedEmail, sendDeliveredEmail, sendCancelledEmail } = await getEmailModule();
     const args = {
       email: order.email,
       first_name: order.first_name ?? 'there',

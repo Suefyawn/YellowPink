@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getStaffSession } from '@/lib/staff-auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { fetchAll } from '@/lib/fetch-all';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,14 +27,18 @@ export async function GET(req: NextRequest) {
 
   const onlyOutstanding = req.nextUrl.searchParams.get('outstanding') === '1';
 
-  const { data } = await supabaseAdmin()
-    .from('orders')
-    .select('order_number, status, first_name, last_name, phone, address, city, province, total, payment_received_at, created_at')
-    .eq('pay_method', 'cod')
-    .in('status', ['processing', 'shipped', 'delivered'])
-    .order('created_at', { ascending: false });
   type Row = { order_number: string; status: string; first_name: string | null; last_name: string | null; phone: string | null; address: string | null; city: string | null; province: string | null; total: number | null; payment_received_at: string | null; created_at: string };
-  let rows = (data ?? []) as Row[];
+  // fetchAll pages past PostgREST's silent 1000-row cap so a busy COD backlog
+  // exports in full instead of truncating at 1000 rows.
+  const { data } = await fetchAll<Row>(
+    supabaseAdmin()
+      .from('orders')
+      .select('order_number, status, first_name, last_name, phone, address, city, province, total, payment_received_at, created_at')
+      .eq('pay_method', 'cod')
+      .in('status', ['processing', 'shipped', 'delivered'])
+      .order('created_at', { ascending: false }),
+  );
+  let rows = data ?? [];
   // The "to collect" subset: delivered but cash not yet reconciled.
   if (onlyOutstanding) rows = rows.filter(r => r.status === 'delivered' && !r.payment_received_at);
 

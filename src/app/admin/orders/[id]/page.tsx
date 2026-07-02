@@ -258,6 +258,7 @@ export default async function OrderDetailPage({
 
   return (
     <div id="order-detail-page" style={{ padding: '32px 36px' }}>
+      {flash && <AdminFlash message={flash.message} type={flash.type} clearPath={`/admin/orders/${id}`} />}
       {/* Print styles, printing this page outputs ONLY the invoice card.
           Every other block is a direct child of #order-detail-page, so one
           rule hides them all (and stays correct as sections are added). */}
@@ -279,13 +280,7 @@ export default async function OrderDetailPage({
           {o.order_number}
         </h1>
         <CopyButton value={o.order_number} title={`Copy order number ${o.order_number}`} />
-        <span style={{
-          padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
-          background: (statusColors[currentStatus] ?? '#6b7280') + '20',
-          color: statusColors[currentStatus] ?? '#6b7280',
-        }}>
-          {statusLabel(currentStatus)}
-        </span>
+        <OrderStatusBadge status={currentStatus} />
         {o.created_at && (
           <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 4 }}>{fmtDate(o.created_at)}</span>
         )}
@@ -329,7 +324,7 @@ export default async function OrderDetailPage({
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.125rem' }}>{o.order_number}</div>
             <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>{o.created_at ? fmtDate(o.created_at) : ''}</div>
-            <div style={{ marginTop: 6, padding: '2px 10px', display: 'inline-block', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, background: (statusColors[currentStatus] ?? '#6b7280') + '25', color: statusColors[currentStatus] ?? '#6b7280' }}>
+            <div style={{ marginTop: 6, padding: '2px 10px', display: 'inline-block', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, background: orderStatusColor(currentStatus) + '25', color: orderStatusColor(currentStatus) }}>
               {statusLabel(currentStatus)}
             </div>
           </div>
@@ -741,7 +736,7 @@ export default async function OrderDetailPage({
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {events.map((e, i) => (
               <div key={e.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColors[e.to_status] ?? '#6b7280', marginTop: 6, flexShrink: 0 }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: orderStatusColor(e.to_status), marginTop: 6, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>
                     {e.from_status

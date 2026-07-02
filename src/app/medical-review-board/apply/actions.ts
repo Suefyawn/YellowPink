@@ -1,7 +1,9 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { supabaseAdmin } from '@/lib/supabase';
 import { sendReviewerApplicationEmail } from '@/lib/email';
+import { reviewerApplyLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { log } from '@/lib/logger';
 
 export interface ApplyResult { ok: boolean; error?: string }
@@ -19,6 +21,12 @@ export async function submitReviewerApplication(
   const email = str(formData, 'email').toLowerCase();
   if (!name) return { ok: false, error: 'Please enter your full name.' };
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, error: 'Please enter a valid email address.' };
+
+  // Unauthenticated write surface → per-IP rate limit before any DB work.
+  const rl = await reviewerApplyLimiter.limit(ipFromHeaders(await headers()));
+  if (!rl.success) {
+    return { ok: false, error: 'Too many attempts. Please wait a few minutes and try again.' };
+  }
 
   const topics = str(formData, 'review_topics').split(',').map(t => t.trim()).filter(Boolean);
   const credentials = str(formData, 'credentials') || null;

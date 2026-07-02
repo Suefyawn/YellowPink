@@ -10,6 +10,8 @@ import {
   setStaffCookie, clearStaffCookie,
 } from '@/lib/staff-auth';
 import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
+import { fetchAll } from '@/lib/fetch-all';
+import { logActionError } from '@/lib/action-log';
 import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
@@ -410,7 +412,8 @@ export async function exportOrdersCsv(
 ): Promise<{ csv?: string; count?: number; error?: string }> {
   try {
     await assertPermission('orders.view');
-  } catch {
+  } catch (err) {
+    logActionError('admin.orders.export_csv', err, { stage: 'permission' });
     return { error: 'You don’t have permission to export orders.' };
   }
   const { status, q, range } = filters;
@@ -426,9 +429,11 @@ export async function exportOrdersCsv(
     const filter = `order_number.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`;
     query = query.or(filter);
   }
-  const { data, error } = await query;
+  // fetchAll pages past PostgREST's silent 1000-row cap, without it the
+  // export quietly dropped every order past #1000 in the filtered window.
+  const { data, error } = await fetchAll<Order>(query);
   if (error) return { error: error.message };
-  const orders = (data ?? []) as Order[];
+  const orders = data ?? [];
   if (orders.length === 0) return { count: 0 };
 
   const headerRow = ['Order #', 'Date', 'Name', 'Email', 'Phone', 'City', 'Province', 'Address', 'Payment', 'Status', 'Subtotal', 'Discount', 'Shipping', 'Total', 'Tracking #', 'Coupon'];
@@ -490,6 +495,7 @@ export async function resendOrderConfirmation(id: string): Promise<{ error?: str
       pay_method: o.pay_method ?? 'cod',
     });
   } catch (e) {
+    logActionError('admin.orders.resend_confirmation', e, { order_id: id });
     return { error: e instanceof Error ? e.message : 'Failed to send email' };
   }
   if (!sent) {

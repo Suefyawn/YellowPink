@@ -64,6 +64,11 @@ export const trackLimiter     = makeLimiter('track',    10, 60);   // 10 per min
 export const uploadLimiter    = makeLimiter('upload',   30, 60);   // 30 per minute
 export const newsletterLimiter = makeLimiter('newsletter', 5, 60 * 10);  // 5 per 10 minutes per IP
 export const contactLimiter    = makeLimiter('contact',    4, 60 * 10);  // 4 per 10 minutes per IP
+// Public write surfaces hardened in the Phase-security batch:
+export const reviewerApplyLimiter = makeLimiter('reviewer_apply', 3, 60 * 10); // 3 per 10 minutes per IP (long vetting form; humans never re-submit fast)
+export const quizEmailLimiter     = makeLimiter('quiz_email',     5, 60 * 10); // 5 per 10 minutes per IP (mirrors newsletter signup)
+export const quizEventLimiter     = makeLimiter('quiz_event',    60, 60 * 10); // 60 per 10 minutes per IP (~2 events per run; generous for shared IPs)
+export const notFoundLimiter      = makeLimiter('notfound',      30, 60);      // 30 per minute per IP (a human clicking dead links stays well under)
 
 // ─── Identifier extraction ──────────────────────────────────────────────────
 // Use IP from Vercel-set x-forwarded-for, fall back to a stable header.

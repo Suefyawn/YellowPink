@@ -1,9 +1,11 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { supabase, supabaseAdmin, isDemo, getProducts } from '@/lib/supabase';
 import { sendNewsletterWelcomeEmail } from '@/lib/email';
 import { captureError } from '@/lib/monitoring';
+import { quizEmailLimiter, quizEventLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { log } from '@/lib/logger';
 import { categoriesForAnswers, type Branch, type QuizAnswers } from '@/lib/quiz';
 import type { Product } from '@/types';
@@ -47,6 +49,10 @@ async function logEvent(row: {
 }): Promise<void> {
   if (isDemo) return;
   try {
+    // Unauthenticated fire-and-forget writes → per-IP rate limit. Over the
+    // limit we silently skip the analytics row (never block the quiz UX).
+    const rl = await quizEventLimiter.limit(ipFromHeaders(await headers()));
+    if (!rl.success) return;
     await supabaseAdmin().from('quiz_events').insert({
       session_id: row.session_id,
       type: row.type,
@@ -76,6 +82,12 @@ export interface EmailResult { ok: boolean; error?: string }
 export async function captureQuizEmail(sessionId: string, email: string, branch: Branch): Promise<EmailResult> {
   const clean = (email ?? '').toLowerCase().trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { ok: false, error: 'Please enter a valid email address.' };
+  // Unauthenticated write surface (newsletter insert + welcome email) → per-IP
+  // rate limit, same budget as the footer newsletter signup.
+  const rl = await quizEmailLimiter.limit(ipFromHeaders(await headers()));
+  if (!rl.success) {
+    return { ok: false, error: 'Too many attempts. Please try again in a few minutes.' };
+  }
   try {
     await logEvent({ session_id: sessionId, type: 'email_captured', branch });
     if (isDemo) {

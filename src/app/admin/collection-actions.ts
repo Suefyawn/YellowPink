@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
+import { logActionError } from '@/lib/action-log';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import type { Permission } from '@/lib/permissions';
 import type { SmartRules } from '@/lib/collections';
@@ -58,7 +59,12 @@ export async function updateCollection(id: string, formData: FormData): Promise<
   let rules: SmartRules = {};
   const rawRules = str(formData, 'rules');
   if (rawRules) {
-    try { rules = JSON.parse(rawRules) as SmartRules; } catch { rules = {}; }
+    try { rules = JSON.parse(rawRules) as SmartRules; } catch (err) {
+      // Malformed rules JSON from the rule-builder is a client bug worth
+      // seeing; behaviour is unchanged (fall back to empty rules).
+      logActionError('admin.collections.rules_parse', err, { collection_id: id });
+      rules = {};
+    }
   }
 
   const patch = {

@@ -7,6 +7,7 @@ import { OrdersFilter } from '@/components/admin/OrdersFilter';
 import { OrdersTable } from '@/components/admin/OrdersTable';
 import { Pagination } from '@/components/admin/Pagination';
 import { ExportCSVButton } from '@/components/admin/ExportCSVButton';
+import { AdminFlash } from '@/components/admin/AdminFlash';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { orderRangeSinceIso } from '@/lib/order-range';
@@ -29,9 +30,9 @@ export default async function OrdersPage({
 async function OrdersPageInner({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string; deleted?: string }>;
 }) {
-  const { status, q, page: pageParam, range } = await searchParams;
+  const { status, q, page: pageParam, range, deleted } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -74,6 +75,8 @@ async function OrdersPageInner({
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
+      {/* deleteOrder redirects here with ?deleted=1, surface it as a toast. */}
+      <AdminFlash message={deleted ? 'Order deleted.' : null} clearPath="/admin/orders" />
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Orders</h1>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>

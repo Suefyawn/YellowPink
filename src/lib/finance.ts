@@ -1,6 +1,7 @@
 // Shared finance helpers used by the admin Finance page and its CSV export
 // route, so the per-order money maths lives in exactly one place.
 import { supabaseAdmin } from './supabase';
+import { fetchAll } from './fetch-all';
 
 export const FINANCE_RANGES: { key: string; label: string; days: number | null }[] = [
   { key: '7d', label: '7 days', days: 7 },
@@ -49,18 +50,24 @@ export interface FinanceOrder {
  *  vendor_id, so the own-stock pass only counts vendor_id-null products. */
 export async function loadFinanceOrders(fromISO: string | null): Promise<{ orders: FinanceOrder[]; cogsByOrder: Map<string, number> }> {
   const admin = supabaseAdmin();
+  // fetchAll pages past PostgREST's silent 1000-row cap; without it the P&L
+  // (and its CSV export) quietly dropped every order past #1000 in the window.
   let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, acquisition_cost, items');
   if (fromISO) oq = oq.gte('created_at', fromISO);
-  const { data } = await oq;
-  const orders = ((data ?? []) as FinanceOrder[]).filter(o => !DEAD_STATES.has(o.status ?? ''));
+  const { data } = await fetchAll<FinanceOrder>(oq.order('created_at', { ascending: true }));
+  const orders = (data ?? []).filter(o => !DEAD_STATES.has(o.status ?? ''));
 
   const cogsByOrder = new Map<string, number>();
   const ids = orders.map(o => o.id);
   if (ids.length) {
     // Vendor COGS, the snapshot recorded when each order was dispatched.
-    const { data: settle } = await admin.from('vendor_settlements').select('order_id, vendor_cost').in('order_id', ids);
+    // Also paged: with >1000 in-window orders the settlement rows can exceed
+    // the PostgREST cap too, which silently zeroed COGS for the excess orders.
+    const { data: settle } = await fetchAll<{ order_id: string; vendor_cost: number | null }>(
+      admin.from('vendor_settlements').select('order_id, vendor_cost').in('order_id', ids).order('order_id', { ascending: true }),
+    );
     const set = new Set(ids);
-    for (const s of (settle ?? []) as { order_id: string; vendor_cost: number | null }[]) {
+    for (const s of settle ?? []) {
       if (set.has(s.order_id)) cogsByOrder.set(s.order_id, (cogsByOrder.get(s.order_id) ?? 0) + Number(s.vendor_cost ?? 0));
     }
 
@@ -69,13 +76,15 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
     const productIds = new Set<string>();
     for (const o of orders) for (const it of o.items ?? []) if (it?.id) productIds.add(it.id);
     if (productIds.size) {
-      const { data: prods } = await admin
-        .from('products')
-        .select('id, vendor_id, cost_price')
-        .in('id', [...productIds]);
+      const { data: prods } = await fetchAll<{ id: string; vendor_id: string | null; cost_price: number | null }>(
+        admin
+          .from('products')
+          .select('id, vendor_id, cost_price')
+          .in('id', [...productIds])
+          .order('id', { ascending: true }),
+      );
       const costMap = new Map(
-        ((prods ?? []) as { id: string; vendor_id: string | null; cost_price: number | null }[])
-          .map(p => [p.id, { vendorId: p.vendor_id, cost: Number(p.cost_price ?? 0) }]),
+        (prods ?? []).map(p => [p.id, { vendorId: p.vendor_id, cost: Number(p.cost_price ?? 0) }]),
       );
       for (const o of orders) {
         let own = 0;

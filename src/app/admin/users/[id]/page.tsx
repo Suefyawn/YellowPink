@@ -3,10 +3,12 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
-import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS, type Order, type AdminUser, type OrderStatus } from '@/types';
+import { PAY_METHOD_LABELS, type Order, type AdminUser } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { AdminFlash } from '@/components/admin/AdminFlash';
+import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge';
 import { deleteCustomer } from '@/app/admin/actions';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
@@ -16,10 +18,6 @@ const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 const fmtDateTime = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-const statusColors: Record<string, string> = {
-  pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444',
-};
 
 interface ActivityRow {
   id: string;
@@ -54,13 +52,21 @@ function activityDetail(a: ActivityRow): string {
   return '';
 }
 
-export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function UserDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ err?: string }>;
+}) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('customers.view'))) {
     return <NoAccess section="Customers" />;
   }
   const canDeleteCustomer = !session || session.isOwner || session.permissions.includes('customers.delete');
   const { id } = await params;
+  // deleteCustomer bounces failures back here with ?err=<message>.
+  const { err } = (await searchParams) ?? {};
 
   // orders is RLS-locked; the `get_admin_user` RPC already uses
   // SECURITY DEFINER but route via service-role for consistency.
@@ -147,6 +153,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
+      <AdminFlash message={err} type="error" clearPath={`/admin/users/${id}`} />
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 28 }}>
         <Link href="/admin/users" style={{ color: '#6b7280', textDecoration: 'none', fontSize: '0.875rem' }}>← Customers</Link>
         <span style={{ color: '#d1d5db' }}>/</span>
@@ -258,7 +265,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               </thead>
               <tbody>
                 {orderList.map((o, i) => {
-                  const status = (o.status ?? 'pending') as OrderStatus;
+                  const status = o.status ?? 'pending';
                   const itemCount = (o.items ?? []).length;
                   return (
                     <tr key={o.id} style={{ borderTop: i > 0 ? '1px solid #f9fafb' : 'none' }}>
@@ -277,14 +284,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                         {fmt(o.total)}
                       </td>
                       <td data-label="Status" style={{ padding: '10px 12px' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-                          fontSize: '0.75rem', fontWeight: 600,
-                          background: (statusColors[status] ?? '#6b7280') + '20',
-                          color: statusColors[status] ?? '#6b7280',
-                        }}>
-                          {ORDER_STATUS_LABELS[status] ?? status}
-                        </span>
+                        <OrderStatusBadge status={status} />
                       </td>
                       <td data-label="Payment" style={{ padding: '10px 12px' }}>
                         <span style={{

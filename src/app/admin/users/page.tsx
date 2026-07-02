@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Pagination } from '@/components/admin/Pagination';
 import { UsersFilter } from '@/components/admin/UsersFilter';
+import { AdminFlash } from '@/components/admin/AdminFlash';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import type { AdminUser } from '@/types';
@@ -77,14 +78,14 @@ function avatarColor(id: string): string {
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; sort?: string; type?: string; activity?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string; type?: string; activity?: string; deleted?: string; err?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('customers.view'))) {
     return <NoAccess section="Customers" />;
   }
 
-  const { q, page: pageParam, sort: sortParam, type: typeParam, activity: activityParam } = await searchParams;
+  const { q, page: pageParam, sort: sortParam, type: typeParam, activity: activityParam, deleted, err } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const sort: SortKey = SORT_KEYS.includes(sortParam as SortKey) ? (sortParam as SortKey) : 'recent';
   const type: TypeKey = TYPE_KEYS.includes(typeParam as TypeKey) ? (typeParam as TypeKey) : 'all';
@@ -224,6 +225,12 @@ export default async function UsersPage({
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
+      {/* deleteCustomer redirects here with ?deleted=1 / ?err=<message>. */}
+      <AdminFlash
+        message={err ?? (deleted ? 'Customer deleted. Their orders were kept as guest orders.' : null)}
+        type={err ? 'error' : 'success'}
+        clearPath="/admin/users"
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Customers</h1>

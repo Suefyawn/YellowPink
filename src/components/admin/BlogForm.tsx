@@ -1,5 +1,5 @@
 'use client';
-import { useActionState, useState } from 'react';
+import { startTransition, useActionState, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createBlogPost, updateBlogPost } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
@@ -45,6 +45,17 @@ export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?
   const boundAction = isEdit ? updateBlogPost.bind(null, post!.id) : createBlogPost;
   const [state, action, pending] = useActionState(boundAction, null);
 
+  // Warn before leaving with unsaved edits (tab close / refresh / external
+  // nav). Suppressed while submitting, a successful save redirects away.
+  // Same guard as ProductForm.
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (!dirty || pending) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty, pending]);
+
   const [title, setTitle] = useState(post?.title ?? '');
   const [slug, setSlug] = useState(post?.slug ?? '');
   const [imageUrl] = useState(post?.image_url ?? '');
@@ -68,7 +79,22 @@ export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?
           </div>
         )}
 
-        <form action={action}>
+        {/* Submitted manually (preventDefault + startTransition) instead of via
+            the `action` prop: React resets every uncontrolled field once a
+            form action settles, so a rejected save (e.g. duplicate slug) used
+            to wipe the writer's entered data — including the whole body.
+            Dispatching the same useActionState action ourselves keeps the DOM
+            state intact while error/pending behave identically. Same pattern
+            as ProductForm. */}
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            setDirty(false);
+            const formData = new FormData(e.currentTarget);
+            startTransition(() => action(formData));
+          }}
+          onInput={() => { if (!dirty) setDirty(true); }}
+        >
           {/* Title */}
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Title *</label>

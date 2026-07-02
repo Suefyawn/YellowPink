@@ -104,10 +104,17 @@ export async function deleteVendor(formData: FormData) {
  *  WhatsApp). Bound with the order id + target state by the order page. */
 export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
   const session = await assertPermission('orders.edit');
-  await supabaseAdmin()
+  const { error } = await supabaseAdmin()
     .from('orders')
     .update({ confirmed_at: confirmed ? new Date().toISOString() : null })
     .eq('id', orderId);
+  if (error) {
+    // Surface the failure on the order page (it reads ?err= into a toast);
+    // previously the error was dropped and the page just re-rendered with
+    // the confirmation seemingly ignored.
+    log.error('order.set_confirmed_failed', { order_id: orderId, confirmed, error: error.message });
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(`Could not update confirmation: ${error.message}`));
+  }
   void logAudit(session, {
     action: confirmed ? 'order.customer_confirmed' : 'order.confirmation_cleared',
     entity: 'orders', entity_id: orderId,

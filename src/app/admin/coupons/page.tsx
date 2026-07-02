@@ -1,10 +1,12 @@
 export const dynamic = 'force-dynamic';
 
+import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
 import { CouponEditModal } from '@/components/admin/CouponEditModal';
-import { createCoupon, deleteCoupon, toggleCoupon } from '@/app/admin/coupon-actions';
+import { CouponCreateForm } from '@/components/admin/CouponCreateForm';
+import { deleteCoupon, toggleCoupon } from '@/app/admin/coupon-actions';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import type { Coupon } from '@/types';
@@ -60,11 +62,6 @@ export default async function CouponsPage({
   }
   const totalDiscount = [...impact.values()].reduce((s, v) => s + v.discount, 0);
 
-  const inp: React.CSSProperties = {
-    padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 7,
-    fontSize: '0.875rem', color: '#111827', background: 'white', outline: 'none',
-  };
-
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 28 }}>
@@ -91,48 +88,13 @@ export default async function CouponsPage({
         </div>
       )}
 
-      {/* Create coupon form */}
-      <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 24 }}>
-        <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Create Coupon</h2>
-        <form action={createCoupon} style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Code</label>
-            <input name="code" required placeholder="SAVE10" style={{ ...inp, textTransform: 'uppercase', fontFamily: 'monospace', width: 120 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Type</label>
-            <select name="type" style={inp}>
-              <option value="percent">Percent %</option>
-              <option value="fixed">Fixed PKR</option>
-              <option value="free_shipping">Free shipping</option>
-            </select>
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Value</label>
-            {/* Not `required`: free-shipping coupons carry no value (the
-                action validates it for percent/fixed instead). */}
-            <input name="value" type="number" min={1} placeholder="10" style={{ ...inp, width: 80 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Min Order (PKR)</label>
-            <input name="min_order" type="number" min={0} defaultValue={0} placeholder="0" style={{ ...inp, width: 100 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Max Uses</label>
-            <input name="max_uses" type="number" min={1} placeholder="Unlimited" style={{ ...inp, width: 100 }} />
-          </div>
-          <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Expires</label>
-            <input name="expires_at" type="date" style={inp} />
-          </div>
-          <button type="submit" style={{
-            padding: '8px 20px', background: '#C5286A', color: 'white',
-            border: 'none', borderRadius: 7, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
-          }}>
-            + Create
-          </button>
-        </form>
-      </div>
+      {/* Create coupon form. Client component (useActionState): a rejected
+          create keeps the entered fields and shows the error inline instead
+          of round-tripping through a redirect that wiped the form. Suspense
+          because it reads useSearchParams for the post-create reset. */}
+      <Suspense fallback={null}>
+        <CouponCreateForm />
+      </Suspense>
 
       {/* Coupons table */}
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
@@ -159,8 +121,6 @@ export default async function CouponsPage({
                         <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</span>
                         <CopyButton value={c.code} iconOnly title={`Copy coupon code ${c.code}`} />
                       </span>
-                      {isExpired && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#dc2626', background: '#fef2f2', padding: '1px 6px', borderRadius: 10 }}>EXPIRED</span>}
-                      {isMaxed && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#ea580c', background: '#fff7ed', padding: '1px 6px', borderRadius: 10 }}>MAXED</span>}
                     </td>
                     <td data-label="Discount" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {c.discount_type === 'free_shipping' || c.free_shipping
@@ -186,14 +146,22 @@ export default async function CouponsPage({
                       {c.expires_at ? fmtDate(c.expires_at) : '—'}
                     </td>
                     <td data-label="Status" style={{ padding: '12px 16px' }}>
+                      {/* One effective status per coupon: an expired or maxed
+                          coupon shows as such, never as "Active" alongside an
+                          expiry warning. The pill still toggles the underlying
+                          active flag. */}
                       <form action={toggleCoupon.bind(null, c.id, !c.active)}>
-                        <button type="submit" style={{
-                          padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
-                          background: c.active && !isExpired && !isMaxed ? '#f0fdf4' : '#f3f4f6',
-                          color: c.active && !isExpired && !isMaxed ? '#15803d' : '#9ca3af',
-                          minHeight: 30,
-                        }}>
-                          {c.active ? 'Active' : 'Inactive'}
+                        <button
+                          type="submit"
+                          title={c.active ? 'Click to deactivate' : 'Click to activate'}
+                          style={{
+                            padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
+                            background: isExpired ? '#fef2f2' : isMaxed ? '#fff7ed' : c.active ? '#f0fdf4' : '#f3f4f6',
+                            color: isExpired ? '#dc2626' : isMaxed ? '#ea580c' : c.active ? '#15803d' : '#9ca3af',
+                            minHeight: 30,
+                          }}
+                        >
+                          {isExpired ? 'Expired' : isMaxed ? 'Maxed out' : c.active ? 'Active' : 'Inactive'}
                         </button>
                       </form>
                     </td>

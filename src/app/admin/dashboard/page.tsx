@@ -5,6 +5,7 @@ import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { OverviewChart, type OverviewDay } from '@/components/admin/OverviewChart';
+import { OrderStatusBadge, ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 import { SentryWidget } from '@/components/admin/SentryWidget';
 import { QuizStatsWidget } from '@/components/admin/QuizStatsWidget';
 import { brandPlusName } from '@/lib/product-display';
@@ -22,12 +23,6 @@ interface DashboardKpis {
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
-
-const statusColors: Record<string, string> = {
-  payment_pending: '#9ca3af', payment_failed: '#e11d48',
-  pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981',
-  cancelled: '#ef4444', returned: '#64748b', refunded: '#a855f7',
-};
 
 // Every order status, in lifecycle order, so the "Orders by Status" bars
 // account for the whole order book and the percentages sum to 100%. The old
@@ -321,7 +316,7 @@ export default async function DashboardPage() {
                     <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{count} ({pct}%)</span>
                   </div>
                   <div style={{ height: 6, background: '#f3f4f6', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${pct}%`, background: statusColors[s], borderRadius: 3, transition: 'width 0.3s' }} />
+                    <div style={{ height: '100%', width: `${pct}%`, background: ORDER_STATUS_COLORS[s], borderRadius: 3, transition: 'width 0.3s' }} />
                   </div>
                 </div>
               );
@@ -413,14 +408,7 @@ export default async function DashboardPage() {
                       {fmt(o.total)}
                     </td>
                     <td data-label="Status" style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-                        fontSize: '0.75rem', fontWeight: 600,
-                        background: (statusColors[status] ?? '#6b7280') + '20',
-                        color: statusColors[status] ?? '#6b7280',
-                      }}>
-                        {ORDER_STATUS_LABELS[status as OrderStatus] ?? status}
-                      </span>
+                      <OrderStatusBadge status={status} />
                     </td>
                     <td data-label="Payment" style={{ padding: '12px 16px' }}>
                       <span style={{
