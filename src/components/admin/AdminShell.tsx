@@ -254,7 +254,8 @@ export function AdminShell({
            * card, full-width review text with a 40px-tall action row under. */
           .adm-review-row { grid-template-columns: 1fr !important; }
           .adm-review-actions { justify-content: stretch !important; }
-          .adm-review-actions > * { flex: 1 1 auto; }
+          /* flex-basis 0 so the 2-3 actions share ONE row equally. */
+          .adm-review-actions > * { flex: 1 1 0; min-width: 0; }
           /* Direct action buttons only, NOT the ones inside the edit dialog
            * (which also mounts inside this container). */
           .adm-review-actions > button,
