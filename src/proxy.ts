@@ -115,22 +115,28 @@ export async function proxy(request: NextRequest) {
 
   // ─── Admin auth gate ──────────────────────────────────────────────────────
   // The legacy admin_session cookie is HMAC-signed (see lib/signed-cookie.ts);
-  // we verify the signature + age here in Edge. A staff_session cookie is
-  // also accepted; its body verification happens at the page layer because
-  // it needs the DB-backed staff_members lookup that Edge can't do cheaply.
+  // we verify the signature + age here in Edge. The staff_session cookie's
+  // HMAC + expiry are verified here too (Web Crypto) — only the DB-backed
+  // staff_members lookup is deferred to the page layer. Presence-only
+  // acceptance let forged cookies reach pages, which made every page guard
+  // load-bearing (one inverted guard exposed /admin/messages).
   if (pathname === '/admin') return NextResponse.next();
   if (pathname.startsWith('/admin/')) {
     const session = request.cookies.get('admin_session')?.value;
     const staff   = request.cookies.get('staff_session')?.value;
     const pass    = process.env.ADMIN_PASSWORD;
+    const { verify, verifyStaffTokenEdge, OWNER_COOKIE_TTL_SEC } = await import('@/lib/signed-cookie');
+    const { STAFF_SESSION_SECRET } = await import('@/lib/session-secret');
     let ownerOk = false;
     if (pass && session) {
-      const { verify, OWNER_COOKIE_TTL_SEC } = await import('@/lib/signed-cookie');
-      const { STAFF_SESSION_SECRET } = await import('@/lib/session-secret');
       const payload = await verify(session, STAFF_SESSION_SECRET(), OWNER_COOKIE_TTL_SEC);
       ownerOk = payload?.sub === 'owner';
     }
-    if (!ownerOk && !staff) {
+    let staffOk = false;
+    if (!ownerOk && staff) {
+      staffOk = (await verifyStaffTokenEdge(staff, STAFF_SESSION_SECRET())) !== null;
+    }
+    if (!ownerOk && !staffOk) {
       return NextResponse.redirect(new URL('/admin', request.url));
     }
   }

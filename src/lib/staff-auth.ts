@@ -4,10 +4,13 @@ import { supabaseAdmin } from './supabase';
 import { expandLegacyPermissions, type StaffSession } from './permissions';
 
 import { STAFF_SESSION_SECRET } from './session-secret';
+import { STAFF_COOKIE_TTL_SEC } from './signed-cookie';
 
 const STAFF_COOKIE = 'staff_session';
 const SECRET = STAFF_SESSION_SECRET();
-const SESSION_TTL_MS = 10 * 60 * 60 * 1000; // 10h
+// Single-sourced with the Edge verifier (signed-cookie.ts) so middleware and
+// page-layer expiry can never disagree.
+const SESSION_TTL_MS = STAFF_COOKIE_TTL_SEC * 1000; // 10h
 
 // ─── Password hashing ────────────────────────────────────────────────────────
 // New hashes are scrypt-derived and stored in password_hash as

@@ -83,3 +83,36 @@ export async function verify(token: string, secret: string, maxAgeSec: number): 
  *  cookie uses sub='owner' and a 7-day TTL. */
 export const OWNER_COOKIE_NAME = 'admin_session';
 export const OWNER_COOKIE_TTL_SEC = 60 * 60 * 24 * 7;
+
+/** Staff session TTL — single source shared by staff-auth (cookie maxAge +
+ *  Node-side verify) and the Edge verifier below. */
+export const STAFF_COOKIE_TTL_SEC = 10 * 60 * 60; // 10h
+
+/** Edge-compatible verification of the staff_session token minted by
+ *  lib/staff-auth.ts signToken(): base64url("<staffId>|<issuedMs>|<hexSig>")
+ *  where hexSig = HMAC-SHA256("<staffId>|<issuedMs>", secret).
+ *
+ *  Returns the staffId on a valid, unexpired signature, else null. This
+ *  deliberately does NOT hit the database (Edge can't, cheaply) — the page
+ *  layer still re-verifies and loads the staff row; this check exists so a
+ *  forged/expired cookie can't get past the middleware gate at all. */
+export async function verifyStaffTokenEdge(token: string, secret: string): Promise<string | null> {
+  let decoded: string;
+  try {
+    decoded = dec.decode(b64urlDecode(token));
+  } catch { return null; }
+  const lastPipe = decoded.lastIndexOf('|');
+  if (lastPipe === -1) return null;
+  const payload = decoded.slice(0, lastPipe);
+  const sigHex = decoded.slice(lastPipe + 1);
+  if (!/^[0-9a-f]{64}$/.test(sigHex)) return null;
+  const key = await hmacKey(secret);
+  const expected = new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(payload) as BufferSource));
+  const got = new Uint8Array(32);
+  for (let i = 0; i < 32; i++) got[i] = parseInt(sigHex.slice(i * 2, i * 2 + 2), 16);
+  if (!timingSafeEq(expected, got)) return null;
+  const [staffId, ts] = payload.split('|');
+  if (!staffId || !ts) return null;
+  if (Date.now() - Number(ts) > STAFF_COOKIE_TTL_SEC * 1000) return null;
+  return staffId;
+}
