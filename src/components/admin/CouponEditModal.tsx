@@ -15,6 +15,12 @@ const inp: React.CSSProperties = {
 export function CouponEditModal({ coupon }: { coupon: Coupon }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(updateCoupon, null);
+  // Controlled so the Value field can switch off for free-shipping coupons
+  // (they carry no monetary value; the action stores value = 0).
+  const [type, setType] = useState<'percent' | 'fixed' | 'free_shipping'>(
+    coupon.discount_type === 'free_shipping' || coupon.free_shipping ? 'free_shipping' : coupon.type,
+  );
+  const isFreeShipping = type === 'free_shipping';
 
   // Close the modal once the server action reports a successful save.
   // setState-in-effect is intentional: the trigger is the action result.
@@ -78,14 +84,25 @@ export function CouponEditModal({ coupon }: { coupon: Coupon }) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={lbl}>Type</label>
-                  <select name="type" defaultValue={coupon.type} style={inp}>
+                  <select
+                    name="type" value={type}
+                    onChange={e => setType(e.target.value as 'percent' | 'fixed' | 'free_shipping')}
+                    style={inp}
+                  >
                     <option value="percent">Percent %</option>
                     <option value="fixed">Fixed PKR</option>
+                    <option value="free_shipping">Free shipping</option>
                   </select>
                 </div>
                 <div>
                   <label style={lbl}>Value</label>
-                  <input name="value" type="number" required min={1} defaultValue={coupon.value} style={inp} />
+                  <input
+                    name="value" type="number" min={1}
+                    required={!isFreeShipping} disabled={isFreeShipping}
+                    defaultValue={coupon.value || ''}
+                    placeholder={isFreeShipping ? '—' : undefined}
+                    style={{ ...inp, ...(isFreeShipping ? { background: '#f9fafb', color: '#9ca3af' } : {}) }}
+                  />
                 </div>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

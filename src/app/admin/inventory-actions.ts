@@ -50,20 +50,31 @@ export async function adjustStock(formData: FormData): Promise<void> {
     p_actor_kind:  session.isOwner ? 'owner' : 'staff',
     p_actor_email: session.email,
     p_note:        note,
-  } as never) as unknown as { data: Array<{ ledger_id: string; new_balance: number }> | null; error: { message: string } | null };
+  } as never) as unknown as { data: Array<{ ledger_id: string; new_balance: number; applied_delta: number }> | null; error: { message: string } | null };
 
   if (error) {
     redirect('/admin/inventory?error=' + encodeURIComponent(error.message));
   }
 
+  const result = data?.[0];
+
   void logAudit(session, {
     action: 'inventory.adjust',
     entity: variantId ? 'product_variants' : 'products',
     entity_id: variantId ?? productId,
-    diff: { qty_delta: qtyDelta, reason, note, new_balance: data?.[0]?.new_balance },
+    diff: { qty_delta: result?.applied_delta ?? qtyDelta, requested_delta: qtyDelta, reason, note, new_balance: result?.new_balance },
   });
 
   revalidatePath('/admin/inventory');
   if (productId) revalidatePath(`/admin/products/${productId}`);
+
+  // Stock can't go below zero: record_stock_change clamps the removal and
+  // reports the delta it actually applied (migration 300). Warn the operator
+  // instead of claiming plain success so a fat-fingered count gets noticed.
+  if (result && result.applied_delta !== qtyDelta) {
+    redirect('/admin/inventory?warn=' + encodeURIComponent(
+      `Stock cannot go below zero: applied ${result.applied_delta} of the requested ${qtyDelta}. New balance: ${result.new_balance}. The ledger records the applied amount.`,
+    ));
+  }
   redirect('/admin/inventory?ok=1');
 }

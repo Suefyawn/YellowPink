@@ -29,7 +29,9 @@ export async function notifyNewOrder(order: {
   items: Array<{ name: string; qty: number; price: number; brand?: string; variant?: string }>;
   pay_method: string;
 }): Promise<void> {
-  const sends: Promise<void>[] = [sendNewOrderEmail(order)];
+  // sendOrderConfirmationEmail resolves to a boolean (did the provider accept
+  // it?); it's fire-and-forget here, so the widened element type is fine.
+  const sends: Promise<void | boolean>[] = [sendNewOrderEmail(order)];
   if (order.email) {
     sends.push(
       sendOrderConfirmationEmail({

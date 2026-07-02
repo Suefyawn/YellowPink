@@ -51,6 +51,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
         <AnnouncementBar
           text={topBar.headline}
           bgColor={topBar.bg_color ?? '#111827'}
+          textColor={topBar.text_color}
         />
       ) : topBarSettingsActive && (
         <AnnouncementBar

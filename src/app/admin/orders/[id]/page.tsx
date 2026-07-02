@@ -19,7 +19,7 @@ import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
 import { configuredAdapterIds } from '@/lib/couriers';
-import { ORDER_STATUS_LABELS } from '@/types';
+import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
 import type { Order, CartItem, OrderStatus } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
@@ -31,6 +31,9 @@ interface OrderEventRow {
   to_status: OrderStatus;
   note: string | null;
   actor_kind: string | null;
+  /** Operator attribution written by the admin status actions ('owner' or a
+   *  staff email); null for trigger-only rows (customer/system/gateway). */
+  actor_id: string | null;
   created_at: string;
 }
 
@@ -38,11 +41,11 @@ function statusLabel(s: OrderStatus | null): string {
   return s ? (ORDER_STATUS_LABELS[s] ?? s) : '';
 }
 
-const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
+// `n === 0 ? 0 : n` normalises negative zero: profit lines negate their
+// values, and (-0).toLocaleString() renders "PKR -0".
+const fmt = (n: number) => `PKR ${(n === 0 ? 0 : n).toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-
-const payLabel: Record<string, string> = { cod: 'Cash on Delivery', card: 'Card Payment', bank: 'Bank Transfer' };
 
 const statusColors: Record<string, string> = {
   pending: '#9a6407', processing: '#1d4ed8', shipped: '#6d28d9', delivered: '#0b7e58', cancelled: '#c43838',
@@ -82,7 +85,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // Status history, every transition this order went through, oldest first.
   const { data: eventRows } = await supabaseAdmin()
     .from('order_events')
-    .select('id, from_status, to_status, note, actor_kind, created_at')
+    .select('id, from_status, to_status, note, actor_kind, actor_id, created_at')
     .eq('order_id', id)
     .order('created_at', { ascending: true });
   const events = (eventRows ?? []) as OrderEventRow[];
@@ -158,7 +161,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
     `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}`,
     `Phone: ${o.phone}`,
     '',
-    `Total: ${fmt(o.total)} · ${payLabel[o.pay_method] ?? o.pay_method}`,
+    `Total: ${fmt(o.total)} · ${PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method}`,
   ].join('\n');
 
   // Prefilled WhatsApp message the merchant sends TO the customer to confirm
@@ -178,7 +181,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       return `• ${it.qty}× ${brandPlusName(it.brand, it.name)}${v ? ` (${v})` : ''}`;
     }),
     '',
-    `Total: ${fmt(o.total)} (${payLabel[o.pay_method] ?? o.pay_method})`,
+    `Total: ${fmt(o.total)} (${PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method})`,
     ...(o.pay_method === 'cod' ? ['Parcel milne par cash adaa karein.'] : []),
     '',
     `Delivery address:`,
@@ -357,7 +360,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <span>Total</span><span>{fmt(o.total)}</span>
           </div>
           <div style={{ marginTop: 8, fontSize: '0.8125rem', color: '#6b7280' }}>
-            Payment: <strong style={{ color: '#374151' }}>{payLabel[o.pay_method] ?? o.pay_method}</strong>
+            Payment: <strong style={{ color: '#374151' }}>{PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method}</strong>
           </div>
         </div>
       </div>
@@ -726,9 +729,15 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                   </div>
                   {e.note && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{e.note}</div>}
                 </div>
-                {e.actor_kind && (
-                  <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', alignSelf: 'flex-start', marginTop: 2 }}>
-                    {e.actor_kind}
+                {/* Prefer the operator identity the admin actions record
+                    (owner / staff email) over the trigger's generic kind. */}
+                {(e.actor_id || e.actor_kind) && (
+                  <span style={{
+                    fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af',
+                    textTransform: e.actor_id?.includes('@') ? 'none' : 'uppercase',
+                    alignSelf: 'flex-start', marginTop: 2,
+                  }}>
+                    {e.actor_id ?? e.actor_kind}
                   </span>
                 )}
                 <div style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{fmtDate(e.created_at)}</div>
@@ -775,7 +784,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <span style={{ color: '#C5286A' }}>{fmt(o.total)}</span>
             </div>
             <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#6b7280' }}>
-              Method: <strong style={{ color: '#374151' }}>{payLabel[o.pay_method] ?? o.pay_method}</strong>
+              Method: <strong style={{ color: '#374151' }}>{PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method}</strong>
             </div>
           </div>
         </div>

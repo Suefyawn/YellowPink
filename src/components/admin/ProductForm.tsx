@@ -1,5 +1,5 @@
 'use client';
-import { useActionState, useEffect, useState } from 'react';
+import { startTransition, useActionState, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createProduct, updateProduct } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
@@ -124,7 +124,21 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
           </div>
         )}
 
-        <form action={action} onInput={() => { if (!dirty) setDirty(true); }} onSubmit={() => setDirty(false)}>
+        {/* Submitted manually (preventDefault + startTransition) instead of via
+            the `action` prop: React resets every uncontrolled field once a
+            form action settles, so a rejected save (e.g. duplicate slug) used
+            to wipe the merchant's entered data. Dispatching the same
+            useActionState action ourselves keeps the DOM state intact while
+            error/pending behave identically. */}
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            setDirty(false);
+            const formData = new FormData(e.currentTarget);
+            startTransition(() => action(formData));
+          }}
+          onInput={() => { if (!dirty) setDirty(true); }}
+        >
           {/* ── Basics ─────────────────────────────────────────────────── */}
           <Section title="Basics" first>
             <div style={row2}>
@@ -170,7 +184,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
               </div>
             </div>
 
-            <div style={{ ...row2, marginBottom: 0 }}>
+            <div style={row2}>
               <div style={fieldWrap}>
                 <label style={lbl}>Variant</label>
                 <input name="variant" defaultValue={product?.variant ?? ''} style={inp} placeholder="e.g. 250ml" />
@@ -184,6 +198,22 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
                   <option value="external">External</option>
                 </select>
                 <span style={hint}>Variable products manage stock per variant.</span>
+              </div>
+            </div>
+
+            <div style={{ ...row2, marginBottom: 0 }}>
+              <div style={fieldWrap}>
+                <label style={lbl}>Status *</label>
+                {/* New products start as drafts so a half-finished page never
+                    goes live (or gets pinged to search engines) by accident.
+                    Archived products keep their option so an edit doesn't
+                    silently resurrect them. */}
+                <select name="status" required defaultValue={product?.status ?? 'draft'} style={inp}>
+                  <option value="draft">Draft (hidden from storefront)</option>
+                  <option value="published">Published (live)</option>
+                  {product?.status === 'archived' && <option value="archived">Archived</option>}
+                </select>
+                <span style={hint}>Drafts are only visible in the admin. Publishing submits the page to search engines.</span>
               </div>
             </div>
           </Section>

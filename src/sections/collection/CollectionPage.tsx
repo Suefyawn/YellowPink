@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
@@ -50,6 +50,15 @@ interface Props {
    *  `?bestseller=1`. */
   initialFeatured?: boolean;
   initialBestseller?: boolean;
+  /** Server-resolved `?page=` (1-based). Seeded on the server for the same
+   *  first-render reason as initialBrand, `useSearchParams` is empty on the
+   *  first client render, which silently discarded the page param on load. */
+  initialPage?: number;
+  /** Rank-ordered product ids from the `search_products` RPC for the current
+   *  `?q=` term, resolved server-side so this page and the search overlay
+   *  agree on what matches (same fuzzy pg_trgm search, same counts). null →
+   *  fall back to the local substring filter (demo mode / RPC failure). */
+  searchIds?: string[] | null;
 }
 
 export function CollectionPage({
@@ -65,6 +74,8 @@ export function CollectionPage({
   initialTags = null,
   initialFeatured = false,
   initialBestseller = false,
+  initialPage,
+  searchIds = null,
 }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -114,7 +125,10 @@ export function CollectionPage({
       return { cat: topLabel, sub: leaf };
     })();
     const sort = (sp.get('sort') as SortKey | null) ?? 'featured';
-    const pageNum = Math.max(1, Number(sp.get('page') ?? '1'));
+    // Prefer the server-resolved page (present on the first render, when
+    // useSearchParams is still empty on this static route); fall back to the
+    // client URL for in-session reads.
+    const pageNum = Math.max(1, initialPage ?? (Number(sp.get('page') ?? '1') || 1));
     // Prefer the server-resolved initialBrand (present on first render); fall
     // back to the client URL for in-session reads. Resolve each URL token to
     // the catalog's canonical brand string (case/space-insensitive) so a link
@@ -336,7 +350,11 @@ export function CollectionPage({
   }, [activeCategory]);
 
   // ─── URL persistence ─────────────────────────────────────────────────────
-  useEffect(() => {
+  // Builds the canonical /shop URL for the current filter state at a given
+  // page. Shared by the persistence effect below AND the pagination links,
+  // so pages 2+ render as real crawlable <a href="?page=N"> anchors that
+  // always match what the effect would write.
+  const shopUrlFor = useCallback((pageN: number) => {
     const sp = new URLSearchParams();
     if (q.trim()) sp.set('q', q.trim());
     // Use `category=` / `subcategory=` (matches header nav + sitemap +
@@ -344,7 +362,7 @@ export function CollectionPage({
     if (activeCategory && activeCategory !== 'All') sp.set('category', activeCategory);
     if (activeSubcategory) sp.set('subcategory', activeSubcategory);
     if (sortBy !== 'featured') sp.set('sort', sortBy);
-    if (page !== 1) sp.set('page', String(page));
+    if (pageN !== 1) sp.set('page', String(pageN));
     if (selectedBrands.size > 0) sp.set('brand', Array.from(selectedBrands).join(','));
     if (selectedTags.size > 0) sp.set('tag', Array.from(selectedTags).join(','));
     if (selectedValueIds.size > 0) sp.set('attr', Array.from(selectedValueIds).join(','));
@@ -355,10 +373,13 @@ export function CollectionPage({
     if (featuredOnly) sp.set('featured', '1');
     if (bestsellerOnly) sp.set('bestseller', '1');
     const qs = sp.toString();
-    const url = qs ? `/shop?${qs}` : '/shop';
+    return qs ? `/shop?${qs}` : '/shop';
+  }, [q, activeCategory, activeSubcategory, sortBy, selectedBrands, selectedTags, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly]);
+
+  useEffect(() => {
     // Replace, not push, filtering shouldn't pile up history entries.
-    router.replace(url, { scroll: false });
-  }, [q, activeCategory, activeSubcategory, sortBy, page, selectedBrands, selectedTags, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly, selectedValueIds, router]);
+    router.replace(shopUrlFor(page), { scroll: false });
+  }, [shopUrlFor, page, router]);
 
   const activeFilterCount =
     (q.trim() ? 1 : 0) +
@@ -394,17 +415,41 @@ export function CollectionPage({
     requestAnimationFrame(() => window.scrollTo({ top: 0 }));
   }
 
-  // Free-text query is matched case-insensitively against brand + name +
-  // category + subcategory + variant. Cheap substring containment is fine
-  // for the catalogue size we run, if it ever gets too big we'll swap in
-  // the `search_products` RPC (pg_trgm) the typeahead overlay already uses.
+  // Prev/next pagination arrow, shared by the enabled <a> and the disabled
+  // <span> so both bounds render identically.
+  const pageArrowStyle = (disabled: boolean): React.CSSProperties => ({
+    padding: '8px 14px', background: 'none', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+    fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', cursor: disabled ? 'default' : 'pointer',
+    color: disabled ? 'var(--ink-400)' : 'var(--ink-900)', transition: 'all 150ms',
+    textDecoration: 'none', display: 'inline-block',
+  });
+
+  // Free-text query. When the server resolved the term through the
+  // `search_products` RPC (pg_trgm, same engine as the header typeahead) we
+  // filter by its id set, so this page and the overlay agree on what
+  // matches and how many. The case-insensitive substring match against
+  // brand + name + category + variant remains the fallback for demo mode /
+  // an RPC failure.
   const qLower = q.trim().toLowerCase();
   const activeTaxon = findTaxon(activeCategory);
+  const searchIdSet = useMemo(() => (searchIds ? new Set(searchIds) : null), [searchIds]);
+  // RPC rank (best match first) so the default "Featured" sort presents
+  // results in the same order the overlay does.
+  const searchRank = useMemo(() => {
+    if (!searchIds) return null;
+    const m = new Map<string, number>();
+    searchIds.forEach((id, i) => m.set(id, i));
+    return m;
+  }, [searchIds]);
 
   let filtered = products.filter(p => {
     if (qLower) {
-      const hay = `${p.brand} ${p.name} ${p.category ?? ''} ${p.variant ?? ''}`.toLowerCase();
-      if (!hay.includes(qLower)) return false;
+      if (searchIdSet) {
+        if (!searchIdSet.has(p.id)) return false;
+      } else {
+        const hay = `${p.brand} ${p.name} ${p.category ?? ''} ${p.variant ?? ''}`.toLowerCase();
+        if (!hay.includes(qLower)) return false;
+      }
     }
     // Category scope: an active leaf chip narrows to that exact leaf
     // category; otherwise the active taxon narrows to its leaf set; the
@@ -453,6 +498,11 @@ export function CollectionPage({
   if (sortBy === 'price-low') filtered = [...filtered].sort((a, b) => a.price - b.price);
   else if (sortBy === 'price-high') filtered = [...filtered].sort((a, b) => b.price - a.price);
   else if (sortBy === 'name') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+  else if (qLower && searchRank) {
+    // Default sort during an RPC-backed search: relevance order, matching
+    // the typeahead overlay.
+    filtered = [...filtered].sort((a, b) => (searchRank.get(a.id) ?? Infinity) - (searchRank.get(b.id) ?? Infinity));
+  }
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -602,7 +652,11 @@ export function CollectionPage({
             className="shop-rail-backdrop"
             style={{
               position: 'fixed', inset: 0, background: 'rgba(10,10,10,0.45)',
-              zIndex: 90,
+              // Above the sticky header (z=100) so the header is dimmed +
+              // inert while the rail is open; below the rail itself. Was 90,
+              // which left the header floating un-dimmed on top of the
+              // backdrop and painting over the rail's top controls.
+              zIndex: 110,
               opacity: filtersOpen ? 1 : 0,
               pointerEvents: filtersOpen ? 'auto' : 'none',
               transition: 'opacity 220ms ease-out',
@@ -627,7 +681,12 @@ export function CollectionPage({
               boxShadow: filtersOpen ? '4px 0 24px rgba(0,0,0,0.12)' : 'none',
               transform: filtersOpen ? 'translateX(0)' : 'translateX(-100%)',
               transition: 'transform 280ms ease-out, box-shadow 280ms ease-out',
-              zIndex: 100,
+              // Above the sticky header (z=100) and this rail's own backdrop
+              // (110); below the mini-cart (200) / search overlay (300) /
+              // mobile nav (950). Was 100, tying with the header, whose
+              // stacking context could then paint over the rail's top
+              // controls (desktop and mobile), hiding Filters/close.
+              zIndex: 120,
               overflowY: 'auto',
               padding: '20px 24px 32px',
               display: 'flex', flexDirection: 'column',
@@ -864,18 +923,23 @@ export function CollectionPage({
               </div>
             </div>
           )}
+          {/* Pagination renders real <a href="?page=N"> links (built via
+              shopUrlFor so they mirror the active filters), so pages 2+ are
+              crawl-discoverable, while onClick intercepts for the same
+              instant client-side page flip as before. Disabled prev/next
+              at the bounds are spans, not dead links. */}
           {totalPages > 1 && (
             <nav aria-label="Product pages" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 48 }}>
-              <button
-                onClick={() => goToPage(Math.max(1, page - 1))}
-                disabled={page === 1}
-                aria-label="Previous page"
-                style={{
-                  padding: '8px 14px', background: 'none', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
-                  fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', cursor: page === 1 ? 'default' : 'pointer',
-                  color: page === 1 ? 'var(--ink-400)' : 'var(--ink-900)', transition: 'all 150ms',
-                }}
-              ><span aria-hidden="true">←</span></button>
+              {page === 1 ? (
+                <span aria-hidden="true" style={pageArrowStyle(true)}>←</span>
+              ) : (
+                <a
+                  href={shopUrlFor(page - 1)}
+                  onClick={e => { e.preventDefault(); goToPage(page - 1); }}
+                  aria-label="Previous page"
+                  style={pageArrowStyle(false)}
+                ><span aria-hidden="true">←</span></a>
+              )}
               {(() => {
                 const pages: (number | '…')[] = [];
                 if (totalPages <= 7) {
@@ -891,9 +955,10 @@ export function CollectionPage({
                   p === '…' ? (
                     <span key={`ellipsis-${i}`} style={{ padding: '8px 6px', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', color: 'var(--ink-500)' }}>…</span>
                   ) : (
-                    <button
+                    <a
                       key={p}
-                      onClick={() => goToPage(p as number)}
+                      href={shopUrlFor(p as number)}
+                      onClick={e => { e.preventDefault(); goToPage(p as number); }}
                       aria-label={`Page ${p}`}
                       aria-current={page === p ? 'page' : undefined}
                       style={{
@@ -902,21 +967,22 @@ export function CollectionPage({
                         background: page === p ? 'var(--ink-900)' : 'none',
                         fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 600,
                         color: page === p ? 'var(--paper)' : 'var(--ink-900)', cursor: 'pointer', transition: 'all 150ms',
+                        textDecoration: 'none', display: 'inline-block',
                       }}
-                    >{p}</button>
+                    >{p}</a>
                   )
                 );
               })()}
-              <button
-                onClick={() => goToPage(Math.min(totalPages, page + 1))}
-                disabled={page === totalPages}
-                aria-label="Next page"
-                style={{
-                  padding: '8px 14px', background: 'none', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
-                  fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', cursor: page === totalPages ? 'default' : 'pointer',
-                  color: page === totalPages ? 'var(--ink-400)' : 'var(--ink-900)', transition: 'all 150ms',
-                }}
-              ><span aria-hidden="true">→</span></button>
+              {page === totalPages ? (
+                <span aria-hidden="true" style={pageArrowStyle(true)}>→</span>
+              ) : (
+                <a
+                  href={shopUrlFor(page + 1)}
+                  onClick={e => { e.preventDefault(); goToPage(page + 1); }}
+                  aria-label="Next page"
+                  style={pageArrowStyle(false)}
+                ><span aria-hidden="true">→</span></a>
+              )}
             </nav>
           )}
             </div> {/* close product grid column */}

@@ -75,7 +75,10 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
   }, [cartItems]);
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const discount = appliedCoupon
+  // Free-shipping coupons waive the delivery charge instead of discounting
+  // the line total, mirroring the checkout's maths so both previews agree.
+  const freeShipCoupon = Boolean(appliedCoupon && (appliedCoupon.discount_type === 'free_shipping' || appliedCoupon.free_shipping));
+  const discount = appliedCoupon && !freeShipCoupon
     ? appliedCoupon.type === 'percent'
       ? Math.round(subtotal * appliedCoupon.value / 100)
       : appliedCoupon.value
@@ -88,7 +91,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
   // so turning free shipping off here removes the bar and the FREE rate.
   const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate } = useCommerceSettings();
   const progress = Math.min(subtotal / freeShippingThreshold, 1);
-  const shipping = freeShippingEnabled && subtotal >= freeShippingThreshold ? 0 : defaultShippingRate;
+  const shipping = freeShipCoupon || (freeShippingEnabled && subtotal >= freeShippingThreshold) ? 0 : defaultShippingRate;
   // "You may also like", bestsellers minus whatever's already in the bag,
   // capped at a single 4-up row.
   const crossSell = recommended.filter(p => !cartItems.some(c => c.id === p.id)).slice(0, 4);
@@ -239,7 +242,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
                     <div>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#15803d', fontFamily: 'monospace' }}>{appliedCoupon.code}</span>
                       <span style={{ fontSize: '0.75rem', color: '#15803d', marginLeft: 6 }}>
-                       , {appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `PKR ${appliedCoupon.value.toLocaleString()} off`}
+                       , {freeShipCoupon ? 'free shipping' : appliedCoupon.type === 'percent' ? `${appliedCoupon.value}% off` : `PKR ${appliedCoupon.value.toLocaleString()} off`}
                       </span>
                     </div>
                     <button type="button" aria-label="Remove coupon" onClick={removeCoupon} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', fontSize: '1rem', lineHeight: 1, padding: 2 }}>×</button>

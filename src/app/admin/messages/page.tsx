@@ -133,18 +133,24 @@ function groupConversations(rows: Row[]): Convo[] {
 
 export default async function MessagesPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
   const session = await getStaffSession();
-  if (session && !session.isOwner && !session.permissions.includes('messages')) {
+  // No session must NOT fall through: the edge gate only checks that a
+  // staff_session cookie exists (real verification happens here), so a
+  // forged cookie reaches this page with session=null.
+  if (!session || (!session.isOwner && !session.permissions.includes('messages'))) {
     return <NoAccess section="Messages" />;
   }
   const sp = (await searchParams) ?? {};
 
+  // Newest-first within the cap, then restored to chronological order for
+  // threading: ascending+limit would keep the OLDEST 2,000 rows and silently
+  // drop every new inbound message once the table outgrows the cap.
   const { data } = await supabaseAdmin()
     .from('contact_messages')
     .select('id, name, email, subject, message, status, source, direction, created_at')
-    .order('created_at', { ascending: true })
+    .order('created_at', { ascending: false })
     .limit(2000);
 
-  const convos = groupConversations((data ?? []) as Row[]);
+  const convos = groupConversations(((data ?? []) as Row[]).slice().reverse());
   const open = convos.filter(c => !c.archived);
   const archived = convos.filter(c => c.archived);
   const unreadThreads = open.filter(c => c.unread > 0).length;

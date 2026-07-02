@@ -17,6 +17,33 @@ const inp: React.CSSProperties = {
 };
 const lbl: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 };
 
+/** Map raw Supabase/fetch errors to copy a shopper can act on. A dropped
+ *  connection surfaces as the browser's literal "Failed to fetch" /
+ *  "NetworkError…" strings, meaningless to a customer, and the API's
+ *  terse auth messages get a friendlier equivalent. Unrecognised messages
+ *  pass through (they're already human-readable, e.g. password rules). */
+function friendlyAuthError(message: string | undefined, mode: Mode): string {
+  const m = (message ?? '').toLowerCase();
+  if (!m || m.includes('failed to fetch') || m.includes('networkerror') || m.includes('fetch failed') || m.includes('load failed')) {
+    return 'We couldn’t reach the server. Please check your internet connection and try again.';
+  }
+  if (m.includes('invalid login credentials')) {
+    return 'That email and password don’t match. Please try again, or use “Forgot password?” to reset it.';
+  }
+  if (m.includes('email not confirmed')) {
+    return 'Please confirm your email first, check your inbox for the confirmation link.';
+  }
+  if (m.includes('user already registered')) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+  if (m.includes('rate limit') || m.includes('too many requests')) {
+    return 'Too many attempts, please wait a minute and try again.';
+  }
+  return message || (mode === 'login'
+    ? 'We couldn’t sign you in. Please try again.'
+    : 'We couldn’t create your account. Please try again.');
+}
+
 export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -36,7 +63,7 @@ export default function LoginPage() {
     try {
       if (mode === 'login') {
         const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) { setError(error.message); return; }
+        if (error) { setError(friendlyAuthError(error.message, mode)); return; }
         router.push('/account');
         // Don't clear loading on success, the page is about to navigate
         // and resetting state would briefly flash the unstuck button.
@@ -49,15 +76,16 @@ export default function LoginPage() {
         password,
         options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
       });
-      if (error) { setError(error.message); return; }
+      if (error) { setError(friendlyAuthError(error.message, mode)); return; }
       // Fire-and-forget the branded welcome email. The server action
       // re-verifies the id against the auth record before sending.
       if (data.user) void sendSignupWelcomeEmail(data.user.id);
       setMessage('Account created! Check your email to confirm your address.');
     } catch (err) {
-      // Offline / DNS / transient network, surface a message and unstick
-      // the button. Without this catch the spinner would spin forever.
-      setError((err as Error).message || 'Something went wrong. Please try again.');
+      // Offline / DNS / transient network, surface a human message (never
+      // the raw "Failed to fetch") and unstick the button. Without this
+      // catch the spinner would spin forever.
+      setError(friendlyAuthError((err as Error).message, mode));
     } finally {
       setLoading(false);
     }

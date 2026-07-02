@@ -113,9 +113,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         updated[existing] = { ...updated[existing], qty: next };
         return updated;
       }
+      // Never create a quantity-0 line: a sold-out product (stockCap 0)
+      // would otherwise land in the cart as a phantom line the shopper
+      // can't check out (the order RPC rejects it with a raw product-id
+      // error). Silently ignore, matching the at-cap behaviour above.
+      const qty = Math.min(requested, stockCap);
+      if (qty < 1) return prev;
       return [...prev, {
         ...product,
-        qty: Math.min(requested, stockCap),
+        qty,
         variant_id: variantId,
         variant_label: product.variant_label ?? null,
       }];

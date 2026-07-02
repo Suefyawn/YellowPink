@@ -104,11 +104,14 @@ export default async function CouponsPage({
             <select name="type" style={inp}>
               <option value="percent">Percent %</option>
               <option value="fixed">Fixed PKR</option>
+              <option value="free_shipping">Free shipping</option>
             </select>
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Value</label>
-            <input name="value" type="number" required min={1} placeholder="10" style={{ ...inp, width: 80 }} />
+            {/* Not `required`: free-shipping coupons carry no value (the
+                action validates it for percent/fixed instead). */}
+            <input name="value" type="number" min={1} placeholder="10" style={{ ...inp, width: 80 }} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4 }}>Min Order (PKR)</label>
@@ -160,7 +163,9 @@ export default async function CouponsPage({
                       {isMaxed && <span style={{ marginLeft: 8, fontSize: '0.7rem', fontWeight: 600, color: '#ea580c', background: '#fff7ed', padding: '1px 6px', borderRadius: 10 }}>MAXED</span>}
                     </td>
                     <td data-label="Discount" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
-                      {c.type === 'percent' ? `${c.value}%` : `PKR ${c.value.toLocaleString()}`}
+                      {c.discount_type === 'free_shipping' || c.free_shipping
+                        ? 'Free shipping'
+                        : c.type === 'percent' ? `${c.value}%` : `PKR ${c.value.toLocaleString()}`}
                     </td>
                     <td data-label="Min order" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {c.min_order ? `PKR ${c.min_order.toLocaleString()}` : '—'}

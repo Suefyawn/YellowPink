@@ -9,7 +9,7 @@ import type { Product } from '@/types';
 // bounce before reaching the bottom "Mentioned in this article" rail, so this
 // puts a buyable, visual product nudge above the fold for researchers. Server
 // component: links straight to the PDP (no client add-to-cart needed here).
-export function BlogProductNudge({ products }: { products: Product[] }) {
+export function BlogProductNudge({ products, label = 'Recommended in this guide' }: { products: Product[]; label?: string }) {
   const picks = products.slice(0, 2);
   if (picks.length === 0) return null;
 
@@ -22,7 +22,7 @@ export function BlogProductNudge({ products }: { products: Product[] }) {
       }}
     >
       <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--brand-pink-text)' }}>
-        {picks.length > 1 ? 'Recommended in this guide' : 'Recommended in this guide'}
+        {label}
       </Overline>
       <div style={{ display: 'grid', gridTemplateColumns: picks.length > 1 ? 'repeat(2, 1fr)' : '1fr', gap: 12 }} className="blog-nudge-grid">
         {picks.map(p => (

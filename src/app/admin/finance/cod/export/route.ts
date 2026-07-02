@@ -20,7 +20,7 @@ const STATUS_LABEL: Record<string, string> = {
 // Service-role read (orders RLS blocks anon).
 export async function GET(req: NextRequest) {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
     return new Response('Forbidden', { status: 403 });
   }
 

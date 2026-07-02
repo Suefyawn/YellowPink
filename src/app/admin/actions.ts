@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
 import {
-  hashPassword, verifyPassword, upgradeStaffHash,
+  verifyPassword, upgradeStaffHash,
   setStaffCookie, clearStaffCookie,
 } from '@/lib/staff-auth';
 import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
@@ -14,9 +14,12 @@ import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
 import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
+import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { log } from '@/lib/logger';
 import { verifyTotp } from '@/lib/totp';
-import type { OrderStatus } from '@/types';
+import { orderRangeSinceIso } from '@/lib/order-range';
+import type { StaffSession } from '@/lib/permissions';
+import type { Order, OrderStatus } from '@/types';
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
@@ -170,6 +173,7 @@ export async function createProduct(
     await submitToSearchEnginesQuietly([`/product/${created.slug}`]);
   }
   revalidatePath('/admin/products');
+  revalidateStorefrontCatalog();
   redirect('/admin/products');
 }
 
@@ -193,6 +197,7 @@ export async function updateProduct(
     await submitToSearchEnginesQuietly([`/product/${live.slug}`]);
   }
   revalidatePath('/admin/products');
+  revalidateStorefrontCatalog();
   redirect('/admin/products');
 }
 
@@ -216,6 +221,7 @@ export async function deleteProduct(formData: FormData) {
     }
     await logAudit(session, { action: 'product.archive', entity: 'product', entity_id: id, diff: { reason: 'has_order_history' } });
     revalidatePath('/admin/products');
+    revalidateStorefrontCatalog();
     redirect('/admin/products?archived=1');
   }
 
@@ -226,6 +232,7 @@ export async function deleteProduct(formData: FormData) {
   }
   await logAudit(session, { action: 'product.delete', entity: 'product', entity_id: id });
   revalidatePath('/admin/products');
+  revalidateStorefrontCatalog();
   redirect('/admin/products?deleted=1');
 }
 
@@ -277,13 +284,9 @@ export async function createBlogPost(
   formData: FormData
 ): Promise<{ error: string } | null> {
   await assertPermission('blog');
-  // checkbox quirk: when unchecked, `featured` is absent from FormData.
-  const normalized = new FormData();
-  for (const [k, v] of formData.entries()) normalized.append(k, v);
-  if (!normalized.has('featured')) normalized.append('featured', 'false');
-  else normalized.set('featured', normalized.get('featured') === 'on' ? 'true' : String(normalized.get('featured')));
-
-  const parsed = parseForm(blogPostInputSchema, normalized);
+  // `featured` arrives as a checkbox ('on' when ticked, absent otherwise);
+  // blogPostInputSchema coerces it to a real boolean.
+  const parsed = parseForm(blogPostInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { error } = await supabaseAdmin().from('blog_posts').insert(parsed.data);
   if (error) return { error: error.message };
@@ -300,12 +303,8 @@ export async function updateBlogPost(
   formData: FormData
 ): Promise<{ error: string } | null> {
   await assertPermission('blog');
-  const normalized = new FormData();
-  for (const [k, v] of formData.entries()) normalized.append(k, v);
-  if (!normalized.has('featured')) normalized.append('featured', 'false');
-  else normalized.set('featured', normalized.get('featured') === 'on' ? 'true' : String(normalized.get('featured')));
-
-  const parsed = parseForm(blogPostInputSchema, normalized);
+  // See createBlogPost: `featured` is a checkbox coerced by the schema.
+  const parsed = parseForm(blogPostInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
   const { error } = await supabaseAdmin().from('blog_posts').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
@@ -371,6 +370,119 @@ export async function deleteBlogPost(formData: FormData) {
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
+/** The order_events trigger stamps every admin status change `staff` with a
+ *  null actor_id, the database can't see the app session. After a status
+ *  update, patch the event row the trigger just wrote with the signed-in
+ *  operator so the order timeline shows WHO made the change, not just "STAFF".
+ *  Only rows with a null actor_id are touched, so past events keep their
+ *  original attribution. */
+async function attributeOrderEvents(
+  admin: ReturnType<typeof supabaseAdmin>,
+  orderIds: string[],
+  status: OrderStatus,
+  session: StaffSession,
+): Promise<void> {
+  const actor = session.isOwner ? 'owner' : (session.email ?? 'staff');
+  for (const orderId of orderIds) {
+    const { data: evt } = await admin
+      .from('order_events')
+      .select('id')
+      .eq('order_id', orderId)
+      .eq('to_status', status)
+      .is('actor_id', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (evt?.id) {
+      await admin.from('order_events').update({ actor_id: actor }).eq('id', evt.id);
+    }
+  }
+}
+
+/** Cancellation restock: push an order's items back into stock via the
+ *  inventory ledger. place_order debited the stock at order-creation time
+ *  (migration 079); this is the symmetric credit. reason='cancellation'
+ *  (migration 080) keeps the /admin/inventory trail distinct from a real
+ *  customer return. Shared by the single-order and bulk cancel paths so the
+ *  two can never drift. */
+async function restockCancelledOrder(
+  admin: ReturnType<typeof supabaseAdmin>,
+  session: StaffSession,
+  order: { id: string; order_number?: string | null; items?: unknown },
+): Promise<void> {
+  const items = (order.items ?? []) as Array<{ id: string; qty: number; variant_id?: string | null }>;
+  for (const it of items) {
+    if (!it?.id || !it.qty || it.qty <= 0) continue;
+    await admin.rpc('record_stock_change' as never, {
+      p_product_id:  it.id,
+      p_variant_id:  it.variant_id ?? null,
+      p_qty_delta:   it.qty,
+      p_reason:      'cancellation',
+      p_order_id:    order.id,
+      p_return_id:   null,
+      p_actor_kind:  session.isOwner ? 'owner' : 'staff',
+      p_actor_email: session.email ?? null,
+      p_note:        `Restock from order cancellation ${order.order_number ?? order.id.slice(0, 8)}`,
+    } as never);
+  }
+}
+
+/** Server-side CSV export for the Orders list. The browser's anon-key client
+ *  can't read `orders` (RLS bars anon SELECT since migration 070), so the
+ *  Export button calls this action, which queries with the service role after
+ *  a staff-permission check and hands the CSV text back for a client-side
+ *  download. Filters mirror the Orders page exactly. */
+export async function exportOrdersCsv(
+  filters: { status?: string; q?: string; range?: string },
+): Promise<{ csv?: string; count?: number; error?: string }> {
+  try {
+    await assertPermission('orders.view');
+  } catch {
+    return { error: 'You don’t have permission to export orders.' };
+  }
+  const { status, q, range } = filters;
+  let query = supabaseAdmin().from('orders').select('*').order('created_at', { ascending: false });
+  if (status && status !== 'all') query = query.eq('status', status as OrderStatus);
+  // Shared with the Orders page so the export window matches the on-screen
+  // filter exactly ("Today" = PKT calendar day, 7d/30d/90d rolling).
+  const rangeSince = orderRangeSinceIso(range);
+  if (rangeSince) query = query.gte('created_at', rangeSince);
+  if (q) {
+    // Keep in sync with the orders page search (order #, name, email, phone).
+    const term = q.replace(/[(),*]/g, ' ').trim();
+    const filter = `order_number.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`;
+    query = query.or(filter);
+  }
+  const { data, error } = await query;
+  if (error) return { error: error.message };
+  const orders = (data ?? []) as Order[];
+  if (orders.length === 0) return { count: 0 };
+
+  const headerRow = ['Order #', 'Date', 'Name', 'Email', 'Phone', 'City', 'Province', 'Address', 'Payment', 'Status', 'Subtotal', 'Discount', 'Shipping', 'Total', 'Tracking #', 'Coupon'];
+  const rows = orders.map(o => [
+    o.order_number,
+    o.created_at ? new Date(o.created_at).toISOString().split('T')[0] : '',
+    `${o.first_name} ${o.last_name}`,
+    o.email ?? '',
+    o.phone,
+    o.city,
+    o.province ?? '',
+    o.address.replace(/,/g, ';'),
+    o.pay_method.toUpperCase(),
+    o.status ?? 'pending',
+    o.subtotal,
+    o.discount_amount ?? 0,
+    o.shipping,
+    o.total,
+    o.tracking_number ?? '',
+    o.coupon_code ?? '',
+  ]);
+  const csv = [headerRow, ...rows]
+    .map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(','))
+    .join('\n');
+  return { csv, count: orders.length };
+}
+
 /** Resend the order confirmation email, for customers who say they never
  *  received the original (deliverability, spam, typo). Logs the resend so it
  *  shows up in the order's audit trail.
@@ -385,9 +497,14 @@ export async function resendOrderConfirmation(id: string): Promise<{ error?: str
     .single();
   if (error || !o) return { error: error?.message ?? 'Order not found' };
   if (!o.email) return { error: 'No email on file for this order.' };
+  // sendOrderConfirmationEmail never throws for provider-side problems, it
+  // reports skips (no API key, quota) and rejections via its boolean result.
+  // Surface those to the UI too, "Sent ✓" on a send that never happened was
+  // exactly the support-ticket generator this button exists to fix.
+  let sent = false;
   try {
     const { sendOrderConfirmationEmail } = await import('@/lib/email');
-    await sendOrderConfirmationEmail({
+    sent = await sendOrderConfirmationEmail({
       email: o.email,
       order_number: o.order_number,
       first_name: o.first_name ?? '',
@@ -402,20 +519,49 @@ export async function resendOrderConfirmation(id: string): Promise<{ error?: str
   } catch (e) {
     return { error: e instanceof Error ? e.message : 'Failed to send email' };
   }
+  if (!sent) {
+    return { error: 'The email was not sent (provider skipped or rejected it). Check Emails → log for details.' };
+  }
   await logAudit(session, { action: 'order.confirmation_resent', entity: 'order', entity_id: id, diff: { to: o.email } });
   revalidatePath(`/admin/orders/${id}`);
   return { success: true };
 }
 
 export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus): Promise<{ error?: string; count?: number }> {
-  await assertPermission('orders.edit');
+  const session = await assertPermission('orders.edit');
   // orders RLS bars anon writes; service role is required for admin
   // mutations.
-  const { error, count } = await supabaseAdmin()
+  const admin = supabaseAdmin();
+  // Snapshot the prior state so we can (a) restock exactly the orders that
+  // actually transition to cancelled — mirroring the single-order path in
+  // updateOrderStatus — and (b) attribute the logged transitions to the
+  // signed-in operator.
+  const { data: beforeRows } = await admin
+    .from('orders')
+    .select('id, status, order_number, items')
+    .in('id', ids);
+  const before = (beforeRows ?? []) as Array<{ id: string; status: OrderStatus | null; order_number: string | null; items: unknown }>;
+
+  const { error, count } = await admin
     .from('orders')
     .update({ status }, { count: 'exact' })
     .in('id', ids);
   if (error) return { error: error.message };
+
+  const changed = before.filter(o => o.status !== status);
+  await attributeOrderEvents(admin, changed.map(o => o.id), status, session);
+
+  // Cancellation restock, same ledger path (and idempotency rule: only fires
+  // on the transition, never on a "cancelled → cancelled" re-submit) as the
+  // single-order cancel below.
+  if (status === 'cancelled') {
+    const toRestock = changed;
+    for (const o of toRestock) {
+      await restockCancelledOrder(admin, session, o);
+    }
+    if (toRestock.length > 0) revalidatePath('/admin/inventory');
+  }
+
   revalidatePath('/admin/orders');
   return { count: count ?? ids.length };
 }
@@ -448,29 +594,18 @@ export async function updateOrderStatus(
     .eq('id', id);
   if (error) return { error: error.message };
 
-  // Cancellation restock: when an order moves from a non-cancelled state
-  // to cancelled, push the items back into stock via the inventory ledger.
-  // place_order debited the stock at order-creation time (migration 079);
-  // this is the symmetric credit. We use reason='cancellation' (migration
-  // 080) so the trail in /admin/inventory distinguishes it from a real
-  // customer return. Idempotency: only fires on the transition, not on a
-  // no-op "cancelled → cancelled" submit.
+  // Attribute the transition the order_events trigger just logged to the
+  // signed-in operator (the trigger can only stamp a generic 'staff').
+  if (before && before.status !== status) {
+    await attributeOrderEvents(admin, [id], status, session);
+  }
+
+  // Cancellation restock: when an order moves from a non-cancelled state to
+  // cancelled, push the items back into stock via the inventory ledger (see
+  // restockCancelledOrder). Idempotency: only fires on the transition, not
+  // on a no-op "cancelled → cancelled" submit.
   if (before && before.status !== 'cancelled' && status === 'cancelled') {
-    const items = (before.items ?? []) as Array<{ id: string; qty: number; variant_id?: string | null }>;
-    for (const it of items) {
-      if (!it?.id || !it.qty || it.qty <= 0) continue;
-      await admin.rpc('record_stock_change' as never, {
-        p_product_id:  it.id,
-        p_variant_id:  it.variant_id ?? null,
-        p_qty_delta:   it.qty,
-        p_reason:      'cancellation',
-        p_order_id:    id,
-        p_return_id:   null,
-        p_actor_kind:  session?.isOwner ? 'owner' : session ? 'staff' : 'system',
-        p_actor_email: session?.email ?? null,
-        p_note:        `Restock from order cancellation ${before.order_number ?? id.slice(0, 8)}`,
-      } as never);
-    }
+    await restockCancelledOrder(admin, session, { id, order_number: before.order_number, items: before.items });
     revalidatePath('/admin/inventory');
   }
 
@@ -497,5 +632,9 @@ export async function updateOrderStatus(
   return { success: true };
 }
 
-// Hashed temp-password export so the staff/team UI keeps working.
-export { hashPassword };
+// NOTE: this file must export ONLY async server actions. A previous sync
+// re-export of `hashPassword` (unused — the team actions import it from
+// lib/staff-auth directly) stopped Turbopack from registering this module's
+// actions for pages that pass them to client components as props, which
+// 404'd the "Delete order" button with "Server action not found". Don't
+// re-add non-action exports here.

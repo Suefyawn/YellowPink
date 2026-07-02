@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
-import { ORDER_STATUS_LABELS, type Order, type AdminUser, type OrderStatus } from '@/types';
+import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS, type Order, type AdminUser, type OrderStatus } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
@@ -20,8 +20,6 @@ const fmtDateTime = (s: string) =>
 const statusColors: Record<string, string> = {
   pending: '#f59e0b', processing: '#3b82f6', shipped: '#8b5cf6', delivered: '#10b981', cancelled: '#ef4444',
 };
-
-const payLabel: Record<string, string> = { cod: 'COD', card: 'Card', bank: 'Bank' };
 
 interface ActivityRow {
   id: string;
@@ -292,7 +290,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                           background: '#f3f4f6', borderRadius: 20,
                           fontSize: '0.75rem', color: '#374151',
                         }}>
-                          {payLabel[o.pay_method] ?? o.pay_method}
+                          {PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method}
                         </span>
                       </td>
                       <td style={{ padding: '10px 12px' }}>

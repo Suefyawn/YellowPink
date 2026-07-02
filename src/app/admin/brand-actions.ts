@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
+import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import type { Permission } from '@/lib/permissions';
 
 // Brands are a merchandising facet of the catalogue, like collections; ride
@@ -40,6 +41,7 @@ export async function createBrand(formData: FormData): Promise<void> {
     redirect('/admin/brands?error=' + encodeURIComponent(error.message));
   }
   await logAudit(session, { action: 'brand.create', entity: 'brand', entity_id: (data as { id: string }).id, diff: { name, slug } });
+  revalidateStorefrontCatalog();
   redirect(`/admin/brands/${(data as { id: string }).id}`);
 }
 
@@ -69,6 +71,7 @@ export async function updateBrand(id: string, formData: FormData): Promise<void>
   await logAudit(session, { action: 'brand.update', entity: 'brand', entity_id: id, diff: patch });
   revalidatePath('/admin/brands');
   revalidatePath(`/admin/brands/${id}`);
+  revalidateStorefrontCatalog();
   redirect(`/admin/brands/${id}?saved=1`);
 }
 
@@ -80,8 +83,15 @@ export async function deleteBrand(formData: FormData): Promise<void> {
     // /brand/<slug> still resolves via the derived path. The landing page
     // reverts to the templated description with no logo or hero.
     const { error } = await supabaseAdmin().from('brands').delete().eq('id', id);
-    if (!error) await logAudit(session, { action: 'brand.delete', entity: 'brand', entity_id: id });
+    if (error) {
+      // Surface the real DB error instead of showing the "deleted" banner over
+      // a delete that never happened.
+      log.error('brand.delete_failed', { id, error: error.message });
+      redirect('/admin/brands?error=' + encodeURIComponent(`Could not delete brand: ${error.message}`));
+    }
+    await logAudit(session, { action: 'brand.delete', entity: 'brand', entity_id: id });
   }
   revalidatePath('/admin/brands');
+  revalidateStorefrontCatalog();
   redirect('/admin/brands?deleted=1');
 }

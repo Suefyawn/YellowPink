@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { ORDER_STATUS_LABELS } from '@/types';
 import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
+import { brandPlusName } from '@/lib/product-display';
 import type { Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -248,7 +249,10 @@ function TrackForm() {
                 <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-700)', marginBottom: 10 }}>Items ordered</div>
                 {(order.items ?? []).map((item, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', padding: '4px 0', color: 'var(--ink-700)' }}>
-                    <span>{item.brand} {item.name} × {item.qty}</span>
+                    {/* brandPlusName dedupes, WP-imported item names often
+                        already start with the brand, so "brand + name" was
+                        rendering "Kiko Milano Kiko Milano …" here. */}
+                    <span>{brandPlusName(item.brand, item.name)} × {item.qty}</span>
                     <span style={{ fontWeight: 600 }}>{fmt(item.price * item.qty)}</span>
                   </div>
                 ))}

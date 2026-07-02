@@ -24,7 +24,9 @@ const DEFAULTS: HeroSettings = {
   cta1Text: 'Shop Beauty',
   cta1Url: '/shop',
   cta2Text: 'Explore Wellness',
-  cta2Url: '/shop?category=Wellness',
+  // Taxon form: `?category=Wellness` matches no leaf category (the real
+  // values are "Women's Health", "Immunity", …) and rendered an empty grid.
+  cta2Url: '/shop?taxon=wellness',
   imageUrl: '',
   brands: ['NARS', 'Kiko Milano', 'PIXI', 'CeraVe'],
 };
@@ -47,7 +49,24 @@ const GradientFallback = () => (
 );
 
 export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) {
-  const s: HeroSettings = { ...DEFAULTS, ...settings };
+  // Merge per-field, not by object spread: the homepage passes '' for any
+  // site_settings key that's missing (fresh DB, half-seeded settings), and
+  // a plain spread let those empty strings clobber the defaults, shipping a
+  // blank <h1> and a CTA with href="". An empty headline / CTA target must
+  // be impossible, so every load-bearing field falls back when blank.
+  // cta2Text keeps ?? (not ||): an admin clearing the secondary CTA text is
+  // a deliberate "hide the second button", honoured by the render below.
+  const s: HeroSettings = {
+    overline: settings?.overline || DEFAULTS.overline,
+    headline: settings?.headline || DEFAULTS.headline,
+    subline:  settings?.subline  || DEFAULTS.subline,
+    cta1Text: settings?.cta1Text || DEFAULTS.cta1Text,
+    cta1Url:  settings?.cta1Url  || DEFAULTS.cta1Url,
+    cta2Text: settings?.cta2Text ?? DEFAULTS.cta2Text,
+    cta2Url:  settings?.cta2Url  || DEFAULTS.cta2Url,
+    imageUrl: settings?.imageUrl || DEFAULTS.imageUrl,
+    brands:   settings?.brands   ?? DEFAULTS.brands,
+  };
   const [imgFailed, setImgFailed] = useState(false);
 
   // Convert newlines to <br/> for headline

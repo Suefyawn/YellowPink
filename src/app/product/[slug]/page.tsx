@@ -35,11 +35,13 @@ import type { Product, ProductReview, ProductImage, ProductVariant, ProductAttri
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const product = await getProductBySlug(slug);
-  // Missing product → notFound() (the page does the same). Note: because this
-  // route has a loading.tsx skeleton, Next streams a 200 shell before this
-  // resolves, so an invalid slug is a soft-404 (HTTP 200 + the noindex'd
-  // not-found UI) rather than a hard 404. That's an accepted trade-off,   // keeping the PDP loading skeleton over a pristine status on phantom,
-  // unlinked, noindexed URLs. Removing loading.tsx would restore the 404.
+  // Missing product → notFound() (the page does the same). This segment
+  // deliberately has NO loading.tsx: a loading boundary makes Next stream a
+  // 200 shell before the slug is resolved, turning an invalid slug into a
+  // soft-404 (HTTP 200 + 404-styled UI). Without it, notFound() runs before
+  // headers flush and the response is a real 404, while the branded
+  // not-found UI still renders via app/not-found.tsx. PDPs are pre-rendered
+  // via generateStaticParams, so the skeleton was rarely seen anyway.
   if (!product) notFound();
   // Use the dedupe-aware composer so WP imports that already prefix the
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
@@ -188,7 +190,13 @@ async function loadFrequentlyBoughtTogether(productId: string): Promise<Product[
   const rows = (data ?? []) as Array<{ product_id: string; co_count: number }>;
   if (rows.length === 0) return [];
   const ids = rows.map(r => r.product_id);
-  const { data: products } = await supabase.from('products').select('*').in('id', ids);
+  // Published only: a draft/archived co-purchase must not surface a dead PDP
+  // link (or an unbuyable bundle line) on a live product page.
+  const { data: products } = await supabase
+    .from('products')
+    .select('*')
+    .in('id', ids)
+    .eq('status', 'published');
   const map = new Map(((products ?? []) as Product[]).map(p => [p.id, p]));
   // Preserve RPC order.
   return ids.map(id => map.get(id)).filter((p): p is Product => Boolean(p));
@@ -212,16 +220,23 @@ async function loadCrossSells(productId: string, fallbackCategory: string): Prom
   const relatedIds = Array.from(new Set((rels ?? []).map(r => r.related_product_id as string)));
 
   if (relatedIds.length > 0) {
-    const { data } = await supabase.from('products').select('*').in('id', relatedIds);
+    // Published only, an admin-curated cross-sell that has since been
+    // drafted/archived must not render as a dead "Pairs with" link.
+    const { data } = await supabase
+      .from('products')
+      .select('*')
+      .in('id', relatedIds)
+      .eq('status', 'published');
     const map = new Map(((data ?? []) as Product[]).map(p => [p.id, p]));
     return relatedIds.map(id => map.get(id)).filter((p): p is Product => Boolean(p)).slice(0, 4);
   }
 
-  // Fallback: same category.
+  // Fallback: same category, published only.
   const { data } = await supabase
     .from('products')
     .select('*')
     .eq('category', fallbackCategory)
+    .eq('status', 'published')
     .neq('id', productId)
     .limit(8);
   return ((data ?? []) as Product[]).sort(() => Math.random() - 0.5).slice(0, 4);
@@ -277,8 +292,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     // minHeight: 100vh, guarantees the PDP block fills the viewport before
     // the gallery image decodes. Without it, on mobile between SSR delivery
     // and image-decode, the main column can be shorter than the screen and
-    // the Footer (next in DOM) flashes above the fold. Pair with the same
-    // min-height on loading.tsx so the skeleton swap is also shift-free.
+    // the Footer (next in DOM) flashes above the fold.
     <main className="fade-in" style={{ minHeight: '100vh' }}>
       <script
         type="application/ld+json"
@@ -314,7 +328,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         estimatedDays={estimatedDays}
         pointsPerPkr={pointsPerPkr}
       />
-      <FrequentlyBoughtTogether anchor={product} suggestions={fbt} />
+      {/* Keyed like PDPPage so a product→product navigation re-seeds the
+          bundle's checkbox state for the new product. */}
+      <FrequentlyBoughtTogether key={product.id} anchor={product} suggestions={fbt} />
       <MoreToExplore
         brand={product.brand}
         category={product.category}

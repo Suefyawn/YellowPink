@@ -216,6 +216,11 @@ async function gapi<T>(url: string, init?: RequestInit): Promise<T> {
     ...init,
     headers: { ...headers, ...((init?.headers as Record<string, string>) ?? {}) },
     cache: 'no-store',
+    // A hung connection to Google must not stall the caller indefinitely:
+    // refreshIndexingStatus loops over dozens of these serially, and
+    // unbounded fetches walked /admin/indexing's "Check now" into Vercel's
+    // 300s function timeout (observed in production, 2026-07-01 deploy).
+    signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) {
     const body = await res.text();

@@ -44,13 +44,19 @@ const COMMANDS: Cmd[] = [
 
   { label: 'Promos',         group: 'Marketing', href: '/admin/promos', permission: 'promos' },
   { label: 'Blog',           group: 'Marketing', href: '/admin/blog', permission: 'blog' },
+  { label: 'Review Board',   hint: 'medical reviewers', group: 'Marketing', href: '/admin/reviewers', permission: 'blog' },
   { label: 'Reviews',        group: 'Marketing', href: '/admin/reviews', permission: 'reviews' },
+  { label: 'Messages',       hint: 'contact inbox', group: 'Marketing', href: '/admin/messages', permission: 'messages' },
   { label: 'Newsletter',     group: 'Marketing', href: '/admin/newsletter', permission: 'newsletter' },
   { label: 'Email log',      group: 'Marketing', href: '/admin/emails', permission: 'settings' },
 
+  { label: 'Broken links',   group: 'Store', href: '/admin/broken-links', permission: 'settings' },
+  { label: 'Indexing',       hint: 'search engines', group: 'Store', href: '/admin/indexing', permission: 'settings' },
   { label: 'Activity log',   group: 'Store', href: '/admin/audit', ownerOnly: true },
   { label: 'Team',           group: 'Store', href: '/admin/team', ownerOnly: true },
   { label: 'Settings',       group: 'Store', href: '/admin/settings', permission: 'settings' },
+  // Visible to every signed-in staff member, mirroring the sidebar.
+  { label: 'User manual',    hint: 'help', group: 'Store', href: '/admin/help' },
 ];
 
 function canSee(c: Cmd, s: StaffSession): boolean {

@@ -39,6 +39,15 @@ export function canonical(path: string = '/'): Pick<Metadata, 'alternates'> {
   return { alternates: { canonical: absoluteUrl(path) } };
 }
 
+/** Absolutise a possibly site-relative image path (blog heroes are stored as
+ *  "/blog-heroes/x.webp") against SITE_URL. Structured-data validators and
+ *  Google reject relative `image` URLs in JSON-LD, so every schema image must
+ *  pass through this. Absolute URLs pass through untouched. */
+export function absoluteImageUrl(u: string | null | undefined): string | undefined {
+  if (!u) return undefined;
+  return /^https?:\/\//i.test(u) ? u : absoluteUrl(u);
+}
+
 // ─── Metadata helpers ───────────────────────────────────────────────────────
 interface PageMetaInput {
   title: string;
@@ -54,7 +63,13 @@ interface PageMetaInput {
 // 160. Strings longer than `MAX` are truncated at the last word boundary
 // (no awkward "Foo Ba…"). Used by `pageMeta()` so every page-level helper
 // gets safe lengths without each caller having to remember the limits.
-const TITLE_MAX = 60;
+//
+// The title budget accounts for the root layout's title template, which
+// appends " | Yellow Pink" to every child page title. Capping the raw title
+// at 60 and THEN appending the 14-char suffix produced ~74-char <title>s
+// (2026-07 audit: 8 of 16 sampled titles exceeded 60 chars).
+const BRAND_SUFFIX = ` | ${SITE_NAME}`;
+const TITLE_MAX = 60 - BRAND_SUFFIX.length;
 const DESC_MAX  = 158;
 
 export function truncateOnWord(s: string, max: number): string {
@@ -63,6 +78,29 @@ export function truncateOnWord(s: string, max: number): string {
   const lastSpace = cut.lastIndexOf(' ');
   const trimmed = (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd();
   return trimmed.replace(/[,;:!\-–—.]+$/, '') + '…';
+}
+
+// <title>-specific truncation: same word-boundary trim but WITHOUT the
+// trailing ellipsis. A literal "…" inside <title> renders in the SERP/tab
+// ("…Chapped Lip Fixes… | Yellow Pink") and reads as a typo — Google adds its
+// own visual ellipsis when it truncates, so we must not bake one in. Also
+// strips dangling joiners ("&", "|", "·", "(") the cut can expose.
+export function truncateTitleOnWord(s: string, max: number): string {
+  if (!s || s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  const trimmed = (lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut).trimEnd();
+  return trimmed.replace(/[,;:!\-–—.&|·(]+$/, '').trimEnd();
+}
+
+// Some imported titles (WordPress meta_title rows) already end in
+// "| Yellow Pink". The layout template appends the brand again, producing
+// "Editorial Standards | Yellow Pink | Yellow Pink". Strip an existing
+// trailing separator+brand so the template remains the single source of the
+// suffix. Titles merely ENDING in the brand name without a separator
+// ("About Yellow Pink") are left alone — the brand is part of the title there.
+function stripBrandSuffix(title: string): string {
+  return title.replace(/\s*[|\-–—:]\s*Yellow Pink\s*$/i, '').trim() || title.trim();
 }
 
 export function pageMeta(input: PageMetaInput): Metadata {
@@ -74,15 +112,15 @@ export function pageMeta(input: PageMetaInput): Metadata {
   // openGraph object (observed live: /shop, /collections, /blog, /brands, /tag
   // all shipped with no og:image), so WhatsApp/social shares of those landing
   // pages had no thumbnail. An absolute URL here guarantees one on every page.
-  const image = input.image ?? absoluteUrl('/opengraph-image');
+  const image = absoluteImageUrl(input.image) ?? absoluteUrl('/opengraph-image');
   const ogImages = [{ url: image }];
   const twImages = [image];
 
   // Cap title + description so we don't get Semrush "Title element is too
-  // long" / "meta description too long" warnings. The original `title` is
-  // still used for the OG/Twitter title where length matters less and the
-  // canonical-URL alternate is unaffected.
-  const safeTitle = truncateOnWord(input.title.trim(), TITLE_MAX);
+  // long" / "meta description too long" warnings. The canonical-URL alternate
+  // is unaffected. Titles are truncated withOUT an ellipsis (see
+  // truncateTitleOnWord) after stripping any stored trailing brand suffix.
+  const safeTitle = truncateTitleOnWord(stripBrandSuffix(input.title), TITLE_MAX);
   const safeDesc  = truncateOnWord(input.description.trim(), DESC_MAX);
 
   return {
@@ -320,7 +358,7 @@ export function productLd(
     '@id': absoluteUrl(`/product/${product.slug}#product`),
     name: `${brandPlusName(product.brand, product.name)}${product.variant ? ` ${product.variant}` : ''}`,
     description: product.description ?? undefined,
-    image: product.image_url ?? undefined,
+    image: absoluteImageUrl(product.image_url),
     sku: product.id,
     // Omit `brand` entirely when the product has none, emitting
     // `{ name: null }` is an invalid-markup error. Many imported products
@@ -365,7 +403,7 @@ export function articleLd(post: BlogPost, opts?: { reviewer?: MedicalReviewer | 
     '@type': reviewer ? ['Article', 'MedicalWebPage'] : 'Article',
     headline: post.title,
     description: post.excerpt,
-    image: post.image_url ?? undefined,
+    image: absoluteImageUrl(post.image_url),
     datePublished: post.date,
     // Use updated_at when the row has been edited; falls back to date so
     // Google has a meaningful "Last updated" signal instead of identical
@@ -480,7 +518,7 @@ export function pageArticleLd(input: {
     '@type': 'Article',
     headline: input.title,
     description: input.description,
-    image: input.image ?? undefined,
+    image: absoluteImageUrl(input.image),
     datePublished: input.datePublished ?? undefined,
     dateModified: input.dateModified ?? input.datePublished ?? undefined,
     author: { '@type': 'Organization', name: SITE_NAME },

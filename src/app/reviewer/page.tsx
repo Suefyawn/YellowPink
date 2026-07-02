@@ -29,7 +29,9 @@ export default async function ReviewerDashboard() {
   if (!reviewer) redirect('/reviewer/login');
 
   const posts = await getReviewedPosts(reviewer.id);
-  const publishedCount = posts.filter(p => p.status === 'published').length;
+  // Every assigned post is live (blog_posts has no draft/published state), so
+  // the reviewer's assigned count is their published count.
+  const publishedCount = posts.length;
   // Profile completeness encourages a rich, trustworthy public profile.
   const checks = [
     !!reviewer.credentials, !!reviewer.specialty, !!reviewer.bio, !!reviewer.photo_url,
@@ -158,15 +160,12 @@ export default async function ReviewerDashboard() {
               {posts.map(p => (
                 <li key={p.slug} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--paper)' }}>
                   <div style={{ minWidth: 0 }}>
-                    {p.status === 'published'
-                      ? <Link href={`/blog/${p.slug}`} style={{ fontWeight: 600, color: 'var(--ink-900)', textDecoration: 'none' }}>{p.title}</Link>
-                      : <span style={{ fontWeight: 600, color: 'var(--ink-900)' }}>{p.title}</span>}
+                    <Link href={`/blog/${p.slug}`} style={{ fontWeight: 600, color: 'var(--ink-900)', textDecoration: 'none' }}>{p.title}</Link>
                     <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 2 }}>Added {ago(p.created_at)}</div>
                   </div>
                   <span style={{ flexShrink: 0, padding: '2px 10px', borderRadius: 20, fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
-                    background: p.status === 'published' ? '#f0fdf4' : '#f3f4f6',
-                    color: p.status === 'published' ? '#15803d' : '#6b7280' }}>
-                    {p.status}
+                    background: '#f0fdf4', color: '#15803d' }}>
+                    Published
                   </span>
                 </li>
               ))}

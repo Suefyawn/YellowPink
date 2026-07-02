@@ -7,6 +7,7 @@ import type { MetadataRoute } from 'next';
 import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
 import { brandSlug } from '@/lib/brands';
+import { canonicalCategory, findTaxon } from '@/lib/category-taxonomy';
 
 // Regenerate hourly so posts/products added via the DB, the blog API or the
 // admin (none of which trigger a deploy) appear in the sitemap within an hour.
@@ -104,22 +105,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: r.priority,
   }));
 
-  // Category landing pages, ?category= matches what canonical / breadcrumb /
-  // footer links emit, so the sitemap and the canonical agree.
-  const categories = Array.from(
-    new Set(products.map(p => p.category).filter((c): c is string => Boolean(c))),
-  );
-  const categoryUrls: MetadataRoute.Sitemap = categories.map(cat => ({
-    // Build the query string exactly as the shop page's self-canonical does
-    // (URLSearchParams → space "+", "'" "%27"). Using encodeURIComponent here
-    // produced "%20"/raw "'", which differs from the canonical, so GSC flagged
-    // every multi-word category ("Women's Health", "Face Makeup", …) as
-    // "Alternate page with proper canonical tag", the sitemap "errors".
-    url: `${SITE_URL}/shop?${new URLSearchParams({ category: cat }).toString()}`,
-    lastModified: now,
-    changeFrequency: 'weekly',
-    priority: 0.7,
-  }));
+  // Category landing pages. Resolve every distinct product.category through
+  // the SAME taxonomy the shop page's generateMetadata uses, so each sitemap
+  // URL is byte-identical to the page's self-canonical:
+  //   • a taxon label ("Makeup") canonicalises to /shop?taxon=makeup — emit
+  //     the taxon URL, not ?category=Makeup (which GSC flags as
+  //     "submitted URL canonicalised away");
+  //   • a known leaf resolves to its canonical label form;
+  //   • an unknown value (e.g. a stray "Sunscreens" not in the taxonomy)
+  //     canonicalises to plain /shop, so it's DROPPED rather than submitted.
+  const taxonKeys = new Set<string>();
+  const categoryLabels = new Set<string>();
+  for (const cat of products.map(p => p.category)) {
+    if (!cat) continue;
+    const taxon = findTaxon(cat);
+    if (taxon) { taxonKeys.add(taxon.key); continue; }
+    const label = canonicalCategory(cat);
+    if (label) categoryLabels.add(label);
+  }
+  const categoryUrls: MetadataRoute.Sitemap = [
+    // Taxon landing pages (/shop?taxon=makeup|skincare|…) are self-canonical
+    // index targets with bespoke TAXON_SEO titles/descriptions.
+    ...Array.from(taxonKeys).map(key => ({
+      url: `${SITE_URL}/shop?${new URLSearchParams({ taxon: key }).toString()}`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    })),
+    ...Array.from(categoryLabels).map(cat => ({
+      // Build the query string exactly as the shop page's self-canonical does
+      // (URLSearchParams → space "+", "'" "%27"). Using encodeURIComponent here
+      // produced "%20"/raw "'", which differs from the canonical, so GSC flagged
+      // every multi-word category ("Women's Health", "Face Makeup", …) as
+      // "Alternate page with proper canonical tag", the sitemap "errors".
+      url: `${SITE_URL}/shop?${new URLSearchParams({ category: cat }).toString()}`,
+      lastModified: now,
+      changeFrequency: 'weekly' as const,
+      priority: 0.7,
+    })),
+  ];
 
   // Brand archive pages (/brand/[slug]), one per distinct brand.
   const brands = Array.from(new Set(products.map(p => p.brand).filter((b): b is string => Boolean(b))));

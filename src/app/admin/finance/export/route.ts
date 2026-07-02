@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getStaffSession } from '@/lib/staff-auth';
-import { resolveRange, rangeStartISO, loadFinanceOrders, toOrderFinanceRow, PAY_METHOD_LABELS } from '@/lib/finance';
+import { resolveRange, rangeStartISO, loadFinanceOrders, toOrderFinanceRow } from '@/lib/finance';
+import { PAY_METHOD_LABELS } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ const day = (s: string | null) => (s ? new Date(s).toISOString().slice(0, 10) : 
 // shows, via the shared helpers. Gated on the same permission as the page.
 export async function GET(req: NextRequest) {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
     return new Response('Forbidden', { status: 403 });
   }
 

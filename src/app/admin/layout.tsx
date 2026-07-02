@@ -2,30 +2,13 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { ToastProvider } from '@/components/admin/Toast';
 import { supabaseAdmin } from '@/lib/supabase';
-import { can, type Permission } from '@/lib/permissions';
+import { can } from '@/lib/permissions';
+import { KIND_PERMISSION } from '@/lib/notification-kinds';
 
 interface NotificationRow {
   id: string; kind: string; title: string; body: string | null;
   link: string | null; read: boolean; created_at: string;
 }
-
-// Notification kinds are filtered against the viewer's permissions so a
-// marketer doesn't see Sentry stack-trace alerts, an inventory manager
-// doesn't see customer-PII pings, etc. Owners see everything.
-//
-// `null` means anyone can see this kind.
-const KIND_PERMISSION: Record<string, Permission | null> = {
-  new_order:      'orders.view',
-  low_stock:      'products.view',
-  payment_failed: 'orders.view',
-  return_request: 'returns',
-  new_review:     'reviews',
-  new_message:    'messages',
-  staff_added:    null,           // visible to all signed-in staff
-  sentry_issue:   'analytics_errors',
-  posthog_spike:  'analytics_traffic',
-  posthog_drop:   'analytics_traffic',
-};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getStaffSession();

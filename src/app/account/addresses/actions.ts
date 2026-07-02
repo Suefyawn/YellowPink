@@ -14,12 +14,9 @@ export async function createAddress(
   _prev: AddressActionResult,
   formData: FormData
 ): Promise<AddressActionResult> {
-  // Normalise the checkbox.
-  const normalized = new FormData();
-  for (const [k, v] of formData.entries()) normalized.append(k, v);
-  normalized.set('is_default', formData.get('is_default') === 'on' ? 'true' : 'false');
-
-  const parsed = parseForm(addressSchema, normalized);
+  // `is_default` is a checkbox ('on' when ticked, absent otherwise);
+  // addressSchema coerces it to a real boolean.
+  const parsed = parseForm(addressSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   const sb = await authedClient();
@@ -43,11 +40,8 @@ export async function updateAddress(
   _prev: AddressActionResult,
   formData: FormData
 ): Promise<AddressActionResult> {
-  const normalized = new FormData();
-  for (const [k, v] of formData.entries()) normalized.append(k, v);
-  normalized.set('is_default', formData.get('is_default') === 'on' ? 'true' : 'false');
-
-  const parsed = parseForm(addressSchema, normalized);
+  // See createAddress: `is_default` is a checkbox coerced by the schema.
+  const parsed = parseForm(addressSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
 
   const sb = await authedClient();

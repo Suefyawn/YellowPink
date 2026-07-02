@@ -12,7 +12,7 @@ const EXPENSE_CATEGORIES = ['Ads', 'Salaries', 'Packaging', 'Marketing', 'Rent &
 
 export async function addExpense(formData: FormData): Promise<void> {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
     redirect('/admin/finance?err=' + encodeURIComponent('Not authorized'));
   }
 
@@ -42,11 +42,14 @@ export async function addExpense(formData: FormData): Promise<void> {
   redirect('/admin/finance?ok=1');
 }
 
-export async function deleteExpense(id: string): Promise<void> {
+// Takes FormData (id field) so it plugs into the shared DeleteButton, which
+// provides the inline confirmation step every destructive action gets.
+export async function deleteExpense(formData: FormData): Promise<void> {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
     redirect('/admin/finance?err=' + encodeURIComponent('Not authorized'));
   }
+  const id = formData.get('id') as string;
   const { error } = await supabaseAdmin().from('expenses').delete().eq('id', id);
   if (error) {
     redirect('/admin/finance?err=' + encodeURIComponent(error.message));

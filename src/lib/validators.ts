@@ -38,6 +38,16 @@ export const imageRefSchema = z.string()
 export const positiveNumber = z.coerce.number().nonnegative('Must be 0 or more');
 export const positiveInt    = z.coerce.number().int().nonnegative('Must be a whole number');
 
+// A FormData checkbox/toggle value coerced to a real boolean. Forms submit
+// booleans as strings: native checkboxes send 'on' when ticked and are absent
+// when unticked, while the admin `Toggle` sends the string 'true'/'false'.
+// A bare `z.boolean()` rejects any of these ("Expected boolean, received
+// string"), so schema fields fed from a form must use this instead.
+export const checkboxBool = z.preprocess(
+  v => v === 'on' || v === 'true' || v === true,
+  z.boolean(),
+);
+
 // ─── Domain schemas ─────────────────────────────────────────────────────────
 export const productInputSchema = z.object({
   // Brand is optional after migration 077, own-label Pakistani supplements
@@ -59,6 +69,11 @@ export const productInputSchema = z.object({
                     z.enum(['New','Sale','Bestseller','Featured','Limited']).nullable(),
                   ),
   slug:           slugSchema,
+  // Publication status. The admin form always submits it (new products
+  // default to 'draft' there); optional so older callers that never sent a
+  // status keep the DB value untouched (undefined keys are dropped by
+  // supabase-js, so an update without status leaves it as-is).
+  status:         z.enum(['draft','published','archived']).optional(),
   stock:          positiveInt,
   // Per-product reorder point (0 = off → global low-stock threshold). The form
   // always submits it; '' / missing normalises to 0.
@@ -165,7 +180,15 @@ export const variantInputSchema = z.object({
   compare_at_price: positiveNumber.optional().nullable(),
   stock:      positiveInt,
   image_url:  httpsUrlSchema.optional().or(z.literal('')).nullable(),
-  enabled:    z.coerce.boolean().default(true),
+  // Native checkbox paired with a hidden 'false' input, so an unticked box
+  // submits 'false' and actually disables the variant. A missing value (older
+  // callers) keeps the enabled default. A bare z.coerce.boolean() here both
+  // ignored the unticked box (absent → default true) and would treat the
+  // string 'false' as truthy (Boolean('false') === true).
+  enabled:    z.preprocess(
+                v => (v == null ? true : v === 'true' || v === true || v === 'on'),
+                z.boolean(),
+              ),
   sort_order: positiveInt.default(0),
 });
 export type VariantInput = z.infer<typeof variantInputSchema>;
@@ -181,7 +204,7 @@ export const blogPostInputSchema = z.object({
   // valid ISO 8601 for the Article datePublished structured data.
   date:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   read_time: z.string().trim().default('3 min read'),
-  featured:  z.boolean().default(false),
+  featured:  checkboxBool,
   body:      z.string().optional().nullable(),
   image_url: imageRefSchema.optional().or(z.literal('')).nullable(),
   author:    z.string().trim().max(120).optional().or(z.literal('')).nullable(),
@@ -237,7 +260,7 @@ export const addressSchema = z.object({
   city:       z.string().trim().min(1).max(120),
   province:   z.string().trim().max(60).optional().nullable(),
   zip:        z.string().regex(/^[0-9-]*$/).max(12).optional().nullable(),
-  is_default: z.boolean().default(false),
+  is_default: checkboxBool,
 });
 export type AddressInput = z.infer<typeof addressSchema>;
 
@@ -246,6 +269,18 @@ export type AddressInput = z.infer<typeof addressSchema>;
 function fdGet(fd: FormData, key: string): string | undefined {
   const v = fd.get(key);
   return typeof v === 'string' ? v : undefined;
+}
+
+// Read a checkbox/toggle boolean straight out of FormData, for actions that
+// don't pipe through a Zod schema. The admin `Toggle` renders a hidden
+// `<input value="false">` immediately followed by the checkbox
+// `<input value="true">`, so both keys are submitted and the checkbox (the
+// LAST value) must win. `formData.get()` returns the FIRST match ('false') and
+// is therefore always false — use this instead. Native checkboxes send 'on'.
+export function boolField(fd: FormData, name: string): boolean {
+  const values = fd.getAll(name);
+  const last = values[values.length - 1];
+  return last === 'true' || last === 'on';
 }
 
 // Parse a FormData into a flat object suitable for Zod parsing.

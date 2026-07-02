@@ -25,10 +25,12 @@ export async function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await getBlogPostBySlug(slug);
-  // Missing post → notFound(). Note: the blog segment has a loading.tsx
-  // skeleton, so an invalid slug streams a 200 shell first → soft-404 (200 +
-  // noindex'd not-found UI) rather than a hard 404. Accepted trade-off; the
-  // page is noindexed and such URLs aren't linked/sitemapped.
+  // Missing post → notFound(), and that returns a REAL HTTP 404: the blog
+  // index's loading.tsx lives in the (index) route group so no loading
+  // boundary wraps this segment — nothing streams a 200 shell before the
+  // slug is resolved. (A loading.tsx here would downgrade invalid slugs to
+  // soft-404s: 200 + 404-styled UI.) Posts are pre-rendered via
+  // generateStaticParams, so the skeleton is not missed.
   if (!post) notFound();
   return pageMeta({
     title: post.title,
@@ -104,8 +106,11 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   // always has something.
   const fallbackPool = categoryPool.length > 0 ? categoryPool : allProducts.filter(p => p.is_featured || p.is_bestseller);
   // Prefer products actually named in this specific post over a flat
-  // category-wide slice, see lib/related-products.ts.
-  const relatedProducts = selectRelatedProducts(post, allProducts, fallbackPool, 3);
+  // category-wide slice, see lib/related-products.ts. `mentionedInPost`
+  // drives honest rail labels: only genuinely linked/named products may be
+  // presented as "Recommended in this guide" / "Mentioned in This Article";
+  // the generic fallback pool is labelled "More from the shop".
+  const { products: relatedProducts, mentionedInPost } = selectRelatedProducts(post, allProducts, fallbackPool, 3);
 
   return (
     <main className="fade-in">
@@ -123,7 +128,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
           ])),
         }}
       />
-      <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} reviewer={reviewer} />
+      <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} relatedProductsMentioned={mentionedInPost} reviewer={reviewer} />
     </main>
   );
 }

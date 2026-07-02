@@ -20,6 +20,11 @@ interface BlogPostPageProps {
   post: BlogPost;
   relatedPosts: BlogPost[];
   relatedProducts: Product[];
+  /** True when relatedProducts were genuinely linked/named in the post.
+   *  False → generic fallback picks, which get the honest "More from the
+   *  shop" labels instead of claiming to be in the article. Defaults to
+   *  true for callers that curate their own list. */
+  relatedProductsMentioned?: boolean;
   /** Store-wide medical reviewer (health posts only); null otherwise. */
   reviewer?: MedicalReviewer | null;
 }
@@ -65,7 +70,7 @@ function extractHeadings(html: string): { html: string; headings: TocHeading[] }
   return { html: out, headings };
 }
 
-export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: BlogPostPageProps) {
+export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProductsMentioned = true, reviewer }: BlogPostPageProps) {
   // Lift the FAQ block out of the prose first, so it renders as a real
   // accordion (and powers FAQPage structured data) instead of a run of
   // headings. extractBlogFaq returns the body unchanged when there's no FAQ.
@@ -117,7 +122,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
         bodyRest ? (
           <>
             <div className="blog-body cms-prose" dangerouslySetInnerHTML={{ __html: bodyTop }} />
-            <BlogProductNudge products={relatedProducts} />
+            <BlogProductNudge products={relatedProducts} label={relatedProductsMentioned ? 'Recommended in this guide' : 'More from the shop'} />
             <div className="blog-body cms-prose" dangerouslySetInnerHTML={{ __html: bodyRest }} />
           </>
         ) : (
@@ -292,7 +297,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, reviewer }: 
         {relatedProducts.length > 0 && (
           <section style={{ padding: '48px 0' }}>
             <div className="container">
-              <Overline style={{ display: 'block', marginBottom: 24 }}>Mentioned in This Article</Overline>
+              <Overline style={{ display: 'block', marginBottom: 24 }}>{relatedProductsMentioned ? 'Mentioned in This Article' : 'More from the shop'}</Overline>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid-3">
                 {relatedProducts.map((p) => (
                   <ProductTile key={p.id} product={p} />

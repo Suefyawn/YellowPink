@@ -4,7 +4,7 @@
 export const revalidate = 300;
 
 import type { Metadata } from 'next';
-import { getProducts } from '@/lib/supabase';
+import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
@@ -135,16 +135,36 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   });
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string; brand?: string; tag?: string; featured?: string; bestseller?: string }> }) {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string; brand?: string; tag?: string; featured?: string; bestseller?: string; page?: string }> }) {
   const [products, facetData, tagData, estimatedDays] = await Promise.all([
     getProducts(),
     loadFacetData(),
     loadTagData(),
     getDefaultEstimatedDays(),
   ]);
-  const { category, subcategory, cat, taxon, on_sale, q, brand, tag: tagParam, featured, bestseller } = await searchParams;
+  const { category, subcategory, cat, taxon, on_sale, q, brand, tag: tagParam, featured, bestseller, page } = await searchParams;
   const searchParamsFeatured = featured === '1';
   const searchParamsBestseller = bestseller === '1';
+  // Server-seeded for the same first-render reason as initialBrand:
+  // useSearchParams is empty on the first client render of this statically-
+  // generated route, so a crawler/shopper landing on /shop?page=3 was
+  // silently reset to page 1.
+  const initialPage = Math.max(1, Number(page ?? '1') || 1);
+
+  // Free-text searches resolve through the SAME pg_trgm search_products RPC
+  // the header typeahead uses, previously this page substring-filtered
+  // client-side, so the overlay's result count routinely disagreed with the
+  // "See all results" page (fuzzy matches the substring filter missed, and
+  // vice versa). The rank-ordered ids are handed to CollectionPage; null →
+  // client substring fallback (demo mode, or the RPC errored).
+  let searchIds: string[] | null = null;
+  if (q?.trim() && !isDemo) {
+    const { data, error } = await supabase.rpc('search_products' as never, {
+      p_query: q.trim(),
+      p_limit: 50, // the RPC's own hard cap
+    } as never);
+    if (!error) searchIds = ((data ?? []) as Array<{ id: string }>).map(r => r.id);
+  }
 
   // ?category= is canonical; ?cat= is a legacy WP param the proxy already
   // 301s across. CollectionPage resolves the value (taxon or leaf) itself.
@@ -220,6 +240,8 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         initialTags={tagParam ?? null}
         initialFeatured={searchParamsFeatured}
         initialBestseller={searchParamsBestseller}
+        initialPage={initialPage}
+        searchIds={searchIds}
       />
       {/* Category-landing FAQ, only on a genuine category/taxon/subcategory
           landing (not search or brand-filtered views, which canonicalise away),

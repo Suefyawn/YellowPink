@@ -28,7 +28,13 @@ const PromoSchema = z.object({
   audience: z.enum(['guest', 'logged_in', 'first_time', 'returning']).optional().or(z.literal('')),
   enabled: z.coerce.boolean().optional(),
   priority: z.coerce.number().int().min(0).max(1000).optional(),
-});
+}).refine(
+  // A window that ends before (or the moment) it starts can never go live;
+  // reject it here so the admin gets a clear banner instead of a promo that
+  // silently never shows.
+  d => !d.start_at || !d.end_at || new Date(d.end_at) > new Date(d.start_at),
+  { message: 'End date must be after the start date.', path: ['end_at'] },
+);
 
 function emptyToNull<T extends Record<string, unknown>>(o: T): T {
   const out = { ...o } as Record<string, unknown>;
@@ -68,6 +74,9 @@ export async function createPromo(formData: FormData) {
     diff: { headline: parsed.data.headline, position: parsed.data.position },
   });
   bust();
+  // Success feedback: the page reads ?created= and shows a green banner
+  // (same pattern as the coupons page).
+  redirect('/admin/promos?created=1');
 }
 
 export async function updatePromo(id: string, formData: FormData) {
@@ -91,6 +100,9 @@ export async function updatePromo(id: string, formData: FormData) {
     diff: { headline: parsed.data.headline, enabled: parsed.data.enabled ?? false },
   });
   bust();
+  // Redirecting without ?edit= closes the edit form, and ?saved= renders the
+  // success banner, so a save no longer looks like a silent no-op.
+  redirect('/admin/promos?saved=1');
 }
 
 export async function togglePromo(id: string, enabled: boolean) {

@@ -8,12 +8,16 @@
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Suspense, useEffect } from 'react';
 import { captureAttribution } from '@/lib/attribution';
+import { captureReferral } from '@/lib/referral';
 
 function Capture() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   useEffect(() => {
     captureAttribution();
+    // Persist a ?ref=<code> referral link on landing so it survives navigation
+    // and reaches place_order at checkout.
+    captureReferral();
   }, [pathname, searchParams]);
   return null;
 }

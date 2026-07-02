@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
+import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import type { Permission } from '@/lib/permissions';
 import type { SmartRules } from '@/lib/collections';
 
@@ -42,6 +43,7 @@ export async function createCollection(formData: FormData): Promise<void> {
     redirect('/admin/collections?error=' + encodeURIComponent(error.message));
   }
   await logAudit(session, { action: 'collection.create', entity: 'collection', entity_id: (data as { id: string }).id, diff: { title, slug, type } });
+  revalidateStorefrontCatalog();
   redirect(`/admin/collections/${(data as { id: string }).id}`);
 }
 
@@ -77,6 +79,7 @@ export async function updateCollection(id: string, formData: FormData): Promise<
   await logAudit(session, { action: 'collection.update', entity: 'collection', entity_id: id, diff: patch });
   revalidatePath('/admin/collections');
   revalidatePath(`/admin/collections/${id}`);
+  revalidateStorefrontCatalog();
   redirect(`/admin/collections/${id}?saved=1`);
 }
 
@@ -85,24 +88,34 @@ export async function deleteCollection(formData: FormData): Promise<void> {
   const id = formData.get('id') as string;
   if (id) {
     const { error } = await supabaseAdmin().from('collections').delete().eq('id', id);
-    if (!error) await logAudit(session, { action: 'collection.delete', entity: 'collection', entity_id: id });
+    if (error) {
+      // Surface the real DB error instead of showing the "deleted" banner over
+      // a delete that never happened.
+      log.error('collection.delete_failed', { id, error: error.message });
+      redirect('/admin/collections?error=' + encodeURIComponent(`Could not delete collection: ${error.message}`));
+    }
+    await logAudit(session, { action: 'collection.delete', entity: 'collection', entity_id: id });
   }
   revalidatePath('/admin/collections');
+  revalidateStorefrontCatalog();
   redirect('/admin/collections?deleted=1');
 }
 
 // Replace a manual collection's product set, ordered by the given id array.
+// The delete + re-insert runs inside a single SECURITY DEFINER function
+// (migration 20260702_305) so it is atomic: a failed insert can no longer
+// leave the DELETE committed and empty the live collection. Either the whole
+// new ordered set lands, or the old set is left intact.
 export async function setCollectionProducts(collectionId: string, productIds: string[]): Promise<{ error?: string }> {
   const session = await assertProducts();
   const admin = supabaseAdmin();
-  const { error: delErr } = await admin.from('collection_products').delete().eq('collection_id', collectionId);
-  if (delErr) return { error: delErr.message };
-  if (productIds.length > 0) {
-    const rows = productIds.map((product_id, position) => ({ collection_id: collectionId, product_id, position }));
-    const { error: insErr } = await admin.from('collection_products').insert(rows);
-    if (insErr) return { error: insErr.message };
-  }
+  const { error } = await admin.rpc('set_collection_products' as never, {
+    p_collection_id: collectionId,
+    p_product_ids: productIds,
+  } as never);
+  if (error) return { error: error.message };
   await logAudit(session, { action: 'collection.set_products', entity: 'collection', entity_id: collectionId, diff: { count: productIds.length } });
   revalidatePath(`/admin/collections/${collectionId}`);
+  revalidateStorefrontCatalog();
   return {};
 }
