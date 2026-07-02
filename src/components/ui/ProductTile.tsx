@@ -223,15 +223,29 @@ export function ProductTile({ product }: ProductTileProps) {
           border: wishlisted ? 'none' : '1px solid rgba(0,0,0,0.08)',
           cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: '0.875rem',
           transition: 'background 150ms, transform 150ms',
           transform: wishlisted ? 'scale(1.1)' : 'scale(1)',
           boxShadow: '0 1px 4px rgba(0,0,0,0.1)',
+          color: wishlisted ? '#fff' : 'var(--ink-700)',
         }}
       >
-        <span aria-hidden="true" style={{ color: wishlisted ? 'white' : 'var(--ink-700)', lineHeight: 1 }}>
-          {wishlisted ? '♥' : '♡'}
-        </span>
+        {/* Lucide-style heart, stroke outline normally, filled via
+            currentColor when wishlisted. Inline SVG (not the ♥/♡ text
+            glyphs, which render in the OS symbol font and vary wildly in
+            size/weight across platforms). */}
+        <svg
+          viewBox="0 0 24 24"
+          width="16"
+          height="16"
+          fill={wishlisted ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+        </svg>
       </button>
     </div>
   );

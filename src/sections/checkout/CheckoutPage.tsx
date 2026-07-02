@@ -142,14 +142,18 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   }, [cartItems]);
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const couponDiscount = cartCoupon
+  // Free-shipping coupons waive the delivery charge instead of discounting
+  // the line total (place_order validates exactly this: discount 0, shipping
+  // 0 accepted because the server only rejects undercharges vs its floor).
+  const freeShipCoupon = Boolean(cartCoupon && (cartCoupon.discount_type === 'free_shipping' || cartCoupon.free_shipping));
+  const couponDiscount = cartCoupon && !freeShipCoupon
     ? cartCoupon.type === 'percent'
       ? Math.round(subtotal * cartCoupon.value / 100)
       : cartCoupon.value
     : 0;
   const discount = couponDiscount;
   const lineTotal = Math.max(0, subtotal - discount);
-  const shipping = shippingInfo.rate;
+  const shipping = freeShipCoupon ? 0 : shippingInfo.rate;
   const beforeRewards = lineTotal + shipping;
 
   // Loyalty points redemption. `pointsRedeem` is a raw points count, converted
@@ -534,7 +538,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
                   <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
-                    ✓ {cartCoupon.code} {cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
+                    ✓ {cartCoupon.code} {freeShipCoupon ? '(free shipping)' : cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
                   </span>
                   <button type="button" aria-label="Remove coupon" onClick={() => { setCouponCode(''); setAppliedCoupon(null); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
                 </div>

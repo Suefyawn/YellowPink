@@ -137,6 +137,9 @@ export async function getBestsellers(limit = 8): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('is_bestseller', true)
+      // Published only, a drafted/archived bestseller must not become a
+      // dead tile on the homepage rail.
+      .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(limit);
     if (flagged && flagged.length >= limit) return flagged as Product[];
@@ -167,6 +170,8 @@ export async function getFeatured(limit = 6): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('is_featured', true)
+      // Published only (same reasoning as getBestsellers).
+      .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(limit);
     if (flagged && flagged.length >= limit) return flagged as Product[];
@@ -196,6 +201,8 @@ export async function getOnSale(limit = 8): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .not('original_price', 'is', null)
+      // Published only, the sale rail must not link draft/archived PDPs.
+      .eq('status', 'published')
       .order('original_price', { ascending: false })
       .limit(limit * 4);
     if (error) throw error;

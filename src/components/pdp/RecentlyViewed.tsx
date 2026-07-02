@@ -49,7 +49,9 @@ export function RecentlyViewed({ currentProductId }: { currentProductId: string 
     let cancelled = false;
     (async () => {
       const sb = getBrowserClient();
-      const { data } = await sb.from('products').select('*').in('id', toFetch);
+      // Published only, a previously-viewed product that has since been
+      // drafted/archived must not render as a dead link in the rail.
+      const { data } = await sb.from('products').select('*').in('id', toFetch).eq('status', 'published');
       if (cancelled) return;
       const map = new Map(((data ?? []) as Product[]).map(p => [p.id, p]));
       // Preserve recent-first order.

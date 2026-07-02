@@ -131,9 +131,12 @@ export function QuizClient() {
         {answers ? resultHeadline(answers) : 'Your picks'}
       </h2>
       <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24 }}>
+        {/* Real apostrophes, not &rsquo; entities: these are JS string
+            expressions, so React escapes them and an entity renders as
+            literal "&rsquo;" text. (Entities are only decoded in JSX text.) */}
         {picks.length > 0
-          ? 'Based on your answers, here&rsquo;s what we&rsquo;d start with:'
-          : 'We couldn&rsquo;t find an exact match, browse the full range instead:'}
+          ? 'Based on your answers, here’s what we’d start with:'
+          : 'We couldn’t find an exact match, browse the full range instead:'}
       </p>
 
       {picks.length > 0 && (

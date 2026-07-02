@@ -35,7 +35,12 @@ function Countdown({ endDate }: { endDate: string }) {
       padding: '3px 10px', background: 'rgba(0,0,0,0.2)',
       borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums',
     }}>
-      ⏱ {timeLeft}
+      {/* Lucide-style clock, inline SVG (not the ⏱ emoji, which picks up
+          the OS emoji font and clashes with the brand). */}
+      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+      </svg>
+      {timeLeft}
     </span>
   );
 }

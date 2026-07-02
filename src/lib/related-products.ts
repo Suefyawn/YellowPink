@@ -57,6 +57,15 @@ function hashString(s: string): number {
   return Math.abs(h);
 }
 
+export interface RelatedProductsResult {
+  products: Product[];
+  /** True when the picks were explicitly linked or named in the post itself.
+   *  False for the generic category-pool fallback, callers must NOT label a
+   *  fallback set "Recommended in this guide" / "Mentioned in This Article",
+   *  those products aren't actually in the article. */
+  mentionedInPost: boolean;
+}
+
 export function selectRelatedProducts(
   post: { slug: string; title: string; excerpt?: string | null; body?: string | null },
   /** The whole catalogue, so a post that names or links a product outside
@@ -67,25 +76,25 @@ export function selectRelatedProducts(
    *  scoped pool computed by the caller. */
   fallbackPool: Product[],
   limit = 3,
-): Product[] {
+): RelatedProductsResult {
   const body = post.body ?? '';
 
   const bySlug = new Map(allProducts.map(p => [p.slug, p]));
   const linked = linkedSlugsInOrder(body).map(slug => bySlug.get(slug)).filter((p): p is Product => Boolean(p));
-  if (linked.length > 0) return linked.slice(0, limit);
+  if (linked.length > 0) return { products: linked.slice(0, limit), mentionedInPost: true };
 
   const haystack = `${post.title} ${post.excerpt ?? ''} ${stripHtml(body)}`;
   const mentioned = allProducts.filter(p => isMentioned(haystack, p));
-  if (mentioned.length > 0) return mentioned.slice(0, limit);
+  if (mentioned.length > 0) return { products: mentioned.slice(0, limit), mentionedInPost: true };
 
   // No explicit link or mention found (a generic listicle, or the
   // catalogue product name doesn't appear verbatim), fall back to the
   // category pool but rotate the starting point per post so different
   // posts in the same broad bucket don't all land on the identical first N
   // products.
-  if (fallbackPool.length === 0) return [];
-  if (fallbackPool.length <= limit) return fallbackPool;
+  if (fallbackPool.length === 0) return { products: [], mentionedInPost: false };
+  if (fallbackPool.length <= limit) return { products: fallbackPool, mentionedInPost: false };
   const offset = hashString(post.slug) % fallbackPool.length;
   const rotated = [...fallbackPool.slice(offset), ...fallbackPool.slice(0, offset)];
-  return rotated.slice(0, limit);
+  return { products: rotated.slice(0, limit), mentionedInPost: false };
 }

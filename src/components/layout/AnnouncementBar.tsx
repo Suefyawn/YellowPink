@@ -1,9 +1,12 @@
-export function AnnouncementBar({ text, bgColor }: { text: string; bgColor: string }) {
+export function AnnouncementBar({ text, bgColor, textColor }: { text: string; bgColor: string; textColor?: string | null }) {
   const parts = text.split(/(PKR[\s\d,]+)/);
   return (
     <div style={{
       background: bgColor,
-      color: '#fff',
+      // Respect the authored promo text colour; white is only the default
+      // (the settings-driven bar has no text-colour field and the default
+      // dark background needs light text).
+      color: textColor || '#fff',
       padding: '10px 0',
       textAlign: 'center',
       fontFamily: 'var(--font-ui)',

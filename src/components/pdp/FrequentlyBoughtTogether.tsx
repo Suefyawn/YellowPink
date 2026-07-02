@@ -3,7 +3,7 @@
 // Bundle widget on the PDP. Lists the top N co-purchased products from the
 // frequently_bought_with RPC. "Add all to cart" applies every checked item.
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { StarRating } from '@/components/ui/StarRating';
@@ -31,9 +31,12 @@ export function FrequentlyBoughtTogether({
   // Only in-stock items take part in the bundle. If the anchor itself is
   // sold out it's dropped too, the shopper can't buy it from the main CTA
   // either, so bundling it would only manufacture broken cart lines.
-  const [bundle] = useState<Product[]>(() =>
-    [anchor, ...suggestions].filter(isPurchasable)
+  const bundle = useMemo<Product[]>(
+    () => [anchor, ...suggestions].filter(isPurchasable),
+    [anchor, suggestions],
   );
+  // Initialiser runs once per mount; the parent keys this component on the
+  // product id so a related-product navigation re-seeds the selection.
   const [checked, setChecked] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(bundle.map(p => [p.id, true]))
   );
