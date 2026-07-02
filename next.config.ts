@@ -157,6 +157,12 @@ const nextConfig: NextConfig = {
       'https://analytics.google.com',
       'https://stats.g.doubleclick.net',
       'https://www.googletagmanager.com',
+      // gtag's ad-conversion linking pings (/ccm/collect, /pagead/…) go to
+      // www.google.com and the visitor's country domain — for this store's
+      // audience that's google.com.pk. First live Sentry CSP reports
+      // (YELLOWPINK-2/3/4, 2026-07-02) were exactly these two hosts.
+      'https://www.google.com',
+      'https://www.google.com.pk',
       'https://www.facebook.com',
       'https://us.i.posthog.com',
       'https://us-assets.i.posthog.com',
@@ -165,6 +171,11 @@ const nextConfig: NextConfig = {
       'https://vitals.vercel-insights.com',
       'https://va.vercel-scripts.com',
     ];
+    // Vercel's preview toolbar (vercel.live) injects its own script/iframe on
+    // preview deployments only — allow it there so previews don't drown the
+    // Sentry CSP feed in noise, while production stays strict.
+    const isPreview = process.env.VERCEL_ENV === 'preview';
+    if (isPreview) connectSrc.push('https://vercel.live', 'wss://*.pusher.com');
     // CSP violation reports → Sentry's security endpoint, derived from the
     // DSN when configured (no-op otherwise; reports then only hit the console).
     const cspReportUri = (() => {
@@ -179,7 +190,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
       // Next's inline runtime; move to nonces before enforcing if feasible.
-      "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com",
+      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com${isPreview ? ' https://vercel.live' : ''}`,
       "style-src 'self' 'unsafe-inline'",
       // Catalogue imagery is served from many hosts (Supabase, weserv proxy,
       // yellowpink.pk, Cloudinary/Shopify/Unsplash CDNs) plus analytics pixels;
@@ -189,7 +200,7 @@ const nextConfig: NextConfig = {
       `connect-src ${connectSrc.join(' ')}`,
       // Service worker + PostHog session-replay worker (blob:).
       "worker-src 'self' blob:",
-      "frame-src 'self' https://www.googletagmanager.com",
+      `frame-src 'self' https://www.googletagmanager.com${isPreview ? ' https://vercel.live' : ''}`,
       "object-src 'none'",
       "base-uri 'self'",
       // Checkout hands off to the wallet gateways via auto-submitting form POST.
