@@ -112,16 +112,18 @@ export function ThankYouAccountOffer({ email }: { email: string }) {
         and earn loyalty points on every purchase. Just pick a password.
       </p>
       <form onSubmit={handleSubmit} style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-        <div style={{ position: 'relative', flex: '1 1 200px' }}>
+        <div style={{ flex: '1 1 200px' }}>
+          <div style={{ position: 'relative' }}>
           <input
             type={showPassword ? 'text' : 'password'}
             value={password}
             onChange={e => setPassword(e.target.value)}
-            placeholder="Choose a password (min 6 characters)"
+            placeholder="Choose a password"
             minLength={6}
             required
             autoComplete="new-password"
             aria-label="Choose a password"
+            aria-describedby="tyao-password-hint"
             style={{
               width: '100%', padding: '10px 40px 10px 12px', fontSize: '0.875rem',
               border: '1px solid var(--line)', borderRadius: 8, background: 'white',
@@ -139,6 +141,10 @@ export function ThankYouAccountOffer({ email }: { email: string }) {
           >
             {showPassword ? 'Hide' : 'Show'}
           </button>
+          </div>
+          <p id="tyao-password-hint" className="small-text" style={{ margin: '6px 0 0', color: 'var(--ink-500)' }}>
+            Minimum 6 characters.
+          </p>
         </div>
         <button type="submit" className="btn-primary" disabled={loading} style={{ flexShrink: 0 }}>
           {loading ? 'Creating…' : 'Create account'}

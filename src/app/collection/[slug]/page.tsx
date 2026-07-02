@@ -2,7 +2,6 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { ProductTile } from '@/components/ui/ProductTile';
@@ -12,6 +11,7 @@ import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { loadTagData } from '@/lib/shop-facets';
 import { redirectIfMapped } from '@/lib/redirects';
 import { resolveCollectionProducts, type Collection } from '@/lib/collections';
+import { CollectionHeroImage } from './CollectionHeroImage';
 import type { Product } from '@/types';
 
 // Published collection by slug. Anon RLS already restricts to published, but we
@@ -83,7 +83,11 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
       {heroImage ? (
         <section style={{ position: 'relative', overflow: 'hidden' }}>
           <div style={{ position: 'relative', minHeight: 'clamp(300px, 40vh, 460px)' }}>
-            <Image src={heroImage} alt={c.title} fill priority sizes="100vw" style={{ objectFit: 'cover' }} />
+            {/* Branded gradient underlay (same wash as the collection cards),
+                so a slow or broken hero image never leaves a dead grey band
+                behind the title. */}
+            <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(140deg, #fde7f0 0%, #faf6ee 55%, #fff8e1 100%)' }} />
+            <CollectionHeroImage src={heroImage} alt={c.title} />
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(250,246,238,0.92) 0%, rgba(250,246,238,0.55) 45%, rgba(250,246,238,0.05) 80%)' }} />
             <div className="container" style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 'clamp(300px, 40vh, 460px)', paddingTop: 40, paddingBottom: 40 }}>
               <div style={{ maxWidth: 520 }}>

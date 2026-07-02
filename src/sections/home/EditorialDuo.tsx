@@ -79,7 +79,7 @@ export function EditorialDuo() {
     <section style={{ paddingBottom: 'var(--section-gap)' }}>
       <div className="container">
         <SectionDivider />
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gutter)', marginTop: 'var(--section-gap)' }} className="duo-grid">
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--gutter)', marginTop: 'var(--section-gap)' }} className="duo-grid editorial-duo">
           {CARDS.map(c => <DuoCard key={c.title} {...c} />)}
         </div>
       </div>

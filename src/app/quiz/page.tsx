@@ -23,7 +23,7 @@ export default function QuizPage() {
         ])) }}
       />
       <section style={{ padding: '56px var(--side)' }}>
-        <div className="container" style={{ maxWidth: 800, margin: '0 auto' }}>
+        <div className="container" style={{ maxWidth: 720, margin: '0 auto' }}>
           <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Find your match</Overline>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, margin: '0 0 28px' }}>
             What does your routine need?

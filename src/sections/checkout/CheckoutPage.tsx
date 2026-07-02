@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
@@ -115,14 +116,24 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
       .then(({ data }) => setLoyalty(data as LoyaltyAccount | null));
   }, [user]);
 
+  // The cart hydrates from localStorage in CartProvider's mount effect, so an
+  // empty `cartItems` during SSR / the first client render doesn't yet mean
+  // the bag is empty. Flip `hydrated` in an effect (which flushes in the same
+  // pass as the provider's load effect) so the empty-bag state below only
+  // shows once we genuinely know there's nothing to check out.
+  const [hydrated, setHydrated] = useState(false);
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setHydrated(true); }, []);
+
   // begin_checkout marks *reaching* checkout, not submitting it (GA4 spec).
   // Firing on submit conflated "started checkout" with "completed checkout"
   // and made the funnel skip this step for everyone who bailed (#193). Fires
   // once per page visit, after the cart has hydrated from localStorage.
-  // Focus the first field on mount so the customer can start typing without a
-  // tap, one less interaction, and on mobile it brings the keyboard up.
-  const emailRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { emailRef.current?.focus(); }, []);
+  // Focus the first REQUIRED field (phone) on mount so the customer can start
+  // typing without a tap, and so the focus ring lands on a field they must
+  // fill rather than the optional email.
+  const phoneRef = useRef<HTMLInputElement>(null);
+  useEffect(() => { phoneRef.current?.focus(); }, []);
 
   const beganCheckout = useRef(false);
   useEffect(() => {
@@ -393,6 +404,34 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   });
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: 6 };
 
+  // Empty bag → no checkout form. Mirrors the cart page's empty state so the
+  // two read as one voice; gated on `hydrated` so a saved cart never flashes
+  // this while localStorage is still being read.
+  if (hydrated && cartItems.length === 0) {
+    return (
+      <section style={{ padding: 'var(--section-gap) 0', textAlign: 'center' }}>
+        <div className="container" style={{ maxWidth: 560 }}>
+          <div style={{ fontSize: '3.5rem', marginBottom: 16, opacity: 0.35 }} aria-hidden="true">◎</div>
+          <h1 className="h1" style={{ marginTop: 0, marginBottom: 12 }}>Your bag is empty</h1>
+          <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 28 }}>
+            There&rsquo;s nothing to check out yet, add a few favourites and come straight back.
+          </p>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <Link href="/shop" className="btn-primary">Start shopping</Link>
+            <Link href="/cart" style={{
+              padding: '12px 24px', background: 'transparent',
+              border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+              fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600,
+              color: 'var(--ink-900)', textDecoration: 'none',
+            }}>
+              View cart
+            </Link>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <div>
       <section style={{ padding: '48px 0 0', borderBottom: '1px solid var(--line)' }}>
@@ -409,13 +448,13 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
               <Overline style={{ display: 'block', marginBottom: 16 }}>Contact</Overline>
               <div style={{ marginBottom: 24 }}>
                 <label htmlFor="co-email" style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
-                <input ref={emailRef} id="co-email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
+                <input id="co-email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
                 {errors.email && <span id="co-email-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="checkout-name-grid">
                 <div>
                   <label htmlFor="co-phone" style={labelStyle}>Phone *</label>
-                  <input id="co-phone" type="tel" autoComplete="tel" value={formData.phone} onChange={e => update('phone', e.target.value)} placeholder="+92 300 1234567" style={inputStyle('phone')} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'co-phone-error' : undefined} />
+                  <input ref={phoneRef} id="co-phone" type="tel" autoComplete="tel" value={formData.phone} onChange={e => update('phone', e.target.value)} placeholder="+92 300 1234567" style={inputStyle('phone')} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'co-phone-error' : undefined} />
                   {errors.phone && <span id="co-phone-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.phone}</span>}
                 </div>
               </div>
@@ -521,7 +560,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
                       placeholder="Promo code (e.g. SAVE10)"
-                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', background: 'white', fontFamily: 'monospace', textTransform: 'uppercase' }}
+                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', background: 'white', fontFamily: 'var(--font-ui)', textTransform: 'uppercase' }}
                     />
                     <button onClick={applyCoupon} disabled={couponLoading} aria-busy={couponLoading} style={{
                       padding: '8px 14px', background: '#111827', color: 'white', border: 'none',
@@ -608,7 +647,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
                   {submitError}
                 </div>
               )}
-              <button className="btn-primary" style={{ width: '100%', ...(submitting ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }} onClick={handleSubmit} disabled={submitting} aria-busy={submitting}>
+              <button className="btn-primary" style={{ width: '100%', ...(submitting || cartItems.length === 0 ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }} onClick={handleSubmit} disabled={submitting || cartItems.length === 0} aria-busy={submitting}>
                 {submitting ? 'Placing Order…' : payMethod === 'jazzcash' || payMethod === 'easypaisa' ? `Continue to ${payMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa'} →` : 'Place Order'}
               </button>
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)', display: 'inline-flex', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 6 }}>

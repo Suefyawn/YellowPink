@@ -64,7 +64,7 @@ export function WellnessSection({
         {/* Editorial intro, copy on the left, atmospheric still life on the
             right, so the section opens with weight instead of a bare heading. */}
         <div
-          className="duo-grid"
+          className="duo-grid editorial-duo"
           style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'center', marginTop: 'var(--section-gap)' }}
         >
           <div>

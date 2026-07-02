@@ -51,19 +51,36 @@ export function ConsentBanner() {
       role="dialog"
       aria-modal="false"
       aria-label="Cookie preferences"
+      className="consent-banner"
       style={{
         position: 'fixed',
-        left: 16, bottom: 16,
-        width: 'min(420px, calc(100vw - 32px))',
         background: 'var(--paper)',
-        border: '1px solid var(--line)',
-        borderRadius: 'var(--radius-card)',
-        boxShadow: '0 18px 48px rgba(0,0,0,0.18)',
-        padding: 20,
         zIndex: 400,
         fontFamily: 'var(--font-ui)',
       }}
     >
+      {/* Docked flush to the viewport's bottom edge: a full-width bottom bar
+          on mobile (no floating card covering the hero CTAs), a modest
+          bottom-right card on desktop. Positional styles live in this class
+          (not inline) because the split needs a media query. */}
+      <style>{`
+        .consent-banner {
+          left: 0; right: 0; bottom: 0;
+          border-top: 1px solid var(--line);
+          box-shadow: 0 -10px 30px rgba(0,0,0,0.12);
+          padding: 16px var(--side) calc(16px + env(safe-area-inset-bottom, 0px));
+        }
+        @media (min-width: 769px) {
+          .consent-banner {
+            left: auto; right: 20px; bottom: 20px;
+            width: min(420px, calc(100vw - 40px));
+            border: 1px solid var(--line);
+            border-radius: var(--radius-card);
+            box-shadow: 0 18px 48px rgba(0,0,0,0.18);
+            padding: 20px;
+          }
+        }
+      `}</style>
       <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: 'var(--ink-900)' }}>
         Cookies on Yellow Pink
       </h2>

@@ -152,7 +152,7 @@ function TrackForm() {
             spellCheck={false}
             style={{
               padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
-              fontFamily: 'monospace', fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
+              fontFamily: 'var(--font-ui)', fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
               background: 'white', boxSizing: 'border-box',
             }}
           />
@@ -164,7 +164,7 @@ function TrackForm() {
               id="track-phone"
               value={phone}
               onChange={e => setPhone(e.target.value)}
-              placeholder="Phone number used at checkout"
+              placeholder="Phone used at checkout"
               required
               type="tel"
               autoComplete="tel"

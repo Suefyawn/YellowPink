@@ -432,10 +432,21 @@ a.underline,
 }
 
 /* Responsive grid helpers */
+/* Wide desktop: 4-up product grid at ≥1280px. Shop/collection grids declare
+ * repeat(3, 1fr) inline as the laptop default, which left three ~450px cards
+ * ballooning across a 1440 screen. */
+@media (min-width: 1280px) {
+  .product-grid { grid-template-columns: repeat(4, 1fr) !important; }
+}
 @media (max-width: 900px) {
   .product-grid, .cat-grid, .results-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .product-grid-3, .blog-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .duo-grid, .story-grid { grid-template-columns: 1fr !important; }
+  /* Homepage editorial splits (makeup/wellness duo + the wellness intro):
+   * stacking 1-col at tablet widths produced two ~570px full-width slabs.
+   * Keep them side-by-side 2-up down to 700px (declared after the .duo-grid
+   * rule above so it wins in the 700–900 band); below 700px they stack. */
+  .editorial-duo { grid-template-columns: 1fr 1fr !important; gap: var(--gutter) !important; }
   .pdp-grid { grid-template-columns: 1fr !important; }
   .search-suggestions { grid-template-columns: 1fr !important; }
   .trust-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
@@ -444,6 +455,10 @@ a.underline,
   .display-l { font-size: 1.75rem !important; }
   .hero-grid { grid-template-columns: 1fr !important; min-height: auto !important; }
   .hero-grid > div:last-child { min-height: 300px; position: relative !important; }
+}
+/* Below 700px the editorial splits stack like every other duo. */
+@media (max-width: 699px) {
+  .editorial-duo { grid-template-columns: 1fr !important; }
 }
 /* PDP gallery: on phones the 64px vertical thumbnail rail steals too much
  * width from the hero image. Flip to column-reverse so the hero gets full
