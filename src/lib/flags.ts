@@ -17,7 +17,6 @@ interface Flag {
 // Used when (a) demo mode is on (no DB), or (b) the table is empty for that key.
 const DEFAULTS: Record<string, boolean> = {
   reviews_photos:    true,
-  promo_banner:      true,
   exit_intent_modal: false,
 };
 

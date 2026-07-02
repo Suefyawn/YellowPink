@@ -39,10 +39,7 @@ for (const { name, path } of FUNNEL) {
     // the hydrated DOM.
     await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {});
 
-    // The promo banner's colours are fully admin-themeable (Settings → Branding
-    // sets bg + text), so a static gate can't enforce contrast on arbitrary
-    // operator choices — guidance for that belongs in the branding editor.
-    const results = await new AxeBuilder({ page }).withTags(WCAG).exclude('.promo-banner').analyze();
+    const results = await new AxeBuilder({ page }).withTags(WCAG).analyze();
     const blocking = results.violations.filter(v => BLOCKING.has(v.impact ?? ''));
 
     if (blocking.length) {

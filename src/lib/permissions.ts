@@ -27,7 +27,6 @@ export type Permission =
 
   // ── Content + marketing ──
   | 'blog'
-  | 'promos'
   | 'reviews'
   | 'newsletter'
   | 'messages'
@@ -48,7 +47,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'products.view', 'products.edit', 'products.delete',
   'customers.view', 'customers.edit', 'customers.delete',
   'coupons', 'returns',
-  'blog', 'promos', 'reviews', 'newsletter', 'messages',
+  'blog', 'reviews', 'newsletter', 'messages',
   'analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh',
   'finance',
   'settings',
@@ -77,7 +76,6 @@ export const PERMISSION_META: Record<Permission, {
 
   // Content + marketing
   blog:    { label: 'Blog',    icon: '✦', desc: 'Write and publish editorial posts.',                group: 'content' },
-  promos:  { label: 'Promos',  icon: '✧', desc: 'Author top-bar + hero-strip campaigns.',           group: 'content' },
   reviews: { label: 'Reviews', icon: '★', desc: 'Moderate, reply to, and feature customer reviews.', group: 'content' },
   newsletter: { label: 'Newsletter', icon: '✉', desc: 'Compose and send the email newsletter to subscribers.', group: 'content' },
   messages: { label: 'Messages', icon: '◫', desc: 'Read and manage customer contact-form messages.', group: 'content' },

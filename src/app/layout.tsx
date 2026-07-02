@@ -47,7 +47,6 @@ import { getSiteSettings } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
 import { IMAGE_CDN_ORIGIN } from '@/lib/image-loader';
 import { normalizeTheme } from '@/lib/themes';
-import { getActivePromos, audienceFor } from '@/lib/promos';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
 import { getPublishedCollections } from '@/lib/collections-data';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
@@ -94,14 +93,8 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [settings, promos, searchTrending, searchCategories, welcomeOffer, footerCollections] = await Promise.all([
+  const [settings, searchTrending, searchCategories, welcomeOffer, footerCollections] = await Promise.all([
     getSiteSettings(),
-    // TODO: read auth session + lifetime-order count to refine the audience.
-    // For now everyone is treated as 'guest' so any null-audience or
-    // guest-audience promo will match; logged_in / first_time / returning
-    // rows will simply not show until the audience resolver is wired to
-    // session data.
-    getActivePromos(audienceFor(false, false)),
     loadTrendingBrands(),
     loadPopularCategories(),
     getWelcomeOffer(),
@@ -191,7 +184,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CouponCapture />
           <SiteChrome
             settings={settings}
-            promos={promos}
             searchTrending={searchTrending}
             searchCategories={searchCategories}
             footerCollections={footerCollections.map(c => ({ slug: c.slug, title: c.title }))}

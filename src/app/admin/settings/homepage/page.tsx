@@ -1,6 +1,5 @@
 export const dynamic = 'force-dynamic';
 
-import Link from 'next/link';
 import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from '../actions';
 import { ImageUpload } from '@/components/admin/ImageUpload';
@@ -22,15 +21,6 @@ export default async function SettingsHomepagePage({ searchParams }: { searchPar
         subtitle="The big hero, the store-wide Sale switch, and the thin announcement bar at the top of every page."
       />
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
-
-      <div style={{
-        background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8,
-        padding: '12px 16px', marginBottom: 24, color: '#1e40af',
-        fontSize: '0.8125rem', lineHeight: 1.5,
-      }}>
-        <strong>Promotional banners moved.</strong> Scheduled, audience-targeted
-        campaigns now live on the <Link href="/admin/promos" style={{ color: '#1e40af', fontWeight: 600 }}>Promos page</Link>,         manage the hero-strip and top-bar promos there.
-      </div>
 
       <form action={saveSettings}>
         <input type="hidden" name="_redirect" value={PATH} />
@@ -129,7 +119,7 @@ export default async function SettingsHomepagePage({ searchParams }: { searchPar
         </Card>
 
         <Card>
-          <Section title="Announcement bar" desc="The thin bar at the very top of every page. For richer scheduled promos use the Promos page instead." />
+          <Section title="Announcement bar" desc="The thin bar at the very top of every page." />
           <Divider />
           <div style={{ display: 'grid', gap: 14 }}>
             <div>
