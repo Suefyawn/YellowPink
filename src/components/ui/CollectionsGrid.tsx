@@ -23,8 +23,9 @@ export function CollectionsGrid({ collections }: { collections: Pick<Collection,
           ) : (
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(140deg, #fde7f0 0%, #faf6ee 55%, #fff8e1 100%)' }} />
           )}
-          {/* Legibility wash */}
-          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(20,12,16,0.05) 35%, rgba(20,12,16,0.62) 100%)' }} />
+          {/* Legibility wash — a full-height gradient (not just a bottom lip)
+              so the white title stays readable over light hero photography. */}
+          <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg, rgba(20,12,16,0.18) 0%, rgba(20,12,16,0.34) 50%, rgba(20,12,16,0.74) 100%)' }} />
           <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, padding: '18px 20px' }}>
             <h3 style={{ margin: 0, fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.25rem', color: '#fff', letterSpacing: '-0.01em' }}>
               {c.title}

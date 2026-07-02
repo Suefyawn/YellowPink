@@ -257,7 +257,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
                       placeholder="Promo code (e.g. SAVE10)"
                       style={{
                         flex: 1, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8,
-                        fontSize: '0.875rem', fontFamily: 'monospace', background: 'white',
+                        fontSize: '0.875rem', fontFamily: 'var(--font-ui)', background: 'white',
                         color: 'var(--ink-900)', textTransform: 'uppercase',
                       }}
                     />

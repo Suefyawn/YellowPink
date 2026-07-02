@@ -104,6 +104,10 @@ export function AdminShell({
          * and below 768 px the table reflows into one stacked card per row
          * with the label inline. Avoids horizontal scroll on phones. */
         @media (max-width: 767px) {
+          /* globals.css gives tables inside .adm-table-scroll a 480px floor so
+           * scrolling tables stay readable, but a table that reflows into
+           * cards must NOT keep that floor (the cards would overflow). */
+          .adm-table-scroll table.adm-table-cards { min-width: 0; }
           .adm-table-cards thead { display: none; }
           .adm-table-cards, .adm-table-cards tbody { display: block; width: 100%; }
           .adm-table-cards tr {
@@ -185,6 +189,34 @@ export function AdminShell({
           .adm-analytics-grid { grid-template-columns: 1fr !important; }
         }
 
+        /* ─ Settings save bar ─
+         * A fixed, opaque, full-width footer (clear of the sidebar on
+         * desktop) so it never floats translucently over form fields.
+         * The settings layout reserves matching bottom padding so every
+         * field can scroll clear of it. */
+        .adm-save-bar { left: 240px; }
+        .adm-settings-layout { padding-bottom: 110px !important; }
+
+        /* ─ Touch targets ─
+         * On coarse pointers, row-action links/buttons in tables and card
+         * stacks get a 40px-tall hit area, and checkbox/radio targets grow
+         * (the wrapping label, where one exists, gets the full 40px). */
+        @media (pointer: coarse) {
+          .adm-main table td a, .adm-main table td button,
+          .adm-orders-cards a, .adm-orders-cards button,
+          .adm-products-cards a, .adm-products-cards button {
+            min-height: 40px;
+            display: inline-flex; align-items: center;
+          }
+          .adm-main input[type="checkbox"], .adm-main input[type="radio"] {
+            min-width: 22px; min-height: 22px;
+          }
+          .adm-main label:has(input[type="checkbox"]),
+          .adm-main label:has(input[type="radio"]) {
+            min-height: 40px;
+          }
+        }
+
         @media (max-width: 767px) {
           .adm-sidebar { transform: translateX(-100%); width: min(280px, 86vw) !important; }
           .adm-sidebar.open { transform: translateX(0); box-shadow: 8px 0 32px rgba(0,0,0,0.18); }
@@ -204,11 +236,36 @@ export function AdminShell({
           }
           .adm-overlay.open { opacity: 1; pointer-events: auto; }
           .adm-page { padding: 14px 12px !important; }
+          /* The fixed save bar sits above the bottom nav on phones, reserve
+           * extra room so the last form field scrolls clear of it. */
+          .adm-settings-layout { padding-bottom: 130px !important; }
           .adm-stat-grid { gap: 10px !important; }
           .adm-form-2col { grid-template-columns: 1fr !important; }
           .adm-form-3col { grid-template-columns: 1fr 1fr !important; }
           .adm-form-4col { grid-template-columns: 1fr 1fr !important; }
           .adm-form-brand { grid-template-columns: 1fr !important; }
+
+          /* Settings save bar hugs the full screen width on phones (the
+           * sidebar is off-canvas) and drops its helper text to stay short. */
+          .adm-save-bar { left: 0; }
+          .adm-save-bar p { display: none; }
+
+          /* Reviews moderation: the desktop "text | actions" grid becomes a
+           * card, full-width review text with a 40px-tall action row under. */
+          .adm-review-row { grid-template-columns: 1fr !important; }
+          .adm-review-actions { justify-content: stretch !important; }
+          /* flex-basis 0 so the 2-3 actions share ONE row equally. */
+          .adm-review-actions > * { flex: 1 1 0; min-width: 0; }
+          /* Direct action buttons only, NOT the ones inside the edit dialog
+           * (which also mounts inside this container). */
+          .adm-review-actions > button,
+          .adm-review-actions > form > button {
+            width: 100%; min-height: 40px;
+          }
+
+          /* Returns queue: decision buttons spread full-width so their
+           * labels never truncate. */
+          .adm-return-actions button { flex: 1 1 auto; min-height: 40px; }
 
           /* Variant rows on the PDP/admin product edit page were 6 columns wide
            *, they overflowed on phones. Collapse to a card stack: option +
@@ -335,6 +392,13 @@ export function AdminShell({
             border: 1px solid #f3f4f6; border-radius: 10px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.06);
           }
+        }
+
+        /* Small phones: multi-column form grids collapse to a single
+         * column so placeholders and side-by-side textareas stay usable. */
+        @media (max-width: 479px) {
+          .adm-form-3col { grid-template-columns: 1fr !important; }
+          .adm-form-4col { grid-template-columns: 1fr !important; }
         }
       `}</style>
 

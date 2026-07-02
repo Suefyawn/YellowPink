@@ -182,10 +182,15 @@ export function ProductTile({ product }: ProductTileProps) {
           color: 'var(--ink-500)', marginBottom: 4, display: 'block',
           fontSize: '0.75rem', letterSpacing: '0.12em',
         }}>{brand}</Overline>
-        <div className="h3" style={{ marginBottom: 2, position: 'relative', display: 'inline-block' }}>
+        {/* 2-line clamp keeps long names from pushing the price row down and
+            wrecking the baseline rhythm across a grid row. */}
+        <div className="h3" style={{
+          marginBottom: 2, position: 'relative',
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}>
           {name}
           <div style={{
-            position: 'absolute', bottom: -1, left: 0, right: 0, height: 2,
+            position: 'absolute', bottom: 0, left: 0, right: 0, height: 2,
             background: 'var(--brand-yellow)',
             transform: hovered ? 'scaleX(1)' : 'scaleX(0)',
             transformOrigin: 'left', transition: 'transform 180ms ease-out',

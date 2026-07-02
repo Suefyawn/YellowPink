@@ -82,7 +82,10 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
               <strong>Reason:</strong> {r.reason}
             </div>
 
-            <div className="adm-table-scroll"><table style={{ width: '100%', marginTop: 10, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            {/* No .adm-table-scroll wrapper: globals gives scrolled tables a
+                480px floor which clipped the amounts on phones. This 3-column
+                table fits any viewport, item names simply wrap. */}
+            <table style={{ width: '100%', marginTop: 10, borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
                   <th scope="col" style={{ padding: '6px 0', textAlign: 'left', color: '#6b7280', fontWeight: 600 }}>Item</th>
@@ -98,12 +101,19 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                     <td style={{ padding: '6px 0', textAlign: 'right' }}>PKR {(it.qty * it.price).toLocaleString()}</td>
                   </tr>
                 ))}
-                <tr style={{ borderTop: '1px solid #e5e7eb' }}>
-                  <td colSpan={2} style={{ padding: '8px 0', textAlign: 'right', fontWeight: 700 }}>Requested refund</td>
-                  <td style={{ padding: '8px 0', textAlign: 'right', fontWeight: 700 }}>PKR {requestedAmount.toLocaleString()}</td>
-                </tr>
               </tbody>
-            </table></div>
+            </table>
+
+            {/* The requested total lives outside the item table so it wraps
+                on narrow screens instead of being clipped in the scroller. */}
+            <div style={{
+              display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px 12px',
+              borderTop: '1px solid #e5e7eb', marginTop: 2, padding: '8px 0',
+              fontSize: '0.8125rem', fontWeight: 700,
+            }}>
+              <span>Requested refund</span>
+              <span>PKR {requestedAmount.toLocaleString()}</span>
+            </div>
 
             {r.admin_note && (
               <div style={{ marginTop: 10, padding: '8px 12px', background: '#f9fafb', borderRadius: 6, fontSize: '0.75rem', color: '#374151' }}>
@@ -112,7 +122,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
             )}
 
             {canManage && r.status === 'approved' && (
-              <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+              <div className="adm-return-actions" style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {/* "Mark as received" restocks the items via the inventory
                     ledger (record_stock_change reason='return'). This is the
                     bridge that closes the place_order → return loop. */}
@@ -134,7 +144,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
             )}
 
             {canManage && r.status === 'received' && (
-              <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+              <div className="adm-return-actions" style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {/* Final lifecycle step: the refund has actually been paid
                     out. Moves the request to `refunded` and the linked order
                     to `refunded` so its revenue drops out of Finance. */}
@@ -158,7 +168,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
             )}
 
             {canManage && r.status === 'pending' && (
-              <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+              <div className="adm-return-actions" style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                 {isOpen ? (
                   <ApproveForm
                     requestedAmount={requestedAmount}
