@@ -84,9 +84,12 @@ export default async function ReviewsPage({
   };
 
   function ReviewCard({ r, showApprove }: { r: ReviewRow; showApprove: boolean }) {
+    // .adm-review-row / .adm-review-actions: below 768px (AdminShell CSS) the
+    // "text | actions" grid becomes a stacked card, full-width review text
+    // with a 40px-tall action button row underneath.
     return (
-      <div style={rowStyle}>
-        <div>
+      <div className="adm-review-row" style={rowStyle}>
+        <div style={{ minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
             <Stars rating={r.rating} />
             <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827' }}>{r.author_name}</span>
@@ -119,7 +122,7 @@ export default async function ReviewsPage({
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        <div className="adm-review-actions" style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           {showApprove ? (
             <form action={approveReview}>
               <input type="hidden" name="id" value={r.id} />

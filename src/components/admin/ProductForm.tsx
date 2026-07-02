@@ -141,7 +141,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
         >
           {/* ── Basics ─────────────────────────────────────────────────── */}
           <Section title="Basics" first>
-            <div style={row2}>
+            <div className="adm-form-2col" style={row2}>
               <div style={fieldWrap}>
                 <label style={lbl}>Brand</label>
                 <input name="brand" defaultValue={product?.brand ?? ''} style={inp} placeholder="e.g. CeraVe, blank for own-label" />
@@ -157,7 +157,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
               </div>
             </div>
 
-            <div style={row2}>
+            <div className="adm-form-2col" style={row2}>
               <div style={fieldWrap}>
                 <label style={lbl}>Category *</label>
                 <select name="category" required defaultValue={product?.category ?? ''} style={inp}>
@@ -184,7 +184,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
               </div>
             </div>
 
-            <div style={row2}>
+            <div className="adm-form-2col" style={row2}>
               <div style={fieldWrap}>
                 <label style={lbl}>Variant</label>
                 <input name="variant" defaultValue={product?.variant ?? ''} style={inp} placeholder="e.g. 250ml" />
@@ -201,7 +201,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
               </div>
             </div>
 
-            <div style={{ ...row2, marginBottom: 0 }}>
+            <div className="adm-form-2col" style={{ ...row2, marginBottom: 0 }}>
               <div style={fieldWrap}>
                 <label style={lbl}>Status *</label>
                 {/* New products start as drafts so a half-finished page never
@@ -240,7 +240,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
 
           {/* ── Pricing & stock ────────────────────────────────────────── */}
           <Section title="Pricing & stock">
-            <div style={{ ...row3, marginBottom: 16 }}>
+            <div className="adm-form-3col" style={{ ...row3, marginBottom: 16 }}>
               <div style={fieldWrap}>
                 <label style={lbl}>Price (PKR) *</label>
                 <input name="price" type="number" required min={0} defaultValue={product?.price} style={inp} placeholder="2400"
@@ -292,7 +292,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
 
           {/* ── Vendor & sourcing ──────────────────────────────────────── */}
           <Section title="Vendor & sourcing" desc="Link the product to a supplier to track cost, margin and payouts.">
-            <div style={row2}>
+            <div className="adm-form-2col" style={row2}>
               <div style={fieldWrap}>
                 <label style={lbl}>Vendor</label>
                 <select name="vendor_id" value={vendorId} onChange={e => setVendorId(e.target.value)} style={inp}>
@@ -386,7 +386,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
                 placeholder="Short product description shown on the product page…" />
             </div>
 
-            <div style={row2}>
+            <div className="adm-form-2col" style={row2}>
               <div style={fieldWrap}>
                 <label style={lbl}>How to Use</label>
                 <textarea name="how_to_use" defaultValue={product?.how_to_use ?? ''} rows={4}
@@ -411,7 +411,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
               <FaqEditor name="faq" initial={product?.faq} />
             </div>
 
-            <div style={{ ...row2, marginBottom: 0 }}>
+            <div className="adm-form-2col" style={{ ...row2, marginBottom: 0 }}>
               <div style={fieldWrap}>
                 <label style={lbl}>Usage tips</label>
                 <textarea name="usage_tips" defaultValue={product?.usage_tips ?? ''} rows={4}
@@ -429,7 +429,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
 
           {/* ── Search & social (SEO) ──────────────────────────────────── */}
           <Section title="Search & social" desc="Leave blank to fall back to auto-generated values.">
-            <div style={row2}>
+            <div className="adm-form-2col" style={row2}>
               <div style={fieldWrap}>
                 <label style={lbl}>SEO title</label>
                 <input name="seo_title" type="text" defaultValue={product?.seo_title ?? ''} maxLength={120}
@@ -477,7 +477,7 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
                   ? <>Editing <strong style={{ color: '#111827' }}>{product?.name ?? 'product'}</strong></>
                   : 'Creating a new product'}
             </div>
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
               {isEdit && product?.slug && <SubmitToIndexButton path={`/product/${product.slug}`} />}
               <Link href="/admin/products" style={{
                 padding: '9px 18px', background: 'white', color: '#374151',

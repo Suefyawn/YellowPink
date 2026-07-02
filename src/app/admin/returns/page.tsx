@@ -115,7 +115,7 @@ export default async function ReturnsPage() {
               <div style={{ ...kpiLabel, marginBottom: 10 }}>Most-returned products</div>
               {topProducts.length === 0 ? <p style={{ fontSize: '0.8125rem', color: '#9ca3af', margin: 0 }}>No data yet.</p> : topProducts.map(([name, n]) => (
                 <div key={name} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', fontSize: '0.8125rem' }}>
-                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
+                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{name}</span>
                   <span style={{ fontWeight: 700, color: '#111827', flexShrink: 0 }}>{n}</span>
                 </div>
               ))}
@@ -124,7 +124,7 @@ export default async function ReturnsPage() {
               <div style={{ ...kpiLabel, marginBottom: 10 }}>Top reasons</div>
               {topReasons.map(([reason, n]) => (
                 <div key={reason} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '5px 0', fontSize: '0.8125rem' }}>
-                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{reason}</span>
+                  <span style={{ color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>{reason}</span>
                   <span style={{ fontWeight: 700, color: '#111827', flexShrink: 0 }}>{n}</span>
                 </div>
               ))}

@@ -114,19 +114,22 @@ export function StatusBanner({ saved, saveError }: { saved: boolean; saveError?:
   return null;
 }
 
-// Sticky bottom save bar. Each sub-page form ends with one of these so the
-// Save button is always reachable regardless of form length.
+// Fixed bottom save bar. Each sub-page form ends with one of these so the
+// Save button is always reachable regardless of form length. Full-width and
+// opaque so it never floats translucently over form fields; the horizontal
+// offset (clear of the sidebar on desktop, edge-to-edge on phones, lifted
+// above the bottom nav) comes from the .adm-save-bar / .adm-sticky-actions
+// rules in AdminShell, and .adm-settings-layout reserves matching bottom
+// padding so every field can scroll clear of it.
 export function SaveBar() {
   return (
-    <div className="adm-sticky-actions" style={{
-      position: 'sticky', bottom: 0, marginTop: 8,
-      padding: '14px 16px',
-      background: 'rgba(255,255,255,0.94)',
-      backdropFilter: 'saturate(140%) blur(8px)',
-      WebkitBackdropFilter: 'saturate(140%) blur(8px)',
-      borderTop: '1px solid #e5e7eb', borderRadius: 10,
+    <div className="adm-sticky-actions adm-save-bar" style={{
+      position: 'fixed', right: 0, bottom: 0, zIndex: 40,
+      padding: '12px 20px',
+      background: '#ffffff',
+      borderTop: '1px solid #e5e7eb',
       display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap',
-      boxShadow: '0 -6px 18px rgba(0,0,0,0.05)',
+      boxShadow: '0 -6px 18px rgba(0,0,0,0.06)',
     }}>
       <button type="submit" className="adm-settings-save-btn" style={{
         padding: '11px 28px', background: '#C5286A', color: 'white',

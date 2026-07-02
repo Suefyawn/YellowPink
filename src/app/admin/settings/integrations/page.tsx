@@ -364,9 +364,9 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
         {resolved.map(i => (
           <div key={i.name} style={{
             background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            padding: 20,
+            padding: 20, minWidth: 0,
           }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 10 }}>
               <div style={{ minWidth: 0 }}>
                 <h3 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>{i.name}</h3>
                 <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280', lineHeight: 1.5 }}>{i.purpose}</p>
@@ -374,7 +374,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
               <StatusBadge status={i.status} />
             </div>
 
-            <div style={{
+            <div className="adm-int-vars" style={{
               display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 8,
               marginTop: 12, paddingTop: 12, borderTop: '1px solid #f3f4f6',
               fontSize: '0.75rem',
@@ -388,7 +388,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
                     // Missing-but-optional gets a muted tick mark, not a red ✗,                     // it's a knob, not a gap.
                     const colour = v.present ? '#15803d' : (v.optional ? '#9ca3af' : '#dc2626');
                     return (
-                      <div key={v.name} style={{ fontFamily: 'monospace' }}>
+                      <div key={v.name} style={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
                         <span style={{ color: colour }}>{v.present ? '✓' : '✗'}</span> {v.name}
                         {v.optional && (
                           <span style={{ color: '#9ca3af', fontStyle: 'italic', fontFamily: 'inherit' }}> (optional)</span>
@@ -423,6 +423,14 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
         To configure a missing integration, open Vercel → <em>Project Settings</em> → <em>Environment Variables</em>,
         add the env vars under <em>Production</em>, then redeploy. This page never shows the secret values themselves.
       </p>
+
+      {/* Scoped: the ENV VARS / LAST SYNC / SETUP REF columns stack on
+          phones so the mono strings never force a horizontal scroll. */}
+      <style>{`
+        @media (max-width: 767px) {
+          .adm-int-vars { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </>
   );
 }

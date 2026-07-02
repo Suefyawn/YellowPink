@@ -578,9 +578,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
         {/* Customer */}
         <div style={section}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 16, gap: 12 }}>
             <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Customer</h2>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, minWidth: 0 }}>
               {customerStats && customerStats.count > 1 && (
                 <span
                   title={customerStats.first ? `First ordered ${new Date(customerStats.first).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}` : undefined}
@@ -640,7 +640,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
         {/* Shipping */}
         <div style={section}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
             <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipping address</h2>
             <a
               href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
