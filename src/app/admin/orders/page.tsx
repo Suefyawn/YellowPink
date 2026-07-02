@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { OrdersFilter } from '@/components/admin/OrdersFilter';
 import { OrdersTable } from '@/components/admin/OrdersTable';
@@ -73,9 +74,20 @@ async function OrdersPageInner({
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Orders</h1>
-        <ExportCSVButton status={status} q={q} range={range} />
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Link
+            href="/admin/orders/new"
+            style={{
+              padding: '8px 14px', borderRadius: 8, background: '#111827', color: 'white',
+              fontSize: '0.8125rem', fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            + New order
+          </Link>
+          <ExportCSVButton status={status} q={q} range={range} />
+        </div>
       </div>
 
       <Suspense fallback={null}>
