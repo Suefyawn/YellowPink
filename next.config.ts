@@ -28,9 +28,6 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
-  // TEMP-VERIFY: widen the Turbopack root so the symlinked node_modules
-  // (worktree) resolves. Removed before hand-off.
-  turbopack: { root: '/home/user' },
   // The admin "User manual" page (/admin/help) reads docs/USER-MANUAL.md from
   // disk at request time. That file isn't statically imported, so Next's trace
   // wouldn't bundle it into the serverless function — force-include it for this
@@ -126,12 +123,90 @@ const nextConfig: NextConfig = {
   // ─ Crawler endpoints (sitemap, robots, llms.txt) get longer s-maxage.
   // ─ Everything else falls through with the framework default.
   async headers() {
+    // ── Content-Security-Policy (REPORT-ONLY for now) ──────────────────────
+    // Deliberately shipped as Content-Security-Policy-Report-Only first: the
+    // storefront loads several third-party SDKs (GA4/gtag, Meta Pixel,
+    // PostHog + session replay, Sentry, Vercel Analytics/Speed Insights,
+    // Supabase) and an enforcing policy with a missed source would silently
+    // break checkout analytics or session auth. Violations surface in the
+    // browser console (and at Sentry's CSP endpoint when a DSN is set).
+    //
+    // TODO(promote): after 2–4 weeks of clean monitoring, rename the header
+    // key below to 'Content-Security-Policy' to start enforcing.
+    //
+    // Source inventory (from the codebase's script srcs / SDK endpoints):
+    //   GA4/gtag        script  www.googletagmanager.com
+    //                   connect *.google-analytics.com, analytics.google.com,
+    //                           stats.g.doubleclick.net (+ Google Ads conversion
+    //                           scripts when NEXT_PUBLIC_GOOGLE_ADS_ID is set)
+    //   Meta Pixel      script  connect.facebook.net; beacons www.facebook.com/tr
+    //   PostHog         script/connect us.i.posthog.com + us-assets.i.posthog.com
+    //                   (NEXT_PUBLIC_POSTHOG_HOST default; replay worker = blob:)
+    //   Sentry          connect *.ingest.sentry.io / *.ingest.us.sentry.io
+    //   Vercel          script /_vercel/* (same-origin in prod),
+    //                   va.vercel-scripts.com (dev); connect vitals.vercel-insights.com
+    //   Supabase        connect https + wss on the configured project host
+    //   Images          images.weserv.nl proxy + assorted CDNs → img-src https:
+    //   Fonts           self-hosted via next/font → no Google Fonts origins
+    //   Payments        JazzCash/Easypaisa hand-off is a full-page form POST → form-action
+    //   wa.me links     plain navigation, not governed by CSP
+    const connectSrc = [
+      "'self'",
+      ...(supabaseHost ? [`https://${supabaseHost}`, `wss://${supabaseHost}`] : []),
+      'https://*.google-analytics.com',
+      'https://analytics.google.com',
+      'https://stats.g.doubleclick.net',
+      'https://www.googletagmanager.com',
+      'https://www.facebook.com',
+      'https://us.i.posthog.com',
+      'https://us-assets.i.posthog.com',
+      'https://*.ingest.sentry.io',
+      'https://*.ingest.us.sentry.io',
+      'https://vitals.vercel-insights.com',
+      'https://va.vercel-scripts.com',
+    ];
+    // CSP violation reports → Sentry's security endpoint, derived from the
+    // DSN when configured (no-op otherwise; reports then only hit the console).
+    const cspReportUri = (() => {
+      try {
+        const dsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
+        if (!dsn) return null;
+        const u = new URL(dsn);
+        return `https://${u.host}/api/${u.pathname.replaceAll('/', '')}/security/?sentry_key=${u.username}`;
+      } catch { return null; }
+    })();
+    const CSP_REPORT_ONLY = [
+      "default-src 'self'",
+      // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
+      // Next's inline runtime; move to nonces before enforcing if feasible.
+      "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com",
+      "style-src 'self' 'unsafe-inline'",
+      // Catalogue imagery is served from many hosts (Supabase, weserv proxy,
+      // yellowpink.pk, Cloudinary/Shopify/Unsplash CDNs) plus analytics pixels;
+      // a blanket https: keeps this maintainable. data:/blob: for placeholders.
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      `connect-src ${connectSrc.join(' ')}`,
+      // Service worker + PostHog session-replay worker (blob:).
+      "worker-src 'self' blob:",
+      "frame-src 'self' https://www.googletagmanager.com",
+      "object-src 'none'",
+      "base-uri 'self'",
+      // Checkout hands off to the wallet gateways via auto-submitting form POST.
+      "form-action 'self' https://payments.jazzcash.com.pk https://easypay.easypaisa.com.pk",
+      "frame-ancestors 'self'",
+      ...(cspReportUri ? [`report-uri ${cspReportUri}`] : []),
+    ].join('; ');
+
     const SECURITY: Array<{ key: string; value: string }> = [
       { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
       { key: 'X-Content-Type-Options',    value: 'nosniff' },
       { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
       { key: 'X-Frame-Options',           value: 'SAMEORIGIN' },
       { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
+      // Report-only CSP — see the block comment above; promote to
+      // 'Content-Security-Policy' once violation reports come back clean.
+      { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
     ];
 
     // 5-minute edge freshness, 24-hour SWR — enough to absorb traffic bursts
