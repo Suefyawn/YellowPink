@@ -46,7 +46,6 @@ const GROUPS: NavGroup[] = [
     { href: '/admin/coupons',   label: 'Coupons',   icon: 'ticket', permission: 'coupons' },
   ]},
   { label: 'Marketing', items: [
-    { href: '/admin/promos',    label: 'Promos',    icon: 'megaphone', permission: 'promos' },
     { href: '/admin/blog',      label: 'Blog',      icon: 'pen-line', permission: 'blog' },
     { href: '/admin/reviewers', label: 'Review Board', icon: 'shield-check', permission: 'blog' },
     { href: '/admin/reviews',   label: 'Reviews',   icon: 'star', permission: 'reviews' },

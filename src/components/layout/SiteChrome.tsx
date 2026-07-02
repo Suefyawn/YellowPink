@@ -11,17 +11,12 @@ import { SearchOverlay } from '@/components/search/SearchOverlay';
 import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { ScrollToTop } from './ScrollToTop';
 import { WhatsAppFab } from './WhatsAppFab';
-import type { Promo } from '@/lib/promos';
 import { socialLinks } from '@/lib/socials';
 import { parseCommerceConfig, freeShippingSentence } from '@/lib/commerce';
 
 interface SiteChromeProps {
   children: React.ReactNode;
   settings: Record<string, string>;
-  /** Resolved by the server layout for the current visitor's audience.
-   *  If null, we fall back to the legacy site_settings-based config so the
-   *  bars still render before the merchant has authored any rows. */
-  promos?: { top_bar: Promo | null; hero_strip: Promo | null } | null;
   /** Server-resolved data for the search overlay. Passed through here
    *  (rather than rendered as its own server-component wrapper) because
    *  SiteChrome is `'use client'`, an async server component cannot live
@@ -33,48 +28,28 @@ interface SiteChromeProps {
   footerCollections?: { slug: string; title: string }[];
 }
 
-export function SiteChrome({ children, settings, promos, searchTrending, searchCategories, footerCollections = [] }: SiteChromeProps) {
+export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [] }: SiteChromeProps) {
   const pathname = usePathname();
   if (pathname.startsWith('/admin')) return <>{children}</>;
 
-  // ── Top bar (thin announcement) ──
-  // Prefer a live `promos` row for the slot; otherwise fall back to the
-  // settings-driven AnnouncementBar.
-  const topBar = promos?.top_bar;
-  const topBarSettingsActive = settings.announcement_active === 'true';
-
-  // ── Hero strip (richer promo card) ──
-  const heroStrip = promos?.hero_strip;
-  const heroStripSettingsActive = settings.promo_active === 'true';
+  // Both bars are settings-driven (Admin → Settings → Homepage). The
+  // audience-targeted promos table that used to take precedence here was
+  // removed 2026-07-02 — it was never used (zero rows authored) and
+  // duplicated these simpler settings.
+  const topBarActive = settings.announcement_active === 'true';
+  const heroStripActive = settings.promo_active === 'true';
 
   return (
     <>
       <ScrollToTop />
-      {topBar ? (
-        <AnnouncementBar
-          text={topBar.headline}
-          bgColor={topBar.bg_color ?? '#111827'}
-          textColor={topBar.text_color}
-        />
-      ) : topBarSettingsActive && (
+      {topBarActive && (
         <AnnouncementBar
           text={settings.announcement_text ?? freeShippingSentence(parseCommerceConfig(settings))}
           bgColor={settings.announcement_color ?? '#111827'}
         />
       )}
 
-      {heroStrip ? (
-        <PromoBanner
-          label={heroStrip.label ?? 'New'}
-          headline={heroStrip.headline}
-          subline={heroStrip.subline ?? ''}
-          ctaText={heroStrip.cta_text ?? ''}
-          ctaUrl={heroStrip.cta_url ?? '/shop'}
-          bgColor={heroStrip.bg_color ?? '#E8487F'}
-          textColor={heroStrip.text_color ?? '#ffffff'}
-          endDate={heroStrip.show_countdown ? (heroStrip.end_at ?? '') : ''}
-        />
-      ) : heroStripSettingsActive && (
+      {heroStripActive && (
         <PromoBanner
           label={settings.promo_label ?? 'Sale'}
           headline={settings.promo_headline ?? ''}
