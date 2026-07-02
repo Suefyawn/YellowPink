@@ -17,6 +17,7 @@ import { useCommerceSettings } from '@/context/CommerceSettings';
 import { track } from '@/lib/analytics';
 import { successHaptic } from '@/lib/haptics';
 import { readAttribution } from '@/lib/attribution';
+import { readReferral } from '@/lib/referral';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
 import type { Coupon, PayMethod, LoyaltyAccount, BankAccount } from '@/types';
 
@@ -319,7 +320,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
           },
           gift_card_code:   null,
           points_redeem:    pointsToDebit > 0 ? pointsToDebit : null,
-          referred_by_code: null,
+          // Referral code captured from a ?ref=<code> landing link (lib/referral).
+          // place_order stamps it onto the signed-in customer's profile so
+          // award_referral_for_user can pay the referrer on first delivery.
+          referred_by_code: readReferral(),
         } as never);
         if (!error) break;
         if (attempt < 3 && isDuplicateOrderNumber(error.message)) {

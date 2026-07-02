@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { headers, cookies } from 'next/headers';
-import { supabase } from '@/lib/supabase';
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { reviewLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { reviewSchema, parseForm, firstError } from '@/lib/validators';
@@ -70,7 +70,15 @@ export async function submitReview(
     .filter((s: string) => !allowedPrefix || s.startsWith(allowedPrefix))
     .slice(0, 6); // hard cap on photos per review
 
-  const { error } = await supabase.from('product_reviews').insert({
+  // Write with the service role. The anon INSERT policy on product_reviews
+  // (migration 306) forces approved=false AND verified_purchase=false for the
+  // public key, so a review the server has legitimately derived as a verified
+  // purchase could not be stamped through the anon client. This action is
+  // trusted server-side code (rate-limited, purchase verified via a
+  // SECURITY DEFINER RPC), so it inserts with the service role — the same
+  // pattern voteReviewHelpful uses below. `approved` stays false: customer
+  // reviews still go through the moderation queue.
+  const { error } = await supabaseAdmin().from('product_reviews').insert({
     product_id:        parsed.data.product_id,
     user_id:           userId,
     author_name:       parsed.data.author_name,
