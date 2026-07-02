@@ -20,29 +20,50 @@ async function assertOrders() {
   return session;
 }
 
-/** After a successful booking (API or manual tracking entry), advance the
- *  order to 'shipped' and send the customer the same shipped email the
- *  status-update path sends. Before this, booking a courier left the order
- *  sitting in 'processing' and the customer never got the shipped email
- *  unless the merchant remembered to also change the status by hand.
- *  Idempotent: an order that is already shipped (or delivered) is left
- *  untouched and NOT re-emailed. */
-async function markOrderShipped(
-  session: StaffSession,
-  orderId: string,
-  tracking: { tracking_number: string; courier: string },
-): Promise<{ markedShipped: boolean; emailed: boolean }> {
-  const admin = supabaseAdmin();
-  const { data: order } = await admin
+/** Pre-insert snapshot of the order used to decide, AFTER the shipment row
+ *  lands, whether this booking is the transition to 'shipped'. Must be read
+ *  BEFORE inserting into `shipments`: the sync_order_tracking_from_shipment
+ *  trigger advances orders.status the moment the row is inserted, so a
+ *  post-insert read would always see 'shipped' already. */
+interface OrderShipSnapshot {
+  status: OrderStatus | null;
+  email: string | null;
+  first_name: string | null;
+  order_number: string;
+}
+
+async function getOrderShipSnapshot(orderId: string): Promise<OrderShipSnapshot | null> {
+  const { data } = await supabaseAdmin()
     .from('orders')
     .select('status, email, first_name, order_number')
     .eq('id', orderId)
     .single();
-  if (!order) return { markedShipped: false, emailed: false };
-  const status = (order.status ?? 'pending') as OrderStatus;
+  return (data as OrderShipSnapshot | null) ?? null;
+}
+
+/** After a successful booking (API or manual tracking entry), make sure the
+ *  order is 'shipped' and send the customer the same shipped email the
+ *  status-update path sends. The shipments trigger flips orders.status on
+ *  insert, but the customer never got the shipped email (and the timeline
+ *  never got operator attribution) unless the merchant remembered to also
+ *  change the status by hand. `before` is the pre-insert snapshot; it makes
+ *  this idempotent — an order that was ALREADY shipped (or delivered) before
+ *  this booking is left untouched and NOT re-emailed. */
+async function markOrderShipped(
+  session: StaffSession,
+  orderId: string,
+  before: OrderShipSnapshot | null,
+  tracking: { tracking_number: string; courier: string },
+): Promise<{ markedShipped: boolean; emailed: boolean }> {
+  if (!before) return { markedShipped: false, emailed: false };
+  const status = (before.status ?? 'pending') as OrderStatus;
   if (status === 'shipped' || status === 'delivered') {
     return { markedShipped: false, emailed: false };
   }
+  const admin = supabaseAdmin();
+  // Usually a no-op (the shipments trigger already advanced it), but kept
+  // explicit so the order still lands on 'shipped' if the trigger's status
+  // mapping ever changes. A same-value update logs no duplicate order_event.
   const { error } = await admin.from('orders').update({ status: 'shipped' }).eq('id', orderId);
   if (error) {
     // The shipment row is already saved; don't fail the booking over the
@@ -50,14 +71,15 @@ async function markOrderShipped(
     log.error('shipment.mark_shipped_failed', { order_id: orderId, error: error.message });
     return { markedShipped: false, emailed: false };
   }
-  // Attribute the transition the order_events trigger just logged.
+  // Attribute the transition the order_events trigger logged (it can only
+  // stamp a generic 'staff') to the signed-in operator.
   await attributeOrderEvents(admin, [orderId], 'shipped', session);
-  const emailed = Boolean(order.email);
+  const emailed = Boolean(before.email);
   if (emailed) {
     void sendStatusTransitionEmail({
-      email: order.email,
-      first_name: order.first_name,
-      order_number: order.order_number,
+      email: before.email,
+      first_name: before.first_name,
+      order_number: before.order_number,
       tracking_number: tracking.tracking_number,
       courier: tracking.courier,
     }, 'shipped');
@@ -81,6 +103,9 @@ export async function createShipment(
   const weightRaw = formData.get('weight_grams');
   const weight_grams = typeof weightRaw === 'string' && weightRaw ? Number(weightRaw) : null;
 
+  // Snapshot BEFORE the insert; the shipments trigger advances orders.status.
+  const before = await getOrderShipSnapshot(order_id);
+
   const { data, error } = await supabaseAdmin().from('shipments').insert({
     order_id,
     courier,
@@ -98,7 +123,7 @@ export async function createShipment(
     diff: { order_id, courier, tracking_number },
   });
 
-  const shipped = await markOrderShipped(session, order_id, {
+  const shipped = await markOrderShipped(session, order_id, before, {
     tracking_number: tracking_number.trim(),
     courier,
   });
@@ -138,12 +163,20 @@ export async function bookShipment(
   }
 
   // Pull the order so we can give the courier the consignee + line items.
+  // `status` doubles as the pre-booking snapshot for markOrderShipped (the
+  // shipments trigger advances it as soon as the shipment row is inserted).
   const { data: order, error: orderErr } = await supabaseAdmin()
     .from('orders')
-    .select('order_number, total, first_name, last_name, phone, email, address, city, province, zip, items')
+    .select('status, order_number, total, first_name, last_name, phone, email, address, city, province, zip, items')
     .eq('id', order_id)
     .single();
   if (orderErr || !order) return { error: orderErr?.message ?? 'Order not found' };
+  const before: OrderShipSnapshot = {
+    status: (order.status ?? 'pending') as OrderStatus,
+    email: order.email ?? null,
+    first_name: order.first_name ?? null,
+    order_number: order.order_number ?? order_id,
+  };
 
   // Weight: estimate from line items if any have weight_grams; otherwise
   // a conservative 0.5 kg minimum (TCS's lower bound).
@@ -217,7 +250,7 @@ export async function bookShipment(
     diff: { courier, order_id, tracking_number: result.trackingNumber },
   });
 
-  const shipped = await markOrderShipped(session, order_id, {
+  const shipped = await markOrderShipped(session, order_id, before, {
     tracking_number: result.trackingNumber,
     courier,
   });

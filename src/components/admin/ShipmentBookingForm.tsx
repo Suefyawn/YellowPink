@@ -38,8 +38,21 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
   // ─── Already shipped, show tracking + cancel options ────────────────────
   if (shipment && shipment.status !== 'cancelled') {
     const trackUrl = courierTrackingUrl(shipment.courier, shipment.tracking_number);
+    // Result of a booking made just now, in this session. revalidatePath
+    // swaps this component into the booked view as soon as the action
+    // settles, so the confirmation has to render here, not in the form.
+    const justBooked: { markedShipped?: boolean; emailed?: boolean } | null =
+      bookState?.success ? bookState : manualState?.success ? manualState : null;
     return (
       <div>
+        {justBooked && (
+          <div role="status" style={{ marginBottom: 12, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, color: '#166534', fontSize: '0.75rem' }}>
+            Shipment booked.
+            {justBooked.markedShipped
+              ? ` Order marked shipped${justBooked.emailed ? ' + customer emailed' : ''}.`
+              : ''}
+          </div>
+        )}
         <div style={{ marginBottom: 12 }}>
           <div style={lbl}>Booked with</div>
           <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
