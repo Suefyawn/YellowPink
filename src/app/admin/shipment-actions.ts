@@ -5,7 +5,12 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { getAdapter } from '@/lib/couriers';
+import { attributeOrderEvents } from '@/lib/order-events';
+import { sendStatusTransitionEmail } from '@/lib/order-status-emails';
+import { log } from '@/lib/logger';
 import type { BookingInput } from '@/lib/couriers/types';
+import type { StaffSession } from '@/lib/permissions';
+import type { OrderStatus } from '@/types';
 
 async function assertOrders() {
   const session = await getStaffSession();
@@ -15,10 +20,55 @@ async function assertOrders() {
   return session;
 }
 
+/** After a successful booking (API or manual tracking entry), advance the
+ *  order to 'shipped' and send the customer the same shipped email the
+ *  status-update path sends. Before this, booking a courier left the order
+ *  sitting in 'processing' and the customer never got the shipped email
+ *  unless the merchant remembered to also change the status by hand.
+ *  Idempotent: an order that is already shipped (or delivered) is left
+ *  untouched and NOT re-emailed. */
+async function markOrderShipped(
+  session: StaffSession,
+  orderId: string,
+  tracking: { tracking_number: string; courier: string },
+): Promise<{ markedShipped: boolean; emailed: boolean }> {
+  const admin = supabaseAdmin();
+  const { data: order } = await admin
+    .from('orders')
+    .select('status, email, first_name, order_number')
+    .eq('id', orderId)
+    .single();
+  if (!order) return { markedShipped: false, emailed: false };
+  const status = (order.status ?? 'pending') as OrderStatus;
+  if (status === 'shipped' || status === 'delivered') {
+    return { markedShipped: false, emailed: false };
+  }
+  const { error } = await admin.from('orders').update({ status: 'shipped' }).eq('id', orderId);
+  if (error) {
+    // The shipment row is already saved; don't fail the booking over the
+    // status advance — log it and let the merchant see the stale status.
+    log.error('shipment.mark_shipped_failed', { order_id: orderId, error: error.message });
+    return { markedShipped: false, emailed: false };
+  }
+  // Attribute the transition the order_events trigger just logged.
+  await attributeOrderEvents(admin, [orderId], 'shipped', session);
+  const emailed = Boolean(order.email);
+  if (emailed) {
+    void sendStatusTransitionEmail({
+      email: order.email,
+      first_name: order.first_name,
+      order_number: order.order_number,
+      tracking_number: tracking.tracking_number,
+      courier: tracking.courier,
+    }, 'shipped');
+  }
+  return { markedShipped: true, emailed };
+}
+
 export async function createShipment(
-  _prev: { error?: string; success?: boolean } | null,
+  _prev: { error?: string; success?: boolean; markedShipped?: boolean; emailed?: boolean } | null,
   formData: FormData
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; success?: boolean; markedShipped?: boolean; emailed?: boolean }> {
   const session = await assertOrders();
 
   const order_id = formData.get('order_id');
@@ -48,9 +98,14 @@ export async function createShipment(
     diff: { order_id, courier, tracking_number },
   });
 
+  const shipped = await markOrderShipped(session, order_id, {
+    tracking_number: tracking_number.trim(),
+    courier,
+  });
+
   revalidatePath(`/admin/orders/${order_id}`);
   revalidatePath('/admin/orders');
-  return { success: true };
+  return { success: true, ...shipped };
 }
 
 // ─── Book via courier API (currently TCS, more couriers as adapters ship) ─
@@ -67,9 +122,9 @@ export async function createShipment(
 // The merchant ALWAYS has the manual `createShipment` fallback above, so a
 // courier outage / API hiccup never blocks fulfillment.
 export async function bookShipment(
-  _prev: { error?: string; success?: boolean; trackingNumber?: string } | null,
+  _prev: { error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean } | null,
   formData: FormData
-): Promise<{ error?: string; success?: boolean; trackingNumber?: string }> {
+): Promise<{ error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean }> {
   const session = await assertOrders();
 
   const order_id = formData.get('order_id');
@@ -162,9 +217,14 @@ export async function bookShipment(
     diff: { courier, order_id, tracking_number: result.trackingNumber },
   });
 
+  const shipped = await markOrderShipped(session, order_id, {
+    tracking_number: result.trackingNumber,
+    courier,
+  });
+
   revalidatePath(`/admin/orders/${order_id}`);
   revalidatePath('/admin/orders');
-  return { success: true, trackingNumber: result.trackingNumber };
+  return { success: true, trackingNumber: result.trackingNumber, ...shipped };
 }
 
 // ─── Cancel a shipment via courier API ────────────────────────────────────

@@ -13,6 +13,8 @@ import { setOrderCosts, recordPayment, clearPayment, updateOrderNotes } from '@/
 import { deleteOrder } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
+import { AdminFlash } from '@/components/admin/AdminFlash';
+import { OrderStatusBadge, orderStatusColor } from '@/components/admin/OrderStatusBadge';
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
@@ -47,11 +49,13 @@ const fmt = (n: number) => `PKR ${(n === 0 ? 0 : n).toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-const statusColors: Record<string, string> = {
-  pending: '#9a6407', processing: '#1d4ed8', shipped: '#6d28d9', delivered: '#0b7e58', cancelled: '#c43838',
-};
-
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ costs?: string; pay?: string; notes?: string; err?: string }>;
+}) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('orders.view'))) {
     return <NoAccess section="Orders" />;
@@ -62,6 +66,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const canEdit = !session || session.isOwner || session.permissions.includes('orders.edit');
   const canDelete = !session || session.isOwner || session.permissions.includes('orders.delete');
   const { id } = await params;
+
+  // Widget-action feedback: the costs / payment / notes / confirmation forms
+  // on this page are plain server actions that redirect back here with a
+  // result query param (?costs=saved, ?pay=recorded|cleared, ?notes=saved,
+  // ?err=<message>). Surface it as a toast, then strip the param.
+  const sp = (await searchParams) ?? {};
+  let flash: { message: string; type: 'success' | 'error' } | null = null;
+  if (sp.err) flash = { message: sp.err, type: 'error' };
+  else if (sp.costs === 'saved') flash = { message: 'Order costs saved.', type: 'success' };
+  else if (sp.pay === 'recorded') flash = { message: 'Payment recorded.', type: 'success' };
+  else if (sp.pay === 'cleared') flash = { message: 'Payment record cleared.', type: 'success' };
+  else if (sp.notes === 'saved') flash = { message: 'Note saved.', type: 'success' };
+
   const { data: order } = await supabaseAdmin().from('orders').select('*').eq('id', id).single();
   if (!order) notFound();
 

@@ -179,6 +179,9 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
           {bookState?.success && (
             <div role="status" style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, color: '#166534', fontSize: '0.75rem' }}>
               Booked. Tracking: <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{bookState.trackingNumber}</span>
+              {bookState.markedShipped && (
+                <> · Order marked shipped{bookState.emailed ? ' + customer emailed' : ''}.</>
+              )}
             </div>
           )}
         </form>
@@ -221,6 +224,9 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
           {manualState?.success && (
             <div role="status" style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, color: '#166534', fontSize: '0.75rem' }}>
               Tracking saved.
+              {manualState.markedShipped && (
+                <> Order marked shipped{manualState.emailed ? ' + customer emailed' : ''}.</>
+              )}
             </div>
           )}
         </form>
