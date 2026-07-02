@@ -59,6 +59,8 @@ export const TAXONS: readonly Taxon[] = [
       'Heart Health',
       'Digestive & Gut',
       'Cough & Respiratory',
+      'Sleep & Relaxation',
+      'Brain & Cognitive',
       'Kids',
     ],
   },
@@ -243,6 +245,8 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   'Heart Health': 'Omega-3s and cardiovascular supplements that support a healthy, well-functioning heart.',
   'Digestive & Gut': 'Probiotics and digestive supplements for a comfortable, balanced gut.',
   'Cough & Respiratory': 'Syrups and lozenges to soothe coughs and support clear, easy breathing.',
+  'Sleep & Relaxation': 'Melatonin, magnesium and calming herbal supplements to support restful sleep and relaxation.',
+  'Brain & Cognitive': 'Ginkgo, ginseng and nootropic supplements to support focus, memory and everyday mental clarity.',
   'Kids': 'Gentle syrups and supplements made for growing children, easy to take, easy to trust.',
 
   // ── Bundle leaves ──

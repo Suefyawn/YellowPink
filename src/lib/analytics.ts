@@ -37,7 +37,7 @@ export type TrackEvent =
   | { name: 'remove_from_cart';payload: TrackProductPayload }
   | { name: 'view_cart';       payload: TrackCartPayload }
   | { name: 'begin_checkout';  payload: TrackCartPayload }
-  | { name: 'purchase';        payload: TrackCartPayload & { transaction_id: string } }
+  | { name: 'purchase';        payload: TrackCartPayload & { transaction_id: string; coupon?: string } }
   | { name: 'search';          payload: { query: string } }
   | { name: 'select_item';     payload: { product_id: string; product_name: string; query?: string } }
   | { name: 'select_sort';     payload: { sort: string } }
