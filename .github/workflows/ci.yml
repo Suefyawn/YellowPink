@@ -7,6 +7,10 @@ on:
   pull_request:
   push:
     branches: [main]
+  # Manual safety valve — lets a stuck/missed run be started from the API or
+  # the Actions tab (first used 2026-07-02 when GitHub dropped this PR's
+  # pull_request events for two hours).
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
