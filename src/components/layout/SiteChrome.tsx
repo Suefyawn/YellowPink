@@ -28,9 +28,12 @@ interface SiteChromeProps {
    *  inside a client tree without a Suspense boundary. */
   searchTrending: string[];
   searchCategories: string[];
+  /** Published collections (server-resolved) for the footer's Collections
+   *  column. Slim {slug,title} pairs — the footer only needs links. */
+  footerCollections?: { slug: string; title: string }[];
 }
 
-export function SiteChrome({ children, settings, promos, searchTrending, searchCategories }: SiteChromeProps) {
+export function SiteChrome({ children, settings, promos, searchTrending, searchCategories, footerCollections = [] }: SiteChromeProps) {
   const pathname = usePathname();
   if (pathname.startsWith('/admin')) return <>{children}</>;
 
@@ -93,7 +96,7 @@ export function SiteChrome({ children, settings, promos, searchTrending, searchC
         <Header />
       </Suspense>
       {children}
-      <Footer socials={socialLinks(settings)} />
+      <Footer socials={socialLinks(settings)} collections={footerCollections} />
       <MiniCart />
       <SearchOverlay trending={searchTrending} categories={searchCategories} />
       <KeyboardShortcuts />

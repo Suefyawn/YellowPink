@@ -3,7 +3,7 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductBySlug, getProducts, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings } from '@/lib/supabase';
+import { getProductBySlug, getProducts, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings, getPostsLinkingProduct } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
 
 // Pre-render every published product at build so PDPs are served as static CDN
@@ -23,6 +23,7 @@ import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
+import { FromTheBlog } from '@/components/pdp/FromTheBlog';
 import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd, truncateOnWord } from '@/lib/seo';
 import { effectiveProductFaq } from '@/lib/product-faq';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
@@ -261,7 +262,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Surfaced on the review form to actually drive review volume → ★ snippets.
   const reviewPoints = Math.max(0, Number(siteSettings.loyalty_review_points ?? '25') || 0);
 
-  const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts] = await Promise.all([
+  const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts] = await Promise.all([
     isDemo
       ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>> })
       : supabase
@@ -276,6 +277,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     loadFrequentlyBoughtTogether(product.id),
     getProductsByBrand(product.brand, 12),
     getProductsByTaxon(product.category, 12),
+    getPostsLinkingProduct(product.slug),
   ]);
 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>[];
@@ -338,6 +340,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         categoryProducts={categoryProducts}
         excludeIds={[product.id, ...crossSells.map(p => p.id), ...fbt.map(p => p.id)]}
       />
+      <FromTheBlog posts={blogPosts} />
       <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} rewardPoints={reviewPoints} />
       <RecentlyViewed currentProductId={product.id} />
     </main>

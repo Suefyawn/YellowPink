@@ -128,7 +128,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
           ])),
         }}
       />
-      <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} relatedProductsMentioned={mentionedInPost} reviewer={reviewer} />
+      <BlogPostPage post={post} relatedPosts={relatedPosts} relatedProducts={relatedProducts} relatedProductsMentioned={mentionedInPost} reviewer={reviewer} catalogProducts={allProducts} />
     </main>
   );
 }

@@ -88,4 +88,44 @@ describe('linkProductMentions', () => {
     const out = linkProductMentions(html, [kiko]);
     expect(out).not.toContain('blog-product-link');
   });
+
+  describe('catalogue tier', () => {
+    const anua = p('anua-toner', 'Anua', 'Anua Heartleaf 77% Soothing Toner');
+
+    it('links mentions of catalogue products too', () => {
+      const html = '<p>Pair it with the Anua Heartleaf 77% Soothing Toner at night.</p>';
+      const out = linkProductMentions(html, [], [anua]);
+      expect(out).toContain('/product/anua-toner');
+      expect(out).toContain('blog-product-link');
+    });
+
+    it('does not link a bare brand for catalogue products', () => {
+      const html = '<p>Anua makes lovely gentle formulas.</p>';
+      const out = linkProductMentions(html, [], [anua]);
+      expect(out).not.toContain('blog-product-link');
+    });
+
+    it('still links the bare brand for curated related products', () => {
+      const html = '<p>Anua makes lovely gentle formulas.</p>';
+      const out = linkProductMentions(html, [anua], []);
+      expect(out).toContain('/product/anua-toner');
+    });
+
+    it('caps the number of catalogue links per post', () => {
+      const many = Array.from({ length: 10 }, (_, i) =>
+        p(`prod-${i}`, 'BrandCo', `BrandCo Unique Serum Number${i}`));
+      const html = `<p>${many.map(x => `Try BrandCo Unique Serum Number${many.indexOf(x)} today.`).join(' ')}</p>`;
+      const out = linkProductMentions(html, [], many, 3);
+      const matches = out.match(/blog-product-link/g) ?? [];
+      expect(matches.length).toBe(3);
+    });
+
+    it('curated products win over the same product in the catalogue', () => {
+      const html = '<p>CeraVe Hydrating Cleanser twice a day.</p>';
+      const out = linkProductMentions(html, [cerave], [cerave, anua]);
+      const matches = out.match(/<a [^>]+>/g) ?? [];
+      expect(matches.length).toBe(1);
+      expect(out).toContain('/product/cerave-cleanser');
+    });
+  });
 });
