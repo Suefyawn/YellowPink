@@ -1,3 +1,13 @@
+// Client-side Sentry initialisation.
+//
+// This lives in `instrumentation-client.ts` (NOT `sentry.client.config.ts`)
+// on purpose: the project builds with Turbopack (Next 16), and under Turbopack
+// `sentry.client.config.ts` is never loaded — @sentry/nextjs's own build emits
+// a deprecation warning to that effect and Next only auto-aliases
+// `instrumentation-client.ts` (root or src/) as the browser entry point. The
+// old file meant the browser SDK never initialised, so Sentry received zero
+// client events. See:
+// https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation-client
 import * as Sentry from '@sentry/nextjs';
 import { scrubEvent } from './src/lib/sentry-scrub';
 
@@ -41,3 +51,7 @@ if (typeof window !== 'undefined') {
     setTimeout(start, 1000);
   }
 }
+
+// App Router navigation instrumentation (Next 15+/16). Without this the SDK
+// warns that it can't capture client-side route transitions.
+export const onRouterTransitionStart = Sentry.captureRouterTransitionStart;
