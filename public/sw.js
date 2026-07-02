@@ -9,7 +9,7 @@
 // No background sync / push for now — opt in via a follow-up commit.
 // ============================================================================
 
-const VERSION = 'yp-v1';
+const VERSION = 'yp-v2';
 const HTML_CACHE   = `${VERSION}-html`;
 const ASSET_CACHE  = `${VERSION}-assets`;
 const IMAGE_CACHE  = `${VERSION}-images`;
@@ -37,24 +37,35 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET') return;
 
   const url = new URL(req.url);
+  const sameOrigin = url.origin === self.location.origin;
+  // Our public product images live on Supabase Storage (a different origin);
+  // that's the one cross-origin host we deliberately cache.
+  const isStorageImage = url.pathname.includes('/storage/v1/object/public/images/');
+
+  // Never intercept OTHER cross-origin requests. Matching third-party assets
+  // by path/extension made the SW re-issue them via fetch() from its own
+  // context — which (a) tripped connect-src CSP for things like a browser
+  // extension's Google Font (fonts.gstatic.com Figtree woff2) and (b) cached
+  // junk we don't own. Let the browser handle cross-origin normally.
+  if (!sameOrigin && !isStorageImage) return;
 
   // Never cache auth-sensitive / mutating endpoints.
   if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) return;
 
-  // Static assets — cache-first (long-lived hashes).
-  if (url.pathname.startsWith('/_next/static') || /\.(css|js|woff2?)$/.test(url.pathname)) {
+  // Static assets (same-origin only) — cache-first (long-lived hashes).
+  if (sameOrigin && (url.pathname.startsWith('/_next/static') || /\.(css|js|woff2?)$/.test(url.pathname))) {
     event.respondWith(cacheFirst(req, ASSET_CACHE));
     return;
   }
 
-  // Product images — stale-while-revalidate from Supabase Storage.
-  if (url.pathname.includes('/storage/v1/object/public/images/') || /\.(png|jpg|jpeg|webp|avif|svg)$/.test(url.pathname)) {
+  // Product images — stale-while-revalidate (Supabase Storage or same-origin).
+  if (isStorageImage || (sameOrigin && /\.(png|jpg|jpeg|webp|avif|svg)$/.test(url.pathname))) {
     event.respondWith(staleWhileRevalidate(req, IMAGE_CACHE));
     return;
   }
 
   // HTML — network-first, fall back to cached or the offline shell.
-  if (req.headers.get('accept')?.includes('text/html')) {
+  if (sameOrigin && req.headers.get('accept')?.includes('text/html')) {
     event.respondWith(networkFirst(req, HTML_CACHE));
     return;
   }
