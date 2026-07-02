@@ -56,7 +56,7 @@ export default async function VendorsPage({
   // fixed, so every pending row for a vendor is owed in the same direction.
   const pendingByVendor = new Map<string, number>();
   for (const s of settlements) {
-    if (s.status !== 'pending') continue;
+    if (s.status !== 'pending' || !s.vendor_id) continue;
     pendingByVendor.set(s.vendor_id, (pendingByVendor.get(s.vendor_id) ?? 0) + Number(s.amount_due));
   }
 
@@ -211,7 +211,7 @@ export default async function VendorsPage({
             </thead>
             <tbody>
               {[...pending, ...settled].map((s, i) => {
-                const vendor = vendorMap.get(s.vendor_id);
+                const vendor = s.vendor_id ? vendorMap.get(s.vendor_id) : undefined;
                 const owedToUs = s.due_to === 'us';
                 return (
                   <tr key={s.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
@@ -220,7 +220,10 @@ export default async function VendorsPage({
                         {orderMap.get(s.order_id) ?? s.order_id.slice(0, 8)}
                       </Link>
                     </td>
-                    <td data-label="Vendor" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#111827' }}>{vendor?.name ?? '—'}</td>
+                    <td data-label="Vendor" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#111827' }}>
+                      {vendor?.name ?? s.vendor_name ?? '—'}
+                      {!vendor && s.vendor_name && <span style={{ display: 'block', fontSize: '0.6875rem', color: '#9ca3af' }}>(deleted)</span>}
+                    </td>
                     <td data-label="Gross" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>{fmt(s.gross_amount)}</td>
                     <td data-label="Our margin" style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#16a34a' }}>{fmt(s.our_margin)}</td>
                     <td data-label="To settle" style={{ padding: '12px 16px', fontSize: '0.875rem' }}>

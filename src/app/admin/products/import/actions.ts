@@ -1,9 +1,10 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
+import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { productInputSchema } from '@/lib/validators';
 
 type CsvRow = Record<string, string>;
@@ -43,14 +44,38 @@ function parseCsv(text: string): CsvRow[] {
   });
 }
 
+/** First finite number among the given raw cells, treating empty/blank as
+ *  absent. `Number('')` is 0, so a plain `?? Number(...)` chain turns an empty
+ *  'Sale price' column into a free product — this skips blanks instead. */
+function num(...cells: (string | undefined)[]): number | null {
+  for (const c of cells) {
+    if (c == null) continue;
+    const t = c.trim();
+    if (t === '') continue;
+    const n = Number(t);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
 function normaliseRow(r: CsvRow): Record<string, unknown> | null {
   const brand   = r.brand || r.Brand || r['Brand Name'];
   const name    = r.name  || r.Name  || r['Product Name'];
-  const price   = Number(r.price ?? r.Price ?? r['Sale price'] ?? r['Regular price']);
   const slug    = r.slug || r.Slug || toSlug(`${brand ?? ''} ${name ?? ''}`);
   const category = r.category || r.Category || r.Categories || 'Uncategorized';
 
-  if (!brand || !name || !isFinite(price)) return null;
+  // Price: an explicit `price`, else a genuine WooCommerce 'Sale price', else
+  // the 'Regular price'. An EMPTY 'Sale price' (the export shape for a product
+  // that is NOT on sale) must fall through to the regular price, never 0.
+  const salePrice = num(r['Sale price']);
+  const regularPrice = num(r['Regular price']);
+  const price = num(r.price, r.Price) ?? salePrice ?? regularPrice;
+  // When a real sale price sits below the regular price, keep the regular
+  // price as the struck-through original so the sale badge renders.
+  const original = num(r.original_price)
+    ?? (salePrice != null && regularPrice != null && regularPrice > salePrice ? regularPrice : null);
+
+  if (!brand || !name || price == null) return null;
 
   return {
     brand: brand.trim(),
@@ -60,7 +85,7 @@ function normaliseRow(r: CsvRow): Record<string, unknown> | null {
     subcategory: r.subcategory || null,
     tag: r.tag || null,
     price,
-    original_price: r.original_price ? Number(r.original_price) : null,
+    original_price: original,
     stock: r.stock ? Number(r.stock) : 0,
     image_url: r.image_url || r['Images']?.split(',')[0]?.trim() || null,
     description: r.description || r.Description || null,
@@ -102,7 +127,10 @@ export async function importProductsFromCsv(csvText: string): Promise<ImportResu
   let imported = 0;
   for (let i = 0; i < valid.length; i += 50) {
     const batch = valid.slice(i, i + 50);
-    const { error } = await supabase.from('products').upsert(batch, { onConflict: 'slug' });
+    // Service role: `products` has no anon insert/update policy, so the anon
+    // client's upsert was silently blocked by RLS and imported nothing. The
+    // staff-permission gate above authorises this write.
+    const { error } = await supabaseAdmin().from('products').upsert(batch, { onConflict: 'slug' });
     if (error) {
       errors.push(`batch ${Math.floor(i / 50)}: ${error.message}`);
     } else {
@@ -117,5 +145,6 @@ export async function importProductsFromCsv(csvText: string): Promise<ImportResu
   });
 
   revalidatePath('/admin/products');
+  if (imported > 0) revalidateStorefrontCatalog();
   return { parsed: rows.length, imported, skipped: rows.length - valid.length, errors: errors.slice(0, 20) };
 }

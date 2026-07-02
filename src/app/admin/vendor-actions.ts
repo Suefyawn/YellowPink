@@ -84,10 +84,11 @@ export async function deleteVendor(formData: FormData) {
   const { error } = await supabaseAdmin().from('vendors').delete().eq('id', id);
   if (error) {
     log.error('vendor.delete_failed', { id, error: error.message });
-    // FK from vendor_settlements / products is the realistic failure here.
-    if ((error as { code?: string }).code === '23503') {
-      bounceVendors(`Cannot delete "${target?.name ?? 'vendor'}", it still has linked orders, products or settlements.`);
-    }
+    // Every FK into vendors is ON DELETE SET NULL now (orders.vendor_id,
+    // products.vendor_id and — since migration 304 — vendor_settlements.
+    // vendor_id, which keeps the payout history detached rather than
+    // cascade-deleting it). So a 23503 FK violation is no longer reachable;
+    // surface whatever real error the DB returns.
     bounceVendors(`Could not delete vendor: ${error.message}`);
   }
   void logAudit(session, {
@@ -124,7 +125,7 @@ async function recomputeSettlement(orderId: string, vendorId: string) {
   const admin = supabaseAdmin();
   const [{ data: order }, { data: vendor }] = await Promise.all([
     admin.from('orders').select('items').eq('id', orderId).single(),
-    admin.from('vendors').select('commission_pct, settlement_direction').eq('id', vendorId).single(),
+    admin.from('vendors').select('name, commission_pct, settlement_direction').eq('id', vendorId).single(),
   ]);
   if (!order || !vendor) return;
 
@@ -171,6 +172,9 @@ async function recomputeSettlement(orderId: string, vendorId: string) {
   await admin.from('vendor_settlements').upsert({
     order_id: orderId,
     vendor_id: vendorId,
+    // Snapshot the vendor name so the payout row still reads sensibly if the
+    // vendor is later deleted (the FK then sets vendor_id null, migration 304).
+    vendor_name: (vendor as { name?: string }).name ?? null,
     gross_amount: gross,
     vendor_cost: cost,
     our_margin: margin,

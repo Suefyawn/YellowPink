@@ -310,7 +310,12 @@ export interface Vendor {
 export interface VendorSettlement {
   id: string;
   order_id: string;
-  vendor_id: string;
+  /** Null once the vendor has been deleted (FK is ON DELETE SET NULL); read
+   *  `vendor_name` for the display name in that case. */
+  vendor_id: string | null;
+  /** Snapshot of the vendor's name at settlement time, kept so the payout row
+   *  still reads sensibly after the vendor is deleted. */
+  vendor_name?: string | null;
   gross_amount: number;
   vendor_cost: number;
   our_margin: number;
