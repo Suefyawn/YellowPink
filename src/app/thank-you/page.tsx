@@ -9,6 +9,7 @@ import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
 import { ThankYouPurchase } from './ThankYouPurchase';
+import { ThankYouAccountOffer } from './ThankYouAccountOffer';
 import type { BankAccount } from '@/types';
 
 // Order-confirmation page should never be indexed, leaks order_number
@@ -39,6 +40,8 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
     discount_amount: number | null;
     total: number | null;
     coupon_code: string | null;
+    email: string | null;
+    user_id: string | null;
   };
   let bankAccounts: BankAccount[] = [];
   let bankNotes = '';
@@ -46,7 +49,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   if (order) {
     const { data: row } = await supabaseAdmin()
       .from('orders')
-      .select('pay_method, items, subtotal, shipping, discount_amount, total, coupon_code')
+      .select('pay_method, items, subtotal, shipping, discount_amount, total, coupon_code, email, user_id')
       .eq('order_number', order)
       .maybeSingle();
     summary = (row as OrderRow | null) ?? null;
@@ -179,6 +182,15 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             <Link href="/shop" className="btn-primary">Continue Shopping</Link>
             <Link href="/" className="btn-secondary">Back to Home</Link>
           </div>
+
+          {/* Post-purchase account offer (industry-standard "save your info
+              for next time" moment). Server-side gate: only for orders that
+              were genuinely placed as guest (no user_id) and carry an email.
+              The client component additionally hides itself if a session is
+              present in the browser. */}
+          {summary && !summary.user_id && summary.email && (
+            <ThankYouAccountOffer email={summary.email} />
+          )}
 
           {/* Post-purchase opt-in, soft ask after a successful order. The
               checkout itself doesn't ship the email to the newsletter list
