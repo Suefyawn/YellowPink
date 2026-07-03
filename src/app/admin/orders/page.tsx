@@ -27,15 +27,26 @@ export default async function OrdersPage({
   return <OrdersPageInner searchParams={searchParams} />;
 }
 
+// Whitelisted sortable columns for the ?sort= param — anything else falls
+// back to newest-first. Keys are what the column headers put in the URL.
+const SORT_COLUMNS: Record<string, string> = {
+  number: 'order_number',
+  date: 'created_at',
+  customer: 'first_name',
+  total: 'total',
+};
+
 async function OrdersPageInner({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string; deleted?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string; deleted?: string; sort?: string; dir?: string }>;
 }) {
-  const { status, q, page: pageParam, range, deleted } = await searchParams;
+  const { status, q, page: pageParam, range, deleted, sort, dir } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
+  const sortColumn = SORT_COLUMNS[sort ?? ''] ?? 'created_at';
+  const ascending = dir === 'asc';
 
   // Map the friendly `range` chip into a created_at lower bound. "Today" is the
   // current PKT calendar day; 7d/30d/90d are rolling windows. Shared with the
@@ -48,7 +59,11 @@ async function OrdersPageInner({
   // service-role client. The anon path returned 0 rows silently.
   const admin = supabaseAdmin();
   let countQuery = admin.from('orders').select('*', { count: 'exact', head: true });
-  let dataQuery = admin.from('orders').select('*').order('created_at', { ascending: false }).range(from, to);
+  // Header-driven sort; created_at desc as tie-breaker so equal values keep
+  // a stable, recency-first order.
+  let dataQuery = admin.from('orders').select('*').order(sortColumn, { ascending });
+  if (sortColumn !== 'created_at') dataQuery = dataQuery.order('created_at', { ascending: false });
+  dataQuery = dataQuery.range(from, to);
 
   // Composite saved views (Shopify-style tabs) on top of the single-status
   // filter: 'tofulfil' = still ours to action; 'unpaid' = live orders whose
@@ -108,7 +123,10 @@ async function OrdersPageInner({
       </Suspense>
 
       <div className="adm-table-scroll" style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        <OrdersTable orders={list} />
+        {/* Suspense: OrdersTable reads useSearchParams for the sort headers. */}
+        <Suspense fallback={null}>
+          <OrdersTable orders={list} />
+        </Suspense>
       </div>
 
       <Suspense fallback={null}>

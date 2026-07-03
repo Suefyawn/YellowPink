@@ -10,6 +10,7 @@ import {
 } from '@/app/admin/bulk-product-actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { DotChip } from '@/components/admin/OrderChips';
+import { SortHeader } from '@/components/admin/SortHeader';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useToast } from '@/components/admin/Toast';
 import type { Product } from '@/types';
@@ -83,6 +84,14 @@ export function ProductsTable({ products }: { products: Product[] }) {
     if (key === 'newest') next.delete('sort'); else next.set('sort', key);
     next.delete('page');
     startTransition(() => router.push(`/admin/products?${next.toString()}`));
+  };
+
+  // Column-header sort control: first click sorts descending (or A→Z for
+  // name), second flips, third clears back to newest-first.
+  const sortHeader = (label: string, ascKey: string, descKey: string) => {
+    const dir = sort === ascKey ? 'asc' as const : sort === descKey ? 'desc' as const : null;
+    const next = dir === 'desc' ? ascKey : dir === 'asc' ? 'newest' : descKey;
+    return <SortHeader label={label} dir={dir} onClick={() => setSort(next)} />;
   };
 
   const allSelected = products.length > 0 && selected.size === products.length;
@@ -190,9 +199,9 @@ export function ProductsTable({ products }: { products: Product[] }) {
                     <input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="Select all products" />
                   </th>
                   <th scope="col" style={{ ...thBase, width: 56, position: 'sticky', top: 0, background: '#f9fafb', zIndex: 2 }} />
-                  <th scope="col" style={{ ...thSticky }}><SortHeader label="Brand / Name" asc="name" desc="name" sort={sort} onSort={setSort} /></th>
-                  <th scope="col" style={{ ...thSticky }}><SortHeader label="Price" asc="price_low" desc="price_high" sort={sort} onSort={setSort} /></th>
-                  <th scope="col" style={{ ...thSticky }}><SortHeader label="Stock" asc="stock_low" desc="stock_high" sort={sort} onSort={setSort} /></th>
+                  <th scope="col" style={{ ...thSticky }}>{sortHeader('Brand / Name', 'name', 'name')}</th>
+                  <th scope="col" style={{ ...thSticky }}>{sortHeader('Price', 'price_low', 'price_high')}</th>
+                  <th scope="col" style={{ ...thSticky }}>{sortHeader('Stock', 'stock_low', 'stock_high')}</th>
                   <th scope="col" style={{ ...thSticky }}>Status</th>
                   <th scope="col" style={{ ...thSticky }}>Category</th>
                   <th scope="col" style={{ ...thSticky }}>Tag</th>
@@ -206,9 +215,11 @@ export function ProductsTable({ products }: { products: Product[] }) {
                   const editingPrice = edit?.id === p.id && edit.field === 'price';
                   const editingStock = edit?.id === p.id && edit.field === 'stock';
                   return (
-                    <tr key={p.id} className="adm-row" style={{
+                    <tr key={p.id} className="adm-row adm-hover-row" style={{
                       borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
-                      background: checked ? '#fdf2f8' : outOfStock ? '#fef2f2' : lowStock ? '#fffbeb' : 'transparent',
+                      // Undefined (not 'transparent') for plain rows so the
+                      // CSS hover tint can apply — inline styles beat :hover.
+                      background: checked ? '#fdf2f8' : outOfStock ? '#fef2f2' : lowStock ? '#fffbeb' : undefined,
                     }}>
                       <td style={{ padding: '12px' }}>
                         <input type="checkbox" checked={checked} onChange={() => toggle(p.id)} aria-label={`Select ${p.name}`} />
@@ -351,29 +362,6 @@ export function ProductsTable({ products }: { products: Product[] }) {
 }
 
 // Sortable column header, clicking cycles desc → asc → off (newest).
-function SortHeader({ label, asc, desc, align = 'left', sort, onSort }: {
-  label: string; asc: string; desc: string; align?: 'left' | 'right'; sort: string; onSort: (k: string) => void;
-}) {
-  const active = sort === asc || sort === desc;
-  const arrow = sort === asc ? '▲' : sort === desc ? '▼' : '↕';
-  const nextKey = sort === desc ? asc : desc;
-  return (
-    <button
-      type="button"
-      onClick={() => onSort(active && sort === desc ? asc : active && sort === asc ? 'newest' : nextKey)}
-      style={{
-        display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none',
-        cursor: 'pointer', padding: 0, font: 'inherit', textTransform: 'uppercase', letterSpacing: '0.05em',
-        fontSize: '0.75rem', fontWeight: 600, color: active ? '#111827' : '#6b7280',
-        flexDirection: align === 'right' ? 'row-reverse' : 'row',
-      }}
-    >
-      {label}
-      <span style={{ fontSize: '0.625rem', opacity: active ? 1 : 0.4 }}>{arrow}</span>
-    </button>
-  );
-}
-
 const thBase: React.CSSProperties = { padding: '11px 12px', textAlign: 'left' };
 const thSticky: React.CSSProperties = {
   padding: '11px 16px', textAlign: 'left', position: 'sticky', top: 0, background: '#f9fafb', zIndex: 2,

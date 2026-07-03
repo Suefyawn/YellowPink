@@ -2,10 +2,12 @@
 
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { bulkUpdateOrderStatus } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
 import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 import { paymentState, fulfilmentState, DotChip, itemCount } from '@/components/admin/OrderChips';
+import { SortHeader } from '@/components/admin/SortHeader';
 import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import type { Order, OrderStatus } from '@/types';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
@@ -79,6 +81,28 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const toast = useToast();
+  const router = useRouter();
+  const params = useSearchParams();
+
+  // ── Column sorting (server-side; resolved in admin/orders/page.tsx) ──
+  // No ?sort param means the default newest-first, which the Date column
+  // shows as its active descending state. Click cycle per column:
+  // descending → ascending → back to the default.
+  const rawSort = params.get('sort');
+  const sortKey = rawSort ?? 'date';
+  const sortDir: 'asc' | 'desc' = rawSort ? (params.get('dir') === 'asc' ? 'asc' : 'desc') : 'desc';
+  const applySort = (key: string, dir: 'asc' | 'desc' | null) => {
+    const next = new URLSearchParams(params.toString());
+    if (dir === null || (key === 'date' && dir === 'desc')) { next.delete('sort'); next.delete('dir'); }
+    else { next.set('sort', key); next.set('dir', dir); }
+    next.delete('page');
+    startTransition(() => router.push(`/admin/orders?${next.toString()}`));
+  };
+  const sortHeader = (label: string, key: string) => {
+    const dir = sortKey === key ? sortDir : null;
+    const nextDir: 'asc' | 'desc' | null = dir === null ? 'desc' : dir === 'desc' ? 'asc' : null;
+    return <SortHeader label={label} dir={dir} onClick={() => applySort(key, nextDir)} />;
+  };
 
   const toggle = (id: string) => setSelected(prev => {
     const next = new Set(prev);
@@ -147,8 +171,15 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                 style={{ cursor: 'pointer', accentColor: '#C5286A' }}
               />
             </th>
-            {['Order #', 'Date', 'Customer', 'Total', 'Payment', 'Fulfilment', 'Items'].map(h => (
-              <th scope="col" key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
+            {([
+              ['Order #', 'number'], ['Date', 'date'], ['Customer', 'customer'], ['Total', 'total'],
+              ['Payment', null], ['Fulfilment', null], ['Items', null],
+            ] as [string, string | null][]).map(([h, key]) => (
+              <th scope="col" key={h}
+                aria-sort={key && sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
+                style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>
+                {key ? sortHeader(h, key) : h}
+              </th>
             ))}
           </tr>
         </thead>
@@ -157,7 +188,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
             const st = o.status ?? 'pending';
             const isSelected = selected.has(o.id!);
             return (
-              <tr key={o.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', background: isSelected ? '#fdf2f8' : 'transparent' }}>
+              <tr key={o.id} className="adm-hover-row" style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', ...(isSelected ? { background: '#fdf2f8' } : {}) }}>
                 <td style={{ padding: '12px 12px', textAlign: 'center' }}>
                   <input
                     type="checkbox"
@@ -201,6 +232,26 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
       {/* ── Mobile: swipe cards. Swipe a card left to reveal quick status
            actions; the card itself still links to the order detail. ── */}
       <div className="adm-orders-cards">
+        {/* Cards have no column headers, so sorting gets a compact select. */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '10px 12px 2px' }}>
+          <select
+            aria-label="Sort orders"
+            value={`${sortKey}:${sortDir}`}
+            onChange={e => {
+              const [key, dir] = e.target.value.split(':') as [string, 'asc' | 'desc'];
+              applySort(key, dir);
+            }}
+            style={{ padding: '6px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.8125rem', background: 'white', color: '#374151' }}
+          >
+            <option value="date:desc">Newest first</option>
+            <option value="date:asc">Oldest first</option>
+            <option value="total:desc">Total: high → low</option>
+            <option value="total:asc">Total: low → high</option>
+            <option value="customer:asc">Customer A → Z</option>
+            <option value="number:desc">Order # Z → A</option>
+            <option value="number:asc">Order # A → Z</option>
+          </select>
+        </div>
         {orders.map(o => {
           const st = o.status ?? 'pending';
           const isSelected = selected.has(o.id!);

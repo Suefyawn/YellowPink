@@ -102,6 +102,11 @@ export function AdminShell({
          * stack is hidden. The @media block below flips this for phones. */
         .adm-products-cards { display: none; }
 
+        /* Row hover for the sortable admin tables. Rows with a state tint
+         * (selected / low stock) set an inline background and win over this. */
+        .adm-hover-row { transition: background 0.12s; }
+        .adm-hover-row:hover { background: #fafafa; }
+
         /* ─ Responsive table → card-stack utility ─
          * Put .adm-table-cards on a <table>, add data-label="…" on each <td>,
          * and below 768 px the table reflows into one stacked card per row
