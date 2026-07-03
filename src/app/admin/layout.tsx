@@ -31,7 +31,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   // client returns 0 rows. The badge count and notification feed need
   // the service role.
   const admin = supabaseAdmin();
-  const [{ count: pendingOrderCount }, { count: unreadMessageCount }, { data: rawNotifications }] = await Promise.all([
+  const [
+    { count: pendingOrderCount },
+    { count: unreadMessageCount },
+    { count: pendingReturnCount },
+    { count: pendingReviewCount },
+    { data: rawNotifications },
+  ] = await Promise.all([
     // Orders still needing fulfilment, pending OR processing. Matches the
     // Dashboard's "Orders to fulfill" KPI so the two numbers agree.
     admin
@@ -43,6 +49,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       .from('contact_messages')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'new'),
+    // Return requests awaiting a decision (same filter as the Dashboard's
+    // "Needs attention" card) and reviews awaiting moderation — both get
+    // sidebar badges so morning triage doesn't require opening each page.
+    admin
+      .from('return_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending'),
+    admin
+      .from('product_reviews')
+      .select('id', { count: 'exact', head: true })
+      .eq('approved', false),
     admin
       .from('admin_notifications')
       .select('id, kind, title, body, link, read, created_at')
@@ -70,6 +87,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         session={session}
         pendingOrderCount={pendingOrderCount ?? 0}
         unreadMessageCount={unreadMessageCount ?? 0}
+        pendingReturnCount={pendingReturnCount ?? 0}
+        pendingReviewCount={pendingReviewCount ?? 0}
         notifications={notifications}
       >
         {children}

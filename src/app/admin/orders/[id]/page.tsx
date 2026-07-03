@@ -410,242 +410,15 @@ export default async function OrderDetailPage({
         </div>
       </div>
 
-      {/* Confirmation & vendor dispatch, edit-gated */}
-      {canEdit && (
-      <div style={{ ...section, marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Confirmation &amp; vendor</h2>
-        <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
-          Confirm the order with the customer on WhatsApp (button at the top), mark it confirmed here, then forward it to a vendor.
-        </p>
-        <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-          {/* Customer confirmation */}
-          <div>
-            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Customer confirmation</div>
-            {o.confirmed_at ? (
-              <div>
-                <span style={{
-                  display: 'inline-block', padding: '4px 10px', borderRadius: 6,
-                  background: '#f0fdf4', color: '#16a34a', fontSize: '0.8125rem', fontWeight: 600,
-                }}>
-                  ✓ Confirmed {fmtDate(o.confirmed_at)}
-                </span>
-                <form action={setOrderConfirmed.bind(null, o.id!, false)} style={{ marginTop: 8 }}>
-                  <button type="submit" style={{
-                    padding: '6px 12px', background: 'transparent', border: '1px solid #d1d5db',
-                    borderRadius: 6, color: '#6b7280', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                  }}>
-                    Mark unconfirmed
-                  </button>
-                </form>
-              </div>
-            ) : (
-              <form action={setOrderConfirmed.bind(null, o.id!, true)}>
-                <button type="submit" style={{
-                  padding: '9px 16px', background: '#C5286A', color: 'white', border: 'none',
-                  borderRadius: 7, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-                }}>
-                  Mark customer-confirmed
-                </button>
-              </form>
-            )}
-          </div>
-          {/* Vendor dispatch */}
-          <VendorDispatch
-            orderId={o.id!}
-            vendors={vendors}
-            currentVendorId={o.vendor_id ?? null}
-            vendorSentAt={o.vendor_sent_at ?? null}
-            message={vendorMessage}
-            suggestedVendorId={suggestedVendorId}
-            suggestedItemCount={suggestedItemCount}
-            itemCount={orderItems.length}
-          />
-        </div>
-        {settlementRow && (
-          <div style={{
-            marginTop: 16, padding: '12px 14px', borderRadius: 8,
-            background: '#f9fafb', border: '1px solid #e5e7eb',
-            display: 'flex', flexWrap: 'wrap', gap: 20, fontSize: '0.8125rem',
-          }}>
-            <div>
-              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Vendor cost</div>
-              <div style={{ fontWeight: 600, color: '#111827' }}>PKR {Math.round(settlementRow.vendor_cost).toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Our margin</div>
-              <div style={{ fontWeight: 700, color: '#16a34a' }}>PKR {Math.round(settlementRow.our_margin).toLocaleString()}</div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>
-                {settlementRow.due_to === 'us' ? 'Vendor pays you' : 'You pay vendor'}
-              </div>
-              <div style={{ fontWeight: 700, color: settlementRow.due_to === 'us' ? '#16a34a' : '#dc2626' }}>
-                PKR {Math.round(settlementRow.amount_due).toLocaleString()}
-                <span style={{ fontWeight: 600, color: '#9ca3af', marginLeft: 6 }}>
-                  · {settlementRow.status === 'settled' ? 'settled' : 'pending'}
-                </span>
-              </div>
-            </div>
-            <div style={{ alignSelf: 'center', marginLeft: 'auto' }}>
-              <Link href="/admin/vendors" style={{ color: '#C5286A', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600 }}>
-                Manage payouts →
-              </Link>
-            </div>
-          </div>
-        )}
-      </div>
-      )}
+      {/* ── Top zone (2026-07 audit §3.7): what the order IS on the left
+          (customer, address, items, fulfilment steps), how to ACT on it in
+          the right rail (status control, payment) — so the status changer
+          sits next to the status badge it affects instead of ~4,800px below
+          it. Collapses to one column below 768px (adm-analytics-grid). ── */}
+      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', gap: 20, alignItems: 'start', marginBottom: 20 }}>
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      {/* Order costs, what we paid to fulfil this order; feeds the Finance P&L. */}
-      {canEdit && (
-        <div style={{ ...section, marginBottom: 20 }}>
-          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order costs</h2>
-          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
-            Courier charge, payment-gateway fee, and the actual goods (acquisition) cost for this order. These feed the Finance profit &amp; loss. The acquisition cost overrides the estimated cost of goods for this order, useful for drop-ship, where the supplier price varies; leave it blank to use the product&apos;s default cost.
-          </p>
-          <form action={setOrderCosts.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Acquisition cost / COGS (PKR)<br />
-              <input type="number" name="acquisition_cost" min="0" step="any"
-                defaultValue={ordAcq ?? ''}
-                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
-              <span style={{ display: 'block', marginTop: 4, fontSize: '0.6875rem', color: ordAcq == null ? '#b45309' : '#9ca3af', maxWidth: 220 }}>
-                {acqProvenance}
-              </span>
-            </label>
-            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Delivery cost (PKR)<br />
-              <input type="number" name="delivery_cost" min="0" step="1" defaultValue={o.delivery_cost ?? ''}
-                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
-            </label>
-            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Payment fee (PKR)<br />
-              <input type="number" name="payment_fee" min="0" step="1" defaultValue={o.payment_fee ?? ''}
-                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
-            </label>
-            <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save costs</button>
-          </form>
-          {o.vendor_id && (
-            <form action={recalcAcquisitionCost.bind(null, o.id!)} style={{ marginTop: 12 }}>
-              <button type="submit" style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '7px 14px', background: 'white', color: '#374151',
-                border: '1px solid #d1d5db', borderRadius: 8,
-                fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-              }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-                  <polyline points="21 3 21 9 15 9" />
-                </svg>
-                Recalculate from vendor rate
-              </button>
-            </form>
-          )}
-        </div>
-      )}
-
-      {/* Order profit, gross amount less the costs recorded for this order. */}
-      <div style={{ ...section, marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order profit</h2>
-        <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
-          Based on the costs recorded for this order (vendor settlement, delivery, payment fee). Shared overheads like ads and salaries are accounted for in the Finance profit &amp; loss.
-        </p>
-        <table style={{ width: '100%', maxWidth: 360, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-          <tbody>
-            {profitLines.map((l, i) => (
-              <tr key={i} style={{ borderTop: l.kind === 'net' ? '1px solid #e5e7eb' : 'none' }}>
-                <td style={{ padding: '7px 0', color: l.kind === 'net' ? '#111827' : '#374151', fontWeight: l.kind === 'net' ? 700 : 400 }}>{l.label}</td>
-                <td style={{ padding: '7px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: l.kind === 'net' ? 700 : 400, color: l.kind === 'net' ? (ordNet >= 0 ? '#15803d' : '#dc2626') : l.value < 0 ? '#b91c1c' : '#111827' }}>
-                  {l.value < 0 ? `(${fmt(-l.value)})` : fmt(l.value)}
-                </td>
-              </tr>
-            ))}
-            <tr>
-              <td style={{ padding: '7px 0', color: '#6b7280' }}>Margin</td>
-              <td style={{ padding: '7px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{ordMargin.toFixed(1)}%</td>
-            </tr>
-          </tbody>
-        </table>
-        <p style={{ margin: '10px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
-          COGS: {ordAcq != null ? acqProvenance : 'estimated from the vendor settlement + product cost prices.'}
-        </p>
-      </div>
-
-      {/* Payment received, manual reconciliation: which configured account the
-          money landed in, when, and who confirmed it. Feeds Finance → Revenue
-          by account. Reconciliation only; doesn't change the order status. */}
-      <div style={{ ...section, marginBottom: 20 }}>
-        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Payment received</h2>
-        <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
-          Record which account this order&apos;s payment landed in. Accounts come from Settings → Payments. This is for reconciliation only and doesn&apos;t change the order status.
-        </p>
-        {o.payment_received_at ? (
-          <>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, fontSize: '0.8125rem', marginBottom: canEdit ? 14 : 0 }}>
-              <div>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Account</div>
-                <div style={{ fontWeight: 600, color: '#111827' }}>{o.payment_account ?? '—'}</div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Received</div>
-                <div style={{ fontWeight: 600, color: '#15803d' }}>{fmtDate(o.payment_received_at)}</div>
-              </div>
-              {o.payment_received_by && (
-                <div>
-                  <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>By</div>
-                  <div style={{ color: '#374151' }}>{o.payment_received_by}</div>
-                </div>
-              )}
-            </div>
-            {canEdit && (
-              <form action={clearPayment.bind(null, o.id!)}>
-                <button type="submit" style={{ padding: '8px 14px', background: 'white', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
-                  Clear / re-record
-                </button>
-              </form>
-            )}
-          </>
-        ) : canEdit ? (
-          <form action={recordPayment.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Account<br />
-              <select name="payment_account" defaultValue={o.pay_method === 'cod' ? 'Cash on delivery' : (payAccountOptions[1] ?? 'Cash on delivery')}
-                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', background: 'white', minWidth: 180 }}>
-                {payAccountOptions.map(a => <option key={a} value={a}>{a}</option>)}
-              </select>
-            </label>
-            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Received on<br />
-              <input type="date" name="received_on" defaultValue={new Date().toISOString().slice(0, 10)}
-                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem' }} />
-            </label>
-            <button type="submit" style={{ padding: '9px 18px', background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Mark received</button>
-          </form>
-        ) : (
-          <p style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Not yet recorded.</p>
-        )}
-      </div>
-
-      {/* Internal notes, freeform staff note, admin-only. Distinct from the
-          order timeline (which records status-change reasons). */}
-      {canEdit && (
-        <div style={{ ...section, marginBottom: 20 }}>
-          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Internal notes</h2>
-          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
-            A private note for your team (e.g. delivery preferences, call attempts). Never shown to the customer.
-          </p>
-          <form action={updateOrderNotes.bind(null, o.id!)}>
-            <textarea
-              name="notes"
-              defaultValue={o.notes ?? ''}
-              rows={3}
-              maxLength={4000}
-              placeholder="Add a note about this order…"
-              style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
-            />
-            <div style={{ marginTop: 10 }}>
-              <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save note</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
         {/* Customer */}
         <div style={section}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 16, gap: 12 }}>
@@ -734,7 +507,7 @@ export default async function OrderDetailPage({
       </div>
 
       {/* Order Items */}
-      <div style={{ ...section, marginBottom: 20 }}>
+      <div style={section}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order items</h2>
         <div className="adm-table-scroll">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -761,10 +534,96 @@ export default async function OrderDetailPage({
         </div>
       </div>
 
-      {/* Shipment booking, edit-gated. Sits above the status update because
-          most merchant workflows book a courier first, then mark shipped. */}
+      {/* Confirmation & vendor dispatch, edit-gated */}
       {canEdit && (
-      <div style={{ ...section, marginTop: 12 }}>
+      <div style={section}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Confirmation &amp; vendor</h2>
+        <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Confirm the order with the customer on WhatsApp (button at the top), mark it confirmed here, then forward it to a vendor.
+        </p>
+        <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+          {/* Customer confirmation */}
+          <div>
+            <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Customer confirmation</div>
+            {o.confirmed_at ? (
+              <div>
+                <span style={{
+                  display: 'inline-block', padding: '4px 10px', borderRadius: 6,
+                  background: '#f0fdf4', color: '#16a34a', fontSize: '0.8125rem', fontWeight: 600,
+                }}>
+                  ✓ Confirmed {fmtDate(o.confirmed_at)}
+                </span>
+                <form action={setOrderConfirmed.bind(null, o.id!, false)} style={{ marginTop: 8 }}>
+                  <button type="submit" style={{
+                    padding: '6px 12px', background: 'transparent', border: '1px solid #d1d5db',
+                    borderRadius: 6, color: '#6b7280', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                  }}>
+                    Mark unconfirmed
+                  </button>
+                </form>
+              </div>
+            ) : (
+              <form action={setOrderConfirmed.bind(null, o.id!, true)}>
+                <button type="submit" style={{
+                  padding: '9px 16px', background: '#C5286A', color: 'white', border: 'none',
+                  borderRadius: 7, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+                }}>
+                  Mark customer-confirmed
+                </button>
+              </form>
+            )}
+          </div>
+          {/* Vendor dispatch */}
+          <VendorDispatch
+            orderId={o.id!}
+            vendors={vendors}
+            currentVendorId={o.vendor_id ?? null}
+            vendorSentAt={o.vendor_sent_at ?? null}
+            message={vendorMessage}
+            suggestedVendorId={suggestedVendorId}
+            suggestedItemCount={suggestedItemCount}
+            itemCount={orderItems.length}
+          />
+        </div>
+        {settlementRow && (
+          <div style={{
+            marginTop: 16, padding: '12px 14px', borderRadius: 8,
+            background: '#f9fafb', border: '1px solid #e5e7eb',
+            display: 'flex', flexWrap: 'wrap', gap: 20, fontSize: '0.8125rem',
+          }}>
+            <div>
+              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Vendor cost</div>
+              <div style={{ fontWeight: 600, color: '#111827' }}>PKR {Math.round(settlementRow.vendor_cost).toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Our margin</div>
+              <div style={{ fontWeight: 700, color: '#16a34a' }}>PKR {Math.round(settlementRow.our_margin).toLocaleString()}</div>
+            </div>
+            <div>
+              <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>
+                {settlementRow.due_to === 'us' ? 'Vendor pays you' : 'You pay vendor'}
+              </div>
+              <div style={{ fontWeight: 700, color: settlementRow.due_to === 'us' ? '#16a34a' : '#dc2626' }}>
+                PKR {Math.round(settlementRow.amount_due).toLocaleString()}
+                <span style={{ fontWeight: 600, color: '#9ca3af', marginLeft: 6 }}>
+                  · {settlementRow.status === 'settled' ? 'settled' : 'pending'}
+                </span>
+              </div>
+            </div>
+            <div style={{ alignSelf: 'center', marginLeft: 'auto' }}>
+              <Link href="/admin/vendors" style={{ color: '#C5286A', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600 }}>
+                Manage payouts →
+              </Link>
+            </div>
+          </div>
+        )}
+      </div>
+      )}
+
+      {/* Shipment booking, edit-gated. Sits after confirmation/vendor because
+          most merchant workflows confirm + source first, then book a courier. */}
+      {canEdit && (
+      <div style={section}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipment</h2>
         <ShipmentBookingForm
           orderId={o.id!}
@@ -778,6 +637,204 @@ export default async function OrderDetailPage({
           } : null}
         />
       </div>
+      )}
+
+      </div>{/* end left column */}
+
+      {/* Right rail: act on the order. */}
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+      {/* Order Status Management, edit-gated */}
+      {canEdit && (
+      <div style={section}>
+        <h2 style={{ margin: '0 0 20px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Update Order</h2>
+        <OrderStatusForm
+          orderId={o.id!}
+          currentStatus={currentStatus}
+        />
+      </div>
+      )}
+
+      {/* Payment Summary */}
+      <div style={section}>
+        <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Payment</h2>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+            <span style={{ color: '#6b7280' }}>Subtotal</span>
+            <span>{fmt(o.subtotal)}</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+            <span style={{ color: '#6b7280' }}>Shipping</span>
+            <span>{o.shipping === 0 ? 'Free' : fmt(o.shipping)}</span>
+          </div>
+          {o.discount_amount != null && o.discount_amount > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
+              <span style={{ color: '#15803d' }}>
+                Discount{o.coupon_code ? ` (${o.coupon_code})` : ''}
+              </span>
+              <span style={{ color: '#15803d' }}>− {fmt(o.discount_amount)}</span>
+            </div>
+          )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 700, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
+            <span>Total</span>
+            <span style={{ color: '#C5286A' }}>{fmt(o.total)}</span>
+          </div>
+          <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#6b7280' }}>
+            Method: <strong style={{ color: '#374151' }}>{PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method}</strong>
+          </div>
+        </div>
+      </div>
+
+      {/* Payment received, manual reconciliation: which configured account the
+          money landed in, when, and who confirmed it. Feeds Finance → Revenue
+          by account. Reconciliation only; doesn't change the order status. */}
+      <div style={section}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Payment received</h2>
+        <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Record which account this order&apos;s payment landed in. Accounts come from Settings → Payments. This is for reconciliation only and doesn&apos;t change the order status.
+        </p>
+        {o.payment_received_at ? (
+          <>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, fontSize: '0.8125rem', marginBottom: canEdit ? 14 : 0 }}>
+              <div>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Account</div>
+                <div style={{ fontWeight: 600, color: '#111827' }}>{o.payment_account ?? '—'}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>Received</div>
+                <div style={{ fontWeight: 600, color: '#15803d' }}>{fmtDate(o.payment_received_at)}</div>
+              </div>
+              {o.payment_received_by && (
+                <div>
+                  <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase' }}>By</div>
+                  <div style={{ color: '#374151' }}>{o.payment_received_by}</div>
+                </div>
+              )}
+            </div>
+            {canEdit && (
+              <form action={clearPayment.bind(null, o.id!)}>
+                <button type="submit" style={{ padding: '8px 14px', background: 'white', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
+                  Clear / re-record
+                </button>
+              </form>
+            )}
+          </>
+        ) : canEdit ? (
+          <form action={recordPayment.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Account<br />
+              <select name="payment_account" defaultValue={o.pay_method === 'cod' ? 'Cash on delivery' : (payAccountOptions[1] ?? 'Cash on delivery')}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', background: 'white', minWidth: 180 }}>
+                {payAccountOptions.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Received on<br />
+              <input type="date" name="received_on" defaultValue={new Date().toISOString().slice(0, 10)}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem' }} />
+            </label>
+            <button type="submit" style={{ padding: '9px 18px', background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Mark received</button>
+          </form>
+        ) : (
+          <p style={{ fontSize: '0.8125rem', color: '#9ca3af' }}>Not yet recorded.</p>
+        )}
+      </div>
+
+      </div>{/* end right rail */}
+      </div>{/* end top zone */}
+
+      {/* Order costs, what we paid to fulfil this order; feeds the Finance P&L. */}
+      {canEdit && (
+        <div style={{ ...section, marginBottom: 20 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order costs</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            Courier charge, payment-gateway fee, and the actual goods (acquisition) cost for this order. These feed the Finance profit &amp; loss. The acquisition cost overrides the estimated cost of goods for this order, useful for drop-ship, where the supplier price varies; leave it blank to use the product&apos;s default cost.
+          </p>
+          <form action={setOrderCosts.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Acquisition cost / COGS (PKR)<br />
+              <input type="number" name="acquisition_cost" min="0" step="any"
+                defaultValue={ordAcq ?? ''}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
+              <span style={{ display: 'block', marginTop: 4, fontSize: '0.6875rem', color: ordAcq == null ? '#b45309' : '#9ca3af', maxWidth: 220 }}>
+                {acqProvenance}
+              </span>
+            </label>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Delivery cost (PKR)<br />
+              <input type="number" name="delivery_cost" min="0" step="1" defaultValue={o.delivery_cost ?? ''}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
+            </label>
+            <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Payment fee (PKR)<br />
+              <input type="number" name="payment_fee" min="0" step="1" defaultValue={o.payment_fee ?? ''}
+                style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
+            </label>
+            <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save costs</button>
+          </form>
+          {o.vendor_id && (
+            <form action={recalcAcquisitionCost.bind(null, o.id!)} style={{ marginTop: 12 }}>
+              <button type="submit" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', background: 'white', color: '#374151',
+                border: '1px solid #d1d5db', borderRadius: 8,
+                fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                  <polyline points="21 3 21 9 15 9" />
+                </svg>
+                Recalculate from vendor rate
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* Order profit, gross amount less the costs recorded for this order. */}
+      <div style={{ ...section, marginBottom: 20 }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order profit</h2>
+        <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Based on the costs recorded for this order (vendor settlement, delivery, payment fee). Shared overheads like ads and salaries are accounted for in the Finance profit &amp; loss.
+        </p>
+        <table style={{ width: '100%', maxWidth: 360, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+          <tbody>
+            {profitLines.map((l, i) => (
+              <tr key={i} style={{ borderTop: l.kind === 'net' ? '1px solid #e5e7eb' : 'none' }}>
+                <td style={{ padding: '7px 0', color: l.kind === 'net' ? '#111827' : '#374151', fontWeight: l.kind === 'net' ? 700 : 400 }}>{l.label}</td>
+                <td style={{ padding: '7px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: l.kind === 'net' ? 700 : 400, color: l.kind === 'net' ? (ordNet >= 0 ? '#15803d' : '#dc2626') : l.value < 0 ? '#b91c1c' : '#111827' }}>
+                  {l.value < 0 ? `(${fmt(-l.value)})` : fmt(l.value)}
+                </td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ padding: '7px 0', color: '#6b7280' }}>Margin</td>
+              <td style={{ padding: '7px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{ordMargin.toFixed(1)}%</td>
+            </tr>
+          </tbody>
+        </table>
+        <p style={{ margin: '10px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+          COGS: {ordAcq != null ? acqProvenance : 'estimated from the vendor settlement + product cost prices.'}
+        </p>
+      </div>
+
+      {/* Internal notes, freeform staff note, admin-only. Distinct from the
+          order timeline (which records status-change reasons). */}
+      {canEdit && (
+        <div style={{ ...section, marginBottom: 20 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Internal notes</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            A private note for your team (e.g. delivery preferences, call attempts). Never shown to the customer.
+          </p>
+          <form action={updateOrderNotes.bind(null, o.id!)}>
+            <textarea
+              name="notes"
+              defaultValue={o.notes ?? ''}
+              rows={3}
+              maxLength={4000}
+              placeholder="Add a note about this order…"
+              style={{ width: '100%', padding: '10px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', fontFamily: 'inherit', resize: 'vertical', boxSizing: 'border-box' }}
+            />
+            <div style={{ marginTop: 10 }}>
+              <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save note</button>
+            </div>
+          </form>
+        </div>
       )}
 
       {/* Order timeline, full status history from order_events */}
@@ -816,49 +873,6 @@ export default async function OrderDetailPage({
             ))}
           </div>
         )}
-      </div>
-
-      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 20 }}>
-        {/* Order Status Management, edit-gated */}
-        {canEdit && (
-        <div style={section}>
-          <h2 style={{ margin: '0 0 20px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Update Order</h2>
-          <OrderStatusForm
-            orderId={o.id!}
-            currentStatus={currentStatus}
-          />
-        </div>
-        )}
-
-        {/* Payment Summary */}
-        <div style={section}>
-          <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Payment</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-              <span style={{ color: '#6b7280' }}>Subtotal</span>
-              <span>{fmt(o.subtotal)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-              <span style={{ color: '#6b7280' }}>Shipping</span>
-              <span>{o.shipping === 0 ? 'Free' : fmt(o.shipping)}</span>
-            </div>
-            {o.discount_amount != null && o.discount_amount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem' }}>
-                <span style={{ color: '#15803d' }}>
-                  Discount{o.coupon_code ? ` (${o.coupon_code})` : ''}
-                </span>
-                <span style={{ color: '#15803d' }}>− {fmt(o.discount_amount)}</span>
-              </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '1rem', fontWeight: 700, borderTop: '1px solid #e5e7eb', paddingTop: 10 }}>
-              <span>Total</span>
-              <span style={{ color: '#C5286A' }}>{fmt(o.total)}</span>
-            </div>
-            <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#6b7280' }}>
-              Method: <strong style={{ color: '#374151' }}>{PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method}</strong>
-            </div>
-          </div>
-        </div>
       </div>
 
       {canDelete && (

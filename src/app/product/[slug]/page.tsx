@@ -264,10 +264,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts] = await Promise.all([
     isDemo
-      ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>> })
+      ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at'>> })
       : supabase
           .from('product_reviews')
-          .select('id, author_name, rating, body, created_at, photo_urls, verified_purchase, helpful_count')
+          .select('id, author_name, rating, body, created_at, photo_urls, verified_purchase, helpful_count, owner_reply, owner_reply_at')
           .eq('product_id', product.id)
           .eq('approved', true)
           .order('created_at', { ascending: false }),
@@ -280,7 +280,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getPostsLinkingProduct(product.slug),
   ]);
 
-  const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count'>[];
+  const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at'>[];
 
   // Single source for both the visible trail and the BreadcrumbList schema.
   const crumbs = [
