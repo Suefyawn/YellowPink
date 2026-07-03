@@ -51,7 +51,7 @@ export default async function NewOrderPage() {
   };
 
   return (
-    <div className="adm-page">
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div className="adm-page-header" style={{ marginBottom: 20 }}>
         <div>
           <Link href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>← Orders</Link>

@@ -8,6 +8,8 @@ import { UsersFilter } from '@/components/admin/UsersFilter';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
+import { DotChip } from '@/components/admin/OrderChips';
 import type { AdminUser } from '@/types';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
 
@@ -202,14 +204,14 @@ export default async function UsersPage({
     return s ? `/admin/users?${s}` : '/admin/users';
   };
 
-  const cards: { label: string; value: string; icon: string; color: string; href: string; active: boolean }[] = [
-    { label: 'All customers', value: totals.all.toLocaleString(), icon: '◎', color: '#0369a1',
+  const cards: { label: string; value: string; color: string; href: string; active: boolean }[] = [
+    { label: 'All customers', value: totals.all.toLocaleString(), color: '#0369a1',
       href: cardHref({}), active: type === 'all' && activity === 'all' },
-    { label: 'Registered', value: totals.registered.toLocaleString(), icon: '⬡', color: '#075985',
+    { label: 'Registered', value: totals.registered.toLocaleString(), color: '#075985',
       href: cardHref({ type: 'registered' }), active: type === 'registered' },
-    { label: 'Guests', value: totals.guests.toLocaleString(), icon: '◇', color: '#b45309',
+    { label: 'Guests', value: totals.guests.toLocaleString(), color: '#b45309',
       href: cardHref({ type: 'guest' }), active: type === 'guest' },
-    { label: 'Repeat buyers', value: totals.repeat.toLocaleString(), icon: '↻', color: '#15803d',
+    { label: 'Repeat buyers', value: totals.repeat.toLocaleString(), color: '#15803d',
       href: cardHref({ activity: 'repeat' }), active: activity === 'repeat' },
   ];
 
@@ -249,24 +251,10 @@ export default async function UsersPage({
       {/* Summary cards, also act as quick filters. */}
       <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {cards.map(c => (
-          <Link key={c.label} href={c.href} style={{
-            background: 'white', borderRadius: 10, padding: '18px 20px',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-            border: c.active ? `1.5px solid ${c.color}` : '1.5px solid transparent',
-            display: 'flex', flexDirection: 'column', gap: 10,
-            textDecoration: 'none', color: 'inherit',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500 }}>{c.label}</span>
-              <span style={{
-                width: 32, height: 32, borderRadius: 8, background: c.color + '18',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.95rem',
-              }}>{c.icon}</span>
-            </div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums' }}>
-              {c.value}
-            </div>
-          </Link>
+          // KpiCard has no outline prop; the wrapper carries the active-filter ring.
+          <div key={c.label} style={{ borderRadius: 12, outline: c.active ? `1.5px solid ${c.color}` : undefined }}>
+            <KpiCard label={c.label} value={c.value} href={c.href} accent={c.color} />
+          </div>
         ))}
       </div>
 
@@ -313,14 +301,10 @@ export default async function UsersPage({
                         <div style={{ minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{name}</span>
-                            <span style={{
-                              display: 'inline-block', padding: '1px 8px', borderRadius: 20,
-                              fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
-                              background: u.kind === 'guest' ? '#fef3c7' : '#e0f2fe',
-                              color: u.kind === 'guest' ? '#92400e' : '#075985',
-                            }}>
-                              {u.kind === 'guest' ? 'Guest' : 'Registered'}
-                            </span>
+                            <DotChip
+                              label={u.kind === 'guest' ? 'Guest' : 'Registered'}
+                              color={u.kind === 'guest' ? '#b45309' : '#0369a1'}
+                            />
                           </div>
                           {hasName && sub && (
                             <div style={{ fontSize: '0.75rem', color: '#9ca3af', wordBreak: 'break-word' }}>{sub}</div>
