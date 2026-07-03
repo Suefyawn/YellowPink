@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
@@ -30,6 +31,38 @@ function FooterLink({ href, label }: { href: string; label: string }) {
         {label}
       </Link>
     </li>
+  );
+}
+
+// Footer nav column: a plain headed list on desktop; on phones (≤768px) each
+// column collapses into a <details> accordion, closed by default, so the ~35
+// links don't dwarf short pages. SSR renders open (desktop-first); the
+// matchMedia effect closes them on phones after hydration, and the summary is
+// pointer-events: none on desktop so it never toggles there (see .footer-acc
+// in globals.css).
+function FooterNavColumn({ label, children }: { label: string; children: React.ReactNode }) {
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 768px)');
+    const update = () => setMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  return (
+    <nav aria-label={label}>
+      <details className="footer-acc" open={!mobile}>
+        <summary>
+          <Overline style={{ color: 'rgba(250,246,238,0.6)' }}>{label}</Overline>
+          <span className="footer-acc-chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </span>
+        </summary>
+        <ul style={{ padding: 0, margin: '16px 0 0' }}>{children}</ul>
+      </details>
+    </nav>
   );
 }
 
@@ -172,11 +205,14 @@ export function Footer({ socials = [], collections = [] }: FooterProps) {
               color: 'rgba(250,246,238,0.55)',
             }}
           >
-            {Array(6).fill('Yellow Pink Store Pakistan · ').join('')}
+            {/* Rotating value props (not a repeated brand phrase, which read
+                as keyword stuffing). Repeated an even number of times so the
+                -50% keyframe loops seamlessly. */}
+            {Array(4).fill('Authentic products · COD nationwide · Easy returns · Fast delivery · ').join('')}
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 40 }}>
+        <div className="footer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 40 }}>
           <div>
             <div style={{ marginBottom: 24 }}><LogoWordmark color="var(--paper)" /></div>
             <p className="small-text" style={{ color: 'rgba(250,246,238,0.55)', maxWidth: 260, marginBottom: 16 }}>
@@ -191,36 +227,24 @@ export function Footer({ socials = [], collections = [] }: FooterProps) {
             <SocialRow socials={socials} />
           </div>
 
-          <nav aria-label="Shop">
-            <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Shop</Overline>
-            <ul style={{ padding: 0, margin: 0 }}>
-              {SHOP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
-            </ul>
-          </nav>
+          <FooterNavColumn label="Shop">
+            {SHOP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
+          </FooterNavColumn>
 
           {collections.length > 0 && (
-            <nav aria-label="Collections">
-              <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Collections</Overline>
-              <ul style={{ padding: 0, margin: 0 }}>
-                {collections.map(c => <FooterLink key={c.slug} href={`/collection/${c.slug}`} label={c.title} />)}
-                <FooterLink href="/collections" label="View all" />
-              </ul>
-            </nav>
+            <FooterNavColumn label="Collections">
+              {collections.map(c => <FooterLink key={c.slug} href={`/collection/${c.slug}`} label={c.title} />)}
+              <FooterLink href="/collections" label="View all" />
+            </FooterNavColumn>
           )}
 
-          <nav aria-label="Company">
-            <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Company</Overline>
-            <ul style={{ padding: 0, margin: 0 }}>
-              {COMPANY_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
-            </ul>
-          </nav>
+          <FooterNavColumn label="Company">
+            {COMPANY_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
+          </FooterNavColumn>
 
-          <nav aria-label="Help">
-            <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Help</Overline>
-            <ul style={{ padding: 0, margin: 0 }}>
-              {HELP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
-            </ul>
-          </nav>
+          <FooterNavColumn label="Help">
+            {HELP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
+          </FooterNavColumn>
 
           <div>
             <Overline style={{ color: 'rgba(250,246,238,0.6)', display: 'block', marginBottom: 16 }}>Newsletter</Overline>

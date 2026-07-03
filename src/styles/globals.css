@@ -184,13 +184,25 @@ body {
   textarea {
     font-size: 16px !important;
   }
-  /* Touch devices have no `hover` state — keep the quick-add button on the
-   * shop tile always visible instead of waiting for an event that never
-   * fires. The opacity-0 inline style on desktop is overridden here. */
-  .quick-add-btn {
-    opacity: 1 !important;
-    transform: translateY(0) !important;
-  }
+  /* Touch devices have no `hover` state, and the old always-visible overlay
+   * read as a wall of black bars covering the packshots in the 2-up grid.
+   * Swap the pair: hide the hover-reveal image overlay and show the compact
+   * outline quick-add that sits in the card flow below title + price. */
+  .quick-add-overlay { display: none !important; }
+  .quick-add-inline { display: block !important; }
+}
+
+/* Product-tile quick-add (see components/ui/ProductTile.tsx).
+ * Desktop default: the image overlay exists (revealed on tile hover via
+ * inline styles) and the inline mobile button is hidden. The touch/phone
+ * media block above inverts both. */
+.quick-add-inline { display: none; }
+/* Keyboard parity for the hover reveal — a tabbing user must see the pill. */
+.quick-add-overlay:focus-visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+  outline: 2px solid var(--ink-900);
+  outline-offset: 2px;
 }
 
 /* The PDP sticky buy-bar is a mobile-only affordance — desktop keeps the
@@ -354,6 +366,41 @@ a.underline,
 @keyframes marquee {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+/* Announcement bar — the default free-shipping sentence wraps to two lines at
+ * phone widths, so AnnouncementBar renders a short twin alongside it and
+ * these rules swap which one shows. Owner-authored announcements have no
+ * compact twin and render as-is. */
+.announcement-compact { display: none; }
+@media (max-width: 480px) {
+  .announcement-full { display: none; }
+  .announcement-compact { display: inline; }
+}
+
+/* Footer link columns (Footer.tsx → FooterNavColumn) — static headed lists on
+ * desktop, tap-to-expand <details> accordions on phones so ~35 links don't
+ * dwarf short pages. The open/closed default is set from matchMedia in the
+ * component; these rules style the summary row + chevron and disable the
+ * toggle on desktop. */
+.footer-acc summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  list-style: none;
+}
+.footer-acc summary::-webkit-details-marker { display: none; }
+.footer-acc-chevron { display: none; color: rgba(250,246,238,0.55); }
+@media (min-width: 769px) {
+  .footer-acc summary { pointer-events: none; }
+}
+@media (max-width: 768px) {
+  .footer-acc { border-bottom: 1px solid rgba(250,246,238,0.12); }
+  .footer-acc summary { cursor: pointer; padding: 12px 0; }
+  .footer-acc > ul { margin-top: 2px !important; padding-bottom: 10px !important; }
+  .footer-acc-chevron { display: inline-flex; transition: transform 200ms ease-out; }
+  .footer-acc[open] .footer-acc-chevron { transform: rotate(180deg); }
+  /* Collapsed rows carry their own padding + hairline; the desktop 40px
+   * column gap would read as dead space between them. */
+  .footer-grid { gap: 16px !important; }
 }
 
 /* Footer marquee — auto-pauses on hover and respects prefers-reduced-motion.

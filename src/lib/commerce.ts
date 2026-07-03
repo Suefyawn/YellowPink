@@ -83,6 +83,14 @@ export const freeShippingSentence = (c: CommerceConfig) =>
     ? `Free delivery on orders over ${formatPkr(c.freeShippingThreshold)}, COD Nationwide`
     : 'Cash on delivery nationwide';
 
+/** One-line phone rendering of the announcement sentence — the full version
+ *  wraps to two lines at 390px. Shown below 480px via AnnouncementBar's
+ *  compact variant. */
+export const freeShippingSentenceCompact = (c: CommerceConfig) =>
+  c.freeShippingEnabled
+    ? `Free delivery over ${formatPkr(c.freeShippingThreshold)} · COD`
+    : 'COD nationwide';
+
 /** Customer-facing returns window, in days. Shared by the PDP trust copy, the
  *  checkout reassurance strip and the shipping blurb so they never disagree. */
 export const RETURNS_WINDOW_DAYS = 7;

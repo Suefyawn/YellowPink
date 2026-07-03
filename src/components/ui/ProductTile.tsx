@@ -34,11 +34,16 @@ export function ProductTile({ product }: ProductTileProps) {
   // Quick-add UX matrix:
   //  • Variable products  → "Choose options" routes to PDP (variant pick needed).
   //  • Out of stock       → "Sold out" disabled badge, no action.
-  //  • Simple + in stock  → "+ Add to cart" calls addToCart(product, qty: 1).
+  //  • Simple + in stock  → "Add to cart" calls addToCart(product, qty: 1).
   //
-  // The button overlays the bottom of the image; opacity-0 on desktop until
-  // hover (or button focus), always visible on mobile. addCounter on the
-  // existing AddToCartToast surfaces the post-add confirmation.
+  // Two renderings of the same action (CSS in globals.css swaps them):
+  //  • Desktop (hover-capable, >768px): a solid magenta pill overlaying the
+  //    bottom of the image, revealed on tile hover or :focus-visible
+  //    (`quick-add-overlay`).
+  //  • Mobile/touch: a compact magenta outline button in the card flow below
+  //    the title/price (`quick-add-inline`) — the old always-on black overlay
+  //    covered the packshots and read as a wall of black bars in the 2-up grid.
+  // addCounter on the existing AddToCartToast surfaces the post-add confirmation.
   const isVariable = kind === 'variable';
   // Products with inventory managed externally (track_inventory === false) are
   // always purchasable regardless of the stored stock count, so they must never
@@ -65,7 +70,12 @@ export function ProductTile({ product }: ProductTileProps) {
       ? 'Added ✓'
       : isVariable
         ? 'Choose options'
-        : '+ Add to cart';
+        : 'Add to cart';
+  const quickAddAria = soldOut
+    ? `${name} is sold out`
+    : isVariable
+      ? `Choose options for ${name}`
+      : `Add ${name} to cart`;
 
   return (
     <div
@@ -136,22 +146,17 @@ export function ProductTile({ product }: ProductTileProps) {
               }}>Only {stock} left</span>
             )}
           </div>
-          {/* Quick-add overlay, opacity-0 on desktop until tile hover (or
-              button focus), always visible on mobile via the `quick-add-btn`
-              CSS class. Sits inside the image container so it absolutes
-              against the image bounds, not the whole card. */}
+          {/* Desktop quick-add overlay, opacity-0 until tile hover; the
+              `quick-add-overlay` CSS class hides it on touch/phone viewports
+              and re-reveals it on :focus-visible for keyboard parity. Sits
+              inside the image container so it absolutes against the image
+              bounds, not the whole card. */}
           <button
             type="button"
-            className="quick-add-btn"
+            className="quick-add-overlay"
             onClick={handleQuickAdd}
             disabled={soldOut}
-            aria-label={
-              soldOut
-                ? `${name} is sold out`
-                : isVariable
-                  ? `Choose options for ${name}`
-                  : `Add ${name} to cart`
-            }
+            aria-label={quickAddAria}
             style={{
               position: 'absolute',
               left: 8, right: 8, bottom: 8,
@@ -160,7 +165,7 @@ export function ProductTile({ product }: ProductTileProps) {
                 ? 'rgba(243, 244, 246, 0.95)'
                 : added
                   ? 'var(--success, #16a34a)'
-                  : 'var(--ink-900)',
+                  : 'var(--brand-pink-cta, #C5286A)',
               color: soldOut ? 'var(--ink-500, #6b7280)' : '#fff',
               border: 'none', borderRadius: 'var(--radius-pill)',
               fontSize: '0.8125rem', fontWeight: 600, letterSpacing: '0.01em',
@@ -213,6 +218,34 @@ export function ProductTile({ product }: ProductTileProps) {
           )}
         </div>
       </Link>
+
+      {/* Mobile/touch quick-add, sits in the card flow below title + price
+          (shown/hidden via the `quick-add-inline` CSS class in globals.css).
+          Compact magenta outline so it reads as a secondary action and never
+          covers the packshot. Sibling of the Link — no button-inside-anchor. */}
+      <button
+        type="button"
+        className="quick-add-inline"
+        onClick={handleQuickAdd}
+        disabled={soldOut}
+        aria-label={quickAddAria}
+        style={{
+          width: '100%', minHeight: 40, marginTop: 10,
+          padding: '8px 12px',
+          background: added ? 'var(--brand-pink-cta, #C5286A)' : 'transparent',
+          color: soldOut
+            ? 'var(--ink-300, #B0B0B0)'
+            : added ? '#fff' : 'var(--brand-pink-cta, #C5286A)',
+          border: '1px solid ' + (soldOut ? 'var(--line)' : 'var(--brand-pink-cta, #C5286A)'),
+          borderRadius: 'var(--radius-pill)',
+          fontSize: '0.6875rem', fontWeight: 700,
+          letterSpacing: '0.08em', textTransform: 'uppercase',
+          cursor: soldOut ? 'not-allowed' : 'pointer',
+          transition: 'background 200ms, color 200ms',
+        }}
+      >
+        {quickAddLabel}
+      </button>
 
       {/* Wishlist button, sibling of the Link so it's a discrete focusable
        *  element, not nested inside an <a>. */}
