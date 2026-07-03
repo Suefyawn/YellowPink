@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
@@ -19,6 +20,9 @@ import { Ga4Widget } from '@/components/admin/Ga4Widget';
 import { WebVitalsWidget } from '@/components/admin/WebVitalsWidget';
 import { SeoTrendWidget } from '@/components/admin/SeoTrendWidget';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
+import { RangePicker } from '@/components/admin/insights/RangePicker';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
+import { brandPlusName } from '@/lib/product-display';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { OrderStatus } from '@/types';
@@ -88,15 +92,8 @@ export default async function AnalyticsPage({
   // Chart data adapter (RevenueChart already expects [{ date, revenue }]).
   const chartData = daily.map(d => ({ date: d.day, revenue: Number(d.revenue) }));
 
-  // KPI cards split along the Finance / Customers line, money metrics on
-  // one tab, audience metrics on the other.
-  const financeKpis: { label: string; value: string; sub?: string }[] = kpis
-    ? [
-        { label: `Revenue · last ${window} days`, value: fmt(kpis.total_revenue), sub: `Lifetime: ${fmt(kpis.lifetime_revenue)}` },
-        { label: 'Orders', value: String(kpis.total_orders), sub: `Lifetime: ${kpis.lifetime_orders}` },
-        { label: 'AOV (avg order value)', value: fmt(kpis.aov) },
-      ]
-    : [];
+  // Customer-tab KPI cards (the finance ones render inline with per-metric
+  // sparklines below).
   const customerKpis: { label: string; value: string; sub?: string }[] = kpis
     ? [
         { label: 'Unique customers', value: String(kpis.unique_customers), sub: `Last ${window} days` },
@@ -128,25 +125,19 @@ export default async function AnalyticsPage({
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {canRefresh && <RefreshAnalyticsButton />}
-          <div style={{ display: 'flex', gap: 6 }}>
-            {[{ d: 7, l: '7 days' }, { d: 30, l: '30 days' }, { d: 90, l: '90 days' }, { d: 365, l: '1 year' }].map(opt => {
-              const active = window === opt.d;
-              return (
-                <Link
-                  key={opt.d}
-                  href={`/admin/analytics?tab=${tab}&days=${opt.d}`}
-                  style={{
-                    padding: '6px 14px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
-                    textDecoration: 'none',
-                    background: active ? '#C5286A' : '#f3f4f6',
-                    color: active ? 'white' : '#6b7280',
-                  }}
-                >
-                  {opt.l}
-                </Link>
-              );
-            })}
-          </div>
+          {/* Shared URL-synced range picker (same control as the other insight
+              surfaces); preserves the active tab via the query string. */}
+          <Suspense fallback={null}>
+            <RangePicker
+              value={String(window)}
+              options={[
+                { value: '7', label: '7 days' },
+                { value: '30', label: '30 days' },
+                { value: '90', label: '90 days' },
+                { value: '365', label: '1 year' },
+              ]}
+            />
+          </Suspense>
         </div>
       </div>
 
@@ -176,16 +167,18 @@ export default async function AnalyticsPage({
 
       {tab === 'finance' && (
         <>
-          {/* Finance KPIs */}
-          <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
-            {financeKpis.map(k => (
-              <div key={k.label} style={{ background: 'white', borderRadius: 10, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>
-                {k.sub && <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 4 }}>{k.sub}</div>}
-              </div>
-            ))}
-          </div>
+          {/* Finance KPIs — shared KpiCard with a per-metric sparkline of the
+              selected window, so the headline number carries its own shape. */}
+          {kpis && (
+            <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+              <KpiCard label={`Revenue · last ${window} days`} value={fmt(kpis.total_revenue)} accent="#10b981"
+                spark={daily.map(d => Number(d.revenue))} hint={`Lifetime: ${fmt(kpis.lifetime_revenue)}`} />
+              <KpiCard label="Orders" value={String(kpis.total_orders)} accent="#C5286A"
+                spark={daily.map(d => Number(d.orders))} hint={`Lifetime: ${kpis.lifetime_orders}`} />
+              <KpiCard label="AOV (avg order value)" value={fmt(kpis.aov)} accent="#6366f1"
+                spark={daily.map(d => Number(d.aov))} />
+            </div>
+          )}
 
           {/* Revenue chart */}
           <div style={{ ...cardStyle, marginBottom: 28 }}>
@@ -233,7 +226,7 @@ export default async function AnalyticsPage({
                         <td style={{ padding: '8px 0' }}>
                           {p ? (
                             <Link href={`/admin/products/${t.product_id}`} style={{ color: '#111827', fontWeight: 600, textDecoration: 'none' }}>
-                              {p.brand} {p.name}
+                              {brandPlusName(p.brand, p.name)}
                             </Link>
                           ) : (
                             <span style={{ color: '#9ca3af', fontSize: '0.8125rem', fontStyle: 'italic' }}>Unknown product (deleted)</span>
@@ -259,11 +252,7 @@ export default async function AnalyticsPage({
           {/* Customer KPIs */}
           <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 28, maxWidth: 560 }}>
             {customerKpis.map(k => (
-              <div key={k.label} style={{ background: 'white', borderRadius: 10, padding: '18px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{k.label}</div>
-                <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', marginTop: 6, fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>
-                {k.sub && <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 4 }}>{k.sub}</div>}
-              </div>
+              <KpiCard key={k.label} label={k.label} value={k.value} hint={k.sub} accent="#0ea5e9" />
             ))}
           </div>
 
