@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { FinanceTabs } from '@/components/admin/FinanceTabs';
 import { fmtPKR as fmt } from '@/lib/money';
 
 // COD reconciliation, the cash side of the business that's hardest to track.
@@ -54,6 +55,7 @@ export default async function CodReconciliationPage() {
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
+      <FinanceTabs active="cod" />
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6, gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>COD reconciliation</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>

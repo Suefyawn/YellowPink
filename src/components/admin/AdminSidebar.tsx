@@ -23,42 +23,48 @@ type NavItem = {
 
 type NavGroup = { label: string; items: NavItem[] };
 
+// Frequency-ordered groups (2026-07 admin UX audit): daily work first, filing
+// corrected — Coupons is marketing (not "People"), Email log is a system
+// surface, COD reconciliation lives as a tab inside Finance rather than a
+// top-level item, and "Review Board" is spelled out as Medical reviewers so
+// it can't be confused with customer product Reviews.
 const GROUPS: NavGroup[] = [
   { label: 'Insights', items: [
     { href: '/admin/dashboard', label: 'Dashboard', icon: 'layout-dashboard', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
     { href: '/admin/analytics', label: 'Analytics', icon: 'pie-chart', permission: 'analytics' },
     { href: '/admin/finance',   label: 'Finance',   icon: 'banknote', permission: 'finance' },
-    { href: '/admin/finance/cod', label: 'COD',     icon: 'coins', permission: 'finance' },
   ]},
   { label: 'Sell', items: [
     { href: '/admin/orders',    label: 'Orders',    icon: 'shopping-bag', permission: 'orders.view' },
     { href: '/admin/products',  label: 'Products',  icon: 'package', permission: 'products.view' },
-    { href: '/admin/tags',      label: 'Tags',      icon: 'tag', permission: 'products.view' },
+    { href: '/admin/inventory', label: 'Inventory', icon: 'clipboard-list', permission: 'products.view' },
+    { href: '/admin/returns',   label: 'Returns',   icon: 'undo', permission: 'returns' },
+    { href: '/admin/vendors',   label: 'Vendors',   icon: 'truck', permission: 'orders.view' },
+  ]},
+  { label: 'Catalogue', items: [
     { href: '/admin/collections', label: 'Collections', icon: 'layers', permission: 'products.view' },
     { href: '/admin/brands',    label: 'Brands',    icon: 'gem', permission: 'products.view' },
-    { href: '/admin/inventory', label: 'Inventory', icon: 'clipboard-list', permission: 'products.view' },
-    { href: '/admin/vendors',   label: 'Vendors',   icon: 'truck', permission: 'orders.view' },
-    { href: '/admin/returns',   label: 'Returns',   icon: 'undo', permission: 'returns' },
+    { href: '/admin/tags',      label: 'Tags',      icon: 'tag', permission: 'products.view' },
   ]},
-  { label: 'People', items: [
+  { label: 'Customers', items: [
     { href: '/admin/users',     label: 'Customers', icon: 'users', permission: 'customers.view' },
     { href: '/admin/segments',  label: 'Segments',  icon: 'target', permission: 'customers.view' },
-    { href: '/admin/coupons',   label: 'Coupons',   icon: 'ticket', permission: 'coupons' },
+    { href: '/admin/messages',  label: 'Messages',  icon: 'message-circle', permission: 'messages' },
+    { href: '/admin/reviews',   label: 'Reviews',   icon: 'star', permission: 'reviews' },
   ]},
   { label: 'Marketing', items: [
+    { href: '/admin/coupons',   label: 'Coupons',   icon: 'ticket', permission: 'coupons' },
     { href: '/admin/blog',      label: 'Blog',      icon: 'pen-line', permission: 'blog' },
-    { href: '/admin/reviewers', label: 'Review Board', icon: 'shield-check', permission: 'blog' },
-    { href: '/admin/reviews',   label: 'Reviews',   icon: 'star', permission: 'reviews' },
-    { href: '/admin/messages',  label: 'Messages',  icon: 'message-circle', permission: 'messages' },
+    { href: '/admin/reviewers', label: 'Medical reviewers', icon: 'shield-check', permission: 'blog' },
     { href: '/admin/newsletter', label: 'Newsletter', icon: 'mail', permission: 'newsletter' },
-    { href: '/admin/emails',    label: 'Email log', icon: 'inbox', permission: 'settings' },
   ]},
-  { label: 'Store', items: [
+  { label: 'System', items: [
+    { href: '/admin/settings',  label: 'Settings',  icon: 'settings', permission: 'settings' },
+    { href: '/admin/team',      label: 'Team',      icon: 'user-check', ownerOnly: true },
+    { href: '/admin/audit',     label: 'Activity log', icon: 'history', ownerOnly: true },
+    { href: '/admin/emails',    label: 'Email log', icon: 'inbox', permission: 'settings' },
     { href: '/admin/broken-links', label: 'Broken links', icon: 'link-off', permission: 'settings' },
     { href: '/admin/indexing', label: 'Indexing', icon: 'search', permission: 'settings' },
-    { href: '/admin/audit',     label: 'Activity log', icon: 'history', ownerOnly: true },
-    { href: '/admin/team',      label: 'Team',      icon: 'user-check', ownerOnly: true },
-    { href: '/admin/settings',  label: 'Settings',  icon: 'settings', permission: 'settings' },
   ]},
 ];
 

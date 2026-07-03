@@ -85,11 +85,13 @@ export const productInputSchema = z.object({
   is_featured:    z.preprocess(v => v === 'on' || v === 'true' || v === true, z.boolean()),
   is_bestseller:  z.preprocess(v => v === 'on' || v === 'true' || v === true, z.boolean()),
   // Inventory tracking toggle. The product form always submits 'true'/'false'
-  // via a hidden input; a missing value (e.g. an older form or import) keeps
-  // the tracked default.
+  // via a hidden input. A missing value stays absent (undefined keys are
+  // dropped by supabase-js) so a CSV import without the column can't flip
+  // externally-managed products back to tracked on upsert; new inserts fall
+  // through to the DB default (true).
   track_inventory: z.preprocess(
-                    v => (v == null ? true : v === 'true' || v === true || v === 'on'),
-                    z.boolean(),
+                    v => (v == null ? undefined : v === 'true' || v === true || v === 'on'),
+                    z.boolean().optional(),
                   ),
   // Sourcing vendor + per-unit cost. The form submits '' for "no vendor" and
   // an empty cost; both normalise to null.

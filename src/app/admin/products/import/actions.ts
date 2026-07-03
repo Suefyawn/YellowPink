@@ -93,6 +93,14 @@ function normaliseRow(r: CsvRow): Record<string, unknown> | null {
     how_to_use: r.how_to_use || null,
     ingredients: r.ingredients || null,
     kind: r.kind ?? 'simple',
+    // Round-trip columns emitted by the Export CSV endpoint. Absent or blank
+    // cells keep today's behaviour (status untouched on existing rows,
+    // inventory tracking defaulting on).
+    variant: r.variant || null,
+    ...(['draft', 'published', 'archived'].includes(r.status) ? { status: r.status } : {}),
+    ...(r.track_inventory === 'true' || r.track_inventory === 'false'
+      ? { track_inventory: r.track_inventory }
+      : {}),
   };
 }
 

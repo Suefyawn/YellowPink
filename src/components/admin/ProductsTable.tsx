@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { deleteProduct } from '@/app/admin/actions';
+import { deleteProduct, duplicateProduct } from '@/app/admin/actions';
 import {
   bulkArchiveProducts, bulkDeleteProducts, bulkDraftProducts, bulkPriceAdjustProducts,
   bulkPublishProducts, bulkTagProducts, quickUpdateProduct,
@@ -156,6 +156,16 @@ export function ProductsTable({ products }: { products: Product[] }) {
     });
   };
 
+  // Deep-copies the product (variants, tags, images, related links) into a
+  // new draft, then jumps straight to the copy's edit page.
+  const duplicate = (id: string) => {
+    startTransition(async () => {
+      const res = await duplicateProduct(id);
+      if (res.error) { toast(res.error, 'error'); return; }
+      router.push(`/admin/products/${res.id}?duplicated=1`);
+    });
+  };
+
   const handleBulkDelete = () => {
     if (selected.size === 0) return;
     const n = selected.size;
@@ -272,6 +282,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                           <Link href={`/admin/products/${p.id}`} style={{ padding: '7px 14px', background: '#f3f4f6', color: '#374151', borderRadius: 6, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500, minHeight: 32, display: 'inline-flex', alignItems: 'center' }}>Edit</Link>
+                          <button type="button" onClick={() => duplicate(p.id)} disabled={pending} title="Create a draft copy with variants, tags and images" style={{ padding: '7px 14px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 500, minHeight: 32, display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>Duplicate</button>
                           <DeleteButton id={p.id} action={deleteProduct} confirmMsg={`Delete "${p.name}"?`} />
                         </div>
                       </td>
@@ -308,6 +319,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                   </div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                     <Link href={`/admin/products/${p.id}`} style={{ padding: '8px 16px', background: '#f3f4f6', color: '#374151', borderRadius: 6, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}>Edit</Link>
+                    <button type="button" onClick={() => duplicate(p.id)} disabled={pending} style={{ padding: '8px 16px', background: 'white', color: '#374151', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>Duplicate</button>
                     <DeleteButton id={p.id} action={deleteProduct} confirmMsg={`Delete "${p.name}"?`} />
                   </div>
                 </div>

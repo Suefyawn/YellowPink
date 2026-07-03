@@ -7,6 +7,7 @@ import { ProductInventoryHistory } from '@/components/admin/ProductInventoryHist
 import type { Product, ProductAttribute, AttributeValue, ProductVariant, Vendor } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { AdminFlash } from '@/components/admin/AdminFlash';
 
 interface AttributeWithValues extends ProductAttribute {
   values: AttributeValue[];
@@ -63,14 +64,14 @@ export default async function EditProductPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; created?: string; duplicated?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('products.edit'))) {
     return <NoAccess section="Products" />;
   }
   const { id } = await params;
-  const { error: feedbackError } = (await searchParams) ?? {};
+  const { error: feedbackError, created, duplicated } = (await searchParams) ?? {};
   const { data: rawProduct } = await supabase.from('products').select('*').eq('id', id).single();
   if (!rawProduct) notFound();
   const product = rawProduct as Product;
@@ -91,6 +92,14 @@ export default async function EditProductPage({
 
   return (
     <>
+      <AdminFlash
+        message={
+          created ? 'Product created — you can now add variants, tags and extra images below.'
+          : duplicated ? 'Draft copy created — review the details, then publish when ready.'
+          : null
+        }
+        clearPath={`/admin/products/${id}`}
+      />
       {feedbackError && (
         <div
           role="status"

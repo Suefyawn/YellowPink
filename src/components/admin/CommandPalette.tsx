@@ -21,41 +21,45 @@ type Cmd = {
   ownerOnly?: boolean;
 };
 
+// Groups + labels mirror the sidebar's 2026-07 re-organisation so search and
+// navigation always agree. Finance/COD gate on the `finance` permission, the
+// same check the pages themselves make.
 const COMMANDS: Cmd[] = [
   { label: 'Dashboard',      group: 'Insights', href: '/admin/dashboard', permissionsAny: ['analytics','analytics_traffic','analytics_errors'] },
   { label: 'Analytics',      group: 'Insights', href: '/admin/analytics', permission: 'analytics' },
-  { label: 'Finance',        group: 'Insights', href: '/admin/finance', permission: 'analytics' },
-  { label: 'COD reconciliation', hint: 'cash on delivery', group: 'Insights', href: '/admin/finance/cod', permission: 'analytics' },
+  { label: 'Finance',        group: 'Insights', href: '/admin/finance', permission: 'finance' },
+  { label: 'COD reconciliation', hint: 'cash on delivery', group: 'Insights', href: '/admin/finance/cod', permission: 'finance' },
 
   { label: 'Orders',         group: 'Sell', href: '/admin/orders', permission: 'orders.view' },
   { label: 'New order',      hint: 'create manually', group: 'Sell', href: '/admin/orders/new', permission: 'orders.edit' },
   { label: 'Products',       group: 'Sell', href: '/admin/products', permission: 'products.view' },
   { label: 'New product',    group: 'Sell', href: '/admin/products/new', permission: 'products.edit' },
-  { label: 'Tags',           group: 'Sell', href: '/admin/tags', permission: 'products.view' },
-  { label: 'Collections',    group: 'Sell', href: '/admin/collections', permission: 'products.view' },
-  { label: 'Brands',         group: 'Sell', href: '/admin/brands', permission: 'products.view' },
   { label: 'Inventory',      group: 'Sell', href: '/admin/inventory', permission: 'products.view' },
-  { label: 'Vendors',        group: 'Sell', href: '/admin/vendors', permission: 'orders.view' },
   { label: 'Returns',        group: 'Sell', href: '/admin/returns', permission: 'returns' },
+  { label: 'Vendors',        group: 'Sell', href: '/admin/vendors', permission: 'orders.view' },
 
-  { label: 'Customers',      group: 'People', href: '/admin/users', permission: 'customers.view' },
-  { label: 'Segments',       group: 'People', href: '/admin/segments', permission: 'customers.view' },
-  { label: 'Coupons',        group: 'People', href: '/admin/coupons', permission: 'coupons' },
+  { label: 'Collections',    group: 'Catalogue', href: '/admin/collections', permission: 'products.view' },
+  { label: 'Brands',         group: 'Catalogue', href: '/admin/brands', permission: 'products.view' },
+  { label: 'Tags',           group: 'Catalogue', href: '/admin/tags', permission: 'products.view' },
 
+  { label: 'Customers',      group: 'Customers', href: '/admin/users', permission: 'customers.view' },
+  { label: 'Segments',       group: 'Customers', href: '/admin/segments', permission: 'customers.view' },
+  { label: 'Messages',       hint: 'contact inbox', group: 'Customers', href: '/admin/messages', permission: 'messages' },
+  { label: 'Reviews',        group: 'Customers', href: '/admin/reviews', permission: 'reviews' },
+
+  { label: 'Coupons',        group: 'Marketing', href: '/admin/coupons', permission: 'coupons' },
   { label: 'Blog',           group: 'Marketing', href: '/admin/blog', permission: 'blog' },
-  { label: 'Review Board',   hint: 'medical reviewers', group: 'Marketing', href: '/admin/reviewers', permission: 'blog' },
-  { label: 'Reviews',        group: 'Marketing', href: '/admin/reviews', permission: 'reviews' },
-  { label: 'Messages',       hint: 'contact inbox', group: 'Marketing', href: '/admin/messages', permission: 'messages' },
+  { label: 'Medical reviewers', hint: 'review board', group: 'Marketing', href: '/admin/reviewers', permission: 'blog' },
   { label: 'Newsletter',     group: 'Marketing', href: '/admin/newsletter', permission: 'newsletter' },
-  { label: 'Email log',      group: 'Marketing', href: '/admin/emails', permission: 'settings' },
 
-  { label: 'Broken links',   group: 'Store', href: '/admin/broken-links', permission: 'settings' },
-  { label: 'Indexing',       hint: 'search engines', group: 'Store', href: '/admin/indexing', permission: 'settings' },
-  { label: 'Activity log',   group: 'Store', href: '/admin/audit', ownerOnly: true },
-  { label: 'Team',           group: 'Store', href: '/admin/team', ownerOnly: true },
-  { label: 'Settings',       group: 'Store', href: '/admin/settings', permission: 'settings' },
+  { label: 'Settings',       group: 'System', href: '/admin/settings', permission: 'settings' },
+  { label: 'Team',           group: 'System', href: '/admin/team', ownerOnly: true },
+  { label: 'Activity log',   group: 'System', href: '/admin/audit', ownerOnly: true },
+  { label: 'Email log',      group: 'System', href: '/admin/emails', permission: 'settings' },
+  { label: 'Broken links',   group: 'System', href: '/admin/broken-links', permission: 'settings' },
+  { label: 'Indexing',       hint: 'search engines', group: 'System', href: '/admin/indexing', permission: 'settings' },
   // Visible to every signed-in staff member, mirroring the sidebar.
-  { label: 'User manual',    hint: 'help', group: 'Store', href: '/admin/help' },
+  { label: 'User manual',    hint: 'help', group: 'System', href: '/admin/help' },
 ];
 
 function canSee(c: Cmd, s: StaffSession): boolean {
