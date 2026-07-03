@@ -15,15 +15,17 @@ import { ManualViewer, type ManualTocEntry } from '@/components/admin/ManualView
 // next.config.ts, without that, fs can't find it on Vercel.
 
 // GitHub-style anchor slugs, kept in lock-step with the manual's own internal
-// [links](#4-processing-a-sale--the-order-workflow).
+// [links](#4-processing-a-sale--the-order-workflow). GitHub converts EACH
+// space to a hyphen without collapsing runs — "panel — a tour" drops the
+// dash and its two surrounding spaces become "--", so don't use \s+ here.
 function slugify(text: string): string {
   return text
     .toLowerCase()
     .replace(/<[^>]+>/g, '')
     .replace(/&[a-z]+;|&#\d+;/g, '')
-    .replace(/[^\p{L}\p{N}\s-]/gu, '')
-    .trim()
-    .replace(/\s+/g, '-');
+    .replace(/[^\p{L}\p{N} -]/gu, '')
+    .replace(/^ +| +$/g, '')
+    .replace(/ /g, '-');
 }
 
 /** Add ids to h2/h3 headings and collect them as the table of contents. */

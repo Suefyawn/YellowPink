@@ -1,9 +1,13 @@
 export const dynamic = 'force-dynamic';
 
+import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
+import { DotChip } from '@/components/admin/OrderChips';
+import { ListToolbar } from '@/components/admin/ListToolbar';
+import { classifyPath, PATH_TYPE_LABELS, PATH_TYPE_COLORS, type PathType } from '@/lib/path-type';
 import { addRedirect, ignoreNotFound, reopenNotFound } from './actions';
 
 interface Row {
@@ -27,11 +31,24 @@ function ago(iso: string): string {
   return `${Math.floor(days / 30)}mo ago`;
 }
 
-export default async function BrokenLinksPage() {
+const BL_SORTS: Record<string, (a: Row, b: Row) => number> = {
+  hits_desc: (a, b) => b.hit_count - a.hit_count,
+  recent: (a, b) => b.last_seen.localeCompare(a.last_seen),
+  oldest: (a, b) => a.last_seen.localeCompare(b.last_seen),
+};
+
+export default async function BrokenLinksPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string; type?: string; q?: string; sort?: string }>;
+}) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
     return <NoAccess section="Broken links" />;
   }
+  const { view: viewParam, type: typeParam, q, sort: sortParam } = await searchParams;
+  const view = viewParam === 'resolved' ? 'resolved' : 'open';
+  const sort = BL_SORTS[sortParam ?? ''] ? sortParam! : 'hits_desc';
 
   const admin = supabaseAdmin();
   const { data } = await admin
@@ -46,6 +63,12 @@ export default async function BrokenLinksPage() {
   const open = rows.filter(r => !r.resolved);
   const resolved = rows.filter(r => r.resolved);
   const totalHits = open.reduce((n, r) => n + r.hit_count, 0);
+
+  // View → type → search filtering in memory (≤300 rows already fetched).
+  let list = view === 'resolved' ? resolved : open;
+  if (typeParam && typeParam !== 'all') list = list.filter(r => classifyPath(r.path) === typeParam);
+  if (q) list = list.filter(r => r.path.toLowerCase().includes(q.toLowerCase()));
+  list = [...list].sort(BL_SORTS[sort]);
 
   const inp: React.CSSProperties = {
     padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 7,
@@ -72,15 +95,36 @@ export default async function BrokenLinksPage() {
         <KpiCard label="Resolved" value={resolved.length} accent="#15803d" />
       </div>
 
-      {open.length === 0 ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, color: '#166534', fontSize: '0.9375rem' }}>
-          No open broken links. Every 404 has been redirected or reviewed.
+      <Suspense fallback={null}>
+        <ListToolbar
+          defaultView="open"
+          views={[
+            { value: 'open', label: 'Open', count: open.length },
+            { value: 'resolved', label: 'Resolved', count: resolved.length },
+          ]}
+          typeOptions={(Object.keys(PATH_TYPE_LABELS) as PathType[]).map(t => ({ value: t, label: PATH_TYPE_LABELS[t] }))}
+          sortOptions={[
+            { value: 'hits_desc', label: 'Most hits first' },
+            { value: 'recent', label: 'Recently seen first' },
+            { value: 'oldest', label: 'Oldest first' },
+          ]}
+          defaultSort="hits_desc"
+          searchPlaceholder="Search path… e.g. /tag/"
+        />
+      </Suspense>
+
+      {list.length === 0 ? (
+        <div style={{ padding: '40px 24px', textAlign: 'center', background: view === 'open' && !q && (!typeParam || typeParam === 'all') ? '#f0fdf4' : '#f9fafb', border: `1px solid ${view === 'open' && !q && (!typeParam || typeParam === 'all') ? '#bbf7d0' : '#e5e7eb'}`, borderRadius: 12, color: view === 'open' && !q && (!typeParam || typeParam === 'all') ? '#166534' : '#6b7280', fontSize: '0.9375rem' }}>
+          {view === 'open' && !q && (!typeParam || typeParam === 'all')
+            ? 'No open broken links. Every 404 has been redirected or reviewed.'
+            : 'Nothing matches this view — clear the filters or try another tab.'}
         </div>
-      ) : (
+      ) : view === 'open' ? (
         <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr>
               <th style={th}>Path</th>
+              <th style={th}>Type</th>
               <th style={{ ...th, textAlign: 'right' }}>Hits</th>
               <th style={th}>Last seen</th>
               <th style={th}>Source</th>
@@ -88,49 +132,64 @@ export default async function BrokenLinksPage() {
             </tr>
           </thead>
           <tbody>
-            {open.map(r => (
-              <tr key={r.id}>
-                <td data-label="Path" style={{ ...td, fontFamily: 'monospace', overflowWrap: 'anywhere' }}>{r.path}</td>
-                <td data-label="Hits" style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{r.hit_count}</td>
-                <td data-label="Last seen" style={{ ...td, whiteSpace: 'nowrap', color: '#6b7280' }}>{ago(r.last_seen)}</td>
-                <td data-label="Source" style={{ ...td, color: '#6b7280', fontSize: '0.75rem' }}>
-                  {r.last_referer
-                    ? <span title={r.last_referer} style={{ overflowWrap: 'anywhere' }}>{r.last_referer}</span>
-                    : (r.is_bot ? 'crawler' : 'direct / unknown')}
-                </td>
-                <td className="bl-fix-cell" style={td}>
-                  <form action={addRedirect} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <input type="hidden" name="from_path" value={r.path} />
-                    <input name="to_path" placeholder="/shop or /product/…" style={inp} aria-label={`Redirect ${r.path} to`} required />
-                    <button type="submit" style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: 7, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
-                      Redirect
-                    </button>
-                  </form>
-                  <form action={ignoreNotFound} style={{ marginTop: 8 }}>
-                    <input type="hidden" name="path" value={r.path} />
-                    <button type="submit" style={{ padding: 0, fontSize: '0.75rem', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
-                      Ignore (it&apos;s meant to be gone)
-                    </button>
-                  </form>
-                </td>
-              </tr>
-            ))}
+            {list.map(r => {
+              const t = classifyPath(r.path);
+              return (
+                <tr key={r.id}>
+                  <td data-label="Path" style={{ ...td, fontFamily: 'monospace', overflowWrap: 'anywhere' }}>{r.path}</td>
+                  <td data-label="Type" style={td}>
+                    <DotChip label={PATH_TYPE_LABELS[t]} color={PATH_TYPE_COLORS[t]} />
+                  </td>
+                  <td data-label="Hits" style={{ ...td, textAlign: 'right', fontWeight: 600 }}>{r.hit_count}</td>
+                  <td data-label="Last seen" style={{ ...td, whiteSpace: 'nowrap', color: '#6b7280' }}>{ago(r.last_seen)}</td>
+                  <td data-label="Source" style={{ ...td, color: '#6b7280', fontSize: '0.75rem' }}>
+                    {r.last_referer
+                      ? <span title={r.last_referer} style={{ overflowWrap: 'anywhere' }}>{r.last_referer}</span>
+                      : (r.is_bot ? 'crawler' : 'direct / unknown')}
+                  </td>
+                  <td className="bl-fix-cell" style={td}>
+                    <form action={addRedirect} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input type="hidden" name="from_path" value={r.path} />
+                      <input name="to_path" placeholder="/shop or /product/…" style={inp} aria-label={`Redirect ${r.path} to`} required />
+                      <button type="submit" style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: 7, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        Redirect
+                      </button>
+                    </form>
+                    <form action={ignoreNotFound} style={{ marginTop: 8 }}>
+                      <input type="hidden" name="path" value={r.path} />
+                      <button type="submit" style={{ padding: 0, fontSize: '0.75rem', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                        Ignore (it&apos;s meant to be gone)
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
-      )}
-
-      {resolved.length > 0 && (
-        <details style={{ marginTop: 32 }}>
-          <summary style={{ cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
-            Resolved ({resolved.length})
-          </summary>
-          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', marginTop: 12 }}>
-            <tbody>
-              {resolved.map(r => (
+      ) : (
+        <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr>
+              <th style={th}>Path</th>
+              <th style={th}>Type</th>
+              <th style={{ ...th, textAlign: 'right' }}>Hits</th>
+              <th style={th}>Last seen</th>
+              <th style={{ ...th, width: 120 }}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map(r => {
+              const t = classifyPath(r.path);
+              return (
                 <tr key={r.id}>
                   <td data-label="Path" style={{ ...td, fontFamily: 'monospace', color: '#6b7280', overflowWrap: 'anywhere' }}>{r.path}</td>
-                  <td data-label="Hits" style={{ ...td, textAlign: 'right', color: '#9ca3af' }}>{r.hit_count} hits</td>
-                  <td style={{ ...td, width: 120 }}>
+                  <td data-label="Type" style={td}>
+                    <DotChip label={PATH_TYPE_LABELS[t]} color={PATH_TYPE_COLORS[t]} />
+                  </td>
+                  <td data-label="Hits" style={{ ...td, textAlign: 'right', color: '#9ca3af' }}>{r.hit_count}</td>
+                  <td data-label="Last seen" style={{ ...td, whiteSpace: 'nowrap', color: '#9ca3af' }}>{ago(r.last_seen)}</td>
+                  <td style={td}>
                     <form action={reopenNotFound}>
                       <input type="hidden" name="path" value={r.path} />
                       <button type="submit" style={{ padding: 0, fontSize: '0.75rem', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline' }}>
@@ -139,10 +198,10 @@ export default async function BrokenLinksPage() {
                     </form>
                   </td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </details>
+              );
+            })}
+          </tbody>
+        </table>
       )}
     </div>
   );
