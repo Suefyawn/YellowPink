@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { DotChip } from '@/components/admin/OrderChips';
 import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 import { AdminCollapsible } from '@/components/admin/AdminCollapsible';
 import { saveReviewer, setDefaultReviewer, deleteReviewer, sendReviewerInvite, approveReviewerApplication, rejectReviewerApplication } from './actions';
@@ -34,7 +35,7 @@ const lbl: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWe
 
 function ReviewerForm({ r }: { r?: ReviewerRow }) {
   return (
-    <form action={saveReviewer} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'end' }}>
+    <form action={saveReviewer} className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, alignItems: 'end' }}>
       {r && <input type="hidden" name="id" value={r.id} />}
       <div><label style={lbl}>Name *</label><input name="name" defaultValue={r?.name ?? ''} required placeholder="Dr. Ayesha Khan" style={inp} /></div>
       <div><label style={lbl}>Credentials</label><input name="credentials" defaultValue={r?.credentials ?? ''} placeholder="MBBS, FCPS (Gynaecology)" style={inp} /></div>
@@ -66,19 +67,19 @@ function initials(name: string): string {
   return name.replace(/^(dr|prof|mr|ms|mrs)\.?\s+/i, '').split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || 'YP';
 }
 
-function Pill({ children, tone = 'grey' }: { children: React.ReactNode; tone?: 'pink' | 'grey' | 'green' | 'amber' }) {
-  const t = { pink: ['#9d174d', '#fdf2f8'], grey: ['#6b7280', '#f3f4f6'], green: ['#15803d', '#f0fdf4'], amber: ['#b45309', '#fffbeb'] }[tone];
-  return <span style={{ fontSize: '0.625rem', fontWeight: 700, color: t[0], background: t[1], padding: '2px 8px', borderRadius: 999, textTransform: 'uppercase', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>{children}</span>;
-}
-
-const quickLink: React.CSSProperties = { background: 'none', border: 'none', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline', padding: 0 };
+// Small ghost buttons for the quick actions in each reviewer header row.
+const ghostBtn: React.CSSProperties = {
+  background: 'white', border: '1px solid #e5e7eb', borderRadius: 7,
+  padding: '5px 12px', fontSize: '0.75rem', fontWeight: 600, color: '#374151',
+  cursor: 'pointer', whiteSpace: 'nowrap',
+};
 
 // Compact one-line summary for each reviewer: avatar, name + credentials,
 // status pills, article count and the quick actions (invite, make default,
 // remove). The big edit form lives in the collapsible body.
 function ReviewerHeader({ r, count }: { r: ReviewerRow; count: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flexWrap: 'wrap' }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
         {r.photo_url
           // eslint-disable-next-line @next/next/no-img-element
@@ -88,9 +89,9 @@ function ReviewerHeader({ r, count }: { r: ReviewerRow; count: number }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>{r.name}</span>
             {r.credentials && <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>{r.credentials}</span>}
-            {r.is_default && <Pill tone="pink">Default</Pill>}
-            {!r.active && <Pill tone="amber">Hidden</Pill>}
-            {!r.auth_user_id && <Pill tone="grey">No login</Pill>}
+            {r.is_default && <DotChip label="Default" color="#C5286A" />}
+            {!r.active && <DotChip label="Hidden" color="#b45309" />}
+            {!r.auth_user_id && <DotChip label="No login" color="#6b7280" />}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 2, fontSize: '0.75rem', color: '#9ca3af', flexWrap: 'wrap' }}>
             {r.specialty && <span style={{ color: '#9d174d', fontWeight: 600 }}>{r.specialty}</span>}
@@ -100,17 +101,17 @@ function ReviewerHeader({ r, count }: { r: ReviewerRow; count: number }) {
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 1, flexWrap: 'wrap' }}>
         {r.email && (
           <form action={sendReviewerInvite}>
             <input type="hidden" name="id" value={r.id} />
-            <button type="submit" style={{ ...quickLink, color: '#9d174d' }}>{r.auth_user_id ? 'Invite' : 'Provision login'}</button>
+            <button type="submit" style={ghostBtn}>{r.auth_user_id ? 'Invite' : 'Provision login'}</button>
           </form>
         )}
         {!r.is_default && (
           <form action={setDefaultReviewer}>
             <input type="hidden" name="id" value={r.id} />
-            <button type="submit" style={{ ...quickLink, color: '#6b7280' }}>Make default</button>
+            <button type="submit" style={ghostBtn}>Make default</button>
           </form>
         )}
         <DeleteButton id={r.id} action={deleteReviewer} confirmMsg={`Remove ${r.name} from the review board?`} />

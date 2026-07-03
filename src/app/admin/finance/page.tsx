@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -8,9 +9,11 @@ import { FINANCE_RANGES as RANGES, resolveRange, rangeStartISO, loadFinanceOrder
 import { PAY_METHOD_LABELS } from '@/types';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
+import { RangePicker } from '@/components/admin/insights/RangePicker';
+import { InsightCallouts } from '@/components/admin/insights/InsightCallouts';
 import { addExpense, deleteExpense } from './actions';
-
-const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 const EXPENSE_CATEGORIES = ['Ads', 'Salaries', 'Packaging', 'Marketing', 'Rent & Utilities', 'Other'];
 const AD_CHANNELS = ['Meta', 'Instagram', 'Facebook', 'Google', 'TikTok', 'Other'];
@@ -140,15 +143,41 @@ export default async function FinancePage({
   const methodsPresent = [...new Set(orders.map(o => o.pay_method ?? 'unknown'))].sort();
   const orderTableQs = `range=${range.key}${methodFilter ? `&method=${methodFilter}` : ''}`;
 
-  const card: React.CSSProperties = { background: 'white', borderRadius: 10, padding: 24, boxShadow: '0 1px 3px rgba(0,0,0,0.08)' };
+  // Daily revenue series for the Revenue KPI sparkline: bucket the already-
+  // loaded orders by created-at day, chronological. Fixed ranges keep empty
+  // days as zeroes; "all time" spans only the days data is present for.
+  const revByDay = new Map<string, number>();
+  for (const o of orders) {
+    if (!o.created_at) continue;
+    const day = o.created_at.slice(0, 10);
+    revByDay.set(day, (revByDay.get(day) ?? 0) + num(o.total));
+  }
+  const revenueSpark: number[] = range.days != null && fromISO
+    ? Array.from({ length: range.days }, (_, i) => {
+        const day = new Date(new Date(fromISO).getTime() + i * 86_400_000).toISOString().slice(0, 10);
+        return revByDay.get(day) ?? 0;
+      })
+    : [...revByDay.keys()].sort().map(day => revByDay.get(day) ?? 0);
+
+  const card: React.CSSProperties = { background: 'white', borderRadius: 12, padding: 24, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)' };
   const profitColor = netProfit >= 0 ? '#15803d' : '#dc2626';
 
-  const kpis = [
-    { label: 'Revenue', value: fmt(revenue), color: '#0369a1' },
-    { label: 'Net profit', value: fmt(netProfit), color: profitColor },
-    { label: 'Net margin', value: `${margin.toFixed(1)}%`, color: profitColor },
-    { label: 'Ad spend', value: fmt(adSpend), color: '#b45309' },
-  ];
+  // "What stands out" strip, computed only from values already loaded above.
+  const financeInsights: string[] = [];
+  if (revenue > 0) {
+    financeInsights.push(`Net margin is ${margin.toFixed(1)}% — you keep PKR ${Math.round(margin)} of every PKR 100 sold.`);
+  }
+  if (blendedRoas != null) {
+    financeInsights.push(`Tagged ad revenue is ${blendedRoas.toFixed(2)}× ad spend.`);
+  }
+  if (awaiting > 0) {
+    const awaitingTotal = awaitingOrders.reduce((s, o) => s + num(o.total), 0);
+    financeInsights.push(`${awaiting} non-COD order${awaiting === 1 ? '' : 's'} (${fmt(awaitingTotal)}) still need${awaiting === 1 ? 's' : ''} payment confirmation.`);
+  }
+  if (totalOpex > 0) {
+    const [topCat, topAmt] = [...expByCat.entries()].sort((a, b) => b[1] - a[1])[0];
+    financeInsights.push(`Your biggest expense category this period is ${topCat} (${fmt(topAmt)}).`);
+  }
 
   const pnlLines: { label: string; value: number; kind?: 'sub' | 'total' | 'net' }[] = [
     { label: 'Revenue (paid orders)', value: revenue },
@@ -168,28 +197,23 @@ export default async function FinancePage({
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Finance</h1>
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>Profit &amp; loss, ad spend and ROAS, last {range.label.toLowerCase()}.</p>
         </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {RANGES.map(r => (
-            <a key={r.key} href={`/admin/finance?range=${r.key}`} style={{
-              padding: '7px 12px', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, textDecoration: 'none',
-              border: '1px solid', borderColor: r.key === range.key ? '#111827' : '#e5e7eb',
-              background: r.key === range.key ? '#111827' : 'white', color: r.key === range.key ? '#fff' : '#6b7280',
-            }}>{r.label}</a>
-          ))}
-        </div>
+        {/* Shared URL-synced range picker; preserves the active ?method= filter. */}
+        <Suspense fallback={null}>
+          <RangePicker param="range" value={range.key} options={RANGES.map(r => ({ value: r.key, label: r.label }))} />
+        </Suspense>
       </div>
 
       {err && <div style={{ ...card, padding: '12px 16px', marginBottom: 16, background: '#fef2f2', color: '#991b1b', fontSize: '0.875rem' }}>{err}</div>}
       {ok && <div style={{ ...card, padding: '12px 16px', marginBottom: 16, background: '#f0fdf4', color: '#166534', fontSize: '0.875rem' }}>Saved.</div>}
 
+      <InsightCallouts items={financeInsights} />
+
       {/* KPIs */}
       <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
-        {kpis.map(k => (
-          <div key={k.label} style={{ ...card, padding: '18px 20px' }}>
-            <div style={{ color: '#6b7280', fontSize: '0.8125rem', fontWeight: 500, marginBottom: 8 }}>{k.label}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: k.color, fontVariantNumeric: 'tabular-nums' }}>{k.value}</div>
-          </div>
-        ))}
+        <KpiCard label="Revenue" value={fmt(revenue)} accent="#0369a1" spark={revenueSpark} />
+        <KpiCard label="Net profit" value={fmt(netProfit)} accent={profitColor} />
+        <KpiCard label="Net margin" value={`${margin.toFixed(1)}%`} accent={profitColor} />
+        <KpiCard label="Ad spend" value={fmt(adSpend)} accent="#b45309" hint="logged in Expenses below" />
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>

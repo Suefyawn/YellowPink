@@ -1,5 +1,7 @@
 'use client';
 
+import { PK_TZ } from '@/lib/dates';
+
 interface DayRevenue {
   date: string; // 'YYYY-MM-DD'
   revenue: number;
@@ -11,8 +13,10 @@ const fmtK = (n: number) => {
   return String(Math.round(n));
 };
 
+// Parse the bucket day as UTC and render in PK time so the label always
+// equals the bucket day, independent of server/browser timezone.
 const fmtDate = (iso: string) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' });
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', timeZone: PK_TZ });
 
 export function RevenueChart({ days }: { days: DayRevenue[] }) {
   if (days.length === 0) {

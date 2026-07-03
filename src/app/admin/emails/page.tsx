@@ -4,9 +4,12 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
+import { DotChip } from '@/components/admin/OrderChips';
+import { PK_TZ } from '@/lib/dates';
 
 const fmtDateTime = (s: string) =>
-  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
 
 interface EmailRow {
   id: string;
@@ -25,15 +28,15 @@ interface EmailRow {
 
 // The DB `status` records the send attempt; the webhook timestamps record the
 // delivery lifecycle. This collapses both into the single label the admin sees.
-function displayStatus(r: EmailRow): { label: string; bg: string; fg: string } {
-  if (r.status === 'failed')      return { label: 'Failed',         bg: '#fef2f2', fg: '#dc2626' };
-  if (r.status === 'skipped')     return { label: 'Skipped',        bg: '#f3f4f6', fg: '#6b7280' };
-  if (r.bounced_at)               return { label: 'Bounced',        bg: '#fef2f2', fg: '#dc2626' };
-  if (r.complained_at)            return { label: 'Spam complaint', bg: '#fef2f2', fg: '#dc2626' };
-  if (r.clicked_at)               return { label: 'Clicked',        bg: '#ecfdf5', fg: '#059669' };
-  if (r.opened_at)                return { label: 'Opened',         bg: '#eff6ff', fg: '#2563eb' };
-  if (r.delivered_at)             return { label: 'Delivered',      bg: '#f0fdf4', fg: '#16a34a' };
-  return { label: 'Sent', bg: '#fefce8', fg: '#ca8a04' };
+function displayStatus(r: EmailRow): { label: string; color: string } {
+  if (r.status === 'failed')      return { label: 'Failed',         color: '#b91c1c' };
+  if (r.status === 'skipped')     return { label: 'Skipped',        color: '#6b7280' };
+  if (r.bounced_at)               return { label: 'Bounced',        color: '#b91c1c' };
+  if (r.complained_at)            return { label: 'Spam complaint', color: '#b91c1c' };
+  if (r.clicked_at)               return { label: 'Clicked',        color: '#059669' };
+  if (r.opened_at)                return { label: 'Opened',         color: '#2563eb' };
+  if (r.delivered_at)             return { label: 'Delivered',      color: '#16a34a' };
+  return { label: 'Sent', color: '#ca8a04' };
 }
 
 const FILTERS = [
@@ -84,12 +87,6 @@ export default async function EmailLogPage({
   // (with the explainer below) until the Resend webhook is delivering events;
   // sentCount > 0 with openedCount = 0 most often means the webhook isn't wired.
   const openRate = sentCount === 0 ? '—' : `${Math.round((openedCount / sentCount) * 1000) / 10}%`;
-  const stats: { label: string; value: number | string }[] = [
-    { label: 'Sent · 30 days',   value: sentCount },
-    { label: 'Failed · 30 days', value: failed30.count ?? 0 },
-    { label: 'Opened · 30 days', value: openedCount },
-    { label: 'Open rate · 30 days', value: openRate },
-  ];
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -99,13 +96,12 @@ export default async function EmailLogPage({
         fill in automatically once the Resend webhook is connected.
       </p>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        {stats.map(s => (
-          <div key={s.label} style={{ flex: '1 1 160px', background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '16px 20px' }}>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>{s.value}</div>
-            <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', marginTop: 2 }}>{s.label}</div>
-          </div>
-        ))}
+      <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
+        <KpiCard label="Sent · 30 days" value={sentCount} accent="#15803d" />
+        <KpiCard label="Failed · 30 days" value={failed30.count ?? 0} accent="#dc2626" href="/admin/emails?status=failed" />
+        <KpiCard label="Opened · 30 days" value={openedCount} accent="#2563eb" />
+        <KpiCard label="Open rate · 30 days" value={openRate} accent="#C5286A"
+          hint={sentCount === 0 ? 'Shows once emails have been sent' : undefined} />
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
@@ -116,11 +112,10 @@ export default async function EmailLogPage({
               key={f.key}
               href={f.key === 'all' ? '/admin/emails' : `/admin/emails?status=${f.key}`}
               style={{
-                padding: '6px 14px', borderRadius: 20, fontSize: '0.8125rem', fontWeight: 600,
-                textDecoration: 'none',
-                background: on ? '#111827' : 'white',
-                color: on ? 'white' : '#374151',
-                border: '1px solid ' + (on ? '#111827' : '#e5e7eb'),
+                padding: '6px 13px', borderRadius: 16, fontSize: '0.75rem', fontWeight: 600,
+                textDecoration: 'none', border: 'none',
+                background: on ? '#111827' : '#f3f4f6',
+                color: on ? '#fff' : '#6b7280',
               }}
             >
               {f.label}
@@ -129,7 +124,7 @@ export default async function EmailLogPage({
         })}
       </div>
 
-      <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+      <div style={{ background: 'white', borderRadius: 12, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)', overflow: 'hidden' }}>
         {emails.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
             No emails logged yet.
@@ -161,9 +156,7 @@ export default async function EmailLogPage({
                       {r.kind}
                     </td>
                     <td data-label="Status" style={{ padding: '12px 20px' }}>
-                      <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, background: st.bg, color: st.fg }}>
-                        {st.label}
-                      </span>
+                      <DotChip label={st.label} color={st.color} />
                     </td>
                     <td data-label="Sent" style={{ padding: '12px 20px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                       {fmtDateTime(r.created_at)}

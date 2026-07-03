@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { checkUrlIndexStatus } from '@/app/admin/settings/integrations/google-actions';
+import { PK_TZ } from '@/lib/dates';
 
 type Result = Awaited<ReturnType<typeof checkUrlIndexStatus>>;
 
@@ -45,7 +46,7 @@ export function UrlIndexChecker() {
             <strong>{res.coverage}</strong>
             <div style={{ marginTop: 2, color: '#6b7280' }}>
               {res.verdict && <>Verdict: {res.verdict}. </>}
-              {res.lastCrawl ? `Last crawled ${new Date(res.lastCrawl).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}.` : 'Not crawled yet.'}
+              {res.lastCrawl ? `Last crawled ${new Date(res.lastCrawl).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ })}.` : 'Not crawled yet.'}
             </div>
           </div>
         ) : (

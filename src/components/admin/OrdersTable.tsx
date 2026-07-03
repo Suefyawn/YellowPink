@@ -8,10 +8,9 @@ import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 import { paymentState, fulfilmentState, DotChip, itemCount } from '@/components/admin/OrderChips';
 import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import type { Order, OrderStatus } from '@/types';
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
 // Per-status age thresholds (days). The two waiting-on-us-to-confirm statuses
 // have different SLAs:

@@ -27,6 +27,7 @@ import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
 import type { Order, CartItem, OrderStatus } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { PK_TZ, fmtDatePK } from '@/lib/dates';
 
 interface OrderEventRow {
   id: string;
@@ -48,7 +49,7 @@ function statusLabel(s: OrderStatus | null): string {
 // values, and (-0).toLocaleString() renders "PKR -0".
 const fmt = (n: number) => `PKR ${(n === 0 ? 0 : n).toLocaleString()}`;
 const fmtDate = (s: string) =>
-  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
 
 export default async function OrderDetailPage({
   params,
@@ -426,7 +427,7 @@ export default async function OrderDetailPage({
             <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 8, minWidth: 0 }}>
               {customerStats && customerStats.count > 1 && (
                 <span
-                  title={customerStats.first ? `First ordered ${new Date(customerStats.first).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}` : undefined}
+                  title={customerStats.first ? `First ordered ${fmtDatePK(customerStats.first)}` : undefined}
                   style={{
                     fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.05em',
                     textTransform: 'uppercase',

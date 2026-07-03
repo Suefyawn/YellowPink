@@ -6,6 +6,7 @@ import { DeleteButton } from '@/components/admin/DeleteButton';
 import { createVendor, deleteVendor, updateVendor, markSettlementSettled } from '@/app/admin/vendor-actions';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { DotChip } from '@/components/admin/OrderChips';
 import type { Vendor, VendorSettlement } from '@/types';
 
 const fmt = (n: number) => `PKR ${Math.round(n).toLocaleString()}`;
@@ -233,13 +234,10 @@ export default async function VendorsPage({
                       </span>
                     </td>
                     <td data-label="Status" style={{ padding: '12px 16px' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '2px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
-                        background: s.status === 'settled' ? '#f0fdf4' : '#fffbeb',
-                        color: s.status === 'settled' ? '#16a34a' : '#d97706',
-                      }}>
-                        {s.status === 'settled' ? 'Settled' : 'Pending'}
-                      </span>
+                      <DotChip
+                        label={s.status === 'settled' ? 'Settled' : 'Pending'}
+                        color={s.status === 'settled' ? '#15803d' : '#b45309'}
+                      />
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <form action={markSettlementSettled}>

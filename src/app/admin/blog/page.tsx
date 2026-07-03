@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { deleteBlogPost } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { BlogFilter } from '@/components/admin/BlogFilter';
+import { DotChip } from '@/components/admin/OrderChips';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { Pagination } from '@/components/admin/Pagination';
 import { AdminFab } from '@/components/admin/AdminFab';
@@ -94,10 +95,7 @@ export default async function BlogAdminPage({
             </thead>
             <tbody>
               {(posts as BlogPost[]).map((p, i) => (
-                <tr key={p.id} style={{
-                  borderTop: i > 0 ? '1px solid #f3f4f6' : 'none',
-                  background: p.featured ? '#fffbeb' : 'transparent',
-                }}>
+                <tr key={p.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
                   <td data-label="Title" style={{ padding: '12px 16px', maxWidth: 300 }}>
                     <div style={{ fontWeight: 500, fontSize: '0.875rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={p.title}>
                       {p.title}
@@ -109,7 +107,7 @@ export default async function BlogAdminPage({
                   <td data-label="Read time" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280' }}>{p.read_time}</td>
                   <td data-label="Featured" style={{ padding: '12px 16px', textAlign: 'center' }}>
                     {p.featured ? (
-                      <span style={{ display: 'inline-block', padding: '2px 8px', background: '#fef9c3', color: '#92400e', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>★ Featured</span>
+                      <DotChip label="Featured" color="#b45309" />
                     ) : (
                       <span style={{ color: '#d1d5db', fontSize: '0.875rem' }}>—</span>
                     )}

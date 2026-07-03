@@ -1,15 +1,19 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { DotChip } from '@/components/admin/OrderChips';
+import { MessagesSearch } from '@/components/admin/MessagesSearch';
 import { ReplyComposer } from './ReplyComposer';
 import { markThreadRead, archiveThread, restoreThread } from './actions';
+import { PK_TZ } from '@/lib/dates';
 
 const fmt = (s: string) =>
   new Date(s).toLocaleString('en-PK', {
-    day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+    day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: PK_TZ,
   });
 
 interface Row {
@@ -88,19 +92,13 @@ function Conversation({ c, ctx }: { c: Convo; ctx?: CustomerContext }) {
   return (
     <div style={{ background: 'white', borderRadius: 12, border: '1px solid #f0f0f3', boxShadow: '0 1px 2px rgba(16,24,40,0.05)', marginBottom: 16, overflow: 'hidden' }}>
       <div style={{ padding: '14px 18px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        {c.unread > 0 && (
-          <span style={{ background: '#fce7f3', color: '#9d174d', borderRadius: 20, padding: '2px 8px', fontSize: '0.6875rem', fontWeight: 700 }}>
-            {c.unread} new
-          </span>
-        )}
+        {c.unread > 0 && <DotChip label={`${c.unread} new`} color="#C5286A" />}
         <span style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#111827' }}>{c.name}</span>
         <a href={mailHref} style={{ fontSize: '0.8125rem', color: '#C5286A', textDecoration: 'none' }}>{c.email}</a>
-        <span style={{ background: '#eef2f6', color: '#475569', borderRadius: 20, padding: '2px 8px', fontSize: '0.625rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-          {c.source === 'email' ? 'Email' : 'Form'}
-        </span>
+        <DotChip label={c.source === 'email' ? 'Email' : 'Form'} color="#6b7280" />
         <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
           {!c.archived && c.unread > 0 && (
-            <ThreadActionButton action={markThreadRead} email={c.email} label="Mark read" bg="#10b981" />
+            <ThreadActionButton action={markThreadRead} email={c.email} label="Mark read" bg="#f3f4f6" color="#374151" />
           )}
           {c.archived
             ? <ThreadActionButton action={restoreThread} email={c.email} label="Restore" bg="#f3f4f6" color="#374151" />
@@ -153,7 +151,7 @@ function groupConversations(rows: Row[]): Convo[] {
   return convos.sort((a, b) => b.lastAt.localeCompare(a.lastAt));
 }
 
-export default async function MessagesPage({ searchParams }: { searchParams?: Promise<{ error?: string }> }) {
+export default async function MessagesPage({ searchParams }: { searchParams?: Promise<{ error?: string; q?: string }> }) {
   const session = await getStaffSession();
   // No session must NOT fall through: the edge gate only checks that a
   // staff_session cookie exists (real verification happens here), so a
@@ -172,7 +170,17 @@ export default async function MessagesPage({ searchParams }: { searchParams?: Pr
     .order('created_at', { ascending: false })
     .limit(2000);
 
-  const convos = groupConversations(((data ?? []) as Row[]).slice().reverse());
+  const allConvos = groupConversations(((data ?? []) as Row[]).slice().reverse());
+
+  // Thread search: case-insensitive substring match on name / email / subject,
+  // applied to the built conversation list before rendering.
+  const q = (sp.q ?? '').trim().toLowerCase();
+  const convos = q
+    ? allConvos.filter(c =>
+        c.name.toLowerCase().includes(q) ||
+        c.email.includes(q) ||
+        (c.subject ?? '').toLowerCase().includes(q))
+    : allConvos;
   const open = convos.filter(c => !c.archived);
   const archived = convos.filter(c => c.archived);
   const unreadThreads = open.filter(c => c.unread > 0).length;
@@ -215,16 +223,18 @@ export default async function MessagesPage({ searchParams }: { searchParams?: Pr
         }}>{sp.error}</div>
       )}
 
+      <div style={{ marginBottom: 14 }}>
+        <Suspense fallback={null}>
+          <MessagesSearch />
+        </Suspense>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
         <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Inbox</h2>
-        {unreadThreads > 0 && (
-          <span style={{ background: '#fce7f3', color: '#9d174d', borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 }}>
-            {unreadThreads} unread
-          </span>
-        )}
+        {unreadThreads > 0 && <DotChip label={`${unreadThreads} unread`} color="#C5286A" />}
       </div>
       {open.length === 0
-        ? <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', background: 'white', borderRadius: 12, border: '1px solid #f0f0f3', marginBottom: 16 }}>No conversations yet.</div>
+        ? <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', background: 'white', borderRadius: 12, border: '1px solid #f0f0f3', marginBottom: 16 }}>{q ? 'No conversations match this search.' : 'No conversations yet.'}</div>
         : open.map(c => <Conversation key={c.email} c={c} ctx={ctxByEmail.get(c.email)} />)}
 
       {archived.length > 0 && (

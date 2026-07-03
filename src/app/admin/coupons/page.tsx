@@ -10,9 +10,7 @@ import { deleteCoupon, toggleCoupon } from '@/app/admin/coupon-actions';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import type { Coupon } from '@/types';
-
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 function getCouponState(c: Coupon): 'expired' | 'maxed' | 'active' | 'inactive' {
   if (c.expires_at && new Date(c.expires_at) < new Date()) return 'expired';

@@ -3,6 +3,7 @@
 import { useActionState, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { submitReview, voteReviewHelpful } from '@/app/product/[slug]/actions';
+import { fmtDatePK } from '@/lib/dates';
 
 interface Review {
   id: string;
@@ -321,7 +322,7 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true, rewar
                           Response from Yellow Pink
                           {r.owner_reply_at && (
                             <span style={{ fontWeight: 400, color: 'var(--ink-400)' }}>
-                              {' '}· {new Date(r.owner_reply_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                              {' '}· {fmtDatePK(r.owner_reply_at)}
                             </span>
                           )}
                         </div>
@@ -330,7 +331,7 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true, rewar
                     )}
                     <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                       <div style={{ fontSize: '0.75rem', color: 'var(--ink-400)' }}>
-                        {new Date(r.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {fmtDatePK(r.created_at)}
                       </div>
                       <HelpfulButton reviewId={r.id} initialCount={r.helpful_count ?? 0} />
                     </div>

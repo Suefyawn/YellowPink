@@ -140,7 +140,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
       {/* Existing zones */}
       {zones.length === 0 ? (
         <div style={{
-          background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+          background: 'white', borderRadius: 12, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
           padding: '32px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', marginBottom: 24,
         }}>
           No zones yet, checkout falls back to the default above. Add one to start charging per region.
@@ -148,7 +148,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
       ) : (
         zones.map(({ zone, rate }) => (
           <div key={zone.id} style={{
-            background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+            background: 'white', borderRadius: 12, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
             padding: 24, marginBottom: 12,
             opacity: zone.active ? 1 : 0.6,
           }}>
@@ -164,8 +164,8 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
               <ZoneFields zone={zone} rate={rate} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                 <button type="submit" style={{
-                  padding: '8px 18px', background: '#111827', color: 'white',
-                  border: 'none', borderRadius: 7, fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
+                  padding: '8px 18px', background: '#C5286A', color: 'white',
+                  border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.8125rem', cursor: 'pointer',
                 }}>
                   Save zone
                 </button>
@@ -178,7 +178,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
 
       {/* Add zone */}
       <details
-        style={{ background: 'white', borderRadius: 10, padding: '12px 20px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 24 }}
+        style={{ background: 'white', borderRadius: 12, border: '1px solid #eef0f2', padding: '12px 20px', boxShadow: '0 1px 2px rgba(16,24,40,0.04)', marginBottom: 24 }}
         open={zones.length === 0}
       >
         <summary style={{ cursor: 'pointer', fontSize: '0.9375rem', fontWeight: 600, color: '#111827', padding: '8px 0' }}>

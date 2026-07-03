@@ -10,6 +10,7 @@ import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
 import { getGoogleConnection, isGoogleOAuthConfigured, REDIRECT_URI, listSitemaps, listGscSites, listGa4Properties, type SitemapStatus, type GscSite, type Ga4Property } from '@/lib/google';
 import { disconnectGoogleAction, submitSitemapAction, setGscSiteAction, setGa4PropertyAction } from './google-actions';
 import { UrlIndexChecker } from '@/components/admin/UrlIndexChecker';
+import { PK_TZ } from '@/lib/dates';
 
 // IMPORTANT: never render an env-var VALUE on this page, only its presence.
 // All checks happen server-side; only the boolean leaves this module.
@@ -319,7 +320,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
               </form>
               {ourSitemap && (
                 <p style={{ margin: '10px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
-                  Last submitted: {ourSitemap.lastSubmitted ? new Date(ourSitemap.lastSubmitted).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                  Last submitted: {ourSitemap.lastSubmitted ? new Date(ourSitemap.lastSubmitted).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ }) : '—'}
                   {' · '}{ourSitemap.submittedUrls} URLs
                   {ourSitemap.errors > 0 && <span style={{ color: '#dc2626' }}> · {ourSitemap.errors} errors</span>}
                 </p>

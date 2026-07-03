@@ -10,7 +10,7 @@ import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
 import { absoluteUrl, jsonLd, faqLd } from '@/lib/seo';
-import { formatBlogDate } from '@/lib/dates';
+import { formatBlogDate, PK_TZ } from '@/lib/dates';
 import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import { isHealthCategory } from '@/lib/category-taxonomy';
 import { reviewerLabel, type MedicalReviewer } from '@/lib/eeat';
@@ -262,7 +262,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProdu
                   <strong style={{ color: 'var(--ink-900)' }}>{reviewerLabel(reviewer)}</strong>
                 )}
                 {reviewer.specialty ? ` · ${reviewer.specialty}` : ''}
-                {' '}· Last reviewed {post.updated_at ? new Date(post.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : formatBlogDate(post.date)}
+                {' '}· Last reviewed {post.updated_at ? new Date(post.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ }) : formatBlogDate(post.date)}
               </span>
             </div>
           )}

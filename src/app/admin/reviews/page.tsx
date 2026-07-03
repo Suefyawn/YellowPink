@@ -14,12 +14,13 @@ import {
   UnapproveButton,
   type ProductOption,
 } from '@/components/admin/ReviewAdminControls';
+import { ReviewsFilter } from '@/components/admin/ReviewsFilter';
+import { DotChip } from '@/components/admin/OrderChips';
 import { approveReview, deleteReview } from './actions';
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 const PAGE_SIZE = 25;
 
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
 function Stars({ rating }: { rating: number }) {
   return (
@@ -150,16 +151,8 @@ export default async function ReviewsPage({
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6, flexWrap: 'wrap' }}>
             <Stars rating={r.rating} />
             <span style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827' }}>{r.author_name}</span>
-            {r.verified_purchase && (
-              <span style={{ background: '#f0fdf4', color: '#16a34a', borderRadius: 20, padding: '2px 8px', fontSize: '0.6875rem', fontWeight: 700 }}>
-                Verified purchase
-              </span>
-            )}
-            {!showApprove && !r.approved && (
-              <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 20, padding: '2px 8px', fontSize: '0.6875rem', fontWeight: 700 }}>
-                Pending
-              </span>
-            )}
+            {r.verified_purchase && <DotChip label="Verified purchase" color="#15803d" />}
+            {!showApprove && !r.approved && <DotChip label="Pending" color="#b45309" />}
             <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{fmtDate(r.created_at)}</span>
           </div>
           <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginBottom: 6 }}>
@@ -207,7 +200,7 @@ export default async function ReviewsPage({
             <form action={approveReview}>
               <input type="hidden" name="id" value={r.id} />
               <button type="submit" style={{
-                padding: '6px 14px', background: '#10b981', color: 'white',
+                padding: '6px 14px', background: '#15803d', color: 'white',
                 border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
               }}>Approve</button>
             </form>
@@ -232,17 +225,17 @@ export default async function ReviewsPage({
           : null;
 
   const filtersActive = Boolean(q || productFilter || statusFilter !== 'all');
-  const selStyle: React.CSSProperties = {
-    padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 7,
-    fontSize: '0.8125rem', background: 'white', maxWidth: 260,
-  };
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Reviews</h1>
-      <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>
-        Moderate customer product reviews before they appear on the site, and reply publicly to live ones
-      </p>
+      <AddReviewToggle products={products}>
+        <div>
+          <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Reviews</h1>
+          <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>
+            Moderate customer product reviews before they appear on the site, and reply publicly to live ones
+          </p>
+        </div>
+      </AddReviewToggle>
 
       {feedback && (
         <div
@@ -258,17 +251,11 @@ export default async function ReviewsPage({
         </div>
       )}
 
-      <AddReviewToggle products={products} />
-
       {/* Pending queue — always in full, this is the morning-triage list. */}
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 32, overflow: 'hidden' }}>
         <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 12 }}>
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Pending Approval</h2>
-          {pendingList.length > 0 && (
-            <span style={{ background: '#fef3c7', color: '#92400e', borderRadius: 20, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 700 }}>
-              {pendingList.length}
-            </span>
-          )}
+          {pendingList.length > 0 && <DotChip label={String(pendingList.length)} color="#b45309" />}
         </div>
         {pendingList.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
@@ -285,30 +272,9 @@ export default async function ReviewsPage({
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
             All Reviews <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: '0.875rem' }}>({total})</span>
           </h2>
-          <form method="get" action="/admin/reviews" style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
-            <input
-              type="search" name="q" defaultValue={q} placeholder="Search name or text…"
-              aria-label="Search reviews" style={{ ...selStyle, width: 190 }}
-            />
-            <select name="product" defaultValue={productFilter} aria-label="Filter by product" style={selStyle}>
-              <option value="">All products</option>
-              {reviewedProducts.map(p => (
-                <option key={p.id} value={p.id}>{p.label}</option>
-              ))}
-            </select>
-            <select name="status" defaultValue={statusFilter} aria-label="Filter by status" style={selStyle}>
-              <option value="all">All statuses</option>
-              <option value="approved">Approved</option>
-              <option value="pending">Pending</option>
-            </select>
-            <button type="submit" style={{
-              padding: '8px 14px', background: '#111827', color: 'white', border: 'none',
-              borderRadius: 7, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-            }}>Filter</button>
-            {filtersActive && (
-              <a href="/admin/reviews" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>Clear</a>
-            )}
-          </form>
+          <Suspense fallback={null}>
+            <ReviewsFilter products={reviewedProducts} />
+          </Suspense>
         </div>
         {list.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>

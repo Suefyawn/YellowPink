@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { addRedirect, ignoreNotFound, reopenNotFound } from './actions';
 
 interface Row {
@@ -65,15 +66,15 @@ export default async function BrokenLinksPage() {
         Add a redirect to send a dead URL somewhere useful (goes live within a minute, no deploy), or ignore it,         a 404 for genuinely removed content is perfectly fine and won&apos;t hurt your ranking.
       </p>
 
-      <div style={{ display: 'flex', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-        <Stat label="Open" value={open.length} />
-        <Stat label="Total hits" value={totalHits} />
-        <Stat label="Resolved" value={resolved.length} />
+      <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <KpiCard label="Open" value={open.length} accent="#dc2626" />
+        <KpiCard label="Total hits" value={totalHits} accent="#b45309" />
+        <KpiCard label="Resolved" value={resolved.length} accent="#15803d" />
       </div>
 
       {open.length === 0 ? (
         <div style={{ padding: '40px 24px', textAlign: 'center', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, color: '#166534', fontSize: '0.9375rem' }}>
-          ✓ No open broken links. Every 404 has been redirected or reviewed.
+          No open broken links. Every 404 has been redirected or reviewed.
         </div>
       ) : (
         <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -101,7 +102,7 @@ export default async function BrokenLinksPage() {
                   <form action={addRedirect} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                     <input type="hidden" name="from_path" value={r.path} />
                     <input name="to_path" placeholder="/shop or /product/…" style={inp} aria-label={`Redirect ${r.path} to`} required />
-                    <button type="submit" className="adm-btn-primary" style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: 7, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    <button type="submit" style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: 7, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
                       Redirect
                     </button>
                   </form>
@@ -143,15 +144,6 @@ export default async function BrokenLinksPage() {
           </table>
         </details>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 18px', minWidth: 96 }}>
-      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{label}</div>
     </div>
   );
 }

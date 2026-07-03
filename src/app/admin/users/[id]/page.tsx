@@ -12,12 +12,9 @@ import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge';
 import { deleteCustomer } from '@/app/admin/actions';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
+import { fmtDatePK as fmtDate, fmtDateTimePK as fmtDateTime } from '@/lib/dates';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
-const fmtDateTime = (s: string) =>
-  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 interface ActivityRow {
   id: string;

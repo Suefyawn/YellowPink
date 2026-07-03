@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { markNotificationRead, markAllNotificationsRead } from '@/app/admin/notifications-actions';
 import { AdminIcon, type AdminIconName } from '@/components/ui/AdminIcon';
+import { PK_TZ } from '@/lib/dates';
 
 interface Notification {
   id: string;
@@ -109,7 +110,7 @@ export function NotificationsBell({ notifications }: { notifications: Notificati
                       <div style={{ fontWeight: 600, fontSize: '0.8125rem', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.title}</div>
                       {n.body && <div style={{ fontSize: '0.75rem', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</div>}
                       <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 2 }}>
-                        {new Date(n.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        {new Date(n.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ })}
                       </div>
                     </div>
                     {!n.read && <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#C5286A', flexShrink: 0, marginTop: 6 }} />}

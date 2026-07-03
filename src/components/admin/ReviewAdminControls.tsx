@@ -19,34 +19,38 @@ const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: 4,
 };
 
-export function AddReviewToggle({ products }: { products: ProductOption[] }) {
+// Page header for /admin/reviews: the server page passes the title block as
+// children; the primary "+ Add review" action sits top-right (blog's "+ New
+// Post" treatment) and the add-review form expands below the header when open.
+export function AddReviewToggle({ products, children }: { products: ProductOption[]; children?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
   return (
-    <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 28, overflow: 'hidden' }}>
-      <div style={{ padding: '16px 20px', borderBottom: open ? '1px solid #f3f4f6' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
-          {open ? 'Add a review' : 'Seed or migrate a review'}
-        </h2>
+    <>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 24 }}>
+        {children}
         <button
           type="button"
           onClick={() => setOpen(v => !v)}
           style={{
-            padding: '7px 14px',
+            padding: '10px 20px',
             background: open ? '#f3f4f6' : '#C5286A',
             color: open ? '#374151' : 'white',
-            border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+            border: 'none', borderRadius: 8, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer',
+            flexShrink: 0,
           }}
         >
           {open ? 'Cancel' : '+ Add review'}
         </button>
       </div>
       {open && (
+        <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 28, overflow: 'hidden' }}>
         <form
           action={(fd) => startTransition(() => { void addReview(fd); })}
           style={{ padding: '20px', display: 'grid', gap: 14 }}
         >
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Add a review</h2>
           <div style={{ display: 'grid', gap: 14, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
             <div>
               <label style={labelStyle}>Product</label>
@@ -87,7 +91,7 @@ export function AddReviewToggle({ products }: { products: ProductOption[] }) {
             <button
               type="submit"
               disabled={pending}
-              style={{ padding: '8px 18px', background: '#10b981', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.875rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer', opacity: pending ? 0.6 : 1 }}
+              style={{ padding: '8px 18px', background: '#C5286A', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.875rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer', opacity: pending ? 0.6 : 1 }}
             >
               {pending ? 'Saving…' : 'Save review'}
             </button>
@@ -96,8 +100,9 @@ export function AddReviewToggle({ products }: { products: ProductOption[] }) {
             Reviews added here are approved automatically and appear on the storefront immediately.
           </p>
         </form>
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -194,7 +199,7 @@ export function EditReviewButton({
           <button
             type="submit"
             disabled={pending}
-            style={{ padding: '8px 18px', background: '#10b981', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.875rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer', opacity: pending ? 0.6 : 1 }}
+            style={{ padding: '8px 18px', background: '#C5286A', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.875rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer', opacity: pending ? 0.6 : 1 }}
           >
             {pending ? 'Saving…' : 'Save changes'}
           </button>

@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { approveReturn, rejectReturn, markReturnReceived, markReturnRefunded } from '@/app/account/orders/returns/actions';
 import { useToast } from '@/components/admin/Toast';
+import { DotChip } from '@/components/admin/OrderChips';
+import { PK_TZ } from '@/lib/dates';
 
 interface ReturnRow {
   id: string;
@@ -20,8 +22,8 @@ interface ReturnRow {
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  pending: '#d97706', approved: '#10b981', rejected: '#ef4444',
-  received: '#3b82f6', refunded: '#8b5cf6', cancelled: '#6b7280',
+  pending: '#b45309', approved: '#15803d', rejected: '#b91c1c',
+  received: '#2563eb', refunded: '#15803d', cancelled: '#6b7280',
 };
 
 // Human labels for refund_method, used in the refund confirmation prompt.
@@ -66,16 +68,14 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                   {order?.order_number ?? r.order_id.slice(0, 8)}
                 </Link>
                 <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                  {order ? `${order.first_name} ${order.last_name}` : '—'} · {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  {order ? `${order.first_name} ${order.last_name}` : '—'} · {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ })}
                   {r.email && <> · {r.email}</>}
                 </div>
               </div>
-              <span style={{
-                padding: '4px 12px', borderRadius: 20,
-                background: (STATUS_COLOR[r.status] ?? '#6b7280') + '22',
-                color: STATUS_COLOR[r.status] ?? '#6b7280',
-                fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
-              }}>{r.status}</span>
+              <DotChip
+                label={r.status.charAt(0).toUpperCase() + r.status.slice(1)}
+                color={STATUS_COLOR[r.status] ?? '#6b7280'}
+              />
             </div>
 
             <div style={{ marginTop: 12, fontSize: '0.875rem', color: '#374151' }}>
@@ -136,7 +136,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                     });
                   }}
                   disabled={acting}
-                  style={{ padding: '6px 14px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '6px 14px', background: '#111827', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Mark as received & restock
                 </button>
@@ -160,7 +160,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                     });
                   }}
                   disabled={acting}
-                  style={{ padding: '6px 14px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                  style={{ padding: '6px 14px', background: '#111827', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
                 >
                   Mark as refunded
                 </button>

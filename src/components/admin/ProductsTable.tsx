@@ -9,6 +9,7 @@ import {
   bulkPublishProducts, bulkTagProducts, quickUpdateProduct,
 } from '@/app/admin/bulk-product-actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { DotChip } from '@/components/admin/OrderChips';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useToast } from '@/components/admin/Toast';
 import type { Product } from '@/types';
@@ -33,29 +34,15 @@ function stockState(p: Product) {
 
 function StatusBadge({ status }: { status?: string }) {
   const badge = STATUS_BADGE[status ?? 'published'] ?? STATUS_BADGE.published;
-  return (
-    <span style={{
-      display: 'inline-block', padding: '2px 10px', borderRadius: 20,
-      fontSize: '0.75rem', fontWeight: 600, background: badge.bg, color: badge.fg,
-    }}>
-      {badge.label}
-    </span>
-  );
+  return <DotChip label={badge.label} color={badge.fg} />;
 }
 
 function StockBadge({ product }: { product: Product }) {
   const { untracked, lowStock, outOfStock } = stockState(product);
-  return (
-    <span style={{
-      display: 'inline-flex', alignItems: 'center', gap: 4,
-      padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
-      background: untracked ? '#f3f4f6' : outOfStock ? '#fef2f2' : lowStock ? '#fffbeb' : '#f0fdf4',
-      color: untracked ? '#6b7280' : outOfStock ? '#dc2626' : lowStock ? '#d97706' : '#16a34a',
-      border: `1px solid ${untracked ? '#e5e7eb' : outOfStock ? '#fecaca' : lowStock ? '#fde68a' : '#bbf7d0'}`,
-    }}>
-      {untracked ? 'Managed externally' : outOfStock ? '✕ Out of stock' : lowStock ? `⚠ ${product.stock} left` : `✓ ${product.stock}`}
-    </span>
-  );
+  if (untracked) return <DotChip label="Managed externally" color="#6b7280" />;
+  if (outOfStock) return <DotChip label="Out of stock" color="#dc2626" />;
+  if (lowStock) return <DotChip label={`${product.stock} left`} color="#d97706" />;
+  return <DotChip label={`${product.stock} in stock`} color="#16a34a" />;
 }
 
 function Price({ product }: { product: Product }) {

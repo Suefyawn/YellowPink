@@ -1,4 +1,5 @@
 import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
+import { PK_TZ } from '@/lib/dates';
 
 interface Rec {
   id: string;
@@ -18,7 +19,7 @@ const fmtDuration = (s: number) => {
 const fmtWhen = (iso: string) => {
   try {
     return new Date(iso).toLocaleString('en-PK', {
-      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ,
     });
   } catch {
     return iso;

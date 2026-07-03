@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { DotChip } from '@/components/admin/OrderChips';
+import { PK_TZ } from '@/lib/dates';
 
 interface AuditRow {
   id: string;
@@ -83,8 +85,8 @@ export default async function ActivityLogPage({
   const rows = (data ?? []) as AuditRow[];
 
   const chipBase: React.CSSProperties = {
-    padding: '6px 14px', borderRadius: 999, fontSize: '0.8125rem', fontWeight: 600,
-    textDecoration: 'none', border: '1px solid #e5e7eb', whiteSpace: 'nowrap',
+    padding: '6px 13px', borderRadius: 16, fontSize: '0.75rem', fontWeight: 600,
+    textDecoration: 'none', border: 'none', whiteSpace: 'nowrap',
   };
 
   return (
@@ -109,9 +111,8 @@ export default async function ActivityLogPage({
               href={href}
               style={{
                 ...chipBase,
-                background: active ? '#111827' : 'white',
-                color: active ? 'white' : '#374151',
-                borderColor: active ? '#111827' : '#e5e7eb',
+                background: active ? '#111827' : '#f3f4f6',
+                color: active ? '#fff' : '#6b7280',
               }}
             >
               {f.label}
@@ -163,13 +164,14 @@ export default async function ActivityLogPage({
               {rows.map(r => (
                 <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
                   <td data-label="When" style={{ padding: '10px 16px', whiteSpace: 'nowrap', color: '#6b7280', fontSize: '0.75rem' }}>
-                    {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ })}
                   </td>
                   <td data-label="Actor" style={{ padding: '10px 16px', color: '#111827' }}>
-                    <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: ACTOR_COLORS[r.actor_kind] ?? '#6b7280', textTransform: 'uppercase' }}>
-                      {r.actor_kind}
-                    </span>
-                    {r.actor_email && <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{r.actor_email}</div>}
+                    <DotChip
+                      label={r.actor_kind.charAt(0).toUpperCase() + r.actor_kind.slice(1)}
+                      color={ACTOR_COLORS[r.actor_kind] ?? '#6b7280'}
+                    />
+                    {r.actor_email && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{r.actor_email}</div>}
                   </td>
                   <td data-label="Event" style={{ padding: '10px 16px', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>
                     {prettyAction(r.action)}

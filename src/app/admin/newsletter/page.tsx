@@ -8,9 +8,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { NewsletterComposer } from '@/components/admin/NewsletterComposer';
 import { SubscriberList, type Subscriber } from '@/components/admin/SubscriberList';
-
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 interface CampaignRow {
   id: string;

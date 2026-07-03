@@ -10,6 +10,8 @@ import {
   type PermissionGroup,
 } from '@/lib/permissions';
 import type { Permission } from '@/lib/permissions';
+import { DotChip } from '@/components/admin/OrderChips';
+import { fmtDatePK } from '@/lib/dates';
 
 interface Staff {
   id: string;
@@ -124,7 +126,7 @@ function PermissionGrid({ selected, onChange }: {
             </div>
             <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
               {items.map(p => {
-                const { label, icon, desc } = PERMISSION_META[p];
+                const { label, desc } = PERMISSION_META[p];
                 const on = selected.includes(p);
                 return (
                   <label key={p} style={{
@@ -139,7 +141,7 @@ function PermissionGrid({ selected, onChange }: {
                       style={{ marginTop: 2, accentColor: '#6366f1' }} />
                     <div>
                       <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827' }}>
-                        {icon} {label}
+                        {label}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, lineHeight: 1.45 }}>{desc}</div>
                     </div>
@@ -228,7 +230,7 @@ function RoleModal({ role, onClose }: { role: Role | null; onClose: () => void }
       )}
 
       <div style={{ display: 'flex', gap: 10 }}>
-        <button type="submit" disabled={pending} style={btn('#6366f1')}>
+        <button type="submit" disabled={pending} style={btn('#C5286A')}>
           {pending ? 'Saving…' : (editing ? 'Save Role' : 'Create Role')}
         </button>
         <button type="button" style={btn('#6b7280', true)} onClick={onClose}>Cancel</button>
@@ -260,7 +262,7 @@ function RoleRow({ role, onEdit }: { role: Role; onEdit: () => void }) {
           <div style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: 2 }}>{role.description}</div>
         )}
       </div>
-      <button style={btn('#6366f1', true)} onClick={onEdit}>Edit</button>
+      <button style={btn('#C5286A', true)} onClick={onEdit}>Edit</button>
       {role.is_system ? (
         <button style={{ ...btn('#9ca3af', true), cursor: 'not-allowed' }} disabled title="Built-in roles can't be deleted">
           Delete
@@ -297,7 +299,7 @@ function RolesPanel({ roles }: { roles: Role[] }) {
           </div>
         </div>
         {editing === null && (
-          <button style={btn('#6366f1', true)} onClick={() => setEditing('new')}>+ New Role</button>
+          <button style={btn('#C5286A', true)} onClick={() => setEditing('new')}>+ New Role</button>
         )}
       </div>
 
@@ -352,7 +354,7 @@ function AddStaffModal({ roles, onClose }: { roles: Role[]; onClose: () => void 
     return (
       <div style={{ padding: 28 }}>
         <div style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: 16, color: '#111827' }}>
-          ✓ Staff member created
+          Staff member created
         </div>
         <div style={{
           background: '#fef3c7', border: '1px solid #fcd34d', borderRadius: 8,
@@ -403,7 +405,7 @@ function AddStaffModal({ roles, onClose }: { roles: Role[]; onClose: () => void 
       )}
 
       <div style={{ display: 'flex', gap: 10 }}>
-        <button type="submit" disabled={pending} style={btn('#6366f1')}>
+        <button type="submit" disabled={pending} style={btn('#C5286A')}>
           {pending ? 'Creating…' : 'Create Account'}
         </button>
         <button type="button" style={btn('#6b7280', true)} onClick={onClose}>Cancel</button>
@@ -468,7 +470,7 @@ function EditStaffModal({ staff, roles, onClose }: { staff: Staff; roles: Role[]
           <p style={{ color: '#ef4444', fontSize: '0.8125rem', marginBottom: 12 }}>{saveState.error}</p>
         )}
         <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
-          <button type="submit" disabled={savePending} style={btn('#6366f1')}>
+          <button type="submit" disabled={savePending} style={btn('#C5286A')}>
             {savePending ? 'Saving…' : 'Save Changes'}
           </button>
           <button type="button" style={btn('#6b7280', true)} onClick={onClose}>Cancel</button>
@@ -485,7 +487,7 @@ function EditStaffModal({ staff, roles, onClose }: { staff: Staff; roles: Role[]
             <p style={{ color: '#ef4444', fontSize: '0.8125rem', marginBottom: 8 }}>{resetState.error}</p>
           )}
           <button type="submit" disabled={resetPending} style={btn('#f59e0b')}>
-            {resetPending ? 'Resetting…' : '⟳ Reset Password'}
+            {resetPending ? 'Resetting…' : 'Reset Password'}
           </button>
         </form>
       </div>
@@ -534,7 +536,7 @@ function StaffRow({ staff, roles }: { staff: Staff; roles: Role[] }) {
             padding: '3px 9px', fontSize: '0.75rem', fontWeight: 600,
             display: 'inline-flex', alignItems: 'center', gap: 5,
           }}>
-            ▦ {role.name}
+            {role.name}
             <span style={{ fontWeight: 500, opacity: 0.7 }}>
               · {role.permissions.length} perm{role.permissions.length === 1 ? '' : 's'}
             </span>
@@ -559,20 +561,14 @@ function StaffRow({ staff, roles }: { staff: Staff; roles: Role[] }) {
         )}
       </td>
       <td data-label="Status" style={{ padding: '14px 20px' }}>
-        <span style={{
-          background: staff.is_active ? '#dcfce7' : '#fee2e2',
-          color: staff.is_active ? '#166534' : '#991b1b',
-          borderRadius: 4, padding: '3px 8px', fontSize: '0.75rem', fontWeight: 600,
-        }}>
-          {staff.is_active ? 'Active' : 'Inactive'}
-        </span>
+        <DotChip label={staff.is_active ? 'Active' : 'Inactive'} color={staff.is_active ? '#15803d' : '#b91c1c'} />
       </td>
       <td data-label="Added" style={{ padding: '14px 20px', color: '#6b7280', fontSize: '0.8125rem' }}>
-        {new Date(staff.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+        {fmtDatePK(staff.created_at)}
       </td>
       <td style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button style={btn('#6366f1', true)} onClick={() => setEditing(true)}>Edit</button>
+          <button style={btn('#C5286A', true)} onClick={() => setEditing(true)}>Edit</button>
           <form action={toggleStaffActive} style={{ display: 'inline' }}>
             <input type="hidden" name="id" value={staff.id} />
             <input type="hidden" name="is_active" value={String(staff.is_active)} />
@@ -603,7 +599,7 @@ export function TeamPage({ staff, roles }: { staff: Staff[]; roles: Role[] }) {
   const [adding, setAdding] = useState(false);
 
   return (
-    <div style={{ padding: '32px 32px' }}>
+    <div style={{ padding: '32px 36px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Team</h1>
@@ -625,7 +621,9 @@ export function TeamPage({ staff, roles }: { staff: Staff[]; roles: Role[] }) {
       <div style={card}>
         {staff.length === 0 ? (
           <div style={{ padding: '60px 32px', textAlign: 'center', color: '#9ca3af' }}>
-            <div style={{ fontSize: '2rem', marginBottom: 12 }}>⬡</div>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginBottom: 12 }}>
+              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
             <div style={{ fontWeight: 600, marginBottom: 6 }}>No staff members yet</div>
             <div style={{ fontSize: '0.875rem' }}>Click &quot;Add Staff Member&quot; to get started</div>
           </div>
