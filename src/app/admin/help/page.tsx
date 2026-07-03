@@ -5,6 +5,7 @@ import path from 'node:path';
 import { marked } from 'marked';
 import { redirect } from 'next/navigation';
 import { getStaffSession } from '@/lib/staff-auth';
+import { ManualViewer, type ManualTocEntry } from '@/components/admin/ManualViewer';
 
 // Renders docs/USER-MANUAL.md inside the admin so any staff member can read
 // how the store + storefront work. The markdown file stays the single source
@@ -12,6 +13,37 @@ import { getStaffSession } from '@/lib/staff-auth';
 // request time rather than duplicating its content. The file is force-included
 // in the serverless trace for this route via `outputFileTracingIncludes` in
 // next.config.ts, without that, fs can't find it on Vercel.
+
+// GitHub-style anchor slugs, kept in lock-step with the manual's own internal
+// [links](#4-processing-a-sale--the-order-workflow). GitHub converts EACH
+// space to a hyphen without collapsing runs — "panel — a tour" drops the
+// dash and its two surrounding spaces become "--", so don't use \s+ here.
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/<[^>]+>/g, '')
+    .replace(/&[a-z]+;|&#\d+;/g, '')
+    .replace(/[^\p{L}\p{N} -]/gu, '')
+    .replace(/^ +| +$/g, '')
+    .replace(/ /g, '-');
+}
+
+/** Add ids to h2/h3 headings and collect them as the table of contents. */
+function addHeadingAnchors(html: string): { html: string; toc: ManualTocEntry[] } {
+  const toc: ManualTocEntry[] = [];
+  const seen = new Map<string, number>();
+  const out = html.replace(/<h([23])>([\s\S]*?)<\/h\1>/g, (_m, lvl: string, inner: string) => {
+    const text = inner.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').trim();
+    let id = slugify(text);
+    const n = seen.get(id) ?? 0;
+    seen.set(id, n + 1);
+    if (n > 0) id = `${id}-${n}`;
+    toc.push({ id, text, level: Number(lvl) as 2 | 3 });
+    return `<h${lvl} id="${id}">${inner}</h${lvl}>`;
+  });
+  return { html: out, toc };
+}
+
 export default async function AdminHelpPage() {
   // Staff-only: the manual is internal operating documentation. getStaffSession
   // returns null when unauthenticated, so bounce anonymous hits to the login.
@@ -19,10 +51,12 @@ export default async function AdminHelpPage() {
   if (!session) redirect('/admin');
 
   let html = '';
+  let toc: ManualTocEntry[] = [];
   let error = false;
   try {
     const md = await readFile(path.join(process.cwd(), 'docs', 'USER-MANUAL.md'), 'utf8');
-    html = await marked.parse(md, { gfm: true, breaks: false });
+    const raw = await marked.parse(md, { gfm: true, breaks: false });
+    ({ html, toc } = addHeadingAnchors(raw));
   } catch {
     error = true;
   }
@@ -32,8 +66,8 @@ export default async function AdminHelpPage() {
       <div style={{ marginBottom: 20 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>User manual</h1>
         <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-          How the storefront works and how to run the store. This is the same manual that ships with the
-          codebase (<code>docs/USER-MANUAL.md</code>), it&apos;s kept up to date as features change.
+          How the storefront works and how to run the store. Kept up to date as features change —
+          the change history lives in the <a href="#9-whats-new" style={{ color: '#C5286A' }}>What&apos;s new</a> section.
         </p>
       </div>
 
@@ -43,11 +77,7 @@ export default async function AdminHelpPage() {
           repository.
         </div>
       ) : (
-        <article
-          className="yp-manual"
-          style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '32px 36px', maxWidth: 920 }}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
+        <ManualViewer html={html} toc={toc} />
       )}
 
       {/* Scoped typographic styles for the rendered markdown. Kept inline so the

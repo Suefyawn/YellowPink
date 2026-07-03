@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { getStaffSession } from '@/lib/staff-auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { ToastProvider } from '@/components/admin/Toast';
@@ -9,6 +10,14 @@ interface NotificationRow {
   id: string; kind: string; title: string; body: string | null;
   link: string | null; read: boolean; created_at: string;
 }
+
+// Admin PWA identity: its own manifest (scope /admin) so staff can install
+// the admin as an app; iOS reads the appleWebApp bits for Add to Home Screen.
+export const metadata: Metadata = {
+  manifest: '/admin/manifest.webmanifest',
+  appleWebApp: { capable: true, title: 'YP Admin', statusBarStyle: 'default' },
+  icons: { apple: '/admin/icon-192.png' },
+};
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getStaffSession();

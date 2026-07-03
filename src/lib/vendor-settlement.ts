@@ -97,7 +97,7 @@ export async function recomputeSettlement(orderId: string, vendorId: string): Pr
     .eq('status', 'pending')
     .neq('vendor_id', vendorId);
 
-  await admin.from('vendor_settlements').upsert({
+  const { error } = await admin.from('vendor_settlements').upsert({
     order_id: orderId,
     vendor_id: vendorId,
     // Snapshot the vendor name so the payout row still reads sensibly if the
@@ -112,6 +112,14 @@ export async function recomputeSettlement(orderId: string, vendorId: string): Pr
     status: 'pending',
     settled_at: null,
   }, { onConflict: 'order_id,vendor_id' });
+  if (error) {
+    // A settlement that fails to persist means the Payouts ledger silently
+    // drifts from reality (this exact failure hid an unapplied migration in
+    // production for a day). Fail loudly so the caller's toast reports it.
+    const { log } = await import('./logger');
+    log.error('vendor_settlement.upsert_failed', { orderId, vendorId, error: error.message });
+    return null;
+  }
 
   return costs;
 }
