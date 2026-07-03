@@ -9,7 +9,8 @@ import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
 import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
 import { VendorDispatch } from '@/components/admin/VendorDispatch';
 import { setOrderConfirmed } from '@/app/admin/vendor-actions';
-import { setOrderCosts, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
+import { setOrderCosts, recalcAcquisitionCost, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
+import { resolveOrderCosts } from '@/lib/order-costs';
 import { deleteOrder } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
@@ -218,27 +219,47 @@ export default async function OrderDetailPage({
   // COGS combines the vendor settlement (vendor-dispatched lines) with the
   // acquisition cost of own-stock lines (products.cost_price × qty, only for
   // products with no vendor_id so vendor lines aren't double-counted).
-  const orderItems = (Array.isArray(o.items) ? o.items : []) as Array<{ id?: string; qty?: number }>;
+  const orderItems = (Array.isArray(o.items) ? o.items : []) as Array<{ id?: string; qty?: number; price?: number; name?: string }>;
   let ownCogs = 0;
+  const engineProducts = new Map<string, { vendor_cost: number | null; cost_price: number | null }>();
   const ownItemIds = orderItems.map(i => i?.id).filter((v): v is string => Boolean(v));
   if (ownItemIds.length) {
     const { data: costRows } = await supabaseAdmin()
-      .from('products').select('id, vendor_id, cost_price').in('id', ownItemIds);
+      .from('products').select('id, vendor_id, vendor_cost, cost_price').in('id', ownItemIds);
     const cmap = new Map(
-      ((costRows ?? []) as { id: string; vendor_id: string | null; cost_price: number | null }[])
+      ((costRows ?? []) as { id: string; vendor_id: string | null; vendor_cost: number | null; cost_price: number | null }[])
         .map(p => [p.id, p]),
     );
     for (const it of orderItems) {
       const p = it?.id ? cmap.get(it.id) : undefined;
       if (p && p.vendor_id == null && p.cost_price != null) ownCogs += Number(p.cost_price) * (Number(it.qty) || 0);
     }
+    for (const [pid, p] of cmap) engineProducts.set(pid, { vendor_cost: p.vendor_cost, cost_price: p.cost_price });
   }
-  // Per-order acquisition cost (staff-entered actual drop-ship goods cost)
-  // overrides the computed estimate; blank falls back to vendor settlement +
-  // product cost_price.
+  // Per-order acquisition cost (auto-filled at vendor dispatch by the shared
+  // cost engine, or staff-entered) overrides the computed estimate; blank
+  // falls back to vendor settlement + product cost_price.
   const computedCogs = (settlementRow ? Number(settlementRow.vendor_cost ?? 0) : 0) + ownCogs;
   const ordAcq = (o as { acquisition_cost?: number | null }).acquisition_cost;
   const ordCogs = ordAcq != null ? Number(ordAcq) : computedCogs;
+
+  // Acquisition-cost provenance for the Order costs card (and the mirrored
+  // COGS line in Order profit): rerun the shared engine against the order's
+  // current vendor + items so the "Auto-filled from …" label always names
+  // the live basis (vendor rate / per-product costs / unknown gaps).
+  const acqSource = (o as { acquisition_cost_source?: 'auto' | 'manual' | null }).acquisition_cost_source ?? null;
+  let dispatchedVendor: { id: string; name: string | null; commission_pct: number | null } | null = null;
+  if (o.vendor_id) {
+    const { data: vRow } = await supabaseAdmin()
+      .from('vendors').select('id, name, commission_pct').eq('id', o.vendor_id).maybeSingle();
+    dispatchedVendor = (vRow as typeof dispatchedVendor) ?? null;
+  }
+  const costEngine = resolveOrderCosts(orderItems, dispatchedVendor, engineProducts);
+  const acqProvenance = ordAcq == null
+    ? 'Unknown — select a vendor above or enter manually.'
+    : acqSource === 'auto'
+      ? `Auto-filled from ${costEngine.basisLabel}${costEngine.unknownCount > 0 ? ` (${costEngine.unknownCount} item(s) had no cost basis)` : ''}.`
+      : 'Entered manually.';
   const ordDelivery = Number(o.delivery_cost ?? 0);
   const ordFee = Number(o.payment_fee ?? 0);
   const ordRevenue = Number(o.total ?? 0);
@@ -473,9 +494,12 @@ export default async function OrderDetailPage({
           </p>
           <form action={setOrderCosts.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Acquisition cost / COGS (PKR)<br />
-              <input type="number" name="acquisition_cost" min="0" step="1"
-                defaultValue={(o as { acquisition_cost?: number | null }).acquisition_cost ?? (settlementRow ? Math.round(Number(settlementRow.vendor_cost ?? 0)) : '')}
+              <input type="number" name="acquisition_cost" min="0" step="any"
+                defaultValue={ordAcq ?? ''}
                 style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
+              <span style={{ display: 'block', marginTop: 4, fontSize: '0.6875rem', color: ordAcq == null ? '#b45309' : '#9ca3af', maxWidth: 220 }}>
+                {acqProvenance}
+              </span>
             </label>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Delivery cost (PKR)<br />
               <input type="number" name="delivery_cost" min="0" step="1" defaultValue={o.delivery_cost ?? ''}
@@ -487,6 +511,22 @@ export default async function OrderDetailPage({
             </label>
             <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save costs</button>
           </form>
+          {o.vendor_id && (
+            <form action={recalcAcquisitionCost.bind(null, o.id!)} style={{ marginTop: 12 }}>
+              <button type="submit" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', background: 'white', color: '#374151',
+                border: '1px solid #d1d5db', borderRadius: 8,
+                fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                  <polyline points="21 3 21 9 15 9" />
+                </svg>
+                Recalculate from vendor rate
+              </button>
+            </form>
+          )}
         </div>
       )}
 
@@ -512,6 +552,9 @@ export default async function OrderDetailPage({
             </tr>
           </tbody>
         </table>
+        <p style={{ margin: '10px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+          COGS: {ordAcq != null ? acqProvenance : 'estimated from the vendor settlement + product cost prices.'}
+        </p>
       </div>
 
       {/* Payment received, manual reconciliation: which configured account the
@@ -715,6 +758,7 @@ export default async function OrderDetailPage({
         <ShipmentBookingForm
           orderId={o.id!}
           apiAdapters={apiAdapters}
+          deliveryCost={o.delivery_cost ?? null}
           shipment={shipmentRow ? {
             id: shipmentRow.id as string,
             courier: shipmentRow.courier as string,

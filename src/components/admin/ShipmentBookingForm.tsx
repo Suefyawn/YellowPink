@@ -16,6 +16,9 @@ interface Props {
     tracking_number: string;
     status: string;
   } | null;
+  /** orders.delivery_cost — when already recorded the booking forms show it
+   *  instead of the optional "Courier charge" input (never clobbered). */
+  deliveryCost?: number | null;
 }
 
 const inp: React.CSSProperties = {
@@ -28,7 +31,7 @@ const lbl: React.CSSProperties = {
   color: '#374151', marginBottom: 4,
 };
 
-export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
+export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCost }: Props) {
   const [courier, setCourier] = useState<string>(apiAdapters[0] ?? 'TCS');
   const [mode, setMode] = useState<'auto' | 'manual'>(apiAdapters.length > 0 ? 'auto' : 'manual');
   const [bookState, bookAction, bookPending] = useActionState(bookShipment, null);
@@ -41,7 +44,7 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
     // Result of a booking made just now, in this session. revalidatePath
     // swaps this component into the booked view as soon as the action
     // settles, so the confirmation has to render here, not in the form.
-    const justBooked: { markedShipped?: boolean; emailed?: boolean } | null =
+    const justBooked: { markedShipped?: boolean; emailed?: boolean; courierCharge?: number } | null =
       bookState?.success ? bookState : manualState?.success ? manualState : null;
     return (
       <div>
@@ -50,6 +53,9 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
             Shipment booked.
             {justBooked.markedShipped
               ? ` Order marked shipped${justBooked.emailed ? ' + customer emailed' : ''}.`
+              : ''}
+            {justBooked.courierCharge != null
+              ? ` Courier charge PKR ${justBooked.courierCharge.toLocaleString()} saved to Order costs.`
               : ''}
           </div>
         )}
@@ -98,6 +104,23 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
 
   // ─── Not yet shipped, picker + mode-switcher ────────────────────────────
   const hasApi = apiAdapters.includes(courier);
+  // Optional courier charge, captured at booking on both paths. Writes
+  // orders.delivery_cost (feeds Finance) only when nothing is recorded yet;
+  // an existing value is shown read-only and edited via Order costs.
+  const courierChargeField = deliveryCost == null ? (
+    <div>
+      <label htmlFor="courier-charge" style={lbl}>Courier charge (PKR, optional)</label>
+      <input
+        id="courier-charge" name="courier_charge" type="number" min="0" step="any"
+        placeholder="what the courier bills you"
+        style={inp}
+      />
+    </div>
+  ) : (
+    <p style={{ fontSize: '0.6875rem', color: '#6b7280', margin: 0 }}>
+      Courier charge already recorded: PKR {deliveryCost.toLocaleString()} — change it in Order costs.
+    </p>
+  );
   return (
     <div>
       <div style={{ marginBottom: 12 }}>
@@ -172,6 +195,7 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
               <input id="pieces" name="pieces" type="number" min="1" defaultValue="1" style={inp} />
             </div>
           </div>
+          {courierChargeField}
           <button
             type="submit"
             disabled={bookPending}
@@ -195,6 +219,9 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
               {bookState.markedShipped && (
                 <> · Order marked shipped{bookState.emailed ? ' + customer emailed' : ''}.</>
               )}
+              {bookState.courierCharge != null && (
+                <> · Courier charge PKR {bookState.courierCharge.toLocaleString()} saved.</>
+              )}
             </div>
           )}
         </form>
@@ -216,6 +243,7 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
             <label htmlFor="weight-grams" style={lbl}>Weight (grams, optional)</label>
             <input id="weight-grams" name="weight_grams" type="number" min="1" placeholder="e.g. 500" style={inp} />
           </div>
+          {courierChargeField}
           <button
             type="submit"
             disabled={manualPending}
@@ -239,6 +267,9 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment }: Props) {
               Tracking saved.
               {manualState.markedShipped && (
                 <> Order marked shipped{manualState.emailed ? ' + customer emailed' : ''}.</>
+              )}
+              {manualState.courierCharge != null && (
+                <> Courier charge PKR {manualState.courierCharge.toLocaleString()} saved.</>
               )}
             </div>
           )}

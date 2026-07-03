@@ -41,9 +41,19 @@ export interface FinanceOrder {
   items?: Array<{ id?: string; qty?: number }> | null;
 }
 
-/** Revenue-eligible orders in the window, plus per-order COGS. COGS combines
- *  two cost bases, partitioned by how each line item is sourced so nothing is
- *  double-counted:
+/** Revenue-eligible orders in the window, plus per-order COGS.
+ *
+ *  The primary source is now `orders.acquisition_cost`: since the unified
+ *  vendor/cost model it is AUTO-FILLED at vendor dispatch (and on manual-
+ *  order creation with a vendor) by the shared engine in
+ *  src/lib/order-costs.ts — the same figure as the settlement's vendor_cost
+ *  by construction — and staff can override it on the Order costs card
+ *  (acquisition_cost_source 'auto' vs 'manual'). Whenever it is set, it
+ *  overrides everything below for that order.
+ *
+ *  Orders WITHOUT an acquisition cost (legacy / never dispatched) fall back
+ *  to the computed estimate, combining two cost bases partitioned by how
+ *  each line item is sourced so nothing is double-counted:
  *    • vendor items  → vendor_settlements.vendor_cost (the dispatched snapshot)
  *    • own-stock items → products.cost_price × qty (the acquisition cost)
  *  An order can mix both; vendor lines are exactly the ones whose product has a
@@ -97,8 +107,9 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
     }
   }
 
-  // Per-order acquisition cost (staff-entered actual goods cost) overrides the
-  // computed vendor+own-stock estimate, drop-ship prices vary per order.
+  // Per-order acquisition cost (auto-filled at dispatch by the shared cost
+  // engine, or staff-entered) overrides the computed vendor+own-stock
+  // estimate — drop-ship prices vary per order.
   for (const o of orders) {
     if (o.acquisition_cost != null) cogsByOrder.set(o.id, Number(o.acquisition_cost));
   }

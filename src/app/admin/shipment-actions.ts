@@ -30,15 +30,51 @@ interface OrderShipSnapshot {
   email: string | null;
   first_name: string | null;
   order_number: string;
+  /** Existing courier cost, read pre-insert so an optional courier charge
+   *  entered on the booking form never clobbers a recorded value. */
+  delivery_cost: number | null;
 }
 
 async function getOrderShipSnapshot(orderId: string): Promise<OrderShipSnapshot | null> {
   const { data } = await supabaseAdmin()
     .from('orders')
-    .select('status, email, first_name, order_number')
+    .select('status, email, first_name, order_number, delivery_cost')
     .eq('id', orderId)
     .single();
   return (data as OrderShipSnapshot | null) ?? null;
+}
+
+/** Optional "Courier charge (PKR)" field on the booking forms. Blank/invalid
+ *  → null (ignored). */
+function parseCourierCharge(v: FormDataEntryValue | null): number | null {
+  const s = typeof v === 'string' ? v.trim() : '';
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** Record what the courier bills for this parcel as orders.delivery_cost
+ *  (the authoritative home — it feeds the Finance P&L), but ONLY when no
+ *  delivery cost is recorded yet; an existing value is never clobbered
+ *  (staff edit it in Order costs instead). Returns the amount written, or
+ *  null when nothing was saved. */
+async function saveCourierCharge(
+  orderId: string,
+  charge: number | null,
+  currentDeliveryCost: number | null | undefined,
+): Promise<number | null> {
+  if (charge == null || currentDeliveryCost != null) return null;
+  const { error } = await supabaseAdmin()
+    .from('orders')
+    .update({ delivery_cost: charge })
+    .eq('id', orderId);
+  if (error) {
+    // The shipment itself is booked; a failed cost write shouldn't fail the
+    // booking. Log and move on — the merchant can enter it in Order costs.
+    log.error('shipment.save_courier_charge_failed', { order_id: orderId, charge, error: error.message });
+    return null;
+  }
+  return charge;
 }
 
 /** After a successful booking (API or manual tracking entry), make sure the
@@ -88,9 +124,9 @@ async function markOrderShipped(
 }
 
 export async function createShipment(
-  _prev: { error?: string; success?: boolean; markedShipped?: boolean; emailed?: boolean } | null,
+  _prev: { error?: string; success?: boolean; markedShipped?: boolean; emailed?: boolean; courierCharge?: number } | null,
   formData: FormData
-): Promise<{ error?: string; success?: boolean; markedShipped?: boolean; emailed?: boolean }> {
+): Promise<{ error?: string; success?: boolean; markedShipped?: boolean; emailed?: boolean; courierCharge?: number }> {
   const session = await assertOrders();
 
   const order_id = formData.get('order_id');
@@ -128,9 +164,13 @@ export async function createShipment(
     courier,
   });
 
+  const courierCharge = await saveCourierCharge(
+    order_id, parseCourierCharge(formData.get('courier_charge')), before?.delivery_cost,
+  );
+
   revalidatePath(`/admin/orders/${order_id}`);
   revalidatePath('/admin/orders');
-  return { success: true, ...shipped };
+  return { success: true, ...shipped, ...(courierCharge != null ? { courierCharge } : {}) };
 }
 
 // ─── Book via courier API (currently TCS, more couriers as adapters ship) ─
@@ -147,9 +187,9 @@ export async function createShipment(
 // The merchant ALWAYS has the manual `createShipment` fallback above, so a
 // courier outage / API hiccup never blocks fulfillment.
 export async function bookShipment(
-  _prev: { error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean } | null,
+  _prev: { error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean; courierCharge?: number } | null,
   formData: FormData
-): Promise<{ error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean }> {
+): Promise<{ error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean; courierCharge?: number }> {
   const session = await assertOrders();
 
   const order_id = formData.get('order_id');
@@ -167,7 +207,7 @@ export async function bookShipment(
   // shipments trigger advances it as soon as the shipment row is inserted).
   const { data: order, error: orderErr } = await supabaseAdmin()
     .from('orders')
-    .select('status, order_number, total, first_name, last_name, phone, email, address, city, province, zip, items')
+    .select('status, order_number, total, first_name, last_name, phone, email, address, city, province, zip, items, delivery_cost')
     .eq('id', order_id)
     .single();
   if (orderErr || !order) return { error: orderErr?.message ?? 'Order not found' };
@@ -176,6 +216,7 @@ export async function bookShipment(
     email: order.email ?? null,
     first_name: order.first_name ?? null,
     order_number: order.order_number ?? order_id,
+    delivery_cost: order.delivery_cost != null ? Number(order.delivery_cost) : null,
   };
 
   // Weight: estimate from line items if any have weight_grams; otherwise
@@ -255,9 +296,13 @@ export async function bookShipment(
     courier,
   });
 
+  const courierCharge = await saveCourierCharge(
+    order_id, parseCourierCharge(formData.get('courier_charge')), before.delivery_cost,
+  );
+
   revalidatePath(`/admin/orders/${order_id}`);
   revalidatePath('/admin/orders');
-  return { success: true, trackingNumber: result.trackingNumber, ...shipped };
+  return { success: true, trackingNumber: result.trackingNumber, ...shipped, ...(courierCharge != null ? { courierCharge } : {}) };
 }
 
 // ─── Cancel a shipment via courier API ────────────────────────────────────

@@ -10,19 +10,22 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { lacksPermission } from '@/lib/admin-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { parseCommerceConfig } from '@/lib/commerce';
-import { ManualOrderForm, type PickerProduct, type ShippingSuggestion } from './ManualOrderForm';
+import { ManualOrderForm, type PickerProduct, type PickerVendor, type ShippingSuggestion } from './ManualOrderForm';
 
 export default async function NewOrderPage() {
   const session = await getStaffSession();
   if (lacksPermission(session, 'orders.edit')) return <NoAccess section="Orders" />;
 
   const admin = supabaseAdmin();
-  const [{ data: products }, { data: provinceZones }, { data: rates }, settings] = await Promise.all([
+  const [{ data: products }, { data: vendorRows }, { data: provinceZones }, { data: rates }, settings] = await Promise.all([
     admin
       .from('products')
       .select('id, name, brand, price, stock, track_inventory')
       .eq('status', 'published')
       .order('name'),
+    // Active vendors for the optional "Fulfilled by vendor" picker; the
+    // commission % powers the client-side cost/margin preview.
+    admin.from('vendors').select('id, name, commission_pct').eq('active', true).order('name'),
     admin.from('province_zones').select('province, zone_id'),
     admin.from('shipping_rates').select('zone_id, rate, free_shipping_threshold').order('rate'),
     getSiteSettings(),
@@ -59,7 +62,11 @@ export default async function NewOrderPage() {
           </p>
         </div>
       </div>
-      <ManualOrderForm products={(products ?? []) as PickerProduct[]} shipping={shipping} />
+      <ManualOrderForm
+        products={(products ?? []) as PickerProduct[]}
+        vendors={(vendorRows ?? []) as PickerVendor[]}
+        shipping={shipping}
+      />
     </div>
   );
 }
