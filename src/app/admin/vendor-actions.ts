@@ -123,6 +123,105 @@ export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
   revalidatePath(`/admin/orders/${orderId}`);
 }
 
+export interface AssignVendorResult {
+  ok: boolean;
+  error?: string;
+  /** Vendor name (set path) for the toast. */
+  vendorName?: string;
+  /** The engine's total vendor cost for this order. */
+  cost?: number;
+  /** Whether the acquisition cost was (re)written — false when a manually
+   *  entered value was protected. */
+  costApplied?: boolean;
+  /** Clearing path: true when the vendor was removed. */
+  cleared?: boolean;
+}
+
+/** Assign (or clear) an order's fulfilment vendor — the SELECTION is what
+ *  applies the economics, no WhatsApp message required: picking a vendor
+ *  writes orders.vendor_id, the settlement row, and the auto acquisition
+ *  cost from the shared engine. A manually entered acquisition cost is never
+ *  clobbered (only null or previously auto values are). Clearing the vendor
+ *  removes the pending settlement and an auto-filled acquisition cost, but
+ *  leaves a manual cost alone. Returns a result object for the client toast
+ *  rather than redirecting, so the picker can show what actually happened. */
+export async function assignOrderVendor(orderId: string, vendorId: string | null): Promise<AssignVendorResult> {
+  const session = await assertPermission('orders.edit');
+  const admin = supabaseAdmin();
+
+  const { data: order } = await admin
+    .from('orders')
+    .select('vendor_id, acquisition_cost_source')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (!order) return { ok: false, error: 'Order not found.' };
+  const prevVendorId = (order as { vendor_id: string | null }).vendor_id;
+
+  if (!vendorId) {
+    // Clear the assignment. The "sent" stamp refers to the removed vendor,
+    // so it goes too; a pending settlement for this order is dropped; an
+    // auto-filled acquisition cost loses its basis and is cleared (a manual
+    // one is the operator's number and stays).
+    const { error } = await admin
+      .from('orders')
+      .update({ vendor_id: null, vendor_sent_at: null })
+      .eq('id', orderId);
+    if (error) {
+      log.error('order.vendor_clear_failed', { order_id: orderId, error: error.message });
+      return { ok: false, error: `Could not clear the vendor: ${error.message}` };
+    }
+    await admin.from('vendor_settlements').delete().eq('order_id', orderId).eq('status', 'pending');
+    if ((order as { acquisition_cost_source: string | null }).acquisition_cost_source === 'auto') {
+      await admin.from('orders')
+        .update({ acquisition_cost: null, acquisition_cost_source: null })
+        .eq('id', orderId);
+    }
+    void logAudit(session, {
+      action: 'order.vendor_cleared', entity: 'orders', entity_id: orderId,
+      diff: { previous_vendor_id: prevVendorId },
+    });
+    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath('/admin/vendors');
+    return { ok: true, cleared: true };
+  }
+
+  const { data: vendor } = await admin
+    .from('vendors').select('id, name, active').eq('id', vendorId).maybeSingle();
+  if (!vendor || !(vendor as { active: boolean }).active) {
+    return { ok: false, error: 'That vendor no longer exists or is inactive.' };
+  }
+
+  const { error } = await admin
+    .from('orders')
+    .update({
+      vendor_id: vendorId,
+      // Switching vendors: the old "sent" stamp described a message to the
+      // previous vendor, so it resets; re-selecting the same vendor keeps it.
+      ...(prevVendorId && prevVendorId !== vendorId ? { vendor_sent_at: null } : {}),
+    })
+    .eq('id', orderId);
+  if (error) {
+    log.error('order.vendor_assign_failed', { order_id: orderId, vendor_id: vendorId, error: error.message });
+    return { ok: false, error: `Could not assign the vendor: ${error.message}` };
+  }
+
+  const costs = await recomputeSettlement(orderId, vendorId);
+  const costApplied = costs ? await applyAutoAcquisitionCost(orderId, costs.totalCost) : false;
+
+  void logAudit(session, {
+    action: 'order.vendor_assigned', entity: 'orders', entity_id: orderId,
+    diff: { vendor_id: vendorId, previous_vendor_id: prevVendorId, cost: costs?.totalCost, cost_applied: costApplied },
+  });
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath('/admin/vendors');
+  return {
+    ok: true,
+    vendorName: (vendor as { name: string | null }).name ?? 'vendor',
+    cost: costs?.totalCost,
+    costApplied,
+  };
+}
+
 /** Record that the order was forwarded to a vendor. The WhatsApp message
  *  itself is opened client-side; this persists the assignment + a "sent"
  *  timestamp, writes the vendor settlement (margin / payout) row via the

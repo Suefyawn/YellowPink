@@ -291,10 +291,10 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
           </Section>
 
           {/* ── Vendor & sourcing ──────────────────────────────────────── */}
-          <Section title="Vendor & sourcing" desc="Link the product to a supplier to track cost, margin and payouts.">
+          <Section title="Vendor & sourcing" desc="Where this product comes from and what it costs you. Order margins and payouts always come from the vendor selected on the order — these fields feed suggestions and per-unit costs into that.">
             <div className="adm-form-2col" style={row2}>
               <div style={fieldWrap}>
-                <label style={lbl}>Vendor</label>
+                <label style={lbl}>Default supplier</label>
                 <select name="vendor_id" value={vendorId} onChange={e => setVendorId(e.target.value)} style={inp}>
                   <option value="">— None (own stock) —</option>
                   {vendors.map(v => (
@@ -303,16 +303,23 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
                     </option>
                   ))}
                 </select>
+                <span style={hint}>
+                  Who normally sources this product. Groups reorder suggestions in Inventory and
+                  is offered one-click as the fulfilment vendor on orders containing this item —
+                  it does not by itself assign a vendor to any order.
+                </span>
               </div>
               <div style={fieldWrap}>
                 <label style={lbl}>Vendor cost (PKR)</label>
                 <input
                   name="vendor_cost" type="number" min={0} step="0.01"
                   value={vendorCost} onChange={e => setVendorCost(e.target.value)}
-                  style={inp} placeholder="Leave blank to use the vendor's commission %"
-                  disabled={!vendorId}
+                  style={inp} placeholder="Leave blank to use the order vendor's commission %"
                 />
-                <span style={hint}>What you pay the vendor per unit. Overrides the commission %.</span>
+                <span style={hint}>
+                  Fixed price you pay per unit when an order with this item is fulfilled by a
+                  vendor. Overrides that vendor&apos;s commission % for this item only.
+                </span>
               </div>
             </div>
             <div style={fieldWrap}>

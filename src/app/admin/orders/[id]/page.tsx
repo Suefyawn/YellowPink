@@ -222,6 +222,11 @@ export default async function OrderDetailPage({
   const orderItems = (Array.isArray(o.items) ? o.items : []) as Array<{ id?: string; qty?: number; price?: number; name?: string }>;
   let ownCogs = 0;
   const engineProducts = new Map<string, { vendor_cost: number | null; cost_price: number | null }>();
+  // Sourcing-vendor suggestion: when every sourced item in the order points
+  // at the same products.vendor_id (the product form's "default supplier"),
+  // the fulfilment picker offers it one-click. Products aren't the source of
+  // truth for order economics — the ORDER's vendor is — this only suggests.
+  const sourcingTally = new Map<string, number>();
   const ownItemIds = orderItems.map(i => i?.id).filter((v): v is string => Boolean(v));
   if (ownItemIds.length) {
     const { data: costRows } = await supabaseAdmin()
@@ -233,9 +238,12 @@ export default async function OrderDetailPage({
     for (const it of orderItems) {
       const p = it?.id ? cmap.get(it.id) : undefined;
       if (p && p.vendor_id == null && p.cost_price != null) ownCogs += Number(p.cost_price) * (Number(it.qty) || 0);
+      if (p?.vendor_id) sourcingTally.set(p.vendor_id, (sourcingTally.get(p.vendor_id) ?? 0) + 1);
     }
     for (const [pid, p] of cmap) engineProducts.set(pid, { vendor_cost: p.vendor_cost, cost_price: p.cost_price });
   }
+  const suggestedVendorId = sourcingTally.size === 1 ? [...sourcingTally.keys()][0] : null;
+  const suggestedItemCount = suggestedVendorId ? (sourcingTally.get(suggestedVendorId) ?? 0) : 0;
   // Per-order acquisition cost (auto-filled at vendor dispatch by the shared
   // cost engine, or staff-entered) overrides the computed estimate; blank
   // falls back to vendor settlement + product cost_price.
@@ -448,6 +456,9 @@ export default async function OrderDetailPage({
             currentVendorId={o.vendor_id ?? null}
             vendorSentAt={o.vendor_sent_at ?? null}
             message={vendorMessage}
+            suggestedVendorId={suggestedVendorId}
+            suggestedItemCount={suggestedItemCount}
+            itemCount={orderItems.length}
           />
         </div>
         {settlementRow && (
