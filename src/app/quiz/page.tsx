@@ -22,9 +22,11 @@ export default function QuizPage() {
           { name: 'Find your match', path: '/quiz' },
         ])) }}
       />
-      <section style={{ padding: '56px var(--side)' }}>
+      {/* minHeight so the intro screen owns the viewport instead of the
+          footer dominating a short page. */}
+      <section style={{ padding: '56px var(--side)', minHeight: '60vh' }}>
         <div className="container" style={{ maxWidth: 720, margin: '0 auto' }}>
-          <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Find your match</Overline>
+          <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Takes 2 minutes · A few quick questions</Overline>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, margin: '0 0 28px' }}>
             What does your routine need?
           </h1>

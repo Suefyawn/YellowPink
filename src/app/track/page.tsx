@@ -132,12 +132,22 @@ function TrackForm() {
   return (
     <div className="container" style={{ padding: '64px var(--side)' }}>
       <div style={{ maxWidth: 600, margin: '0 auto' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '3rem', fontWeight: 500, margin: '0 0 8px', letterSpacing: '-0.025em' }}>Track Order</h1>
-        <p style={{ color: 'var(--ink-500)', margin: '0 0 40px', fontSize: '1rem' }}>
+        {/* Left-aligned eyebrow + display-serif H1 + one-line lede, the same
+            page-header pattern as the rest of the storefront. */}
+        <span className="overline" style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Orders</span>
+        <h1 className="display-l" style={{ fontSize: '2.5rem', margin: '0 0 8px' }}>Track Order</h1>
+        <p className="body-text" style={{ color: 'var(--ink-700)', margin: '0 0 32px' }}>
           Enter your order number and the phone you used at checkout.
         </p>
 
-        <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 40 }}>
+        <form
+          onSubmit={handleSearch}
+          style={{
+            display: 'flex', flexDirection: 'column', gap: 12,
+            background: 'white', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+            padding: 24, marginBottom: 12,
+          }}
+        >
           <label htmlFor="track-order" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
             Order number
           </label>
@@ -151,39 +161,47 @@ function TrackForm() {
             autoComplete="off"
             spellCheck={false}
             style={{
-              padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
+              width: '100%', padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
               fontFamily: 'var(--font-ui)', fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
-              background: 'white', boxSizing: 'border-box',
+              background: 'var(--paper)', boxSizing: 'border-box',
             }}
           />
-          <div style={{ display: 'flex', gap: 12 }}>
-            <label htmlFor="track-phone" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
-              Phone number
-            </label>
-            <input
-              id="track-phone"
-              value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="Phone used at checkout"
-              required
-              type="tel"
-              autoComplete="tel"
-              inputMode="tel"
-              style={{
-                flex: 1, padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 10,
-                fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
-                background: 'white', boxSizing: 'border-box',
-              }}
-            />
-            <button type="submit" disabled={loading} style={{
-              padding: '12px 24px', background: loading ? '#f9a8d4' : 'var(--brand-pink-cta)',
-              color: 'white', border: 'none', borderRadius: 10,
-              fontSize: '0.9375rem', fontWeight: 600, cursor: loading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap',
-            }}>
-              {loading ? 'Looking up…' : 'Track'}
-            </button>
-          </div>
+          <label htmlFor="track-phone" style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>
+            Phone number
+          </label>
+          <input
+            id="track-phone"
+            value={phone}
+            onChange={e => setPhone(e.target.value)}
+            placeholder="Phone used at checkout"
+            required
+            type="tel"
+            autoComplete="tel"
+            inputMode="tel"
+            style={{
+              width: '100%', padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
+              fontFamily: 'var(--font-ui)', fontSize: '1rem', color: 'var(--ink-900)', outline: 'none',
+              background: 'var(--paper)', boxSizing: 'border-box',
+            }}
+          />
+          <button type="submit" disabled={loading} style={{
+            width: '100%', padding: '14px 24px', marginTop: 4,
+            background: loading ? '#f9a8d4' : 'var(--brand-pink-cta)',
+            color: 'white', border: 'none', borderRadius: 'var(--radius-card)',
+            fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 600,
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            cursor: loading ? 'not-allowed' : 'pointer',
+          }}>
+            {loading ? 'Looking up…' : 'Track Order'}
+          </button>
         </form>
+
+        <p style={{ margin: '0 0 40px', fontSize: '0.8125rem', color: 'var(--ink-500)' }}>
+          Can&apos;t find your order number?{' '}
+          <Link href="/page/contact" style={{ color: 'var(--brand-pink-text)', fontWeight: 600, textDecoration: 'none' }}>
+            Contact us →
+          </Link>
+        </p>
 
         <div aria-live="polite" aria-atomic="true">
           {error && (
