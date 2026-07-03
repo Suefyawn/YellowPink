@@ -12,6 +12,9 @@ import { createManualOrder, type ManualOrderState } from './actions';
 export interface PickerProduct {
   id: string;
   name: string;
+  /** Sourcing vendor (product form's "default supplier") — powers the
+   *  fulfilment-vendor suggestion when added items agree on one. */
+  vendor_id: string | null;
   brand: string | null;
   price: number;
   stock: number | null;
@@ -90,6 +93,20 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
   const estVendorCost = selectedVendor && selectedVendor.commission_pct != null
     ? Math.round(lines.reduce((s, l) => s + l.price * l.qty * (1 - selectedVendor.commission_pct! / 100), 0) * 100) / 100
     : null;
+
+  // Sourcing suggestion: when every added item that has a default supplier
+  // points at the same one, offer it (mirrors the order page's suggestion).
+  const suggestedVendor = useMemo(() => {
+    if (vendorId) return null;
+    const ids = new Set<string>();
+    for (const l of lines) {
+      const vid = productById.get(l.id)?.vendor_id;
+      if (vid) ids.add(vid);
+    }
+    if (ids.size !== 1) return null;
+    const [vid] = ids;
+    return vendors.find(v => v.id === vid) ?? null;
+  }, [vendorId, lines, productById, vendors]);
 
   const addLine = (id: string) => {
     const p = productById.get(id);
@@ -324,6 +341,18 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
                 Picking a vendor records the order&apos;s goods cost automatically from
                 the vendor&apos;s rate and creates the settlement (payout) row.
               </p>
+              {suggestedVendor && (
+                <p style={{ margin: '6px 0 0', fontSize: '0.6875rem', color: '#92400e' }}>
+                  {suggestedVendor.name} is the default supplier for the added item(s) —{' '}
+                  <button
+                    type="button"
+                    onClick={() => setVendorId(suggestedVendor.id)}
+                    style={{ background: 'none', border: 'none', padding: 0, color: '#C5286A', fontWeight: 600, cursor: 'pointer', fontSize: 'inherit', textDecoration: 'underline' }}
+                  >
+                    use them
+                  </button>.
+                </p>
+              )}
             </div>
           )}
         </div>

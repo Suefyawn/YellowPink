@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
-import { dispatchOrderToVendor } from '@/app/admin/vendor-actions';
+import { assignOrderVendor, dispatchOrderToVendor } from '@/app/admin/vendor-actions';
+import { useToast } from '@/components/admin/Toast';
 
 interface VendorLite {
   id: string;
@@ -14,23 +16,40 @@ interface VendorLite {
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
-// Forward a confirmed order to a supplier over WhatsApp. The owner picks a
-// vendor, the prefilled wa.me link updates live, and sending also records
-// the assignment + a "sent" timestamp on the order.
+// Assign a fulfilment vendor to the order — the SELECTION applies the
+// economics (vendor rate → settlement + auto acquisition cost, via
+// assignOrderVendor) and the page refreshes so the Order costs card shows
+// the new figure immediately. "Send on WhatsApp" is just the messaging step
+// on top: it opens the prefilled chat and records the sent timestamp.
+// The select deliberately has an explicit "No vendor" state — it must never
+// default to the first vendor while the order has none assigned, which made
+// a single-vendor store look permanently dispatched.
 export function VendorDispatch({
   orderId,
   vendors,
   currentVendorId,
   vendorSentAt,
   message,
+  suggestedVendorId = null,
+  suggestedItemCount = 0,
+  itemCount = 0,
 }: {
   orderId: string;
   vendors: VendorLite[];
   currentVendorId: string | null;
   vendorSentAt: string | null;
   message: string;
+  /** Products' sourcing vendor (product form → "default supplier") when the
+   *  order's items agree on one — offered as a one-click suggestion. */
+  suggestedVendorId?: string | null;
+  suggestedItemCount?: number;
+  itemCount?: number;
 }) {
-  const [selected, setSelected] = useState(currentVendorId ?? vendors[0]?.id ?? '');
+  const router = useRouter();
+  const toast = useToast();
+  const [pending, startTransition] = useTransition();
+  // Mirrors the server value; optimistic while the assign action runs.
+  const [selected, setSelected] = useState(currentVendorId ?? '');
 
   if (vendors.length === 0) {
     return (
@@ -47,33 +66,89 @@ export function VendorDispatch({
     );
   }
 
-  const vendor = vendors.find(v => v.id === selected) ?? null;
-  const waHref = vendor ? whatsappUrlForCustomer(vendor.phone, message) : null;
-  const sentVendor = currentVendorId ? vendors.find(v => v.id === currentVendorId) : null;
+  const assign = (vendorId: string) => {
+    const prev = selected;
+    setSelected(vendorId);
+    startTransition(async () => {
+      const res = await assignOrderVendor(orderId, vendorId || null);
+      if (!res.ok) {
+        setSelected(prev);
+        toast(res.error ?? 'Could not update the vendor.', 'error');
+        return;
+      }
+      if (res.cleared) {
+        toast('Vendor removed — settlement and auto acquisition cost cleared.', 'success');
+      } else if (res.costApplied && res.cost != null) {
+        toast(`Fulfilled by ${res.vendorName} — acquisition cost auto-filled: PKR ${Math.round(res.cost).toLocaleString()}.`, 'success');
+      } else if (res.cost != null) {
+        toast(`Fulfilled by ${res.vendorName} — your manually entered acquisition cost was kept (use "Recalculate from vendor rate" to apply PKR ${Math.round(res.cost).toLocaleString()}).`, 'success');
+      } else {
+        toast(`Fulfilled by ${res.vendorName}.`, 'success');
+      }
+      router.refresh();
+    });
+  };
+
+  const assignedVendor = currentVendorId ? vendors.find(v => v.id === currentVendorId) ?? null : null;
+  const selectedVendor = selected ? vendors.find(v => v.id === selected) ?? null : null;
+  const waHref = selectedVendor ? whatsappUrlForCustomer(selectedVendor.phone, message) : null;
 
   return (
     <div>
-      <div style={lbl}>Send order to vendor</div>
+      <div style={lbl}>Fulfilled by vendor</div>
       <select
         value={selected}
-        onChange={e => setSelected(e.target.value)}
+        onChange={e => assign(e.target.value)}
+        disabled={pending}
         aria-label="Vendor"
         style={{
           width: '100%', padding: '8px 12px', border: '1px solid #d1d5db',
           borderRadius: 7, fontSize: '0.875rem', background: 'white', marginBottom: 10,
+          opacity: pending ? 0.6 : 1,
         }}
       >
+        <option value="">— No vendor (own stock) —</option>
         {vendors.map(v => (
           <option key={v.id} value={v.id}>{v.name}</option>
         ))}
       </select>
+      <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: '-4px 0 10px' }}>
+        {pending
+          ? 'Applying the vendor rate…'
+          : 'Picking a vendor applies their rate: settlement + acquisition cost are recorded immediately.'}
+      </p>
 
-      {waHref ? (
+      {!currentVendorId && !pending && suggestedVendorId && vendors.some(v => v.id === suggestedVendorId) && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+          padding: '8px 12px', borderRadius: 8, marginBottom: 10,
+          background: '#fffbeb', border: '1px solid #fde68a',
+        }}>
+          <span style={{ fontSize: '0.75rem', color: '#92400e' }}>
+            {vendors.find(v => v.id === suggestedVendorId)!.name} is the default supplier for{' '}
+            {suggestedItemCount === itemCount && itemCount > 0 ? 'all' : `${suggestedItemCount} of ${itemCount}`} item(s) here.
+          </span>
+          <button
+            type="button"
+            onClick={() => assign(suggestedVendorId)}
+            style={{
+              padding: '5px 10px', borderRadius: 6, border: '1px solid #d97706',
+              background: 'white', color: '#92400e', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+            }}
+          >
+            Set as fulfilment vendor
+          </button>
+        </div>
+      )}
+
+      {waHref && selected === (currentVendorId ?? '') && selectedVendor ? (
         <a
           href={waHref}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={() => { void dispatchOrderToVendor(orderId, selected); }}
+          onClick={() => {
+            void dispatchOrderToVendor(orderId, selectedVendor.id).then(() => router.refresh());
+          }}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 6,
             background: '#25D366', color: '#fff', textDecoration: 'none',
@@ -87,9 +162,14 @@ export function VendorDispatch({
         </a>
       ) : null}
 
-      {vendorSentAt && sentVendor && (
+      {assignedVendor && !vendorSentAt && (
+        <p style={{ fontSize: '0.75rem', color: '#92400e', margin: '8px 0 0', fontWeight: 600 }}>
+          Assigned to {assignedVendor.name} — not sent on WhatsApp yet.
+        </p>
+      )}
+      {vendorSentAt && assignedVendor && (
         <p style={{ fontSize: '0.75rem', color: '#16a34a', margin: '8px 0 0', fontWeight: 600 }}>
-          ✓ Sent to {sentVendor.name} on {fmtDate(vendorSentAt)}
+          ✓ Sent to {assignedVendor.name} on {fmtDate(vendorSentAt)}
         </p>
       )}
     </div>

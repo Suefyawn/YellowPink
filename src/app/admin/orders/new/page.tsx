@@ -20,7 +20,7 @@ export default async function NewOrderPage() {
   const [{ data: products }, { data: vendorRows }, { data: provinceZones }, { data: rates }, settings] = await Promise.all([
     admin
       .from('products')
-      .select('id, name, brand, price, stock, track_inventory')
+      .select('id, name, brand, price, stock, track_inventory, vendor_id')
       .eq('status', 'published')
       .order('name'),
     // Active vendors for the optional "Fulfilled by vendor" picker; the
