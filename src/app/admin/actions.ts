@@ -517,7 +517,11 @@ export async function exportOrdersCsv(
   }
   const { status, q, range } = filters;
   let query = supabaseAdmin().from('orders').select('*').order('created_at', { ascending: false });
-  if (status && status !== 'all') query = query.eq('status', status as OrderStatus);
+  // Mirror the orders list's composite saved views (see admin/orders/page.tsx)
+  // so "Export CSV" downloads exactly the rows the filtered list shows.
+  if (status === 'tofulfil') query = query.in('status', ['pending', 'processing']);
+  else if (status === 'unpaid') query = query.is('payment_received_at', null).in('status', ['pending', 'processing', 'shipped', 'delivered']);
+  else if (status && status !== 'all') query = query.eq('status', status as OrderStatus);
   // Shared with the Orders page so the export window matches the on-screen
   // filter exactly ("Today" = PKT calendar day, 7d/30d/90d rolling).
   const rangeSince = orderRangeSinceIso(range);
