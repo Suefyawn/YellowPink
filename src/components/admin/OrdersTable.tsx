@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { bulkUpdateOrderStatus } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
-import { OrderStatusBadge, ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
+import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import type { Order, OrderStatus } from '@/types';
 
@@ -58,11 +58,48 @@ function AgeFlag({ status, createdAt }: { status: string; createdAt: string | nu
   );
 }
 
-const payBadge: Record<string, { bg: string; color: string; label: string }> = {
-  cod:  { bg: '#fef3c7', color: '#92400e', label: 'COD' },
-  card: { bg: '#ede9fe', color: '#5b21b6', label: 'Card' },
-  bank: { bg: '#dbeafe', color: '#1e40af', label: 'Bank' },
-};
+// ── Shopify-style split status chips ─────────────────────────────────────────
+// One conflated "status" hid the two questions an operator actually asks:
+// "am I paid?" and "has it shipped?". Payment state derives from
+// payment_received_at (reconciliation) + the payment-ish statuses;
+// fulfilment state derives from the lifecycle status. Soft-tinted dot chips
+// (Shopify's visual grammar) instead of saturated pills.
+function paymentState(o: Order): { label: string; color: string; solid?: boolean } {
+  const st = o.status ?? 'pending';
+  if (st === 'refunded') return { label: 'Refunded', color: '#6b7280' };
+  if (st === 'payment_failed') return { label: 'Failed', color: '#b91c1c' };
+  if (o.payment_received_at) return { label: 'Paid', color: '#15803d' };
+  if (st === 'payment_pending') return { label: 'Awaiting gateway', color: '#b45309' };
+  if (o.pay_method === 'cod') return { label: 'COD — on delivery', color: '#b45309' };
+  return { label: 'Payment pending', color: '#b45309' };
+}
+
+function fulfilmentState(o: Order): { label: string; color: string } {
+  const st = o.status ?? 'pending';
+  if (st === 'shipped') return { label: 'Shipped', color: ORDER_STATUS_COLORS.shipped ?? '#2563eb' };
+  if (st === 'delivered') return { label: 'Delivered', color: ORDER_STATUS_COLORS.delivered ?? '#15803d' };
+  if (st === 'cancelled') return { label: 'Cancelled', color: ORDER_STATUS_COLORS.cancelled ?? '#6b7280' };
+  if (st === 'returned') return { label: 'Returned', color: '#6b7280' };
+  if (st === 'refunded') return { label: 'Refunded', color: '#6b7280' };
+  return { label: 'Unfulfilled', color: '#b45309' };
+}
+
+function DotChip({ label, color, title }: { label: string; color: string; title?: string }) {
+  return (
+    <span title={title} style={{
+      display: 'inline-flex', alignItems: 'center', gap: 6,
+      padding: '3px 10px', borderRadius: 20, whiteSpace: 'nowrap',
+      background: color + '14', color,
+      fontSize: '0.75rem', fontWeight: 600,
+    }}>
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      {label}
+    </span>
+  );
+}
+
+const itemCount = (o: Order): number =>
+  Array.isArray(o.items) ? o.items.reduce((s, it) => s + (Number((it as { qty?: number }).qty) || 0), 0) : 0;
 
 // Labels come from ORDER_STATUS_LABELS and colours from ORDER_STATUS_COLORS
 // so the bulk-action and swipe buttons stay in lock-step with every other
@@ -80,16 +117,6 @@ const BULK_STATUSES: { value: OrderStatus; color: string }[] = [
 const QUICK_STATUSES: { value: OrderStatus; color: string }[] =
   BULK_STATUSES.filter(s => s.value !== 'cancelled');
 
-function PayBadge({ method }: { method: string }) {
-  // Methods without a bespoke badge colour (JazzCash, Easypaisa, …) fall back
-  // to the shared label map rather than showing the raw enum value.
-  const badge = payBadge[method] ?? { bg: '#f3f4f6', color: '#374151', label: PAY_METHOD_LABELS[method] ?? method };
-  return (
-    <span style={{ display: 'inline-block', padding: '3px 10px', background: badge.bg, color: badge.color, borderRadius: 20, fontSize: '0.75rem', fontWeight: 600 }}>
-      {badge.label}
-    </span>
-  );
-}
 
 export function OrdersTable({ orders }: { orders: Order[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -163,7 +190,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                 style={{ cursor: 'pointer', accentColor: '#C5286A' }}
               />
             </th>
-            {['Order #', 'Customer', 'Total', 'Status', 'Payment', 'Date'].map(h => (
+            {['Order #', 'Date', 'Customer', 'Total', 'Payment', 'Fulfilment', 'Items'].map(h => (
               <th scope="col" key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>{h}</th>
             ))}
           </tr>
@@ -183,22 +210,30 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     style={{ cursor: 'pointer', accentColor: '#C5286A' }}
                   />
                 </td>
-                <td style={{ padding: '12px 16px' }}>
+                <td style={{ padding: '10px 16px' }}>
                   <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '0.875rem', color: '#C5286A', textDecoration: 'none', fontFamily: 'monospace' }}>
                     {o.order_number}
                   </Link>
                 </td>
-                <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
-                  {o.first_name} {o.last_name}
-                </td>
-                <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap' }}>
-                  {fmt(o.total)}
-                </td>
-                <td style={{ padding: '12px 16px' }}><OrderStatusBadge status={st} /></td>
-                <td style={{ padding: '12px 16px' }}><PayBadge method={o.pay_method} /></td>
-                <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                <td style={{ padding: '10px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                   {o.created_at ? fmtDate(o.created_at) : '—'}
                   <AgeFlag status={st} createdAt={o.created_at} />
+                </td>
+                <td style={{ padding: '10px 16px', fontSize: '0.875rem', color: '#374151' }}>
+                  {o.first_name} {o.last_name}
+                  {o.city && <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{o.city}</div>}
+                </td>
+                <td style={{ padding: '10px 16px', fontWeight: 700, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap' }}>
+                  {fmt(o.total)}
+                </td>
+                <td style={{ padding: '10px 16px' }}>
+                  {(() => { const p = paymentState(o); return <DotChip label={p.label} color={p.color} title={PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method} />; })()}
+                </td>
+                <td style={{ padding: '10px 16px' }}>
+                  {(() => { const f = fulfilmentState(o); return <DotChip label={f.label} color={f.color} />; })()}
+                </td>
+                <td style={{ padding: '10px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                  {itemCount(o)} item{itemCount(o) !== 1 ? 's' : ''}
                 </td>
               </tr>
             );
@@ -226,14 +261,17 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                   <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '1rem', color: '#C5286A', textDecoration: 'none', fontFamily: 'monospace' }}>
                     {o.order_number}
                   </Link>
-                  <span style={{ marginLeft: 'auto' }}><OrderStatusBadge status={st} /></span>
+                  <span style={{ marginLeft: 'auto' }}>
+                    {(() => { const f = fulfilmentState(o); return <DotChip label={f.label} color={f.color} />; })()}
+                  </span>
                 </div>
                 <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 6 }}>
-                  {o.first_name} {o.last_name}
+                  {o.first_name} {o.last_name}{o.city ? ` · ${o.city}` : ''}
+                  <span style={{ color: '#9ca3af' }}> · {itemCount(o)} item{itemCount(o) !== 1 ? 's' : ''}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>{fmt(o.total)}</span>
-                  <PayBadge method={o.pay_method} />
+                  {(() => { const p = paymentState(o); return <DotChip label={p.label} color={p.color} />; })()}
                   <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
                     {o.created_at ? fmtDate(o.created_at) : '—'}
                     <AgeFlag status={st} createdAt={o.created_at} />

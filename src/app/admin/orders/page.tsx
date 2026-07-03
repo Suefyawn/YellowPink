@@ -50,7 +50,17 @@ async function OrdersPageInner({
   let countQuery = admin.from('orders').select('*', { count: 'exact', head: true });
   let dataQuery = admin.from('orders').select('*').order('created_at', { ascending: false }).range(from, to);
 
-  if (status && status !== 'all') {
+  // Composite saved views (Shopify-style tabs) on top of the single-status
+  // filter: 'tofulfil' = still ours to action; 'unpaid' = live orders whose
+  // payment hasn't been reconciled (payment_received_at). Keep the export
+  // (exportOrdersCsv in admin/actions.ts) in lock-step with these branches.
+  if (status === 'tofulfil') {
+    countQuery = countQuery.in('status', ['pending', 'processing']);
+    dataQuery = dataQuery.in('status', ['pending', 'processing']);
+  } else if (status === 'unpaid') {
+    countQuery = countQuery.is('payment_received_at', null).in('status', ['pending', 'processing', 'shipped', 'delivered']);
+    dataQuery = dataQuery.is('payment_received_at', null).in('status', ['pending', 'processing', 'shipped', 'delivered']);
+  } else if (status && status !== 'all') {
     countQuery = countQuery.eq('status', status as OrderStatus);
     dataQuery = dataQuery.eq('status', status as OrderStatus);
   }

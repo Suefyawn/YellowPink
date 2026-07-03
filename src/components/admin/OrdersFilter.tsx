@@ -3,21 +3,22 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useTransition } from 'react';
 import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types';
-import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 
-// Pill order. Labels come from the shared ORDER_STATUS_LABELS map and colours
-// from the shared ORDER_STATUS_COLORS map so the filter can't drift from the
-// Orders table and the order detail page.
-const STATUSES: { value: string; color?: string }[] = [
-  { value: 'all' },
-  ...(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map(s => ({
-    value: s,
-    color: ORDER_STATUS_COLORS[s],
-  })),
+// Saved-view tabs (Shopify's orders-index pattern): the workflow views an
+// operator actually lives in, not one pill per raw status. 'tofulfil' and
+// 'unpaid' are composite views resolved server-side (admin/orders/page.tsx +
+// exportOrdersCsv); the rest map to single statuses. Less-used statuses
+// (awaiting/failed payment, returned) stay reachable via the More dropdown.
+const VIEWS: { value: string; label: string }[] = [
+  { value: 'all',       label: 'All' },
+  { value: 'tofulfil',  label: 'To fulfil' },
+  { value: 'unpaid',    label: 'Unpaid' },
+  { value: 'shipped',   label: 'Shipped' },
+  { value: 'delivered', label: 'Delivered' },
+  { value: 'cancelled', label: 'Cancelled' },
 ];
-
-const statusLabel = (v: string) =>
-  v === 'all' ? 'All' : (ORDER_STATUS_LABELS[v as OrderStatus] ?? v);
+const MORE_STATUSES = (Object.keys(ORDER_STATUS_LABELS) as OrderStatus[])
+  .filter(s => !VIEWS.some(v => v.value === s));
 
 // Quick "show me orders from the last X days" presets. `all` clears the date
 // filter so the page falls back to the full history.
@@ -79,25 +80,37 @@ export function OrdersFilter({ total }: { total: number }) {
   return (
     <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-      <div className="adm-filter-pills" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-        {STATUSES.map(s => {
-          const isActive = status === s.value;
-          const color = s.color;
+      <div className="adm-filter-pills" style={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #e5e7eb', flexBasis: '100%' }}>
+        {VIEWS.map(v => {
+          const isActive = status === v.value;
           return (
-            <button key={s.value} onClick={() => setStatus(s.value)} style={{
-              padding: '6px 14px', borderRadius: 20, border: 'none', cursor: 'pointer',
-              fontSize: '0.8125rem', fontWeight: isActive ? 600 : 400,
-              background: isActive
-                ? (color ? color + '20' : '#111827')
-                : '#f3f4f6',
-              color: isActive ? (color ?? '#f9fafb') : '#6b7280',
-              outline: isActive && color ? `2px solid ${color}` : (isActive ? '2px solid #111827' : 'none'),
-              outlineOffset: -2,
+            <button key={v.value} onClick={() => setStatus(v.value)} style={{
+              padding: '9px 14px', border: 'none', cursor: 'pointer', background: 'transparent',
+              fontSize: '0.8125rem', fontWeight: isActive ? 600 : 500,
+              color: isActive ? '#111827' : '#6b7280',
+              borderBottom: `2px solid ${isActive ? '#C5286A' : 'transparent'}`,
+              marginBottom: -1,
             }}>
-              {statusLabel(s.value)}
+              {v.label}
             </button>
           );
         })}
+        <select
+          aria-label="More statuses"
+          value={MORE_STATUSES.includes(status as OrderStatus) ? status : ''}
+          onChange={e => e.target.value && setStatus(e.target.value)}
+          style={{
+            marginLeft: 4, padding: '5px 8px', border: '1px solid #e5e7eb', borderRadius: 7,
+            fontSize: '0.75rem', background: 'white',
+            color: MORE_STATUSES.includes(status as OrderStatus) ? '#111827' : '#6b7280',
+            fontWeight: MORE_STATUSES.includes(status as OrderStatus) ? 600 : 400,
+          }}
+        >
+          <option value="">More…</option>
+          {MORE_STATUSES.map(s => (
+            <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
+          ))}
+        </select>
       </div>
       <input
         key={q}

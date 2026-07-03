@@ -538,7 +538,28 @@ export default async function OrderDetailPage({
           <tbody>
             {items.map((item, i) => (
               <tr key={i} style={{ borderBottom: '1px solid #f9fafb' }}>
-                <td style={{ padding: '10px 12px', fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>{item.name}</td>
+                <td style={{ padding: '10px 12px', fontSize: '0.875rem', fontWeight: 500, color: '#111827' }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+                    {/* Shopify-style line-item thumbnail from the order's
+                        denormalised items snapshot; plain <img>, the admin
+                        doesn't route through next/image. */}
+                    {(item as { image_url?: string | null }).image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={(item as { image_url?: string }).image_url}
+                        alt=""
+                        width={40}
+                        height={40}
+                        style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 8, border: '1px solid #e5e7eb', flexShrink: 0, background: '#f9fafb' }}
+                      />
+                    ) : (
+                      <span style={{ width: 40, height: 40, borderRadius: 8, border: '1px solid #e5e7eb', background: '#f9fafb', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.6875rem', fontWeight: 700, flexShrink: 0 }}>
+                        {(item.name ?? '?').charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                    {item.name}
+                  </span>
+                </td>
                 <td style={{ padding: '10px 12px', fontSize: '0.8125rem', color: '#6b7280' }}>{item.brand}</td>
                 <td style={{ padding: '10px 12px', fontSize: '0.8125rem', color: '#6b7280' }}>{item.variant_label ?? item.variant ?? '—'}</td>
                 <td style={{ padding: '10px 12px', fontSize: '0.875rem', color: '#374151' }}>{fmt(item.price)}</td>
