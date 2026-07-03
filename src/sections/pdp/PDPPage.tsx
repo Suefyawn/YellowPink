@@ -308,8 +308,8 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // Free-shipping copy tracks the owner's live setting (threshold + on/off).
   const { freeShippingEnabled, freeShippingThreshold } = useCommerceSettings();
   const freeShipLabel = formatPkr(freeShippingThreshold);
-  // Wellness/supplement products need different trust signals than makeup,   // "tested for Pakistani skin tones" is nonsensical on a supplement, so the
-  // "Why Yellow Pink" block swaps to authenticity/expiry copy for this taxon.
+  // Wellness/supplement products carry a "food supplement, not a medicine"
+  // disclaimer (YMYL safeguard below the description); cosmetics don't.
   const isWellness = taxonForCategory(product.category)?.key === 'wellness';
   const shippingContent = freeShippingEnabled
     ? `Free shipping on orders over ${freeShipLabel}. COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`
@@ -504,9 +504,12 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 </a>
               </Overline>
             )}
+            {/* Fluid title: fixed 2.5rem wrapped to ~5 lines on a 390px phone
+                and pushed the buy box below the fold. The clamp keeps desktop
+                essentially unchanged while phones get ~26px. */}
             <h1 style={{
-              fontFamily: 'var(--font-display)', fontSize: '2.5rem', fontWeight: 500,
-              letterSpacing: '-0.025em', lineHeight: 1.1, marginBottom: 8,
+              fontFamily: 'var(--font-display)', fontSize: 'clamp(1.6rem, 6vw, 2.5rem)', fontWeight: 500,
+              letterSpacing: '-0.025em', lineHeight: 1.15, marginBottom: 8,
               overflowWrap: 'break-word',
             }}>{displayName}</h1>
             {product.review_count != null && product.review_count > 0 && (
@@ -709,95 +712,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
         </div>
       </div>
 
-      <section
-        style={{
-          background: 'linear-gradient(120deg, var(--paper2) 0%, var(--paper) 60%, #FFF8E1 100%)',
-          padding: '64px 0',
-          borderTop: '1px solid var(--line)',
-          borderBottom: '1px solid var(--line)',
-          position: 'relative',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Decorative brand-tint blobs, replaces the missing editorial
-            photo placeholder with something that always looks intentional. */}
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'absolute', top: -80, left: -60,
-            width: 220, height: 220, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(247,201,72,0.22), transparent 65%)',
-          }}
-        />
-        <div
-          aria-hidden="true"
-          style={{
-            position: 'absolute', bottom: -100, right: -80,
-            width: 280, height: 280, borderRadius: '50%',
-            background: 'radial-gradient(circle, rgba(232,72,127,0.16), transparent 65%)',
-          }}
-        />
-
-        <div className="container" style={{ position: 'relative' }}>
-          <div style={{ textAlign: 'center', maxWidth: 640, margin: '0 auto 40px' }}>
-            <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Why Yellow Pink</Overline>
-            <h2 className="display-l" style={{ fontSize: '2.25rem', margin: '0 0 12px', letterSpacing: '-0.02em' }}>
-              Why this product earns a spot in your routine
-            </h2>
-            <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0 }}>
-              {isWellness
-                ? 'Every supplement is 100% authentic, sourced from authorised distributors, sealed and expiry-checked before dispatch, and shipped with cash-on-delivery nationwide.'
-                : 'Every product is tested for Pakistani skin and climate, sourced from authorised distributors, and shipped with cash-on-delivery nationwide.'}
-            </p>
-          </div>
-
-          <div
-            className="trust-grid"
-            style={{
-              display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)',
-              maxWidth: 960, margin: '0 auto',
-            }}
-          >
-            {[
-              { icon: '✓', label: '100% authentic', sub: 'Imported direct from authorised distributors' },
-              isWellness
-                ? { icon: '◐', label: 'Sealed & in-date', sub: 'Batch + expiry checked before dispatch' }
-                : { icon: '◐', label: 'Tested locally', sub: 'For Pakistani skin tones + climate' },
-              { icon: '◎', label: 'COD nationwide', sub: freeShippingEnabled ? `Pay on delivery, free over ${freeShipLabel}` : 'Pay on delivery, nationwide' },
-              { icon: '↩', label: `${RETURNS_WINDOW_DAYS}-day returns`, sub: 'On unopened items, no questions asked' },
-            ].map(t => (
-              <div
-                key={t.label}
-                style={{
-                  background: 'rgba(255,255,255,0.7)',
-                  border: '1px solid rgba(26,26,26,0.06)',
-                  borderRadius: 'var(--radius-card)',
-                  padding: '20px 18px',
-                  backdropFilter: 'blur(6px)',
-                  WebkitBackdropFilter: 'blur(6px)',
-                  textAlign: 'left',
-                }}
-              >
-                <span
-                  aria-hidden="true"
-                  style={{
-                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    width: 36, height: 36, borderRadius: 8,
-                    background: 'var(--brand-yellow)', color: 'var(--ink-900)',
-                    fontSize: '1.125rem', fontWeight: 700, marginBottom: 12,
-                  }}
-                >{t.icon}</span>
-                <div style={{ fontSize: '0.875rem', fontWeight: 700, color: 'var(--ink-900)', marginBottom: 4 }}>
-                  {t.label}
-                </div>
-                <div style={{ fontSize: '0.8125rem', color: 'var(--ink-700)', lineHeight: 1.45 }}>
-                  {t.sub}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* NOTE: the full-width "Why this product earns a spot in your routine"
+          band used to render here, but it repeated the exact four claims the
+          buy-box TrustStrip already makes (authentic / COD / returns /
+          delivery). Removed to kill the triplication; the buy-box chips are
+          the single source of those trust signals on the PDP. */}
 
       {/* Migration 081, FAQ section. Renders below the gallery split so the
           accordion is the first thing the visitor sees after deciding to
@@ -878,7 +797,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           pointerEvents: showStickyBar ? 'auto' : 'none',
         }}
       >
-        <div style={{ minWidth: 0, flex: '0 1 auto' }}>
+        {/* Title block takes the flexible space (flex:1 + minWidth:0 so the
+            ellipsis works); the CTA below is flexShrink:0 so a long product
+            name can never crush it into a sliver of wrapped text. Price
+            renders exactly once, here. */}
+        <div style={{ minWidth: 0, flex: '1 1 auto' }}>
           <div style={{
             fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-900)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
@@ -899,7 +822,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           disabled={outOfStock}
           className="btn-primary"
           style={{
-            flex: 1, minWidth: 0, padding: '12px 16px',
+            flexShrink: 0, whiteSpace: 'nowrap', minHeight: 48, padding: '12px 18px',
             background: outOfStock ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink-cta)',
             cursor: outOfStock ? 'not-allowed' : 'pointer',
             transition: 'background 100ms ease-out',

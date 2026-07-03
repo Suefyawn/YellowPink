@@ -125,29 +125,43 @@ export function ContactChannels({
             href={c.href}
             {...(c.external ? { target: '_blank', rel: 'nofollow noopener noreferrer' } : {})}
             className="contact-channel-card"
+            // One emphasis device for the preferred channel: the tinted
+            // background (plus the small "Fastest" badge). Border, icon chip
+            // and action-link colour are uniform across all four cards so the
+            // others don't read as disabled.
             style={{
+              position: 'relative',
               display: 'flex', flexDirection: 'column', gap: 10,
               padding: '20px 20px 18px', borderRadius: 'var(--radius-card)',
-              border: `1px solid ${c.accent ? 'var(--brand-pink-cta)' : 'var(--line)'}`,
+              border: '1px solid var(--line)',
               background: c.accent ? 'color-mix(in srgb, var(--brand-pink-cta) 6%, #fff)' : '#fff',
               textDecoration: 'none', color: 'var(--ink-900)',
               transition: 'box-shadow 150ms, transform 150ms, border-color 150ms',
             }}
           >
+            {c.accent && (
+              <span style={{
+                position: 'absolute', top: 14, right: 14,
+                padding: '3px 8px', borderRadius: 999,
+                background: 'var(--brand-pink-cta)', color: '#fff',
+                fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                fontFamily: 'var(--font-ui)',
+              }}>Fastest</span>
+            )}
             <span
               aria-hidden="true"
               style={{
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                 width: 44, height: 44, borderRadius: 12,
-                background: c.accent ? 'var(--brand-pink-cta)' : 'var(--paper2)',
-                color: c.accent ? '#fff' : 'var(--ink-700)',
+                background: 'var(--paper2)',
+                color: 'var(--ink-700)',
               }}
             >{c.icon}</span>
             <span style={{ fontWeight: 600, fontSize: '1.0625rem', fontFamily: 'var(--font-ui)' }}>{c.title}</span>
             <span style={{ fontSize: '0.875rem', color: 'var(--ink-600, var(--ink-700))', lineHeight: 1.5, flexGrow: 1 }}>{c.sub}</span>
             <span style={{
               fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-              color: c.accent ? 'var(--brand-pink-cta)' : 'var(--ink-700)', fontFamily: 'var(--font-ui)',
+              color: 'var(--brand-pink-text)', fontFamily: 'var(--font-ui)',
             }}>{c.action} →</span>
           </a>
         ))}

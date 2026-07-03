@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { monogramGradient, monogramInitials } from '@/lib/monogram';
 
 interface Props {
   src?: string | null;
@@ -24,24 +25,6 @@ interface Props {
 }
 
 const DEFAULT_SIZES = '(max-width: 600px) 50vw, (max-width: 1024px) 33vw, 320px';
-
-// Stable hash → soft pastel gradient. Two products with the same label always
-// get the same gradient (so the catalog feels intentional, not random noise).
-function gradientFor(label: string): string {
-  let h = 0;
-  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) | 0;
-  const h1 = Math.abs(h) % 360;
-  const h2 = (h1 + 40) % 360;
-  return `radial-gradient(at 25% 25%, hsl(${h1}, 70%, 90%), transparent 60%), radial-gradient(at 75% 75%, hsl(${h2}, 70%, 88%), transparent 60%), linear-gradient(135deg, hsl(${h1}, 50%, 95%), hsl(${h2}, 50%, 92%))`;
-}
-
-function initialsOf(label: string): string {
-  const trimmed = label.trim();
-  if (!trimmed) return '◇';
-  const words = trimmed.split(/\s+/);
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
-}
 
 export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES, priority = false, label, width, height }: Props) {
   const [errored, setErrored] = useState(false);
@@ -95,7 +78,7 @@ export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES
       role="presentation"
       style={{
         width: '100%', height: '100%',
-        background: gradientFor(placeholderLabel || 'YP'),
+        background: monogramGradient(placeholderLabel || 'YP'),
         display: 'flex', alignItems: 'center', justifyContent: 'center',
         color: 'rgba(17,24,39,0.45)',
         fontFamily: 'var(--font-display, Georgia, serif)',
@@ -106,7 +89,7 @@ export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES
         ...style,
       }}
     >
-      {initialsOf(placeholderLabel || 'YP')}
+      {monogramInitials(placeholderLabel || 'YP')}
     </div>
   );
 }

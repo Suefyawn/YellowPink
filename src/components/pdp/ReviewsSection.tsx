@@ -254,17 +254,28 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true, rewar
             )}
 
             {stats.total === 0 ? (
+              // Compact single-line strip — the old tall centred box wasted a
+              // full screen of grey on the ~95% of products with no reviews.
               <div style={{
-                padding: '32px 24px', textAlign: 'center',
+                display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap',
+                padding: '10px 14px',
                 background: 'var(--paper2)', borderRadius: 'var(--radius-card)', border: '1px dashed var(--line)',
+                fontSize: '0.8125rem', color: 'var(--ink-700)',
               }}>
-                <div style={{ fontSize: '2rem', marginBottom: 8, opacity: 0.45 }}>✦</div>
-                <p style={{ margin: 0, color: 'var(--ink-700)', fontSize: '0.9375rem', fontWeight: 600 }}>
-                  No reviews yet
-                </p>
-                <p style={{ margin: '4px 0 0', color: 'var(--ink-500)', fontSize: '0.8125rem' }}>
-                  Tried it? Write the first review, other shoppers count on it.
-                </p>
+                <span style={{ fontWeight: 600 }}>No reviews yet.</span>
+                <a
+                  href="#review-form"
+                  onClick={e => {
+                    e.preventDefault();
+                    document.getElementById('review-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                  }}
+                  style={{
+                    color: 'var(--brand-pink-text)', fontWeight: 600,
+                    textDecoration: 'underline', textUnderlineOffset: 2,
+                  }}
+                >
+                  Write the first review
+                </a>
               </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -329,8 +340,9 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true, rewar
             )}
           </div>
 
-          {/* Right: write a review */}
-          <div style={{ position: 'sticky', top: 100 }}>
+          {/* Right: write a review. The id is the scroll target for the
+              "Write the first review" link in the empty state. */}
+          <div id="review-form" style={{ position: 'sticky', top: 100, scrollMarginTop: 90 }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 500, margin: '0 0 16px' }}>
               Write a Review
             </h2>

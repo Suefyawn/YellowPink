@@ -7,6 +7,7 @@ import { getProducts } from '@/lib/supabase';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd } from '@/lib/seo';
 import { getBrandDirectory } from '@/lib/brands';
+import { monogramGradient, monogramInitials } from '@/lib/monogram';
 
 export async function generateMetadata(): Promise<Metadata> {
   return pageMeta({
@@ -43,7 +44,7 @@ export default async function BrandsPage() {
               No brands yet, <Link href="/shop" className="text-link">browse the catalogue</Link>.
             </p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--gutter)' }}>
+            <div className="brands-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--gutter)' }}>
               {brands.map(b => {
                 // Logo is the uploaded brand asset if set, otherwise the first
                 // product image, same auto-cover idea collections use, so the
@@ -60,9 +61,12 @@ export default async function BrandsPage() {
                       textDecoration: 'none', color: 'inherit', overflow: 'hidden',
                     }}
                   >
-                    <div style={{
+                    <div className="brand-card-media" style={{
                       position: 'relative', width: '100%', aspectRatio: '4 / 3',
-                      background: 'var(--paper2)',
+                      // Image-less brands get the shared monogram-gradient tile
+                      // (same treatment as image-less blog/product tiles), not a
+                      // flat blank beige rectangle.
+                      background: tile ? 'var(--paper2)' : monogramGradient(b.name),
                     }}>
                       {tile ? (
                         <Image
@@ -76,13 +80,14 @@ export default async function BrandsPage() {
                         <span aria-hidden="true" style={{
                           position: 'absolute', inset: 0, display: 'flex',
                           alignItems: 'center', justifyContent: 'center',
-                          fontFamily: 'var(--font-display)', fontWeight: 700,
-                          fontSize: '1.75rem', color: 'var(--ink-300)',
-                        }}>{b.name.slice(0, 2).toUpperCase()}</span>
+                          fontFamily: 'var(--font-display)', fontWeight: 500,
+                          fontSize: '1.75rem', letterSpacing: '0.05em',
+                          color: 'rgba(17,24,39,0.45)', userSelect: 'none',
+                        }}>{monogramInitials(b.name)}</span>
                       )}
                     </div>
-                    <div style={{ padding: '14px 18px 18px', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <span style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.0625rem', letterSpacing: '-0.01em' }}>
+                    <div className="brand-card-body" style={{ padding: '14px 18px 18px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <span className="brand-card-name" style={{ fontFamily: 'var(--font-display)', fontWeight: 600, fontSize: '1.0625rem', letterSpacing: '-0.01em' }}>
                         {b.name}
                       </span>
                       <span className="small-text" style={{ color: 'var(--ink-500)' }}>
@@ -96,6 +101,20 @@ export default async function BrandsPage() {
           )}
         </div>
       </section>
+
+      {/* Mobile: auto-fill minmax(220px, 1fr) resolves to ONE column of huge
+          cards on a phone — 39 brands is ~16,500px of scrolling. Force two
+          columns of compact tiles (smaller media area, tighter body) below
+          700px; desktop keeps the larger cards. !important because the grid
+          declares its desktop template inline. */}
+      <style>{`
+        @media (max-width: 700px) {
+          .brands-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .brands-grid .brand-card-media { aspect-ratio: 16 / 10 !important; }
+          .brands-grid .brand-card-body { padding: 10px 12px 12px !important; gap: 2px !important; }
+          .brands-grid .brand-card-name { font-size: 0.9375rem !important; }
+        }
+      `}</style>
     </main>
   );
 }

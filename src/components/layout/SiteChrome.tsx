@@ -11,7 +11,7 @@ import { KeyboardShortcuts } from './KeyboardShortcuts';
 import { ScrollToTop } from './ScrollToTop';
 import { WhatsAppFab } from './WhatsAppFab';
 import { socialLinks } from '@/lib/socials';
-import { parseCommerceConfig, freeShippingSentence } from '@/lib/commerce';
+import { parseCommerceConfig, freeShippingSentence, freeShippingSentenceCompact } from '@/lib/commerce';
 
 interface SiteChromeProps {
   children: React.ReactNode;
@@ -43,6 +43,9 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
       {topBarActive && (
         <AnnouncementBar
           text={settings.announcement_text ?? freeShippingSentence(parseCommerceConfig(settings))}
+          // Compact one-liner only for the default config-derived sentence;
+          // owner-authored announcement_text renders unchanged at all widths.
+          compactText={settings.announcement_text != null ? undefined : freeShippingSentenceCompact(parseCommerceConfig(settings))}
           bgColor={settings.announcement_color ?? '#111827'}
         />
       )}

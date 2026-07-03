@@ -15,6 +15,7 @@ import { pageMeta, jsonLd, pageArticleLd, faqLd, breadcrumbLd, truncateOnWord } 
 import { getPageFaq } from '@/lib/page-faqs';
 import { ContactForm } from '@/components/contact/ContactForm';
 import { ContactChannels } from '@/components/contact/ContactChannels';
+import { Overline } from '@/components/ui/Overline';
 import { socialLinks } from '@/lib/socials';
 import type { Page } from '@/types';
 
@@ -182,7 +183,14 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
           )}
           {isContact && (
             <section style={{ marginTop: 44 }} aria-label="Send us a message">
-              <h2 className="h2" style={{ marginBottom: 8 }}>Send us a message</h2>
+              <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Write to us</Overline>
+              {/* Display-serif, matching sibling section headings site-wide
+                  (.cms-prose h2) — the default .h2 is bold sans and reads
+                  off-brand here. */}
+              <h2 style={{
+                fontFamily: 'var(--font-display)', fontSize: '1.625rem', fontWeight: 500,
+                letterSpacing: '-0.015em', lineHeight: 1.25, margin: '0 0 8px',
+              }}>Send us a message</h2>
               <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 24 }}>
                 Prefer to write? Fill this in and we&apos;ll reply by email,
                 usually within one working day.
