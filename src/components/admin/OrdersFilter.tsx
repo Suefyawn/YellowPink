@@ -3,20 +3,17 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useTransition } from 'react';
 import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types';
+import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 
-// Pill order + colour. Labels come from the shared ORDER_STATUS_LABELS map so
-// the filter can't drift from the Orders table and the order detail page.
+// Pill order. Labels come from the shared ORDER_STATUS_LABELS map and colours
+// from the shared ORDER_STATUS_COLORS map so the filter can't drift from the
+// Orders table and the order detail page.
 const STATUSES: { value: string; color?: string }[] = [
   { value: 'all' },
-  { value: 'payment_pending', color: '#d97706' },
-  { value: 'payment_failed',  color: '#c43838' },
-  { value: 'pending',         color: '#9a6407' },
-  { value: 'processing',      color: '#1d4ed8' },
-  { value: 'shipped',         color: '#6d28d9' },
-  { value: 'delivered',       color: '#0b7e58' },
-  { value: 'cancelled',       color: '#c43838' },
-  { value: 'returned',        color: '#6b7280' },
-  { value: 'refunded',        color: '#0891b2' },
+  ...(Object.keys(ORDER_STATUS_LABELS) as OrderStatus[]).map(s => ({
+    value: s,
+    color: ORDER_STATUS_COLORS[s],
+  })),
 ];
 
 const statusLabel = (v: string) =>

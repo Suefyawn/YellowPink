@@ -276,6 +276,11 @@ export interface Order {
   /** Actual goods cost for this order (drop-ship price varies per order);
    *  overrides the computed COGS in Finance when set. */
   acquisition_cost?: number | null;
+  /** Provenance of acquisition_cost: 'auto' = written by the shared cost
+   *  engine at vendor dispatch / manual-order create / recalculate; 'manual'
+   *  = staff-entered on the Order costs card (never clobbered by the auto
+   *  path). NULL when acquisition_cost is NULL. */
+  acquisition_cost_source?: 'auto' | 'manual' | null;
   /** Payment reconciliation (set by staff), which configured account the
    *  money landed in, when, and who confirmed it. Null = not yet recorded. */
   payment_account?: string | null;

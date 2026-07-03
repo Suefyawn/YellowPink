@@ -5,7 +5,12 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { getAdapter } from '@/lib/couriers';
+import { attributeOrderEvents } from '@/lib/order-events';
+import { sendStatusTransitionEmail } from '@/lib/order-status-emails';
+import { log } from '@/lib/logger';
 import type { BookingInput } from '@/lib/couriers/types';
+import type { StaffSession } from '@/lib/permissions';
+import type { OrderStatus } from '@/types';
 
 async function assertOrders() {
   const session = await getStaffSession();
@@ -15,10 +20,113 @@ async function assertOrders() {
   return session;
 }
 
+/** Pre-insert snapshot of the order used to decide, AFTER the shipment row
+ *  lands, whether this booking is the transition to 'shipped'. Must be read
+ *  BEFORE inserting into `shipments`: the sync_order_tracking_from_shipment
+ *  trigger advances orders.status the moment the row is inserted, so a
+ *  post-insert read would always see 'shipped' already. */
+interface OrderShipSnapshot {
+  status: OrderStatus | null;
+  email: string | null;
+  first_name: string | null;
+  order_number: string;
+  /** Existing courier cost, read pre-insert so an optional courier charge
+   *  entered on the booking form never clobbers a recorded value. */
+  delivery_cost: number | null;
+}
+
+async function getOrderShipSnapshot(orderId: string): Promise<OrderShipSnapshot | null> {
+  const { data } = await supabaseAdmin()
+    .from('orders')
+    .select('status, email, first_name, order_number, delivery_cost')
+    .eq('id', orderId)
+    .single();
+  return (data as OrderShipSnapshot | null) ?? null;
+}
+
+/** Optional "Courier charge (PKR)" field on the booking forms. Blank/invalid
+ *  → null (ignored). */
+function parseCourierCharge(v: FormDataEntryValue | null): number | null {
+  const s = typeof v === 'string' ? v.trim() : '';
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n >= 0 ? n : null;
+}
+
+/** Record what the courier bills for this parcel as orders.delivery_cost
+ *  (the authoritative home — it feeds the Finance P&L), but ONLY when no
+ *  delivery cost is recorded yet; an existing value is never clobbered
+ *  (staff edit it in Order costs instead). Returns the amount written, or
+ *  null when nothing was saved. */
+async function saveCourierCharge(
+  orderId: string,
+  charge: number | null,
+  currentDeliveryCost: number | null | undefined,
+): Promise<number | null> {
+  if (charge == null || currentDeliveryCost != null) return null;
+  const { error } = await supabaseAdmin()
+    .from('orders')
+    .update({ delivery_cost: charge })
+    .eq('id', orderId);
+  if (error) {
+    // The shipment itself is booked; a failed cost write shouldn't fail the
+    // booking. Log and move on — the merchant can enter it in Order costs.
+    log.error('shipment.save_courier_charge_failed', { order_id: orderId, charge, error: error.message });
+    return null;
+  }
+  return charge;
+}
+
+/** After a successful booking (API or manual tracking entry), make sure the
+ *  order is 'shipped' and send the customer the same shipped email the
+ *  status-update path sends. The shipments trigger flips orders.status on
+ *  insert, but the customer never got the shipped email (and the timeline
+ *  never got operator attribution) unless the merchant remembered to also
+ *  change the status by hand. `before` is the pre-insert snapshot; it makes
+ *  this idempotent — an order that was ALREADY shipped (or delivered) before
+ *  this booking is left untouched and NOT re-emailed. */
+async function markOrderShipped(
+  session: StaffSession,
+  orderId: string,
+  before: OrderShipSnapshot | null,
+  tracking: { tracking_number: string; courier: string },
+): Promise<{ markedShipped: boolean; emailed: boolean }> {
+  if (!before) return { markedShipped: false, emailed: false };
+  const status = (before.status ?? 'pending') as OrderStatus;
+  if (status === 'shipped' || status === 'delivered') {
+    return { markedShipped: false, emailed: false };
+  }
+  const admin = supabaseAdmin();
+  // Usually a no-op (the shipments trigger already advanced it), but kept
+  // explicit so the order still lands on 'shipped' if the trigger's status
+  // mapping ever changes. A same-value update logs no duplicate order_event.
+  const { error } = await admin.from('orders').update({ status: 'shipped' }).eq('id', orderId);
+  if (error) {
+    // The shipment row is already saved; don't fail the booking over the
+    // status advance — log it and let the merchant see the stale status.
+    log.error('shipment.mark_shipped_failed', { order_id: orderId, error: error.message });
+    return { markedShipped: false, emailed: false };
+  }
+  // Attribute the transition the order_events trigger logged (it can only
+  // stamp a generic 'staff') to the signed-in operator.
+  await attributeOrderEvents(admin, [orderId], 'shipped', session);
+  const emailed = Boolean(before.email);
+  if (emailed) {
+    void sendStatusTransitionEmail({
+      email: before.email,
+      first_name: before.first_name,
+      order_number: before.order_number,
+      tracking_number: tracking.tracking_number,
+      courier: tracking.courier,
+    }, 'shipped');
+  }
+  return { markedShipped: true, emailed };
+}
+
 export async function createShipment(
-  _prev: { error?: string; success?: boolean } | null,
+  _prev: { error?: string; success?: boolean; markedShipped?: boolean; emailed?: boolean; courierCharge?: number } | null,
   formData: FormData
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; success?: boolean; markedShipped?: boolean; emailed?: boolean; courierCharge?: number }> {
   const session = await assertOrders();
 
   const order_id = formData.get('order_id');
@@ -30,6 +138,9 @@ export async function createShipment(
 
   const weightRaw = formData.get('weight_grams');
   const weight_grams = typeof weightRaw === 'string' && weightRaw ? Number(weightRaw) : null;
+
+  // Snapshot BEFORE the insert; the shipments trigger advances orders.status.
+  const before = await getOrderShipSnapshot(order_id);
 
   const { data, error } = await supabaseAdmin().from('shipments').insert({
     order_id,
@@ -48,9 +159,18 @@ export async function createShipment(
     diff: { order_id, courier, tracking_number },
   });
 
+  const shipped = await markOrderShipped(session, order_id, before, {
+    tracking_number: tracking_number.trim(),
+    courier,
+  });
+
+  const courierCharge = await saveCourierCharge(
+    order_id, parseCourierCharge(formData.get('courier_charge')), before?.delivery_cost,
+  );
+
   revalidatePath(`/admin/orders/${order_id}`);
   revalidatePath('/admin/orders');
-  return { success: true };
+  return { success: true, ...shipped, ...(courierCharge != null ? { courierCharge } : {}) };
 }
 
 // ─── Book via courier API (currently TCS, more couriers as adapters ship) ─
@@ -67,9 +187,9 @@ export async function createShipment(
 // The merchant ALWAYS has the manual `createShipment` fallback above, so a
 // courier outage / API hiccup never blocks fulfillment.
 export async function bookShipment(
-  _prev: { error?: string; success?: boolean; trackingNumber?: string } | null,
+  _prev: { error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean; courierCharge?: number } | null,
   formData: FormData
-): Promise<{ error?: string; success?: boolean; trackingNumber?: string }> {
+): Promise<{ error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean; courierCharge?: number }> {
   const session = await assertOrders();
 
   const order_id = formData.get('order_id');
@@ -83,12 +203,21 @@ export async function bookShipment(
   }
 
   // Pull the order so we can give the courier the consignee + line items.
+  // `status` doubles as the pre-booking snapshot for markOrderShipped (the
+  // shipments trigger advances it as soon as the shipment row is inserted).
   const { data: order, error: orderErr } = await supabaseAdmin()
     .from('orders')
-    .select('order_number, total, first_name, last_name, phone, email, address, city, province, zip, items')
+    .select('status, order_number, total, first_name, last_name, phone, email, address, city, province, zip, items, delivery_cost')
     .eq('id', order_id)
     .single();
   if (orderErr || !order) return { error: orderErr?.message ?? 'Order not found' };
+  const before: OrderShipSnapshot = {
+    status: (order.status ?? 'pending') as OrderStatus,
+    email: order.email ?? null,
+    first_name: order.first_name ?? null,
+    order_number: order.order_number ?? order_id,
+    delivery_cost: order.delivery_cost != null ? Number(order.delivery_cost) : null,
+  };
 
   // Weight: estimate from line items if any have weight_grams; otherwise
   // a conservative 0.5 kg minimum (TCS's lower bound).
@@ -162,9 +291,18 @@ export async function bookShipment(
     diff: { courier, order_id, tracking_number: result.trackingNumber },
   });
 
+  const shipped = await markOrderShipped(session, order_id, before, {
+    tracking_number: result.trackingNumber,
+    courier,
+  });
+
+  const courierCharge = await saveCourierCharge(
+    order_id, parseCourierCharge(formData.get('courier_charge')), before.delivery_cost,
+  );
+
   revalidatePath(`/admin/orders/${order_id}`);
   revalidatePath('/admin/orders');
-  return { success: true, trackingNumber: result.trackingNumber };
+  return { success: true, trackingNumber: result.trackingNumber, ...shipped, ...(courierCharge != null ? { courierCharge } : {}) };
 }
 
 // ─── Cancel a shipment via courier API ────────────────────────────────────

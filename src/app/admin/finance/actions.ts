@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
+import { computeOrderCosts } from '@/lib/vendor-settlement';
 
 // Finance is gated on the same permission as Analytics (owner always allowed;
 // a null session is the owner-password mode used elsewhere in admin).
@@ -61,6 +62,10 @@ export async function deleteExpense(formData: FormData): Promise<void> {
 
 // Per-order cost capture (delivery paid to courier + payment-gateway fee),
 // saved from the order detail page. Gated on orders.edit.
+// Acquisition-cost provenance: the vendor dispatch path auto-fills
+// acquisition_cost (source='auto'); if the staffer types a DIFFERENT value
+// here, the order is flagged source='manual' so a later re-dispatch never
+// clobbers it. Clearing the field clears the provenance too.
 export async function setOrderCosts(orderId: string, formData: FormData): Promise<void> {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
@@ -76,14 +81,70 @@ export async function setOrderCosts(orderId: string, formData: FormData): Promis
   const payment_fee = parseNum(formData.get('payment_fee'));
   const acquisition_cost = parseNum(formData.get('acquisition_cost'));
 
+  const { data: cur } = await supabaseAdmin()
+    .from('orders')
+    .select('acquisition_cost, acquisition_cost_source')
+    .eq('id', orderId)
+    .maybeSingle();
+  const curAcq = cur?.acquisition_cost != null ? Number(cur.acquisition_cost) : null;
+  const curSource = (cur?.acquisition_cost_source as 'auto' | 'manual' | null) ?? null;
+  const acquisition_cost_source: 'auto' | 'manual' | null =
+    acquisition_cost == null
+      ? null
+      : acquisition_cost !== curAcq
+        ? 'manual'
+        // Unchanged value: keep the existing provenance (legacy rows with a
+        // value but no source read as manual).
+        : (curSource ?? 'manual');
+
   const { error } = await supabaseAdmin()
     .from('orders')
-    .update({ delivery_cost, payment_fee, acquisition_cost })
+    .update({ delivery_cost, payment_fee, acquisition_cost, acquisition_cost_source })
     .eq('id', orderId);
   if (error) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(error.message));
   }
-  await logAudit(session, { action: 'order.set_costs', entity: 'order', entity_id:orderId, diff: { delivery_cost, payment_fee, acquisition_cost } });
+  await logAudit(session, { action: 'order.set_costs', entity: 'order', entity_id:orderId, diff: { delivery_cost, payment_fee, acquisition_cost, acquisition_cost_source } });
+  revalidatePath(`/admin/orders/${orderId}`);
+  redirect(`/admin/orders/${orderId}?costs=saved`);
+}
+
+// "Recalculate from vendor rate" on the Order costs card: rerun the shared
+// cost engine against the order's current vendor + items and stamp the
+// result as the auto acquisition cost (overwriting even a manual value —
+// the staffer clicked the button asking for exactly that). Gated on
+// orders.edit like the rest of the card.
+export async function recalcAcquisitionCost(orderId: string): Promise<void> {
+  const session = await getStaffSession();
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Not authorized'));
+  }
+  const { data: order } = await supabaseAdmin()
+    .from('orders')
+    .select('vendor_id')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (!order) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Order not found'));
+  }
+  if (!order.vendor_id) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('No vendor on this order — dispatch it to a vendor first.'));
+  }
+  const costs = await computeOrderCosts(orderId, order.vendor_id as string);
+  if (!costs) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Could not compute the vendor cost for this order.'));
+  }
+  const { error } = await supabaseAdmin()
+    .from('orders')
+    .update({ acquisition_cost: costs.totalCost, acquisition_cost_source: 'auto' })
+    .eq('id', orderId);
+  if (error) {
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(error.message));
+  }
+  await logAudit(session, {
+    action: 'order.recalc_acquisition_cost', entity: 'order', entity_id: orderId,
+    diff: { acquisition_cost: costs.totalCost, basis: costs.basisLabel },
+  });
   revalidatePath(`/admin/orders/${orderId}`);
   redirect(`/admin/orders/${orderId}?costs=saved`);
 }

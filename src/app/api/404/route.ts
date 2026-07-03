@@ -9,11 +9,19 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { logNotFound } from '@/lib/not-found-log';
+import { notFoundLimiter, ipFromHeaders } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: NextRequest) {
+  // Unauthenticated write surface (service-role RPC behind logNotFound) →
+  // per-IP rate limit so a scripted client can't spam the broken-links table.
+  const rl = await notFoundLimiter.limit(ipFromHeaders(req.headers));
+  if (!rl.success) {
+    return new NextResponse(null, { status: 429 });
+  }
+
   let body: { path?: unknown; referer?: unknown };
   try {
     body = (await req.json()) as { path?: unknown; referer?: unknown };

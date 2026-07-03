@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { bulkUpdateOrderStatus } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
+import { OrderStatusBadge, ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import type { Order, OrderStatus } from '@/types';
 
@@ -63,38 +64,21 @@ const payBadge: Record<string, { bg: string; color: string; label: string }> = {
   bank: { bg: '#dbeafe', color: '#1e40af', label: 'Bank' },
 };
 
-const statusColors: Record<string, string> = {
-  pending: '#9a6407', processing: '#1d4ed8', shipped: '#6d28d9',
-  delivered: '#0b7e58', cancelled: '#c43838',
-};
-
-// Labels come from ORDER_STATUS_LABELS so the bulk-action and swipe buttons
-// stay in lock-step with every other status surface (header badge, timeline,
-// filter pills, invoice). Defining a label here would let the two drift.
+// Labels come from ORDER_STATUS_LABELS and colours from ORDER_STATUS_COLORS
+// so the bulk-action and swipe buttons stay in lock-step with every other
+// status surface (header badge, timeline, filter pills, invoice). Defining
+// a label or colour here would let the surfaces drift.
 const BULK_STATUSES: { value: OrderStatus; color: string }[] = [
-  { value: 'processing', color: '#1d4ed8' },
-  { value: 'shipped',    color: '#6d28d9' },
-  { value: 'delivered',  color: '#0b7e58' },
-  { value: 'cancelled',  color: '#c43838' },
+  { value: 'processing', color: ORDER_STATUS_COLORS.processing },
+  { value: 'shipped',    color: ORDER_STATUS_COLORS.shipped },
+  { value: 'delivered',  color: ORDER_STATUS_COLORS.delivered },
+  { value: 'cancelled',  color: ORDER_STATUS_COLORS.cancelled },
 ];
 
 // Statuses offered in the per-card swipe panel, the forward fulfilment
 // progression. Cancellation stays on the order detail page (destructive).
 const QUICK_STATUSES: { value: OrderStatus; color: string }[] =
   BULK_STATUSES.filter(s => s.value !== 'cancelled');
-
-function StatusBadge({ status }: { status: string }) {
-  return (
-    <span style={{
-      display: 'inline-block', padding: '3px 10px', borderRadius: 20,
-      fontSize: '0.75rem', fontWeight: 600,
-      background: (statusColors[status] ?? '#6b7280') + '20',
-      color: statusColors[status] ?? '#6b7280',
-    }}>
-      {ORDER_STATUS_LABELS[status as OrderStatus] ?? status}
-    </span>
-  );
-}
 
 function PayBadge({ method }: { method: string }) {
   // Methods without a bespoke badge colour (JazzCash, Easypaisa, …) fall back
@@ -210,7 +194,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                 <td style={{ padding: '12px 16px', fontWeight: 700, fontSize: '0.875rem', color: '#111827', whiteSpace: 'nowrap' }}>
                   {fmt(o.total)}
                 </td>
-                <td style={{ padding: '12px 16px' }}><StatusBadge status={st} /></td>
+                <td style={{ padding: '12px 16px' }}><OrderStatusBadge status={st} /></td>
                 <td style={{ padding: '12px 16px' }}><PayBadge method={o.pay_method} /></td>
                 <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                   {o.created_at ? fmtDate(o.created_at) : '—'}
@@ -242,7 +226,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                   <Link href={`/admin/orders/${o.id}`} style={{ fontWeight: 700, fontSize: '1rem', color: '#C5286A', textDecoration: 'none', fontFamily: 'monospace' }}>
                     {o.order_number}
                   </Link>
-                  <span style={{ marginLeft: 'auto' }}><StatusBadge status={st} /></span>
+                  <span style={{ marginLeft: 'auto' }}><OrderStatusBadge status={st} /></span>
                 </div>
                 <div style={{ fontSize: '0.875rem', color: '#374151', marginBottom: 6 }}>
                   {o.first_name} {o.last_name}

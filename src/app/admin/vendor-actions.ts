@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
+import { recomputeSettlement, applyAutoAcquisitionCost } from '@/lib/vendor-settlement';
 
 // ─── Vendor CRUD ────────────────────────────────────────────────────────────
 
@@ -104,10 +105,17 @@ export async function deleteVendor(formData: FormData) {
  *  WhatsApp). Bound with the order id + target state by the order page. */
 export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
   const session = await assertPermission('orders.edit');
-  await supabaseAdmin()
+  const { error } = await supabaseAdmin()
     .from('orders')
     .update({ confirmed_at: confirmed ? new Date().toISOString() : null })
     .eq('id', orderId);
+  if (error) {
+    // Surface the failure on the order page (it reads ?err= into a toast);
+    // previously the error was dropped and the page just re-rendered with
+    // the confirmation seemingly ignored.
+    log.error('order.set_confirmed_failed', { order_id: orderId, confirmed, error: error.message });
+    redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(`Could not update confirmation: ${error.message}`));
+  }
   void logAudit(session, {
     action: confirmed ? 'order.customer_confirmed' : 'order.confirmation_cleared',
     entity: 'orders', entity_id: orderId,
@@ -115,80 +123,13 @@ export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
   revalidatePath(`/admin/orders/${orderId}`);
 }
 
-interface OrderItemLite { id?: string; qty?: number; price?: number }
-
-/** Compute and persist the financial split for an order dispatched to a
- *  vendor. Covers only the order's line items whose product is sourced from
- *  that vendor. Per-unit cost = the product's explicit `vendor_cost`, else
- *  derived from the vendor's commission %, else the full price (margin 0). */
-async function recomputeSettlement(orderId: string, vendorId: string) {
-  const admin = supabaseAdmin();
-  const [{ data: order }, { data: vendor }] = await Promise.all([
-    admin.from('orders').select('items').eq('id', orderId).single(),
-    admin.from('vendors').select('name, commission_pct, settlement_direction').eq('id', vendorId).single(),
-  ]);
-  if (!order || !vendor) return;
-
-  const items = (order.items ?? []) as OrderItemLite[];
-  const ids = Array.from(new Set(items.map(i => i.id).filter((v): v is string => Boolean(v))));
-  const { data: prodRows } = ids.length
-    ? await admin.from('products').select('id, vendor_id, vendor_cost').in('id', ids)
-    : { data: [] };
-  const prodMap = new Map(
-    ((prodRows ?? []) as { id: string; vendor_id: string | null; vendor_cost: number | null }[])
-      .map(p => [p.id, p]),
-  );
-
-  const commission = vendor.commission_pct as number | null;
-  let gross = 0, cost = 0;
-  for (const item of items) {
-    const prod = item.id ? prodMap.get(item.id) : null;
-    if (!prod || prod.vendor_id !== vendorId) continue;
-    const qty = Math.max(0, Number(item.qty) || 0);
-    const price = Math.max(0, Number(item.price) || 0);
-    const unitCost = prod.vendor_cost != null
-      ? prod.vendor_cost
-      : commission != null
-        ? price * (1 - commission / 100)
-        : price;
-    gross += price * qty;
-    cost  += unitCost * qty;
-  }
-  gross = Math.round(gross * 100) / 100;
-  cost  = Math.round(cost * 100) / 100;
-  const margin = Math.round((gross - cost) * 100) / 100;
-
-  const direction = vendor.settlement_direction === 'vendor_collects' ? 'vendor_collects' : 'we_collect';
-  const dueTo: 'us' | 'vendor' = direction === 'vendor_collects' ? 'us' : 'vendor';
-  const amountDue = direction === 'vendor_collects' ? margin : cost;
-
-  // Re-dispatch to a different vendor: drop the stale pending settlement.
-  await admin.from('vendor_settlements')
-    .delete()
-    .eq('order_id', orderId)
-    .eq('status', 'pending')
-    .neq('vendor_id', vendorId);
-
-  await admin.from('vendor_settlements').upsert({
-    order_id: orderId,
-    vendor_id: vendorId,
-    // Snapshot the vendor name so the payout row still reads sensibly if the
-    // vendor is later deleted (the FK then sets vendor_id null, migration 304).
-    vendor_name: (vendor as { name?: string }).name ?? null,
-    gross_amount: gross,
-    vendor_cost: cost,
-    our_margin: margin,
-    direction,
-    amount_due: amountDue,
-    due_to: dueTo,
-    status: 'pending',
-    settled_at: null,
-  }, { onConflict: 'order_id,vendor_id' });
-}
-
 /** Record that the order was forwarded to a vendor. The WhatsApp message
  *  itself is opened client-side; this persists the assignment + a "sent"
- *  timestamp, and writes the vendor settlement (margin / payout) row. */
+ *  timestamp, writes the vendor settlement (margin / payout) row via the
+ *  shared engine (src/lib/vendor-settlement.ts — the vendor covers the whole
+ *  order), and auto-fills orders.acquisition_cost with the SAME figure so
+ *  Finance and the settlement always agree. A manually entered acquisition
+ *  cost is never clobbered (only null or previously auto values are). */
 export async function dispatchOrderToVendor(orderId: string, vendorId: string) {
   const session = await assertPermission('orders.edit');
   if (!vendorId) return;
@@ -196,7 +137,8 @@ export async function dispatchOrderToVendor(orderId: string, vendorId: string) {
     .from('orders')
     .update({ vendor_id: vendorId, vendor_sent_at: new Date().toISOString() })
     .eq('id', orderId);
-  await recomputeSettlement(orderId, vendorId);
+  const costs = await recomputeSettlement(orderId, vendorId);
+  if (costs) await applyAutoAcquisitionCost(orderId, costs.totalCost);
   void logAudit(session, {
     action: 'order.dispatched_to_vendor', entity: 'orders', entity_id: orderId,
     diff: { vendor_id: vendorId },

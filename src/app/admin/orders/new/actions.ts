@@ -16,6 +16,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
 import { sendOrderConfirmationEmail } from '@/lib/email';
+import { recomputeSettlement, applyAutoAcquisitionCost } from '@/lib/vendor-settlement';
 
 export interface ManualOrderState {
   error: string | null;
@@ -54,6 +55,7 @@ export async function createManualOrder(
   const sendEmail = formData.get('send_confirmation') === 'true';
   const shipping  = Number(formData.get('shipping') ?? 0);
   const discount  = Number(formData.get('discount_amount') ?? 0);
+  const vendorId  = ((formData.get('vendor_id') as string) ?? '').trim() || null;
 
   if (!firstName) return { error: 'Customer first name is required.' };
   if (!phone) return { error: 'Phone number is required (delivery + WhatsApp updates).' };
@@ -87,6 +89,17 @@ export async function createManualOrder(
     .in('id', ids);
   if (prodErr) return { error: `Could not load products: ${prodErr.message}` };
   const byId = new Map((productRows ?? []).map(p => [p.id as string, p]));
+
+  // Optional fulfilment vendor: must still exist and be active. The vendor's
+  // rate drives the auto acquisition cost + settlement written after insert.
+  if (vendorId) {
+    const { data: vendorRow, error: vendorErr } = await admin
+      .from('vendors').select('id, active').eq('id', vendorId).maybeSingle();
+    if (vendorErr) return { error: `Could not check the vendor: ${vendorErr.message}` };
+    if (!vendorRow || !vendorRow.active) {
+      return { error: 'The selected vendor no longer exists or is inactive — pick another or leave it blank.' };
+    }
+  }
 
   const shortages: string[] = [];
   for (const l of lines) {
@@ -129,6 +142,10 @@ export async function createManualOrder(
         discount_amount: discount,
         items,
         status,
+        // Fulfilment vendor (optional). vendor_sent_at stays null — no
+        // WhatsApp dispatch happened; the order page's dispatch button
+        // records that separately.
+        vendor_id: vendorId,
         user_id: null,
         // Channel marker: keeps manual orders distinguishable in Finance /
         // attribution without a schema change.
@@ -165,11 +182,19 @@ export async function createManualOrder(
     }
   }
 
+  // Vendor economics — same shared path as dispatchOrderToVendor: the
+  // engine's total becomes the settlement's vendor_cost AND the order's
+  // auto acquisition cost, so the two figures agree by construction.
+  if (vendorId) {
+    const costs = await recomputeSettlement(order.id, vendorId);
+    if (costs) await applyAutoAcquisitionCost(order.id, costs.totalCost);
+  }
+
   await logAudit(session, {
     action: 'order.create_manual',
     entity: 'orders',
     entity_id: order.id,
-    diff: { order_number: order.order_number, total, items: lines.length, channel: 'admin-manual' },
+    diff: { order_number: order.order_number, total, items: lines.length, channel: 'admin-manual', vendor_id: vendorId },
   });
 
   // Emails: customer confirmation only when asked; internal new-order email

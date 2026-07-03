@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { deleteBlogPost } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { BlogFilter } from '@/components/admin/BlogFilter';
+import { AdminFlash } from '@/components/admin/AdminFlash';
 import { Pagination } from '@/components/admin/Pagination';
 import { AdminFab } from '@/components/admin/AdminFab';
 import { ResubmitAllButton } from '@/components/admin/IndexingButtons';
@@ -19,13 +20,13 @@ const PAGE_SIZE = 20;
 export default async function BlogAdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; category?: string; page?: string }>;
+  searchParams: Promise<{ q?: string; category?: string; page?: string; deleted?: string; error?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('blog'))) {
     return <NoAccess section="Blog" />;
   }
-  const { q, category, page: pageParam } = await searchParams;
+  const { q, category, page: pageParam, deleted, error: errorParam } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -51,6 +52,12 @@ export default async function BlogAdminPage({
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
+      {/* deleteBlogPost redirects here with ?deleted=1 / ?error=<message>. */}
+      <AdminFlash
+        message={errorParam ?? (deleted ? 'Post deleted.' : null)}
+        type={errorParam ? 'error' : 'success'}
+        clearPath="/admin/blog"
+      />
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Blog Posts</h1>

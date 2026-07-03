@@ -10,6 +10,8 @@ import {
   setStaffCookie, clearStaffCookie,
 } from '@/lib/staff-auth';
 import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
+import { fetchAll } from '@/lib/fetch-all';
+import { logActionError } from '@/lib/action-log';
 import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
@@ -18,6 +20,8 @@ import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { log } from '@/lib/logger';
 import { verifyTotp } from '@/lib/totp';
 import { orderRangeSinceIso } from '@/lib/order-range';
+import { attributeOrderEvents } from '@/lib/order-events';
+import { sendStatusTransitionEmail, sendStatusTransitionEmails } from '@/lib/order-status-emails';
 import type { StaffSession } from '@/lib/permissions';
 import type { Order, OrderStatus } from '@/types';
 
@@ -370,35 +374,6 @@ export async function deleteBlogPost(formData: FormData) {
 
 // ─── Orders ──────────────────────────────────────────────────────────────────
 
-/** The order_events trigger stamps every admin status change `staff` with a
- *  null actor_id, the database can't see the app session. After a status
- *  update, patch the event row the trigger just wrote with the signed-in
- *  operator so the order timeline shows WHO made the change, not just "STAFF".
- *  Only rows with a null actor_id are touched, so past events keep their
- *  original attribution. */
-async function attributeOrderEvents(
-  admin: ReturnType<typeof supabaseAdmin>,
-  orderIds: string[],
-  status: OrderStatus,
-  session: StaffSession,
-): Promise<void> {
-  const actor = session.isOwner ? 'owner' : (session.email ?? 'staff');
-  for (const orderId of orderIds) {
-    const { data: evt } = await admin
-      .from('order_events')
-      .select('id')
-      .eq('order_id', orderId)
-      .eq('to_status', status)
-      .is('actor_id', null)
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (evt?.id) {
-      await admin.from('order_events').update({ actor_id: actor }).eq('id', evt.id);
-    }
-  }
-}
-
 /** Cancellation restock: push an order's items back into stock via the
  *  inventory ledger. place_order debited the stock at order-creation time
  *  (migration 079); this is the symmetric credit. reason='cancellation'
@@ -437,7 +412,8 @@ export async function exportOrdersCsv(
 ): Promise<{ csv?: string; count?: number; error?: string }> {
   try {
     await assertPermission('orders.view');
-  } catch {
+  } catch (err) {
+    logActionError('admin.orders.export_csv', err, { stage: 'permission' });
     return { error: 'You don’t have permission to export orders.' };
   }
   const { status, q, range } = filters;
@@ -453,9 +429,11 @@ export async function exportOrdersCsv(
     const filter = `order_number.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`;
     query = query.or(filter);
   }
-  const { data, error } = await query;
+  // fetchAll pages past PostgREST's silent 1000-row cap, without it the
+  // export quietly dropped every order past #1000 in the filtered window.
+  const { data, error } = await fetchAll<Order>(query);
   if (error) return { error: error.message };
-  const orders = (data ?? []) as Order[];
+  const orders = data ?? [];
   if (orders.length === 0) return { count: 0 };
 
   const headerRow = ['Order #', 'Date', 'Name', 'Email', 'Phone', 'City', 'Province', 'Address', 'Payment', 'Status', 'Subtotal', 'Discount', 'Shipping', 'Total', 'Tracking #', 'Coupon'];
@@ -517,6 +495,7 @@ export async function resendOrderConfirmation(id: string): Promise<{ error?: str
       pay_method: o.pay_method ?? 'cod',
     });
   } catch (e) {
+    logActionError('admin.orders.resend_confirmation', e, { order_id: id });
     return { error: e instanceof Error ? e.message : 'Failed to send email' };
   }
   if (!sent) {
@@ -538,9 +517,12 @@ export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus):
   // signed-in operator.
   const { data: beforeRows } = await admin
     .from('orders')
-    .select('id, status, order_number, items')
+    .select('id, status, order_number, items, email, first_name, tracking_number, courier')
     .in('id', ids);
-  const before = (beforeRows ?? []) as Array<{ id: string; status: OrderStatus | null; order_number: string | null; items: unknown }>;
+  const before = (beforeRows ?? []) as Array<{
+    id: string; status: OrderStatus | null; order_number: string | null; items: unknown;
+    email: string | null; first_name: string | null; tracking_number: string | null; courier: string | null;
+  }>;
 
   const { error, count } = await admin
     .from('orders')
@@ -561,6 +543,23 @@ export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus):
     }
     if (toRestock.length > 0) revalidatePath('/admin/inventory');
   }
+
+  // Customer transition emails, same shipped/delivered/cancelled notifications
+  // the single-order path sends (the bulk path used to skip them entirely).
+  // Fire-and-forget with capped concurrency; only orders that actually
+  // transitioned get one.
+  void sendStatusTransitionEmails(
+    changed
+      .filter(o => o.email)
+      .map(o => ({
+        email: o.email,
+        first_name: o.first_name,
+        order_number: o.order_number ?? '',
+        tracking_number: o.tracking_number,
+        courier: o.courier,
+      })),
+    status,
+  );
 
   revalidatePath('/admin/orders');
   return { count: count ?? ids.length };
@@ -610,21 +609,10 @@ export async function updateOrderStatus(
   }
 
   // Fire-and-forget transition emails. The status trigger logs the change to
-  // order_events; here we only handle the customer-facing notification.
+  // order_events; here we only handle the customer-facing notification. The
+  // helper is shared with the bulk-status and shipment-booking paths.
   if (before && before.status !== status && before.email) {
-    const { sendShippedEmail, sendDeliveredEmail, sendCancelledEmail } = await import('@/lib/email');
-    const args = {
-      email: before.email,
-      first_name: before.first_name ?? 'there',
-      order_number: before.order_number,
-    };
-    if (status === 'shipped') {
-      void sendShippedEmail({ ...args, tracking_number: before.tracking_number ?? undefined, courier: before.courier ?? undefined });
-    } else if (status === 'delivered') {
-      void sendDeliveredEmail(args);
-    } else if (status === 'cancelled') {
-      void sendCancelledEmail(args);
-    }
+    void sendStatusTransitionEmail(before, status);
   }
 
   revalidatePath(`/admin/orders/${id}`);

@@ -7,6 +7,8 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { can } from '@/lib/permissions';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
+import { logActionError } from '@/lib/action-log';
+import { fetchAll } from '@/lib/fetch-all';
 import { sendNewsletterBroadcastEmail, RESEND_DAILY_BATCH_CAP } from '@/lib/email';
 
 export type SendCampaignResult =
@@ -57,8 +59,17 @@ export async function sendNewsletterCampaign(
 
   let subs: { email: string | null }[] | null = null;
   try {
+    // fetchAll pages past PostgREST's silent 1000-row cap; without it the
+    // campaign never reached subscriber #1001. Stable order keeps pages
+    // consistent while the walk runs.
     const res = await withTimeout(
-      admin.from('newsletter_subscribers').select('email').is('unsubscribed_at', null),
+      fetchAll<{ email: string | null }>(
+        admin
+          .from('newsletter_subscribers')
+          .select('email')
+          .is('unsubscribed_at', null)
+          .order('id', { ascending: true }),
+      ),
       DB_TIMEOUT_MS,
       'newsletter.subscribers_load',
     );
@@ -123,7 +134,12 @@ export async function sendNewsletterCampaign(
     const results = await Promise.all(
       toSend.slice(i, i + CHUNK).map(email =>
         sendNewsletterBroadcastEmail({ email, subject: parsed.data.subject, body: parsed.data.body })
-          .catch(() => false),
+          .catch(err => {
+            // Swallowing kept the send loop alive but hid provider failures
+            // entirely; log + Sentry-capture, still count the send as failed.
+            logActionError('newsletter.broadcast_send', err, { campaign_id: campaignId });
+            return false;
+          }),
       ),
     );
     sentCount += results.filter(Boolean).length;

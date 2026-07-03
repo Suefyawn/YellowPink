@@ -9,10 +9,13 @@ import { PrintInvoiceButton } from '@/components/admin/PrintInvoiceButton';
 import { ShipmentBookingForm } from '@/components/admin/ShipmentBookingForm';
 import { VendorDispatch } from '@/components/admin/VendorDispatch';
 import { setOrderConfirmed } from '@/app/admin/vendor-actions';
-import { setOrderCosts, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
+import { setOrderCosts, recalcAcquisitionCost, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
+import { resolveOrderCosts } from '@/lib/order-costs';
 import { deleteOrder } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
+import { AdminFlash } from '@/components/admin/AdminFlash';
+import { OrderStatusBadge, orderStatusColor } from '@/components/admin/OrderStatusBadge';
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
@@ -47,11 +50,13 @@ const fmt = (n: number) => `PKR ${(n === 0 ? 0 : n).toLocaleString()}`;
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
-const statusColors: Record<string, string> = {
-  pending: '#9a6407', processing: '#1d4ed8', shipped: '#6d28d9', delivered: '#0b7e58', cancelled: '#c43838',
-};
-
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ costs?: string; pay?: string; notes?: string; err?: string }>;
+}) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('orders.view'))) {
     return <NoAccess section="Orders" />;
@@ -62,6 +67,19 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   const canEdit = !session || session.isOwner || session.permissions.includes('orders.edit');
   const canDelete = !session || session.isOwner || session.permissions.includes('orders.delete');
   const { id } = await params;
+
+  // Widget-action feedback: the costs / payment / notes / confirmation forms
+  // on this page are plain server actions that redirect back here with a
+  // result query param (?costs=saved, ?pay=recorded|cleared, ?notes=saved,
+  // ?err=<message>). Surface it as a toast, then strip the param.
+  const sp = (await searchParams) ?? {};
+  let flash: { message: string; type: 'success' | 'error' } | null = null;
+  if (sp.err) flash = { message: sp.err, type: 'error' };
+  else if (sp.costs === 'saved') flash = { message: 'Order costs saved.', type: 'success' };
+  else if (sp.pay === 'recorded') flash = { message: 'Payment recorded.', type: 'success' };
+  else if (sp.pay === 'cleared') flash = { message: 'Payment record cleared.', type: 'success' };
+  else if (sp.notes === 'saved') flash = { message: 'Note saved.', type: 'success' };
+
   const { data: order } = await supabaseAdmin().from('orders').select('*').eq('id', id).single();
   if (!order) notFound();
 
@@ -201,27 +219,47 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
   // COGS combines the vendor settlement (vendor-dispatched lines) with the
   // acquisition cost of own-stock lines (products.cost_price × qty, only for
   // products with no vendor_id so vendor lines aren't double-counted).
-  const orderItems = (Array.isArray(o.items) ? o.items : []) as Array<{ id?: string; qty?: number }>;
+  const orderItems = (Array.isArray(o.items) ? o.items : []) as Array<{ id?: string; qty?: number; price?: number; name?: string }>;
   let ownCogs = 0;
+  const engineProducts = new Map<string, { vendor_cost: number | null; cost_price: number | null }>();
   const ownItemIds = orderItems.map(i => i?.id).filter((v): v is string => Boolean(v));
   if (ownItemIds.length) {
     const { data: costRows } = await supabaseAdmin()
-      .from('products').select('id, vendor_id, cost_price').in('id', ownItemIds);
+      .from('products').select('id, vendor_id, vendor_cost, cost_price').in('id', ownItemIds);
     const cmap = new Map(
-      ((costRows ?? []) as { id: string; vendor_id: string | null; cost_price: number | null }[])
+      ((costRows ?? []) as { id: string; vendor_id: string | null; vendor_cost: number | null; cost_price: number | null }[])
         .map(p => [p.id, p]),
     );
     for (const it of orderItems) {
       const p = it?.id ? cmap.get(it.id) : undefined;
       if (p && p.vendor_id == null && p.cost_price != null) ownCogs += Number(p.cost_price) * (Number(it.qty) || 0);
     }
+    for (const [pid, p] of cmap) engineProducts.set(pid, { vendor_cost: p.vendor_cost, cost_price: p.cost_price });
   }
-  // Per-order acquisition cost (staff-entered actual drop-ship goods cost)
-  // overrides the computed estimate; blank falls back to vendor settlement +
-  // product cost_price.
+  // Per-order acquisition cost (auto-filled at vendor dispatch by the shared
+  // cost engine, or staff-entered) overrides the computed estimate; blank
+  // falls back to vendor settlement + product cost_price.
   const computedCogs = (settlementRow ? Number(settlementRow.vendor_cost ?? 0) : 0) + ownCogs;
   const ordAcq = (o as { acquisition_cost?: number | null }).acquisition_cost;
   const ordCogs = ordAcq != null ? Number(ordAcq) : computedCogs;
+
+  // Acquisition-cost provenance for the Order costs card (and the mirrored
+  // COGS line in Order profit): rerun the shared engine against the order's
+  // current vendor + items so the "Auto-filled from …" label always names
+  // the live basis (vendor rate / per-product costs / unknown gaps).
+  const acqSource = (o as { acquisition_cost_source?: 'auto' | 'manual' | null }).acquisition_cost_source ?? null;
+  let dispatchedVendor: { id: string; name: string | null; commission_pct: number | null } | null = null;
+  if (o.vendor_id) {
+    const { data: vRow } = await supabaseAdmin()
+      .from('vendors').select('id, name, commission_pct').eq('id', o.vendor_id).maybeSingle();
+    dispatchedVendor = (vRow as typeof dispatchedVendor) ?? null;
+  }
+  const costEngine = resolveOrderCosts(orderItems, dispatchedVendor, engineProducts);
+  const acqProvenance = ordAcq == null
+    ? 'Unknown — select a vendor above or enter manually.'
+    : acqSource === 'auto'
+      ? `Auto-filled from ${costEngine.basisLabel}${costEngine.unknownCount > 0 ? ` (${costEngine.unknownCount} item(s) had no cost basis)` : ''}.`
+      : 'Entered manually.';
   const ordDelivery = Number(o.delivery_cost ?? 0);
   const ordFee = Number(o.payment_fee ?? 0);
   const ordRevenue = Number(o.total ?? 0);
@@ -241,6 +279,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
 
   return (
     <div id="order-detail-page" style={{ padding: '32px 36px' }}>
+      {flash && <AdminFlash message={flash.message} type={flash.type} clearPath={`/admin/orders/${id}`} />}
       {/* Print styles, printing this page outputs ONLY the invoice card.
           Every other block is a direct child of #order-detail-page, so one
           rule hides them all (and stays correct as sections are added). */}
@@ -262,13 +301,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           {o.order_number}
         </h1>
         <CopyButton value={o.order_number} title={`Copy order number ${o.order_number}`} />
-        <span style={{
-          padding: '3px 10px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600,
-          background: (statusColors[currentStatus] ?? '#6b7280') + '20',
-          color: statusColors[currentStatus] ?? '#6b7280',
-        }}>
-          {statusLabel(currentStatus)}
-        </span>
+        <OrderStatusBadge status={currentStatus} />
         {o.created_at && (
           <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 4 }}>{fmtDate(o.created_at)}</span>
         )}
@@ -312,7 +345,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div style={{ textAlign: 'right' }}>
             <div style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '1.125rem' }}>{o.order_number}</div>
             <div style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: 4 }}>{o.created_at ? fmtDate(o.created_at) : ''}</div>
-            <div style={{ marginTop: 6, padding: '2px 10px', display: 'inline-block', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, background: (statusColors[currentStatus] ?? '#6b7280') + '25', color: statusColors[currentStatus] ?? '#6b7280' }}>
+            <div style={{ marginTop: 6, padding: '2px 10px', display: 'inline-block', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700, background: orderStatusColor(currentStatus) + '25', color: orderStatusColor(currentStatus) }}>
               {statusLabel(currentStatus)}
             </div>
           </div>
@@ -461,9 +494,12 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           </p>
           <form action={setOrderCosts.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Acquisition cost / COGS (PKR)<br />
-              <input type="number" name="acquisition_cost" min="0" step="1"
-                defaultValue={(o as { acquisition_cost?: number | null }).acquisition_cost ?? (settlementRow ? Math.round(Number(settlementRow.vendor_cost ?? 0)) : '')}
+              <input type="number" name="acquisition_cost" min="0" step="any"
+                defaultValue={ordAcq ?? ''}
                 style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', width: 150 }} />
+              <span style={{ display: 'block', marginTop: 4, fontSize: '0.6875rem', color: ordAcq == null ? '#b45309' : '#9ca3af', maxWidth: 220 }}>
+                {acqProvenance}
+              </span>
             </label>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Delivery cost (PKR)<br />
               <input type="number" name="delivery_cost" min="0" step="1" defaultValue={o.delivery_cost ?? ''}
@@ -475,6 +511,22 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </label>
             <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save costs</button>
           </form>
+          {o.vendor_id && (
+            <form action={recalcAcquisitionCost.bind(null, o.id!)} style={{ marginTop: 12 }}>
+              <button type="submit" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', background: 'white', color: '#374151',
+                border: '1px solid #d1d5db', borderRadius: 8,
+                fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                  <polyline points="21 3 21 9 15 9" />
+                </svg>
+                Recalculate from vendor rate
+              </button>
+            </form>
+          )}
         </div>
       )}
 
@@ -500,6 +552,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </tr>
           </tbody>
         </table>
+        <p style={{ margin: '10px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+          COGS: {ordAcq != null ? acqProvenance : 'estimated from the vendor settlement + product cost prices.'}
+        </p>
       </div>
 
       {/* Payment received, manual reconciliation: which configured account the
@@ -703,6 +758,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
         <ShipmentBookingForm
           orderId={o.id!}
           apiAdapters={apiAdapters}
+          deliveryCost={o.delivery_cost ?? null}
           shipment={shipmentRow ? {
             id: shipmentRow.id as string,
             courier: shipmentRow.courier as string,
@@ -724,7 +780,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {events.map((e, i) => (
               <div key={e.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: statusColors[e.to_status] ?? '#6b7280', marginTop: 6, flexShrink: 0 }} />
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: orderStatusColor(e.to_status), marginTop: 6, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>
                     {e.from_status

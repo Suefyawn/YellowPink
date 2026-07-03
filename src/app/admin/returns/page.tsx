@@ -89,7 +89,15 @@ export default async function ReturnsPage() {
     .from('orders').select('*', { count: 'exact', head: true })
     .in('status', ['delivered', 'returned', 'refunded'])
     .gte('created_at', new Date(since90).toISOString());
-  const returnRate = deliveredCount && deliveredCount > 0 ? (last90 / deliveredCount) * 100 : null;
+  // Capped at 100%: returns raised in the window can reference orders PLACED
+  // before it (numerator and denominator use different date fields), so the
+  // raw ratio can still exceed 1 in edge cases; a ">100% return rate" is
+  // never a meaningful thing to show.
+  const returnRate = deliveredCount && deliveredCount > 0
+    ? Math.min(100, (last90 / deliveredCount) * 100)
+    : null;
+  const returnRateFormula =
+    `Returns raised in the last 90 days (${last90.toLocaleString()}) ÷ orders placed in the last 90 days that reached the customer, i.e. delivered / returned / refunded (${(deliveredCount ?? 0).toLocaleString()}), capped at 100%`;
 
   // minWidth: 0 lets the KPI cards (grid items) shrink below their content's
   // intrinsic width on phones, the long product/reason labels then truncate
@@ -111,7 +119,7 @@ export default async function ReturnsPage() {
             <div style={kpi}><div style={kpiLabel}>Total returns</div><div style={kpiVal}>{ar.length.toLocaleString()}</div></div>
             <div style={kpi}><div style={kpiLabel}>Last 90 days</div><div style={kpiVal}>{last90.toLocaleString()}</div></div>
             <div style={kpi}><div style={kpiLabel}>Refunded (total)</div><div style={kpiVal}>PKR {Math.round(totalRefunded).toLocaleString()}</div></div>
-            <div style={kpi}><div style={kpiLabel}>Return rate (90d)</div><div style={kpiVal}>{returnRate == null ? '—' : `${returnRate.toFixed(1)}%`}</div></div>
+            <div style={kpi} title={returnRateFormula}><div style={kpiLabel}>Return rate (90d)</div><div style={kpiVal}>{returnRate == null ? '—' : `${returnRate.toFixed(1)}%`}</div></div>
           </div>
           <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ ...kpi, padding: '16px' }}>

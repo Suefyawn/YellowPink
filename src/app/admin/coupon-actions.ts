@@ -33,7 +33,15 @@ function couponColumns(type: CouponFormType, value: number) {
   };
 }
 
-export async function createCoupon(formData: FormData) {
+// useActionState shape: errors come back as state (the create form is a
+// client component that keeps its fields), success still redirects with
+// ?created=<code> for the page banner. The previous version bounced errors
+// via redirect, which re-rendered the page and wiped everything the admin
+// had typed into the create form.
+export async function createCoupon(
+  _prev: { error: string } | null,
+  formData: FormData,
+): Promise<{ error: string } | null> {
   const session = await assertPermission('coupons');
   const code = ((formData.get('code') as string) ?? '').trim().toUpperCase();
   const type = formData.get('type') as CouponFormType;
@@ -44,17 +52,17 @@ export async function createCoupon(formData: FormData) {
   const expires_at = (formData.get('expires_at') as string) || null;
   const isFreeShipping = type === 'free_shipping';
 
-  if (!code) bounceCoupons('Code is required.');
-  if (!type) bounceCoupons('Type is required.');
+  if (!code) return { error: 'Code is required.' };
+  if (!type) return { error: 'Type is required.' };
   if (!/^[A-Z0-9_-]+$/.test(code)) {
-    bounceCoupons('Code may only contain letters, numbers, - and _.');
+    return { error: 'Code may only contain letters, numbers, - and _.' };
   }
   // Free-shipping coupons have no monetary value; skip the value checks.
   if (!isFreeShipping) {
-    if (!valueRaw || !Number.isFinite(value)) bounceCoupons('Value is required.');
-    if (value <= 0) bounceCoupons('Value must be greater than zero.');
+    if (!valueRaw || !Number.isFinite(value)) return { error: 'Value is required.' };
+    if (value <= 0) return { error: 'Value must be greater than zero.' };
     if (type === 'percent' && value > 100) {
-      bounceCoupons('A percentage discount cannot exceed 100%.');
+      return { error: 'A percentage discount cannot exceed 100%.' };
     }
   }
 
@@ -70,9 +78,9 @@ export async function createCoupon(formData: FormData) {
     log.error('coupon.create_failed', { code, error: error?.message });
     // Postgres 23505, UNIQUE violation on coupon code.
     if ((error as { code?: string } | null)?.code === '23505') {
-      bounceCoupons(`A coupon with code "${code}" already exists.`);
+      return { error: `A coupon with code "${code}" already exists.` };
     }
-    bounceCoupons(error?.message ?? 'Could not create coupon. Please try again.');
+    return { error: error?.message ?? 'Could not create coupon. Please try again.' };
   }
 
   void logAudit(session, {

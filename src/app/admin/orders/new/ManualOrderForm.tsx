@@ -18,6 +18,13 @@ export interface PickerProduct {
   track_inventory: boolean | null;
 }
 
+export interface PickerVendor {
+  id: string;
+  name: string;
+  /** % of the sale price the store keeps on this vendor's items. */
+  commission_pct: number | null;
+}
+
 export interface ShippingSuggestion {
   /** province → cheapest zone rate + free threshold (null = no zone). */
   byProvince: Record<string, { rate: number; threshold: number | null }>;
@@ -38,7 +45,7 @@ const lbl: React.CSSProperties = {
   display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 5,
 };
 
-export function ManualOrderForm({ products, shipping }: { products: PickerProduct[]; shipping: ShippingSuggestion }) {
+export function ManualOrderForm({ products, vendors, shipping }: { products: PickerProduct[]; vendors: PickerVendor[]; shipping: ShippingSuggestion }) {
   const [state, dispatch, pending] = useActionState<ManualOrderState, FormData>(createManualOrder, { error: null });
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -49,6 +56,7 @@ export function ManualOrderForm({ products, shipping }: { products: PickerProduc
   const [shipValue, setShipValue] = useState<number>(0);
   const [discount, setDiscount] = useState(0);
   const [email, setEmail] = useState('');
+  const [vendorId, setVendorId] = useState('');
 
   const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
@@ -74,6 +82,14 @@ export function ManualOrderForm({ products, shipping }: { products: PickerProduc
 
   const effectiveShipping = shipOverridden ? shipValue : suggestion;
   const total = Math.max(0, subtotal + effectiveShipping - discount);
+
+  // Estimated vendor cost + margin preview — mirrors the commission math of
+  // the shared engine (src/lib/order-costs.ts): unit cost = price × (1 −
+  // pct/100). Preview only; the server recomputes authoritatively on create.
+  const selectedVendor = vendors.find(v => v.id === vendorId) ?? null;
+  const estVendorCost = selectedVendor && selectedVendor.commission_pct != null
+    ? Math.round(lines.reduce((s, l) => s + l.price * l.qty * (1 - selectedVendor.commission_pct! / 100), 0) * 100) / 100
+    : null;
 
   const addLine = (id: string) => {
     const p = productById.get(id);
@@ -289,6 +305,27 @@ export function ManualOrderForm({ products, shipping }: { products: PickerProduc
               style={inp}
             />
           </div>
+          {vendors.length > 0 && (
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={lbl} htmlFor="mo-vendor">Fulfilled by vendor (optional)</label>
+              <select
+                id="mo-vendor" name="vendor_id" value={vendorId}
+                onChange={e => setVendorId(e.target.value)}
+                style={inp}
+              >
+                <option value="">Own stock — no vendor</option>
+                {vendors.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.name}{v.commission_pct != null ? ` — ${Number(v.commission_pct)}% margin` : ''}
+                  </option>
+                ))}
+              </select>
+              <p style={{ margin: '5px 0 0', fontSize: '0.6875rem', color: '#6b7280' }}>
+                Picking a vendor records the order&apos;s goods cost automatically from
+                the vendor&apos;s rate and creates the settlement (payout) row.
+              </p>
+            </div>
+          )}
         </div>
 
         <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: 12, fontSize: '0.875rem', display: 'grid', gap: 4, justifyContent: 'end' }}>
@@ -310,6 +347,18 @@ export function ManualOrderForm({ products, shipping }: { products: PickerProduc
             <span>Total</span>
             <span className="tabular-nums">PKR {total.toLocaleString()}</span>
           </div>
+          {selectedVendor && estVendorCost != null && subtotal > 0 && (
+            <div style={{
+              display: 'flex', gap: 24, justifyContent: 'space-between',
+              fontSize: '0.75rem', color: '#6b7280', borderTop: '1px dashed #e5e7eb',
+              paddingTop: 6, marginTop: 2,
+            }}>
+              <span>Est. vendor cost ({selectedVendor.name} @ {Number(selectedVendor.commission_pct)}%)</span>
+              <span className="tabular-nums">
+                PKR {estVendorCost.toLocaleString()} · margin PKR {(Math.round((subtotal - estVendorCost) * 100) / 100).toLocaleString()}
+              </span>
+            </div>
+          )}
         </div>
       </section>
 
