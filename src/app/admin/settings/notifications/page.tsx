@@ -7,6 +7,8 @@ import {
   type NotificationRecipient, type NotificationEvent,
 } from '@/lib/notification-recipients';
 import { addRecipient, updateRecipient, deleteRecipient } from './actions';
+import { PushDeviceManager } from '@/components/admin/PushDeviceManager';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const inp: React.CSSProperties = {
   width: '100%', padding: '9px 12px', border: '1px solid #d1d5db',
@@ -89,7 +91,11 @@ function RecipientRow({ r }: { r: NotificationRecipient }) {
 }
 
 export default async function SettingsNotificationsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
-  const [recipients, sp] = await Promise.all([listAllRecipients(), searchParams]);
+  const [recipients, sp, { data: pushDevices }] = await Promise.all([
+    listAllRecipients(),
+    searchParams,
+    supabaseAdmin().from('push_subscriptions').select('endpoint, staff_name, label, created_at, last_used_at').order('created_at', { ascending: false }),
+  ]);
   const fallback = fallbackRecipientEmail();
 
   return (
@@ -99,6 +105,10 @@ export default async function SettingsNotificationsPage({ searchParams }: { sear
         subtitle="Who receives the internal alerts the system sends, new orders, low stock. Each recipient picks which events they want."
       />
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
+
+      {/* Instant channel: the admin PWA's push devices. Email recipients below
+          stay the durable record; push is how a new order reaches a pocket. */}
+      <PushDeviceManager devices={(pushDevices ?? []) as { endpoint: string; staff_name: string | null; label: string | null; created_at: string; last_used_at: string | null }[]} />
 
       {/* Fallback explainer */}
       <div style={{

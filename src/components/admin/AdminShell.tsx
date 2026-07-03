@@ -4,6 +4,7 @@ import { AdminSidebar } from './AdminSidebar';
 import { AdminBottomNav } from './AdminBottomNav';
 import { CommandPalette } from './CommandPalette';
 import { NotificationsBell } from './NotificationsBell';
+import { AdminInstallPrompt } from './AdminInstallPrompt';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { markInternalTraffic } from '@/lib/internal-traffic';
 import type { StaffSession } from '@/lib/permissions';
@@ -481,6 +482,7 @@ export function AdminShell({
       />
 
       <CommandPalette session={session} />
+      <AdminInstallPrompt />
     </>
   );
 }
