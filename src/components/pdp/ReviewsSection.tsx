@@ -13,6 +13,9 @@ interface Review {
   photo_urls?: string[] | null;
   verified_purchase?: boolean;
   helpful_count?: number;
+  /** Public "Response from Yellow Pink", written from admin → Reviews. */
+  owner_reply?: string | null;
+  owner_reply_at?: string | null;
 }
 
 const inp: React.CSSProperties = {
@@ -295,6 +298,23 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true, rewar
                             <Image src={u} alt={`Review photo ${i + 1}`} fill sizes="64px" style={{ objectFit: 'cover' }} />
                           </div>
                         ))}
+                      </div>
+                    )}
+                    {r.owner_reply && (
+                      <div style={{
+                        marginTop: 12, padding: '10px 14px',
+                        background: 'var(--paper2)', borderLeft: '3px solid var(--brand-pink-cta)',
+                        borderRadius: '0 8px 8px 0',
+                      }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-700)', marginBottom: 4 }}>
+                          Response from Yellow Pink
+                          {r.owner_reply_at && (
+                            <span style={{ fontWeight: 400, color: 'var(--ink-400)' }}>
+                              {' '}· {new Date(r.owner_reply_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                            </span>
+                          )}
+                        </div>
+                        <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--ink-700)', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>{r.owner_reply}</p>
                       </div>
                     )}
                     <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>

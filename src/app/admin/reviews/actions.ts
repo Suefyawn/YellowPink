@@ -53,6 +53,47 @@ export async function deleteReview(formData: FormData): Promise<void> {
   revalidatePath('/admin/reviews');
 }
 
+/** Save (or clear, when submitted empty) the store's public reply to a
+ *  review. The reply shows on the PDP as "Response from Yellow Pink". */
+export async function replyToReview(formData: FormData): Promise<void> {
+  const session = await assertReviews();
+  const id = formData.get('id') as string;
+  const reply = ((formData.get('owner_reply') as string) ?? '').trim().slice(0, 2000);
+
+  const admin = supabaseAdmin();
+  const { error } = await admin
+    .from('product_reviews')
+    .update(reply
+      ? { owner_reply: reply, owner_reply_at: new Date().toISOString() }
+      : { owner_reply: null, owner_reply_at: null })
+    .eq('id', id);
+  if (error) {
+    log.error('review.reply_failed', { id, error: error.message });
+    bounceReviews('Could not save the reply: ' + error.message);
+  }
+
+  // Refresh the PDP so the reply appears without waiting out the ISR window.
+  const { data: row } = await admin
+    .from('product_reviews')
+    .select('products(slug)')
+    .eq('id', id)
+    .maybeSingle();
+  const prod = (row as { products?: { slug?: string } | { slug?: string }[] | null } | null)?.products;
+  const slug = Array.isArray(prod) ? prod[0]?.slug : prod?.slug;
+  if (slug) revalidatePath(`/product/${slug}`);
+
+  void logAudit(session, {
+    action: reply ? 'review.reply' : 'review.reply_cleared',
+    entity: 'product_reviews', entity_id: id,
+    diff: reply ? { chars: reply.length } : undefined,
+  });
+  revalidatePath('/admin/reviews');
+  // Land back on the same filtered/paged view the reply was written from.
+  const returnTo = (formData.get('return_to') as string) ?? '';
+  const base = returnTo.startsWith('/admin/reviews') ? returnTo : '/admin/reviews';
+  redirect(`${base}${base.includes('?') ? '&' : '?'}replied=1`);
+}
+
 // ─── Admin-side create + edit ────────────────────────────────────────────────
 // Admins can seed reviews (migrated/phoned-in feedback) and fix typos / censor
 // language on existing ones. Created-by-admin reviews are approved by default;

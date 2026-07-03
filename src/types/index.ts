@@ -492,6 +492,9 @@ export interface ProductReview {
   verified_purchase: boolean;
   photo_urls: string[];
   helpful_count: number;
-  brand_reply: string | null;
+  /** Public reply from the store ("Response from Yellow Pink"), set from
+   *  admin → Reviews. Shown under the review on the PDP. */
+  owner_reply: string | null;
+  owner_reply_at: string | null;
   created_at: string;
 }
