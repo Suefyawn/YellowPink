@@ -37,6 +37,7 @@ function BrandCard({ name, tagline, blurb }: { name: string; tagline: string; bl
   return (
     <Link
       href={kBeautyBrandShopUrl(name)}
+      className="kbeauty-house-card"
       style={{
         display: 'flex', flexDirection: 'column', gap: 10,
         textDecoration: 'none', color: 'inherit',
@@ -126,7 +127,10 @@ export function KBeautyCollection({ products }: { products: Product[] }) {
               {K_BEAUTY_BRAND_INFO.length} brands, <em style={{ fontStyle: 'italic' }}>hand-picked.</em>
             </h2>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid-3">
+          {/* 10 brands: 3 columns left a lone orphan card in the last row, so
+              the grid is sized to divide evenly — 5×2 on desktop, 2×5 below
+              1180px (media overrides in the <style> block at the bottom). */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 'var(--gutter)' }} className="kbeauty-house-grid">
             {K_BEAUTY_BRAND_INFO.map(b => <BrandCard key={b.name} {...b} />)}
           </div>
         </div>
@@ -223,6 +227,19 @@ export function KBeautyCollection({ products }: { products: Product[] }) {
           </div>
         </div>
       </section>
+
+      {/* Houses grid: 5×2 on desktop so the 10 brand cards resolve evenly
+          (3-up stranded an orphan in the last row); 2×5 below 1180px, with
+          tighter card padding on phones. !important because the grid/cards
+          declare their desktop values inline. */}
+      <style>{`
+        @media (max-width: 1180px) {
+          .kbeauty-house-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 600px) {
+          .kbeauty-house-card { padding: 18px 16px !important; }
+        }
+      `}</style>
     </>
   );
 }

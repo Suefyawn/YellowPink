@@ -411,20 +411,35 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     return (
       <section style={{ padding: 'var(--section-gap) 0', textAlign: 'center' }}>
         <div className="container" style={{ maxWidth: 560 }}>
-          <div style={{ fontSize: '3.5rem', marginBottom: 16, opacity: 0.35 }} aria-hidden="true">◎</div>
-          <h1 className="h1" style={{ marginTop: 0, marginBottom: 12 }}>Your bag is empty</h1>
+          {/* Lucide shopping-bag (same glyph as the header cart icon), never
+              emoji or dingbats — keeps the empty state in the icon language
+              the chrome already speaks. */}
+          <div style={{ marginBottom: 16, color: 'var(--ink-300)' }} aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
+              <path d="M3 6h18" />
+              <path d="M16 10a4 4 0 0 1-8 0" />
+            </svg>
+          </div>
+          <h1 style={{ marginTop: 0, marginBottom: 12, fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 500, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
+            Your bag is empty
+          </h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 28 }}>
             There&rsquo;s nothing to check out yet, add a few favourites and come straight back.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
             <Link href="/shop" className="btn-primary">Start shopping</Link>
-            <Link href="/cart" style={{
+            {/* "View cart" on an empty bag was a dead end (the cart is just as
+                empty) — point at the bestseller shelf instead. `?bestseller=1`
+                is the filter CollectionPage actually reads. */}
+            <Link href="/shop?bestseller=1" style={{
               padding: '12px 24px', background: 'transparent',
               border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
               fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600,
               color: 'var(--ink-900)', textDecoration: 'none',
             }}>
-              View cart
+              Shop bestsellers
             </Link>
           </div>
         </div>
