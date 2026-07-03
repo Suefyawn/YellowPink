@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -74,7 +75,15 @@ function Bubble({ m }: { m: Row }) {
   );
 }
 
-function Conversation({ c }: { c: Convo }) {
+/** Order history rolled up per customer email, shown in the thread header so
+ *  support can see who they're talking to without leaving the inbox. */
+interface CustomerContext {
+  orders: number;
+  total: number;
+  last: { order_number: string; status: string } | null;
+}
+
+function Conversation({ c, ctx }: { c: Convo; ctx?: CustomerContext }) {
   const mailHref = `mailto:${c.email}`;
   return (
     <div style={{ background: 'white', borderRadius: 12, border: '1px solid #f0f0f3', boxShadow: '0 1px 2px rgba(16,24,40,0.05)', marginBottom: 16, overflow: 'hidden' }}>
@@ -96,6 +105,19 @@ function Conversation({ c }: { c: Convo }) {
           {c.archived
             ? <ThreadActionButton action={restoreThread} email={c.email} label="Restore" bg="#f3f4f6" color="#374151" />
             : <ThreadActionButton action={archiveThread} email={c.email} label="Archive" bg="#f3f4f6" color="#374151" />}
+        </span>
+        {/* Customer context: order history at a glance. Links to the orders
+            list pre-filtered to this email. */}
+        <span style={{ flexBasis: '100%', fontSize: '0.75rem', color: '#6b7280' }}>
+          {ctx && ctx.orders > 0 ? (
+            <Link href={`/admin/orders?q=${encodeURIComponent(c.email)}`} style={{ color: '#6b7280', textDecoration: 'none' }}>
+              {ctx.orders} order{ctx.orders !== 1 ? 's' : ''} · PKR {Math.round(ctx.total).toLocaleString()}
+              {ctx.last ? ` · last: ${ctx.last.order_number} (${ctx.last.status})` : ''}
+              <span style={{ color: '#C5286A' }}> →</span>
+            </Link>
+          ) : (
+            <span style={{ color: '#9ca3af' }}>No orders under this email</span>
+          )}
         </span>
       </div>
 
@@ -155,6 +177,29 @@ export default async function MessagesPage({ searchParams }: { searchParams?: Pr
   const archived = convos.filter(c => c.archived);
   const unreadThreads = open.filter(c => c.unread > 0).length;
 
+  // Customer context: one orders query for every thread's email (raw + lower
+  // case variants, since checkout emails aren't normalised), rolled up per
+  // customer for the thread headers.
+  const emailVariants = new Set<string>();
+  for (const c of convos) { emailVariants.add(c.email); emailVariants.add(c.email.toLowerCase()); }
+  const ctxByEmail = new Map<string, { orders: number; total: number; last: { order_number: string; status: string } | null }>();
+  if (emailVariants.size > 0) {
+    const { data: orderRows } = await supabaseAdmin()
+      .from('orders')
+      .select('email, order_number, status, total, created_at')
+      .in('email', [...emailVariants])
+      .order('created_at', { ascending: false });
+    for (const o of (orderRows ?? []) as Array<{ email: string | null; order_number: string; status: string; total: number | null; created_at: string }>) {
+      const key = (o.email ?? '').toLowerCase();
+      const cur = ctxByEmail.get(key) ?? { orders: 0, total: 0, last: null };
+      cur.orders += 1;
+      cur.total += Number(o.total ?? 0);
+      // Rows arrive newest-first, so the first one seen is the latest order.
+      if (!cur.last) cur.last = { order_number: o.order_number, status: o.status };
+      ctxByEmail.set(key, cur);
+    }
+  }
+
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 860 }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Messages</h1>
@@ -180,12 +225,12 @@ export default async function MessagesPage({ searchParams }: { searchParams?: Pr
       </div>
       {open.length === 0
         ? <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem', background: 'white', borderRadius: 12, border: '1px solid #f0f0f3', marginBottom: 16 }}>No conversations yet.</div>
-        : open.map(c => <Conversation key={c.email} c={c} />)}
+        : open.map(c => <Conversation key={c.email} c={c} ctx={ctxByEmail.get(c.email)} />)}
 
       {archived.length > 0 && (
         <>
           <h2 style={{ margin: '32px 0 14px', fontSize: '0.9375rem', fontWeight: 600, color: '#6b7280' }}>Archived</h2>
-          {archived.map(c => <Conversation key={c.email} c={c} />)}
+          {archived.map(c => <Conversation key={c.email} c={c} ctx={ctxByEmail.get(c.email)} />)}
         </>
       )}
     </div>

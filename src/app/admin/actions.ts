@@ -178,7 +178,106 @@ export async function createProduct(
   }
   revalidatePath('/admin/products');
   revalidateStorefrontCatalog();
-  redirect('/admin/products');
+  // Land on the edit page, not the list: variants, tags and extra images are
+  // only editable post-create, so every variable product used to mean
+  // create → find in list → reopen.
+  redirect(`/admin/products/${(data as { id: string }).id}?created=1`);
+}
+
+/** Deep-copy a product into a new draft: the row itself plus variants (with
+ *  their attribute options), extra images, tags and related-product links.
+ *  Ratings/reviews and WP import ids stay behind. Returns the new id so the
+ *  client can jump straight to the copy's edit page. */
+export async function duplicateProduct(id: string): Promise<{ id?: string; error?: string }> {
+  const session = await assertPermission('products.edit');
+  const admin = supabaseAdmin();
+
+  const { data: source, error: srcErr } = await admin.from('products').select('*').eq('id', id).maybeSingle();
+  if (srcErr) return { error: srcErr.message };
+  if (!source) return { error: 'Product no longer exists.' };
+  const src = source as Record<string, unknown> & { id: string; name: string; slug: string };
+
+  // Everything except identity, timestamps, WP import ids and earned social
+  // proof carries over. The copy always starts as an unlisted draft.
+  const {
+    id: _id, created_at: _ca, updated_at: _ua, wp_product_id: _wp,
+    rating: _r, review_count: _rc, slug: baseSlug, name: baseName,
+    ...rest
+  } = src;
+  void _id; void _ca; void _ua; void _wp; void _r; void _rc;
+
+  const name = `${baseName} (copy)`.slice(0, 200);
+  let created: { id: string } | null = null;
+  let lastErr = '';
+  for (let n = 0; n < 8 && !created; n++) {
+    const slug = n === 0 ? `${baseSlug}-copy` : `${baseSlug}-copy-${n + 1}`;
+    const { data, error } = await admin
+      .from('products')
+      .insert({ ...rest, name, slug, status: 'draft' })
+      .select('id')
+      .single();
+    if (data) { created = data as { id: string }; break; }
+    lastErr = error?.message ?? 'unknown error';
+    if (!/duplicate|unique/i.test(lastErr)) break;
+  }
+  if (!created) return { error: `Could not duplicate: ${lastErr}` };
+  const newId = created.id;
+
+  // Variants one-by-one so old→new ids stay paired (SKUs are globally unique,
+  // so the copy gets a suffixed SKU, or none if even that collides).
+  const { data: variantRows } = await admin.from('product_variants').select('*').eq('product_id', id).order('sort_order');
+  const variantIdMap = new Map<string, string>();
+  for (const v of (variantRows ?? []) as Array<Record<string, unknown> & { id: string; sku: string | null }>) {
+    const { id: oldVid, created_at: _vca, updated_at: _vua, wp_variation_id: _vwp, sku, ...vrest } = v;
+    void _vca; void _vua; void _vwp;
+    let insert = { ...vrest, product_id: newId, sku: sku ? `${sku}-copy`.slice(0, 80) : null };
+    let { data: nv, error: vErr } = await admin.from('product_variants').insert(insert).select('id').single();
+    if (vErr && /duplicate|unique/i.test(vErr.message)) {
+      insert = { ...insert, sku: null };
+      ({ data: nv, error: vErr } = await admin.from('product_variants').insert(insert).select('id').single());
+    }
+    if (nv) variantIdMap.set(oldVid, (nv as { id: string }).id);
+  }
+
+  // Attribute options per variant (which shade/size each variant represents).
+  if (variantIdMap.size > 0) {
+    const { data: vavRows } = await admin
+      .from('variant_attribute_values')
+      .select('variant_id, attribute_value_id')
+      .in('variant_id', [...variantIdMap.keys()]);
+    const vavCopies = ((vavRows ?? []) as Array<{ variant_id: string; attribute_value_id: string }>)
+      .map(r => ({ variant_id: variantIdMap.get(r.variant_id)!, attribute_value_id: r.attribute_value_id }));
+    if (vavCopies.length) await admin.from('variant_attribute_values').insert(vavCopies);
+  }
+
+  // Gallery images; variant-bound images follow their mapped variant.
+  const { data: imageRows } = await admin.from('product_images').select('*').eq('product_id', id).order('sort_order');
+  const imageCopies = ((imageRows ?? []) as Array<Record<string, unknown> & { variant_id: string | null }>).map(img => {
+    const { id: _iid, created_at: _ica, wp_media_id: _iwp, variant_id, ...irest } = img;
+    void _iid; void _ica; void _iwp;
+    return { ...irest, product_id: newId, variant_id: variant_id ? (variantIdMap.get(variant_id) ?? null) : null };
+  });
+  if (imageCopies.length) await admin.from('product_images').insert(imageCopies);
+
+  // Many-to-many tags + outgoing related-product links.
+  const { data: tagRows } = await admin.from('product_tag_map').select('tag_id').eq('product_id', id);
+  const tagCopies = ((tagRows ?? []) as Array<{ tag_id: string }>).map(r => ({ product_id: newId, tag_id: r.tag_id }));
+  if (tagCopies.length) await admin.from('product_tag_map').insert(tagCopies);
+
+  const { data: relRows } = await admin.from('product_relations').select('related_product_id, kind, sort_order').eq('product_id', id);
+  const relCopies = ((relRows ?? []) as Array<{ related_product_id: string; kind: string; sort_order: number }>)
+    .map(r => ({ ...r, product_id: newId }));
+  if (relCopies.length) await admin.from('product_relations').insert(relCopies);
+
+  await logAudit(session, {
+    action: 'product.duplicate',
+    entity: 'product',
+    entity_id: newId,
+    diff: { source_id: id, variants: variantIdMap.size, images: imageCopies.length, tags: tagCopies.length },
+  });
+  revalidatePath('/admin/products');
+  // No storefront revalidation: the copy is a draft, nothing public changed.
+  return { id: newId };
 }
 
 export async function updateProduct(

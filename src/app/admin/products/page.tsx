@@ -157,6 +157,16 @@ export default async function ProductsPage({
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Products</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <ResubmitAllButton />
+          {/* Plain <a>: a route-handler download, not a client navigation.
+              The lint rule mistakes this for the [id] page — the static
+              /export segment wins over the dynamic sibling at runtime. */}
+          {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+          <a href="/admin/products/export" style={{
+            padding: '10px 16px', background: 'white', color: '#111827',
+            border: '1px solid #d1d5db', borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
+          }}>
+            Export CSV
+          </a>
           <Link href="/admin/products/import" style={{
             padding: '10px 16px', background: 'white', color: '#111827',
             border: '1px solid #d1d5db', borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,

@@ -7,6 +7,7 @@ import { fmtPKR as fmt } from '@/lib/money';
 import { FINANCE_RANGES as RANGES, resolveRange, rangeStartISO, loadFinanceOrders, toOrderFinanceRow } from '@/lib/finance';
 import { PAY_METHOD_LABELS } from '@/types';
 import { DeleteButton } from '@/components/admin/DeleteButton';
+import { FinanceTabs } from '@/components/admin/FinanceTabs';
 import { addExpense, deleteExpense } from './actions';
 
 const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -161,6 +162,7 @@ export default async function FinancePage({
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
+      <FinanceTabs active="overview" />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Finance</h1>
