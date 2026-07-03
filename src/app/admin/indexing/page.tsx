@@ -5,6 +5,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { getGoogleConnection } from '@/lib/google';
 import { getQuotaState } from '@/lib/indexing-status';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { checkIndexingNow, addTrackedUrl } from './actions';
 
 interface Row {
@@ -73,8 +74,8 @@ export default async function IndexingPage() {
       </p>
 
       {!gscSite ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', background: '#fef3f2', border: '1px solid #fecaca', borderRadius: 12, color: '#991b1b', fontSize: '0.9375rem' }}>
-          Connect a Search Console property in <a href="/admin/settings/integrations" style={{ color: 'inherit', textDecoration: 'underline' }}>Settings → Integrations</a> first.
+        <div style={{ padding: '40px 24px', textAlign: 'center', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, color: '#374151', fontSize: '0.9375rem' }}>
+          Connect a Search Console property in <a href="/admin/settings/integrations" style={{ color: '#C5286A', textDecoration: 'underline' }}>Settings → Integrations</a> first.
         </div>
       ) : (
         <>
@@ -87,12 +88,14 @@ export default async function IndexingPage() {
             </div>
           )}
           <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-            <Stat label="Tracked" value={rows.length} />
-            <Stat label="Indexed" value={indexed.length} />
-            <Stat label="Pending" value={pending.length} />
-            <Stat label="Not yet checked" value={unchecked} />
+            <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, flex: '1 1 560px' }}>
+              <KpiCard label="Tracked" value={rows.length} accent="#6b7280" />
+              <KpiCard label="Indexed" value={indexed.length} accent="#15803d" />
+              <KpiCard label="Pending" value={pending.length} accent="#b45309" />
+              <KpiCard label="Not yet checked" value={unchecked} accent="#2563eb" />
+            </div>
             <form action={checkIndexingNow}>
-              <button type="submit" className="adm-btn-primary" style={{ padding: '10px 16px', fontSize: '0.8125rem', borderRadius: 8, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, height: 44 }}>
+              <button type="submit" style={{ padding: '10px 16px', fontSize: '0.8125rem', borderRadius: 8, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, height: 44 }}>
                 Check now
               </button>
             </form>
@@ -110,7 +113,7 @@ export default async function IndexingPage() {
 
           {pending.length === 0 ? (
             <div style={{ padding: '40px 24px', textAlign: 'center', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, color: '#166534', fontSize: '0.9375rem' }}>
-              ✓ Every tracked page is indexed. New blog posts are picked up automatically.
+              Every tracked page is indexed. New blog posts are picked up automatically.
             </div>
           ) : (
             <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -169,15 +172,6 @@ export default async function IndexingPage() {
           )}
         </>
       )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: number }) {
-  return (
-    <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 10, padding: '12px 18px', minWidth: 96 }}>
-      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{value}</div>
-      <div style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: 2 }}>{label}</div>
     </div>
   );
 }

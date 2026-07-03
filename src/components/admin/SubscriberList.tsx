@@ -6,6 +6,7 @@ import {
   updateSubscriber,
   setSubscriberUnsubscribed,
 } from '@/app/admin/newsletter/actions';
+import { DotChip } from '@/components/admin/OrderChips';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 export interface Subscriber {
@@ -174,19 +175,12 @@ export function SubscriberList({ subscribers }: { subscribers: Subscriber[] }) {
                     {SOURCE_LABEL[s.source] ?? s.source}
                   </td>
                   <td data-label="Status" style={{ padding: '12px 20px' }}>
-                    <span style={{
-                      display: 'inline-block', padding: '2px 9px', borderRadius: 999,
-                      fontSize: '0.6875rem', fontWeight: 700,
-                      background: active ? '#dcfce7' : '#f3f4f6',
-                      color: active ? '#166534' : '#6b7280',
-                    }}>
-                      {active ? 'Subscribed' : 'Unsubscribed'}
-                    </span>
+                    <DotChip label={active ? 'Subscribed' : 'Unsubscribed'} color={active ? '#15803d' : '#6b7280'} />
                   </td>
                   <td data-label="Subscribed" style={{ padding: '12px 20px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                     {fmtDate(s.created_at)}
                   </td>
-                  <td data-label="Actions" style={{ padding: '12px 20px', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '12px 20px', whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
                       <button
                         type="button"
@@ -342,7 +336,7 @@ function EditRow({
             type="submit"
             disabled={pending}
             style={{
-              padding: '8px 16px', background: '#10b981', color: 'white',
+              padding: '8px 16px', background: '#C5286A', color: 'white',
               border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
               cursor: pending ? 'not-allowed' : 'pointer',
             }}

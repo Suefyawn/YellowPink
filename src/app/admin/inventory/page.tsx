@@ -45,6 +45,14 @@ const reasonColors: Record<LedgerRow['reason'], string> = {
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+function reasonHref(product: string | undefined, reason?: string): string {
+  const p = new URLSearchParams();
+  if (product) p.set('product', product);
+  if (reason) p.set('reason', reason);
+  const s = p.toString();
+  return s ? `/admin/inventory?${s}` : '/admin/inventory';
+}
+
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
 
@@ -153,16 +161,9 @@ export default async function InventoryPage({
 
       {/* ─── Stock summary ──────────────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }} className="adm-stat-grid">
-        {[
-          { label: 'Out of stock', value: outOfStock.length, bg: '#fef2f2', fg: '#dc2626', bd: '#fecaca' },
-          { label: `Low stock (≤ ${LOW_STOCK_THRESHOLD})`, value: lowStock.length, bg: '#fffbeb', fg: '#d97706', bd: '#fde68a' },
-          { label: 'Healthy', value: healthyCount, bg: '#f0fdf4', fg: '#16a34a', bd: '#bbf7d0' },
-        ].map(s => (
-          <div key={s.label} style={{ background: s.bg, border: `1px solid ${s.bd}`, borderRadius: 10, padding: '16px 20px' }}>
-            <div style={{ fontSize: '0.75rem', fontWeight: 600, color: s.fg }}>{s.label}</div>
-            <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111827', marginTop: 2 }}>{s.value}</div>
-          </div>
-        ))}
+        <KpiCard label="Out of stock" value={outOfStock.length} accent="#dc2626" />
+        <KpiCard label={`Low stock (≤ ${LOW_STOCK_THRESHOLD})`} value={lowStock.length} accent="#d97706" />
+        <KpiCard label="Healthy" value={healthyCount} accent="#16a34a" />
       </div>
 
       {/* ─── Reorder needed ─────────────────────────────────────────────── */}
@@ -268,9 +269,7 @@ export default async function InventoryPage({
                         {p.stock}
                       </td>
                       <td data-label="Status" style={td}>
-                        <span style={{ background: badge.bg, color: badge.fg, padding: '2px 8px', borderRadius: 6, fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                          {badge.label}
-                        </span>
+                        <DotChip label={badge.label} color={badge.color} />
                       </td>
                       <td style={{ ...td, textAlign: 'right' }}>
                         <Link href={`/admin/products/${p.id}`} style={{ color: '#C5286A', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600 }}>
@@ -326,12 +325,13 @@ export default async function InventoryPage({
       {/* ─── Movement history ───────────────────────────────────────────── */}
       <h2 style={{ margin: '0 0 10px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Movement history</h2>
 
-      {/* Filters */}
+      {/* Filters. Hrefs keep an active ?product= filter so switching reason
+          doesn't silently drop the product scope. */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, fontSize: '0.8125rem', flexWrap: 'wrap' }}>
-        <Link href="/admin/inventory" style={chipLink(!reasonFilter && !productFilter)}>All</Link>
+        <Link href={reasonHref(productFilter)} style={chipLink(!reasonFilter)}>All</Link>
         {(['order','return','cancellation','restock','adjustment','damage','import'] as const).map(r => (
-          <Link key={r} href={`/admin/inventory?reason=${r}`} style={chipLink(reasonFilter === r)}>
-            {r.charAt(0).toUpperCase() + r.slice(1)}
+          <Link key={r} href={reasonHref(productFilter, r)} style={chipLink(reasonFilter === r)}>
+            {titleCase(r)}
           </Link>
         ))}
       </div>
@@ -367,9 +367,7 @@ export default async function InventoryPage({
                     </td>
                     <td data-label="Balance" style={{ ...td, fontFamily: 'monospace' }}>{r.balance_after ?? '—'}</td>
                     <td data-label="Reason" style={td}>
-                      <span style={{ background: color.bg, color: color.fg, padding: '2px 8px', borderRadius: 6, fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                        {r.reason}
-                      </span>
+                      <DotChip label={titleCase(r.reason)} color={color} />
                     </td>
                     <td data-label="Order" style={{ ...td, fontFamily: 'monospace', fontSize: '0.75rem' }}>
                       {order
@@ -377,9 +375,10 @@ export default async function InventoryPage({
                         : '—'}
                     </td>
                     <td data-label="Actor" style={{ ...td, fontSize: '0.75rem', color: '#374151' }}>
-                      <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: r.actor_kind === 'owner' ? '#C5286A' : r.actor_kind === 'staff' ? '#3b82f6' : '#6b7280', textTransform: 'uppercase' }}>
-                        {r.actor_kind}
-                      </span>
+                      <DotChip
+                        label={titleCase(r.actor_kind)}
+                        color={r.actor_kind === 'owner' ? '#C5286A' : r.actor_kind === 'staff' ? '#3b82f6' : '#6b7280'}
+                      />
                       {r.actor_email && <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>{r.actor_email}</div>}
                     </td>
                     <td data-label="Note" style={{ ...td, fontSize: '0.75rem', color: '#374151', maxWidth: 280 }}>{r.note ?? '—'}</td>
@@ -400,12 +399,13 @@ const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', border: '
 const btn: React.CSSProperties = { padding: '9px 18px', background: '#C5286A', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' };
 const th:  React.CSSProperties = { padding: '11px 16px', textAlign: 'left', fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' };
 const td:  React.CSSProperties = { padding: '10px 16px', verticalAlign: 'top' };
+// System range-pill style (matches RangePicker): dark when active, grey idle.
 const chipLink = (active: boolean): React.CSSProperties => ({
-  padding: '6px 12px',
-  borderRadius: 6,
-  border: '1px solid ' + (active ? '#C5286A' : '#e5e7eb'),
-  background: active ? '#fce7f3' : 'white',
-  color: active ? '#9d174d' : '#374151',
+  padding: '5px 12px',
+  borderRadius: 16,
+  fontSize: '0.75rem',
+  fontWeight: 600,
+  background: active ? '#111827' : '#f3f4f6',
+  color: active ? '#fff' : '#6b7280',
   textDecoration: 'none',
-  fontWeight: active ? 700 : 500,
 });

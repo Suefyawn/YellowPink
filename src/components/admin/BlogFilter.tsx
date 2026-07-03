@@ -35,16 +35,18 @@ export function BlogFilter({ total, categories }: { total: number; categories: s
   const clearAll = () => push(new URLSearchParams());
   const hasFilters = !!q || (category !== 'All');
 
+  // Underline saved-view tabs (same treatment as the orders index).
   const btnStyle = (active: boolean): React.CSSProperties => ({
-    padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer',
-    fontSize: '0.8125rem', fontWeight: active ? 600 : 400,
-    background: active ? '#111827' : '#f3f4f6',
-    color: active ? 'white' : '#6b7280',
+    padding: '9px 14px', border: 'none', cursor: 'pointer', background: 'transparent',
+    fontSize: '0.8125rem', fontWeight: active ? 600 : 500,
+    color: active ? '#111827' : '#6b7280',
+    borderBottom: `2px solid ${active ? '#C5286A' : 'transparent'}`,
+    marginBottom: -1,
   });
 
   return (
     <div style={{ marginBottom: 20, display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
-      <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #e5e7eb', flexBasis: '100%' }}>
         <button onClick={() => setCategory('All')} style={btnStyle(category === 'All')}>All</button>
         {categories.map(c => (
           <button key={c} onClick={() => setCategory(c)} style={btnStyle(category === c)}>{c}</button>

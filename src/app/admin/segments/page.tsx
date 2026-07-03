@@ -55,7 +55,7 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
   }
 
   return (
-    <div style={{ padding: '32px 36px' }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 24 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Customer segments</h1>
         <Link href="/admin/analytics" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>→ Analytics</Link>
@@ -99,7 +99,17 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
               {rows.map(r => (
                 <tr key={r.cust_key} style={{ borderTop: '1px solid #f3f4f6' }}>
                   <td data-label="Customer" style={{ padding: '10px 16px', color: '#111827' }}>
-                    {r.email ?? <span style={{ color: '#9ca3af', fontFamily: 'monospace', fontSize: '0.75rem' }}>{r.cust_key.slice(0, 16)}…</span>}
+                    {/* Guest ids mirror /admin/users: the identity key is
+                        base64url-encoded behind a `guest-` prefix so it stays
+                        path-safe; the detail page decodes it. */}
+                    <Link
+                      href={r.user_id
+                        ? `/admin/users/${r.user_id}`
+                        : `/admin/users/guest-${Buffer.from(r.cust_key, 'utf8').toString('base64url')}`}
+                      style={{ color: '#111827', fontWeight: 500, textDecoration: 'none' }}
+                    >
+                      {r.email ?? <span style={{ color: '#9ca3af', fontFamily: 'monospace', fontSize: '0.75rem' }}>{r.cust_key.slice(0, 16)}…</span>}
+                    </Link>
                     {r.user_id && <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>registered</div>}
                   </td>
                   <td data-label="Segment" style={{ padding: '10px 16px' }}>{r.segment}</td>
@@ -118,13 +128,15 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
   );
 }
 
+// System range-pill style (matches RangePicker): dark when active, grey idle.
 function chip(active: boolean): React.CSSProperties {
   return {
-    padding: '6px 14px',
-    border: '1px solid', borderColor: active ? '#111827' : '#d1d5db',
-    background: active ? '#111827' : 'white',
-    color: active ? 'white' : '#374151',
-    borderRadius: 999, fontSize: '0.8125rem', fontWeight: 500,
+    padding: '5px 12px',
+    borderRadius: 16,
+    fontSize: '0.75rem',
+    fontWeight: 600,
+    background: active ? '#111827' : '#f3f4f6',
+    color: active ? '#fff' : '#6b7280',
     textDecoration: 'none', cursor: 'pointer',
   };
 }

@@ -6,6 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { createCollection, deleteCollection } from '@/app/admin/collection-actions';
+import { DotChip } from '@/components/admin/OrderChips';
 
 interface CollectionRow {
   id: string; slug: string; title: string; type: 'manual' | 'smart'; status: 'published' | 'draft'; sort_order: number;
@@ -83,13 +84,13 @@ export default async function CollectionsPage({ searchParams }: { searchParams?:
                     <div style={{ fontFamily: 'monospace', fontSize: '0.6875rem', color: '#9ca3af' }}>/collection/{c.slug}</div>
                   </td>
                   <td data-label="Type" style={{ padding: '12px 16px', fontSize: '0.8125rem' }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', background: c.type === 'smart' ? '#ede9fe' : '#e0f2fe', color: c.type === 'smart' ? '#5b21b6' : '#075985' }}>{c.type}</span>
+                    <DotChip label={c.type === 'smart' ? 'Smart' : 'Manual'} color={c.type === 'smart' ? '#7c3aed' : '#6b7280'} />
                   </td>
                   <td data-label="Products" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>
                     {c.type === 'manual' ? (counts.get(c.id) ?? 0) : <span style={{ color: '#9ca3af' }}>rules</span>}
                   </td>
                   <td data-label="Status" style={{ padding: '12px 16px' }}>
-                    <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', background: c.status === 'published' ? '#f0fdf4' : '#f3f4f6', color: c.status === 'published' ? '#15803d' : '#9ca3af' }}>{c.status}</span>
+                    <DotChip label={c.status === 'published' ? 'Published' : 'Draft'} color={c.status === 'published' ? '#15803d' : '#6b7280'} />
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>

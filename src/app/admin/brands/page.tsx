@@ -7,6 +7,8 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { createBrand, deleteBrand } from '@/app/admin/brand-actions';
 import { brandSlug } from '@/lib/brands';
+import { DotChip } from '@/components/admin/OrderChips';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
 
 interface BrandRow {
   id: string;
@@ -19,20 +21,27 @@ interface BrandRow {
   sort_order: number;
 }
 
-export default async function AdminBrandsPage({ searchParams }: { searchParams?: Promise<{ error?: string; deleted?: string }> }) {
+export default async function AdminBrandsPage({ searchParams }: { searchParams?: Promise<{ error?: string; deleted?: string; q?: string }> }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('products.view'))) {
     return <NoAccess section="Brands" />;
   }
   const sp = (await searchParams) ?? {};
+  const q = (sp.q ?? '').trim();
   const admin = supabaseAdmin();
 
   // Brands table + product-brand distribution (for counts + the unbranded
   // queue). The product join is by name match (case-sensitive, since that's
   // how it's stored) so we don't show a count for a brand record that no
   // product actually carries.
+  let brandQuery = admin.from('brands').select('id, slug, name, description, logo_url, hero_image_url, status, sort_order');
+  if (q) {
+    // Strip PostgREST .or() delimiters from the term, same as orders search.
+    const term = q.replace(/[(),*]/g, ' ').trim();
+    if (term) brandQuery = brandQuery.or(`name.ilike.%${term}%,slug.ilike.%${term}%`);
+  }
   const [{ data: brandData }, { data: prodData }] = await Promise.all([
-    admin.from('brands').select('id, slug, name, description, logo_url, hero_image_url, status, sort_order').order('sort_order').order('name'),
+    brandQuery.order('sort_order').order('name'),
     admin.from('products').select('brand, status').eq('status', 'published'),
   ]);
   const brands = (brandData ?? []) as BrandRow[];
@@ -82,16 +91,13 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
           owner flagged. Owners and product editors can act on each. */}
       <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 24 }}>
         {[
-          { label: 'Total brands', value: brands.length, tone: '#111827' },
-          { label: 'Need description', value: needsDescription, tone: needsDescription ? '#b45309' : '#15803d' },
-          { label: 'Need logo', value: needsLogo, tone: needsLogo ? '#b45309' : '#15803d' },
-          { label: 'Need hero', value: needsHero, tone: needsHero ? '#b45309' : '#15803d' },
-          { label: 'Unbranded products', value: unbrandedCount, tone: unbrandedCount ? '#b91c1c' : '#15803d' },
+          { label: 'Total brands', value: brands.length, accent: '#111827' },
+          { label: 'Need description', value: needsDescription, accent: needsDescription ? '#b45309' : '#15803d' },
+          { label: 'Need logo', value: needsLogo, accent: needsLogo ? '#b45309' : '#15803d' },
+          { label: 'Need hero', value: needsHero, accent: needsHero ? '#b45309' : '#15803d' },
+          { label: 'Unbranded products', value: unbrandedCount, accent: unbrandedCount ? '#b91c1c' : '#15803d' },
         ].map(s => (
-          <div key={s.label} style={{ background: 'white', borderRadius: 10, padding: '14px 16px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-            <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: s.tone, marginTop: 2 }}>{s.value}</div>
-          </div>
+          <KpiCard key={s.label} label={s.label} value={s.value} accent={s.accent} />
         ))}
       </div>
 
@@ -109,8 +115,10 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
         </div>
       )}
 
-      {/* Orphan brands ─ on products but missing a metadata row. */}
-      {orphanBrandStrings.length > 0 && (
+      {/* Orphan brands ─ on products but missing a metadata row. Hidden while
+          searching: a filtered brand list would misreport known names as
+          orphans. */}
+      {!q && orphanBrandStrings.length > 0 && (
         <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 18px', marginBottom: 24 }}>
           <h2 style={{ margin: '0 0 6px', fontSize: '0.875rem', fontWeight: 700, color: '#92400e' }}>
             {orphanBrandStrings.length} brand{orphanBrandStrings.length === 1 ? '' : 's'} on products without metadata
@@ -135,9 +143,38 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
         </div>
       )}
 
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <form method="get" action="/admin/brands" style={{ margin: 0, display: 'flex' }}>
+          <input
+            type="search" name="q" defaultValue={q} placeholder="Search name or slug…"
+            aria-label="Search brands"
+            style={{
+              padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8,
+              fontSize: '0.875rem', color: '#111827', background: 'white', outline: 'none',
+              minWidth: 220,
+            }}
+          />
+        </form>
+        {q && (
+          <Link href="/admin/brands" style={{
+            padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 8,
+            fontSize: '0.8125rem', color: '#6b7280', background: 'white', textDecoration: 'none',
+          }}>
+            Clear
+          </Link>
+        )}
+        {q && (
+          <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
+            {brands.length} match{brands.length !== 1 ? 'es' : ''}
+          </span>
+        )}
+      </div>
+
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {brands.length === 0 ? (
-          <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>No brands yet. Create one above.</div>
+          <div style={{ padding: '60px 24px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
+            {q ? 'No brands match this search.' : 'No brands yet. Create one above.'}
+          </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
@@ -165,13 +202,13 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
                     </td>
                     <td data-label="Assets" style={{ padding: '12px 16px' }}>
                       {missing.length === 0 ? (
-                        <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', background: '#f0fdf4', color: '#15803d' }}>Complete</span>
+                        <DotChip label="Complete" color="#15803d" />
                       ) : (
                         <span style={{ fontSize: '0.75rem', color: '#b45309' }}>Needs {missing.join(' · ')}</span>
                       )}
                     </td>
                     <td data-label="Status" style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '2px 8px', borderRadius: 20, fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', background: b.status === 'published' ? '#f0fdf4' : '#f3f4f6', color: b.status === 'published' ? '#15803d' : '#9ca3af' }}>{b.status}</span>
+                      <DotChip label={b.status === 'published' ? 'Published' : 'Draft'} color={b.status === 'published' ? '#15803d' : '#6b7280'} />
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>

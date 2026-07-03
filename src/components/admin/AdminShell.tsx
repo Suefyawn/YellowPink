@@ -148,7 +148,11 @@ export function AdminShell({
            * its label dropped, the rest stay compact label/value rows. */
           .adm-table-cards td[data-label="Order #"],
           .adm-table-cards td[data-label="Brand / Name"],
-          .adm-table-cards td[data-label="Product"] {
+          .adm-table-cards td[data-label="Product"],
+          .adm-table-cards td[data-label="Title"],
+          .adm-table-cards td[data-label="Collection"],
+          .adm-table-cards td[data-label="Brand"],
+          .adm-table-cards td[data-label="Tag"] {
             display: block; text-align: left;
             padding: 4px 0 11px !important;
             margin-bottom: 3px;
@@ -157,14 +161,22 @@ export function AdminShell({
           }
           .adm-table-cards td[data-label="Order #"]::before,
           .adm-table-cards td[data-label="Brand / Name"]::before,
-          .adm-table-cards td[data-label="Product"]::before {
+          .adm-table-cards td[data-label="Product"]::before,
+          .adm-table-cards td[data-label="Title"]::before,
+          .adm-table-cards td[data-label="Collection"]::before,
+          .adm-table-cards td[data-label="Brand"]::before,
+          .adm-table-cards td[data-label="Tag"]::before {
             content: none;
           }
           .adm-table-cards td[data-label="Order #"] a,
-          .adm-table-cards td[data-label="Product"] a {
+          .adm-table-cards td[data-label="Product"] a,
+          .adm-table-cards td[data-label="Collection"] a,
+          .adm-table-cards td[data-label="Brand"] a,
+          .adm-table-cards td[data-label="Tag"] a {
             font-size: 1rem !important;
           }
-          .adm-table-cards td[data-label="Brand / Name"] > div:nth-child(2) {
+          .adm-table-cards td[data-label="Brand / Name"] > div:nth-child(2),
+          .adm-table-cards td[data-label="Title"] > div:first-child {
             font-size: 0.9375rem !important;
             white-space: normal !important;
           }

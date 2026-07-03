@@ -162,20 +162,20 @@ export default async function ProductsPage({
               /export segment wins over the dynamic sibling at runtime. */}
           {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
           <a href="/admin/products/export" style={{
-            padding: '10px 16px', background: 'white', color: '#111827',
-            border: '1px solid #d1d5db', borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
+            padding: '8px 14px', background: 'white', color: '#111827',
+            border: '1px solid #d1d5db', borderRadius: 8, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600,
           }}>
             Export CSV
           </a>
           <Link href="/admin/products/import" style={{
-            padding: '10px 16px', background: 'white', color: '#111827',
-            border: '1px solid #d1d5db', borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
+            padding: '8px 14px', background: 'white', color: '#111827',
+            border: '1px solid #d1d5db', borderRadius: 8, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600,
           }}>
             Import CSV
           </Link>
           <Link href="/admin/products/new" style={{
-            padding: '10px 20px', background: '#C5286A', color: 'white',
-            borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,
+            padding: '8px 14px', background: '#111827', color: 'white',
+            borderRadius: 8, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600,
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
             + New Product

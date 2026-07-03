@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { ReturnsQueue } from '@/components/admin/ReturnsQueue';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
 
 interface ReturnRow {
   id: string;
@@ -20,7 +21,14 @@ interface ReturnRow {
   created_at: string;
 }
 
-export default async function ReturnsPage() {
+const QUEUE_STATUSES = ['all', 'pending', 'approved', 'received', 'refunded', 'rejected'] as const;
+type QueueStatus = (typeof QUEUE_STATUSES)[number];
+
+export default async function ReturnsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string }>;
+}) {
   const session = await getStaffSession();
   // Returns gated on its own permission; orders perm also satisfies it for
   // backward-compat with existing staff who only have `orders`. The
@@ -36,12 +44,18 @@ export default async function ReturnsPage() {
   // return_requests anon-SELECT is scoped to user_id = auth.uid(); admin
   // moderation needs to see all. orders is fully RLS-locked. Both reads
   // need the service role.
+  const { status: statusParam } = await searchParams;
+  const status: QueueStatus = QUEUE_STATUSES.includes(statusParam as QueueStatus)
+    ? (statusParam as QueueStatus) : 'all';
+
   const admin = supabaseAdmin();
-  const { data } = await admin
+  let queueQuery = admin
     .from('return_requests')
     .select('id, order_id, user_id, email, reason, items, status, refund_amount, refund_method, admin_note, created_at')
     .order('created_at', { ascending: false })
     .limit(200);
+  if (status !== 'all') queueQuery = queueQuery.eq('status', status);
+  const { data } = await queueQuery;
 
   const rows = (data ?? []) as ReturnRow[];
 
@@ -104,7 +118,6 @@ export default async function ReturnsPage() {
   // with their ellipsis instead of widening the page.
   const kpi: React.CSSProperties = { background: 'white', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 16px', minWidth: 0 };
   const kpiLabel: React.CSSProperties = { fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.05em' };
-  const kpiVal: React.CSSProperties = { fontSize: '1.25rem', fontWeight: 700, color: '#111827', marginTop: 2 };
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -116,10 +129,15 @@ export default async function ReturnsPage() {
       {ar.length > 0 && (
         <section style={{ marginBottom: 28 }}>
           <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 16 }}>
-            <div style={kpi}><div style={kpiLabel}>Total returns</div><div style={kpiVal}>{ar.length.toLocaleString()}</div></div>
-            <div style={kpi}><div style={kpiLabel}>Last 90 days</div><div style={kpiVal}>{last90.toLocaleString()}</div></div>
-            <div style={kpi}><div style={kpiLabel}>Refunded (total)</div><div style={kpiVal}>PKR {Math.round(totalRefunded).toLocaleString()}</div></div>
-            <div style={kpi} title={returnRateFormula}><div style={kpiLabel}>Return rate (90d)</div><div style={kpiVal}>{returnRate == null ? '—' : `${returnRate.toFixed(1)}%`}</div></div>
+            <KpiCard label="Total returns" value={ar.length.toLocaleString()} accent="#C5286A" />
+            <KpiCard label="Last 90 days" value={last90.toLocaleString()} accent="#0369a1" />
+            <KpiCard label="Refunded (total)" value={`PKR ${Math.round(totalRefunded).toLocaleString()}`} accent="#b45309" />
+            <KpiCard
+              label="Return rate (90d)"
+              value={returnRate == null ? '—' : `${returnRate.toFixed(1)}%`}
+              accent="#dc2626"
+              hint={returnRateFormula}
+            />
           </div>
           <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ ...kpi, padding: '16px' }}>
@@ -143,6 +161,31 @@ export default async function ReturnsPage() {
           </div>
         </section>
       )}
+
+      {/* Saved-view tabs (orders-style) driven by ?status=. */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', borderBottom: '1px solid #e5e7eb', marginBottom: 16 }}>
+        {QUEUE_STATUSES.map(s => {
+          const isActive = status === s;
+          return (
+            <Link
+              key={s}
+              href={s === 'all' ? '/admin/returns' : `/admin/returns?status=${s}`}
+              style={{
+                padding: '9px 14px', fontSize: '0.8125rem', textDecoration: 'none',
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? '#111827' : '#6b7280',
+                borderBottom: `2px solid ${isActive ? '#C5286A' : 'transparent'}`,
+                marginBottom: -1,
+              }}
+            >
+              {s.charAt(0).toUpperCase() + s.slice(1)}
+            </Link>
+          );
+        })}
+        <span style={{ marginLeft: 'auto', fontSize: '0.8125rem', color: '#9ca3af', padding: '9px 0' }}>
+          {rows.length} return{rows.length === 1 ? '' : 's'}
+        </span>
+      </div>
 
       <ReturnsQueue
         rows={rows}
