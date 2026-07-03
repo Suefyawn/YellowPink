@@ -266,3 +266,28 @@ export async function markSettlementSettled(formData: FormData) {
   });
   revalidatePath('/admin/vendors');
 }
+
+/** Settle every pending payout for one vendor in one click — the common case
+ *  after a periodic reconciliation (one transfer covers the accumulated
+ *  margin or costs across many orders). */
+export async function settleVendorPending(formData: FormData) {
+  const session = await assertPermission('orders.edit');
+  const vendorId = formData.get('vendor_id') as string;
+  if (!vendorId) return;
+  const { data, error } = await supabaseAdmin()
+    .from('vendor_settlements')
+    .update({ status: 'settled', settled_at: new Date().toISOString() })
+    .eq('vendor_id', vendorId)
+    .eq('status', 'pending')
+    .select('id');
+  if (error) {
+    log.error('vendor.settle_all_failed', { vendorId, error: error.message });
+    bounceVendors(`Could not settle payouts: ${error.message}`);
+  }
+  void logAudit(session, {
+    action: 'vendor.settlements_settled_bulk',
+    entity: 'vendors', entity_id: vendorId,
+    diff: { settled_count: data?.length ?? 0 },
+  });
+  revalidatePath('/admin/vendors');
+}

@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
-import { computeOrderCosts } from '@/lib/vendor-settlement';
+import { recomputeSettlement } from '@/lib/vendor-settlement';
 
 // Finance is gated on the same permission as Analytics (owner always allowed;
 // a null session is the owner-password mode used elsewhere in admin).
@@ -130,7 +130,10 @@ export async function recalcAcquisitionCost(orderId: string): Promise<void> {
   if (!order.vendor_id) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('No vendor on this order — dispatch it to a vendor first.'));
   }
-  const costs = await computeOrderCosts(orderId, order.vendor_id as string);
+  // Recompute through the settlement writer (not the engine alone) so the
+  // Payouts ledger stays in lock-step with the acquisition cost — the
+  // engine-only path could leave an order with a cost but no payout row.
+  const costs = await recomputeSettlement(orderId, order.vendor_id as string);
   if (!costs) {
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent('Could not compute the vendor cost for this order.'));
   }

@@ -3,10 +3,12 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { DeleteButton } from '@/components/admin/DeleteButton';
-import { createVendor, deleteVendor, updateVendor, markSettlementSettled } from '@/app/admin/vendor-actions';
+import { createVendor, deleteVendor, updateVendor, markSettlementSettled, settleVendorPending } from '@/app/admin/vendor-actions';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DotChip } from '@/components/admin/OrderChips';
+import { KpiCard } from '@/components/admin/insights/KpiCard';
+import { fmtDatePK } from '@/lib/dates';
 import type { Vendor, VendorSettlement } from '@/types';
 
 const fmt = (n: number) => `PKR ${Math.round(n).toLocaleString()}`;
@@ -39,12 +41,17 @@ export default async function VendorsPage({
 
   const admin = supabaseAdmin();
   // vendors / vendor_settlements RLS has no policy, admin reads need service role.
-  const [{ data: vendorData }, { data: settlementData }] = await Promise.all([
+  const [{ data: vendorData }, { data: settlementData }, { data: orphanRows }] = await Promise.all([
     admin.from('vendors').select('*').order('created_at', { ascending: false }),
     admin.from('vendor_settlements').select('*').order('created_at', { ascending: false }).limit(200),
+    // Integrity guard: orders that carry a vendor + engine cost but have NO
+    // payout row would silently understate the outstanding totals (this
+    // happened once via an unapplied migration). Surface them loudly.
+    admin.rpc('vendor_orders_missing_settlement' as never) as unknown as Promise<{ data: { order_id: string; order_number: string }[] | null }>,
   ]);
   const vendors = (vendorData ?? []) as Vendor[];
   const settlements = (settlementData ?? []) as VendorSettlement[];
+  const orphans = orphanRows ?? [];
 
   const orderIds = Array.from(new Set(settlements.map(s => s.order_id)));
   const { data: orderData } = orderIds.length
@@ -63,6 +70,12 @@ export default async function VendorsPage({
 
   const pending = settlements.filter(s => s.status === 'pending');
   const settled = settlements.filter(s => s.status === 'settled');
+
+  // Headline positions across all vendors: what's flowing in vs out, and the
+  // margin the vendor channel has earned overall.
+  const owedToUs = pending.filter(s => s.due_to === 'us').reduce((t, s) => t + Number(s.amount_due), 0);
+  const weOwe = pending.filter(s => s.due_to === 'vendor').reduce((t, s) => t + Number(s.amount_due), 0);
+  const totalMargin = settlements.reduce((t, s) => t + Number(s.our_margin), 0);
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -83,6 +96,35 @@ export default async function VendorsPage({
           {feedbackError}
         </div>
       )}
+
+      {/* Integrity guard: an order with a vendor but no payout row means the
+          outstanding totals below are understating reality. Always empty in a
+          healthy system. */}
+      {orphans.length > 0 && (
+        <div role="alert" style={{
+          marginBottom: 16, padding: '12px 16px', borderRadius: 8, fontSize: '0.875rem',
+          background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a',
+        }}>
+          {orphans.length} vendor order{orphans.length === 1 ? ' has' : 's have'} no payout recorded — open{' '}
+          {orphans.slice(0, 5).map((o, i) => (
+            <span key={o.order_id}>
+              {i > 0 && ', '}
+              <Link href={`/admin/orders/${o.order_id}`} style={{ color: '#b45309', fontWeight: 600 }}>{o.order_number}</Link>
+            </span>
+          ))}
+          {orphans.length > 5 ? '…' : ''} and press <strong>Recalculate from vendor rate</strong> to rebuild the payout.
+        </div>
+      )}
+
+      {/* Headline positions */}
+      <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+        <KpiCard label="Owed to you · pending" value={fmt(owedToUs)} accent="#15803d"
+          hint={owedToUs > 0 ? 'Vendors holding your margin' : 'All collected'} />
+        <KpiCard label="You owe · pending" value={fmt(weOwe)} accent="#b45309"
+          hint={weOwe > 0 ? 'Vendor costs to pay out' : 'Nothing to pay'} />
+        <KpiCard label="Margin earned · all payouts" value={fmt(totalMargin)} accent="#C5286A"
+          hint={`${settlements.length} payout${settlements.length === 1 ? '' : 's'} recorded`} />
+      </div>
 
       {/* ── Add vendor ──────────────────────────────────────────────────── */}
       <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 24 }}>
@@ -138,14 +180,26 @@ export default async function VendorsPage({
             <tbody>
               {vendors.map((v, i) => {
                 const outstanding = pendingByVendor.get(v.id) ?? 0;
-                const owedToUs = v.settlement_direction === 'vendor_collects';
+                const vendorOwesUs = v.settlement_direction === 'vendor_collects';
                 return (
                   <tr key={v.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
                     <td data-label="Name" style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>
                       {v.name}
                       {v.notes && <div style={{ fontSize: '0.75rem', fontWeight: 400, color: '#9ca3af' }}>{v.notes}</div>}
                     </td>
-                    <td data-label="WhatsApp" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151', fontFamily: 'monospace' }}>{v.phone}</td>
+                    <td data-label="WhatsApp" style={{ padding: '12px 16px', fontSize: '0.875rem', fontFamily: 'monospace' }}>
+                      {/* One-tap chat: same wa.me convention as the order-page dispatch. */}
+                      <a
+                        href={`https://wa.me/${(v.phone ?? '').replace(/[^0-9]/g, '')}`}
+                        target="_blank" rel="noopener noreferrer"
+                        style={{ color: '#374151', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                        </svg>
+                        {v.phone}
+                      </a>
+                    </td>
                     <td data-label="Settlement terms" style={{ padding: '12px 16px' }}>
                       <form action={updateVendor} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <input type="hidden" name="id" value={v.id} />
@@ -172,12 +226,24 @@ export default async function VendorsPage({
                     </td>
                     <td data-label="Outstanding" style={{ padding: '12px 16px', fontSize: '0.875rem' }}>
                       {outstanding > 0 ? (
-                        <span style={{ fontWeight: 700, color: owedToUs ? '#16a34a' : '#dc2626' }}>
-                          {fmt(outstanding)}
-                          <span style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#9ca3af' }}>
-                            {owedToUs ? 'owed to you' : 'you owe'}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: 700, color: vendorOwesUs ? '#16a34a' : '#dc2626' }}>
+                            {fmt(outstanding)}
+                            <span style={{ display: 'block', fontSize: '0.6875rem', fontWeight: 600, color: '#9ca3af' }}>
+                              {vendorOwesUs ? 'owed to you' : 'you owe'}
+                            </span>
                           </span>
-                        </span>
+                          {/* One transfer usually clears the whole balance. */}
+                          <form action={settleVendorPending}>
+                            <input type="hidden" name="vendor_id" value={v.id} />
+                            <button type="submit" style={{
+                              padding: '5px 11px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                              border: '1px solid #e5e7eb', background: 'white', color: '#374151',
+                            }}>
+                              Settle all
+                            </button>
+                          </form>
+                        </div>
                       ) : <span style={{ color: '#9ca3af' }}>—</span>}
                     </td>
                     <td style={{ padding: '12px 16px' }}>
@@ -205,7 +271,7 @@ export default async function VendorsPage({
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                {['Order', 'Vendor', 'Gross', 'Our margin', 'To settle', 'Status', ''].map(h => (
+                {['Order', 'Date', 'Vendor', 'Gross', 'Our margin', 'To settle', 'Status', ''].map(h => (
                   <th scope="col" key={h} style={th}>{h}</th>
                 ))}
               </tr>
@@ -220,6 +286,9 @@ export default async function VendorsPage({
                       <Link href={`/admin/orders/${s.order_id}`} style={{ color: '#C5286A', textDecoration: 'none', fontFamily: 'monospace' }}>
                         {orderMap.get(s.order_id) ?? s.order_id.slice(0, 8)}
                       </Link>
+                    </td>
+                    <td data-label="Date" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                      {s.created_at ? fmtDatePK(s.created_at) : '—'}
                     </td>
                     <td data-label="Vendor" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#111827' }}>
                       {vendor?.name ?? s.vendor_name ?? '—'}
