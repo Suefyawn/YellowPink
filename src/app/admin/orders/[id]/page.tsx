@@ -456,7 +456,7 @@ export default async function OrderDetailPage({
             <dd style={dd}>
               <a href={`tel:${o.phone}`} style={{ color: '#C5286A', fontWeight: 500, textDecoration: 'none' }}>{o.phone}</a>
             </dd>
-            {o.email && (
+            {o.email ? (
               <>
                 <dt style={dt}>Email</dt>
                 <dd style={dd}>
@@ -466,6 +466,23 @@ export default async function OrderDetailPage({
                       <ResendConfirmationButton orderId={o.id} hasEmail />
                     )}
                   </div>
+                </dd>
+              </>
+            ) : (
+              <>
+                <dt style={dt}>Email</dt>
+                <dd style={dd}>
+                  {/* Email is optional at checkout (phone-first market), and it
+                      is the ONLY automated channel — no address means this
+                      customer gets no confirmation or shipping emails at all.
+                      Flag it so the operator knows to use the WhatsApp button. */}
+                  <span style={{
+                    display: 'inline-block', padding: '4px 10px', borderRadius: 6,
+                    background: '#fffbeb', border: '1px solid #fde68a',
+                    color: '#92400e', fontSize: '0.75rem', fontWeight: 600,
+                  }}>
+                    No email — this customer receives no automatic updates. Confirm on WhatsApp (button above).
+                  </span>
                 </dd>
               </>
             )}
