@@ -3,6 +3,7 @@
 // dates render so the pages can't drift apart. Money reuses the canonical
 // finance formatter from lib/money.
 export { fmtPKR } from '@/lib/money';
+import { PK_TZ } from '@/lib/dates';
 
 export const fmtInt = (n: number | string | null | undefined) =>
   Math.round(Number(n ?? 0) || 0).toLocaleString();
@@ -24,12 +25,12 @@ export const fmtCompact = (n: number): string => {
 // The two date shapes used across insight surfaces: short for chart axes and
 // dense rows ("3 Jul"), full for anything a person might quote ("3 Jul 2026").
 export const fmtDateShort = (iso: string) =>
-  new Date(iso.length === 10 ? `${iso}T00:00:00` : iso)
-    .toLocaleDateString('en-PK', { day: 'numeric', month: 'short' });
+  new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso)
+    .toLocaleDateString('en-PK', { day: 'numeric', month: 'short', timeZone: PK_TZ });
 
 export const fmtDateFull = (iso: string) =>
-  new Date(iso.length === 10 ? `${iso}T00:00:00` : iso)
-    .toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+  new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso)
+    .toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ });
 
 // Period-over-period % change. Returns null when there's no meaningful base
 // (both zero); a jump from a zero base reads as +100% rather than infinity.

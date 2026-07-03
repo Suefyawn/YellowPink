@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { PK_TZ } from '@/lib/dates';
 
 interface AuditRow {
   id: string;
@@ -163,7 +164,7 @@ export default async function ActivityLogPage({
               {rows.map(r => (
                 <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
                   <td data-label="When" style={{ padding: '10px 16px', whiteSpace: 'nowrap', color: '#6b7280', fontSize: '0.75rem' }}>
-                    {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                    {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ })}
                   </td>
                   <td data-label="Actor" style={{ padding: '10px 16px', color: '#111827' }}>
                     <span style={{ fontSize: '0.6875rem', fontWeight: 700, color: ACTOR_COLORS[r.actor_kind] ?? '#6b7280', textTransform: 'uppercase' }}>

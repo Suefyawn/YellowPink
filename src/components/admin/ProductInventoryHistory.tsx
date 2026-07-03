@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
+import { PK_TZ } from '@/lib/dates';
 
 // ─── Per-product inventory history ─────────────────────────────────────────
 // Server component. Pulls the latest 25 ledger rows for a single product
@@ -33,7 +34,7 @@ const reasonColors: Record<LedgerRow['reason'], { bg: string; fg: string }> = {
 };
 
 const fmtDate = (s: string) =>
-  new Date(s).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  new Date(s).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
 
 export async function ProductInventoryHistory({ productId }: { productId: string }) {
   const admin = supabaseAdmin();

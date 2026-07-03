@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { approveReturn, rejectReturn, markReturnReceived, markReturnRefunded } from '@/app/account/orders/returns/actions';
 import { useToast } from '@/components/admin/Toast';
+import { PK_TZ } from '@/lib/dates';
 
 interface ReturnRow {
   id: string;
@@ -66,7 +67,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                   {order?.order_number ?? r.order_id.slice(0, 8)}
                 </Link>
                 <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                  {order ? `${order.first_name} ${order.last_name}` : '—'} · {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                  {order ? `${order.first_name} ${order.last_name}` : '—'} · {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ })}
                   {r.email && <> · {r.email}</>}
                 </div>
               </div>

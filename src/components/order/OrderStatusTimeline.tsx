@@ -2,6 +2,7 @@
 
 import { ORDER_STATUS_LABELS, ORDER_TIMELINE_STEPS } from '@/types';
 import type { OrderStatus } from '@/types';
+import { PK_TZ } from '@/lib/dates';
 
 // Shared horizontal status timeline used on /track and /account/orders.
 // One step per forward state (pending → processing → shipped → delivered),
@@ -23,7 +24,7 @@ const ICONS: Record<OrderStatus, string> = {
 };
 
 const fmtShort = (iso: string) =>
-  new Date(iso).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' });
+  new Date(iso).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', timeZone: PK_TZ });
 
 export interface OrderStatusTimelineProps {
   /** Current status. Drives which step is "active" and which are checked. */

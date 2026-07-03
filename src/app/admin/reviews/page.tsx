@@ -15,11 +15,10 @@ import {
   type ProductOption,
 } from '@/components/admin/ReviewAdminControls';
 import { approveReview, deleteReview } from './actions';
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 const PAGE_SIZE = 25;
 
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
 function Stars({ rating }: { rating: number }) {
   return (

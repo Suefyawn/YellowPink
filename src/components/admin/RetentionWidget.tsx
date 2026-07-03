@@ -1,11 +1,12 @@
 import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
+import { PK_TZ } from '@/lib/dates';
 
 interface Row { week: string; users: number }
 interface Data { items: Row[] }
 
 const fmtWeek = (iso: string) => {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short' });
+  return d.toLocaleDateString('en-PK', { day: 'numeric', month: 'short', timeZone: PK_TZ });
 };
 
 export async function RetentionWidget() {

@@ -6,6 +6,7 @@ import {
   updateSubscriber,
   setSubscriberUnsubscribed,
 } from '@/app/admin/newsletter/actions';
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 export interface Subscriber {
   id: string;
@@ -14,9 +15,6 @@ export interface Subscriber {
   unsubscribed_at: string | null;
   created_at: string;
 }
-
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
 // Source values stored by the signup flows ('footer', 'modal', 'checkout', …), // shown as a friendlier label where one is known.
 const SOURCE_LABEL: Record<string, string> = {

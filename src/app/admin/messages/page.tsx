@@ -6,10 +6,11 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { ReplyComposer } from './ReplyComposer';
 import { markThreadRead, archiveThread, restoreThread } from './actions';
+import { PK_TZ } from '@/lib/dates';
 
 const fmt = (s: string) =>
   new Date(s).toLocaleString('en-PK', {
-    day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',
+    day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: PK_TZ,
   });
 
 interface Row {

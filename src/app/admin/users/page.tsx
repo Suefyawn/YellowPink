@@ -9,11 +9,10 @@ import { AdminFlash } from '@/components/admin/AdminFlash';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import type { AdminUser } from '@/types';
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 const PAGE_SIZE = 20;
 
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 const fmtMoney = (n: number) => `PKR ${Math.round(n).toLocaleString()}`;
 
 interface OrderStat {

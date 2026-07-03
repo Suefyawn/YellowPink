@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { PK_TZ } from '@/lib/dates';
 
 const fmtDateTime = (s: string) =>
-  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
 
 interface EmailRow {
   id: string;

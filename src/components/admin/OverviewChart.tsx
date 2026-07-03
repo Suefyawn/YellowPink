@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { PK_TZ } from '@/lib/dates';
 
 // Shopify-style store overview: a row of clickable metric tiles (each with its
 // own trend vs the previous period + a mini sparkline) driving one large
@@ -44,7 +45,9 @@ const METRICS: MetricDef[] = [
 
 const RANGES = [{ d: 7, l: '7 days' }, { d: 30, l: '30 days' }, { d: 90, l: '90 days' }];
 
-const fmtDay = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' });
+// Parse the bucket day as UTC and render in PK time so the label always
+// equals the bucket day, independent of server/browser timezone.
+const fmtDay = (iso: string) => new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', timeZone: PK_TZ });
 
 export function OverviewChart({ series }: { series: OverviewDay[] }) {
   const [metricKey, setMetricKey] = useState<MetricKey>('sales');

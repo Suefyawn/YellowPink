@@ -6,6 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
 import { fmtPKR as fmt } from '@/lib/money';
+import { PK_TZ } from '@/lib/dates';
 
 // COD reconciliation, the cash side of the business that's hardest to track.
 // "Payment received" lives per-order on the order page; this page rolls it up
@@ -28,7 +29,7 @@ interface CodOrder {
 }
 
 const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit' });
+  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit', timeZone: PK_TZ });
 
 export default async function CodReconciliationPage() {
   const session = await getStaffSession();

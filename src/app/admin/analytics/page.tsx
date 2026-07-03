@@ -29,6 +29,7 @@ import { brandPlusName } from '@/lib/product-display';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { OrderStatus } from '@/types';
+import { PK_TZ } from '@/lib/dates';
 
 const fmt = (n: number) => `PKR ${Math.round(n).toLocaleString()}`;
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -376,7 +377,7 @@ export default async function AnalyticsPage({
                       {cohortMatrix.months.map(m => (
                         <tr key={m}>
                           <td style={{ padding: '4px 8px', color: '#111827', fontWeight: 600 }}>
-                            {new Date(m).toLocaleDateString('en-PK', { month: 'short', year: '2-digit' })}
+                            {new Date(m).toLocaleDateString('en-PK', { month: 'short', year: '2-digit', timeZone: PK_TZ })}
                           </td>
                           {cohortMatrix.offsets.map(o => {
                             const v = cohortMatrix.lookup.get(`${m}:${o}`) ?? 0;

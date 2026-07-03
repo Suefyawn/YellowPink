@@ -8,6 +8,7 @@ import { getBrowserClient } from '@/lib/supabase-browser';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { EARN_RULES, REASON_LABELS, nextTierTarget, tierForLifetime } from '@/lib/loyalty';
 import type { LoyaltyAccount, LoyaltyLedgerEntry, Profile } from '@/types';
+import { fmtDatePK } from '@/lib/dates';
 
 const lbl: React.CSSProperties = { fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' };
 
@@ -161,7 +162,7 @@ export default function RewardsPage() {
                       {l.delta > 0 ? '+' : ''}{l.delta}
                     </td>
                     <td style={{ padding: '8px 0', textAlign: 'right', color: 'var(--ink-500)', fontSize: '0.75rem' }}>
-                      {new Date(l.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      {fmtDatePK(l.created_at)}
                     </td>
                   </tr>
                 ))}

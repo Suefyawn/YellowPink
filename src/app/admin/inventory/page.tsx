@@ -8,6 +8,7 @@ import { brandPlusName } from '@/lib/product-display';
 import { adjustStock } from '@/app/admin/inventory-actions';
 import { InventoryStockSearch } from '@/components/admin/InventoryStockSearch';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
+import { PK_TZ } from '@/lib/dates';
 
 interface LedgerRow {
   id: string;
@@ -40,7 +41,7 @@ const reasonColors: Record<LedgerRow['reason'], { bg: string; fg: string }> = {
 };
 
 const fmtDate = (s: string) =>
-  new Date(s).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+  new Date(s).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
 
 function stockBadge(stock: number): { label: string; bg: string; fg: string } {
   if (stock <= 0) return { label: 'Out of stock', bg: '#fee2e2', fg: '#991b1b' };

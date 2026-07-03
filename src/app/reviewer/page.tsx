@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { getSignedInReviewer, getReviewedPosts } from '@/lib/reviewer-portal';
 import { updateReviewerProfile, signOutReviewer } from './actions';
 import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
+import { PK_TZ } from '@/lib/dates';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.yellowpink.pk';
 
@@ -21,7 +22,7 @@ const statLbl: React.CSSProperties = { fontSize: '0.7rem', color: 'var(--ink-500
 
 function ago(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ });
 }
 
 export default async function ReviewerDashboard() {

@@ -9,8 +9,7 @@ import { PAY_METHOD_LABELS } from '@/types';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
 import { addExpense, deleteExpense } from './actions';
-
-const fmtDate = (s: string) => new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 const EXPENSE_CATEGORIES = ['Ads', 'Salaries', 'Packaging', 'Marketing', 'Rent & Utilities', 'Other'];
 const AD_CHANNELS = ['Meta', 'Instagram', 'Facebook', 'Google', 'TikTok', 'Other'];

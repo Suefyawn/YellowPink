@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { assignOrderVendor, dispatchOrderToVendor } from '@/app/admin/vendor-actions';
 import { useToast } from '@/components/admin/Toast';
+import { PK_TZ } from '@/lib/dates';
 
 interface VendorLite {
   id: string;
@@ -14,7 +15,7 @@ interface VendorLite {
 }
 
 const fmtDate = (s: string) =>
-  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  new Date(s).toLocaleString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
 
 // Assign a fulfilment vendor to the order — the SELECTION applies the
 // economics (vendor rate → settlement + auto acquisition cost, via

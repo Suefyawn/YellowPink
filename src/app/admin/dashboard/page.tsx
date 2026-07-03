@@ -15,6 +15,7 @@ import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { Order, OrderStatus, Product } from '@/types';
+import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 interface DashboardKpis {
   total_revenue: number;
@@ -22,9 +23,6 @@ interface DashboardKpis {
   status_counts: Record<string, number>;
   top_products: { id: string; name: string; brand: string; qty: number }[];
 }
-
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' });
 
 // Every order status, in lifecycle order, so the "Orders by Status" bars
 // account for the whole order book and the percentages sum to 100%. The old
@@ -118,9 +116,13 @@ export default async function DashboardPage() {
     admin.rpc('analytics_daily' as never, { p_days: 180 } as never) as unknown as Promise<{ data: Array<{ day: string; orders: number; revenue: number }> | null }>,
     admin.rpc('seo_metrics_trend' as never, { p_days: 180 } as never) as unknown as Promise<{ data: Array<{ day: string; ga4_sessions: number | null }> | null }>,
   ]);
+  // Series keys are PKT calendar days to match analytics_daily's buckets
+  // (migration 340) — UTC keys would orphan today's PKT row every night
+  // between 00:00 and 05:00 local.
+  const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
   const seriesMap = new Map<string, OverviewDay>();
   for (let i = 179; i >= 0; i--) {
-    const d = new Date(nowMs - i * 86_400_000).toISOString().slice(0, 10);
+    const d = new Date(nowMs + PKT_OFFSET_MS - i * 86_400_000).toISOString().slice(0, 10);
     seriesMap.set(d, { date: d, revenue: 0, orders: 0, sessions: null });
   }
   for (const r of (dailyRows ?? [])) {

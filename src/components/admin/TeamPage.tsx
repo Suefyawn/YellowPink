@@ -10,6 +10,7 @@ import {
   type PermissionGroup,
 } from '@/lib/permissions';
 import type { Permission } from '@/lib/permissions';
+import { fmtDatePK } from '@/lib/dates';
 
 interface Staff {
   id: string;
@@ -568,7 +569,7 @@ function StaffRow({ staff, roles }: { staff: Staff; roles: Role[] }) {
         </span>
       </td>
       <td data-label="Added" style={{ padding: '14px 20px', color: '#6b7280', fontSize: '0.8125rem' }}>
-        {new Date(staff.created_at).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+        {fmtDatePK(staff.created_at)}
       </td>
       <td style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
