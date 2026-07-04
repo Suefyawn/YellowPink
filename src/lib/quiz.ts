@@ -57,7 +57,11 @@ const SKINCARE_QUESTIONS: QuizQuestion[] = [
       { value: 'dryness', label: 'Dryness & dehydration', categories: ['Moisturizers'] },
       { value: 'aging', label: 'Fine lines & firmness', categories: ['Moisturizers', 'Cleansers & Treatments'] },
       { value: 'dullness', label: 'Dullness & uneven tone', categories: ['Cleansers & Treatments'] },
-      { value: 'sun', label: 'Sun protection', categories: ['Sunscreens'] },
+      // The catalogue has no "Sunscreens" category — SPF products (Beauty of
+      // Joseon Relief Sun, CeraVe Sheer Tint, SKIN1004 Tone-Up, tinted SPF
+      // moisturisers) are filed under Cleansers & Treatments, so map there;
+      // pointing at the empty category gave sun-seekers generic picks.
+      { value: 'sun', label: 'Sun protection', categories: ['Cleansers & Treatments'] },
     ],
   },
 ];

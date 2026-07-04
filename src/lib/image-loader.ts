@@ -19,6 +19,18 @@ const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yellowpink.pk').r
 // image can start downloading.
 export const IMAGE_CDN_ORIGIN = 'https://images.weserv.nl';
 
+// Social-share (og:image / twitter:image) variant: a ~1200px-wide JPEG under
+// the proxy. Raw catalogue PNGs run 0.5–1.8 MB, which makes WhatsApp/Facebook
+// link previews slow or drop the thumbnail entirely; a resized JPEG (og
+// consumers handle JPEG far more reliably than WebP) is ~100–250 KB. Returns
+// the source unchanged for data URIs / already-proxied URLs.
+export function ogImageUrl(src: string | null | undefined): string | null {
+  if (!src) return null;
+  if (src.startsWith('data:') || src.includes('images.weserv.nl')) return src;
+  const abs = /^https?:\/\//i.test(src) ? src : `${SITE}${src.startsWith('/') ? '' : '/'}${src}`;
+  return `${IMAGE_CDN_ORIGIN}/?url=${encodeURIComponent(abs)}&w=1200&q=80&output=jpg&we`;
+}
+
 export default function weservLoader({
   src,
   width,

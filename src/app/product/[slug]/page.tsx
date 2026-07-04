@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getProductBySlug, getProducts, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings, getPostsLinkingProduct } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
+import { ogImageUrl } from '@/lib/image-loader';
 
 // Pre-render every published product at build so PDPs are served as static CDN
 // HTML (fast TTFB worldwide, incl. Pakistan) instead of cold on-demand renders.
@@ -90,7 +91,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // back to the auto-templated values so existing rows keep working.
   const title = product.seo_title?.trim() || autoTitle;
   const description = product.seo_description?.trim() || autoDescription;
-  const image = product.og_image_url?.trim() || product.image_url || undefined;
+  // Serve a resized ~1200px JPEG for the share preview instead of the raw
+  // 0.5–1.8 MB packshot PNG, so WhatsApp/Facebook render the thumbnail.
+  const image = ogImageUrl(product.og_image_url?.trim() || product.image_url) ?? undefined;
   return pageMeta({
     title,
     description,
