@@ -30,19 +30,23 @@ const FALLBACK: WelcomeOffer = {
 // when the WELCOME10 row was deleted from admin). Only a *read error*
 // (transient DB hiccup, demo mode) falls back to the seeded defaults, since
 // in that state the deliberate-deactivation signal can't be read either.
+//
+// Read through the lookup_coupon RPC (SECURITY DEFINER), NOT the table:
+// coupons RLS bars anon SELECT (migration 070), so a direct anon select
+// returns empty-without-error — indistinguishable from "deliberately
+// deleted", which made this resolver advertise nothing while WELCOME10 was
+// active (caught by the 2026-07-04 regression sweep). The RPC is the same
+// anon-safe path cart/checkout use to validate codes.
 export const getWelcomeOffer = cache(async (): Promise<WelcomeOffer | null> => {
   try {
-    const { data, error } = await supabase
-      .from('coupons')
-      .select('code, type, value, min_order, active')
-      .ilike('code', WELCOME_CODE)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc('lookup_coupon' as never, { p_code: WELCOME_CODE } as never);
     if (error) return FALLBACK;
-    if (data && data.active && data.type === 'percent') {
+    const row = (data as Array<{ code: string; type: string; value: number; min_order: number; active: boolean }> | null)?.[0];
+    if (row && row.active && row.type === 'percent') {
       return {
-        code: data.code ?? WELCOME_CODE,
-        pct: Number(data.value) || WELCOME_DISCOUNT_PCT,
-        minOrder: Number(data.min_order) || 0,
+        code: row.code ?? WELCOME_CODE,
+        pct: Number(row.value) || WELCOME_DISCOUNT_PCT,
+        minOrder: Number(row.min_order) || 0,
       };
     }
     return null; // deliberately absent/inactive → don't advertise
