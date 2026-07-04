@@ -1,6 +1,10 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+
+// Server-render-safe useLayoutEffect (same shim as CartContext) — Next
+// pre-renders client components and bare useLayoutEffect warns there.
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 interface WishlistContextValue {
   wishlist: string[];
@@ -28,15 +32,21 @@ export function WishlistProvider({ children }: { children: React.ReactNode }) {
   // synced in after mount. (CartContext already does exactly this.)
   const [wishlist, setWishlist] = useState<string[]>([]);
 
-  // This effect is declared before the persist effect so, on mount, load()
-  // reads the real stored value into state before the persist effect's
-  // first run can overwrite localStorage with the empty initial state.
+  // Guards the persist effect: it must not run until the stored list has
+  // been read, or its mount-time run (state still []) would overwrite it.
+  const hydrated = useRef(false);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setWishlist(load());
+    hydrated.current = true;
   }, []);
 
-  useEffect(() => {
+  // Layout effect (pre-paint) so a visible heart toggle implies the write
+  // already hit localStorage — a passive effect could lose a toggle if the
+  // user navigated (full page load) right after tapping. See CartContext.
+  useIsomorphicLayoutEffect(() => {
+    if (!hydrated.current) return;
     try { localStorage.setItem(KEY, JSON.stringify(wishlist)); } catch { /* quota */ }
   }, [wishlist]);
 

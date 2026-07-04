@@ -334,8 +334,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         pointsPerPkr={pointsPerPkr}
       />
       {/* Keyed like PDPPage so a product→product navigation re-seeds the
-          bundle's checkbox state for the new product. */}
-      <FrequentlyBoughtTogether key={product.id} anchor={product} suggestions={fbt} />
+          bundle's checkbox state for the new product. Prefixed: PDPPage above
+          is a sibling already keyed on the bare product id, and duplicate
+          sibling keys are a React error. */}
+      <FrequentlyBoughtTogether key={`fbt-${product.id}`} anchor={product} suggestions={fbt} />
       <MoreToExplore
         brand={product.brand}
         category={product.category}
