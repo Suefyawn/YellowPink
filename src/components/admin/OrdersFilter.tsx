@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useTransition } from 'react';
 import { ORDER_STATUS_LABELS, type OrderStatus } from '@/types';
+import { SearchInput } from '@/components/admin/SearchInput';
 
 // Saved-view tabs (Shopify's orders-index pattern): the workflow views an
 // operator actually lives in, not one pill per raw status. 'tofulfil' and
@@ -112,10 +113,9 @@ export function OrdersFilter({ total }: { total: number }) {
           ))}
         </select>
       </div>
-      <input
-        key={q}
-        defaultValue={q}
-        onChange={e => setSearch(e.target.value)}
+      <SearchInput
+        urlValue={q}
+        onSearch={setSearch}
         placeholder="Search order #, name, email or phone…"
         style={{
           padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8,

@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useRef, useTransition } from 'react';
+import { SearchInput } from '@/components/admin/SearchInput';
 
 // URL-synced list toolbar for the URL-centric admin tools (Indexing, Broken
 // links): saved-view underline tabs with counts, optional type pills, an
@@ -81,10 +82,9 @@ export function ListToolbar({
             })}
           </div>
         )}
-        <input
-          key={q}
-          defaultValue={q}
-          onChange={e => setSearch(e.target.value)}
+        <SearchInput
+          urlValue={q}
+          onSearch={setSearch}
           placeholder={searchPlaceholder}
           aria-label="Search"
           style={{

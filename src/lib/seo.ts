@@ -116,15 +116,22 @@ export function pageMeta(input: PageMetaInput): Metadata {
   const ogImages = [{ url: image }];
   const twImages = [image];
 
-  // Cap title + description so we don't get Semrush "Title element is too
-  // long" / "meta description too long" warnings. The canonical-URL alternate
-  // is unaffected. Titles are truncated withOUT an ellipsis (see
-  // truncateTitleOnWord) after stripping any stored trailing brand suffix.
-  const safeTitle = truncateTitleOnWord(stripBrandSuffix(input.title), TITLE_MAX);
+  // Titles: a complete headline beats a branded one. When the headline fits
+  // the 60-char SERP budget alongside " | Yellow Pink", let the layout
+  // template append the brand. When it doesn't, keep the FULL headline and
+  // drop the suffix (title.absolute bypasses the template) — cutting the
+  // headline mid-phrase loses tail keywords (usually the "Pakistan" geo
+  // modifier) and reads broken in the SERP/social shares, which is worse
+  // than a missing brand suffix. Only genuinely oversized headlines (>70,
+  // where even Google's pixel cutoff is exceeded) still get a word-boundary
+  // trim. Descriptions keep the hard 158-char cap.
+  const rawTitle = stripBrandSuffix(input.title);
+  const fitsWithBrand = rawTitle.length <= TITLE_MAX;
+  const safeTitle = fitsWithBrand ? rawTitle : truncateTitleOnWord(rawTitle, 70);
   const safeDesc  = truncateOnWord(input.description.trim(), DESC_MAX);
 
   return {
-    title: safeTitle,
+    title: fitsWithBrand ? safeTitle : { absolute: safeTitle },
     description: safeDesc,
     keywords: input.keywords,
     robots: input.noIndex ? { index: false, follow: false } : undefined,

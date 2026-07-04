@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useTransition } from 'react';
+import { SearchInput } from '@/components/admin/SearchInput';
 
 // Live filter bar for the reviews list (BlogFilter/OrdersFilter pattern):
 // debounced search plus onChange selects, no submit button. Param names
@@ -46,11 +47,10 @@ export function ReviewsFilter({ products }: { products: ReviewedProduct[] }) {
 
   return (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginLeft: 'auto' }}>
-      <input
-        key={q}
+      <SearchInput
         type="search"
-        defaultValue={q}
-        onChange={e => setSearch(e.target.value)}
+        urlValue={q}
+        onSearch={setSearch}
         placeholder="Search name or text…"
         aria-label="Search reviews"
         style={{

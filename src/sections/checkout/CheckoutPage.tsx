@@ -218,6 +218,13 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     if (errors[key]) setErrors(p => { const n = { ...p }; delete n[key]; return n; });
   };
 
+  // Field key → the input's DOM id, in the form's visual order, so a failed
+  // submit can take the shopper TO the first problem.
+  const FIELD_IDS: [string, string][] = [
+    ['email', 'co-email'], ['phone', 'co-phone'], ['firstName', 'co-fname'],
+    ['lastName', 'co-lname'], ['address', 'co-address'], ['city', 'co-city'],
+  ];
+
   const validate = () => {
     const e: Record<string, string> = {};
     if (!formData.firstName.trim()) e.firstName = 'Required';
@@ -238,7 +245,22 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
       e.email = 'Required for online payment confirmation';
     }
     setErrors(e);
-    return Object.keys(e).length === 0;
+    if (Object.keys(e).length > 0) {
+      // On phones the Place Order button sits a full screen below the form,
+      // so inline errors used to render invisibly off-screen and the tap
+      // looked dead — the fastest way to lose a COD checkout. Take the
+      // shopper to the first problem and explain near the button too.
+      setSubmitError('Please fix the highlighted fields above to place your order.');
+      const first = FIELD_IDS.find(([key]) => e[key]);
+      if (first) {
+        const el = document.getElementById(first[1]);
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        (el as HTMLInputElement | null)?.focus({ preventScroll: true });
+      }
+      return false;
+    }
+    setSubmitError('');
+    return true;
   };
 
   const applyCoupon = async () => {

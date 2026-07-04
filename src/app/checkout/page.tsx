@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { CheckoutPage } from '@/sections/checkout/CheckoutPage';
 import { getSiteSettings } from '@/lib/supabase';
 import { parseBankAccounts } from '@/lib/bank-accounts';
+import { jazzcashConfigured, easypaisaConfigured } from '@/lib/payments/configured';
 import type { PayMethod } from '@/types';
 
 // Cart→checkout pages must not be indexed (audit SEV-2). Also override the
@@ -18,11 +19,15 @@ export default async function CheckoutRoute() {
   const settings = await getSiteSettings();
   const isEnabled = (key: string) => settings[key] !== 'false';
   const bankAccounts = parseBankAccounts(settings.pay_bank_accounts);
+  // Gateway methods are only offered when their credentials exist — an
+  // enabled-but-unconfigured method dead-ends the customer (order created in
+  // payment_pending, then the payment route 500s on the missing env var).
+  // Same rule as Bank Transfer's account check below. Card runs via JazzCash.
   const enabledMethods: PayMethod[] = [
     isEnabled('pay_cod_enabled')       && 'cod',
-    isEnabled('pay_jazzcash_enabled')  && 'jazzcash',
-    isEnabled('pay_easypaisa_enabled') && 'easypaisa',
-    isEnabled('pay_card_enabled')      && 'card',
+    (isEnabled('pay_jazzcash_enabled') && jazzcashConfigured()) && 'jazzcash',
+    (isEnabled('pay_easypaisa_enabled') && easypaisaConfigured()) && 'easypaisa',
+    (isEnabled('pay_card_enabled') && jazzcashConfigured()) && 'card',
     // Bank Transfer is only offered once at least one account is configured,     // otherwise the customer reaches a dead end with nowhere to pay.
     (isEnabled('pay_bank_enabled') && bankAccounts.length > 0) && 'bank',
   ].filter(Boolean) as PayMethod[];

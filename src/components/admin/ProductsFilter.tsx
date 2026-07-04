@@ -3,6 +3,7 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useTransition } from 'react';
 import { TAXONS, ALL_CATEGORIES, findTaxon } from '@/lib/category-taxonomy';
+import { SearchInput } from '@/components/admin/SearchInput';
 
 const TAGS = ['New', 'Sale', 'Bestseller', 'Featured', 'Limited'];
 const SORTS: { value: string; label: string }[] = [
@@ -129,10 +130,9 @@ export function ProductsFilter({ total, statusCounts, categories, brands }: Prop
 
       {/* Column filters. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
-        <input
-          key={q}
-          defaultValue={q}
-          onChange={e => setDebounced('q', e.target.value)}
+        <SearchInput
+          urlValue={q}
+          onSearch={v => setDebounced('q', v)}
           placeholder="Search brand or name…"
           style={{
             padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8,

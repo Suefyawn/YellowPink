@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 3 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 4 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -881,6 +881,14 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 4 July 2026
+
+- **Payment options can't dead-end customers anymore** — checkout now offers JazzCash, Easypaisa and Card **only when the gateway is actually configured**; previously a ticked-but-unconfigured method let a customer pick it and then fail at payment. Settings → Payments shows a live status chip next to each gateway method ("Gateway configured" / "Not configured — hidden at checkout") so you can see at a glance why a method isn't appearing.
+- **Customers page money now matches Analytics/Segments** — order counts and "Spent" on the Customers list (and its CSV export) previously counted cancelled and unpaid gateway orders and full refunded totals, overstating spend; they now use the same rule as everywhere else (cancelled/unpaid excluded, refunds count as zero).
+- **Admin search boxes no longer swallow typing** — pausing mid-search (e.g. typing a name, stopping, then continuing) on Orders, Products, Reviews, Messages, Inventory, Customers, Blog, Indexing or Broken links used to silently drop the rest of what you typed; search fields now keep focus and your text.
+- **Staff with "Store settings" can manage shipping zones & notification recipients** — these save buttons previously failed with an error unless you were the owner, despite the permission promising them.
+- **Checkout points at what's missing** — on phones, tapping *Place Order* with a required field empty now scrolls to and highlights the first missing field with a clear message (previously nothing visibly happened). Product photo galleries no longer stretch pages sideways on phones, and blog page titles in Google/social shares now show the full headline instead of cutting off mid-sentence.
 
 ### 3 July 2026
 

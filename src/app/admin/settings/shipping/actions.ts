@@ -9,9 +9,15 @@ import { boolField } from '@/lib/validators';
 
 const PATH = '/admin/settings/shipping';
 
-async function assertOwner() {
+// Gated like the rest of the settings surface: the 'settings' permission
+// advertises shipping-zone management, so zone actions must accept it —
+// owner-only here left settings-granted staff with a full-page Unauthorized
+// on save while the defaults form on the same page succeeded.
+async function assertSettings() {
   const session = await getStaffSession();
-  if (!session?.isOwner) throw new Error('Unauthorized');
+  if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
+    throw new Error('Unauthorized');
+  }
   return session;
 }
 
@@ -72,7 +78,7 @@ function parseZone(formData: FormData): ZoneFields {
 }
 
 export async function createZone(formData: FormData): Promise<void> {
-  const session = await assertOwner();
+  const session = await assertSettings();
   const z = parseZone(formData);
 
   const sb = supabaseAdmin();
@@ -111,7 +117,7 @@ export async function createZone(formData: FormData): Promise<void> {
 }
 
 export async function updateZone(id: string, formData: FormData): Promise<void> {
-  const session = await assertOwner();
+  const session = await assertSettings();
   const z = parseZone(formData);
 
   const sb = supabaseAdmin();
@@ -161,7 +167,7 @@ export async function updateZone(id: string, formData: FormData): Promise<void> 
 }
 
 export async function deleteZone(formData: FormData): Promise<void> {
-  const session = await assertOwner();
+  const session = await assertSettings();
   const id = formData.get('id') as string;
   if (!id) err('Missing zone id.');
 

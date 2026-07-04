@@ -11,9 +11,14 @@ import type { NotificationEvent } from '@/lib/notification-recipients';
 const VALID_EVENTS: NotificationEvent[] = ['order.new', 'seo.broken_links'];
 const PATH = '/admin/settings/notifications';
 
-async function assertOwner() {
+// Gated like the rest of the settings surface (matches push-actions.ts): the
+// 'settings' permission covers notification management, so recipient actions
+// must accept it, not just the owner.
+async function assertSettings() {
   const session = await getStaffSession();
-  if (!session?.isOwner) throw new Error('Unauthorized');
+  if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
+    throw new Error('Unauthorized');
+  }
   return session;
 }
 
@@ -40,7 +45,7 @@ function parseEvents(formData: FormData): NotificationEvent[] {
 }
 
 export async function addRecipient(formData: FormData): Promise<void> {
-  const session = await assertOwner();
+  const session = await assertSettings();
   const email = parseEmail(formData);
   const events = parseEvents(formData);
 
@@ -68,7 +73,7 @@ export async function addRecipient(formData: FormData): Promise<void> {
 }
 
 export async function updateRecipient(id: string, formData: FormData): Promise<void> {
-  const session = await assertOwner();
+  const session = await assertSettings();
   const events = parseEvents(formData);
   // The Active/Paused toggle submits a hidden 'false' before the checkbox
   // 'true'; boolField lets the checkbox (last value) win so a recipient can be
@@ -92,7 +97,7 @@ export async function updateRecipient(id: string, formData: FormData): Promise<v
 }
 
 export async function deleteRecipient(formData: FormData): Promise<void> {
-  const session = await assertOwner();
+  const session = await assertSettings();
   const id = formData.get('id') as string;
   if (!id) err('Missing recipient id.');
 

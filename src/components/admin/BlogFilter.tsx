@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useTransition } from 'react';
+import { SearchInput } from '@/components/admin/SearchInput';
 
 export function BlogFilter({ total, categories }: { total: number; categories: string[] }) {
   const router = useRouter();
@@ -52,9 +53,9 @@ export function BlogFilter({ total, categories }: { total: number; categories: s
           <button key={c} onClick={() => setCategory(c)} style={btnStyle(category === c)}>{c}</button>
         ))}
       </div>
-      <input
-        defaultValue={q}
-        onChange={e => setSearch(e.target.value)}
+      <SearchInput
+        urlValue={q}
+        onSearch={setSearch}
         placeholder="Search posts…"
         style={{
           padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8,

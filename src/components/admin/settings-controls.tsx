@@ -58,7 +58,12 @@ export function Divider() {
   return <div style={{ height: 1, background: '#f3f4f6', margin: '20px 0' }} />;
 }
 
-export function PayMethodRow({ name, checked, label, desc }: { name: string; checked: boolean; label: string; desc: string }) {
+// `configured` mirrors the Integrations page's env-var check: undefined =
+// no gateway needed (COD), true/false renders a live status chip so the
+// enabled/working distinction is visible where the money decision is made —
+// checkout hides gateway methods whose credentials are missing, so a ticked
+// but unconfigured method silently never reaches customers.
+export function PayMethodRow({ name, checked, label, desc, configured }: { name: string; checked: boolean; label: string; desc: string; configured?: boolean }) {
   return (
     <label
       htmlFor={`set-${name}`}
@@ -81,7 +86,18 @@ export function PayMethodRow({ name, checked, label, desc }: { name: string; che
         />
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{label}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{label}</span>
+          {configured != null && (
+            <span style={{
+              fontSize: '0.6875rem', fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+              background: configured ? '#f0fdf4' : '#fef3c7',
+              color: configured ? '#15803d' : '#92400e',
+            }}>
+              {configured ? 'Gateway configured' : 'Not configured — hidden at checkout'}
+            </span>
+          )}
+        </div>
         <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 4, lineHeight: 1.5 }}>{desc}</div>
       </div>
     </label>
