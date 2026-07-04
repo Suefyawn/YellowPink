@@ -7,7 +7,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { fmtPKR as fmt } from '@/lib/money';
-import { PK_TZ } from '@/lib/dates';
+import { fmtDatePK } from '@/lib/dates';
 
 // COD reconciliation, the cash side of the business that's hardest to track.
 // "Payment received" lives per-order on the order page; this page rolls it up
@@ -29,9 +29,6 @@ interface CodOrder {
   created_at: string;
 }
 
-const fmtDate = (s: string) =>
-  new Date(s).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: '2-digit', timeZone: PK_TZ });
-
 export default async function CodReconciliationPage() {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
@@ -51,6 +48,24 @@ export default async function CodReconciliationPage() {
   const collected   = rows.filter(r => r.status === 'delivered' && r.payment_received_at);
   const inTransit   = rows.filter(r => r.status === 'processing' || r.status === 'shipped');
   const sum = (list: CodOrder[]) => list.reduce((s, r) => s + Number(r.total ?? 0), 0);
+
+  // The "Delivered" column needs the actual delivery date so aging is honest —
+  // the row's created_at is when the order was PLACED, which can be weeks
+  // earlier and made cash look older than it is. Derive it from the earliest
+  // status transition into 'delivered' in the order timeline; fall back to the
+  // placed date only when no delivered event exists.
+  const deliveredAt = new Map<string, string>();
+  if (outstanding.length > 0) {
+    const { data: evts } = await admin
+      .from('order_events')
+      .select('order_id, created_at')
+      .eq('to_status', 'delivered')
+      .in('order_id', outstanding.map(r => r.id))
+      .order('created_at', { ascending: true });
+    for (const e of (evts ?? []) as Array<{ order_id: string; created_at: string }>) {
+      if (!deliveredAt.has(e.order_id)) deliveredAt.set(e.order_id, e.created_at);
+    }
+  }
 
   const card: React.CSSProperties = { background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: '24px' };
   const dlIcon = (
@@ -83,7 +98,7 @@ export default async function CodReconciliationPage() {
         <KpiCard label="Collected · reconciled" value={fmt(sum(collected))} accent="#15803d"
           hint={`${collected.length} delivered order${collected.length === 1 ? '' : 's'}`} />
         <KpiCard label="In transit · expected" value={fmt(sum(inTransit))} accent="#2563eb"
-          hint={`${inTransit.length} order${inTransit.length === 1 ? '' : 's'} out for delivery`} />
+          hint={`${inTransit.length} order${inTransit.length === 1 ? '' : 's'} being prepared or out for delivery`} />
       </div>
 
       <div style={card}>
@@ -109,7 +124,11 @@ export default async function CodReconciliationPage() {
                 <tr key={r.id} style={{ borderBottom: '1px solid #f9fafb' }}>
                   <td data-label="Order" style={{ padding: '10px 12px', fontFamily: 'monospace', fontWeight: 600 }}>{r.order_number}</td>
                   <td data-label="Customer" style={{ padding: '10px 12px', color: '#374151' }}>{[r.first_name, r.last_name].filter(Boolean).join(' ') || '—'}</td>
-                  <td data-label="Delivered" style={{ padding: '10px 12px', color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(r.created_at)}</td>
+                  <td data-label="Delivered" style={{ padding: '10px 12px', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                    {deliveredAt.has(r.id)
+                      ? fmtDatePK(deliveredAt.get(r.id)!)
+                      : <span title="No delivery date recorded; showing order-placed date">{fmtDatePK(r.created_at)}*</span>}
+                  </td>
                   <td data-label="Amount" style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.total ?? 0)}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>
                     <Link href={`/admin/orders/${r.id}`} style={{ color: '#C5286A', textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 600 }}>Record →</Link>

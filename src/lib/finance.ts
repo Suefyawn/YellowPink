@@ -16,8 +16,17 @@ export const FINANCE_RANGES: { key: string; label: string; days: number | null }
 // Orders in these states never count as revenue. Matches the Analytics
 // revenue view (migration 023 v_orders_revenue): `payment_pending` orders
 // are unpaid — the gateway never confirmed — so counting them inflated the
-// "Revenue (paid orders)" P&L line. Analytics zeroes `refunded` revenue;
-// excluding the row here is equivalent.
+// "Revenue (paid orders)" P&L line.
+//
+// Intentional difference from v_orders_revenue on COUNT (not revenue): that
+// view keeps `refunded` rows with revenue zeroed, so the dashboard/Analytics
+// order count includes refunded orders as *placed* orders; the P&L here drops
+// them entirely because a refunded order contributes neither revenue nor a
+// meaningful cost line to profit & loss. Revenue is identical either way
+// (refunded → 0); the two surfaces answer different questions —
+// "orders placed" (dashboard) vs "orders that produced P&L" (finance) — so
+// their order counts can differ by the number of refunds. Keep both rules
+// here so they don't silently drift.
 const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'payment_pending', 'refunded']);
 
 export const fnum = (v: number | string | null | undefined) => Number(v ?? 0) || 0;

@@ -74,14 +74,21 @@ export default async function ReturnsPage({
   // and why, so the owner can act on a QA / expectations-mismatch problem.
   const { data: allReturns } = await admin
     .from('return_requests')
-    .select('status, reason, refund_amount, items, created_at');
-  type AggRow = { status: string; reason: string | null; refund_amount: number | null; items: { name?: string; qty?: number }[] | null; created_at: string };
+    .select('order_id, status, reason, refund_amount, items, created_at');
+  type AggRow = { order_id: string; status: string; reason: string | null; refund_amount: number | null; items: { name?: string; qty?: number }[] | null; created_at: string };
   const ar = (allReturns ?? []) as AggRow[];
   // One-shot clock read for a 90-day window on a dynamic (uncached) admin
   // page. The react-hooks/purity rule flags Date.now() as impure; safe here.
   // eslint-disable-next-line react-hooks/purity
   const since90 = Date.now() - 90 * 24 * 60 * 60 * 1000;
   const last90 = ar.filter(r => Date.parse(r.created_at) >= since90).length;
+  // Return-rate numerator: DISTINCT orders that came back in the window, not
+  // raw request rows — a single order can have several requests (and rejected
+  // ones aren't real returns), which inflated the ratio past 100%.
+  const returnedOrders90 = new Set(
+    ar.filter(r => Date.parse(r.created_at) >= since90 && r.status !== 'rejected' && r.status !== 'cancelled')
+      .map(r => r.order_id),
+  ).size;
   const totalRefunded = ar.filter(r => r.status === 'refunded').reduce((s, r) => s + Number(r.refund_amount ?? 0), 0);
   const productCounts = new Map<string, number>();
   const reasonCounts = new Map<string, number>();
@@ -103,15 +110,16 @@ export default async function ReturnsPage({
     .from('orders').select('*', { count: 'exact', head: true })
     .in('status', ['delivered', 'returned', 'refunded'])
     .gte('created_at', new Date(since90).toISOString());
-  // Capped at 100%: returns raised in the window can reference orders PLACED
-  // before it (numerator and denominator use different date fields), so the
-  // raw ratio can still exceed 1 in edge cases; a ">100% return rate" is
-  // never a meaningful thing to show.
+  // Distinct returned orders ÷ orders that reached the customer. Both sides now
+  // count orders (not request rows), so the ratio is a real percentage and no
+  // longer needs a 100% cap to hide an impossible >100% value. A tiny overshoot
+  // is still possible when a return references an order placed just before the
+  // window, so keep a soft cap as a guard only.
   const returnRate = deliveredCount && deliveredCount > 0
-    ? Math.min(100, (last90 / deliveredCount) * 100)
+    ? Math.min(100, (returnedOrders90 / deliveredCount) * 100)
     : null;
   const returnRateFormula =
-    `Returns raised in the last 90 days (${last90.toLocaleString()}) ÷ orders placed in the last 90 days that reached the customer, i.e. delivered / returned / refunded (${(deliveredCount ?? 0).toLocaleString()}), capped at 100%`;
+    `Distinct orders returned in the last 90 days (${returnedOrders90.toLocaleString()}, excluding rejected requests) ÷ orders placed in the last 90 days that reached the customer, i.e. delivered / returned / refunded (${(deliveredCount ?? 0).toLocaleString()})`;
 
   // minWidth: 0 lets the KPI cards (grid items) shrink below their content's
   // intrinsic width on phones, the long product/reason labels then truncate
