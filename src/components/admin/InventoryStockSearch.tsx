@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useTransition } from 'react';
+import { SearchInput } from '@/components/admin/SearchInput';
 
 // Debounced search box for the inventory stock-levels list. Pushes `?q=` and
 // (because searching should span the whole catalogue, not just the current
@@ -23,10 +24,9 @@ export function InventoryStockSearch() {
   };
 
   return (
-    <input
-      key={q}
-      defaultValue={q}
-      onChange={e => run(e.target.value)}
+    <SearchInput
+      urlValue={q}
+      onSearch={run}
       placeholder="Search product…"
       aria-label="Search stock by product"
       style={{

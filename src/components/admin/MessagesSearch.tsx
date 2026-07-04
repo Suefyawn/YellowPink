@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef, useTransition } from 'react';
+import { SearchInput } from '@/components/admin/SearchInput';
 
 // Debounced live search for the messages inbox (OrdersFilter pattern):
 // pushes ?q= and the server filters the threaded conversations by
@@ -24,11 +25,10 @@ export function MessagesSearch() {
   };
 
   return (
-    <input
-      key={q}
+    <SearchInput
       type="search"
-      defaultValue={q}
-      onChange={e => setSearch(e.target.value)}
+      urlValue={q}
+      onSearch={setSearch}
       placeholder="Search name, email or subject…"
       aria-label="Search conversations"
       style={{

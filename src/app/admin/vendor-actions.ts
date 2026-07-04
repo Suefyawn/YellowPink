@@ -30,7 +30,7 @@ function parseDirection(raw: FormDataEntryValue | null): 'vendor_collects' | 'we
 }
 
 export async function createVendor(formData: FormData) {
-  const session = await assertPermission('orders.edit');
+  const session = await assertPermission('vendors');
   const name  = (formData.get('name') as string)?.trim();
   const phone = (formData.get('phone') as string)?.trim();
   const notes = (formData.get('notes') as string)?.trim() || null;
@@ -58,7 +58,7 @@ export async function createVendor(formData: FormData) {
 
 /** Update a vendor's commission % and settlement direction. */
 export async function updateVendor(formData: FormData) {
-  const session = await assertPermission('orders.edit');
+  const session = await assertPermission('vendors');
   const id = formData.get('id') as string;
   if (!id) return;
   const commission_pct = parseCommission(formData.get('commission_pct'));
@@ -79,7 +79,7 @@ export async function updateVendor(formData: FormData) {
 }
 
 export async function deleteVendor(formData: FormData) {
-  const session = await assertPermission('orders.delete');
+  const session = await assertPermission('vendors');
   const id = formData.get('id') as string;
   const { data: target } = await supabaseAdmin().from('vendors').select('name').eq('id', id).single();
   const { error } = await supabaseAdmin().from('vendors').delete().eq('id', id);
@@ -248,7 +248,7 @@ export async function dispatchOrderToVendor(orderId: string, vendorId: string) {
 
 /** Mark a vendor settlement as paid/received. */
 export async function markSettlementSettled(formData: FormData) {
-  const session = await assertPermission('orders.edit');
+  const session = await assertPermission('vendors');
   const id = formData.get('id') as string;
   if (!id) return;
   const settle = formData.get('settle') !== 'false';
@@ -271,7 +271,7 @@ export async function markSettlementSettled(formData: FormData) {
  *  after a periodic reconciliation (one transfer covers the accumulated
  *  margin or costs across many orders). */
 export async function settleVendorPending(formData: FormData) {
-  const session = await assertPermission('orders.edit');
+  const session = await assertPermission('vendors');
   const vendorId = formData.get('vendor_id') as string;
   if (!vendorId) return;
   const { data, error } = await supabaseAdmin()

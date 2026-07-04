@@ -43,7 +43,7 @@ export default async function BrokenLinksPage({
   searchParams: Promise<{ view?: string; type?: string; q?: string; sort?: string }>;
 }) {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('system_tools'))) {
     return <NoAccess section="Broken links" />;
   }
   const { view: viewParam, type: typeParam, q, sort: sortParam } = await searchParams;

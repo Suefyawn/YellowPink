@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useTransition } from 'react';
+import { SearchInput } from '@/components/admin/SearchInput';
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'recent',     label: 'Recently joined' },
@@ -69,9 +70,9 @@ export function UsersFilter({ total }: { total: number }) {
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
         </span>
-        <input
-          defaultValue={q}
-          onChange={e => setSearch(e.target.value)}
+        <SearchInput
+          urlValue={q}
+          onSearch={setSearch}
           placeholder="Search name, email or phone…"
           aria-label="Search customers"
           style={{ ...controlStyle, width: '100%', paddingLeft: 32 }}

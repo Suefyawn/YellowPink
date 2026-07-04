@@ -217,7 +217,11 @@ function Gallery({
     // .pdp-gallery in globals.css): flip to column-reverse so the main image
     // gets the full width and the thumbnails sit underneath as a horizontal
     // strip, no more 64px sidebar stealing space on a phone.
-    <div className="pdp-gallery" style={{ display: 'flex', gap: 12, flex: 1 }}>
+    // minWidth: 0 lets this flex item shrink below the thumbnail strip's
+    // min-content width — without it a many-image product (9 thumbs ≈ 640px)
+    // balloons .pdp-hero past the viewport on phones and the buy box gets
+    // clipped by the root overflow-x.
+    <div className="pdp-gallery" style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
       <div className="pdp-gallery-thumbs" role="group" aria-label="Product images" style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64, flexShrink: 0 }}>
         {images.map(img => {
           const sel = !videoActive && active === img.url;

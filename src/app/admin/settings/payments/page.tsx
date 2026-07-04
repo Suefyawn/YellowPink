@@ -4,6 +4,7 @@ import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from '../actions';
 import { BankAccountsEditor } from '@/components/admin/BankAccountsEditor';
 import { parseBankAccounts } from '@/lib/bank-accounts';
+import { jazzcashConfigured, easypaisaConfigured } from '@/lib/payments/configured';
 import {
   inp, lbl, Section, Card, Divider, PayMethodRow,
   SaveBar, StatusBanner, SettingsPageHeader,
@@ -41,18 +42,21 @@ export default async function SettingsPaymentsPage({ searchParams }: { searchPar
               checked={g('pay_jazzcash_enabled', 'true') !== 'false'}
               label="JazzCash"
               desc="Mobile wallet. Requires JAZZCASH_MERCHANT_ID + JAZZCASH_PASSWORD + JAZZCASH_INTEGRITY_SALT env vars."
+              configured={jazzcashConfigured()}
             />
             <PayMethodRow
               name="pay_easypaisa_enabled"
               checked={g('pay_easypaisa_enabled', 'true') !== 'false'}
               label="Easypaisa"
               desc="Mobile wallet. Requires EASYPAISA_STORE_ID + EASYPAISA_HASH_KEY env vars."
+              configured={easypaisaConfigured()}
             />
             <PayMethodRow
               name="pay_card_enabled"
               checked={g('pay_card_enabled', 'true') !== 'false'}
               label="Credit / Debit card"
               desc="Visa / Mastercard via JazzCash Card. Uses the same JazzCash credentials."
+              configured={jazzcashConfigured()}
             />
             <PayMethodRow
               name="pay_bank_enabled"

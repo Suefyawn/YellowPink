@@ -89,8 +89,23 @@ export async function deleteRole(formData: FormData): Promise<void> {
     redirect(`/admin/team?error=${encodeURIComponent("Built-in roles can't be deleted.")}`);
   }
 
-  // Staff assigned to this role are detached by the ON DELETE SET NULL FK and
-  // fall back to their own permissions column ("Custom").
+  // Deleting a role that members still hold used to silently strip them to
+  // zero permissions (the SET NULL FK detached them onto their own — empty —
+  // permissions column). Copy the role's permission set onto each member
+  // first, so they keep working as "Custom" with identical access.
+  const { data: fullRole } = await supabaseAdmin()
+    .from('roles').select('permissions').eq('id', id).single();
+  const { data: members } = await supabaseAdmin()
+    .from('staff_members').select('id').eq('role_id', id);
+  if (members && members.length > 0 && fullRole) {
+    const { error: copyError } = await supabaseAdmin()
+      .from('staff_members')
+      .update({ permissions: fullRole.permissions, role_id: null })
+      .eq('role_id', id);
+    if (copyError) {
+      redirect(`/admin/team?error=${encodeURIComponent('Could not detach members from role: ' + copyError.message)}`);
+    }
+  }
   const { error } = await supabaseAdmin().from('roles').delete().eq('id', id);
   if (error) {
     redirect(`/admin/team?error=${encodeURIComponent('Could not delete role: ' + error.message)}`);
