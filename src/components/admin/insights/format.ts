@@ -32,9 +32,12 @@ export const fmtDateFull = (iso: string) =>
   new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso)
     .toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ });
 
-// Period-over-period % change. Returns null when there's no meaningful base
-// (both zero); a jump from a zero base reads as +100% rather than infinity.
+// Period-over-period % change. Returns null whenever the comparison base is
+// zero — a change from nothing has no percentage (it's not "+100%", which read
+// as "doubled" on every fresh metric and made the dashboard look like a boom).
+// Callers already suppress the delta pill on null, so no baseline → no pill,
+// consistently on the dashboard and the Analytics tabs.
 export const pctDelta = (cur: number, prev: number): number | null => {
   if (prev > 0) return Math.round(((cur - prev) / prev) * 100);
-  return cur > 0 ? 100 : null;
+  return null;
 };

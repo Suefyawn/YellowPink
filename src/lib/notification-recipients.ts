@@ -19,8 +19,12 @@ export type NotificationEvent = 'order.new' | 'seo.broken_links';
 export const NOTIFICATION_EVENTS: { key: NotificationEvent; label: string; desc: string }[] = [
   {
     key: 'order.new',
-    label: 'New orders',
-    desc: 'Every time a customer places an order. One email per order.',
+    // This subscription also carries customer contact-form messages and
+    // medical-reviewer applications (they all fan out to the same recipient
+    // list), so the label/description name every kind it actually delivers —
+    // the copy previously promised only orders.
+    label: 'New orders & customer messages',
+    desc: 'Emails you when a customer places an order, sends a contact-form message, or a doctor applies to the medical review board.',
   },
   {
     key: 'seo.broken_links',

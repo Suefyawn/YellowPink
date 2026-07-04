@@ -58,7 +58,14 @@ export default async function CouponsPage({
     cur.discount += row.discount_amount ?? 0;
     impact.set(key, cur);
   }
-  const totalDiscount = [...impact.values()].reduce((s, v) => s + v.discount, 0);
+  // Split the headline total between codes that still exist (what the table
+  // below sums to) and codes since deleted, so the header reconciles with the
+  // table instead of silently including orphaned discounts.
+  const liveCodes = new Set(coupons.map(c => c.code.toUpperCase()));
+  let liveDiscount = 0, deletedDiscount = 0;
+  for (const [code, v] of impact) {
+    if (liveCodes.has(code)) liveDiscount += v.discount; else deletedDiscount += v.discount;
+  }
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -67,7 +74,8 @@ export default async function CouponsPage({
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Coupons</h1>
           <p style={{ margin: 0, fontSize: '0.875rem', color: '#6b7280' }}>
             {coupons.length} coupon{coupons.length !== 1 ? 's' : ''}
-            {totalDiscount > 0 && ` · PKR ${totalDiscount.toLocaleString()} given in discounts`}
+            {liveDiscount > 0 && ` · PKR ${liveDiscount.toLocaleString()} given in discounts`}
+            {deletedDiscount > 0 && ` (plus PKR ${deletedDiscount.toLocaleString()} from deleted codes)`}
           </p>
         </div>
       </div>

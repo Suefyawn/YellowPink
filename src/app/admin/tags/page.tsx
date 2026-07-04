@@ -6,10 +6,12 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { createTag, renameTag, deleteTag } from '@/app/admin/tag-actions';
+import { AdminFlash } from '@/components/admin/AdminFlash';
 
 interface TagRow { id: string; slug: string; name: string }
 
-export default async function TagsPage() {
+export default async function TagsPage({ searchParams }: { searchParams?: Promise<{ saved?: string; error?: string }> }) {
+  const sp = (await searchParams) ?? {};
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('products.view'))) {
     return <NoAccess section="Tags" />;
@@ -33,6 +35,7 @@ export default async function TagsPage() {
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
+      <AdminFlash message={sp.saved ?? sp.error} type={sp.error ? 'error' : 'success'} clearPath="/admin/tags" />
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Tags</h1>
       </div>

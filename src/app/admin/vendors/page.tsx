@@ -7,6 +7,7 @@ import { createVendor, deleteVendor, updateVendor, markSettlementSettled, settle
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DotChip } from '@/components/admin/OrderChips';
+import { AdminFlash } from '@/components/admin/AdminFlash';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { fmtDatePK } from '@/lib/dates';
 import type { Vendor, VendorSettlement } from '@/types';
@@ -31,13 +32,13 @@ const card: React.CSSProperties = {
 export default async function VendorsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ error?: string }>;
+  searchParams?: Promise<{ error?: string; saved?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('vendors'))) {
     return <NoAccess section="Vendors" />;
   }
-  const { error: feedbackError } = (await searchParams) ?? {};
+  const { error: feedbackError, saved: savedMsg } = (await searchParams) ?? {};
 
   const admin = supabaseAdmin();
   // vendors / vendor_settlements RLS has no policy, admin reads need service role.
@@ -85,6 +86,9 @@ export default async function VendorsPage({
         collects payment; dispatching an order records the margin and payout.
       </p>
 
+      {/* Success actions surface as a toast; hard errors stay as an inline
+          banner so they persist until the next navigation. */}
+      <AdminFlash message={savedMsg} type="success" clearPath="/admin/vendors" />
       {feedbackError && (
         <div
           role="status"

@@ -102,8 +102,15 @@ export function PushDeviceManager({ devices }: { devices: Device[] }) {
   });
 
   const test = () => startTransition(async () => {
-    const { sent } = await sendTestPush();
-    toast(sent > 0 ? `Test sent to ${sent} device${sent === 1 ? '' : 's'}.` : 'No devices are subscribed yet.', sent > 0 ? 'success' : 'error');
+    const { devices: deviceCount, sent, pruned } = await sendTestPush();
+    if (sent > 0) {
+      toast(`Test sent to ${sent} device${sent === 1 ? '' : 's'}.${pruned > 0 ? ` Removed ${pruned} stale device${pruned === 1 ? '' : 's'}.` : ''}`, 'success');
+    } else if (deviceCount === 0) {
+      toast('No devices are subscribed yet — enable notifications on this device first.', 'error');
+    } else {
+      toast(`Couldn't deliver to ${deviceCount} subscribed device${deviceCount === 1 ? '' : 's'}${pruned > 0 ? ` (${pruned} stale one${pruned === 1 ? '' : 's'} removed)` : ''}. Try re-enabling on the device.`, 'error');
+    }
+    router.refresh();
   });
 
   const thisDeviceSubscribed = currentEndpoint != null && devices.some(d => d.endpoint === currentEndpoint);

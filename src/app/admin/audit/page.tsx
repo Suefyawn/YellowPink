@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DotChip } from '@/components/admin/OrderChips';
+import { Pagination } from '@/components/admin/Pagination';
 import { PK_TZ } from '@/lib/dates';
 
 interface AuditRow {
@@ -61,27 +62,31 @@ const FILTERS: { key: string; label: string }[] = [
 export default async function ActivityLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ actor?: string; q?: string }>;
+  searchParams: Promise<{ actor?: string; q?: string; page?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session?.isOwner) {
     return <NoAccess section="Activity log" />;
   }
 
-  const { actor = 'all', q = '' } = await searchParams;
+  const { actor = 'all', q = '', page } = await searchParams;
   const search = q.trim();
+  const currentPage = Math.max(1, parseInt(page ?? '1', 10) || 1);
+  const from = (currentPage - 1) * ROW_LIMIT;
 
   // audit_log RLS has no anon SELECT policy. Service role bypasses RLS
   // and is the correct credential for an owner-only internal view.
+  // Paginated (ROW_LIMIT per page) so a newsletter-import burst can't bury
+  // older staff actions past a hard horizon — every event stays reachable.
   let query = supabaseAdmin()
     .from('audit_log')
-    .select('id, actor_kind, actor_email, action, entity, entity_id, diff, ip, created_at')
+    .select('id, actor_kind, actor_email, action, entity, entity_id, diff, ip, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(ROW_LIMIT);
+    .range(from, from + ROW_LIMIT - 1);
   if (actor !== 'all') query = query.eq('actor_kind', actor);
   if (search) query = query.ilike('action', `%${search}%`);
 
-  const { data } = await query;
+  const { data, count: totalRows } = await query;
   const rows = (data ?? []) as AuditRow[];
 
   const chipBase: React.CSSProperties = {
@@ -94,7 +99,7 @@ export default async function ActivityLogPage({
       <h1 style={{ margin: '0 0 6px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Activity log</h1>
       <p style={{ margin: '0 0 20px', fontSize: '0.8125rem', color: '#6b7280' }}>
         Everything happening across the store, orders, signups, reviews, subscriptions and staff actions.
-        Showing the {ROW_LIMIT} most recent events. Owner-only.
+        Newest first, {ROW_LIMIT} per page. Owner-only.
       </p>
 
       {/* Filter chips */}
@@ -197,6 +202,7 @@ export default async function ActivityLogPage({
           </table>
         )}
       </div>
+      <Pagination total={totalRows ?? 0} pageSize={ROW_LIMIT} currentPage={currentPage} basePath="/admin/audit" />
     </div>
   );
 }

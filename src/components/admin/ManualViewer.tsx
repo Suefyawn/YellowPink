@@ -19,22 +19,24 @@ export function ManualViewer({ html, toc }: { html: string; toc: ManualTocEntry[
   const [showTop, setShowTop] = useState(false);
   const articleRef = useRef<HTMLElement>(null);
 
-  // Track which section heading is currently at the top of the viewport.
+  // Track the section being read as the LAST heading whose top has scrolled
+  // above a ~100px line near the top of the viewport. Computing it on scroll
+  // (rather than via IntersectionObserver entries) tracks correctly through
+  // anchor jumps and fast scrolls, which the observer's -75% rootMargin missed.
   useEffect(() => {
-    const headings = Array.from(articleRef.current?.querySelectorAll('h2[id], h3[id]') ?? []);
+    const headings = Array.from(articleRef.current?.querySelectorAll('h2[id], h3[id]') ?? []) as HTMLElement[];
     if (headings.length === 0) return;
-    const observer = new IntersectionObserver(
-      entries => {
-        for (const e of entries) {
-          if (e.isIntersecting) { setActive(e.target.id); break; }
-        }
-      },
-      { rootMargin: '0px 0px -75% 0px' },
-    );
-    headings.forEach(h => observer.observe(h));
-    const onScroll = () => setShowTop(window.scrollY > 600);
+    const onScroll = () => {
+      setShowTop(window.scrollY > 600);
+      let current = headings[0]?.id ?? '';
+      for (const h of headings) {
+        if (h.getBoundingClientRect().top <= 100) current = h.id; else break;
+      }
+      setActive(current);
+    };
+    onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
-    return () => { observer.disconnect(); window.removeEventListener('scroll', onScroll); };
+    return () => { window.removeEventListener('scroll', onScroll); };
   }, []);
 
   const visible = useMemo(() => {
@@ -132,7 +134,10 @@ export function ManualViewer({ html, toc }: { html: string; toc: ManualTocEntry[
       )}
 
       <style>{`
-        .yp-manual-layout { display: grid; grid-template-columns: 240px minmax(0, 920px); gap: 20px; align-items: start; }
+        /* No align-items:start — the aside must stretch to the article's full
+           height so its position:sticky child actually has room to travel;
+           otherwise the TOC scrolled off after the first screenful. */
+        .yp-manual-layout { display: grid; grid-template-columns: 240px minmax(0, 920px); gap: 20px; }
         .yp-manual-toc-mobile { display: none; }
         @media (max-width: 1023px) {
           .yp-manual-layout { display: block; }

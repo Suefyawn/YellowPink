@@ -96,6 +96,14 @@ export async function getBrandDirectory(products: Product[]): Promise<BrandDirec
     if (!firstImageBySlug.has(s)) firstImageBySlug.set(s, p.image_url);
   }
 
+  // Brands with a metadata row carry the brands.sort_order column default
+  // (100); brands that only exist as a free-text product field have no row.
+  // Defaulting those to the SAME baseline (not a larger sentinel) lets the two
+  // sets interleave into one alphabetical list — the old 1000 default sorted
+  // every metadata-less brand into a second A→Z group after the first, so the
+  // directory ran "A–T, then restarted at C". A brand deliberately curated to
+  // a lower sort_order still pins ahead of the rest.
+  const DEFAULT_BRAND_SORT = 100; // must match the brands.sort_order column default
   return summaries
     .map<BrandDirectoryEntry>(b => {
       const m = meta.get(b.slug);
@@ -104,7 +112,7 @@ export async function getBrandDirectory(products: Product[]): Promise<BrandDirec
         description: m?.description ?? null,
         logo_url: m?.logo_url ?? null,
         product_image_url: firstImageBySlug.get(b.slug) ?? null,
-        sort_order: m?.sort_order ?? 1000,
+        sort_order: m?.sort_order ?? DEFAULT_BRAND_SORT,
       };
     })
     .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));

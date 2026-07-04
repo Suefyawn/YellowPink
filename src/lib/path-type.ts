@@ -23,10 +23,15 @@ export const PATH_TYPE_COLORS: Record<PathType, string> = {
 };
 
 export function classifyPath(path: string): PathType {
-  if (path.startsWith('/product/')) return 'product';
+  // Match both this store's singular routes (/product/…) and the legacy
+  // Shopify plural shape (/products/…) — inbound dead links from the old
+  // storefront use the plural form, and they're exactly what the Broken-links
+  // and Indexing filters exist to surface, so classifying them as "Other"
+  // would hide them from the Products/Collections pills.
+  if (path.startsWith('/product/') || path.startsWith('/products/')) return 'product';
   if (path.startsWith('/blog/') || path === '/blog') return 'blog';
-  if (path.startsWith('/brand/') || path === '/brands') return 'brand';
-  if (path.startsWith('/collection/') || path === '/collections') return 'collection';
+  if (path.startsWith('/brand/') || path.startsWith('/brands/') || path === '/brands') return 'brand';
+  if (path.startsWith('/collection/') || path.startsWith('/collections/') || path === '/collections') return 'collection';
   if (path.startsWith('/page/') || path.startsWith('/medical-review-board')) return 'page';
   return 'other';
 }

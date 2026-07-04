@@ -156,7 +156,7 @@ export default async function ProductsPage({
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Products</h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <ResubmitAllButton />
+          {(session.isOwner || session.permissions.includes('system_tools')) && <ResubmitAllButton />}
           {/* Plain <a>: a route-handler download, not a client navigation.
               The lint rule mistakes this for the [id] page — the static
               /export segment wins over the dynamic sibling at runtime. */}
