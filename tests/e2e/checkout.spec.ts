@@ -15,6 +15,10 @@ async function addDemoProductToCart(page: import('@playwright/test').Page) {
   // Two Add to Cart buttons exist (main + sticky mobile bar); click the
   // visible one.
   await page.locator('button:visible', { hasText: 'Add to Cart' }).first().click();
+  // Wait for the cart to acknowledge the add (toast) before navigating away —
+  // on slow CI runners an immediate goto can outrun the state update +
+  // localStorage persistence and land on an empty cart (observed flake).
+  await expect(page.getByText(/added to cart/i).first()).toBeVisible();
 }
 
 test('PDP → cart → checkout golden path', async ({ page }) => {
