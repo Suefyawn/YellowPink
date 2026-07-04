@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { ViewTabs } from '@/components/admin/ViewTabs';
 import { PK_TZ } from '@/lib/dates';
 
 interface SegmentRow {
@@ -61,27 +62,18 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
         <Link href="/admin/analytics" style={{ fontSize: '0.8125rem', color: '#6b7280', textDecoration: 'none' }}>→ Analytics</Link>
       </div>
 
-      {/* Segment chips */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 24 }}>
-        <Link
-          href="/admin/segments"
-          style={chip(focus == null)}
-        >
-          All ({summary.length})
-        </Link>
-        {SEGMENT_ORDER.map(s => {
-          const meta = byKey.get(s);
-          return (
-            <Link
-              key={s}
-              href={`/admin/segments?segment=${encodeURIComponent(s)}`}
-              style={chip(focus === s)}
-            >
-              {s} ({meta?.customers ?? 0})
-            </Link>
-          );
-        })}
-      </div>
+      {/* Saved-view tabs — the shared underline grammar (was a bespoke chip
+          row, one of five divergent filter treatments the audit flagged). */}
+      <ViewTabs
+        active={focus ?? 'all'}
+        tabs={[
+          { value: 'all', label: 'All', count: summary.length, href: '/admin/segments' },
+          ...SEGMENT_ORDER.map(s => ({
+            value: s, label: s, count: byKey.get(s)?.customers ?? 0,
+            href: `/admin/segments?segment=${encodeURIComponent(s)}`,
+          })),
+        ]}
+      />
 
       <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
         {rows.length === 0 ? (
@@ -128,15 +120,3 @@ export default async function SegmentsPage({ searchParams }: { searchParams: Pro
   );
 }
 
-// System range-pill style (matches RangePicker): dark when active, grey idle.
-function chip(active: boolean): React.CSSProperties {
-  return {
-    padding: '5px 12px',
-    borderRadius: 16,
-    fontSize: '0.75rem',
-    fontWeight: 600,
-    background: active ? '#111827' : '#f3f4f6',
-    color: active ? '#fff' : '#6b7280',
-    textDecoration: 'none', cursor: 'pointer',
-  };
-}

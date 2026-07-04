@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
+import { BrandsSearch } from '@/components/admin/BrandsSearch';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -144,17 +146,9 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
       )}
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-        <form method="get" action="/admin/brands" style={{ margin: 0, display: 'flex' }}>
-          <input
-            type="search" name="q" defaultValue={q} placeholder="Search name or slug…"
-            aria-label="Search brands"
-            style={{
-              padding: '7px 12px', border: '1px solid #d1d5db', borderRadius: 8,
-              fontSize: '0.875rem', color: '#111827', background: 'white', outline: 'none',
-              minWidth: 220,
-            }}
-          />
-        </form>
+        <Suspense fallback={null}>
+          <BrandsSearch />
+        </Suspense>
         {q && (
           <Link href="/admin/brands" style={{
             padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 8,

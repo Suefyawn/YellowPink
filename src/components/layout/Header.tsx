@@ -14,11 +14,11 @@ import { TAXONS, categoryHref } from '@/lib/category-taxonomy';
 // mega-menu dropdown of its categories; the flat items are plain links.
 // Driven by the central taxonomy so editorial changes don't touch the header.
 //
-// `primary` items show in the (space-constrained) desktop top bar; the rest
-// were demoting it into a 9-item row that read as cluttered. Everything still
-// appears in the mobile drawer (which has room) and in the footer, so only
-// Sale stays in the desktop bar alongside the four taxons. Collections / Brands
-// / K-Beauty / Blog are one scroll away in the footer.
+// `primary` items show as their own links in the (space-constrained) desktop
+// top bar — only Sale, alongside the four taxons, so the row stays sleek. The
+// non-primary destinations are gathered into the desktop "Discover" dropdown
+// (see below) rather than each taking a row slot (a 9-item row read as
+// cluttered), and they all still appear in the mobile drawer and the footer.
 const FLAT_ITEMS = [
   { label: 'Collections', href: '/collections', primary: false },
   { label: 'Brands', href: '/brands', primary: false },
@@ -219,6 +219,54 @@ export function Header() {
               >{item.label}</Link>
             );
           })}
+          {/* "Discover" gathers the non-primary destinations (Collections /
+              Brands / K-Beauty / quiz / Blog) into ONE dropdown, so they're
+              reachable on desktop (2026-07 audit: they only existed in the
+              mobile drawer + footer) without re-cluttering the top row —
+              same mega-menu pattern and hover-bridge as the taxon items. */}
+          <div
+            style={{ position: 'relative' }}
+            onMouseEnter={() => setOpenMenu('discover')}
+            onMouseLeave={() => setOpenMenu(null)}
+            onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setOpenMenu(null); }}
+            onKeyDown={e => { if (e.key === 'Escape') setOpenMenu(null); }}
+          >
+            <button
+              type="button"
+              aria-expanded={openMenu === 'discover'}
+              aria-haspopup="true"
+              onFocus={() => setOpenMenu('discover')}
+              onClick={() => setOpenMenu(openMenu === 'discover' ? null : 'discover')}
+              style={{ ...navLinkStyle(FLAT_ITEMS.some(i => !i.primary && isActiveLink(i.href))), display: 'inline-flex', alignItems: 'center', gap: 5 }}
+            >
+              Discover
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+            </button>
+            {openMenu === 'discover' && (
+              <div style={{ position: 'absolute', top: '100%', right: 0, paddingTop: 10, zIndex: 200 }}>
+                <div style={{
+                  minWidth: 200, padding: 8,
+                  background: 'var(--paper)', border: '1px solid var(--line)',
+                  borderRadius: 'var(--radius-card)', boxShadow: '0 14px 36px rgba(0,0,0,0.13)',
+                }}>
+                  {FLAT_ITEMS.filter(item => !item.primary).map(item => (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      aria-current={isActiveLink(item.href) ? 'page' : undefined}
+                      style={{
+                        display: 'block', padding: '9px 12px', borderRadius: 8,
+                        textDecoration: 'none', fontFamily: 'var(--font-ui)',
+                        fontSize: '0.875rem', color: 'var(--ink-700)',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'var(--paper2)'; e.currentTarget.style.color = 'var(--ink-900)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'var(--ink-700)'; }}
+                    >{item.label}</Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </nav>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

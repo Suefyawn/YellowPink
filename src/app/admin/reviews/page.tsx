@@ -15,6 +15,7 @@ import {
   type ProductOption,
 } from '@/components/admin/ReviewAdminControls';
 import { ReviewsFilter } from '@/components/admin/ReviewsFilter';
+import { ViewTabs } from '@/components/admin/ViewTabs';
 import { DotChip } from '@/components/admin/OrderChips';
 import { approveReview, deleteReview } from './actions';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
@@ -86,6 +87,7 @@ export default async function ReviewsPage({
     { data: pending },
     { data: pageRows },
     { count: totalCount },
+    { count: allCount },
     { data: productRows },
     { data: reviewedProductRows },
   ] = await Promise.all([
@@ -97,6 +99,7 @@ export default async function ReviewsPage({
       .order('created_at', { ascending: false })
       .range(from, to),
     applyFilters(admin.from('product_reviews').select('id', { count: 'exact', head: true })),
+    admin.from('product_reviews').select('id', { count: 'exact', head: true }),
     admin.from('products').select('id, name, brand')
       .eq('status', 'published')
       .order('name', { ascending: true })
@@ -268,7 +271,33 @@ export default async function ReviewsPage({
 
       {/* All reviews — searchable, filterable, paginated. */}
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        {/* Saved-view tabs (shared underline grammar) replace the old status
+            <select>; search + product filters survive a view switch via the
+            precomputed hrefs. */}
+        {(() => {
+          const tabHref = (status: string) => {
+            const p2 = new URLSearchParams();
+            if (q) p2.set('q', q);
+            if (productFilter) p2.set('product', productFilter);
+            if (status !== 'all') p2.set('status', status);
+            const str = p2.toString();
+            return `/admin/reviews${str ? `?${str}` : ''}`;
+          };
+          const pendingCount = pendingList.length;
+          return (
+            <div style={{ padding: '0 12px' }}>
+              <ViewTabs
+                active={statusFilter}
+                tabs={[
+                  { value: 'all', label: 'All', count: allCount ?? 0, href: tabHref('all') },
+                  { value: 'approved', label: 'Approved', count: (allCount ?? 0) - pendingCount, href: tabHref('approved') },
+                  { value: 'pending', label: 'Pending', count: pendingCount, href: tabHref('pending') },
+                ]}
+              />
+            </div>
+          );
+        })()}
+        <div style={{ padding: '0 20px 16px', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', borderBottom: '1px solid #f3f4f6' }}>
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
             All Reviews <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: '0.875rem' }}>({total})</span>
           </h2>

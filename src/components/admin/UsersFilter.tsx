@@ -12,12 +12,6 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: 'name',       label: 'Name A–Z' },
 ];
 
-const TYPE_OPTIONS: { value: string; label: string }[] = [
-  { value: 'all',        label: 'All' },
-  { value: 'registered', label: 'Registered' },
-  { value: 'guest',      label: 'Guests' },
-];
-
 const ACTIVITY_OPTIONS: { value: string; label: string }[] = [
   { value: 'all',    label: 'Any activity' },
   { value: 'repeat', label: 'Repeat (2+ orders)' },
@@ -79,29 +73,8 @@ export function UsersFilter({ total }: { total: number }) {
         />
       </div>
 
-      {/* Customer-type segmented control */}
-      <div role="group" aria-label="Customer type" style={{
-        display: 'inline-flex', border: '1px solid #d1d5db', borderRadius: 8, overflow: 'hidden', background: 'white',
-      }}>
-        {TYPE_OPTIONS.map((o, i) => {
-          const active = type === o.value;
-          return (
-            <button
-              key={o.value}
-              onClick={() => setParam('type', o.value, 'all')}
-              aria-pressed={active}
-              style={{
-                padding: '8px 14px', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-                border: 'none', borderLeft: i > 0 ? '1px solid #e5e7eb' : 'none',
-                background: active ? '#111827' : 'transparent',
-                color: active ? '#fff' : '#6b7280',
-              }}
-            >
-              {o.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* The customer-type filter lives in the saved-view tabs above this bar
+          (shared underline grammar) — the old segmented control moved there. */}
 
       {/* Activity filter */}
       <select

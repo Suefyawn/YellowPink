@@ -51,12 +51,14 @@ export function SubscriberList({ subscribers }: { subscribers: Subscriber[] }) {
     });
   }, [subscribers, q, status]);
 
-  const chip = (key: StatusFilter): React.CSSProperties => ({
-    padding: '5px 12px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600,
-    cursor: 'pointer', border: '1px solid',
-    borderColor: status === key ? '#C5286A' : '#e5e7eb',
-    background: status === key ? '#fdf2f8' : 'white',
-    color: status === key ? '#9d174d' : '#6b7280',
+  // Underline saved-view tabs — the shared list-page grammar (ListToolbar /
+  // Orders / ViewTabs), replacing this page's one-off pink pills.
+  const tab = (key: StatusFilter): React.CSSProperties => ({
+    padding: '9px 14px', border: 'none', cursor: 'pointer', background: 'transparent',
+    fontSize: '0.8125rem', fontWeight: status === key ? 600 : 500,
+    color: status === key ? '#111827' : '#6b7280',
+    borderBottom: `2px solid ${status === key ? '#C5286A' : 'transparent'}`,
+    marginBottom: -1, whiteSpace: 'nowrap',
   });
 
   const runAction = (label: string, fn: () => Promise<{ ok: boolean; error?: string }>, onSuccess?: () => void) => {
@@ -81,6 +83,12 @@ export function SubscriberList({ subscribers }: { subscribers: Subscriber[] }) {
         </span>
       </div>
 
+      <div style={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center', borderBottom: '1px solid #e5e7eb', padding: '0 12px' }}>
+        <button type="button" style={tab('all')} onClick={() => setStatus('all')}>All ({subscribers.length})</button>
+        <button type="button" style={tab('active')} onClick={() => setStatus('active')}>Active ({activeTotal})</button>
+        <button type="button" style={tab('unsubscribed')} onClick={() => setStatus('unsubscribed')}>Unsubscribed ({unsubTotal})</button>
+      </div>
+
       <div style={{ padding: '14px 20px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <input
           type="search"
@@ -93,11 +101,6 @@ export function SubscriberList({ subscribers }: { subscribers: Subscriber[] }) {
             outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
           }}
         />
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button type="button" style={chip('all')} onClick={() => setStatus('all')}>All</button>
-          <button type="button" style={chip('active')} onClick={() => setStatus('active')}>Active</button>
-          <button type="button" style={chip('unsubscribed')} onClick={() => setStatus('unsubscribed')}>Unsubscribed</button>
-        </div>
         <button
           type="button"
           onClick={() => { setShowAdd(v => !v); setFeedback(null); }}
