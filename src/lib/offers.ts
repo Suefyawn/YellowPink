@@ -22,16 +22,22 @@ const FALLBACK: WelcomeOffer = {
   minOrder: WELCOME_MIN_ORDER,
 };
 
-// `cache` dedupes within a request (e.g. layout render). Falls back to the
-// seeded defaults if the row is missing, inactive, not a percentage coupon, or
-// unreadable, so the modal/email never advertise a wrong or empty number.
-export const getWelcomeOffer = cache(async (): Promise<WelcomeOffer> => {
+// `cache` dedupes within a request (e.g. layout render).
+//
+// Returns null when the coupon row is missing or deactivated — the popup,
+// footer signup and welcome email then drop the discount promise instead of
+// advertising a code checkout will reject (which is exactly what happened
+// when the WELCOME10 row was deleted from admin). Only a *read error*
+// (transient DB hiccup, demo mode) falls back to the seeded defaults, since
+// in that state the deliberate-deactivation signal can't be read either.
+export const getWelcomeOffer = cache(async (): Promise<WelcomeOffer | null> => {
   try {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('coupons')
       .select('code, type, value, min_order, active')
       .ilike('code', WELCOME_CODE)
       .maybeSingle();
+    if (error) return FALLBACK;
     if (data && data.active && data.type === 'percent') {
       return {
         code: data.code ?? WELCOME_CODE,
@@ -39,8 +45,8 @@ export const getWelcomeOffer = cache(async (): Promise<WelcomeOffer> => {
         minOrder: Number(data.min_order) || 0,
       };
     }
+    return null; // deliberately absent/inactive → don't advertise
   } catch {
-    // fall through to defaults
+    return FALLBACK;
   }
-  return FALLBACK;
 });

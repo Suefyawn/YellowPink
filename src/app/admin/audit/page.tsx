@@ -1,11 +1,14 @@
 export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
+import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DotChip } from '@/components/admin/OrderChips';
 import { Pagination } from '@/components/admin/Pagination';
+import { ViewTabs } from '@/components/admin/ViewTabs';
+import { AuditFilters } from '@/components/admin/AuditFilters';
 import { PK_TZ } from '@/lib/dates';
 
 interface AuditRow {
@@ -20,7 +23,7 @@ interface AuditRow {
   created_at: string;
 }
 
-const ROW_LIMIT = 300;
+const ROW_LIMIT = 100;
 
 // Friendly labels for the events the activity triggers + audit helper emit.
 const ACTION_LABELS: Record<string, string> = {
@@ -41,9 +44,11 @@ function prettyAction(code: string): string {
 // Where an entity row links to in the admin, when it has a detail page.
 function entityHref(entity: string | null, entityId: string | null): string | null {
   if (!entity || !entityId) return null;
-  if (entity === 'order')    return `/admin/orders/${entityId}`;
-  if (entity === 'customer') return `/admin/users/${entityId}`;
-  if (entity === 'product')  return `/admin/products/${entityId}`;
+  if (entity === 'order')     return `/admin/orders/${entityId}`;
+  if (entity === 'customer')  return `/admin/users/${entityId}`;
+  if (entity === 'product')   return `/admin/products/${entityId}`;
+  if (entity === 'blog_post') return `/admin/blog/${entityId}`;
+  if (entity === 'coupons')   return '/admin/coupons';
   return null;
 }
 
@@ -51,7 +56,7 @@ const ACTOR_COLORS: Record<string, string> = {
   owner: '#C5286A', staff: '#3b82f6', customer: '#16a34a', system: '#6b7280',
 };
 
-const FILTERS: { key: string; label: string }[] = [
+const ACTOR_TABS: { key: string; label: string }[] = [
   { key: 'all',      label: 'All activity' },
   { key: 'customer', label: 'Customers' },
   { key: 'staff',    label: 'Staff' },
@@ -59,102 +64,122 @@ const FILTERS: { key: string; label: string }[] = [
   { key: 'system',   label: 'System' },
 ];
 
+const RANGE_HOURS: Record<string, number> = { '24h': 24, '7d': 24 * 7, '30d': 24 * 30 };
+
+// Render a jsonb diff as readable key/value rows instead of a raw JSON dump.
+// Values are kept short; nested objects fall back to compact JSON.
+function DiffView({ diff }: { diff: Record<string, unknown> }) {
+  const entries = Object.entries(diff);
+  if (entries.length === 0) return null;
+  return (
+    <dl style={{ margin: '6px 0 0', display: 'grid', gridTemplateColumns: 'max-content 1fr', gap: '2px 10px', maxWidth: 420 }}>
+      {entries.slice(0, 12).map(([k, v]) => (
+        <div key={k} style={{ display: 'contents' }}>
+          <dt style={{ color: '#9ca3af', fontFamily: 'monospace' }}>{k}</dt>
+          <dd style={{ margin: 0, color: '#374151', overflowWrap: 'anywhere' }}>
+            {typeof v === 'object' && v !== null ? JSON.stringify(v) : String(v)}
+          </dd>
+        </div>
+      ))}
+      {entries.length > 12 && <div style={{ gridColumn: '1 / -1', color: '#9ca3af' }}>… {entries.length - 12} more</div>}
+    </dl>
+  );
+}
+
 export default async function ActivityLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ actor?: string; q?: string; page?: string }>;
+  searchParams: Promise<{ actor?: string; q?: string; range?: string; page?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session?.isOwner) {
     return <NoAccess section="Activity log" />;
   }
 
-  const { actor = 'all', q = '', page } = await searchParams;
+  const { actor = 'all', q = '', range = '', page } = await searchParams;
   const search = q.trim();
   const currentPage = Math.max(1, parseInt(page ?? '1', 10) || 1);
   const from = (currentPage - 1) * ROW_LIMIT;
+  // The `react-hooks/purity` rule flags Date.now() as impure; a one-shot read
+  // for a query window is fine here (same waiver as the email log page).
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
+  const sinceIso = RANGE_HOURS[range]
+    ? new Date(nowMs - RANGE_HOURS[range] * 3600_000).toISOString()
+    : null;
 
   // audit_log RLS has no anon SELECT policy. Service role bypasses RLS
   // and is the correct credential for an owner-only internal view.
-  // Paginated (ROW_LIMIT per page) so a newsletter-import burst can't bury
-  // older staff actions past a hard horizon — every event stays reachable.
-  let query = supabaseAdmin()
-    .from('audit_log')
-    .select('id, actor_kind, actor_email, action, entity, entity_id, diff, ip, created_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(from, from + ROW_LIMIT - 1);
-  if (actor !== 'all') query = query.eq('actor_kind', actor);
-  if (search) query = query.ilike('action', `%${search}%`);
+  const admin = supabaseAdmin();
+  const applyFilters = <T,>(query: T): T => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let qb = query as any;
+    if (sinceIso) qb = qb.gte('created_at', sinceIso);
+    if (search) {
+      // entity_id is text (not uuid), so partial-id search works too.
+      const term = search.replace(/[,()]/g, ' ').trim();
+      qb = qb.or(`action.ilike.%${term}%,actor_email.ilike.%${term}%,entity_id.ilike.%${term}%,entity.ilike.%${term}%`);
+    }
+    return qb as T;
+  };
 
-  const { data, count: totalRows } = await query;
+  let listQuery = applyFilters(
+    admin
+      .from('audit_log')
+      .select('id, actor_kind, actor_email, action, entity, entity_id, diff, ip, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, from + ROW_LIMIT - 1),
+  );
+  if (actor !== 'all') listQuery = listQuery.eq('actor_kind', actor);
+
+  // Per-actor counts under the SAME q/range filters so the tab numbers always
+  // reconcile with the list they switch to.
+  const countFor = (kind: string) => {
+    let cq = applyFilters(admin.from('audit_log').select('id', { count: 'exact', head: true }));
+    if (kind !== 'all') cq = cq.eq('actor_kind', kind);
+    return cq;
+  };
+
+  const [{ data, count: totalRows }, ...tabCounts] = await Promise.all([
+    listQuery,
+    ...ACTOR_TABS.map(t => countFor(t.key)),
+  ]);
   const rows = (data ?? []) as AuditRow[];
+  const countByTab = new Map(ACTOR_TABS.map((t, i) => [t.key, tabCounts[i].count ?? 0]));
 
-  const chipBase: React.CSSProperties = {
-    padding: '6px 13px', borderRadius: 16, fontSize: '0.75rem', fontWeight: 600,
-    textDecoration: 'none', border: 'none', whiteSpace: 'nowrap',
+  const tabHref = (kind: string) => {
+    const p = new URLSearchParams();
+    if (kind !== 'all') p.set('actor', kind);
+    if (search) p.set('q', search);
+    if (range) p.set('range', range);
+    return p.toString() ? `/admin/audit?${p}` : '/admin/audit';
   };
 
   return (
-    <div style={{ padding: '32px 36px' }}>
+    <div className="adm-page" style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 6px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Activity log</h1>
       <p style={{ margin: '0 0 20px', fontSize: '0.8125rem', color: '#6b7280' }}>
         Everything happening across the store, orders, signups, reviews, subscriptions and staff actions.
         Newest first, {ROW_LIMIT} per page. Owner-only.
       </p>
 
-      {/* Filter chips */}
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 14 }}>
-        {FILTERS.map(f => {
-          const active = actor === f.key;
-          const params = new URLSearchParams();
-          if (f.key !== 'all') params.set('actor', f.key);
-          if (search) params.set('q', search);
-          const href = params.toString() ? `/admin/audit?${params}` : '/admin/audit';
-          return (
-            <Link
-              key={f.key}
-              href={href}
-              style={{
-                ...chipBase,
-                background: active ? '#111827' : '#f3f4f6',
-                color: active ? '#fff' : '#6b7280',
-              }}
-            >
-              {f.label}
-            </Link>
-          );
-        })}
-      </div>
+      {/* Saved-view tabs — shared underline grammar with counts that respect
+          the active search/time filters. */}
+      <ViewTabs
+        active={actor}
+        tabs={ACTOR_TABS.map(t => ({
+          value: t.key, label: t.label, count: countByTab.get(t.key) ?? 0, href: tabHref(t.key),
+        }))}
+      />
 
-      {/* Search */}
-      <form method="get" style={{ display: 'flex', gap: 8, marginBottom: 20, maxWidth: 420 }}>
-        {actor !== 'all' && <input type="hidden" name="actor" value={actor} />}
-        <input
-          type="search"
-          name="q"
-          defaultValue={search}
-          placeholder="Search action, e.g. order, review, product"
-          style={{
-            flex: 1, padding: '8px 12px', border: '1px solid #e5e7eb', borderRadius: 8,
-            fontSize: '0.8125rem', color: '#111827',
-          }}
-        />
-        <button type="submit" style={{
-          padding: '8px 16px', background: '#C5286A', color: 'white', border: 'none',
-          borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-        }}>Search</button>
-        {search && (
-          <Link href={actor !== 'all' ? `/admin/audit?actor=${actor}` : '/admin/audit'} style={{
-            padding: '8px 12px', color: '#6b7280', fontSize: '0.8125rem', textDecoration: 'none',
-            alignSelf: 'center',
-          }}>Clear</Link>
-        )}
-      </form>
+      <Suspense fallback={null}>
+        <AuditFilters />
+      </Suspense>
 
       <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
         {rows.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center', color: '#9ca3af' }}>
-            {search || actor !== 'all' ? 'No activity matches this filter.' : 'No activity yet.'}
+            {search || actor !== 'all' || range ? 'No activity matches this filter.' : 'No activity yet.'}
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
@@ -192,8 +217,8 @@ export default async function ActivityLogPage({
                     })()}
                   </td>
                   <td data-label="Details" style={{ padding: '10px 16px', fontSize: '0.6875rem', color: '#374151' }}>
-                    {r.diff
-                      ? <details><summary style={{ cursor: 'pointer', color: '#6b7280' }}>view</summary><pre style={{ margin: '4px 0 0', whiteSpace: 'pre-wrap', maxWidth: 360 }}>{JSON.stringify(r.diff, null, 2)}</pre></details>
+                    {r.diff && Object.keys(r.diff).length > 0
+                      ? <details><summary style={{ cursor: 'pointer', color: '#6b7280' }}>{Object.keys(r.diff).slice(0, 3).join(', ')}{Object.keys(r.diff).length > 3 ? '…' : ''}</summary><DiffView diff={r.diff} /></details>
                       : '—'}
                   </td>
                 </tr>
@@ -202,6 +227,8 @@ export default async function ActivityLogPage({
           </table>
         )}
       </div>
+      {/* Pagination reappends the live query string itself, so basePath stays
+          bare — actor/q/range survive page flips via useSearchParams. */}
       <Pagination total={totalRows ?? 0} pageSize={ROW_LIMIT} currentPage={currentPage} basePath="/admin/audit" />
     </div>
   );

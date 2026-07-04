@@ -88,6 +88,33 @@ export function CouponCreateForm() {
         }}>
           {pending ? 'Creating…' : '+ Create'}
         </button>
+
+        {/* Targeting options every coupon supports at checkout (place_order
+            enforces them); collapsed so the quick percent-off path stays a
+            one-line form. Product scoping lives in the Edit dialog. */}
+        <details style={{ width: '100%', marginTop: 2 }}>
+          <summary style={{ cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280' }}>
+            Advanced — per-customer limit, order cap, email restrictions
+          </summary>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginTop: 12, alignItems: 'flex-start' }}>
+            <div>
+              <label style={lbl}>Uses per customer</label>
+              <input name="usage_limit_per_user" type="number" min={1} placeholder="Unlimited" style={{ ...inp, width: 110 }} />
+            </div>
+            <div>
+              <label style={lbl}>Max order (PKR)</label>
+              <input name="max_order" type="number" min={1} placeholder="No cap" style={{ ...inp, width: 110 }} />
+            </div>
+            <div style={{ flex: '1 1 260px' }}>
+              <label style={lbl}>Restrict to emails</label>
+              <input name="email_restrictions" placeholder="someone@mail.com, *@company.pk" style={{ ...inp, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ flex: '1 1 260px' }}>
+              <label style={lbl}>Internal note</label>
+              <input name="description" placeholder="e.g. Eid campaign, influencer batch 3" style={{ ...inp, width: '100%', boxSizing: 'border-box' }} />
+            </div>
+          </div>
+        </details>
       </form>
     </div>
   );

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useActionState } from 'react';
 import { updateCoupon } from '@/app/admin/coupon-actions';
+import { ProductMultiSelect, type SelectableProduct } from '@/components/admin/ProductMultiSelect';
+import { WELCOME_CODE } from '@/lib/commerce';
 import type { Coupon } from '@/types';
 
 const lbl: React.CSSProperties = {
@@ -12,9 +14,12 @@ const inp: React.CSSProperties = {
   fontSize: '0.875rem', color: '#111827', background: 'white', outline: 'none', boxSizing: 'border-box',
 };
 
-export function CouponEditModal({ coupon }: { coupon: Coupon }) {
+export function CouponEditModal({ coupon, products = [] }: { coupon: Coupon; products?: SelectableProduct[] }) {
   const [open, setOpen] = useState(false);
   const [state, action, pending] = useActionState(updateCoupon, null);
+  // The welcome code is advertised by name in the popup + welcome email, so
+  // renaming it is blocked server-side; grey the field out to say so upfront.
+  const isWelcome = coupon.code.toUpperCase() === WELCOME_CODE;
   // Controlled so the Value field can switch off for free-shipping coupons
   // (they carry no monetary value; the action stores value = 0).
   const [type, setType] = useState<'percent' | 'fixed' | 'free_shipping'>(
@@ -78,8 +83,18 @@ export function CouponEditModal({ coupon }: { coupon: Coupon }) {
                 <label style={lbl}>Code</label>
                 <input
                   name="code" required defaultValue={coupon.code}
-                  style={{ ...inp, textTransform: 'uppercase', fontFamily: 'monospace' }}
+                  readOnly={isWelcome}
+                  title={isWelcome ? 'Advertised by the newsletter popup and welcome email — the code itself can’t change.' : undefined}
+                  style={{
+                    ...inp, textTransform: 'uppercase', fontFamily: 'monospace',
+                    ...(isWelcome ? { background: '#f9fafb', color: '#6b7280' } : {}),
+                  }}
                 />
+                {isWelcome && (
+                  <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+                    Advertised by the newsletter popup + welcome email; values are editable, the code isn&apos;t.
+                  </p>
+                )}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
@@ -123,6 +138,66 @@ export function CouponEditModal({ coupon }: { coupon: Coupon }) {
                 <input
                   name="expires_at" type="date"
                   defaultValue={coupon.expires_at ? coupon.expires_at.slice(0, 10) : ''}
+                  style={inp}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={lbl}>Uses per customer</label>
+                  <input
+                    name="usage_limit_per_user" type="number" min={1}
+                    defaultValue={coupon.usage_limit_per_user ?? ''} placeholder="Unlimited" style={inp}
+                  />
+                </div>
+                <div>
+                  <label style={lbl}>Max order (PKR)</label>
+                  <input
+                    name="max_order" type="number" min={1}
+                    defaultValue={coupon.max_order ?? ''} placeholder="No cap" style={inp}
+                  />
+                </div>
+              </div>
+              <div>
+                <label style={lbl}>Restrict to emails</label>
+                <input
+                  name="email_restrictions"
+                  defaultValue={(coupon.email_restrictions ?? []).join(', ')}
+                  placeholder="someone@mail.com, *@company.pk"
+                  style={inp}
+                />
+                <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+                  Comma-separated. <code>*@domain.pk</code> allows a whole domain. Empty = everyone.
+                </p>
+              </div>
+              {products.length > 0 && (
+                <>
+                  <div>
+                    <label style={lbl}>Only applies to these products</label>
+                    <ProductMultiSelect
+                      name="product_ids"
+                      products={products}
+                      initialIds={coupon.product_ids ?? []}
+                      placeholder="Search to limit the coupon to specific products…"
+                    />
+                  </div>
+                  <div>
+                    <label style={lbl}>Never applies to these products</label>
+                    <ProductMultiSelect
+                      name="excluded_product_ids"
+                      products={products}
+                      initialIds={coupon.excluded_product_ids ?? []}
+                      placeholder="Search to exclude products…"
+                    />
+                  </div>
+                </>
+              )}
+              <div>
+                <label style={lbl}>Internal note</label>
+                <input
+                  name="description"
+                  defaultValue={coupon.description ?? ''}
+                  placeholder="e.g. Eid campaign, influencer batch 3"
                   style={inp}
                 />
               </div>

@@ -170,7 +170,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <a href="#main" className="skip-link">Skip to main content</a>
         <DemoBanner />
         <ConsentBanner />
-        <NewsletterModal discountPct={welcomeOffer.pct} />
+        <NewsletterModal discountPct={welcomeOffer ? welcomeOffer.pct : null} />
         <GoogleAnalytics measurementId={gaMeasurementId} />
         <MetaPixel />
         <AttributionCapture />

@@ -2,6 +2,7 @@
 
 import { createHash, timingSafeEqual } from 'crypto';
 import { cookies, headers } from 'next/headers';
+import { after } from 'next/server';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
@@ -151,8 +152,18 @@ export async function loginStaff(
   }
 
   await setStaffCookie(data.id, (data.session_epoch as number | null) ?? 0);
-  // Best-effort sign-in stamp for the Team page's "Last sign-in" column.
-  void supabaseAdmin().from('staff_members').update({ last_login_at: new Date().toISOString() }).eq('id', data.id).then(() => {});
+  // Sign-in stamp for the Team page's "Last sign-in" column. Via after():
+  // a bare fire-and-forget promise here was frozen with the lambda when the
+  // redirect below ended the response, so the write never landed and every
+  // staff member showed "Never" — after() keeps the function alive until the
+  // callback settles, without delaying the login itself.
+  after(async () => {
+    const { error } = await supabaseAdmin()
+      .from('staff_members')
+      .update({ last_login_at: new Date().toISOString() })
+      .eq('id', data.id);
+    if (error) log.warn('staff.last_login_stamp_failed', { staff_id: data.id, error: error.message });
+  });
 
   // Owner-issued temporary password? Route straight to the change-password
   // form before anything else.

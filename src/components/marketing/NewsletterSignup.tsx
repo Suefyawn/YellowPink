@@ -35,6 +35,11 @@ export function NewsletterSignup({
   const inputColor = isLight ? 'var(--ink-900)' : 'var(--paper)';
 
   if (success) {
+    // The live welcome offer comes back with the action result (server-side
+    // coupon read), so this copy always matches what checkout will actually
+    // accept — no hardcoded code/percentage to drift, and no discount promise
+    // at all when the owner has deactivated the welcome coupon.
+    const offer = 'offer' in state ? state.offer : null;
     return (
       <div
         role="status"
@@ -50,9 +55,15 @@ export function NewsletterSignup({
           lineHeight: 1.5,
         }}
       >
-        Thanks, you&apos;re on the list. Use code{' '}
-        <strong style={{ letterSpacing: '0.04em' }}>WELCOME10</strong> for 10% off
-        your first order over PKR 1,500.
+        {offer ? (
+          <>
+            Thanks, you&apos;re on the list. Use code{' '}
+            <strong style={{ letterSpacing: '0.04em' }}>{offer.code}</strong> for {offer.pct}% off
+            your first order{offer.minOrder > 0 ? ` over PKR ${offer.minOrder.toLocaleString()}` : ''}.
+          </>
+        ) : (
+          <>Thanks, you&apos;re on the list. Your first edit lands within a fortnight.</>
+        )}
       </div>
     );
   }

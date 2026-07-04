@@ -1,10 +1,20 @@
 'use client';
-import { startTransition, useActionState, useEffect, useState } from 'react';
+import { startTransition, useActionState, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { createBlogPost, updateBlogPost } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
 import { SubmitToIndexButton } from './IndexingButtons';
+import { suggestReviewer } from '@/lib/reviewer-match';
 import type { BlogPost } from '@/types';
+
+export interface BlogFormReviewer {
+  id: string;
+  name: string;
+  specialty: string | null;
+  review_topics: string[];
+  is_default: boolean;
+  active: boolean;
+}
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -40,7 +50,7 @@ const lbl: React.CSSProperties = {
   fontWeight: 600, color: '#374151', marginBottom: 5,
 };
 
-export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?: { id: string; name: string; specialty: string | null }[] }) {
+export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?: BlogFormReviewer[] }) {
   const isEdit = Boolean(post);
   const boundAction = isEdit ? updateBlogPost.bind(null, post!.id) : createBlogPost;
   const [state, action, pending] = useActionState(boundAction, null);
@@ -59,6 +69,18 @@ export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?
   const [title, setTitle] = useState(post?.title ?? '');
   const [slug, setSlug] = useState(post?.slug ?? '');
   const [imageUrl] = useState(post?.image_url ?? '');
+
+  // Category + reviewer are controlled so the reviewer suggestion can react
+  // to the category choice and "Use suggestion" can set the picker.
+  const [category, setCategory] = useState(post?.category ?? '');
+  const [reviewerId, setReviewerId] = useState((post as { reviewer_id?: string | null } | undefined)?.reviewer_id ?? '');
+
+  // Live specialty-match against the review board (same scorer the bulk
+  // assignment page uses). Purely a hint — staff still choose.
+  const suggestion = useMemo(() => {
+    if (!category || reviewers.length === 0) return null;
+    return suggestReviewer({ title, category }, reviewers);
+  }, [title, category, reviewers]);
 
   return (
     <div style={{ padding: '32px 36px' }}>
@@ -126,7 +148,7 @@ export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?
           <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div>
               <label style={lbl}>Category *</label>
-              <select name="category" required defaultValue={post?.category ?? ''} style={inp}>
+              <select name="category" required value={category} onChange={e => setCategory(e.target.value)} style={inp}>
                 <option value="" disabled>Choose a category</option>
                 {BLOG_CATEGORIES.map(c => (
                   <option key={c} value={c}>{c}</option>
@@ -160,12 +182,34 @@ export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?
           {/* Medical reviewer (E-E-A-T), assign a board doctor to health posts. */}
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Medically reviewed by</label>
-            <select name="reviewer_id" defaultValue={(post as { reviewer_id?: string | null } | undefined)?.reviewer_id ?? ''} style={inp}>
+            <select name="reviewer_id" value={reviewerId ?? ''} onChange={e => setReviewerId(e.target.value)} style={inp}>
               <option value="">— None —</option>
               {reviewers.map(r => (
                 <option key={r.id} value={r.id}>{r.name}{r.specialty ? ` · ${r.specialty}` : ''}</option>
               ))}
             </select>
+            {suggestion && suggestion.reviewerId !== reviewerId && (
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+                marginTop: 6, padding: '8px 12px', background: '#fdf2f8',
+                border: '1px solid #fbcfe8', borderRadius: 7, fontSize: '0.8125rem', color: '#9d174d',
+              }}>
+                <span>
+                  Suggested: <strong>{suggestion.reviewerName}</strong>
+                  <span style={{ color: '#be185d', opacity: 0.8 }}> — {suggestion.reason}</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setReviewerId(suggestion.reviewerId)}
+                  style={{
+                    padding: '3px 10px', borderRadius: 6, border: '1px solid #f9a8d4',
+                    background: 'white', color: '#9d174d', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  Use suggestion
+                </button>
+              </div>
+            )}
             <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'block' }}>
               For health/supplement posts, assign a real doctor from your <a href="/admin/reviewers" style={{ color: '#9d174d' }}>Review Board</a> who has reviewed it. Adds a &ldquo;Medically reviewed by&rdquo; byline + schema. Only assign if they genuinely reviewed it.
             </span>

@@ -9,6 +9,7 @@
 // internal infra write that doesn't belong to a Supabase Auth user.
 
 import { headers } from 'next/headers';
+import { after } from 'next/server';
 import { supabaseAdmin } from './supabase';
 import { ipFromHeaders } from './ratelimit';
 import type { StaffSession } from './permissions';
@@ -26,7 +27,7 @@ export async function logAudit(session: StaffSession | null, event: AuditEvent):
     const ip = ipFromHeaders(h);
     const ua = h.get('user-agent') ?? null;
 
-    await supabaseAdmin().from('audit_log').insert({
+    const row = {
       actor_kind:  session?.isOwner ? 'owner' : session ? 'staff' : 'system',
       actor_id:    session?.id ?? null,
       actor_email: session?.email ?? null,
@@ -36,7 +37,25 @@ export async function logAudit(session: StaffSession | null, event: AuditEvent):
       diff:        event.diff ?? null,
       ip,
       user_agent:  ua,
-    });
+    };
+
+    const insert = async () => {
+      try {
+        await supabaseAdmin().from('audit_log').insert(row);
+      } catch { /* audit logging must never throw */ }
+    };
+
+    // Call sites fire this without awaiting (`void logAudit(...)`) right
+    // before a redirect/return; on Vercel the lambda freezes with the
+    // response and an un-awaited insert could be dropped. after() keeps the
+    // function alive until the callback settles, so every audit row lands
+    // without the mutation waiting on it. Falls back to a direct await when
+    // there's no request scope to attach to (e.g. cron/scripts).
+    try {
+      after(insert);
+    } catch {
+      await insert();
+    }
   } catch {
     // intentional: audit logging must never throw.
   }

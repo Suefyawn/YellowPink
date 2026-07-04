@@ -153,7 +153,12 @@ export default async function ReviewersPage({ searchParams }: { searchParams?: P
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 1000 }}>
       <AdminFlash message={sp.saved ?? sp.error} type={sp.error ? 'error' : 'success'} clearPath="/admin/reviewers" />
-      <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Medical Review Board</h1>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
+        <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Medical Review Board</h1>
+        <Link href="/admin/reviewers/assignments" style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#9d174d', textDecoration: 'none' }}>
+          Article assignments →
+        </Link>
+      </div>
       <p style={{ margin: '8px 0 28px', fontSize: '0.875rem', color: '#6b7280', maxWidth: 720 }}>
         Real, qualified doctors who medically review your health/supplement content. They appear on the
         public <Link href="/medical-review-board" style={{ color: '#9d174d', fontWeight: 600 }}>review board</Link> and

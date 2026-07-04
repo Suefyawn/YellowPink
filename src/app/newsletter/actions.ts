@@ -7,6 +7,7 @@ import { supabase, isDemo } from '@/lib/supabase';
 import { newsletterLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { log } from '@/lib/logger';
 import { sendNewsletterWelcomeEmail } from '@/lib/email';
+import { getWelcomeOffer, type WelcomeOffer } from '@/lib/offers';
 
 // Newsletter signup server action, wired into the footer form, post-purchase
 // opt-in, and the timed / exit-intent modal.
@@ -27,7 +28,10 @@ const SignupSchema = z.object({
 });
 
 export type NewsletterState =
-  | { ok: true; email: string }
+  // `offer` is the LIVE welcome coupon at signup time (null when the owner has
+  // deactivated it) so every signup surface renders the real code/percentage
+  // from one server-side source instead of hardcoding WELCOME10 copy.
+  | { ok: true; email: string; offer: WelcomeOffer | null }
   | { ok: false; error: string }
   | null;
 
@@ -41,8 +45,9 @@ export async function subscribeToNewsletter(
     return { ok: false, error: 'Please enter a valid email address.' };
   }
   const { email, source, website } = parsed.data;
+  const offer = await getWelcomeOffer();
   // Honeypot tripped, silent success so the bot moves on without learning anything.
-  if (website) return { ok: true, email };
+  if (website) return { ok: true, email, offer };
 
   const hdrs = await headers();
   const ip = ipFromHeaders(hdrs);
@@ -58,7 +63,7 @@ export async function subscribeToNewsletter(
     // Even in demo mode, fire the welcome email, it's how the merchant
     // verifies the template + Resend wiring before going live.
     after(() => sendNewsletterWelcomeEmail({ email, source }));
-    return { ok: true, email };
+    return { ok: true, email, offer };
   }
 
   try {
@@ -75,7 +80,7 @@ export async function subscribeToNewsletter(
       // Already subscribed, silently treat as success. We deliberately don't
       // send a second welcome email here so re-submitting the form (e.g. from
       // a different page) doesn't double-mail them.
-      return { ok: true, email };
+      return { ok: true, email, offer };
     }
     if (error) {
       log.error('newsletter.insert_failed', { error: error.message });
@@ -89,7 +94,7 @@ export async function subscribeToNewsletter(
     // webhook handler. `after()` guarantees the work runs to completion
     // without blocking the user-facing response.
     after(() => sendNewsletterWelcomeEmail({ email: normalisedEmail, source }));
-    return { ok: true, email };
+    return { ok: true, email, offer };
   } catch (err) {
     log.error('newsletter.unexpected', { error: (err as Error).message });
     return { ok: false, error: 'Something went wrong. Please try again.' };

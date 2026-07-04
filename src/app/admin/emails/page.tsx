@@ -1,12 +1,14 @@
 export const dynamic = 'force-dynamic';
 
-import Link from 'next/link';
+import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { DotChip } from '@/components/admin/OrderChips';
 import { Pagination } from '@/components/admin/Pagination';
+import { ViewTabs } from '@/components/admin/ViewTabs';
+import { EmailFilters } from '@/components/admin/EmailFilters';
 import { PK_TZ } from '@/lib/dates';
 
 const fmtDateTime = (s: string) =>
@@ -50,15 +52,16 @@ const FILTERS = [
 export default async function EmailLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; kind?: string; page?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('system_tools'))) {
     return <NoAccess section="Email log" />;
   }
 
-  const { status, page } = await searchParams;
+  const { status, q = '', kind = '', page } = await searchParams;
   const activeFilter = FILTERS.some(f => f.key === status) ? status! : 'all';
+  const search = q.trim();
   const PAGE_SIZE = 50;
   const currentPage = Math.max(1, parseInt(page ?? '1', 10) || 1);
   const from = (currentPage - 1) * PAGE_SIZE;
@@ -69,22 +72,53 @@ export default async function EmailLogPage({
   // eslint-disable-next-line react-hooks/purity
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+  // Shared q/kind filters, applied to the list AND the status-tab counts so
+  // the tab numbers always reconcile with the list they switch to.
+  const applyFilters = <T,>(query: T): T => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let qb = query as any;
+    if (kind) qb = qb.eq('kind', kind);
+    if (search) {
+      const term = search.replace(/[,()]/g, ' ').trim();
+      qb = qb.or(`recipient.ilike.%${term}%,subject.ilike.%${term}%`);
+    }
+    return qb as T;
+  };
+
   // Paginated so one newsletter-import burst can't push older log rows past a
   // hard cap and off the UI entirely (the whole page also stopped scrolling
   // sanely at ~72,000px tall on mobile).
-  let listQuery = admin
-    .from('email_log')
-    .select('id, recipient, subject, kind, status, error, delivered_at, opened_at, clicked_at, bounced_at, complained_at, created_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(from, from + PAGE_SIZE - 1);
+  let listQuery = applyFilters(
+    admin
+      .from('email_log')
+      .select('id, recipient, subject, kind, status, error, delivered_at, opened_at, clicked_at, bounced_at, complained_at, created_at', { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(from, from + PAGE_SIZE - 1),
+  );
   if (activeFilter !== 'all') listQuery = listQuery.eq('status', activeFilter);
 
-  const [{ data: rows, count: totalRows }, sent30, failed30, opened30] = await Promise.all([
+  const countFor = (key: string) => {
+    let cq = applyFilters(admin.from('email_log').select('id', { count: 'exact', head: true }));
+    if (key !== 'all') cq = cq.eq('status', key);
+    return cq;
+  };
+
+  const [{ data: rows, count: totalRows }, sent30, failed30, opened30, ...tabCounts] = await Promise.all([
     listQuery,
     admin.from('email_log').select('id', { count: 'exact', head: true }).eq('status', 'sent').gte('created_at', thirtyDaysAgo),
     admin.from('email_log').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', thirtyDaysAgo),
     admin.from('email_log').select('id', { count: 'exact', head: true }).not('opened_at', 'is', null).gte('created_at', thirtyDaysAgo),
+    ...FILTERS.map(f => countFor(f.key)),
   ]);
+  const countByTab = new Map(FILTERS.map((f, i) => [f.key, tabCounts[i].count ?? 0]));
+
+  const tabHref = (key: string) => {
+    const p = new URLSearchParams();
+    if (key !== 'all') p.set('status', key);
+    if (search) p.set('q', search);
+    if (kind) p.set('kind', kind);
+    return p.toString() ? `/admin/emails?${p}` : '/admin/emails';
+  };
 
   const emails = (rows ?? []) as EmailRow[];
   const sentCount = sent30.count ?? 0;
@@ -111,30 +145,23 @@ export default async function EmailLogPage({
           hint={sentCount === 0 ? 'Shows once emails have been sent' : undefined} />
       </div>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {FILTERS.map(f => {
-          const on = f.key === activeFilter;
-          return (
-            <Link
-              key={f.key}
-              href={f.key === 'all' ? '/admin/emails' : `/admin/emails?status=${f.key}`}
-              style={{
-                padding: '6px 13px', borderRadius: 16, fontSize: '0.75rem', fontWeight: 600,
-                textDecoration: 'none', border: 'none',
-                background: on ? '#111827' : '#f3f4f6',
-                color: on ? '#fff' : '#6b7280',
-              }}
-            >
-              {f.label}
-            </Link>
-          );
-        })}
-      </div>
+      {/* Saved-view tabs — shared underline grammar with counts that respect
+          the active search/type filters. */}
+      <ViewTabs
+        active={activeFilter}
+        tabs={FILTERS.map(f => ({
+          value: f.key, label: f.label, count: countByTab.get(f.key) ?? 0, href: tabHref(f.key),
+        }))}
+      />
+
+      <Suspense fallback={null}>
+        <EmailFilters />
+      </Suspense>
 
       <div style={{ background: 'white', borderRadius: 12, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)', overflow: 'hidden' }}>
         {emails.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            No emails logged yet.
+            {search || kind || activeFilter !== 'all' ? 'No emails match this filter.' : 'No emails logged yet.'}
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
