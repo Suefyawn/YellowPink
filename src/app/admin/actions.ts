@@ -7,7 +7,7 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
 import {
   verifyPassword, upgradeStaffHash,
-  setStaffCookie, clearStaffCookie,
+  setStaffCookie, clearStaffCookie, getStaffSession,
 } from '@/lib/staff-auth';
 import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { fetchAll } from '@/lib/fetch-all';
@@ -19,6 +19,8 @@ import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/index
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { log } from '@/lib/logger';
 import { verifyTotp } from '@/lib/totp';
+import { adminHomeFor } from '@/lib/admin-nav';
+import { sanitizePermissions, canAny } from '@/lib/permissions';
 import { orderRangeSinceIso } from '@/lib/order-range';
 import { attributeOrderEvents } from '@/lib/order-events';
 import { sendStatusTransitionEmail, sendStatusTransitionEmails } from '@/lib/order-status-emails';
@@ -85,7 +87,7 @@ export async function loginStaff(
 
   const { data } = await supabaseAdmin()
     .from('staff_members')
-    .select('id, password_hash, password_salt, is_active, totp_enabled, totp_secret, backup_codes')
+    .select('id, name, password_hash, password_salt, is_active, totp_enabled, totp_secret, backup_codes, permissions, role_id, session_epoch, must_change_password, roles(name, permissions)')
     .eq('email', email)
     .single();
 
@@ -148,8 +150,23 @@ export async function loginStaff(
     if (!codeIsTotp && !codeIsBackup) return { error: 'Invalid 2FA code' };
   }
 
-  await setStaffCookie(data.id);
-  redirect('/admin/dashboard');
+  await setStaffCookie(data.id, (data.session_epoch as number | null) ?? 0);
+  // Best-effort sign-in stamp for the Team page's "Last sign-in" column.
+  void supabaseAdmin().from('staff_members').update({ last_login_at: new Date().toISOString() }).eq('id', data.id).then(() => {});
+
+  // Owner-issued temporary password? Route straight to the change-password
+  // form before anything else.
+  if (data.must_change_password) redirect('/admin/profile?pw=1');
+
+  // Land on the first admin section this member can actually see —
+  // support/inventory staff without analytics used to be hard-sent to
+  // /admin/dashboard and greeted with "Access Restricted" on every login.
+  const role = (Array.isArray(data.roles) ? data.roles[0] : data.roles) as { name: string; permissions: string[] } | null | undefined;
+  redirect(adminHomeFor({
+    id: data.id, email, name: (data.name as string | null) ?? email,
+    permissions: sanitizePermissions((role ? role.permissions : data.permissions) ?? []),
+    isOwner: false, roleId: (data.role_id as string | null) ?? null, roleName: role?.name ?? null,
+  }));
 }
 
 export async function logoutAdmin() {
@@ -423,7 +440,12 @@ export async function updateBlogPost(
  *  channels. Called from the "Submit to index" buttons on the product/blog
  *  forms. Returns a human-readable per-channel summary for a toast. */
 export async function requestIndexing(path: string): Promise<{ ok: boolean; message: string }> {
-  await assertPermission('products.edit');
+  // Whoever can publish the content can submit it: product/blog editors hit
+  // this from their forms, the Indexing tool via system_tools.
+  {
+    const session = await getStaffSession();
+    if (!canAny(session, ['system_tools', 'products.edit', 'blog'])) throw new Error('Unauthorized');
+  }
   const result = await submitToSearchEngines([path]);
   if (result.submitted.length === 0) return { ok: false, message: 'No valid URL to submit.' };
   const parts = result.results.map(r => {
@@ -439,7 +461,7 @@ export async function requestIndexing(path: string): Promise<{ ok: boolean; mess
  *  Google is intentionally skipped here, its publish quota (~200/day) is too
  *  small for a full-site resubmit; auto-on-publish covers Google per-item. */
 export async function resubmitAllUrls(): Promise<{ ok: boolean; message: string }> {
-  await assertPermission('products.edit');
+  await assertPermission('system_tools');
   const admin = supabaseAdmin();
   const [{ data: prods }, { data: posts }] = await Promise.all([
     admin.from('products').select('slug').eq('status', 'published'),

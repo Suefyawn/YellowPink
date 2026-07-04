@@ -12,7 +12,7 @@ export default async function Page() {
 
   const { data } = await supabaseAdmin()
     .from('staff_members')
-    .select('totp_enabled')
+    .select('totp_enabled, must_change_password')
     .eq('id', session.id)
     .maybeSingle();
 
@@ -21,6 +21,7 @@ export default async function Page() {
       name={session.name}
       email={session.email}
       twoFaEnabled={Boolean(data?.totp_enabled)}
+      mustChangePassword={Boolean(data?.must_change_password)}
     />
   );
 }

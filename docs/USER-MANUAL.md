@@ -576,20 +576,36 @@ the Activity log.
 
 ## 5. Team, roles & permissions
 
-The **owner** has unrestricted access. Everyone else is a **staff member** with
-a login, managed under **Team** (owner only).
+The **owner** has unrestricted access (and appears pinned at the top of the
+Members list — the owner signs in with the store admin password, not a staff
+account). Everyone else is a **staff member** with a login, managed under
+**Team** (owner only). The page has two tabs: **Members** and **Roles**.
 
-- Each staff member is given a **role** — a named bundle of permissions (for
-  example a support role, a marketing role, an inventory role) — or a custom
-  set of permissions chosen individually.
-- **Permissions** decide which admin sections that person can open. A staff
-  member only sees the sections their permissions allow; anything else shows an
-  "Access restricted" page.
-- Deactivating a staff member blocks their login while keeping their history in
-  the activity log.
+- Each staff member is given a **role** — a named bundle of permissions — or a
+  custom set of permissions chosen individually. The permission checklist is
+  grouped exactly like the admin sidebar (Insights / Sell / Catalogue /
+  Customers / Marketing / System) and each permission lists which sidebar
+  sections it unlocks, so what you tick is what they see.
+- **Built-in roles** now do exactly what their descriptions say: **Manager**
+  (everything except Finance, Settings and System tools), **Customer support**
+  (view/manage orders, view customers, returns, messages — no deletes),
+  **Inventory** (view/edit products, no deletes), **Marketer** (blog,
+  newsletter, coupons, reviews, sales + traffic analytics).
+- The Members list shows each person's **2FA** status and **last sign-in**.
+  After signing in, staff land on the first section they can actually open —
+  not on a restricted dashboard.
+- **Reset Password** signs the person out everywhere immediately and issues a
+  temporary password they must replace at their next login. **Reset 2FA**
+  (shown when they have 2FA on) clears their authenticator so they can re-enrol
+  — use it when a phone is lost. **Deactivate** blocks their login instantly
+  while keeping their history in the activity log.
+- Deleting a role never strips anyone's access: members holding it keep the
+  same permissions as a "Custom" set. The Roles tab shows how many members each
+  role has before you touch it.
 
 To add someone: **Team → Add Staff Member**, enter their name and email, pick a
-role, and save. They receive a temporary password to sign in with and change.
+role, and save. They receive a temporary password to sign in with; they're
+required to set their own password on first login.
 
 ---
 
@@ -884,6 +900,7 @@ A dated history of user-facing changes, newest first.
 
 ### 4 July 2026
 
+- **Team & access roles revamped** — the Team page now has **Members** and **Roles** tabs. Members show their **2FA status** and **last sign-in**; the owner account is pinned at the top so it's visible. **Reset Password now signs the person out everywhere instantly** (previously their live session survived up to 10 hours) and forces them to set a new password at next login; a new **Reset 2FA** button un-locks a staffer who lost their phone. Built-in roles were corrected to match their descriptions — *Customer support* no longer silently carries delete rights and now includes Messages. The permission checklist mirrors the sidebar exactly and each permission says which sections it unlocks. Two new permissions: **Vendors** (vendor money no longer rides on order permissions) and **System tools** (Email log / Broken links / Indexing, no longer bundled with Settings) — everyone who had access yesterday still has it. Deleting a role keeps its members' access instead of stripping them to nothing, and staff now land on a page they can actually open after login instead of a restricted dashboard.
 - **Payment options can't dead-end customers anymore** — checkout now offers JazzCash, Easypaisa and Card **only when the gateway is actually configured**; previously a ticked-but-unconfigured method let a customer pick it and then fail at payment. Settings → Payments shows a live status chip next to each gateway method ("Gateway configured" / "Not configured — hidden at checkout") so you can see at a glance why a method isn't appearing.
 - **Customers page money now matches Analytics/Segments** — order counts and "Spent" on the Customers list (and its CSV export) previously counted cancelled and unpaid gateway orders and full refunded totals, overstating spend; they now use the same rule as everywhere else (cancelled/unpaid excluded, refunds count as zero).
 - **Admin search boxes no longer swallow typing** — pausing mid-search (e.g. typing a name, stopping, then continuing) on Orders, Products, Reviews, Messages, Inventory, Customers, Blog, Indexing or Broken links used to silently drop the rest of what you typed; search fields now keep focus and your text.

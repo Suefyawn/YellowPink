@@ -52,7 +52,7 @@ export default async function EmailLogPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const session = await getStaffSession();
-  if (!session || (!session.isOwner && !session.permissions.includes('settings'))) {
+  if (!session || (!session.isOwner && !session.permissions.includes('system_tools'))) {
     return <NoAccess section="Email log" />;
   }
 

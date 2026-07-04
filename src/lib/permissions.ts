@@ -6,97 +6,113 @@
 //
 // Adding a permission:
 //   1. Append to the Permission union + ALL_PERMISSIONS
-//   2. Add an entry to PERMISSION_META (label, icon, group, description)
-//   3. Use `can(session, 'new_perm')` at the call-site
+//   2. Add an entry to PERMISSION_META (label, group, description)
+//   3. Gate the page/action with `can(session, 'new_perm')` and, if it has a
+//      sidebar entry, reference it in lib/admin-nav.ts — the Team checklist's
+//      "Unlocks:" line is generated from that table.
 
 export type Permission =
-  // ── Commerce, orders / products / customers are split into view·edit·delete
-  //    so e.g. a support agent can read orders without being able to refund or
-  //    cancel them. coupons / returns stay single per-resource permissions. ──
-  | 'orders.view'
-  | 'orders.edit'
-  | 'orders.delete'
-  | 'products.view'
-  | 'products.edit'
-  | 'products.delete'
-  | 'customers.view'
-  | 'customers.edit'
-  | 'customers.delete'
-  | 'coupons'
-  | 'returns'
-
-  // ── Content + marketing ──
-  | 'blog'
-  | 'reviews'
-  | 'newsletter'
-  | 'messages'
-
-  // ── Analytics & monitoring (split so a marketer can see traffic without
-  //    seeing Sentry stack traces, and vice-versa) ──
-  | 'analytics'             // overview dashboard + revenue chart + top products
+  // ── Insights ──
+  | 'analytics'             // Analytics page + Dashboard insights widgets
   | 'analytics_traffic'     // PostHog widgets: funnel, top pages/events, referrers
   | 'analytics_errors'      // Sentry widgets: trend, issues, top routes
   | 'analytics_refresh'     // can hit the "Refresh analytics" button
-  | 'finance'               // P&L, expenses, profit margins, COD cash reconciliation
+  | 'finance'               // P&L, expenses, margins, COD cash reconciliation
 
-  // ── Store admin ──
-  | 'settings';             // store settings (shipping, tax, store info)
+  // ── Sell — orders / products / customers are split into view·edit·delete so
+  //    e.g. a support agent can read orders without being able to refund or
+  //    cancel them ──
+  | 'orders.view'
+  | 'orders.edit'
+  | 'orders.delete'
+  | 'returns'
+  | 'vendors'               // vendor directory, rates and settlements
+
+  // ── Catalogue ──
+  | 'products.view'
+  | 'products.edit'
+  | 'products.delete'
+
+  // ── Customers ──
+  | 'customers.view'
+  | 'customers.edit'
+  | 'customers.delete'
+  | 'messages'
+  | 'reviews'
+
+  // ── Marketing ──
+  | 'coupons'
+  | 'blog'
+  | 'newsletter'
+
+  // ── System ──
+  | 'settings'              // store settings (shipping, payments, notifications…)
+  | 'system_tools';         // Email log, Broken links, Indexing
 
 export const ALL_PERMISSIONS: Permission[] = [
-  'orders.view', 'orders.edit', 'orders.delete',
+  'analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh', 'finance',
+  'orders.view', 'orders.edit', 'orders.delete', 'returns', 'vendors',
   'products.view', 'products.edit', 'products.delete',
-  'customers.view', 'customers.edit', 'customers.delete',
-  'coupons', 'returns',
-  'blog', 'reviews', 'newsletter', 'messages',
-  'analytics', 'analytics_traffic', 'analytics_errors', 'analytics_refresh',
-  'finance',
-  'settings',
+  'customers.view', 'customers.edit', 'customers.delete', 'messages', 'reviews',
+  'coupons', 'blog', 'newsletter',
+  'settings', 'system_tools',
 ];
 
-export type PermissionGroup = 'commerce' | 'content' | 'analytics' | 'store';
+// Groups mirror the admin sidebar 1:1 (Insights / Sell / Catalogue /
+// Customers / Marketing / System) so the Team checklist reads like the nav.
+export type PermissionGroup = 'insights' | 'sell' | 'catalogue' | 'customers' | 'marketing' | 'system';
 
 export const PERMISSION_META: Record<Permission, {
   label: string;
-  icon: string;
   desc: string;
   group: PermissionGroup;
 }> = {
-  // Commerce
-  'orders.view':     { label: 'Orders, View',     icon: '◎', desc: 'View customer orders and their details.',                          group: 'commerce' },
-  'orders.edit':     { label: 'Orders, Manage',   icon: '◎', desc: 'Update status, fulfil, confirm, and dispatch orders; manage vendors.', group: 'commerce' },
-  'orders.delete':   { label: 'Orders, Delete',   icon: '◎', desc: 'Delete vendor records and other order-related data.',               group: 'commerce' },
-  'products.view':   { label: 'Products, View',   icon: '◈', desc: 'Browse the product catalogue and stock levels.',                    group: 'commerce' },
-  'products.edit':   { label: 'Products, Edit',   icon: '◈', desc: 'Create and edit products, variants, and stock.',                     group: 'commerce' },
-  'products.delete': { label: 'Products, Delete', icon: '◈', desc: 'Delete products from the catalogue.',                                group: 'commerce' },
-  'customers.view':   { label: 'Customers, View',   icon: '◉', desc: 'View customer accounts and segment lists.',                        group: 'commerce' },
-  'customers.edit':   { label: 'Customers, Edit',   icon: '◉', desc: 'Edit customer account details.',                                   group: 'commerce' },
-  'customers.delete': { label: 'Customers, Delete', icon: '◉', desc: 'Delete customer accounts.',                                        group: 'commerce' },
-  coupons:   { label: 'Coupons',    icon: '◇', desc: 'Issue and manage discount codes.',             group: 'commerce' },
-  returns:   { label: 'Returns',    icon: '↩', desc: 'Approve / reject customer return requests.',   group: 'commerce' },
+  // Insights
+  analytics:         { label: 'Overview analytics', desc: 'Sales/customer analytics tabs, revenue chart, top products.', group: 'insights' },
+  analytics_traffic: { label: 'Traffic insights',   desc: 'Traffic & funnel tabs: pageviews, conversion funnel, top pages, referrers.', group: 'insights' },
+  analytics_errors:  { label: 'Error monitoring',   desc: 'Sentry widgets: error trend, unresolved issues, top affected URLs.', group: 'insights' },
+  analytics_refresh: { label: 'Refresh analytics',  desc: 'Trigger a manual analytics data refresh.', group: 'insights' },
+  finance:           { label: 'Finance & reports',  desc: 'Profit & loss, expenses, margins, COD cash reconciliation. Sensitive financial data.', group: 'insights' },
 
-  // Content + marketing
-  blog:    { label: 'Blog',    icon: '✦', desc: 'Write and publish editorial posts.',                group: 'content' },
-  reviews: { label: 'Reviews', icon: '★', desc: 'Moderate, reply to, and feature customer reviews.', group: 'content' },
-  newsletter: { label: 'Newsletter', icon: '✉', desc: 'Compose and send the email newsletter to subscribers.', group: 'content' },
-  messages: { label: 'Messages', icon: '◫', desc: 'Read and manage customer contact-form messages.', group: 'content' },
+  // Sell
+  'orders.view':   { label: 'Orders, View',   desc: 'View customer orders and their details.', group: 'sell' },
+  'orders.edit':   { label: 'Orders, Manage', desc: 'Update status, fulfil, confirm, dispatch; assign an order to a vendor.', group: 'sell' },
+  'orders.delete': { label: 'Orders, Delete', desc: 'Delete orders.', group: 'sell' },
+  returns:         { label: 'Returns',        desc: 'Approve / reject customer return requests.', group: 'sell' },
+  vendors:         { label: 'Vendors',        desc: 'Manage the vendor directory, rates, and settlements (money owed to/by vendors).', group: 'sell' },
 
-  // Analytics
-  analytics:           { label: 'Overview analytics', icon: '▣', desc: 'Revenue chart, orders-by-status, top products, low-stock alerts.', group: 'analytics' },
-  analytics_traffic:   { label: 'Traffic insights',   icon: '▦', desc: 'PostHog stats: pageviews, conversion funnel, top pages, top events, referrers.', group: 'analytics' },
-  analytics_errors:    { label: 'Error monitoring',   icon: '⚠', desc: 'Sentry stats: error trend, unresolved issues, top affected URLs. Receives Sentry notifications.', group: 'analytics' },
-  analytics_refresh:   { label: 'Refresh analytics',  icon: '⟳', desc: 'Trigger a manual PostHog + Sentry data refresh.', group: 'analytics' },
-  finance:             { label: 'Finance & reports',  icon: '▤', desc: 'Profit & loss, expenses, margins, and COD cash reconciliation. Sensitive financial data.', group: 'analytics' },
+  // Catalogue
+  'products.view':   { label: 'Products, View',   desc: 'Browse the catalogue, stock levels, collections, brands and tags.', group: 'catalogue' },
+  'products.edit':   { label: 'Products, Edit',   desc: 'Create and edit products, variants, stock, collections, brands and tags.', group: 'catalogue' },
+  'products.delete': { label: 'Products, Delete', desc: 'Delete products from the catalogue.', group: 'catalogue' },
 
-  // Store admin
-  settings: { label: 'Store settings', icon: '⚙', desc: 'Edit store profile, shipping zones, tax rules, email templates.', group: 'store' },
+  // Customers
+  'customers.view':   { label: 'Customers, View',   desc: 'View customer accounts and segment lists.', group: 'customers' },
+  'customers.edit':   { label: 'Customers, Edit',   desc: 'Edit customer account details.', group: 'customers' },
+  'customers.delete': { label: 'Customers, Delete', desc: 'Delete customer accounts.', group: 'customers' },
+  messages: { label: 'Messages', desc: 'Read and manage customer contact-form messages.', group: 'customers' },
+  reviews:  { label: 'Reviews',  desc: 'Moderate, reply to, and feature customer reviews.', group: 'customers' },
+
+  // Marketing
+  coupons:    { label: 'Coupons',    desc: 'Issue and manage discount codes.', group: 'marketing' },
+  blog:       { label: 'Blog',       desc: 'Write and publish editorial posts; manage medical reviewers.', group: 'marketing' },
+  newsletter: { label: 'Newsletter', desc: 'Compose and send the email newsletter to subscribers.', group: 'marketing' },
+
+  // System
+  settings:     { label: 'Store settings', desc: 'Edit store profile, payments, shipping zones, notifications, integrations.', group: 'system' },
+  system_tools: { label: 'System tools',   desc: 'Email delivery log, broken-link triage, search-engine indexing tools.', group: 'system' },
 };
 
 export const GROUP_META: Record<PermissionGroup, { label: string; desc: string }> = {
-  commerce:  { label: 'Commerce',  desc: 'Customer-facing operations: orders, catalog, support.' },
-  content:   { label: 'Content & marketing', desc: 'Editorial, promos, social.' },
-  analytics: { label: 'Analytics & monitoring', desc: 'Dashboards, traffic data, error tracking.' },
-  store:     { label: 'Store admin', desc: 'Configuration and platform settings.' },
+  insights:  { label: 'Insights',  desc: 'Dashboards, analytics, finance.' },
+  sell:      { label: 'Sell',      desc: 'Orders, returns, vendors.' },
+  catalogue: { label: 'Catalogue', desc: 'Products, inventory, collections, brands, tags.' },
+  customers: { label: 'Customers', desc: 'Accounts, segments, messages, reviews.' },
+  marketing: { label: 'Marketing', desc: 'Coupons, blog, newsletter.' },
+  system:    { label: 'System',    desc: 'Settings and operational tools.' },
 };
+
+export const GROUPS_ORDER: PermissionGroup[] = ['insights', 'sell', 'catalogue', 'customers', 'marketing', 'system'];
 
 // ─── Session ────────────────────────────────────────────────────────────────
 export interface StaffSession {
@@ -127,24 +143,12 @@ export function canAny(session: StaffSession | null | undefined, permissions: Pe
   return permissions.some(p => session.permissions.includes(p));
 }
 
-// ─── Legacy permission expansion ────────────────────────────────────────────
-// The single-resource grants 'orders' / 'products' / 'customers' predate the
-// view·edit·delete split. Until migration 125 has expanded every roles row and
-// staff_members row, a stored permission set may still carry one, getStaffSession
-// runs every set through expandLegacyPermissions on read, so the rest of the app
-// only ever sees split tokens. Safe to delete once 125 has run everywhere.
-const LEGACY_PERMISSION_MAP: Record<string, Permission[]> = {
-  orders:    ['orders.view', 'orders.edit', 'orders.delete'],
-  products:  ['products.view', 'products.edit', 'products.delete'],
-  customers: ['customers.view', 'customers.edit', 'customers.delete'],
-};
-
-export function expandLegacyPermissions(permissions: string[]): Permission[] {
-  const out = new Set<Permission>();
-  for (const p of permissions) {
-    const expanded = LEGACY_PERMISSION_MAP[p];
-    if (expanded) for (const e of expanded) out.add(e);
-    else out.add(p as Permission);
-  }
-  return [...out];
+// Stored permission arrays are text[] in Postgres, drop anything that isn't a
+// live permission token (retired grants, typos) instead of carrying it into
+// the session. The legacy 'orders'/'products'/'customers' bundle tokens were
+// expanded by migration 125 and verified gone from prod, the expansion shim
+// that used to live here is retired.
+const VALID = new Set<string>(ALL_PERMISSIONS);
+export function sanitizePermissions(permissions: string[]): Permission[] {
+  return [...new Set(permissions.filter(p => VALID.has(p)))] as Permission[];
 }

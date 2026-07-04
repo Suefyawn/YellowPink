@@ -2,13 +2,14 @@
 import { useEffect, useMemo, useState, useActionState } from 'react';
 import {
   createStaffMember, updateStaffPermissions,
-  toggleStaffActive, resetStaffPassword, deleteStaffMember,
+  toggleStaffActive, resetStaffPassword, deleteStaffMember, resetStaff2fa,
 } from '@/app/admin/team/actions';
 import { createRole, updateRole, deleteRole } from '@/app/admin/team/role-actions';
 import {
-  ALL_PERMISSIONS, PERMISSION_META, GROUP_META,
+  ALL_PERMISSIONS, PERMISSION_META, GROUP_META, GROUPS_ORDER,
   type PermissionGroup,
 } from '@/lib/permissions';
+import { navUnlocksFor } from '@/lib/admin-nav';
 import type { Permission } from '@/lib/permissions';
 import { DotChip } from '@/components/admin/OrderChips';
 import { fmtDatePK } from '@/lib/dates';
@@ -21,6 +22,8 @@ interface Staff {
   is_active: boolean;
   created_at: string;
   role_id: string | null;
+  totp_enabled: boolean;
+  last_login_at: string | null;
 }
 
 interface Role {
@@ -63,8 +66,6 @@ const btn = (color = '#111827', ghost = false): React.CSSProperties => ({
 // Select all / Clear shortcuts. Used both for "Custom" staff members and for
 // defining a role's permission set.
 
-const GROUPS_ORDER: PermissionGroup[] = ['commerce', 'content', 'analytics', 'store'];
-
 function PermissionGrid({ selected, onChange }: {
   selected: Permission[];
   onChange: (p: Permission[]) => void;
@@ -74,7 +75,7 @@ function PermissionGrid({ selected, onChange }: {
 
   // Group the permission list once.
   const byGroup = useMemo(() => {
-    const map: Record<PermissionGroup, Permission[]> = { commerce: [], content: [], analytics: [], store: [] };
+    const map = Object.fromEntries(GROUPS_ORDER.map(g => [g, [] as Permission[]])) as unknown as Record<PermissionGroup, Permission[]>;
     for (const p of ALL_PERMISSIONS) map[PERMISSION_META[p].group].push(p);
     return map;
   }, []);
@@ -144,6 +145,12 @@ function PermissionGrid({ selected, onChange }: {
                         {label}
                       </div>
                       <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2, lineHeight: 1.45 }}>{desc}</div>
+                      {/* Generated from the sidebar nav table so checklist and nav can't drift. */}
+                      {navUnlocksFor(p).length > 0 && (
+                        <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 3 }}>
+                          Unlocks: {navUnlocksFor(p).join(', ')}
+                        </div>
+                      )}
                     </div>
                   </label>
                 );
@@ -241,7 +248,7 @@ function RoleModal({ role, onClose }: { role: Role | null; onClose: () => void }
 
 // ─── Roles panel ──────────────────────────────────────────────────────────────
 
-function RoleRow({ role, onEdit }: { role: Role; onEdit: () => void }) {
+function RoleRow({ role, memberCount, onEdit }: { role: Role; memberCount: number; onEdit: () => void }) {
   const [confirm, setConfirm] = useState(false);
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 20px', borderTop: '1px solid #f3f4f6' }}>
@@ -257,6 +264,14 @@ function RoleRow({ role, onEdit }: { role: Role; onEdit: () => void }) {
           <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>
             {role.permissions.length} permission{role.permissions.length === 1 ? '' : 's'}
           </span>
+          {/* Blast radius: who is affected if this role changes or goes away. */}
+          <span style={{
+            background: memberCount > 0 ? '#eef2ff' : '#f3f4f6',
+            color: memberCount > 0 ? '#6366f1' : '#9ca3af',
+            borderRadius: 10, padding: '1px 8px', fontSize: '0.6875rem', fontWeight: 600,
+          }}>
+            {memberCount} member{memberCount === 1 ? '' : 's'}
+          </span>
         </div>
         {role.description && (
           <div style={{ color: '#6b7280', fontSize: '0.75rem', marginTop: 2 }}>{role.description}</div>
@@ -268,13 +283,20 @@ function RoleRow({ role, onEdit }: { role: Role; onEdit: () => void }) {
           Delete
         </button>
       ) : confirm ? (
-        <form action={deleteRole} style={{ display: 'inline' }}>
-          <input type="hidden" name="id" value={role.id} />
-          <button type="submit" style={btn('#ef4444')}>Confirm</button>
-          <button type="button" style={{ ...btn('#6b7280', true), marginLeft: 6 }} onClick={() => setConfirm(false)}>
-            Cancel
-          </button>
-        </form>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          {memberCount > 0 && (
+            <span style={{ fontSize: '0.75rem', color: '#92400e' }}>
+              {memberCount} member{memberCount === 1 ? ' keeps' : 's keep'} this access as “Custom”.
+            </span>
+          )}
+          <form action={deleteRole} style={{ display: 'inline' }}>
+            <input type="hidden" name="id" value={role.id} />
+            <button type="submit" style={btn('#ef4444')}>Confirm</button>
+            <button type="button" style={{ ...btn('#6b7280', true), marginLeft: 6 }} onClick={() => setConfirm(false)}>
+              Cancel
+            </button>
+          </form>
+        </div>
       ) : (
         <button style={btn('#ef4444', true)} onClick={() => setConfirm(true)}>Delete</button>
       )}
@@ -282,7 +304,7 @@ function RoleRow({ role, onEdit }: { role: Role; onEdit: () => void }) {
   );
 }
 
-function RolesPanel({ roles }: { roles: Role[] }) {
+function RolesPanel({ roles, staff }: { roles: Role[]; staff: Staff[] }) {
   // null = list view, 'new' = create modal, Role = edit modal.
   const [editing, setEditing] = useState<Role | 'new' | null>(null);
 
@@ -315,7 +337,14 @@ function RolesPanel({ roles }: { roles: Role[] }) {
           </div>
         ) : (
           <div>
-            {roles.map(r => <RoleRow key={r.id} role={r} onEdit={() => setEditing(r)} />)}
+            {roles.map(r => (
+              <RoleRow
+                key={r.id}
+                role={r}
+                memberCount={staff.filter(s => s.role_id === r.id).length}
+                onEdit={() => setEditing(r)}
+              />
+            ))}
           </div>
         )
       )}
@@ -478,18 +507,31 @@ function EditStaffModal({ staff, roles, onClose }: { staff: Staff; roles: Role[]
       </form>
 
       <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 16 }}>
-        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 10 }}>
-          Password Reset
+        <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+          Account security
         </div>
-        <form action={resetAction}>
-          <input type="hidden" name="id" value={staff.id} />
-          {resetState && 'error' in resetState && (
-            <p style={{ color: '#ef4444', fontSize: '0.8125rem', marginBottom: 8 }}>{resetState.error}</p>
+        <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.5 }}>
+          Resetting the password signs them out everywhere and forces a new password at
+          next login. Reset 2FA clears their authenticator so they can re-enrol (use when
+          a phone is lost).
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <form action={resetAction}>
+            <input type="hidden" name="id" value={staff.id} />
+            {resetState && 'error' in resetState && (
+              <p style={{ color: '#ef4444', fontSize: '0.8125rem', marginBottom: 8 }}>{resetState.error}</p>
+            )}
+            <button type="submit" disabled={resetPending} style={btn('#f59e0b')}>
+              {resetPending ? 'Resetting…' : 'Reset Password'}
+            </button>
+          </form>
+          {staff.totp_enabled && (
+            <form action={resetStaff2fa}>
+              <input type="hidden" name="id" value={staff.id} />
+              <button type="submit" style={btn('#f59e0b', true)}>Reset 2FA</button>
+            </form>
           )}
-          <button type="submit" disabled={resetPending} style={btn('#f59e0b')}>
-            {resetPending ? 'Resetting…' : 'Reset Password'}
-          </button>
-        </form>
+        </div>
       </div>
     </div>
   );
@@ -505,7 +547,7 @@ function StaffRow({ staff, roles }: { staff: Staff; roles: Role[] }) {
   if (editing) {
     return (
       <tr>
-        <td colSpan={5} style={{ padding: 0 }}>
+        <td colSpan={6} style={{ padding: 0 }}>
           <EditStaffModal staff={staff} roles={roles} onClose={() => setEditing(false)} />
         </td>
       </tr>
@@ -560,11 +602,14 @@ function StaffRow({ staff, roles }: { staff: Staff; roles: Role[] }) {
           </div>
         )}
       </td>
+      <td data-label="2FA" style={{ padding: '14px 20px' }}>
+        <DotChip label={staff.totp_enabled ? 'On' : 'Off'} color={staff.totp_enabled ? '#15803d' : '#9ca3af'} />
+      </td>
       <td data-label="Status" style={{ padding: '14px 20px' }}>
         <DotChip label={staff.is_active ? 'Active' : 'Inactive'} color={staff.is_active ? '#15803d' : '#b91c1c'} />
       </td>
-      <td data-label="Added" style={{ padding: '14px 20px', color: '#6b7280', fontSize: '0.8125rem' }}>
-        {fmtDatePK(staff.created_at)}
+      <td data-label="Last sign-in" style={{ padding: '14px 20px', color: '#6b7280', fontSize: '0.8125rem' }}>
+        {staff.last_login_at ? fmtDatePK(staff.last_login_at) : <span style={{ color: '#9ca3af' }}>Never</span>}
       </td>
       <td style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -595,30 +640,50 @@ function StaffRow({ staff, roles }: { staff: Staff; roles: Role[] }) {
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-export function TeamPage({ staff, roles }: { staff: Staff[]; roles: Role[] }) {
+export function TeamPage({ staff, roles, ownerEmail }: { staff: Staff[]; roles: Role[]; ownerEmail: string | null }) {
   const [adding, setAdding] = useState(false);
+  const [tab, setTab] = useState<'members' | 'roles'>('members');
+
+  const tabBtn = (active: boolean): React.CSSProperties => ({
+    padding: '9px 16px', border: 'none', cursor: 'pointer', background: 'transparent',
+    fontSize: '0.875rem', fontWeight: active ? 600 : 500,
+    color: active ? '#111827' : '#6b7280',
+    borderBottom: `2px solid ${active ? '#C5286A' : 'transparent'}`,
+    marginBottom: -1,
+  });
 
   return (
     <div style={{ padding: '32px 36px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Team</h1>
           <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '0.875rem' }}>
             Manage staff accounts, roles, and their permissions
           </p>
         </div>
-        <button style={btn('#C5286A')} onClick={() => setAdding(true)}>+ Add Staff Member</button>
+        {tab === 'members' && (
+          <button style={btn('#C5286A')} onClick={() => setAdding(true)}>+ Add Staff Member</button>
+        )}
       </div>
 
-      {adding && (
+      <div style={{ display: 'flex', gap: 2, borderBottom: '1px solid #e5e7eb', marginBottom: 20 }}>
+        <button style={tabBtn(tab === 'members')} onClick={() => setTab('members')}>
+          Members ({staff.length + 1})
+        </button>
+        <button style={tabBtn(tab === 'roles')} onClick={() => setTab('roles')}>
+          Roles ({roles.length})
+        </button>
+      </div>
+
+      {adding && tab === 'members' && (
         <div style={{ ...card, marginBottom: 24 }}>
           <AddStaffModal roles={roles} onClose={() => setAdding(false)} />
         </div>
       )}
 
-      <RolesPanel roles={roles} />
+      {tab === 'roles' && <RolesPanel roles={roles} staff={staff} />}
 
-      <div style={card}>
+      {tab === 'members' && <div style={card}>
         {staff.length === 0 ? (
           <div style={{ padding: '60px 32px', textAlign: 'center', color: '#9ca3af' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ marginBottom: 12 }}>
@@ -631,7 +696,7 @@ export function TeamPage({ staff, roles }: { staff: Staff[]; roles: Role[] }) {
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
-                {['Staff Member', 'Access', 'Status', 'Added', 'Actions'].map(h => (
+                {['Staff Member', 'Access', '2FA', 'Status', 'Last sign-in', 'Actions'].map(h => (
                   <th scope="col" key={h} style={{
                     padding: '12px 20px', textAlign: 'left',
                     fontSize: '0.75rem', fontWeight: 600,
@@ -641,11 +706,45 @@ export function TeamPage({ staff, roles }: { staff: Staff[]; roles: Role[] }) {
               </tr>
             </thead>
             <tbody>
+              {/* The owner signs in with the store admin password, not a staff
+                  row — pinned here read-only so the account every permission
+                  flows from is at least visible (2FA isn't available for it;
+                  staff accounts support authenticator 2FA). */}
+              <tr style={{ background: '#fffbeb' }}>
+                <td data-label="Member" style={{ padding: '14px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%', background: '#fef3c7',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#92400e', fontWeight: 700, fontSize: '0.8125rem', flexShrink: 0,
+                    }}>O</div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827' }}>Owner</div>
+                      <div style={{ color: '#6b7280', fontSize: '0.75rem' }}>
+                        {ownerEmail ?? 'Signs in with the admin password'}
+                      </div>
+                    </div>
+                  </div>
+                </td>
+                <td data-label="Access" style={{ padding: '14px 20px' }}>
+                  <span style={{ ...permBadge, background: '#fef3c7', color: '#92400e' }}>All permissions</span>
+                </td>
+                <td data-label="2FA" style={{ padding: '14px 20px' }}>
+                  <DotChip label="Not available" color="#9ca3af" />
+                </td>
+                <td data-label="Status" style={{ padding: '14px 20px' }}>
+                  <DotChip label="Active" color="#15803d" />
+                </td>
+                <td data-label="Last sign-in" style={{ padding: '14px 20px', color: '#9ca3af', fontSize: '0.8125rem' }}>—</td>
+                <td style={{ padding: '14px 20px', color: '#9ca3af', fontSize: '0.75rem' }}>
+                  Signs in with the admin password
+                </td>
+              </tr>
               {staff.map(s => <StaffRow key={s.id} staff={s} roles={roles} />)}
             </tbody>
           </table>
         )}
-      </div>
+      </div>}
     </div>
   );
 }

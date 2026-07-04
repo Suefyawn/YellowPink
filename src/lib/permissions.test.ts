@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  can, canAny, expandLegacyPermissions, ALL_PERMISSIONS,
+  can, canAny, sanitizePermissions, ALL_PERMISSIONS,
   type StaffSession,
 } from './permissions';
 
@@ -51,20 +51,18 @@ describe('canAny()', () => {
   });
 });
 
-describe('expandLegacyPermissions()', () => {
-  it('expands a legacy resource grant into its view/edit/delete permissions', () => {
-    expect(expandLegacyPermissions(['orders'])).toEqual(
-      expect.arrayContaining(['orders.view', 'orders.edit', 'orders.delete'])
-    );
+describe('sanitizePermissions()', () => {
+  it('keeps live permission tokens', () => {
+    expect(sanitizePermissions(['orders.view', 'blog', 'vendors', 'system_tools']))
+      .toEqual(['orders.view', 'blog', 'vendors', 'system_tools']);
   });
 
-  it('leaves already-split and unrelated permissions untouched', () => {
-    expect(expandLegacyPermissions(['orders.view', 'blog'])).toEqual(['orders.view', 'blog']);
+  it('drops retired/unknown tokens (legacy bundles were expanded by migration 125)', () => {
+    expect(sanitizePermissions(['orders', 'not-a-perm', 'orders.view'])).toEqual(['orders.view']);
   });
 
-  it('dedupes when a legacy grant and one of its children both appear', () => {
-    const out = expandLegacyPermissions(['orders', 'orders.view']);
-    expect(out.filter(p => p === 'orders.view')).toHaveLength(1);
+  it('dedupes repeated tokens', () => {
+    expect(sanitizePermissions(['orders.view', 'orders.view'])).toEqual(['orders.view']);
   });
 });
 

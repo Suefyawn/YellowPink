@@ -13,13 +13,23 @@ const lbl: React.CSSProperties = {
   color: '#374151', marginBottom: 5,
 };
 
-export function ProfilePage({ name, email, twoFaEnabled = false }: { name: string; email: string; twoFaEnabled?: boolean }) {
+export function ProfilePage({ name, email, twoFaEnabled = false, mustChangePassword = false }: { name: string; email: string; twoFaEnabled?: boolean; mustChangePassword?: boolean }) {
   const [state, action, pending] = useActionState(changeMyPassword, null);
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 600 }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>My Profile</h1>
       <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '0.875rem' }}>Manage your account settings</p>
+
+      {mustChangePassword && !(state && 'success' in state) && (
+        <div style={{
+          background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 10,
+          padding: '12px 16px', marginBottom: 24, fontSize: '0.8125rem', color: '#92400e', lineHeight: 1.5,
+        }}>
+          You&apos;re signed in with a temporary password issued by the owner. Set your own
+          password below before continuing.
+        </div>
+      )}
 
       {/* Info card */}
       <div style={{

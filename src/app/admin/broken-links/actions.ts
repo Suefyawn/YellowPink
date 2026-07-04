@@ -9,7 +9,7 @@ import { log } from '@/lib/logger';
 // Broken-link triage rides the `settings` permission, it manages site-wide
 // redirects, the same surface as other store-config work. Same gate the
 // Settings pages use — covered by the matrix suite in lib/admin-auth.test.ts.
-const assertSettings = () => assertPermission('settings');
+const assertTools = () => assertPermission('system_tools');
 
 // A redirect target must be an on-site absolute path ("/product/x"). We don't
 // allow off-site destinations, the redirects table preserves internal SEO
@@ -25,7 +25,7 @@ function normalizeTarget(raw: string): string | null {
  *  (which src/proxy.ts already consults), then mark the miss resolved. The
  *  redirect is live within the proxy's 60s cache TTL, no deploy. */
 export async function addRedirect(formData: FormData): Promise<void> {
-  const session = await assertSettings();
+  const session = await assertTools();
   const from = ((formData.get('from_path') as string) ?? '').trim();
   const to = normalizeTarget((formData.get('to_path') as string) ?? '');
   if (!from || !from.startsWith('/') || !to || to === from) return;
@@ -46,7 +46,7 @@ export async function addRedirect(formData: FormData): Promise<void> {
  *  content (a 404 is a valid signal). Keeps it out of the digest and the open
  *  list, but the row stays so a fresh hit is still counted. */
 export async function ignoreNotFound(formData: FormData): Promise<void> {
-  const session = await assertSettings();
+  const session = await assertTools();
   const path = ((formData.get('path') as string) ?? '').trim();
   if (!path) return;
   await supabaseAdmin().from('not_found_log').update({ resolved: true }).eq('path', path);
@@ -56,7 +56,7 @@ export async function ignoreNotFound(formData: FormData): Promise<void> {
 
 /** Re-open a previously ignored/redirected miss (undo). */
 export async function reopenNotFound(formData: FormData): Promise<void> {
-  const session = await assertSettings();
+  const session = await assertTools();
   const path = ((formData.get('path') as string) ?? '').trim();
   if (!path) return;
   await supabaseAdmin().from('not_found_log').update({ resolved: false, alerted_at: null }).eq('path', path);

@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getStaffSession, hashPassword, generateTempPassword, verifyPassword, upgradeStaffHash } from '@/lib/staff-auth';
+import { getStaffSession, hashPassword, generateTempPassword, verifyPassword, setStaffCookie } from '@/lib/staff-auth';
 import { sendStaffTempPasswordEmail } from '@/lib/email';
 import { logAudit } from '@/lib/audit';
 import type { Permission } from '@/lib/permissions';
@@ -43,6 +43,7 @@ export async function createStaffMember(
       password_hash: hash,
       password_salt: '',                 // empty for scrypt rows
       is_active: true,
+      must_change_password: true,        // temp password → forced change on first login
     })
     .select('id')
     .single();
@@ -100,9 +101,17 @@ export async function toggleStaffActive(formData: FormData): Promise<void> {
   const id = formData.get('id') as string;
   const isActive = formData.get('is_active') === 'true';
 
+  // Deactivating also bumps session_epoch: getStaffSession already refuses
+  // inactive rows, the bump additionally kills the cookie so a later
+  // reactivation doesn't resurrect a pre-deactivation session.
+  const { data: current } = await supabaseAdmin()
+    .from('staff_members').select('session_epoch').eq('id', id).single();
   const { error } = await supabaseAdmin()
     .from('staff_members')
-    .update({ is_active: !isActive })
+    .update({
+      is_active: !isActive,
+      ...(isActive ? { session_epoch: ((current?.session_epoch as number | null) ?? 0) + 1 } : {}),
+    })
     .eq('id', id);
   if (error) {
     redirect(`/admin/team?error=${encodeURIComponent('Could not change status: ' + error.message)}`);
@@ -126,9 +135,19 @@ export async function resetStaffPassword(
   const tempPassword = generateTempPassword();
   const hash = hashPassword(tempPassword);
 
+  // Bumping session_epoch invalidates every outstanding login cookie for this
+  // member the moment the reset lands (previously live sessions survived a
+  // reset for up to the 10h cookie TTL). The temp password must be changed at
+  // next login.
+  const { data: current } = await supabaseAdmin()
+    .from('staff_members').select('session_epoch').eq('id', id).single();
   const { data: staff, error } = await supabaseAdmin()
     .from('staff_members')
-    .update({ password_hash: hash, password_salt: '' })
+    .update({
+      password_hash: hash, password_salt: '',
+      must_change_password: true,
+      session_epoch: ((current?.session_epoch as number | null) ?? 0) + 1,
+    })
     .eq('id', id)
     .select('email, name')
     .single();
@@ -196,8 +215,44 @@ export async function changeMyPassword(
   if (!verify.ok) return { error: 'Current password is incorrect' };
 
   // Always store the new password as scrypt, regardless of legacy state.
+  // Changing the password also bumps session_epoch — any other device still
+  // signed in with the old password is signed out — and re-issues THIS
+  // session's cookie on the new epoch so the member stays signed in here.
   const newHash = hashPassword(next);
-  await upgradeStaffHash(session.id, newHash);
+  const { data: row } = await supabaseAdmin()
+    .from('staff_members').select('session_epoch').eq('id', session.id).single();
+  const newEpoch = ((row?.session_epoch as number | null) ?? 0) + 1;
+  const { error } = await supabaseAdmin()
+    .from('staff_members')
+    .update({ password_hash: newHash, password_salt: '', must_change_password: false, session_epoch: newEpoch })
+    .eq('id', session.id);
+  if (error) return { error: error.message };
+  await setStaffCookie(session.id, newEpoch);
 
   return { success: true };
+}
+
+// Clears a staff member's authenticator + backup codes so they can re-enrol —
+// without this, a lost phone permanently locked the account (2FA was invisible
+// and unmanageable from the Team page).
+export async function resetStaff2fa(formData: FormData): Promise<void> {
+  const session = await assertOwner();
+
+  const id = formData.get('id') as string;
+  const { data: target, error } = await supabaseAdmin()
+    .from('staff_members')
+    .update({ totp_secret: null, totp_enabled: false, backup_codes: [] })
+    .eq('id', id)
+    .select('email')
+    .single();
+  if (error) {
+    redirect(`/admin/team?error=${encodeURIComponent('Could not reset 2FA: ' + error.message)}`);
+  }
+  void logAudit(session, {
+    action: 'staff.reset_2fa',
+    entity: 'staff_members',
+    entity_id: id,
+    diff: { target_email: target?.email },
+  });
+  revalidatePath('/admin/team');
 }

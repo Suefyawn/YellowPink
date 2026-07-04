@@ -1,7 +1,7 @@
 import { randomBytes, createHmac, scryptSync, timingSafeEqual, createHash } from 'crypto';
 import { cookies } from 'next/headers';
 import { supabaseAdmin } from './supabase';
-import { expandLegacyPermissions, type StaffSession } from './permissions';
+import { sanitizePermissions, type StaffSession } from './permissions';
 
 import { STAFF_SESSION_SECRET } from './session-secret';
 import { STAFF_COOKIE_TTL_SEC } from './signed-cookie';
@@ -87,13 +87,17 @@ export function verifyPassword(
 
 // ─── Token ───────────────────────────────────────────────────────────────────
 
-function signToken(staffId: string): string {
-  const payload = `${staffId}|${Date.now()}`;
+// The token carries the staff row's session_epoch at issue time. Bumping the
+// column (password reset, deactivate) invalidates every outstanding cookie
+// immediately — before this, a reset staffer's live sessions survived until
+// the 10h TTL ran out.
+function signToken(staffId: string, epoch: number): string {
+  const payload = `${staffId}|${epoch}|${Date.now()}`;
   const sig = createHmac('sha256', SECRET).update(payload).digest('hex');
   return Buffer.from(`${payload}|${sig}`).toString('base64url');
 }
 
-function verifyToken(token: string): string | null {
+function verifyToken(token: string): { staffId: string; epoch: number } | null {
   try {
     const decoded = Buffer.from(token, 'base64url').toString();
     const lastPipe = decoded.lastIndexOf('|');
@@ -104,9 +108,13 @@ function verifyToken(token: string): string | null {
     const a = Buffer.from(sig, 'hex');
     const b = Buffer.from(expected, 'hex');
     if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-    const [staffId, ts] = payload.split('|');
-    if (Date.now() - Number(ts) > SESSION_TTL_MS) return null;
-    return staffId;
+    const parts = payload.split('|');
+    // 3 parts = current format (id|epoch|ts); 2 parts = pre-epoch cookie,
+    // treated as epoch 0 so existing sessions survive the deploy (rows start
+    // at epoch 0 and only bump on reset/deactivate).
+    const [staffId, epochStr, tsStr] = parts.length === 3 ? parts : [parts[0], '0', parts[1]];
+    if (Date.now() - Number(tsStr) > SESSION_TTL_MS) return null;
+    return { staffId, epoch: Number(epochStr) };
   } catch {
     return null;
   }
@@ -114,9 +122,9 @@ function verifyToken(token: string): string | null {
 
 // ─── Cookie ──────────────────────────────────────────────────────────────────
 
-export async function setStaffCookie(staffId: string): Promise<void> {
+export async function setStaffCookie(staffId: string, sessionEpoch = 0): Promise<void> {
   const store = await cookies();
-  store.set(STAFF_COOKIE, signToken(staffId), {
+  store.set(STAFF_COOKIE, signToken(staffId, sessionEpoch), {
     httpOnly: true,
     // Hardcode secure, the admin surface is HTTPS-only on every deployment
     // we run (Vercel preview included), and the owner cookie (signed-cookie
@@ -165,17 +173,20 @@ export async function getStaffSession(): Promise<StaffSession | null> {
   // Staff session
   const token = store.get(STAFF_COOKIE)?.value;
   if (!token) return null;
-  const staffId = verifyToken(token);
-  if (!staffId) return null;
+  const verified = verifyToken(token);
+  if (!verified) return null;
 
   const { data } = await supabaseAdmin()
     .from('staff_members')
-    .select('id, email, name, permissions, is_active, role_id, roles(name, permissions)')
-    .eq('id', staffId)
+    .select('id, email, name, permissions, is_active, role_id, session_epoch, roles(name, permissions)')
+    .eq('id', verified.staffId)
     .eq('is_active', true)
     .single();
 
   if (!data) return null;
+  // Epoch mismatch = this cookie predates a password reset / deactivation
+  // cycle; treat it as signed out.
+  if (((data.session_epoch as number | null) ?? 0) !== verified.epoch) return null;
   // A staff member with an assigned role inherits that role's permission set,
   // so editing the role updates everyone who holds it. A "Custom" staff member
   // (role_id NULL) runs on its own permissions column instead.
@@ -185,7 +196,7 @@ export async function getStaffSession(): Promise<StaffSession | null> {
     id: data.id,
     email: data.email,
     name: data.name,
-    permissions: expandLegacyPermissions((role ? role.permissions : data.permissions) ?? []),
+    permissions: sanitizePermissions((role ? role.permissions : data.permissions) ?? []),
     isOwner: false,
     roleId: (data.role_id as string | null) ?? null,
     roleName: role?.name ?? null,
