@@ -36,6 +36,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
 import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
 import { PWAInstallPrompt } from '@/components/layout/PWAInstallPrompt';
+import { ImageCdnFallback } from '@/components/layout/ImageCdnFallback';
 import { DemoBanner } from '@/components/layout/DemoBanner';
 import { ConsentBanner } from '@/components/legal/ConsentBanner';
 import { NewsletterModal } from '@/components/marketing/NewsletterModal';
@@ -178,6 +179,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <SpeedInsights />
         <ServiceWorkerRegister />
         <PWAInstallPrompt />
+        <ImageCdnFallback />
         <Providers commerce={commerce}>
           <CartAnnouncer />
           <AddToCartToast />

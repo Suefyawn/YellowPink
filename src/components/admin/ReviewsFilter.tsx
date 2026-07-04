@@ -65,11 +65,8 @@ export function ReviewsFilter({ products }: { products: ReviewedProduct[] }) {
           <option key={p.id} value={p.id}>{p.label}</option>
         ))}
       </select>
-      <select value={status} onChange={e => setParam('status', e.target.value, ['all', ''])} aria-label="Filter by status" style={selStyle}>
-        <option value="all">All statuses</option>
-        <option value="approved">Approved</option>
-        <option value="pending">Pending</option>
-      </select>
+      {/* The status filter moved to the saved-view tabs above the list (shared
+          underline grammar) — a duplicate select here would fight the tabs. */}
       {hasFilters && (
         <button type="button" onClick={() => push(new URLSearchParams())} style={{
           padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 8,

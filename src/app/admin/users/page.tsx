@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { Pagination } from '@/components/admin/Pagination';
 import { UsersFilter } from '@/components/admin/UsersFilter';
+import { ViewTabs } from '@/components/admin/ViewTabs';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -257,6 +258,27 @@ export default async function UsersPage({
           </div>
         ))}
       </div>
+
+      {/* Saved-view tabs (shared underline grammar): the customer-type views.
+          Hrefs preserve search / sort / activity; the KPI cards above remain
+          one-click shortcuts into the same views. */}
+      <ViewTabs
+        active={type}
+        tabs={(['all', 'registered', 'guest'] as const).map(t => {
+          const p2 = new URLSearchParams();
+          if (q) p2.set('q', q);
+          if (sort !== 'recent') p2.set('sort', sort);
+          if (activity !== 'all') p2.set('activity', activity);
+          if (t !== 'all') p2.set('type', t);
+          const str = p2.toString();
+          return {
+            value: t,
+            label: t === 'all' ? 'All' : t === 'registered' ? 'Registered' : 'Guests',
+            count: t === 'all' ? totals.all : t === 'registered' ? totals.registered : totals.guests,
+            href: `/admin/users${str ? `?${str}` : ''}`,
+          };
+        })}
+      />
 
       <Suspense fallback={null}>
         <UsersFilter total={total} />

@@ -1,8 +1,14 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { track } from '@/lib/analytics';
 import type { CartItem, Coupon, Product } from '@/types';
+
+// useLayoutEffect that is safe to ship in a component that also renders on
+// the server (Next pre-renders 'use client' components; bare useLayoutEffect
+// there triggers a React warning). On the server it falls back to useEffect,
+// which never runs anyway.
+const useIsomorphicLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 
 /** Optional variant info when adding a variable product to the cart. */
 export interface AddToCartInput extends Product {
@@ -65,6 +71,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [addCounter, setAddCounter] = useState(0);
   const [lastAdded, setLastAdded] = useState<CartContextValue['lastAdded']>(null);
 
+  // Guards the persist effects below: they must not run until the saved cart
+  // has been read, or the mount-time run (state still []) would overwrite it.
+  const hydrated = useRef(false);
+
   // Load from localStorage after hydration to avoid SSR/client mismatch.
   // setState-in-effect is intentional: the cart is persisted in an external
   // store (localStorage) and we sync it into React state at mount.
@@ -76,13 +86,22 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setCartItems(loadCart());
     setAppliedCoupon(loadCoupon());
     /* eslint-enable react-hooks/set-state-in-effect */
+    hydrated.current = true;
   }, []);
 
-  useEffect(() => {
+  // Persist in a *layout* effect (flushes before paint) so anything the user
+  // can see — the add-to-cart toast, the drawer — implies the write already
+  // happened. With a passive effect there was a window after the toast
+  // painted where a full-page navigation unloaded the page before the effect
+  // ran, silently losing the add (observed as a CI flake; a real hazard for
+  // a fast tap-then-navigate on mobile too).
+  useIsomorphicLayoutEffect(() => {
+    if (!hydrated.current) return;
     try { localStorage.setItem(CART_KEY, JSON.stringify(cartItems)); } catch { /* quota exceeded */ }
   }, [cartItems]);
 
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
+    if (!hydrated.current) return;
     try {
       if (appliedCoupon) localStorage.setItem(COUPON_KEY, JSON.stringify(appliedCoupon));
       else localStorage.removeItem(COUPON_KEY);
