@@ -118,7 +118,12 @@ export default async function FinancePage({
   // orders still missing a recorded payment, the reconciliation to-do.
   const byAccount = new Map<string, { orders: number; revenue: number }>();
   let awaiting = 0;
+  // Booked revenue whose cash hasn't actually landed yet (no recorded payment):
+  // COD not-yet-collected + non-COD gateway orders still unconfirmed. Surfaced
+  // as a sub-line so "Revenue" isn't misread as money in hand.
+  let notReceivedRevenue = 0;
   for (const o of orders) {
+    if (!o.payment_received_at) notReceivedRevenue += num(o.total);
     if (o.pay_method !== 'cod' && !o.payment_received_at) awaiting += 1;
     const key = o.payment_account?.trim() || 'Unrecorded';
     const cur = byAccount.get(key) ?? { orders: 0, revenue: 0 };
@@ -184,8 +189,15 @@ export default async function FinancePage({
     financeInsights.push(`Your biggest expense category this period is ${topCat} (${fmt(topAmt)}).`);
   }
 
-  const pnlLines: { label: string; value: number; kind?: 'sub' | 'total' | 'net' }[] = [
-    { label: 'Revenue (paid orders)', value: revenue },
+  const pnlLines: { label: string; value: number; kind?: 'sub' | 'total' | 'net' | 'memo' }[] = [
+    // "Confirmed orders" not "paid": the figure is booked revenue from orders
+    // that count toward P&L; a chunk of it (COD not yet collected, gateway
+    // orders not yet confirmed) hasn't landed as cash — called out on the next
+    // line (a memo, not a deduction) so the number isn't mistaken for cash.
+    { label: 'Revenue (confirmed orders)', value: revenue },
+    ...(notReceivedRevenue > 0
+      ? [{ label: 'of which not yet received', value: notReceivedRevenue, kind: 'memo' as const }]
+      : []),
     { label: 'Cost of goods (COGS)', value: -cogs, kind: 'sub' },
     { label: 'Delivery cost', value: -deliveryCost, kind: 'sub' },
     { label: 'Payment fees', value: -paymentFees, kind: 'sub' },
@@ -231,10 +243,11 @@ export default async function FinancePage({
                 <tr key={i} style={{
                   borderTop: l.kind === 'total' || l.kind === 'net' ? '1px solid #e5e7eb' : 'none',
                 }}>
-                  <td style={{ padding: '8px 0', color: l.kind === 'net' ? '#111827' : '#374151', fontWeight: l.kind === 'total' || l.kind === 'net' ? 700 : 400, paddingLeft: l.kind === 'sub' ? 12 : 0 }}>{l.label}</td>
+                  <td style={{ padding: '8px 0', color: l.kind === 'net' ? '#111827' : l.kind === 'memo' ? '#9ca3af' : '#374151', fontWeight: l.kind === 'total' || l.kind === 'net' ? 700 : 400, fontStyle: l.kind === 'memo' ? 'italic' : 'normal', paddingLeft: l.kind === 'sub' || l.kind === 'memo' ? 12 : 0 }}>{l.label}</td>
                   <td style={{ padding: '8px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: l.kind === 'total' || l.kind === 'net' ? 700 : 400,
-                    color: l.kind === 'net' ? profitColor : l.value < 0 ? '#b91c1c' : '#111827' }}>
-                    {l.value < 0 ? `(${fmt(-l.value)})` : fmt(l.value)}
+                    fontStyle: l.kind === 'memo' ? 'italic' : 'normal',
+                    color: l.kind === 'net' ? profitColor : l.kind === 'memo' ? '#9ca3af' : l.value < 0 ? '#b91c1c' : '#111827' }}>
+                    {l.kind === 'memo' ? fmt(l.value) : l.value < 0 ? `(${fmt(-l.value)})` : fmt(l.value)}
                   </td>
                 </tr>
               ))}

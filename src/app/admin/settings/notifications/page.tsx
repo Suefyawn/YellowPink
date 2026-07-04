@@ -102,7 +102,7 @@ export default async function SettingsNotificationsPage({ searchParams }: { sear
     <>
       <SettingsPageHeader
         title="Notifications"
-        subtitle="Who receives the internal alerts the system sends, new orders, low stock. Each recipient picks which events they want."
+        subtitle="Who receives the internal alerts the system sends. Each recipient picks which events they want."
       />
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
 

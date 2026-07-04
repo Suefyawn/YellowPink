@@ -16,6 +16,14 @@ function bounceVendors(error: string): never {
   redirect(`/admin/vendors?error=${encodeURIComponent(error)}`);
 }
 
+// Success feedback: the money actions (Settle all, Mark settled, Save, Add,
+// Delete) previously refreshed the list with no confirmation, so a staffer
+// couldn't tell a click registered. Redirect with ?saved so the page shows a
+// toast/banner. Call outside try/catch — redirect() throws by design.
+function vendorsSaved(msg: string): never {
+  redirect(`/admin/vendors?saved=${encodeURIComponent(msg)}`);
+}
+
 /** Parse the commission % field, blank → null, otherwise clamped 0-100. */
 function parseCommission(raw: FormDataEntryValue | null): number | null {
   const s = (raw as string | null)?.trim();
@@ -54,6 +62,7 @@ export async function createVendor(formData: FormData) {
     diff: { name, phone },
   });
   revalidatePath('/admin/vendors');
+  vendorsSaved(`Added vendor ${name}.`);
 }
 
 /** Update a vendor's commission % and settlement direction. */
@@ -76,6 +85,7 @@ export async function updateVendor(formData: FormData) {
     diff: { commission_pct, settlement_direction },
   });
   revalidatePath('/admin/vendors');
+  vendorsSaved('Vendor terms saved.');
 }
 
 export async function deleteVendor(formData: FormData) {
@@ -97,6 +107,7 @@ export async function deleteVendor(formData: FormData) {
     diff: { name: target?.name },
   });
   revalidatePath('/admin/vendors');
+  vendorsSaved(`Deleted vendor ${target?.name ?? ''}.`);
 }
 
 // ─── Order confirmation + vendor dispatch ───────────────────────────────────
@@ -265,6 +276,7 @@ export async function markSettlementSettled(formData: FormData) {
     entity: 'vendor_settlements', entity_id: id,
   });
   revalidatePath('/admin/vendors');
+  vendorsSaved(settle ? 'Payout marked settled.' : 'Payout reopened.');
 }
 
 /** Settle every pending payout for one vendor in one click — the common case
@@ -290,4 +302,5 @@ export async function settleVendorPending(formData: FormData) {
     diff: { settled_count: data?.length ?? 0 },
   });
   revalidatePath('/admin/vendors');
+  vendorsSaved(`Settled ${data?.length ?? 0} payout${(data?.length ?? 0) === 1 ? '' : 's'}.`);
 }

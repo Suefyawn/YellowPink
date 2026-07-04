@@ -1123,3 +1123,23 @@ a.underline,
   white-space: nowrap;
   border-width: 0;
 }
+
+/* ─── Admin: reviewer cards stack cleanly on phones (2026-07 audit) ──────────
+   Below 560px the Make-default/Delete/Edit action row drops full-width beneath
+   the identity block instead of overlapping the specialty text and chips. */
+@media (max-width: 560px) {
+  .adm-reviewer-row { align-items: stretch; }
+  .adm-reviewer-identity { flex: 1 1 100%; min-width: 0; }
+  .adm-reviewer-actions { flex: 1 1 100%; justify-content: flex-start; }
+}
+
+/* ─── Admin: scrollable wide tables get a right-edge fade cue ────────────────
+   The products table can be wider than its container on mid-size laptops; a
+   soft gradient on the right signals there's more to scroll so a clipped
+   Actions column doesn't read as a rendering bug. The fade sits on the
+   scroll container via a background-attachment:local trick (no JS). */
+.adm-table-scroll {
+  background:
+    linear-gradient(to right, transparent, transparent),
+    linear-gradient(to right, rgba(0,0,0,0.06), transparent 100%) 100% 0 / 28px 100% no-repeat local;
+}

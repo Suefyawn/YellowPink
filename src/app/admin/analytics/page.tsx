@@ -180,25 +180,33 @@ export default async function AnalyticsPage({
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Analytics</h1>
-          <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
-            Showing the last {window} days
-          </p>
+          {/* The date range only drives the Sales & Customers widgets; on
+              Traffic and Funnels the sources use their own fixed windows
+              (captioned per card), so the header line + picker are hidden
+              there rather than implying a control that does nothing. */}
+          {(tab === 'sales' || tab === 'customers') && (
+            <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+              Showing the last {window} days
+            </p>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {canRefresh && <RefreshAnalyticsButton />}
           {/* Shared URL-synced range picker (same control as the other insight
               surfaces); preserves the active tab via the query string. */}
-          <Suspense fallback={null}>
-            <RangePicker
-              value={String(window)}
-              options={[
-                { value: '7', label: '7 days' },
-                { value: '30', label: '30 days' },
-                { value: '90', label: '90 days' },
-                { value: '365', label: '1 year' },
-              ]}
-            />
-          </Suspense>
+          {(tab === 'sales' || tab === 'customers') && (
+            <Suspense fallback={null}>
+              <RangePicker
+                value={String(window)}
+                options={[
+                  { value: '7', label: '7 days' },
+                  { value: '30', label: '30 days' },
+                  { value: '90', label: '90 days' },
+                  { value: '365', label: '1 year' },
+                ]}
+              />
+            </Suspense>
+          )}
         </div>
       </div>
 

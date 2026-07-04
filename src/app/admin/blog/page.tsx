@@ -65,7 +65,7 @@ export default async function BlogAdminPage({
           <p style={{ margin: 0, color: '#6b7280', fontSize: '0.875rem' }}>{total} post{total !== 1 ? 's' : ''}</p>
         </div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <ResubmitAllButton />
+          {(session.isOwner || session.permissions.includes('system_tools')) && <ResubmitAllButton />}
           <Link href="/admin/blog/new" style={{
             padding: '10px 20px', background: '#C5286A', color: 'white',
             borderRadius: 8, textDecoration: 'none', fontSize: '0.875rem', fontWeight: 600,

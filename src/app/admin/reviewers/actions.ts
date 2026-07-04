@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
@@ -32,12 +33,19 @@ function revalidateAll() {
   revalidatePath('/sitemap.xml');
 }
 
+// Feedback carriers — reviewer actions previously succeeded/failed silently
+// (no ?saved / ?error, unlike Brands/Collections). Call OUTSIDE try/catch:
+// redirect() throws a control-flow signal by design.
+const P = '/admin/reviewers';
+const ok = (msg: string): never => redirect(`${P}?saved=${encodeURIComponent(msg)}`);
+const fail = (msg: string): never => redirect(`${P}?error=${encodeURIComponent(msg)}`);
+
 /** Create or update a reviewer. Hidden `id` present → update; absent → insert. */
 export async function saveReviewer(formData: FormData): Promise<void> {
   const session = await assertBlog();
   const id = str(formData, 'id');
   const name = str(formData, 'name');
-  if (!name) return;
+  if (!name) fail('A name is required.');
 
   const slug = str(formData, 'slug') ? slugify(str(formData, 'slug')) : slugify(name);
   const topics = str(formData, 'review_topics')
@@ -66,14 +74,15 @@ export async function saveReviewer(formData: FormData): Promise<void> {
   const admin = supabaseAdmin();
   if (id) {
     const { error } = await admin.from('content_reviewers').update(row).eq('id', id);
-    if (error) { log.error('reviewer.update_failed', { id, error: error.message }); return; }
+    if (error) { log.error('reviewer.update_failed', { id, error: error.message }); fail(`Could not save: ${error.message}`); }
     await logAudit(session, { action: 'reviewer.update', entity: 'content_reviewer', entity_id: id, diff: { name, slug } });
   } else {
     const { error } = await admin.from('content_reviewers').insert(row);
-    if (error) { log.error('reviewer.create_failed', { error: error.message }); return; }
+    if (error) { log.error('reviewer.create_failed', { error: error.message }); fail(`Could not create: ${error.message}`); }
     await logAudit(session, { action: 'reviewer.create', entity: 'content_reviewer', diff: { name, slug } });
   }
   revalidateAll();
+  ok(id ? `Saved ${name}.` : `Added ${name} to the review board.`);
 }
 
 /** Provision (or link) a login for a reviewer if they don't have one yet, then
@@ -89,7 +98,7 @@ export async function sendReviewerInvite(formData: FormData): Promise<void> {
     .from('content_reviewers')
     .select('id, name, email, auth_user_id')
     .eq('id', id).maybeSingle();
-  if (!r || !r.email) { log.warn('reviewer.invite_no_email', { id }); return; }
+  if (!r || !r.email) { log.warn('reviewer.invite_no_email', { id }); return fail('Add an email address to this reviewer first, then send the invite.'); }
   const email = (r.email as string).toLowerCase();
 
   // Ensure a login exists so /reviewer/login works for them.
@@ -106,6 +115,7 @@ export async function sendReviewerInvite(formData: FormData): Promise<void> {
 
   await logAudit(session, { action: 'reviewer.invite', entity: 'content_reviewer', entity_id: id, diff: { email } });
   revalidatePath('/admin/reviewers');
+  ok(`Invite sent to ${email}.`);
 }
 
 /** Make one reviewer the default (fallback for health posts with no explicit
@@ -119,6 +129,7 @@ export async function setDefaultReviewer(formData: FormData): Promise<void> {
   await admin.from('content_reviewers').update({ is_default: true }).eq('id', id);
   await logAudit(session, { action: 'reviewer.set_default', entity: 'content_reviewer', entity_id: id });
   revalidateAll();
+  ok('Default reviewer updated.');
 }
 
 export async function deleteReviewer(formData: FormData): Promise<void> {
@@ -127,8 +138,10 @@ export async function deleteReviewer(formData: FormData): Promise<void> {
   if (!id) return;
   // blog_posts.reviewer_id is ON DELETE SET NULL, so posts simply lose the link.
   const { error } = await supabaseAdmin().from('content_reviewers').delete().eq('id', id);
-  if (!error) await logAudit(session, { action: 'reviewer.delete', entity: 'content_reviewer', entity_id: id });
+  if (error) fail(`Could not delete: ${error.message}`);
+  await logAudit(session, { action: 'reviewer.delete', entity: 'content_reviewer', entity_id: id });
   revalidateAll();
+  ok('Reviewer deleted.');
 }
 
 // ─── Applications (self-serve apply → approve) ──────────────────────────────
@@ -220,6 +233,7 @@ export async function approveReviewerApplication(formData: FormData): Promise<vo
 
   await logAudit(session, { action: 'reviewer.approve', entity: 'content_reviewer', entity_id: reviewerId, diff: { name: app.name, email } });
   revalidateAll();
+  ok(`Approved ${app.name} — they can now sign in.`);
 }
 
 /** Reject an application (kept for audit, with an optional private reason). */
@@ -233,4 +247,5 @@ export async function rejectReviewerApplication(formData: FormData): Promise<voi
     .eq('id', id);
   await logAudit(session, { action: 'reviewer.reject', entity: 'reviewer_application', entity_id: id });
   revalidatePath('/admin/reviewers');
+  ok('Application rejected.');
 }

@@ -1,11 +1,17 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import type { Permission } from '@/lib/permissions';
+
+// Feedback carriers for the /admin/tags forms (were silent). Call outside
+// try/catch — redirect() throws a control-flow signal.
+const tagOk = (msg: string): never => redirect(`/admin/tags?saved=${encodeURIComponent(msg)}`);
+const tagFail = (msg: string): never => redirect(`/admin/tags?error=${encodeURIComponent(msg)}`);
 
 // Product tags are a facet of the catalogue, so they ride the products
 // permission set rather than introducing a new one.
@@ -77,13 +83,14 @@ export async function createTag(formData: FormData): Promise<void> {
   const session = await assertProducts();
   const name = ((formData.get('name') as string) ?? '').trim();
   const slug = slugifyTag(name);
-  if (name && slug) {
-    const { error } = await supabaseAdmin()
-      .from('product_tags')
-      .upsert({ slug, name }, { onConflict: 'slug', ignoreDuplicates: true });
-    if (!error) await logAudit(session, { action: 'tag.create', entity: 'product_tag', diff: { slug, name } });
-  }
+  if (!name || !slug) tagFail('Enter a tag name.');
+  const { error } = await supabaseAdmin()
+    .from('product_tags')
+    .upsert({ slug, name }, { onConflict: 'slug', ignoreDuplicates: true });
+  if (error) tagFail(`Could not create tag: ${error.message}`);
+  await logAudit(session, { action: 'tag.create', entity: 'product_tag', diff: { slug, name } });
   revalidatePath('/admin/tags');
+  tagOk(`Tag “${name}” created.`);
 }
 
 // Renaming keeps the slug stable so any `?tag=<slug>` storefront links and
@@ -92,11 +99,12 @@ export async function renameTag(formData: FormData): Promise<void> {
   const session = await assertProducts();
   const id = formData.get('id') as string;
   const name = ((formData.get('name') as string) ?? '').trim();
-  if (id && name) {
-    await supabaseAdmin().from('product_tags').update({ name }).eq('id', id);
-    await logAudit(session, { action: 'tag.rename', entity: 'product_tag', entity_id: id, diff: { name } });
-  }
+  if (!id || !name) tagFail('Enter a new name.');
+  const { error } = await supabaseAdmin().from('product_tags').update({ name }).eq('id', id);
+  if (error) tagFail(`Could not rename tag: ${error.message}`);
+  await logAudit(session, { action: 'tag.rename', entity: 'product_tag', entity_id: id, diff: { name } });
   revalidatePath('/admin/tags');
+  tagOk(`Tag renamed to “${name}”.`);
 }
 
 // Deleting a tag cascades through product_tag_map (FK on delete cascade), so
@@ -104,9 +112,10 @@ export async function renameTag(formData: FormData): Promise<void> {
 export async function deleteTag(formData: FormData): Promise<void> {
   const session = await assertProducts();
   const id = formData.get('id') as string;
-  if (id) {
-    const { error } = await supabaseAdmin().from('product_tags').delete().eq('id', id);
-    if (!error) await logAudit(session, { action: 'tag.delete', entity: 'product_tag', entity_id: id });
-  }
+  if (!id) tagFail('Missing tag id.');
+  const { error } = await supabaseAdmin().from('product_tags').delete().eq('id', id);
+  if (error) tagFail(`Could not delete tag: ${error.message}`);
+  await logAudit(session, { action: 'tag.delete', entity: 'product_tag', entity_id: id });
   revalidatePath('/admin/tags');
+  tagOk('Tag deleted.');
 }

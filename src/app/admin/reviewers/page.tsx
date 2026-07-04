@@ -8,6 +8,7 @@ import { DeleteButton } from '@/components/admin/DeleteButton';
 import { DotChip } from '@/components/admin/OrderChips';
 import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 import { AdminCollapsible } from '@/components/admin/AdminCollapsible';
+import { AdminFlash } from '@/components/admin/AdminFlash';
 import { saveReviewer, setDefaultReviewer, deleteReviewer, sendReviewerInvite, approveReviewerApplication, rejectReviewerApplication } from './actions';
 
 interface ReviewerRow {
@@ -79,8 +80,8 @@ const ghostBtn: React.CSSProperties = {
 // remove). The big edit form lives in the collapsible body.
 function ReviewerHeader({ r, count }: { r: ReviewerRow; count: number }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flexWrap: 'wrap' }}>
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+    <div className="adm-reviewer-row" style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0, flexWrap: 'wrap' }}>
+      <div className="adm-reviewer-identity" style={{ flex: 1, minWidth: 180, display: 'flex', alignItems: 'center', gap: 12 }}>
         {r.photo_url
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={r.photo_url} alt={r.name} width={40} height={40} style={{ width: 40, height: 40, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #e5e7eb' }} />
@@ -101,7 +102,7 @@ function ReviewerHeader({ r, count }: { r: ReviewerRow; count: number }) {
           </div>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 1, flexWrap: 'wrap' }}>
+      <div className="adm-reviewer-actions" style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 1, flexWrap: 'wrap' }}>
         {r.email && (
           <form action={sendReviewerInvite}>
             <input type="hidden" name="id" value={r.id} />
@@ -120,7 +121,8 @@ function ReviewerHeader({ r, count }: { r: ReviewerRow; count: number }) {
   );
 }
 
-export default async function ReviewersPage() {
+export default async function ReviewersPage({ searchParams }: { searchParams?: Promise<{ saved?: string; error?: string }> }) {
+  const sp = (await searchParams) ?? {};
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('blog'))) {
     return <NoAccess section="Review Board" />;
@@ -150,6 +152,7 @@ export default async function ReviewersPage() {
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 1000 }}>
+      <AdminFlash message={sp.saved ?? sp.error} type={sp.error ? 'error' : 'success'} clearPath="/admin/reviewers" />
       <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Medical Review Board</h1>
       <p style={{ margin: '8px 0 28px', fontSize: '0.875rem', color: '#6b7280', maxWidth: 720 }}>
         Real, qualified doctors who medically review your health/supplement content. They appear on the

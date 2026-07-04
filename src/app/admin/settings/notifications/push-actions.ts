@@ -57,14 +57,18 @@ export async function removePushSubscription(endpoint: string): Promise<{ ok: bo
 }
 
 /** Fire a real notification at every subscribed device — the "is it working?"
- *  button. */
-export async function sendTestPush(): Promise<{ ok: boolean; sent: number }> {
+ *  button. Returns the device count alongside sent/pruned so the UI can tell
+ *  "no devices subscribed" apart from "devices exist but delivery failed" —
+ *  the latter is exactly when the test button matters. */
+export async function sendTestPush(): Promise<{ ok: boolean; devices: number; sent: number; pruned: number }> {
   await requireSettings();
-  const { sent } = await sendAdminPush({
+  const { count } = await supabaseAdmin()
+    .from('push_subscriptions').select('*', { count: 'exact', head: true });
+  const { sent, pruned } = await sendAdminPush({
     title: 'Test notification',
     body: 'Push is working — new orders will arrive like this.',
     url: '/admin/dashboard',
     tag: 'test',
   });
-  return { ok: true, sent };
+  return { ok: true, devices: count ?? 0, sent, pruned };
 }
