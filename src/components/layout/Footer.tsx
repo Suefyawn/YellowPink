@@ -6,6 +6,7 @@ import { LogoMark } from '@/components/ui/LogoMark';
 import { LogoWordmark } from '@/components/ui/LogoWordmark';
 import { Overline } from '@/components/ui/Overline';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
+import { useAuth } from '@/context/AuthContext';
 import type { SocialLink } from '@/lib/socials';
 
 // Footer link list rendered with a consistent "overline-ish" treatment, // slightly tighter letter-spacing and weight than body text, so each
@@ -92,7 +93,12 @@ const COMPANY_LINKS = [
 
 const HELP_LINKS = [
   { label: 'Track Order',  href: '/track' },
-  { label: 'My Account',   href: '/account' },
+  // "My Account" resolves by auth state at render (like the header icon):
+  // /account 307s anonymous visitors to /login, which put a site-wide
+  // temporary-redirect warning on every crawled page (Semrush issue 109).
+  // Linking signed-out visitors (and crawlers) straight to /login removes
+  // the hop; signed-in users still land on /account directly.
+  { label: 'My Account',   href: '/account', authAware: true },
   { label: 'Returns',      href: '/page/returns' },
   { label: 'FAQ',          href: '/page/faq' },
   { label: 'Privacy',      href: '/privacy' },
@@ -180,6 +186,8 @@ interface FooterProps {
 }
 
 export function Footer({ socials = [], collections = [] }: FooterProps) {
+  // Auth state drives the "My Account" link target (see HELP_LINKS).
+  const { user } = useAuth();
   return (
     <footer
       role="contentinfo"
@@ -243,7 +251,13 @@ export function Footer({ socials = [], collections = [] }: FooterProps) {
           </FooterNavColumn>
 
           <FooterNavColumn label="Help">
-            {HELP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
+            {HELP_LINKS.map(l => (
+              <FooterLink
+                key={l.label}
+                label={l.label}
+                href={'authAware' in l && l.authAware ? (user ? '/account' : '/login') : l.href}
+              />
+            ))}
           </FooterNavColumn>
 
           <div>
