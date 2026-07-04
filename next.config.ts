@@ -171,11 +171,13 @@ const nextConfig: NextConfig = {
       'https://vitals.vercel-insights.com',
       'https://va.vercel-scripts.com',
     ];
-    // Vercel's preview toolbar (vercel.live) injects its own script/iframe on
-    // preview deployments only — allow it there so previews don't drown the
-    // Sentry CSP feed in noise, while production stays strict.
-    const isPreview = process.env.VERCEL_ENV === 'preview';
-    if (isPreview) connectSrc.push('https://vercel.live', 'wss://*.pusher.com');
+    // Vercel's toolbar (vercel.live) isn't preview-only: with the Comments
+    // feature it also injects its feedback script for signed-in team members
+    // browsing PRODUCTION — live CSP reports YELLOWPINK-5/6 (2026-07-02..04)
+    // were exactly vercel.live script/frame loads on www.yellowpink.pk/admin.
+    // Allow it everywhere so enforcement doesn't break the owner's toolbar;
+    // it only ever activates for authenticated Vercel team members.
+    connectSrc.push('https://vercel.live', 'wss://*.pusher.com');
     // CSP violation reports → Sentry's security endpoint, derived from the
     // DSN when configured (no-op otherwise; reports then only hit the console).
     const cspReportUri = (() => {
@@ -190,17 +192,19 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
       // Next's inline runtime; move to nonces before enforcing if feasible.
-      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com${isPreview ? ' https://vercel.live' : ''}`,
+      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vercel.live`,
       "style-src 'self' 'unsafe-inline'",
       // Catalogue imagery is served from many hosts (Supabase, weserv proxy,
       // yellowpink.pk, Cloudinary/Shopify/Unsplash CDNs) plus analytics pixels;
       // a blanket https: keeps this maintainable. data:/blob: for placeholders.
       "img-src 'self' data: blob: https:",
-      "font-src 'self' data:",
+      // vercel.live/assets.vercel.com: the Vercel toolbar loads its own font
+      // (same team-member-only surface as its script/frame allowances).
+      "font-src 'self' data: https://vercel.live https://assets.vercel.com",
       `connect-src ${connectSrc.join(' ')}`,
       // Service worker + PostHog session-replay worker (blob:).
       "worker-src 'self' blob:",
-      `frame-src 'self' https://www.googletagmanager.com${isPreview ? ' https://vercel.live' : ''}`,
+      'frame-src \'self\' https://www.googletagmanager.com https://vercel.live',
       "object-src 'none'",
       "base-uri 'self'",
       // Checkout hands off to the wallet gateways via auto-submitting form POST.
