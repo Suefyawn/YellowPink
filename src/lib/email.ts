@@ -556,7 +556,17 @@ export async function sendAbandonedCartEmail(args: {
 // gives a frictionless way to back out via the unsubscribe footer link.
 export async function sendNewsletterWelcomeEmail(args: { email: string; source: string }): Promise<void> {
   const offer = await getWelcomeOffer();
-  const minCopy = offer.minOrder > 0 ? ` over PKR ${offer.minOrder.toLocaleString()}` : '';
+  const minCopy = offer && offer.minOrder > 0 ? ` over PKR ${offer.minOrder.toLocaleString()}` : '';
+  // No live welcome coupon (owner deactivated it in admin) → skip the gift
+  // box rather than promise a code checkout would reject.
+  const giftBox = offer ? `
+    <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 24px">
+      <tr><td style="background:${PAPER};border:1px dashed ${BRAND_PINK};border-radius:10px;padding:20px 24px;text-align:center">
+        <p style="margin:0 0 6px;color:${MUTED};font-size:12px;letter-spacing:0.08em;text-transform:uppercase">A little welcome gift</p>
+        <p style="margin:0 0 4px;color:${INK};font-size:26px;font-weight:700;letter-spacing:0.06em;font-family:'Courier New',monospace">${escapeHtml(offer.code)}</p>
+        <p style="margin:0;color:${INK_700};font-size:13px">${offer.pct}% off your first order${minCopy}. Apply it at checkout.</p>
+      </td></tr>
+    </table>` : '';
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">You're in</h2>
     <p style="margin:0 0 14px">Thanks for joining the Yellow Pink list. Here's what you can expect:</p>
@@ -565,13 +575,7 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
       <li style="margin-bottom:6px">New drops, restock alerts, and a tightly-edited offer or two.</li>
       <li style="margin-bottom:6px">Pakistan-specific routine tips from our editorial team.</li>
     </ul>
-    <table role="presentation" style="width:100%;border-collapse:collapse;margin:0 0 24px">
-      <tr><td style="background:${PAPER};border:1px dashed ${BRAND_PINK};border-radius:10px;padding:20px 24px;text-align:center">
-        <p style="margin:0 0 6px;color:${MUTED};font-size:12px;letter-spacing:0.08em;text-transform:uppercase">A little welcome gift</p>
-        <p style="margin:0 0 4px;color:${INK};font-size:26px;font-weight:700;letter-spacing:0.06em;font-family:'Courier New',monospace">${escapeHtml(offer.code)}</p>
-        <p style="margin:0;color:${INK_700};font-size:13px">${offer.pct}% off your first order${minCopy}. Apply it at checkout.</p>
-      </td></tr>
-    </table>
+    ${giftBox}
     <p style="margin:0 0 24px;color:${INK_700}">
       Curious what we've already written? <a href="${SITE_URL}/blog" style="color:${BRAND_PINK};font-weight:600">Read the edit →</a>
     </p>

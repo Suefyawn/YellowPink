@@ -43,7 +43,10 @@ function shouldSuppress(): boolean {
   return false;
 }
 
-export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discountPct?: number } = {}) {
+// `discountPct: null` means there is no live welcome coupon (offer coupon
+// deactivated in admin) — the modal still invites signups but stops
+// promising a discount code that checkout would reject.
+export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discountPct?: number | null } = {}) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
@@ -146,10 +149,12 @@ export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discou
           className="display-l"
           style={{ fontSize: '1.75rem', margin: '0 0 10px', lineHeight: 1.15 }}
         >
-          {discountPct}% off your first order
+          {discountPct !== null ? `${discountPct}% off your first order` : 'Get the Yellow Pink edit'}
         </h2>
         <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 20, fontSize: '0.9375rem' }}>
-          Sign up and we&apos;ll send a welcome code, plus one thoughtful email a fortnight, new arrivals, restocks, and Pakistan-specific routine tips.
+          {discountPct !== null
+            ? 'Sign up and we’ll send a welcome code, plus one thoughtful email a fortnight, new arrivals, restocks, and Pakistan-specific routine tips.'
+            : 'One thoughtful email a fortnight, new arrivals, restocks, and Pakistan-specific routine tips.'}
         </p>
         <NewsletterSignup source="modal" variant="light" ctaLabel="Sign up" />
         <p style={{ marginTop: 12, fontSize: '0.75rem', color: 'var(--ink-500)' }}>

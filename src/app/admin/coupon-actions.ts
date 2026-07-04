@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
+import { WELCOME_CODE } from '@/lib/commerce';
 
 // Errors are surfaced to the user via ?error=... on the coupons page rather
 // than swallowed silently, the previous version dropped insert errors on the
@@ -31,6 +32,49 @@ function couponColumns(type: CouponFormType, value: number) {
     discount_type: type === 'percent' ? 'percent' : 'fixed_cart',
     free_shipping: false,
   };
+}
+
+// Advanced targeting fields shared by create + update. All of these are
+// already enforced server-side by place_order (migration 301); the admin
+// forms just didn't expose them until the 2026-07 coupons extension.
+function advancedColumns(formData: FormData): { error?: string; cols?: Record<string, unknown> } {
+  const usageLimitRaw = formData.get('usage_limit_per_user');
+  const usage_limit_per_user = usageLimitRaw ? Number(usageLimitRaw) : null;
+  if (usage_limit_per_user !== null && (!Number.isInteger(usage_limit_per_user) || usage_limit_per_user < 1)) {
+    return { error: 'Per-customer limit must be a whole number of at least 1.' };
+  }
+  const maxOrderRaw = formData.get('max_order');
+  const max_order = maxOrderRaw ? Number(maxOrderRaw) : null;
+  if (max_order !== null && (!Number.isFinite(max_order) || max_order <= 0)) {
+    return { error: 'Max order must be a positive amount.' };
+  }
+  // Comma/newline-separated; entries are exact emails or *@domain wildcards
+  // (the same Woo-style match place_order and coupon-validation implement).
+  const email_restrictions = ((formData.get('email_restrictions') as string) ?? '')
+    .split(/[\n,]/).map(s => s.trim().toLowerCase()).filter(Boolean);
+  for (const e of email_restrictions) {
+    if (!/^(\*@)?[^\s@]+(@[^\s@]+)?$/.test(e) || (!e.startsWith('*@') && !e.includes('@'))) {
+      return { error: `"${e}" is not a valid email or *@domain restriction.` };
+    }
+  }
+  const description = ((formData.get('description') as string) ?? '').trim() || null;
+
+  // Product scoping (ProductMultiSelect hidden inputs, CSV of uuids). The
+  // fields are optional — a form that doesn't render the pickers (the create
+  // form) leaves scoping untouched via `undefined`, never wiping it.
+  const parseIds = (field: string): string[] | undefined => {
+    const raw = formData.get(field);
+    if (raw === null) return undefined;
+    return String(raw).split(',').map(s => s.trim()).filter(Boolean);
+  };
+  const product_ids = parseIds('product_ids');
+  const excluded_product_ids = parseIds('excluded_product_ids');
+
+  return { cols: {
+    usage_limit_per_user, max_order, email_restrictions, description,
+    ...(product_ids !== undefined ? { product_ids } : {}),
+    ...(excluded_product_ids !== undefined ? { excluded_product_ids } : {}),
+  } };
 }
 
 // useActionState shape: errors come back as state (the create form is a
@@ -66,11 +110,14 @@ export async function createCoupon(
     }
   }
 
+  const adv = advancedColumns(formData);
+  if (adv.error) return { error: adv.error };
+
   // coupons RLS bars anon write/read after migration 070; admin
   // mutations must go through the service role.
   const { data: created, error } = await supabaseAdmin()
     .from('coupons')
-    .insert({ code, ...couponColumns(type, value), min_order, max_uses, expires_at })
+    .insert({ code, ...couponColumns(type, value), min_order, max_uses, expires_at, ...adv.cols })
     .select('id')
     .single();
 
@@ -113,9 +160,21 @@ export async function updateCoupon(
     if (type === 'percent' && value > 100) return { error: 'A percentage discount cannot exceed 100%.' };
   }
 
+  const adv = advancedColumns(formData);
+  if (adv.error) return { error: adv.error };
+
+  // The newsletter popup + welcome email advertise WELCOME_CODE by name
+  // (lib/offers.ts). Renaming it would break every promise already sent, so
+  // the code itself is locked; values (percent, min order, limits) stay
+  // editable and the storefront copy follows them automatically.
+  const { data: existing } = await supabaseAdmin().from('coupons').select('code').eq('id', id).single();
+  if (existing && existing.code.toUpperCase() === WELCOME_CODE && code !== WELCOME_CODE) {
+    return { error: `${WELCOME_CODE} is advertised by the newsletter popup and welcome email — its code can't be renamed. Edit its values instead, or deactivate it to stop offering the discount.` };
+  }
+
   const { error } = await supabaseAdmin()
     .from('coupons')
-    .update({ code, ...couponColumns(type, value), min_order, max_uses, expires_at })
+    .update({ code, ...couponColumns(type, value), min_order, max_uses, expires_at, ...adv.cols })
     .eq('id', id);
   if (error) return { error: error.message };
 
@@ -133,6 +192,13 @@ export async function deleteCoupon(formData: FormData) {
   if (!id) bounceCoupons('Missing coupon id.');
 
   const { data: target } = await supabaseAdmin().from('coupons').select('code').eq('id', id).single();
+  // Deleting the advertised welcome coupon is how the site once ended up
+  // promising a code checkout rejects (the popup/email fall back to the
+  // seeded copy when the row is gone). Deactivate instead — the popup and
+  // welcome email drop the offer automatically when it's inactive.
+  if (target && target.code.toUpperCase() === WELCOME_CODE) {
+    bounceCoupons(`${WELCOME_CODE} is advertised by the newsletter popup and welcome email. Deactivate it to stop offering the discount — deleting it would leave the site promising a dead code.`);
+  }
   const { error } = await supabaseAdmin().from('coupons').delete().eq('id', id);
   if (error) {
     log.error('coupon.delete_failed', { id, error: error.message });

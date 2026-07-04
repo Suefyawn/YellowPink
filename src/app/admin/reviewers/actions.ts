@@ -249,3 +249,34 @@ export async function rejectReviewerApplication(formData: FormData): Promise<voi
   revalidatePath('/admin/reviewers');
   ok('Application rejected.');
 }
+
+/** Assign (or clear) a post's medical reviewer from the assignments triage.
+ *  The byline + Article.reviewedBy schema change immediately, so the UI keeps
+ *  this behind an explicit per-post button — suggestions are never bulk-applied
+ *  silently: "medically reviewed by" is a claim about who actually read it. */
+export async function assignPostReviewer(formData: FormData): Promise<void> {
+  const session = await assertBlog();
+  const postId = str(formData, 'post_id');
+  const reviewerId = str(formData, 'reviewer_id') || null;
+  const A = '/admin/reviewers/assignments';
+  const failA = (msg: string): never => redirect(`${A}?error=${encodeURIComponent(msg)}`);
+  if (!postId) failA('Missing post.');
+
+  const admin = supabaseAdmin();
+  const { data: post } = await admin.from('blog_posts').select('slug, title, reviewer_id').eq('id', postId).single();
+  if (!post) failA('Post not found.');
+
+  const { error } = await admin.from('blog_posts').update({ reviewer_id: reviewerId }).eq('id', postId);
+  if (error) {
+    log.error('reviewer.assign_failed', { postId, reviewerId, error: error.message });
+    failA(`Could not update the post: ${error.message}`);
+  }
+
+  void logAudit(session, {
+    action: 'blog.reviewer_assigned', entity: 'blog_post', entity_id: postId,
+    diff: { post: post!.title, from: post!.reviewer_id, to: reviewerId },
+  });
+  revalidatePath(`/blog/${post!.slug}`);
+  revalidatePath('/admin/reviewers/assignments');
+  redirect(`${A}?saved=${encodeURIComponent(reviewerId ? 'Reviewer assigned.' : 'Reviewer removed.')}`);
+}

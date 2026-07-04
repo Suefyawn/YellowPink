@@ -41,11 +41,15 @@ export default async function CouponsPage({
   // coupons RLS (migration 070) drops anon SELECT, admin reads need
   // the service role.
   const admin = supabaseAdmin();
-  const [{ data }, { data: orderRows }] = await Promise.all([
+  const [{ data }, { data: orderRows }, { data: productRows }] = await Promise.all([
     admin.from('coupons').select('*').order('created_at', { ascending: false }),
     admin.from('orders').select('coupon_code, discount_amount').not('coupon_code', 'is', null).neq('status', 'cancelled'),
+    // Published catalogue for the edit dialog's product-scoping pickers.
+    admin.from('products').select('id, brand, name').eq('status', 'published').order('name'),
   ]);
   const coupons = (data ?? []) as Coupon[];
+  const pickerProducts = ((productRows ?? []) as Array<{ id: string; brand: string | null; name: string }>)
+    .map(p => ({ id: p.id, label: p.brand ? `${p.brand} — ${p.name}` : p.name }));
 
   // Real redemption impact, aggregated from orders (ground truth) and keyed
   // by uppercased code so casing differences collapse together.
@@ -127,6 +131,18 @@ export default async function CouponsPage({
                         <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</span>
                         <CopyButton value={c.code} iconOnly title={`Copy coupon code ${c.code}`} />
                       </span>
+                      {c.description && (
+                        <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 2, maxWidth: 220 }}>{c.description}</div>
+                      )}
+                      {(c.product_ids?.length || c.excluded_product_ids?.length || c.email_restrictions?.length) ? (
+                        <div style={{ fontSize: '0.6875rem', color: '#6b7280', marginTop: 2 }}>
+                          {[
+                            c.product_ids?.length ? `${c.product_ids.length} product${c.product_ids.length > 1 ? 's' : ''} only` : null,
+                            c.excluded_product_ids?.length ? `${c.excluded_product_ids.length} excluded` : null,
+                            c.email_restrictions?.length ? 'email-restricted' : null,
+                          ].filter(Boolean).join(' · ')}
+                        </div>
+                      ) : null}
                     </td>
                     <td data-label="Discount" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {c.discount_type === 'free_shipping' || c.free_shipping
@@ -139,6 +155,7 @@ export default async function CouponsPage({
                     <td data-label="Used" style={{ padding: '12px 16px', fontSize: '0.875rem', color: isMaxed ? '#ea580c' : '#6b7280', fontWeight: isMaxed ? 600 : 400 }}>
                       {c.used_count}
                       {c.max_uses ? <span style={{ color: '#9ca3af' }}> / {c.max_uses}</span> : ''}
+                      {c.usage_limit_per_user ? <div style={{ fontSize: '0.6875rem', color: '#9ca3af' }}>{c.usage_limit_per_user}/customer</div> : null}
                     </td>
                     <td data-label="Discount given" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {(() => {
@@ -173,7 +190,7 @@ export default async function CouponsPage({
                     </td>
                     <td style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <CouponEditModal coupon={c} />
+                        <CouponEditModal coupon={c} products={pickerProducts} />
                         <DeleteButton id={c.id} action={deleteCoupon} confirmMsg={`Delete coupon "${c.code}"?`} />
                       </div>
                     </td>

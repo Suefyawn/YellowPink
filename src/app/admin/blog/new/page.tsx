@@ -1,4 +1,4 @@
-import { BlogForm } from '@/components/admin/BlogForm';
+import { BlogForm, type BlogFormReviewer } from '@/components/admin/BlogForm';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { supabase } from '@/lib/supabase';
@@ -9,6 +9,6 @@ export default async function NewBlogPostPage() {
     return <NoAccess section="Blog" />;
   }
   const { data: reviewers } = await supabase
-    .from('content_reviewers').select('id, name, specialty').eq('active', true).order('sort_order').order('name');
-  return <BlogForm reviewers={(reviewers ?? []) as { id: string; name: string; specialty: string | null }[]} />;
+    .from('content_reviewers').select('id, name, specialty, review_topics, is_default, active').eq('active', true).order('sort_order').order('name');
+  return <BlogForm reviewers={(reviewers ?? []) as BlogFormReviewer[]} />;
 }
