@@ -3,9 +3,15 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { captureError } from '@/lib/monitoring';
+import { isDeploySkewError, reloadOnceForDeploySkew } from '@/lib/stale-action';
 
 export default function AdminError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => {
+    // A chunk/module load failure or stale Server Action means the tab (or an
+    // installed admin PWA) is on an old build after a deploy — "white screen no
+    // matter where I click". Hard-reload once to pull the current build; the
+    // shared guard stops a reload loop if the fresh build also errors.
+    if (isDeploySkewError(error) && reloadOnceForDeploySkew()) return;
     void captureError(error, { source: 'app/admin/error.tsx', digest: error.digest });
   }, [error]);
 

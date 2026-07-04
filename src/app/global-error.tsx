@@ -2,15 +2,20 @@
 
 import { useEffect } from 'react';
 import { captureError } from '@/lib/monitoring';
-import { isStaleServerActionError } from '@/lib/stale-action';
+import { isStaleServerActionError, isStaleBuildError, reloadOnceForDeploySkew } from '@/lib/stale-action';
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const isStale = isStaleServerActionError(error);
+  const isStaleBuild = isStaleBuildError(error);
 
   useEffect(() => {
-    if (isStale) return;
+    // A stale-build failure leaves a broken shell → auto-reload to the current
+    // build. Either deploy-skew kind is a stale tab, not a real bug, so skip
+    // Sentry for both.
+    if (isStaleBuild && reloadOnceForDeploySkew()) return;
+    if (isStale || isStaleBuild) return;
     void captureError(error, { source: 'app/global-error.tsx', digest: error.digest });
-  }, [error, isStale]);
+  }, [error, isStale, isStaleBuild]);
 
   const refresh = () => {
     if (typeof window !== 'undefined') window.location.reload();
@@ -21,7 +26,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
     <html lang="en">
       <body style={{ fontFamily: 'sans-serif', margin: 0, background: '#faf5ee', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '24px' }}>
         <div style={{ textAlign: 'center', maxWidth: 420 }}>
-          {isStale ? (
+          {(isStale || isStaleBuild) ? (
             <>
               <div style={{ fontSize: '3rem', marginBottom: 12 }} aria-hidden>↻</div>
               <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', margin: '0 0 10px' }}>
