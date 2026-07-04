@@ -3,21 +3,28 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { captureError } from '@/lib/monitoring';
-import { isStaleServerActionError } from '@/lib/stale-action';
+import { isStaleServerActionError, isStaleBuildError, reloadOnceForDeploySkew } from '@/lib/stale-action';
 
 export default function Error({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   const isStale = isStaleServerActionError(error);
+  // A stale-build (chunk/module load) failure leaves the page broken, so
+  // there's nothing to preserve — auto-reload to the current build. A stale
+  // Server Action, by contrast, fires on submit while the page is still
+  // usable, so we keep the friendly manual "Refresh" card below to avoid
+  // wiping what the customer typed.
+  const isStaleBuild = isStaleBuildError(error);
 
   useEffect(() => {
-    // Stale-tab Server Action mismatches happen after a deploy and a reload
-    // fixes them, they're not real bugs. Don't pollute Sentry with them.
-    if (isStale) return;
+    if (isStaleBuild && reloadOnceForDeploySkew()) return;
+    // Deploy-skew mismatches (either kind) are fixed by a reload and aren't
+    // real bugs, don't pollute Sentry with them.
+    if (isStale || isStaleBuild) return;
     // Fire-and-forget, captureError lazy-loads the Sentry SDK; the page
     // can still re-render before that promise settles.
     void captureError(error, { source: 'app/error.tsx', digest: error.digest });
-  }, [error, isStale]);
+  }, [error, isStale, isStaleBuild]);
 
-  if (isStale) {
+  if (isStale || isStaleBuild) {
     return <StaleActionView reset={reset} />;
   }
 
