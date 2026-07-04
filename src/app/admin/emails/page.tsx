@@ -6,6 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { DotChip } from '@/components/admin/OrderChips';
+import { Pagination } from '@/components/admin/Pagination';
 import { PK_TZ } from '@/lib/dates';
 
 const fmtDateTime = (s: string) =>
@@ -49,15 +50,18 @@ const FILTERS = [
 export default async function EmailLogPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; page?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('system_tools'))) {
     return <NoAccess section="Email log" />;
   }
 
-  const { status } = await searchParams;
+  const { status, page } = await searchParams;
   const activeFilter = FILTERS.some(f => f.key === status) ? status! : 'all';
+  const PAGE_SIZE = 50;
+  const currentPage = Math.max(1, parseInt(page ?? '1', 10) || 1);
+  const from = (currentPage - 1) * PAGE_SIZE;
 
   const admin = supabaseAdmin();
   // The `react-hooks/purity` rule flags Date.now() as impure; a one-shot read
@@ -65,14 +69,17 @@ export default async function EmailLogPage({
   // eslint-disable-next-line react-hooks/purity
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
+  // Paginated so one newsletter-import burst can't push older log rows past a
+  // hard cap and off the UI entirely (the whole page also stopped scrolling
+  // sanely at ~72,000px tall on mobile).
   let listQuery = admin
     .from('email_log')
-    .select('id, recipient, subject, kind, status, error, delivered_at, opened_at, clicked_at, bounced_at, complained_at, created_at')
+    .select('id, recipient, subject, kind, status, error, delivered_at, opened_at, clicked_at, bounced_at, complained_at, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
-    .limit(200);
+    .range(from, from + PAGE_SIZE - 1);
   if (activeFilter !== 'all') listQuery = listQuery.eq('status', activeFilter);
 
-  const [{ data: rows }, sent30, failed30, opened30] = await Promise.all([
+  const [{ data: rows, count: totalRows }, sent30, failed30, opened30] = await Promise.all([
     listQuery,
     admin.from('email_log').select('id', { count: 'exact', head: true }).eq('status', 'sent').gte('created_at', thirtyDaysAgo),
     admin.from('email_log').select('id', { count: 'exact', head: true }).eq('status', 'failed').gte('created_at', thirtyDaysAgo),
@@ -168,9 +175,7 @@ export default async function EmailLogPage({
           </table>
         )}
       </div>
-      {emails.length === 200 && (
-        <p style={{ margin: '12px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>Showing the 200 most recent emails.</p>
-      )}
+      <Pagination total={totalRows ?? 0} pageSize={PAGE_SIZE} currentPage={currentPage} basePath="/admin/emails" />
     </div>
   );
 }
