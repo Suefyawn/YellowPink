@@ -4,8 +4,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
-import { ProductTile } from '@/components/ui/ProductTile';
 import { Overline } from '@/components/ui/Overline';
+import { CollectionGrid } from '@/sections/collection/CollectionGrid';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { loadTagData } from '@/lib/shop-facets';
@@ -112,9 +112,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
           {list.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
-              {list.map(p => <ProductTile key={p.id} product={p} />)}
-            </div>
+            <CollectionGrid products={list} basePath={`/collection/${c.slug}`} />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
               This collection is being curated, <Link href="/shop" className="text-link">browse the full catalogue</Link> in the meantime.
