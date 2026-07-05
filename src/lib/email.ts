@@ -677,6 +677,35 @@ export async function sendReviewRequestEmail(args: {
   });
 }
 
+// Review booster: thank a guest reviewer with a one-time discount code once
+// their review is approved (registered users earn loyalty points instead — see
+// src/lib/review-reward.ts). Transactional, not marketing: it's a direct
+// thank-you for an action they took, so no unsubscribe footer.
+export async function sendReviewRewardEmail(args: {
+  email: string;
+  code: string;
+  percent: number;
+  days: number;
+  productName?: string;
+}): Promise<void> {
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">Thank you for your review! 🌸</h2>
+    <p style="margin:0 0 14px">Your review${args.productName ? ` of <strong>${escapeHtml(args.productName)}</strong>` : ''} is now live, and it genuinely helps other shoppers in Pakistan choose well.</p>
+    <p style="margin:0 0 16px">As a small thank-you, here's <strong>${args.percent}% off</strong> your next order:</p>
+    <div style="margin:0 0 18px;padding:16px;background:#fdf2f8;border:1px dashed #f472b6;border-radius:12px;text-align:center">
+      <div style="font-size:12px;color:${MUTED};letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">Your code</div>
+      <div style="font-size:24px;font-weight:800;letter-spacing:0.12em;color:${BRAND_PINK};font-family:ui-monospace,Menlo,monospace">${escapeHtml(args.code)}</div>
+    </div>
+    <p style="margin:0 0 20px;text-align:center">
+      <a href="${SITE_URL}/shop" style="display:inline-block;padding:11px 22px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Shop now →</a>
+    </p>
+    <p style="margin:0;color:${MUTED};font-size:12px;line-height:1.6">
+      Apply the code at checkout. One use, valid for ${args.days} days. Thanks for being part of Yellow Pink 💛
+    </p>
+  `);
+  await send({ to: args.email, subject: `Your ${args.percent}% thank-you code inside 🌸`, html });
+}
+
 // ─── 11b. Owner: stuck-payment alert (background job) ───────────────────────
 // Orders that started an online payment but never completed sit in
 // `payment_pending` indefinitely, invisible unless someone scans the orders

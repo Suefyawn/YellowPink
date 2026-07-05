@@ -3,9 +3,11 @@
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { after } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
+import { issueReviewReward } from '@/lib/review-reward';
 import { log } from '@/lib/logger';
 
 async function assertReviews() {
@@ -28,6 +30,12 @@ export async function approveReview(formData: FormData): Promise<void> {
     redirect(`/admin/reviews?error=${encodeURIComponent('Could not approve review: ' + error.message)}`);
   }
   void logAudit(session, { action: 'review.approve', entity: 'product_reviews', entity_id: id });
+  // Review booster: reward a guest reviewer with a one-time discount code.
+  // Best-effort and post-response (after()) so a slow/failed email or coupon
+  // insert can never break the approve action; falls back to inline when
+  // there's no request scope. issueReviewReward is a no-op unless enabled and
+  // the review is a guest one that hasn't been rewarded yet.
+  try { after(() => issueReviewReward(id)); } catch { await issueReviewReward(id); }
   revalidatePath('/admin/reviews');
 }
 
