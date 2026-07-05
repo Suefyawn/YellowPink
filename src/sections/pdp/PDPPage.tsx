@@ -11,7 +11,7 @@ import { ProductDescription } from '@/components/pdp/ProductDescription';
 import { track } from '@/lib/analytics';
 import { tapHaptic } from '@/lib/haptics';
 import { stripBrandPrefix } from '@/lib/product-display';
-import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
+import { whatsappUrl as waUrl, whatsappGoUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { BenefitIcon } from '@/components/ui/BenefitIcon';
 import { RETURNS_WINDOW_DAYS, formatPkr } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
@@ -606,14 +606,16 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 question lands with full context. Hides if the env var
                 isn't set. */}
             {(() => {
-              const href = waUrl(WA_T.product(product.name));
-              if (!href) return null;
+              // Gate on a configured number; route through /go/whatsapp (crawler-
+              // safe + logs the click with this product's context).
+              if (!waUrl(WA_T.product(product.name))) return null;
+              const href = whatsappGoUrl(WA_T.product(product.name), { src: 'pdp', productSlug: product.slug });
               return (
                 <div style={{ marginBottom: 24 }}>
                   <a
                     href={href}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 8,
                       background: 'transparent', color: '#0f766e',

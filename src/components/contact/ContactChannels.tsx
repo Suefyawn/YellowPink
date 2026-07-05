@@ -1,4 +1,4 @@
-import { whatsappUrlFromNumber, WA_TEMPLATES } from '@/lib/whatsapp';
+import { whatsappUrlFromNumber, whatsappGoUrl, WA_TEMPLATES } from '@/lib/whatsapp';
 import type { SocialLink } from '@/lib/socials';
 
 // Storefront contact-channel cards, rendered on /page/contact above the form.
@@ -85,7 +85,10 @@ export function ContactChannels({
   email: string | null;
   socials: SocialLink[];
 }) {
-  const waHref = whatsappUrlFromNumber(phone, WA_TEMPLATES.generic());
+  // Gate on a configured number, but route through the internal redirect
+  // (crawler-safe + logs the click) instead of a raw wa.me link.
+  const waConfigured = whatsappUrlFromNumber(phone, WA_TEMPLATES.generic()) != null;
+  const waHref = waConfigured ? whatsappGoUrl(WA_TEMPLATES.generic(), { src: 'contact' }) : null;
   const telDigits = phone ? phone.replace(/[^\d+]/g, '') : null;
 
   const channels: Channel[] = [];

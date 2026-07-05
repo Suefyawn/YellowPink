@@ -10,7 +10,7 @@ import { useCart } from '@/context/CartContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { track } from '@/lib/analytics';
 import { brandPlusName } from '@/lib/product-display';
-import { whatsappUrl as waUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
+import { whatsappUrl as waUrl, whatsappGoUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import type { CartItem, Coupon, Product } from '@/types';
 
@@ -322,13 +322,13 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
               {/* Help-on-WhatsApp link, last-mile catch for the visitor who's
                   on the cart but hesitating. Hides when no number set. */}
               {(() => {
-                const href = waUrl(WA_T.cart());
-                if (!href) return null;
+                if (!waUrl(WA_T.cart())) return null;
+                const href = whatsappGoUrl(WA_T.cart(), { src: 'cart' });
                 return (
                   <a
                     href={href}
                     target="_blank"
-                    rel="noopener noreferrer"
+                    rel="nofollow noopener noreferrer"
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                       marginTop: 12, padding: '10px 14px',

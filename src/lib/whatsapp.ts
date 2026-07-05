@@ -70,6 +70,24 @@ export function whatsappUrlFromNumber(number: string | null | undefined, message
   return whatsappUrlForCustomer(number, message);
 }
 
+/** Internal redirect link for storefront WhatsApp CTAs. Instead of exposing a
+ *  crawlable `wa.me` link site-wide (which SEO crawlers probe hundreds of times
+ *  and WhatsApp then 429-rate-limits, showing up as "broken external links"),
+ *  storefront buttons point here. `/go/whatsapp` is Disallowed in robots.txt, so
+ *  crawlers stop at our domain and never touch wa.me; real users get a 302 to
+ *  the chat. The route also logs the click, turning WhatsApp-order intent into a
+ *  measurable funnel step (Analytics → Sources). Number-independent: the route
+ *  resolves the merchant number server-side. Always returns a path — callers
+ *  still gate visibility on whether a number is configured. */
+export function whatsappGoUrl(message?: string, opts?: { src?: string; productSlug?: string }): string {
+  const params = new URLSearchParams();
+  if (message) params.set('text', message);
+  if (opts?.src) params.set('src', opts.src);
+  if (opts?.productSlug) params.set('p', opts.productSlug);
+  const qs = params.toString();
+  return qs ? `/go/whatsapp?${qs}` : '/go/whatsapp';
+}
+
 /** Pre-typed messages for the common storefront contact points. */
 export const WA_TEMPLATES = {
   generic:     () => "Hi Yellow Pink! I'd like to ask a question.",

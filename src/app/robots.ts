@@ -31,6 +31,9 @@ export default function robots(): MetadataRoute.Robots {
           '/cart',
           '/wishlist',
           '/track',
+          // Outbound WhatsApp redirect: keeps crawlers on our domain so they
+          // never probe (and 429-flag) the external wa.me chat link.
+          '/go/',
         ],
       },
     ],
