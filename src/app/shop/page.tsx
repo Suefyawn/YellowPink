@@ -253,8 +253,12 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           ?? (initialCategory !== 'All' ? canonicalCategory(initialCategory) : null);
         if (!landingLabel || q || brand) return null;
         const faqs = landingFaqs(landingLabel, estimatedDays);
+        // Vertical padding only: setting the `padding` shorthand here zeroed the
+        // .container side gutter, which pushed the whole FAQ hard against the
+        // left edge, out of line with the grid/heading above it (worst on
+        // mobile, where there's no maxWidth to mask it).
         return (
-          <section className="container" style={{ padding: '8px 0 var(--section-gap)' }}>
+          <section className="container" style={{ paddingTop: 8, paddingBottom: 'var(--section-gap)' }}>
             <script
               type="application/ld+json"
               dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(faqs.map(f => ({ question: f.q, answer: f.a })))) }}
@@ -262,11 +266,13 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
             <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 16px' }}>
               {landingLabel}, frequently asked
             </h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, maxWidth: 760 }}>
+            {/* Rows span the content width (like the product grid); only the
+                answer copy is capped to a comfortable reading measure. */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
               {faqs.map((f, i) => (
                 <details key={i} style={{ borderBottom: '1px solid var(--line)', padding: '12px 0' }}>
                   <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9375rem', color: 'var(--ink-900)' }}>{f.q}</summary>
-                  <p className="body-text" style={{ color: 'var(--ink-700)', margin: '8px 0 0' }}>{f.a}</p>
+                  <p className="body-text" style={{ color: 'var(--ink-700)', margin: '8px 0 0', maxWidth: 760 }}>{f.a}</p>
                 </details>
               ))}
             </div>
