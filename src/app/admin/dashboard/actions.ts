@@ -307,16 +307,16 @@ interface SentryIssue {
 }
 
 async function refreshSentry(supabase: PermissiveSupabase): Promise<void> {
-  // Strip whitespace/newlines a paste can smuggle in — those alone would make
-  // the Authorization header unbuildable. If a non-ASCII char survives (smart
-  // quote, hidden unicode, corrupted copy), fetch throws the cryptic "Cannot
-  // convert argument to a ByteString"; turn that into an actionable message so
-  // the fix (re-paste the token cleanly) is obvious.
-  const token = process.env.SENTRY_AUTH_TOKEN?.replace(/\s+/g, '');
-  if (!token) throw new Error('SENTRY_AUTH_TOKEN not configured');
-  if (/[^\x21-\x7e]/.test(token)) {
-    throw new Error('SENTRY_AUTH_TOKEN contains invalid characters — re-copy the token and paste it into Vercel without spaces, quotes or line breaks.');
-  }
+  // Sanitise the token: a paste can smuggle in whitespace/newlines, non-ASCII
+  // characters (smart quotes, zero-width chars) or stray wrapping quotes, any
+  // of which make the Authorization header unbuildable ("Cannot convert
+  // argument to a ByteString"). A real Sentry token is printable-ASCII base64,
+  // so dropping every non-printable-ASCII char and any quote can only remove
+  // junk, never a legitimate character — it self-heals the common paste slips.
+  const token = process.env.SENTRY_AUTH_TOKEN
+    ?.replace(/[^\x21-\x7e]/g, '')  // whitespace, newlines, smart quotes, unicode
+    .replace(/["']/g, '');          // stray wrapping quotes
+  if (!token) throw new Error('SENTRY_AUTH_TOKEN not configured (or empty after sanitising)');
 
   // Issues list, same shape we had, plus firstSeen so the dedup logic can
   // tell "brand-new issue today" from "still open from last week".
