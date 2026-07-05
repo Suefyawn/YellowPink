@@ -134,7 +134,7 @@ export function LinkBuilder({ siteBase }: { siteBase: string }) {
                 Paste a full link or just the path. Base: <code>{base}</code>
               </p>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="lb-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div>
                 <label style={lbl} htmlFor="lb-source">Source <span style={{ color: '#9ca3af', fontWeight: 400 }}>(where)</span></label>
                 <input id="lb-source" style={input} value={source} onChange={e => { setSource(e.target.value); setCopied(false); }} placeholder="instagram" />
@@ -144,7 +144,7 @@ export function LinkBuilder({ siteBase }: { siteBase: string }) {
                 <input id="lb-medium" style={input} value={medium} onChange={e => { setMedium(e.target.value); setCopied(false); }} placeholder="bio" />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="lb-two" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
               <div>
                 <label style={lbl} htmlFor="lb-campaign">Campaign <span style={{ color: '#9ca3af', fontWeight: 400 }}>(optional)</span></label>
                 <input id="lb-campaign" style={input} value={campaign} onChange={e => { setCampaign(e.target.value); setCopied(false); }} placeholder="eid-sale, ramzan, launch" />
