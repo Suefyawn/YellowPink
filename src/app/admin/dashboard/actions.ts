@@ -307,8 +307,16 @@ interface SentryIssue {
 }
 
 async function refreshSentry(supabase: PermissiveSupabase): Promise<void> {
-  const token = process.env.SENTRY_AUTH_TOKEN;
+  // Strip whitespace/newlines a paste can smuggle in — those alone would make
+  // the Authorization header unbuildable. If a non-ASCII char survives (smart
+  // quote, hidden unicode, corrupted copy), fetch throws the cryptic "Cannot
+  // convert argument to a ByteString"; turn that into an actionable message so
+  // the fix (re-paste the token cleanly) is obvious.
+  const token = process.env.SENTRY_AUTH_TOKEN?.replace(/\s+/g, '');
   if (!token) throw new Error('SENTRY_AUTH_TOKEN not configured');
+  if (/[^\x21-\x7e]/.test(token)) {
+    throw new Error('SENTRY_AUTH_TOKEN contains invalid characters — re-copy the token and paste it into Vercel without spaces, quotes or line breaks.');
+  }
 
   // Issues list, same shape we had, plus firstSeen so the dedup logic can
   // tell "brand-new issue today" from "still open from last week".
