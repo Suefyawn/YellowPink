@@ -9,14 +9,24 @@
 // client events. See:
 // https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation-client
 import * as Sentry from '@sentry/nextjs';
-import { scrubEvent } from './src/lib/sentry-scrub';
+import { scrubEvent, isThirdPartyNoise } from './src/lib/sentry-scrub';
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   tracesSampleRate: 0.2,
-  // Redact customer emails / phone numbers from messages and breadcrumbs
-  // before they leave the browser.
-  beforeSend: (event) => scrubEvent(event),
+  // Drop errors thrown by in-app-browser (Instagram/Facebook/TikTok on Android)
+  // injected scripts and other benign browser noise before scrubbing/sending;
+  // then redact customer emails / phone numbers from what remains.
+  beforeSend: (event) => (isThirdPartyNoise(event) ? null : scrubEvent(event)),
+  // Belt-and-braces string/URL matching for the same noise: some in-app-browser
+  // errors arrive as bare onerror strings with no structured frames.
+  ignoreErrors: [
+    'Java object is gone',
+    /navigation_performance_logger/,
+    'ResizeObserver loop limit exceeded',
+    'ResizeObserver loop completed with undelivered notifications',
+  ],
+  denyUrls: [/^app:\/\//],
   // Capture replays for 5% of sessions, 100% of sessions with errors.
   replaysSessionSampleRate: 0.05,
   replaysOnErrorSampleRate: 1.0,
