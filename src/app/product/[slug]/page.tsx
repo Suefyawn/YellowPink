@@ -267,10 +267,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
 
   const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts] = await Promise.all([
     isDemo
-      ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at'>> })
+      ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>> })
       : supabase
           .from('product_reviews')
-          .select('id, author_name, rating, body, created_at, photo_urls, verified_purchase, helpful_count, owner_reply, owner_reply_at')
+          .select('id, author_name, rating, body, created_at, photo_urls, verified_purchase, helpful_count, owner_reply, owner_reply_at, source')
           .eq('product_id', product.id)
           .eq('approved', true)
           .order('created_at', { ascending: false }),
@@ -283,7 +283,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getPostsLinkingProduct(product.slug),
   ]);
 
-  const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at'>[];
+  const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>[];
+
+  // Reviews imported from another store (source set, e.g. genuine NB Sons
+  // manufacturer reviews) display on-page with attribution, but are kept OUT of
+  // the Product rich-snippet markup, which Google requires to be first-party.
+  const firstPartyReviews = reviews.filter(r => !r.source);
 
   // Single source for both the visible trail and the BreadcrumbList schema.
   const crumbs = [
@@ -301,7 +306,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <main className="fade-in" style={{ minHeight: '100vh' }}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(productLd(product, reviews, variantData.variants)) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(productLd(product, firstPartyReviews, variantData.variants)) }}
       />
       <script
         type="application/ld+json"

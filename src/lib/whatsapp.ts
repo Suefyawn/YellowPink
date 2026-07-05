@@ -92,6 +92,9 @@ export function whatsappGoUrl(message?: string, opts?: { src?: string; productSl
 export const WA_TEMPLATES = {
   generic:     () => "Hi Yellow Pink! I'd like to ask a question.",
   product:     (name: string) => `Hi Yellow Pink! I have a question about "${name}".`,
+  // Supplement buyers of an unfamiliar brand tend to want reassurance before
+  // they commit; this consult template opens that conversation with context.
+  consult:     (name: string) => `Hi Yellow Pink! I'm considering "${name}" and would like some guidance before ordering.`,
   cart:        () => "Hi Yellow Pink! I'm checking out and need help with my cart.",
   orderTrack:  (orderNumber: string) => `Hi Yellow Pink! Can you share an update on order ${orderNumber}?`,
   orderQuestion: (orderNumber: string) =>
