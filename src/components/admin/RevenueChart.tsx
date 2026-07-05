@@ -13,12 +13,18 @@ const fmtK = (n: number) => {
   return String(Math.round(n));
 };
 
-// Parse the bucket day as UTC and render in PK time so the label always
-// equals the bucket day, independent of server/browser timezone.
-const fmtDate = (iso: string) =>
-  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', timeZone: PK_TZ });
+type Granularity = 'day' | 'week' | 'month';
 
-export function RevenueChart({ days }: { days: DayRevenue[] }) {
+// Parse the bucket day as UTC and render in PK time so the label always
+// equals the bucket day, independent of server/browser timezone. Month buckets
+// read as "Jul", day/week buckets as "5 Jul" (the bucket's start).
+const fmtDate = (iso: string, granularity: Granularity = 'day') =>
+  new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-PK',
+    granularity === 'month'
+      ? { month: 'short', year: '2-digit', timeZone: PK_TZ }
+      : { day: 'numeric', month: 'short', timeZone: PK_TZ });
+
+export function RevenueChart({ days, granularity = 'day' }: { days: DayRevenue[]; granularity?: Granularity }) {
   if (days.length === 0) {
     return (
       <div style={{ height: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
@@ -86,11 +92,11 @@ export function RevenueChart({ days }: { days: DayRevenue[] }) {
               rx={2}
               fill={isLast ? '#C5286A' : '#f6bcd5'}
             >
-              <title>{`${fmtDate(d.date)}, PKR ${Math.round(d.revenue).toLocaleString()}`}</title>
+              <title>{`${fmtDate(d.date, granularity)}, PKR ${Math.round(d.revenue).toLocaleString()}`}</title>
             </rect>
             {ticks.has(i) && (
               <text x={labelX} y={H - 7} textAnchor={labelAnchor} fontSize="10" fill="#9ca3af">
-                {fmtDate(d.date)}
+                {fmtDate(d.date, granularity)}
               </text>
             )}
           </g>
