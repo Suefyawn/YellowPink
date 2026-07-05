@@ -111,5 +111,41 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // Owner notification: the owner asked to be told when the automated
+  // cart-reminder emails go out. One rolling notification per day (deduped on
+  // entity_id) whose body reflects the day's running total, so the 15-min cron
+  // can't spam the bell feed. Best-effort: a notification failure must never
+  // fail the cron or re-send emails.
+  if (sent > 0) {
+    try {
+      const dayKey = new Date().toISOString().slice(0, 10);
+      const dedupKey = `abandoned_cart:${dayKey}`;
+      const { count: dayTotal } = await sb
+        .from('email_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('category', 'Abandoned cart')
+        .eq('status', 'sent')
+        .gte('created_at', `${dayKey}T00:00:00.000Z`);
+      const total = dayTotal ?? sent;
+      const body = `${total} cart-reminder email${total === 1 ? '' : 's'} sent to customers today. These recover carts left behind after an hour, a day, and three days.`;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const notifs = sb.from('admin_notifications') as any;
+      const { data: existing } = await notifs.select('id').eq('entity_id', dedupKey).limit(1);
+      if (existing && existing.length > 0) {
+        await notifs.update({ title: 'Cart reminder emails sent', body }).eq('entity_id', dedupKey);
+      } else {
+        await notifs.insert({
+          kind: 'abandoned_cart',
+          title: 'Cart reminder emails sent',
+          body,
+          link: '/admin/emails?q=cart',
+          entity_id: dedupKey,
+        });
+      }
+    } catch {
+      /* notification is best-effort */
+    }
+  }
+
   return NextResponse.json({ ok: true, scanned: data?.length ?? 0, sent, errors });
 }

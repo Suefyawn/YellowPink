@@ -30,6 +30,7 @@ const KIND_SVG: Record<string, AdminIconName> = {
   sentry_issue: 'bug',
   posthog_spike: 'trend-up',
   posthog_drop: 'trend-down',
+  abandoned_cart: 'cart',
 };
 
 export function NotificationsBell({ notifications }: { notifications: Notification[] }) {
