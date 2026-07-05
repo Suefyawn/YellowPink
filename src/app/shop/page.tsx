@@ -4,11 +4,12 @@
 export const revalidate = 300;
 
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref } from '@/lib/category-taxonomy';
+import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref, isHealthCategory } from '@/lib/category-taxonomy';
 import { brandSlug } from '@/lib/brands';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
@@ -185,6 +186,28 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       ? products.filter(p => p.category === initialCategory).slice(0, 24)
       : products.slice(0, 24);
 
+  // On wellness/health category landings, surface the matching buyer guides.
+  // These indexable category pages are crawled far more than the guides, so
+  // linking down to them concentrates internal authority on the supplement
+  // guides (which rank but sit on page 5+), and gives shoppers the research
+  // content that precedes a supplement purchase. Only fetched for a genuine
+  // health landing (not search / brand views), so the common path pays nothing.
+  const guideLandingCat = taxonObj?.label
+    ?? (subcategory ? canonicalCategory(subcategory) : null)
+    ?? (initialCategory !== 'All' ? canonicalCategory(initialCategory) : null);
+  let landingGuides: { slug: string; title: string }[] = [];
+  if (guideLandingCat && !q && !brand && !isDemo && isHealthCategory(guideLandingCat)) {
+    const { data: guideRows } = await supabase
+      .from('blog_posts')
+      .select('slug, title, category')
+      .order('date', { ascending: false })
+      .limit(60);
+    landingGuides = ((guideRows ?? []) as Array<{ slug: string; title: string; category: string | null }>)
+      .filter(g => isHealthCategory(g.category))
+      .slice(0, 4)
+      .map(g => ({ slug: g.slug, title: g.title }));
+  }
+
   const breadcrumb = [
     { name: 'Home', path: '/' },
     { name: 'Shop', path: '/shop' },
@@ -279,6 +302,29 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
           </section>
         );
       })()}
+
+      {/* Buyer guides for health/wellness landings: internal links from a
+          heavily-crawled category page down to the supplement guides. */}
+      {landingGuides.length > 0 && (
+        <section className="container" style={{ paddingBottom: 'var(--section-gap)' }}>
+          <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 16px' }}>
+            Guides worth reading
+          </h2>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
+            {landingGuides.map(g => (
+              <li key={g.slug}>
+                <Link
+                  href={`/blog/${g.slug}`}
+                  className="text-link"
+                  style={{ display: 'block', padding: '12px 16px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', fontWeight: 600, fontSize: '0.9375rem', lineHeight: 1.4 }}
+                >
+                  {g.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }
