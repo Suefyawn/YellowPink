@@ -50,7 +50,7 @@ const lbl: React.CSSProperties = {
   fontWeight: 600, color: '#374151', marginBottom: 5,
 };
 
-export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?: BlogFormReviewer[] }) {
+export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPost; reviewers?: BlogFormReviewer[]; initialTitle?: string }) {
   const isEdit = Boolean(post);
   const boundAction = isEdit ? updateBlogPost.bind(null, post!.id) : createBlogPost;
   const [state, action, pending] = useActionState(boundAction, null);
@@ -66,8 +66,10 @@ export function BlogForm({ post, reviewers = [] }: { post?: BlogPost; reviewers?
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, pending]);
 
-  const [title, setTitle] = useState(post?.title ?? '');
-  const [slug, setSlug] = useState(post?.slug ?? '');
+  // `initialTitle` pre-fills a new post from an external prompt (the
+  // Search-demand "Write a guide" action seeds the searched term as the title).
+  const [title, setTitle] = useState(post?.title ?? initialTitle ?? '');
+  const [slug, setSlug] = useState(post?.slug ?? (initialTitle ? toSlug(initialTitle) : ''));
   const [imageUrl] = useState(post?.image_url ?? '');
 
   // Category + reviewer are controlled so the reviewer suggestion can react

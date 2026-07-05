@@ -51,7 +51,7 @@ function Section({ title, desc, first, children }: {
   );
 }
 
-export function ProductForm({ product, vendors = [] }: { product?: Product; vendors?: Vendor[] }) {
+export function ProductForm({ product, vendors = [], initialName }: { product?: Product; vendors?: Vendor[]; initialName?: string }) {
   const isEdit = Boolean(product);
   const boundAction = isEdit ? updateProduct.bind(null, product!.id) : createProduct;
   const [state, action, pending] = useActionState(boundAction, null);
@@ -66,7 +66,10 @@ export function ProductForm({ product, vendors = [] }: { product?: Product; vend
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty, pending]);
 
-  const [name, setName] = useState(product?.name ?? '');
+  // `initialName` pre-fills a brand-new product from an external prompt (e.g.
+  // the Search-demand report's "Create product" action seeds the searched term
+  // as the name). Only applies when creating, an edit always uses the product.
+  const [name, setName] = useState(product?.name ?? initialName ?? '');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [trackInv, setTrackInv] = useState(product?.track_inventory !== false);
   // Tracked so the vendor margin readout updates as the owner edits.
