@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from '../actions';
 import {
-  inp, lbl, Section, Card, Divider,
+  inp, lbl, Section, Card, Divider, Toggle,
   SaveBar, StatusBanner, SettingsPageHeader,
 } from '@/components/admin/settings-controls';
 
@@ -51,6 +51,28 @@ export default async function SettingsLoyaltyPage({ searchParams }: { searchPara
             <div>
               <label style={lbl}>Referee discount (%)</label>
               <input name="loyalty_referral_discount_pct" type="number" min={0} max={100} defaultValue={g('loyalty_referral_discount_pct', '10')} style={inp} />
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <Section
+            title="Guest reviewer reward"
+            desc="Signed-in customers earn the loyalty points above when a review is approved. Guests (who review with just an email) can't hold points — so when this is on, an approved guest review is emailed a one-time discount code instead. It never double-rewards a signed-in customer."
+          />
+          <Divider />
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Reward guest reviews</label>
+            <Toggle name="review_reward_enabled" checked={g('review_reward_enabled', 'true') === 'true'} />
+          </div>
+          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, maxWidth: 360 }}>
+            <div>
+              <label style={lbl}>Discount (%)</label>
+              <input name="review_reward_percent" type="number" min={1} max={100} defaultValue={g('review_reward_percent', '10')} style={inp} />
+            </div>
+            <div>
+              <label style={lbl}>Code valid for (days)</label>
+              <input name="review_reward_days" type="number" min={1} defaultValue={g('review_reward_days', '60')} style={inp} />
             </div>
           </div>
         </Card>
