@@ -1,4 +1,4 @@
-import { whatsappUrl } from '@/lib/whatsapp';
+import { whatsappUrl, whatsappGoUrl } from '@/lib/whatsapp';
 
 // ─── Branded WhatsApp CTA ──────────────────────────────────────────────────
 // Server component. Renders nothing when NEXT_PUBLIC_WHATSAPP_NUMBER isn't
@@ -14,6 +14,10 @@ interface Props {
   size?: 'full' | 'pill' | 'icon';
   /** Override the default label ("Chat on WhatsApp"). */
   label?: string;
+  /** Where this button lives, for click attribution (pdp / cart / thankyou…). */
+  src?: string;
+  /** Product slug for PDP context, logged with the click. */
+  productSlug?: string;
 }
 
 const ICON = (
@@ -22,9 +26,11 @@ const ICON = (
   </svg>
 );
 
-export function WhatsAppButton({ message, size = 'full', label = 'Chat on WhatsApp' }: Props) {
-  const href = whatsappUrl(message);
-  if (!href) return null;
+export function WhatsAppButton({ message, size = 'full', label = 'Chat on WhatsApp', src = 'button', productSlug }: Props) {
+  // Gate on a configured number (whatsappUrl is null when unset), but point the
+  // anchor at the internal /go/whatsapp redirect: crawler-safe + logs the click.
+  if (!whatsappUrl(message)) return null;
+  const href = whatsappGoUrl(message, { src, productSlug });
 
   if (size === 'icon') {
     return (

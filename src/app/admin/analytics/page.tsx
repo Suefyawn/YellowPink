@@ -226,6 +226,7 @@ export default async function AnalyticsPage({
   let byCampaign: SrcAgg[] = [];
   let byLanding: SrcAgg[] = [];
   const attrTotals = { orders: 0, revenue: 0, untaggedOrders: 0, untaggedRevenue: 0 };
+  let waClicks = 0;
   if (tab === 'sources') {
     // Async server component renders once per request; Date.now() is fine here
     // (see the same pattern on dashboard/page.tsx). The purity rule targets
@@ -259,6 +260,13 @@ export default async function AnalyticsPage({
     bySource = [...srcMap.values()].sort(sortRev);
     byCampaign = [...campMap.values()].sort(sortRev);
     byLanding = [...landMap.values()].sort(sortRev).slice(0, 10);
+    // WhatsApp-order intent: clicks on the storefront "Chat/Order on WhatsApp"
+    // buttons (logged by the /go/whatsapp redirect). Many PK shoppers order via
+    // WhatsApp rather than on-site checkout, so this is a real funnel signal
+    // that would otherwise be invisible.
+    const { count } = await supabaseAdmin()
+      .from('whatsapp_clicks').select('id', { count: 'exact', head: true }).gte('created_at', sinceIso);
+    waClicks = count ?? 0;
   }
   const maxSourceRev = Math.max(1, ...bySource.map(s => s.revenue));
   const untaggedPct = attrTotals.revenue > 0 ? Math.round((attrTotals.untaggedRevenue / attrTotals.revenue) * 100) : 0;
@@ -437,13 +445,15 @@ export default async function AnalyticsPage({
             &ldquo;Untagged / Direct&rdquo; means we couldn&apos;t tell (usually an Instagram or WhatsApp link with no tag). Tag your
             links in the <Link href="/admin/link-builder" style={{ color: '#C5286A', fontWeight: 600 }}>Link builder</Link> to shrink it.
           </p>
-          <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+          <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
             <KpiCard label={`Attributed orders · last ${window} days`} value={String(attrTotals.orders)} accent="#C5286A"
               hint={`${fmt(attrTotals.revenue)} revenue`} />
             <KpiCard label="Distinct sources" value={String(bySource.length)} accent="#6366f1"
               hint="Tagged links + referrers + direct" />
             <KpiCard label="Untagged / Direct" value={`${untaggedPct}%`} accent={untaggedPct >= 50 ? '#f59e0b' : '#10b981'}
               hint="Share of revenue with no source" />
+            <KpiCard label="WhatsApp clicks" value={String(waClicks)} accent="#25D366"
+              hint="“Chat/Order on WhatsApp” taps" />
           </div>
 
           {untaggedPct >= 40 && attrTotals.orders > 0 && (

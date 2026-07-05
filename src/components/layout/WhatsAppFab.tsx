@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { whatsappUrlFromNumber, WA_TEMPLATES } from '@/lib/whatsapp';
+import { whatsappGoUrl, WA_TEMPLATES } from '@/lib/whatsapp';
 
 // Persistent floating "Chat on WhatsApp" button, the live-chat affordance PK
 // shoppers expect, but it opens WhatsApp (where they already are) instead of a
@@ -20,7 +20,9 @@ const ICON = (
 export function WhatsAppFab({ number }: { number?: string }) {
   const [hover, setHover] = useState(false);
   const pathname = usePathname();
-  const href = number ? whatsappUrlFromNumber(number, WA_TEMPLATES.generic()) : null;
+  // Gate on the configured number, but route through the internal /go/whatsapp
+  // redirect (crawler-safe + logs the click) rather than a raw wa.me link.
+  const href = number ? whatsappGoUrl(WA_TEMPLATES.generic(), { src: 'fab' }) : null;
   // The contact page has its own WhatsApp channel card; the FAB there is
   // redundant and overlaps the card's CALL link.
   if (!href || pathname === '/page/contact' || pathname === '/contact') return null;
