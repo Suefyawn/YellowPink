@@ -133,31 +133,25 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
 export async function getBestsellers(limit = 8): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
   return safe('getBestsellers', async () => {
-    const { data: flagged } = await supabase
-      .from('products')
-      .select(PRODUCT_TILE_COLUMNS)
-      .eq('is_bestseller', true)
-      // Published only, a drafted/archived bestseller must not become a
-      // dead tile on the homepage rail.
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (flagged && flagged.length >= limit) return flagged as Product[];
-    // Backfill from healthy-stock catalog so the rail still renders pre-curation.
-    const fill = limit - (flagged?.length ?? 0);
-    const { data: rest } = await supabase
+    // Demand-driven "Popular right now" rail. Ordering, in priority:
+    //   1. is_bestseller   , the owner's manual pin always leads (override)
+    //   2. popularity_score, daily demand (views + carts + sales) set by the
+    //      popularity-refresh cron — what makes the rail reflect what shoppers
+    //      actually look at and buy instead of a static flag
+    //   3. created_at      , newest-first tiebreak so a fresh product with no
+    //      demand signal yet still ranks above older zero-demand ones
+    // Published + in-stock only, so the rail never shows a dead tile. One
+    // query: the manual pins fall out on top for free.
+    const { data } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
       .or('stock.gt.0,track_inventory.is.false')
-      .order('stock', { ascending: false })
-      .limit(fill + (flagged?.length ?? 0));
-    const flaggedIds = new Set((flagged ?? []).map(p => p.id));
-    const merged = [
-      ...(flagged ?? []),
-      ...(rest ?? []).filter(p => !flaggedIds.has(p.id)),
-    ];
-    return merged.slice(0, limit) as Product[];
+      .order('is_bestseller', { ascending: false })
+      .order('popularity_score', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return (data ?? []) as Product[];
   }, DEMO_PRODUCTS.slice(0, limit));
 }
 

@@ -11,7 +11,7 @@ export function BestsellersBand({ products }: { products: Product[] }) {
       <div className="container">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 48, alignItems: 'center' }} className="duo-grid">
           <div>
-            <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Bestsellers</Overline>
+            <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Popular Right Now</Overline>
             <h2 className="display-l" style={{ fontSize: '2.25rem', marginBottom: 16 }}>
               What everyone&apos;s buying.
             </h2>
