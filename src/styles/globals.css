@@ -985,6 +985,13 @@ a.underline,
   /* Inventory → "Log a stock change" form: 5 columns (product/qty/reason/
    * note/submit) crams unusably on a phone, stack to one field per row. */
   .adm-stock-form { grid-template-columns: 1fr !important; }
+  /* Campaign link builder: the desktop layout is a content column + a 320px
+   * playbook sidebar, with 2-up field rows. On a phone the fixed sidebar track
+   * overflows the viewport — stack everything to one column, drop the field
+   * pairs to single, and unstick the sidebar so it just flows underneath. */
+  .adm-linkbuilder { grid-template-columns: 1fr !important; }
+  .adm-linkbuilder .lb-two { grid-template-columns: 1fr !important; }
+  .adm-linkbuilder aside { position: static !important; }
 }
 
 /* Admin small/summary tables that don't use the stacked-card pattern (P&L,
