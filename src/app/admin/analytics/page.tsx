@@ -58,18 +58,61 @@ async function rpc<T>(name: string, args: Record<string, unknown> = {}): Promise
 //   Sales     — am I selling more?        Customers — who buys, do they return?
 //   Traffic   — is anyone finding us?     Funnels   — where do shoppers leak?
 // Traffic and Funnels need the analytics_traffic permission.
-type Tab = 'sales' | 'customers' | 'traffic' | 'funnels';
+type Tab = 'sales' | 'sources' | 'customers' | 'traffic' | 'funnels';
 const TABS: { key: Tab; label: string; traffic?: boolean }[] = [
   { key: 'sales', label: 'Sales' },
+  { key: 'sources', label: 'Sources' },
   { key: 'customers', label: 'Customers' },
   { key: 'traffic', label: 'Traffic', traffic: true },
   { key: 'funnels', label: 'Funnels', traffic: true },
 ];
 
+// Derive a sales channel from an order's captured attribution. utm_source wins
+// (a tagged link), else the referrer's host, else it's untagged — which for a
+// storefront overwhelmingly means an Instagram/WhatsApp/typed link that never
+// carried a source. Kept deliberately simple; the point is to make the untagged
+// share visible so tagging links (Link builder) actually gets done.
+interface AttrOrder { utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; referrer: string | null; landing_page: string | null; total: number | null; status: string | null }
+const UNTAGGED = 'Direct / untagged';
+function channelOf(o: AttrOrder): string {
+  const s = (o.utm_source ?? '').trim().toLowerCase();
+  if (s) return s;
+  const ref = (o.referrer ?? '').trim();
+  if (ref) {
+    try { return new URL(ref).hostname.replace(/^www\./, ''); } catch { return ref.slice(0, 40); }
+  }
+  return UNTAGGED;
+}
+
+// Time-series granularity: staff pick Day / Week / Month and the daily revenue
+// series is rolled up to matching buckets. Weeks start Monday; months on the
+// 1st. Dates are treated as UTC calendar days (they're 'YYYY-MM-DD' bucket
+// keys from analytics_daily, already PKT-bucketed server-side).
+type Gran = 'day' | 'week' | 'month';
+function bucketKey(isoDay: string, gran: Gran): string {
+  if (gran === 'month') return `${isoDay.slice(0, 7)}-01`;
+  if (gran === 'week') {
+    const d = new Date(`${isoDay}T00:00:00Z`);
+    const dow = (d.getUTCDay() + 6) % 7; // 0 = Monday
+    d.setUTCDate(d.getUTCDate() - dow);
+    return d.toISOString().slice(0, 10);
+  }
+  return isoDay;
+}
+function rollUp(daily: { day: string; revenue: number | string }[], gran: Gran): { date: string; revenue: number }[] {
+  if (gran === 'day') return daily.map(d => ({ date: d.day, revenue: Number(d.revenue) }));
+  const map = new Map<string, number>();
+  for (const d of daily) {
+    const k = bucketKey(d.day, gran);
+    map.set(k, (map.get(k) ?? 0) + Number(d.revenue));
+  }
+  return [...map.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, revenue]) => ({ date, revenue }));
+}
+
 export default async function AnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ days?: string; tab?: string }>;
+  searchParams: Promise<{ days?: string; tab?: string; g?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('analytics'))) {
@@ -85,6 +128,8 @@ export default async function AnalyticsPage({
   const rawTab = sp.tab === 'finance' ? 'sales' : (sp.tab ?? 'sales');
   let tab: Tab = (TABS.some(t => t.key === rawTab) ? rawTab : 'sales') as Tab;
   if ((tab === 'traffic' || tab === 'funnels') && !canTraffic) tab = 'sales';
+  // Time-series grouping for the Sales revenue chart: Day / Week / Month.
+  const gran: Gran = (['day', 'week', 'month'].includes(sp.g ?? '') ? sp.g : 'day') as Gran;
 
   // Double-window daily series: the last `window` days are the charts/KPIs,
   // the `window` days before them are the delta baseline — one source for
@@ -124,8 +169,9 @@ export default async function AnalyticsPage({
     }
   }
 
-  // Chart data adapter (RevenueChart already expects [{ date, revenue }]).
-  const chartData = daily.map(d => ({ date: d.day, revenue: Number(d.revenue) }));
+  // Chart data adapter (RevenueChart expects [{ date, revenue }]), rolled up to
+  // the chosen Day / Week / Month granularity.
+  const chartData = rollUp(daily, gran);
 
   // ── "What stands out" callouts, computed from the same window data the
   // charts show. Only sentences the data actually supports.
@@ -172,6 +218,51 @@ export default async function AnalyticsPage({
 
   const statusTotal = byStatus.reduce((s, x) => s + x.count, 0) || 1;
 
+  // ── Sources tab: sales attribution from the order's own captured UTM /
+  // referrer / landing-page fields (service-role read; orders RLS blocks anon).
+  // Only queried when the tab is active so the other tabs pay nothing.
+  type SrcAgg = { key: string; orders: number; revenue: number };
+  let bySource: SrcAgg[] = [];
+  let byCampaign: SrcAgg[] = [];
+  let byLanding: SrcAgg[] = [];
+  const attrTotals = { orders: 0, revenue: 0, untaggedOrders: 0, untaggedRevenue: 0 };
+  if (tab === 'sources') {
+    // Async server component renders once per request; Date.now() is fine here
+    // (see the same pattern on dashboard/page.tsx). The purity rule targets
+    // client components the React Compiler may re-render.
+    // eslint-disable-next-line react-hooks/purity
+    const sinceIso = new Date(Date.now() - window * 86_400_000).toISOString();
+    const { data: attrRaw } = await supabaseAdmin()
+      .from('orders')
+      .select('utm_source, utm_medium, utm_campaign, referrer, landing_page, total, status, created_at')
+      .gte('created_at', sinceIso);
+    const rows = ((attrRaw ?? []) as (AttrOrder & { created_at: string })[])
+      .filter(o => !['cancelled', 'canceled', 'refunded'].includes((o.status ?? '').toLowerCase()));
+    const acc = (map: Map<string, SrcAgg>, key: string, rev: number) => {
+      const k = key || '—';
+      const cur = map.get(k) ?? { key: k, orders: 0, revenue: 0 };
+      cur.orders += 1; cur.revenue += rev; map.set(k, cur);
+    };
+    const srcMap = new Map<string, SrcAgg>(), campMap = new Map<string, SrcAgg>(), landMap = new Map<string, SrcAgg>();
+    for (const o of rows) {
+      const rev = Number(o.total) || 0;
+      const ch = channelOf(o);
+      acc(srcMap, ch, rev);
+      const camp = (o.utm_campaign ?? '').trim();
+      if (camp) acc(campMap, camp.toLowerCase(), rev);
+      const land = (o.landing_page ?? '').trim();
+      if (land) { try { acc(landMap, new URL(land).pathname || land, rev); } catch { acc(landMap, land.slice(0, 60), rev); } }
+      attrTotals.orders += 1; attrTotals.revenue += rev;
+      if (ch === UNTAGGED) { attrTotals.untaggedOrders += 1; attrTotals.untaggedRevenue += rev; }
+    }
+    const sortRev = (a: SrcAgg, b: SrcAgg) => b.revenue - a.revenue || b.orders - a.orders;
+    bySource = [...srcMap.values()].sort(sortRev);
+    byCampaign = [...campMap.values()].sort(sortRev);
+    byLanding = [...landMap.values()].sort(sortRev).slice(0, 10);
+  }
+  const maxSourceRev = Math.max(1, ...bySource.map(s => s.revenue));
+  const untaggedPct = attrTotals.revenue > 0 ? Math.round((attrTotals.untaggedRevenue / attrTotals.revenue) * 100) : 0;
+
   const cardStyle = { background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)' } as const;
   const headingStyle = { margin: '0 0 16px', fontSize: '0.875rem', fontWeight: 700, color: '#111827', textTransform: 'uppercase', letterSpacing: '0.04em' } as const;
 
@@ -184,7 +275,7 @@ export default async function AnalyticsPage({
               Traffic and Funnels the sources use their own fixed windows
               (captioned per card), so the header line + picker are hidden
               there rather than implying a control that does nothing. */}
-          {(tab === 'sales' || tab === 'customers') && (
+          {(tab === 'sales' || tab === 'customers' || tab === 'sources') && (
             <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
               Showing the last {window} days
             </p>
@@ -194,7 +285,7 @@ export default async function AnalyticsPage({
           {canRefresh && <RefreshAnalyticsButton />}
           {/* Shared URL-synced range picker (same control as the other insight
               surfaces); preserves the active tab via the query string. */}
-          {(tab === 'sales' || tab === 'customers') && (
+          {(tab === 'sales' || tab === 'customers' || tab === 'sources') && (
             <Suspense fallback={null}>
               <RangePicker
                 value={String(window)}
@@ -203,6 +294,21 @@ export default async function AnalyticsPage({
                   { value: '30', label: '30 days' },
                   { value: '90', label: '90 days' },
                   { value: '365', label: '1 year' },
+                ]}
+              />
+            </Suspense>
+          )}
+          {/* Day / Week / Month grouping for the revenue chart (Sales tab). */}
+          {tab === 'sales' && (
+            <Suspense fallback={null}>
+              <RangePicker
+                param="g"
+                ariaLabel="Group revenue by"
+                value={gran}
+                options={[
+                  { value: 'day', label: 'Daily' },
+                  { value: 'week', label: 'Weekly' },
+                  { value: 'month', label: 'Monthly' },
                 ]}
               />
             </Suspense>
@@ -253,10 +359,10 @@ export default async function AnalyticsPage({
               delta={prevAov > 0 && aovDelta != null ? { pct: aovDelta, goodWhenUp: true, vs: vsLabel } : null} />
           </div>
 
-          {/* Revenue chart */}
+          {/* Revenue chart — grouped by the chosen Day/Week/Month bucket */}
           <div style={{ ...cardStyle, marginBottom: 28 }}>
-            <h2 style={headingStyle}>Revenue · last {window} days</h2>
-            <RevenueChart days={chartData} />
+            <h2 style={headingStyle}>Revenue · {gran === 'day' ? 'daily' : gran === 'week' ? 'weekly' : 'monthly'} · last {window} days</h2>
+            <RevenueChart days={chartData} granularity={gran} />
           </div>
 
           <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
@@ -316,6 +422,109 @@ export default async function AnalyticsPage({
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </>
+      )}
+
+      {tab === 'sources' && (
+        <>
+          {/* Sales attribution from each order's own captured source. This is
+              the "where does my revenue come from" view — distinct from the
+              PostHog traffic widgets on the Traffic/Funnels tabs. */}
+          <p style={{ margin: '0 0 20px', fontSize: '0.875rem', color: '#4b5563', lineHeight: 1.55, maxWidth: 720 }}>
+            This shows where the <b>money</b> comes from — every order traced back to the link or site that sent the customer.
+            &ldquo;Untagged / Direct&rdquo; means we couldn&apos;t tell (usually an Instagram or WhatsApp link with no tag). Tag your
+            links in the <Link href="/admin/link-builder" style={{ color: '#C5286A', fontWeight: 600 }}>Link builder</Link> to shrink it.
+          </p>
+          <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 24 }}>
+            <KpiCard label={`Attributed orders · last ${window} days`} value={String(attrTotals.orders)} accent="#C5286A"
+              hint={`${fmt(attrTotals.revenue)} revenue`} />
+            <KpiCard label="Distinct sources" value={String(bySource.length)} accent="#6366f1"
+              hint="Tagged links + referrers + direct" />
+            <KpiCard label="Untagged / Direct" value={`${untaggedPct}%`} accent={untaggedPct >= 50 ? '#f59e0b' : '#10b981'}
+              hint="Share of revenue with no source" />
+          </div>
+
+          {untaggedPct >= 40 && attrTotals.orders > 0 && (
+            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '14px 18px', marginBottom: 24, fontSize: '0.875rem', color: '#92400e', lineHeight: 1.55 }}>
+              <b>{untaggedPct}% of revenue has no source.</b> That&apos;s traffic from Instagram, WhatsApp and in-app browsers arriving
+              without a tag — so it can&apos;t be credited to a channel. Build tagged links in the{' '}
+              <Link href="/admin/link-builder" style={{ color: '#C5286A', fontWeight: 700 }}>Link builder</Link> and this shrinks over time.
+            </div>
+          )}
+
+          <div style={{ ...cardStyle, marginBottom: 24 }}>
+            <h2 style={headingStyle}>Revenue by source · last {window} days</h2>
+            {bySource.length === 0 ? (
+              <p style={{ color: '#9ca3af', fontSize: '0.8125rem', margin: 0 }}>No orders in this window yet. Widen the range or check back after your next sale.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {bySource.map(s => {
+                  const w = (s.revenue / maxSourceRev) * 100;
+                  const untagged = s.key === UNTAGGED;
+                  return (
+                    <div key={s.key} style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: '0.8125rem', color: untagged ? '#b45309' : '#374151', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }} title={s.key}>{s.key}</span>
+                      <div style={{ height: 16, background: '#f3f4f6', borderRadius: 5, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.max(3, w)}%`, height: '100%', background: untagged ? '#f59e0b' : '#C5286A', borderRadius: 5 }} />
+                      </div>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#111827', minWidth: 120, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {fmt(s.revenue)} <span style={{ color: '#9ca3af', fontWeight: 500 }}>· {s.orders} order{s.orders === 1 ? '' : 's'}</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
+            <div style={cardStyle}>
+              <h2 style={headingStyle}>By campaign</h2>
+              {byCampaign.length === 0 ? (
+                <p style={{ color: '#9ca3af', fontSize: '0.8125rem', margin: 0 }}>No campaign tags on any order yet. Add a campaign name in the Link builder (e.g. <em>eid-sale</em>) to break results down here.</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <thead><tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <th scope="col" style={{ textAlign: 'left', padding: '6px 0', color: '#6b7280', fontWeight: 600 }}>Campaign</th>
+                    <th scope="col" style={{ textAlign: 'right', padding: '6px 0', color: '#6b7280', fontWeight: 600 }}>Orders</th>
+                    <th scope="col" style={{ textAlign: 'right', padding: '6px 0', color: '#6b7280', fontWeight: 600 }}>Revenue</th>
+                  </tr></thead>
+                  <tbody>
+                    {byCampaign.map(c => (
+                      <tr key={c.key} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '8px 0', color: '#111827', fontWeight: 600 }}>{c.key}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{c.orders}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(c.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+            <div style={cardStyle}>
+              <h2 style={headingStyle}>Top landing pages</h2>
+              {byLanding.length === 0 ? (
+                <p style={{ color: '#9ca3af', fontSize: '0.8125rem', margin: 0 }}>No landing-page data captured on orders in this window yet.</p>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+                  <thead><tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <th scope="col" style={{ textAlign: 'left', padding: '6px 0', color: '#6b7280', fontWeight: 600 }}>First page</th>
+                    <th scope="col" style={{ textAlign: 'right', padding: '6px 0', color: '#6b7280', fontWeight: 600 }}>Orders</th>
+                    <th scope="col" style={{ textAlign: 'right', padding: '6px 0', color: '#6b7280', fontWeight: 600 }}>Revenue</th>
+                  </tr></thead>
+                  <tbody>
+                    {byLanding.map(l => (
+                      <tr key={l.key} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                        <td style={{ padding: '8px 0', color: '#111827', fontWeight: 600, maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={l.key}>{l.key}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{l.orders}</td>
+                        <td style={{ padding: '8px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(l.revenue)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </>
@@ -438,6 +647,14 @@ export default async function AnalyticsPage({
 
       {tab === 'funnels' && canTraffic && (
         <>
+          {/* Framing: these are PostHog behaviour funnels (browse → buy). The
+              money-side of "where sales come from" lives on the Sources tab;
+              tie them together so the two aren't read in isolation. */}
+          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 18px', marginBottom: 24, fontSize: '0.8125rem', color: '#4b5563', lineHeight: 1.55 }}>
+            <b style={{ color: '#111827' }}>How to read this:</b> these funnels track on-site behaviour — how visitors move from browsing to buying, and where they drop off. To see which <em>sources</em> the revenue comes from, use the{' '}
+            <Link href={`/admin/analytics?tab=sources&days=${window}`} style={{ color: '#C5286A', fontWeight: 700 }}>Sources</Link> tab; to make new traffic traceable, the{' '}
+            <Link href="/admin/link-builder" style={{ color: '#C5286A', fontWeight: 700 }}>Link builder</Link>. Widgets need a completed analytics refresh to populate.
+          </div>
           <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 16, marginBottom: 28 }}>
             <ConversionFunnelWidget />
             <PostHogWidget />

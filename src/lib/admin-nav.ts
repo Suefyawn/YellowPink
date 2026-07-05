@@ -54,6 +54,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     { href: '/admin/blog',      label: 'Blog',      icon: 'pen-line', permission: 'blog' },
     { href: '/admin/reviewers', label: 'Medical reviewers', icon: 'shield-check', permission: 'blog' },
     { href: '/admin/newsletter', label: 'Newsletter', icon: 'mail', permission: 'newsletter' },
+    { href: '/admin/link-builder', label: 'Link builder', icon: 'megaphone', permissionsAny: ['analytics', 'newsletter', 'coupons'] },
   ]},
   { label: 'System', items: [
     { href: '/admin/settings',  label: 'Settings',  icon: 'settings', permission: 'settings' },

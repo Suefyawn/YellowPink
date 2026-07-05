@@ -10,10 +10,12 @@ export function RangePicker({
   options,
   value,
   param = 'days',
+  ariaLabel = 'Date range',
 }: {
   options: { value: string; label: string }[];
   value: string;
   param?: string;
+  ariaLabel?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -28,7 +30,7 @@ export function RangePicker({
   };
 
   return (
-    <div role="group" aria-label="Date range" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+    <div role="group" aria-label={ariaLabel} style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
       {options.map(o => {
         const active = value === o.value;
         return (

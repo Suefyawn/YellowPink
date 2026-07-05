@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 4 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 5 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -897,6 +897,13 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 5 July 2026
+
+- **See where your sales actually come from — new “Sources” tab in Analytics.** It reads the source captured on every order (the tagged link, the referring site, or “Untagged / Direct” when there was none) and shows revenue and order count per source, plus breakdowns by campaign and by first-page-landed-on. A headline card shows what share of revenue is still untagged so you know how much you’re flying blind.
+- **New “Link builder” under Marketing.** Generate tagged links for Instagram bio, WhatsApp, stories, campaigns and more, with one-click channel presets and a copy button. Use these instead of your plain store link and each visit — and each sale — becomes traceable in the Sources tab. Written for non-technical use, with a short “why tag links” playbook alongside.
+- **Daily / Weekly / Monthly revenue view.** The Sales revenue chart now has a Daily · Weekly · Monthly switch, so you can zoom from day-by-day detail out to monthly trend without losing your place.
+- **Funnels tab now explains itself** — a plain-language “how to read this” note ties the behaviour funnel (browse → buy) to the new Sources tab (where the money starts) and the Link builder (how to make traffic traceable).
 
 ### 4 July 2026
 
