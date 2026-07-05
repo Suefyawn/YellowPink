@@ -8,7 +8,7 @@
 
 import { SITE_URL, SITE_NAME, absoluteUrl } from '@/lib/seo';
 import { categoryHref } from '@/lib/category-taxonomy';
-import { supabase, isDemo, getProducts, getSiteSettings } from '@/lib/supabase';
+import { supabase, isDemo, getProducts, getSiteSettings, getBlogPosts } from '@/lib/supabase';
 import { brandPlusName } from '@/lib/product-display';
 import { parseCommerceConfig, formatPkr, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
@@ -21,6 +21,7 @@ export const runtime  = 'nodejs';
 export async function GET() {
   const cats = await loadCategories();
   const products = await loadProducts();
+  const guides = await loadGuides();
   // Policy figures are read live so this file never states a stale number.
   const commerce = parseCommerceConfig(await getSiteSettings());
   const days = await getDefaultEstimatedDays();
@@ -64,6 +65,17 @@ export async function GET() {
     lines.push('## Browse by category');
     for (const c of cats) {
       lines.push(`- [${c}](${SITE_URL}${categoryHref(c)})`);
+    }
+    lines.push('');
+  }
+
+  // ─── Editorial guides ─────────────────────────────────────────────────────
+  // LLMs cite specific buyer/how-to guides far more than a bare /blog link, so
+  // give them direct, titled anchors to the best ones (featured first).
+  if (guides.length > 0) {
+    lines.push('## Buyer & how-to guides');
+    for (const g of guides) {
+      lines.push(`- [${g.title}](${absoluteUrl(`/blog/${g.slug}`)})`);
     }
     lines.push('');
   }
@@ -121,6 +133,24 @@ async function loadCategories(): Promise<string[]> {
 async function loadProducts() {
   try {
     return await getProducts();
+  } catch {
+    return [];
+  }
+}
+
+// Curated editorial anchors for LLMs: featured posts first, then most recent,
+// capped so the file stays a map rather than a dump (the sitemap has them all).
+async function loadGuides(): Promise<{ slug: string; title: string }[]> {
+  try {
+    const posts = await getBlogPosts();
+    return [...posts]
+      .sort((a, b) => {
+        const feat = Number(Boolean(b.featured)) - Number(Boolean(a.featured));
+        if (feat !== 0) return feat;
+        return String(b.date ?? '').localeCompare(String(a.date ?? ''));
+      })
+      .slice(0, 18)
+      .map(p => ({ slug: p.slug, title: p.title }));
   } catch {
     return [];
   }

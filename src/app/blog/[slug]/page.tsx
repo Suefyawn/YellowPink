@@ -39,6 +39,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     image: post.image_url ?? undefined,
     type: 'article',
     keywords: post.category ? [post.category, 'Beauty', 'Wellness', 'Pakistan'] : undefined,
+    // The post H1 is the full headline; keep the brand suffix on the <title> so
+    // the two differ (Semrush "duplicate H1/title", ~113 long-title posts).
+    brandSuffix: true,
   });
 }
 
