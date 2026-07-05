@@ -3,9 +3,10 @@
 // errors quoting a row, or fetch breadcrumbs carrying ?email= params. Redact
 // the patterns rather than trying to enumerate every field that might carry
 // them. Replay-side masking is configured separately in sentry.client.config.
+type SentryFrame = { filename?: string };
 type SentryEventLike = {
   message?: string;
-  exception?: { values?: Array<{ value?: string }> };
+  exception?: { values?: Array<{ value?: string; stacktrace?: { frames?: SentryFrame[] } }> };
   breadcrumbs?: Array<{ message?: string; data?: Record<string, unknown> }>;
   request?: { url?: string; query_string?: unknown };
 };
@@ -21,6 +22,30 @@ function scrubString(s: string): string {
 function scrubValue(v: unknown): unknown {
   if (typeof v === 'string') return scrubString(v);
   return v;
+}
+
+// Errors thrown by scripts the *host app* injects into its in-app browser
+// WebView — Instagram / Facebook / TikTok on Android — not by our code. Their
+// frames use the `app://` scheme and their messages (the Android INP
+// performance logger losing its native Java bridge, "Java object is gone") have
+// nothing to do with the site and are unactionable. ResizeObserver loop notices
+// are a benign browser quirk, never a real fault. Dropping this class keeps
+// Sentry's signal clean. Returning null from beforeSend discards the event.
+const NOISE_MESSAGE_RE =
+  /Java object is gone|navigation_performance_logger|ResizeObserver loop (?:limit exceeded|completed)/i;
+
+export function isThirdPartyNoise(event: SentryEventLike): boolean {
+  const messages: string[] = [];
+  if (event.message) messages.push(event.message);
+  for (const ex of event.exception?.values ?? []) {
+    if (ex.value) messages.push(ex.value);
+    // Any frame served from an injected in-app-browser script (app:// scheme)
+    // is definitionally not our code.
+    for (const f of ex.stacktrace?.frames ?? []) {
+      if (typeof f.filename === 'string' && f.filename.startsWith('app://')) return true;
+    }
+  }
+  return messages.some(m => NOISE_MESSAGE_RE.test(m));
 }
 
 export function scrubEvent<T extends SentryEventLike>(event: T): T {

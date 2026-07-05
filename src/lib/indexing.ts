@@ -21,7 +21,10 @@
 // ============================================================================
 
 import crypto from 'node:crypto';
+import { after } from 'next/server';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getGoogleConnection, submitSitemap } from '@/lib/google';
 
 // Public-by-design IndexNow key. A matching file lives at /public/<key>.txt.
 // Override with INDEXNOW_KEY only if you also host a matching <key>.txt.
@@ -208,9 +211,57 @@ export async function submitToSearchEngines(
   return { submitted: urls, results };
 }
 
+// ─── Google sitemap nudge (auto, debounced) ──────────────────────────────────
+// IndexNow tells Bing/Yandex about a specific new URL instantly, but Google
+// ignores IndexNow. The one supported, ToS-safe way to nudge Google toward a
+// newly-published page is to (re)submit the sitemap so it re-crawls it — Google
+// still decides what/when to index. We do that automatically on publish, but
+// DEBOUNCED: Google asks publishers not to resubmit a sitemap repeatedly, and
+// a burst of edits/publishes in one session should cost exactly one submit.
+// The sitemap.xml is always current, so one resubmit picks up everything added
+// since the last one. Best-effort throughout: a missing Google connection or a
+// failing API call must never affect the publish that triggered it.
+
+const SITEMAP_NUDGE_MIN_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6h
+
+async function lastSitemapNudgeAt(): Promise<number> {
+  try {
+    const { data } = await supabaseAdmin()
+      .from('analytics_cache').select('data').eq('key', 'sitemap_last_nudge').maybeSingle();
+    const at = (data as { data?: { at?: string } } | null)?.data?.at;
+    return at ? new Date(at).getTime() : 0;
+  } catch {
+    return 0; // unknown → allow the submit
+  }
+}
+
+/** (Re)submit the sitemap to Google, at most once per SITEMAP_NUDGE_MIN_INTERVAL.
+ *  Never throws. No-op when Google isn't connected. */
+export async function nudgeGoogleSitemap(): Promise<void> {
+  try {
+    if (Date.now() - (await lastSitemapNudgeAt()) < SITEMAP_NUDGE_MIN_INTERVAL_MS) return;
+    const conn = await getGoogleConnection();
+    if (!conn?.gsc_site_url) return; // not connected → nothing to nudge
+    await submitSitemap(conn.gsc_site_url, `${SITE_URL.replace(/\/$/, '')}/sitemap.xml`);
+    // Record success only after it lands, so a failed submit is retried next publish.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (supabaseAdmin().from('analytics_cache') as any).upsert({
+      key: 'sitemap_last_nudge',
+      data: { at: new Date().toISOString() },
+      updated_at: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.warn('[indexing] sitemap nudge failed (ignored):', (err as Error).message);
+  }
+}
+
 /** Fire-and-forget variant for publish hooks: runs the submission but swallows
  *  everything, so a slow or failing index ping can never block or break a save.
- *  Awaited briefly by callers; if it rejects (it won't), we ignore it. */
+ *  Awaited briefly by callers; if it rejects (it won't), we ignore it. Also
+ *  nudges Google's sitemap (debounced) so a new page is pushed to every engine,
+ *  not just the IndexNow ones. The sitemap call runs in after() so it never adds
+ *  latency to the publish response (falls back to inline when there's no request
+ *  scope, e.g. a script or cron). */
 export async function submitToSearchEnginesQuietly(paths: string[]): Promise<void> {
   try {
     const r = await submitToSearchEngines(paths);
@@ -220,6 +271,11 @@ export async function submitToSearchEnginesQuietly(paths: string[]): Promise<voi
     }
   } catch (err) {
     console.warn('[indexing] submission error (ignored):', (err as Error).message);
+  }
+  try {
+    after(nudgeGoogleSitemap);
+  } catch {
+    await nudgeGoogleSitemap();
   }
 }
 
