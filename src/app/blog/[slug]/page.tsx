@@ -75,6 +75,17 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   }
 
   let relatedPosts = allPosts.filter(p => p.slug !== post.slug && p.category === post.category).slice(0, 3);
+  // Health/YMYL guides span several categories (Wellness, Fertility, Men's /
+  // Women's Health), so same-category matching alone leaves the single-guide
+  // categories cross-linking to unrelated recent posts. Prefer the rest of the
+  // health cluster next, so prenatal ↔ PCOS ↔ fertility ↔ male-fertility ↔
+  // moringa interlink as one topical cluster (the signal Google rewards, and
+  // the way to concentrate internal authority on the supplement guides).
+  if (relatedPosts.length < 3 && isHealthCategory(post.category)) {
+    const have = new Set([post.slug, ...relatedPosts.map(p => p.slug)]);
+    const cluster = allPosts.filter(p => !have.has(p.slug) && isHealthCategory(p.category));
+    relatedPosts = [...relatedPosts, ...cluster.slice(0, 3 - relatedPosts.length)];
+  }
   if (relatedPosts.length < 3) {
     // Top up with other recent posts so every post links out to three others,     // keeps posts in thin categories from being near-orphaned internally
     // (SEO audit: "pages with only one internal link") and spreads more crawl
