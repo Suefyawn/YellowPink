@@ -123,16 +123,14 @@ const nextConfig: NextConfig = {
   // ─ Crawler endpoints (sitemap, robots, llms.txt) get longer s-maxage.
   // ─ Everything else falls through with the framework default.
   async headers() {
-    // ── Content-Security-Policy (REPORT-ONLY for now) ──────────────────────
-    // Deliberately shipped as Content-Security-Policy-Report-Only first: the
-    // storefront loads several third-party SDKs (GA4/gtag, Meta Pixel,
-    // PostHog + session replay, Sentry, Vercel Analytics/Speed Insights,
-    // Supabase) and an enforcing policy with a missed source would silently
-    // break checkout analytics or session auth. Violations surface in the
-    // browser console (and at Sentry's CSP endpoint when a DSN is set).
-    //
-    // TODO(promote): after 2–4 weeks of clean monitoring, rename the header
-    // key below to 'Content-Security-Policy' to start enforcing.
+    // ── Content-Security-Policy (ENFORCING) ────────────────────────────────
+    // Shipped report-only first because the storefront loads several
+    // third-party SDKs (GA4/gtag, Meta Pixel, PostHog + session replay,
+    // Sentry, Vercel Analytics/Speed Insights, Supabase) and an enforcing
+    // policy with a missed source would silently break checkout analytics or
+    // session auth. The monitoring window surfaced every real source (see the
+    // triaged list on the header entry below); all are allowed here, so the
+    // policy now enforces. `report-uri` stays on as a safety net.
     //
     // Source inventory (from the codebase's script srcs / SDK endpoints):
     //   GA4/gtag        script  www.googletagmanager.com
@@ -188,7 +186,7 @@ const nextConfig: NextConfig = {
         return `https://${u.host}/api/${u.pathname.replaceAll('/', '')}/security/?sentry_key=${u.username}`;
       } catch { return null; }
     })();
-    const CSP_REPORT_ONLY = [
+    const CSP_POLICY = [
       "default-src 'self'",
       // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
       // Next's inline runtime; move to nonces before enforcing if feasible.
@@ -210,6 +208,9 @@ const nextConfig: NextConfig = {
       // Checkout hands off to the wallet gateways via auto-submitting form POST.
       "form-action 'self' https://payments.jazzcash.com.pk https://easypay.easypaisa.com.pk",
       "frame-ancestors 'self'",
+      // Kept even while enforcing: browsers still POST violations here, so a
+      // source we missed shows up in Sentry as a report instead of only as a
+      // silently broken feature. The safety net that makes enforcing safe.
       ...(cspReportUri ? [`report-uri ${cspReportUri}`] : []),
     ].join('; ');
 
@@ -219,9 +220,13 @@ const nextConfig: NextConfig = {
       { key: 'Referrer-Policy',           value: 'strict-origin-when-cross-origin' },
       { key: 'X-Frame-Options',           value: 'SAMEORIGIN' },
       { key: 'Permissions-Policy',        value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()' },
-      // Report-only CSP — see the block comment above; promote to
-      // 'Content-Security-Policy' once violation reports come back clean.
-      { key: 'Content-Security-Policy-Report-Only', value: CSP_REPORT_ONLY },
+      // Enforcing CSP. Promoted from report-only after the monitoring window:
+      // every reported source was triaged into the policy above (Google Ads
+      // conversion pings, the Vercel toolbar, the SDK endpoints), leaving only
+      // a stray browser-extension fonts.gstatic.com connect that is correctly
+      // blocked. `report-uri` stays on, so any missed source still surfaces in
+      // Sentry rather than breaking silently.
+      { key: 'Content-Security-Policy', value: CSP_POLICY },
     ];
 
     // 5-minute edge freshness, 24-hour SWR — enough to absorb traffic bursts
