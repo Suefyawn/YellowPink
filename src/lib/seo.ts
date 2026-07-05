@@ -57,6 +57,13 @@ interface PageMetaInput {
   type?: 'website' | 'article' | 'product';
   keywords?: string[];
   noIndex?: boolean;
+  /** Force the "| Yellow Pink" brand suffix onto the <title> even when the
+   *  headline is long (normally long titles drop it). Used by blog posts, whose
+   *  H1 is the full headline: keeping the suffix on the title tag makes the two
+   *  differ (clears Semrush's "duplicate H1/title" on 100+ posts) at no real
+   *  cost — Google just truncates the suffix in the SERP, the headline still
+   *  leads. */
+  brandSuffix?: boolean;
 }
 
 // Google truncates SERP titles around 60 characters and descriptions around
@@ -131,7 +138,10 @@ export function pageMeta(input: PageMetaInput): Metadata {
   const safeDesc  = truncateOnWord(input.description.trim(), DESC_MAX);
 
   return {
-    title: fitsWithBrand ? safeTitle : { absolute: safeTitle },
+    // brandSuffix: always hand the layout template a plain string (the full,
+    // untruncated headline) so it appends " | Yellow Pink" — the tag then
+    // differs from the page H1. Otherwise keep the fit-aware behaviour above.
+    title: input.brandSuffix ? rawTitle : (fitsWithBrand ? safeTitle : { absolute: safeTitle }),
     description: safeDesc,
     keywords: input.keywords,
     robots: input.noIndex ? { index: false, follow: false } : undefined,
