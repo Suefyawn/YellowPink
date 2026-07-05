@@ -19,6 +19,7 @@ interface EmailRow {
   recipient: string;
   subject: string;
   kind: string;
+  category: string | null;
   status: string;
   error: string | null;
   delivered_at: string | null;
@@ -91,7 +92,7 @@ export default async function EmailLogPage({
   let listQuery = applyFilters(
     admin
       .from('email_log')
-      .select('id, recipient, subject, kind, status, error, delivered_at, opened_at, clicked_at, bounced_at, complained_at, created_at', { count: 'exact' })
+      .select('id, recipient, subject, kind, category, status, error, delivered_at, opened_at, clicked_at, bounced_at, complained_at, created_at', { count: 'exact' })
       .order('created_at', { ascending: false })
       .range(from, from + PAGE_SIZE - 1),
   );
@@ -140,10 +141,24 @@ export default async function EmailLogPage({
       <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <KpiCard label="Sent · 30 days" value={sentCount} accent="#15803d" />
         <KpiCard label="Failed · 30 days" value={failed30.count ?? 0} accent="#dc2626" href="/admin/emails?status=failed" />
-        <KpiCard label="Opened · 30 days" value={openedCount} accent="#2563eb" />
+        <KpiCard label="Opened · 30 days" value={openedCount} accent="#2563eb"
+          hint="Approximate, see note below" />
         <KpiCard label="Open rate · 30 days" value={openRate} accent="#C5286A"
-          hint={sentCount === 0 ? 'Shows once emails have been sent' : undefined} />
+          hint={sentCount === 0 ? 'Shows once emails have been sent' : 'Approximate, see note below'} />
       </div>
+
+      {/* Open-tracking is inherently under-counted: it relies on a 1×1 pixel
+          the mail client must load. Apple Mail Privacy Protection, Gmail's
+          image proxy and "block remote images" all defeat or distort it, so
+          treat opens as a floor, not a precise figure. Delivered and Clicked
+          are reliable; opens are the soft number. */}
+      <p style={{ margin: '-6px 0 20px', color: '#9ca3af', fontSize: '0.75rem', lineHeight: 1.5, maxWidth: 760 }}>
+        <strong style={{ color: '#6b7280' }}>About open rates:</strong> opens are tracked by a tiny
+        invisible image, which many mail apps block or pre-load (Apple Mail Privacy Protection, Gmail
+        image proxy, image-blocking). Real opens are almost always higher than shown, and some are
+        counted automatically. Read <strong>Delivered</strong> and <strong>Clicked</strong> as the
+        dependable signals; treat opens as a rough floor.
+      </p>
 
       {/* Saved-view tabs — shared underline grammar with counts that respect
           the active search/type filters. */}
@@ -186,8 +201,8 @@ export default async function EmailLogPage({
                         <div style={{ fontSize: '0.75rem', color: '#dc2626', marginTop: 2 }}>{r.error}</div>
                       )}
                     </td>
-                    <td data-label="Type" style={{ padding: '12px 20px', fontSize: '0.8125rem', color: '#6b7280', textTransform: 'capitalize' }}>
-                      {r.kind}
+                    <td data-label="Type" style={{ padding: '12px 20px', fontSize: '0.8125rem', color: '#374151' }}>
+                      {r.category ?? (r.kind === 'batch' ? 'Batch' : 'Transactional')}
                     </td>
                     <td data-label="Status" style={{ padding: '12px 20px' }}>
                       <DotChip label={st.label} color={st.color} />

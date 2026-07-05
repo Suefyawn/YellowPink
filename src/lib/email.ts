@@ -147,7 +147,7 @@ export function fromDomain(from: string): string {
 // failure must never break (or slow to the point of failing) an email send.
 // `resend_id` ties the row to later Resend webhook events (delivered/opened).
 async function recordEmailLog(
-  opts: { to: string | string[]; subject: string; kind?: 'transactional' | 'batch' },
+  opts: { to: string | string[]; subject: string; kind?: 'transactional' | 'batch'; category?: string },
   status: 'sent' | 'failed' | 'skipped',
   extra: { resendId?: string | null; error?: string } = {},
 ): Promise<void> {
@@ -157,6 +157,7 @@ async function recordEmailLog(
         recipient: Array.isArray(opts.to) ? opts.to.join(', ') : opts.to,
         subject: opts.subject,
         kind: opts.kind ?? 'transactional',
+        category: opts.category ?? null,
         status,
         resend_id: extra.resendId ?? null,
         error: extra.error ? extra.error.slice(0, 500) : null,
@@ -181,6 +182,10 @@ async function send(opts: {
    *  free-tier budget is nearly spent. Defaults to 'transactional', which
    *  always sends, order confirmations must never be dropped. */
   kind?: 'transactional' | 'batch';
+  /** Human-readable email type for the admin email log ("Order confirmation",
+   *  "Shipped", "Abandoned cart", …). `kind` is the throttling class; this is
+   *  what the merchant actually reads in the Type column. */
+  category?: string;
 }): Promise<boolean> {
   if (!resend) {
     log.warn('email.skip', { reason: 'RESEND_API_KEY not set', to: opts.to, subject: opts.subject });
@@ -314,6 +319,7 @@ export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
     to: recipients,
     subject: `New order ${order.order_number}, ${money(order.total)}`,
     html,
+    category: 'Order alert',
   });
 }
 
@@ -344,6 +350,7 @@ export async function sendContactMessageEmail(args: {
     replyTo: args.email,
     subject: `New message from ${args.name}${subjectLine ? `, ${subjectLine}` : ''}`,
     html,
+    category: 'Contact message',
   });
 }
 
@@ -367,7 +374,7 @@ export async function sendCustomerReplyEmail(args: {
     <div style="margin:0 0 16px;white-space:pre-wrap;line-height:1.6;font-size:14px;color:${INK_700}">${escapeHtml(args.body)}</div>
     <p style="margin:18px 0 0;color:${MUTED};font-size:13px">— The Yellow Pink team</p>
   `);
-  return send({ to: args.to, subject: args.subject, html, from: args.from, replyTo: args.replyTo });
+  return send({ to: args.to, subject: args.subject, html, from: args.from, replyTo: args.replyTo, category: 'Customer reply' });
 }
 
 // ─── 2. Customer: order confirmation ────────────────────────────────────────
@@ -391,6 +398,7 @@ export async function sendOrderConfirmationEmail(args: OrderSummary & { email: s
     to: args.email,
     subject: `Order ${args.order_number} confirmed, Yellow Pink`,
     html,
+    category: 'Order confirmation',
   });
 }
 
@@ -401,7 +409,7 @@ export async function sendPaymentReceivedEmail(args: { email: string; first_name
     <p>Hi ${escapeHtml(stripEmoji(args.first_name))}, we've received your ${escapeHtml(args.method)} payment of <strong>${money(args.total)}</strong> for order <strong>${escapeHtml(args.order_number)}</strong>.</p>
     <p>We're now preparing your order for shipment.</p>
   `);
-  await send({ to: args.email, subject: `Payment received, ${args.order_number}`, html });
+  await send({ to: args.email, subject: `Payment received, ${args.order_number}`, html, category: 'Payment received' });
 }
 
 // ─── 4. Customer: shipped ────────────────────────────────────────────────────
@@ -417,7 +425,7 @@ export async function sendShippedEmail(args: { email: string; first_name: string
       <a href="${SITE_URL}/track" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track shipment</a>
     </p>
   `);
-  await send({ to: args.email, subject: `Shipped, ${args.order_number}`, html });
+  await send({ to: args.email, subject: `Shipped, ${args.order_number}`, html, category: 'Shipped' });
 }
 
 // ─── 5. Customer: delivered ─────────────────────────────────────────────────
@@ -427,7 +435,7 @@ export async function sendDeliveredEmail(args: { email: string; first_name: stri
     <p>Hi ${escapeHtml(stripEmoji(args.first_name))}, your order <strong>${escapeHtml(args.order_number)}</strong> has been delivered. We hope you love it!</p>
     <p>Got a minute? <a href="${SITE_URL}/account/orders" style="color:${BRAND_PINK}">Leave a review</a>, it really helps other shoppers.</p>
   `);
-  await send({ to: args.email, subject: `Delivered, ${args.order_number}`, html });
+  await send({ to: args.email, subject: `Delivered, ${args.order_number}`, html, category: 'Delivered' });
 }
 
 // ─── 6. Customer: cancelled ─────────────────────────────────────────────────
@@ -438,7 +446,7 @@ export async function sendCancelledEmail(args: { email: string; first_name: stri
     ${args.reason ? `<p>Reason: ${escapeHtml(args.reason)}</p>` : ''}
     <p>If you didn't request this, reply to this email and we'll look into it.</p>
   `);
-  await send({ to: args.email, subject: `Cancelled, ${args.order_number}`, html, replyTo: OWNER_EMAIL });
+  await send({ to: args.email, subject: `Cancelled, ${args.order_number}`, html, replyTo: OWNER_EMAIL, category: 'Cancelled' });
 }
 
 // ─── 7. Customer: welcome (post-signup) ─────────────────────────────────────
@@ -447,7 +455,7 @@ export async function sendWelcomeEmail(args: { email: string; first_name?: strin
     <h2 style="margin:0 0 12px;font-size:18px">Welcome to Yellow Pink${args.first_name ? `, ${escapeHtml(stripEmoji(args.first_name))}` : ''}</h2>
     <p>We're glad you're here. Take a look at <a href="${SITE_URL}/shop" style="color:${BRAND_PINK}">what's new</a>, or <a href="${SITE_URL}/blog" style="color:${BRAND_PINK}">read our edit</a> for routines and reviews.</p>
   `, { marketingRecipient: args.email });
-  await send({ to: args.email, subject: 'Welcome to Yellow Pink', html, kind: 'batch' });
+  await send({ to: args.email, subject: 'Welcome to Yellow Pink', html, kind: 'batch', category: 'Welcome' });
 }
 
 // ─── 8. Staff: temp password ────────────────────────────────────────────────
@@ -458,7 +466,7 @@ export async function sendStaffTempPasswordEmail(args: { email: string; name: st
     <p style="margin:16px 0;padding:12px 16px;background:#f3f4f6;border-radius:6px;font-family:monospace;font-size:18px"><strong>${escapeHtml(args.tempPassword)}</strong></p>
     <p>Log in at <a href="${SITE_URL}/admin" style="color:${BRAND_PINK}">${SITE_URL}/admin</a> and change it right away from your profile page.</p>
   `);
-  await send({ to: args.email, subject: 'Yellow Pink admin access', html });
+  await send({ to: args.email, subject: 'Yellow Pink admin access', html, category: 'Staff access' });
 }
 
 // ─── 8.5. Medical Review Board: doctor applications ─────────────────────────
@@ -483,7 +491,7 @@ export async function sendReviewerApplicationEmail(args: {
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/reviewers" style="color:${BRAND_PINK};font-weight:600">→ Review &amp; approve</a></p>
   `);
   const recipients = await getRecipientsForEvent('order.new');
-  await send({ to: recipients, subject: `Reviewer application, ${args.name}`, html, kind: 'batch' });
+  await send({ to: recipients, subject: `Reviewer application, ${args.name}`, html, kind: 'batch', category: 'Reviewer application' });
 }
 
 // Doctor notification once the owner approves their application.
@@ -495,7 +503,7 @@ export async function sendReviewerApprovedEmail(args: { name: string; email: str
     <p style="margin:20px 0 0"><a href="${SITE_URL}/reviewer/login" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Sign in to your dashboard →</a></p>
     <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Sign in at ${SITE_URL}/reviewer/login using this email address (${escapeHtml(args.email)}).</p>
   `);
-  await send({ to: args.email, subject: 'Your Yellow Pink reviewer access', html });
+  await send({ to: args.email, subject: 'Your Yellow Pink reviewer access', html, category: 'Reviewer approved' });
 }
 
 /** Nudge a reviewer to sign in and complete their public profile (photo, bio,
@@ -509,7 +517,7 @@ export async function sendReviewerProfileInviteEmail(args: { name: string; email
     <p style="margin:20px 0 0"><a href="${SITE_URL}/reviewer/login" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Sign in and complete your profile →</a></p>
     <p style="margin:16px 0 0;color:${MUTED};font-size:12px">Sign in at ${SITE_URL}/reviewer/login using this email address (${escapeHtml(args.email)}). We send a one-time link each time, so there is no password to remember.</p>
   `);
-  await send({ to: args.email, subject: 'Complete your Yellow Pink reviewer profile', html });
+  await send({ to: args.email, subject: 'Complete your Yellow Pink reviewer profile', html, category: 'Reviewer profile' });
 }
 
 // ─── 9. Customer: abandoned cart reminder ──────────────────────────────────
@@ -547,6 +555,7 @@ export async function sendAbandonedCartEmail(args: {
       : `You left some things in your cart`,
     html,
     kind: 'batch',
+    category: 'Abandoned cart',
   });
 }
 
@@ -592,6 +601,7 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
     subject: 'Welcome to Yellow Pink, your fortnightly edit starts here',
     html,
     kind: 'batch',
+    category: 'Newsletter welcome',
   });
 }
 
@@ -622,7 +632,7 @@ export async function sendNewsletterBroadcastEmail(args: {
   body: string;
 }): Promise<boolean> {
   const html = shell(newsletterBodyToHtml(args.body), { marketingRecipient: args.email });
-  return send({ to: args.email, subject: args.subject, html, kind: 'batch' });
+  return send({ to: args.email, subject: args.subject, html, kind: 'batch', category: 'Newsletter' });
 }
 
 // ─── 11.7. Customer: post-delivery review request ──────────────────────────
@@ -674,6 +684,7 @@ export async function sendReviewRequestEmail(args: {
     subject: `How was your order ${args.order_number}?`,
     html,
     kind: 'batch',
+    category: 'Review request',
   });
 }
 
@@ -703,7 +714,7 @@ export async function sendReviewRewardEmail(args: {
       Apply the code at checkout. One use, valid for ${args.days} days. Thanks for being part of Yellow Pink 💛
     </p>
   `);
-  await send({ to: args.email, subject: `Your ${args.percent}% thank-you code inside 🌸`, html });
+  await send({ to: args.email, subject: `Your ${args.percent}% thank-you code inside 🌸`, html, category: 'Review reward' });
 }
 
 // ─── 11b. Owner: stuck-payment alert (background job) ───────────────────────
@@ -731,7 +742,7 @@ export async function sendStuckPaymentsAlertEmail(args: {
     </table>
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/orders?status=payment_pending" style="color:${BRAND_PINK};font-weight:600">→ Review pending payments</a></p>
   `);
-  await send({ to: OWNER_EMAIL, subject: `Action needed, ${args.orders.length} payment${args.orders.length === 1 ? '' : 's'} stuck pending`, html, kind: 'batch' });
+  await send({ to: OWNER_EMAIL, subject: `Action needed, ${args.orders.length} payment${args.orders.length === 1 ? '' : 's'} stuck pending`, html, kind: 'batch', category: 'Stuck payments' });
 }
 
 // Broken-link (404) digest, the daily cron passes only NEW, unresolved misses
@@ -764,5 +775,5 @@ export async function sendBrokenLinksDigestEmail(args: {
     <p style="margin:12px 0 0;font-size:12px;color:#9ca3af">A 404 for genuinely removed content is fine to ignore, this digest just makes sure none slip past you.</p>
   `);
   const recipients = await getRecipientsForEvent('seo.broken_links');
-  await send({ to: recipients, subject: `${n} new broken link${n === 1 ? '' : 's'} on the store`, html, kind: 'batch' });
+  await send({ to: recipients, subject: `${n} new broken link${n === 1 ? '' : 's'} on the store`, html, kind: 'batch', category: 'Broken links' });
 }

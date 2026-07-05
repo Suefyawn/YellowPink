@@ -325,7 +325,7 @@ Here's what each link is for:
 | **Settings** | Store-wide configuration — see [section 6](#6-store-settings). |
 | **Team** | Staff accounts and their roles. Owner only. |
 | **Activity log** | The audit trail — every staff action (saves, deletes, status changes, sign-ins) with who did it and when. Owner only. |
-| **Email log** | A record of every email the system has sent (order emails, newsletters, etc.). |
+| **Email log** | A record of every email the system has sent, each labelled by type (Order confirmation, Shipped, Abandoned cart, Newsletter, and so on) so you can see at a glance what went out. Open rates shown here are approximate, see [Email log in detail](#email-log-in-detail). |
 | **Broken links** | Every URL on the store that returned a **404**, with one-click redirects, an ignore option and a daily digest of new breakages. Full breakdown in [Broken links in detail](#broken-links-in-detail). |
 | **Indexing** | Search-engine indexing status and tools — see which pages have been submitted to Google/Bing and resubmit after big content changes. |
 
@@ -466,6 +466,13 @@ Every URL on the store that returned a **404**, captured automatically the momen
 - **Ignore** it — a 404 for genuinely removed content is perfectly fine and doesn't hurt ranking.
 
 You also get a **daily email digest** of any *new* broken links so nothing slips past.
+
+### Email log in detail
+
+A record of **every email the system sends** — to customers and to you. Each row shows the recipient, the subject, a plain-English **Type** (Order confirmation, Shipped, Delivered, Abandoned cart, Newsletter, Review request, and so on), the delivery status, and when it was sent. Search by recipient or subject, filter by status (Sent / Failed / Skipped), and page back through history.
+
+- **Abandoned-cart reminders show up here too.** The store automatically emails shoppers who leave a full cart behind — a gentle nudge after an hour, another after a day, and a last-chance note (with a discount code) after three days. Every one is logged with the type **Abandoned cart**, and once a day the notification bell tells you how many went out, so you always know the recovery emails are working without digging through the log.
+- **Open rates are approximate.** "Opened" is tracked by a tiny invisible image the mail app has to load, and many apps block or pre-load it (Apple Mail Privacy Protection, Gmail's image proxy, image-blocking). Real opens are almost always higher than shown, and some are counted automatically. Treat **Delivered** and **Clicked** as the dependable numbers and opens as a rough floor.
 
 > **If a save fails, you'll be told.** Across the admin (products, variants,
 > vendors, coupons, and bulk product actions), a save or delete that
@@ -900,6 +907,9 @@ A dated history of user-facing changes, newest first.
 
 ### 5 July 2026
 
+- **Email log now says what each email actually is.** The **Type** column showed only "transactional" or "batch" (a delivery setting, not a description). Every email now carries a plain-English type — Order confirmation, Shipped, Delivered, Cancelled, Abandoned cart, Newsletter, Review request, Welcome, and so on — so you can see at a glance what the store has been sending. Existing history was relabelled too.
+- **You're now told when abandoned-cart reminders go out.** The store quietly emails shoppers who leave a full cart (after an hour, a day, and three days with a discount). Those sends are logged as **Abandoned cart** in the email log, and once a day the notification bell posts a running tally ("N cart-reminder emails sent today"), so you know the recovery flow is working without hunting for it.
+- **Open rates now flagged as approximate.** Email "opens" rely on the mail app loading a hidden pixel, which Apple Mail Privacy Protection, Gmail and image-blockers routinely defeat or inflate — so the number was never exact. The email log now says so plainly and points you to **Delivered** and **Clicked** as the numbers you can trust.
 - **New “Search demand” page (Marketing → Search demand).** One place to see what people search for and where you’re not meeting it. Three things: **on-site searches that returned no products** (your clearest stock-or-create shopping list), searches that returned only one or two matches, and **Google queries you already rank for but just off page 1** (winnable with a content or internal-link push) plus page-1 pages with weak click-through. It reads the same daily Search Console data as the dashboard and your own site-search box (last 60 days). Also fixed the site search so it logs the term someone actually meant instead of every keystroke, so this report (and analytics) are clean.
 - **The homepage “Popular Right Now” rail is now demand-driven.** It used to be whatever you manually flagged as a bestseller (then padded with recent stock). It now orders by a daily popularity score built from what shoppers actually do — product views and add-to-carts (from analytics) plus real units sold (from orders) over a trailing window. Your manual **Bestseller** flag still wins and leads the rail, so you keep full override; the score just orders everything underneath it. It refreshes every night, and a product whose interest fades drops off automatically. Wellness and K-Beauty keep their own dedicated homepage sections, so a makeup-heavy popular rail never squeezes them out.
 - **Supplement guides get an internal-linking boost.** Our wellness buyer guides (prenatal, PCOS, fertility, moringa, and so on) rank for the right searches but sit too deep in Google to get clicks. Two changes concentrate more of the site's own link authority on them: the guides now cross-link each other as one health cluster (a fertility guide points to the PCOS and prenatal guides, not to unrelated recent posts), and wellness **category pages now show a “Guides worth reading” block** linking down to them. This is a nudge that compounds over weeks, not an overnight jump.

@@ -19,6 +19,7 @@ export const KIND_PERMISSION: Record<string, Permission | null> = {
   sentry_issue:   'analytics_errors',
   posthog_spike:  'analytics_traffic',
   posthog_drop:   'analytics_traffic',
+  abandoned_cart: 'orders.view',
 };
 
 /** Kinds this session may see. `null` = unrestricted (owner). */
