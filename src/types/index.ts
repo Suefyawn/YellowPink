@@ -497,4 +497,8 @@ export interface ProductReview {
   owner_reply: string | null;
   owner_reply_at: string | null;
   created_at: string;
+  /** Provenance of an imported review (e.g. 'NB Sons'). NULL for native
+   *  first-party reviews left on Yellow Pink. Imported reviews show a source
+   *  label and are excluded from the first-party rich-snippet markup. */
+  source?: string | null;
 }

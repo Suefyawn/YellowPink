@@ -14,6 +14,9 @@ interface Review {
   photo_urls?: string[] | null;
   verified_purchase?: boolean;
   helpful_count?: number;
+  /** Set when the review was imported from another store (e.g. 'NB Sons').
+   *  Shown as an honest attribution label instead of a "Verified" badge. */
+  source?: string | null;
   /** Public "Response from Yellow Pink", written from admin → Reviews. */
   owner_reply?: string | null;
   owner_reply_at?: string | null;
@@ -296,6 +299,13 @@ export function ReviewsSection({ productId, reviews, photosEnabled = true, rewar
                                 background: '#f0fdf4', color: '#15803d',
                                 border: '1px solid #bbf7d0', borderRadius: 4,
                               }}>VERIFIED</span>
+                            )}
+                            {r.source && !r.verified_purchase && (
+                              <span title={`Imported from ${r.source}`} style={{
+                                fontSize: '0.625rem', fontWeight: 600, padding: '1px 6px',
+                                background: 'var(--paper2, #faf6ee)', color: 'var(--ink-500)',
+                                border: '1px solid var(--line)', borderRadius: 4,
+                              }}>via {r.source}</span>
                             )}
                           </div>
                         </div>
