@@ -119,12 +119,20 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
       getBrowserClient().rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
         setProducts((data ?? []) as Product[]);
       });
-      // GA4 `search`, fired once the query settles (≥2 chars), so it counts
-      // real search usage (incl. typeahead-only sessions) without spamming a
-      // hit per keystroke. The event type existed but was never emitted.
-      if (query.trim().length >= 2) track({ name: 'search', payload: { query: query.trim() } });
     }, 200);
     return () => clearTimeout(handle);
+  }, [query, searchOpen]);
+
+  // GA4 `search`, fired on a LONGER settle delay than the typeahead RPC so we
+  // log the query the shopper actually meant, not every keystroke prefix. At
+  // 200ms every pause logged ("co", "coll", "collagen"), polluting the
+  // search-demand report and analytics; ~1s only fires once typing stops.
+  useEffect(() => {
+    if (!searchOpen) return;
+    const q = query.trim();
+    if (q.length < 2) return;
+    const t = setTimeout(() => track({ name: 'search', payload: { query: q } }), 1000);
+    return () => clearTimeout(t);
   }, [query, searchOpen]);
 
   // Server already filtered + ranked via pg_trgm. Just rename for the JSX.
