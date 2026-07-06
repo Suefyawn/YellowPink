@@ -67,6 +67,24 @@ export const metadata: Metadata = {
   description:
     'Shop authentic imported skincare, Korean beauty, makeup and wellness supplements in Pakistan, 100% genuine brands like CeraVe, Anua & The Ordinary, with COD.',
   applicationName: SITE_NAME,
+  // Explicitly opt into large image previews + full snippets in Google. Without
+  // a max-image-preview directive Google shows previews at its own (often
+  // conservative) discretion, which is a common reason product results render as
+  // a plain link with no packshot thumbnail while competitors show one. Pages
+  // that must stay out of the index set their own `robots:{index:false}` via
+  // pageMeta(), which overrides this; private surfaces are also robots.txt-
+  // disallowed. (max-snippet/-video:-1 = no limit.)
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
   // We deleted /icon.svg when installing the flower favicon. Next.js
   // auto-generates /icon and /apple-icon link tags from
   // src/app/icon.png + apple-icon.png, so we don't list them here, listing
