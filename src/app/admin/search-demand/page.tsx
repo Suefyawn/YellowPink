@@ -5,7 +5,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { can, canAny } from '@/lib/permissions';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getSearchDemand, RANGE_OPTIONS, type GscRow, type OnsiteRow } from './actions';
+import { getSearchDemand, RANGE_OPTIONS, type GscRow, type OnsiteRow, type ConvRow, type RollupRow } from './actions';
 import { SynonymManager, type Synonym } from '@/components/admin/SynonymManager';
 import { SearchDemandExport } from '@/components/admin/SearchDemandExport';
 import { Sparkline } from '@/components/admin/insights/Sparkline';
@@ -124,6 +124,59 @@ function OnsiteTable({ rows, acts, withSynonym = false }: { rows: OnsiteRow[]; a
   );
 }
 
+function pctRate(n: number) { return `${Math.round(n * 100)}%`; }
+
+// C1 — searched, products shown, but the searchers rarely buy.
+function ConvTable({ rows }: { rows: ConvRow[] }) {
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
+      <thead><tr>
+        <th style={th}>What they typed</th>
+        <th style={{ ...th, textAlign: 'right' }}>Searchers</th>
+        <th style={{ ...th, textAlign: 'right' }}>Went on to buy</th>
+        <th style={{ ...th, textAlign: 'right' }}>Buy-through</th>
+        <th style={{ ...th, textAlign: 'right' }}>Products shown</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => {
+          const rate = r.searchers ? r.buyers / r.searchers : 0;
+          return (
+            <tr key={i}>
+              <td style={td}>{r.query}</td>
+              <td style={num}>{r.searchers}</td>
+              <td style={num}>{r.buyers}</td>
+              <td style={{ ...num, color: rate < 0.1 ? '#b91c1c' : rate < 0.25 ? '#b45309' : '#059669', fontWeight: 700 }}>{pctRate(rate)}</td>
+              <td style={num}>{r.results}+</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+// C2 — search interest rolled up to a stocked brand / category.
+function RollupTable({ rows, label }: { rows: RollupRow[]; label: string }) {
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 360 }}>
+      <thead><tr>
+        <th style={th}>{label}</th>
+        <th style={{ ...th, textAlign: 'right' }}>Searches</th>
+        <th style={{ ...th, textAlign: 'right' }}>Terms</th>
+      </tr></thead>
+      <tbody>
+        {rows.map((r, i) => (
+          <tr key={i}>
+            <td style={td}>{r.name}</td>
+            <td style={num}>{r.searches}</td>
+            <td style={num}>{r.terms}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export default async function SearchDemandPage({
   searchParams,
 }: {
@@ -136,7 +189,7 @@ export default async function SearchDemandPage({
 
   const { map: prefillTerm, range } = await searchParams;
   const rangeDays = parseInt(range ?? '', 10) || undefined;
-  const { winnable, lowCtr, onsite, gscUpdatedAt, posthog, days } = await getSearchDemand(rangeDays);
+  const { winnable, lowCtr, onsite, nonConverting, brandDemand, categoryDemand, gscUpdatedAt, posthog, days } = await getSearchDemand(rangeDays);
 
   // Which one-click actions this viewer may take on a demand row.
   const acts = { product: can(session, 'products.edit'), guide: can(session, 'blog') };
@@ -217,6 +270,33 @@ export default async function SearchDemandPage({
           subtitle="Only one or two products matched. Worth adding depth to the range or checking the product naming."
         >
           <OnsiteTable rows={thin} acts={acts} withSynonym />
+        </Card>
+      )}
+
+      {/* ── C1: demand you're losing at the shelf ── */}
+      {nonConverting.length > 0 && (
+        <Card
+          title="Searched, shown products, but rarely bought"
+          subtitle="These searches DO return products, but few of the people searching them go on to buy anything. Often a price, imagery, stock or trust problem on the products they land on. Buy-through = share of searchers who purchased within the window (a cohort estimate, not per-item attribution)."
+        >
+          <ConvTable rows={nonConverting} />
+        </Card>
+      )}
+
+      {/* ── C2: brand & category demand rollups ── */}
+      {(brandDemand.length > 0 || categoryDemand.length > 0) && (
+        <Card
+          title="Demand by brand & category"
+          subtitle="On-site searches rolled up to the brands and categories you stock, so you can see which ranges shoppers hunt for by name — worth featuring, restocking or expanding."
+        >
+          <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0 }}>
+            <div style={{ overflowX: 'auto', borderRight: '1px solid #f3f4f6' }}>
+              {brandDemand.length > 0 ? <RollupTable rows={brandDemand} label="Brand" /> : <Empty>No brand-name searches yet.</Empty>}
+            </div>
+            <div style={{ overflowX: 'auto' }}>
+              {categoryDemand.length > 0 ? <RollupTable rows={categoryDemand} label="Category" /> : <Empty>No category searches yet.</Empty>}
+            </div>
+          </div>
         </Card>
       )}
 

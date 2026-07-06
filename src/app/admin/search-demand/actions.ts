@@ -17,11 +17,19 @@ const PH_BASE = 'https://us.posthog.com';
 
 export interface GscRow { query: string; impressions: number; clicks: number; position: number; ctr: number }
 export interface OnsiteRow { query: string; searches: number; people: number; results: number; spark: number[] }
+// A term that DOES return products but whose searchers rarely go on to buy —
+// demand you're showing product for but losing at the shelf.
+export interface ConvRow { query: string; searchers: number; buyers: number; results: number }
+// Search interest rolled up to a catalogue brand / category.
+export interface RollupRow { name: string; searches: number; terms: number }
 export interface SearchDemand {
   gscUpdatedAt: string | null;
   winnable: GscRow[];       // rank 8–40: one push from page 1
   lowCtr: GscRow[];         // page 1 but poor CTR: a title/meta fix
   onsite: OnsiteRow[];      // on-site searches, results flagged
+  nonConverting: ConvRow[]; // searched a lot, results shown, searchers rarely buy
+  brandDemand: RollupRow[]; // on-site search interest per stocked brand
+  categoryDemand: RollupRow[];
   posthog: 'ok' | 'no-key';
   days: number;             // on-site window actually used
 }
@@ -69,6 +77,9 @@ export async function getSearchDemand(rangeDays?: number): Promise<SearchDemand>
 
   // ── 2. On-site searches from PostHog, cross-checked against the catalogue ──
   let onsite: OnsiteRow[] = [];
+  let nonConverting: ConvRow[] = [];
+  let brandDemand: RollupRow[] = [];
+  let categoryDemand: RollupRow[] = [];
   let posthog: 'ok' | 'no-key' = 'no-key';
   const apiKey = process.env.POSTHOG_PERSONAL_API_KEY;
   if (apiKey) {
@@ -151,10 +162,72 @@ export async function getSearchDemand(rangeDays?: number): Promise<SearchDemand>
         } catch { return -1; } // -1 = couldn't check
       }));
       onsite = terms.map((t, i) => ({ ...t, results: counts[i] }));
+      const resultsByQuery = new Map(onsite.map(o => [o.query.toLowerCase(), o.results]));
+
+      // ── C1. Searches that show products but whose searchers rarely buy ──
+      // A cohort proxy: of the distinct people who searched a term, how many
+      // went on to purchase anything in the window. A high-volume term with a
+      // low buy-through is friction on a demand we're already meeting.
+      try {
+        const convRows = await phQuery(apiKey, `
+          WITH buyers AS (
+            SELECT DISTINCT distinct_id FROM events
+            WHERE event = 'purchase' AND timestamp >= now() - interval ${days} day
+          )
+          SELECT properties.query AS q,
+                 count(DISTINCT distinct_id) AS searchers,
+                 count(DISTINCT if(distinct_id IN (SELECT distinct_id FROM buyers), distinct_id, NULL)) AS buyers
+          FROM events
+          WHERE event = 'search'
+            AND timestamp >= now() - interval ${days} day
+            AND properties.query != ''
+          GROUP BY q
+          HAVING searchers >= 3
+          ORDER BY searchers DESC
+          LIMIT 60`);
+        const convRaw = convRows
+          .map(r => ({ query: String(r[0] ?? '').trim(), searchers: Number(r[1]) || 0, buyers: Number(r[2]) || 0 }))
+          .filter(t => t.query && !isJunkQuery(t.query));
+        // Same prefix-collapse as the on-site list, peak-merged.
+        const convByLen = [...convRaw].sort((a, b) => b.query.length - a.query.length);
+        const convTerms: typeof convRaw = [];
+        for (const t of convByLen) {
+          const parent = convTerms.find(k => k.query.toLowerCase().startsWith(t.query.toLowerCase()));
+          if (parent) { parent.searchers = Math.max(parent.searchers, t.searchers); parent.buyers = Math.max(parent.buyers, t.buyers); }
+          else convTerms.push({ ...t });
+        }
+        nonConverting = convTerms
+          // Only terms we actually return products for (>0), so this is "shown
+          // but not converting", not the same as the zero-result gaps above.
+          .map(t => ({ ...t, results: resultsByQuery.get(t.query.toLowerCase()) ?? -1 }))
+          .filter(t => t.results > 0)
+          .sort((a, b) => (a.buyers / a.searchers) - (b.buyers / b.searchers) || b.searchers - a.searchers)
+          .slice(0, 12);
+      } catch { nonConverting = []; }
+
+      // ── C2. Roll on-site search interest up to stocked brands / categories ──
+      // Each searched term is matched (case-insensitive substring) against the
+      // catalogue's brand and category names, so the owner sees which ranges
+      // shoppers are hunting for by name — a merchandising / feature signal.
+      try {
+        const { data: catRows } = await sb
+          .from('products').select('brand, category').eq('status', 'published');
+        const rollup = (names: string[]): RollupRow[] => {
+          const seen = [...new Set(names.map(n => (n ?? '').trim()).filter(Boolean))];
+          return seen.map(name => {
+            const nl = name.toLowerCase();
+            const hits = onsite.filter(o => o.query.toLowerCase().includes(nl));
+            return { name, searches: hits.reduce((s, o) => s + o.searches, 0), terms: hits.length };
+          }).filter(r => r.searches > 0).sort((a, b) => b.searches - a.searches).slice(0, 15);
+        };
+        const rows2 = (catRows ?? []) as { brand: string | null; category: string | null }[];
+        brandDemand = rollup(rows2.map(r => r.brand ?? ''));
+        categoryDemand = rollup(rows2.map(r => r.category ?? ''));
+      } catch { brandDemand = []; categoryDemand = []; }
     } catch {
       onsite = [];
     }
   }
 
-  return { gscUpdatedAt: gscCache?.updated_at ?? null, winnable, lowCtr, onsite, posthog, days };
+  return { gscUpdatedAt: gscCache?.updated_at ?? null, winnable, lowCtr, onsite, nonConverting, brandDemand, categoryDemand, posthog, days };
 }
