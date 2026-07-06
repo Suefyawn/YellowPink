@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { getStaffSession } from '@/lib/staff-auth';
 import { can, canAny } from '@/lib/permissions';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { supabaseAdmin } from '@/lib/supabase';
 import { getSearchDemand, type GscRow, type OnsiteRow } from './actions';
+import { SynonymManager, type Synonym } from '@/components/admin/SynonymManager';
 import { fmtDatePK } from '@/lib/dates';
 
 const th: React.CSSProperties = { textAlign: 'left', padding: '8px 12px', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#6b7280', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' };
@@ -18,16 +20,20 @@ interface Acts { product: boolean; guide: boolean }
 const actBtn: React.CSSProperties = { fontSize: '0.6875rem', fontWeight: 600, padding: '3px 9px', borderRadius: 999, textDecoration: 'none', whiteSpace: 'nowrap', border: '1px solid transparent' };
 const actProduct: React.CSSProperties = { ...actBtn, background: '#fdf2f8', color: '#9d174d', borderColor: '#fbcfe8' };
 const actGuide: React.CSSProperties = { ...actBtn, background: '#f9fafb', color: '#374151', borderColor: '#e5e7eb' };
+const actSynonym: React.CSSProperties = { ...actBtn, background: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' };
 
-// One-click "act on this demand": seed a new product / guide with the term.
-// The forms read ?name= / ?title= and pre-fill, so the owner lands on a
-// half-started draft instead of a blank page.
-function RowActions({ term, acts, guideOnly = false }: { term: string; acts: Acts; guideOnly?: boolean }) {
+// One-click "act on this demand": seed a new product / guide with the term, or
+// (for a term that found nothing) map it to a synonym that does. The forms
+// read ?name= / ?title= and pre-fill; "+ Synonym" jumps to the synonym card
+// with the term pre-loaded, so the owner lands on a half-started task not a
+// blank page.
+function RowActions({ term, acts, guideOnly = false, synonym = false }: { term: string; acts: Acts; guideOnly?: boolean; synonym?: boolean }) {
   const t = encodeURIComponent(term.slice(0, 120));
   return (
     <span style={{ display: 'inline-flex', gap: 6, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
       {!guideOnly && acts.product && <Link href={`/admin/products/new?name=${t}`} style={actProduct}>+ Product</Link>}
       {acts.guide && <Link href={`/admin/blog/new?title=${t}`} style={actGuide}>+ Guide</Link>}
+      {synonym && acts.product && <Link href={`/admin/search-demand?map=${t}#synonyms`} style={actSynonym}>+ Synonym</Link>}
     </span>
   );
 }
@@ -86,7 +92,7 @@ function resultBadge(results: number) {
   return <span style={{ fontSize: '0.8125rem', color: '#059669' }}>{results}+</span>;
 }
 
-function OnsiteTable({ rows, acts }: { rows: OnsiteRow[]; acts: Acts }) {
+function OnsiteTable({ rows, acts, withSynonym = false }: { rows: OnsiteRow[]; acts: Acts; withSynonym?: boolean }) {
   const showActs = acts.product || acts.guide;
   return (
     <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 520 }}>
@@ -104,7 +110,7 @@ function OnsiteTable({ rows, acts }: { rows: OnsiteRow[]; acts: Acts }) {
             <td style={num}>{r.searches}</td>
             <td style={num}>{r.people}</td>
             <td style={{ ...num, textAlign: 'right' }}>{resultBadge(r.results)}</td>
-            {showActs && <td style={num}><RowActions term={r.query} acts={acts} /></td>}
+            {showActs && <td style={num}><RowActions term={r.query} acts={acts} synonym={withSynonym} /></td>}
           </tr>
         ))}
       </tbody>
@@ -112,7 +118,11 @@ function OnsiteTable({ rows, acts }: { rows: OnsiteRow[]; acts: Acts }) {
   );
 }
 
-export default async function SearchDemandPage() {
+export default async function SearchDemandPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ map?: string }>;
+}) {
   const session = await getStaffSession();
   if (!session || !canAny(session, ['analytics', 'products.view', 'blog'])) {
     return <NoAccess section="Search demand" />;
@@ -122,6 +132,15 @@ export default async function SearchDemandPage() {
 
   // Which one-click actions this viewer may take on a demand row.
   const acts = { product: can(session, 'products.edit'), guide: can(session, 'blog') };
+
+  // The synonym map is part of the catalogue's search behaviour → products.edit.
+  const { map: prefillTerm } = await searchParams;
+  let synonyms: Synonym[] = [];
+  if (acts.product) {
+    const { data } = await supabaseAdmin()
+      .from('search_synonyms').select('term, canonical, note').order('created_at', { ascending: false });
+    synonyms = (data ?? []) as Synonym[];
+  }
 
   // On-site: gaps first (zero, then thin), each by search volume; then the rest.
   const gaps = onsite.filter(r => r.results === 0).sort((a, b) => b.searches - a.searches);
@@ -142,19 +161,31 @@ export default async function SearchDemandPage() {
       {/* ── On-site gaps: the stock/create shopping list ── */}
       <Card
         title="On-site searches with no results"
-        subtitle="People searched your site for these and saw nothing. Each is a product to stock or a page to create."
+        subtitle="People searched your site for these and saw nothing. Each is a product to stock, a page to create, or a naming mismatch to map with a synonym."
       >
-        {gaps.length > 0 ? <OnsiteTable rows={gaps} acts={acts} />
+        {gaps.length > 0 ? <OnsiteTable rows={gaps} acts={acts} withSynonym />
           : posthog === 'no-key' ? <Empty>On-site search analytics aren&apos;t connected.</Empty>
           : <Empty>No zero-result searches in the last 60 days. Nice.</Empty>}
       </Card>
+
+      {/* ── Synonym map: fix naming mismatches without changing the catalogue ── */}
+      {acts.product && (
+        <Card
+          title="Search synonyms"
+          subtitle="When a searched word finds nothing only because of wording (&ldquo;vit c&rdquo; vs &ldquo;vitamin c&rdquo;, &ldquo;sunblock&rdquo; vs &ldquo;sunscreen&rdquo;), map it here. The storefront search then quietly searches your wording instead."
+        >
+          <div id="synonyms" style={{ scrollMarginTop: 80 }}>
+            <SynonymManager synonyms={synonyms} prefillTerm={prefillTerm?.slice(0, 120)} />
+          </div>
+        </Card>
+      )}
 
       {thin.length > 0 && (
         <Card
           title="On-site searches with thin results"
           subtitle="Only one or two products matched. Worth adding depth to the range or checking the product naming."
         >
-          <OnsiteTable rows={thin} acts={acts} />
+          <OnsiteTable rows={thin} acts={acts} withSynonym />
         </Card>
       )}
 
