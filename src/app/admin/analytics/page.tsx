@@ -109,6 +109,20 @@ function rollUp(daily: { day: string; revenue: number | string }[], gran: Gran):
   return [...map.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, revenue]) => ({ date, revenue }));
 }
 
+// Labelled section wrapper for the Traffic tab — turns a flat stack of widgets
+// into a scannable dashboard (title + one-line context, consistent spacing).
+function TrafficSection({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
+  return (
+    <section style={{ marginBottom: 32 }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', marginBottom: 12 }}>
+        <h2 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700, color: '#111827' }}>{title}</h2>
+        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{hint}</span>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export default async function AnalyticsPage({
   searchParams,
 }: {
@@ -279,11 +293,11 @@ export default async function AnalyticsPage({
       <div className="adm-page-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Analytics</h1>
-          {/* The date range only drives the Sales & Customers widgets; on
-              Traffic and Funnels the sources use their own fixed windows
-              (captioned per card), so the header line + picker are hidden
-              there rather than implying a control that does nothing. */}
-          {(tab === 'sales' || tab === 'customers' || tab === 'sources') && (
+          {/* The date range drives Sales, Customers, Sources and now Traffic
+              (Search Console, GA4, SEO trend and Web Vitals all honour it).
+              Only Funnels keeps fixed PostHog windows, so the picker stays
+              hidden there rather than implying a control that does nothing. */}
+          {(tab === 'sales' || tab === 'customers' || tab === 'sources' || tab === 'traffic') && (
             <p style={{ margin: '4px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
               Showing the last {window} days
             </p>
@@ -293,7 +307,7 @@ export default async function AnalyticsPage({
           {canRefresh && <RefreshAnalyticsButton />}
           {/* Shared URL-synced range picker (same control as the other insight
               surfaces); preserves the active tab via the query string. */}
-          {(tab === 'sales' || tab === 'customers' || tab === 'sources') && (
+          {(tab === 'sales' || tab === 'customers' || tab === 'sources' || tab === 'traffic') && (
             <Suspense fallback={null}>
               <RangePicker
                 value={String(window)}
@@ -633,25 +647,33 @@ export default async function AnalyticsPage({
 
       {tab === 'traffic' && canTraffic && (
         <>
-          {/* SEO trend over time (GSC + GA4 daily series) — answers
-              "is organic traffic / indexation improving?". */}
-          <div style={{ marginBottom: 28 }}>
-            <SeoTrendWidget days={90} />
-          </div>
-          {/* Live Google Search Console + GA4 (only render once connected). */}
-          <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-            <SearchConsoleWidget />
-            <Ga4Widget />
-          </div>
-          {/* Real Core Web Vitals (field p75) captured in-app, honours the
-              day-range pills above. */}
-          <div style={{ marginBottom: 28 }}>
+          {/* ── Search & discovery ── the range picker above drives all four
+              cards in this section (SEO trend, Search Console, GA4). */}
+          <TrafficSection title="Search & discovery" hint={`Google Search Console + Analytics, last ${window} days`}>
+            <div style={{ marginBottom: 16 }}>
+              <SeoTrendWidget days={window} />
+            </div>
+            <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <SearchConsoleWidget days={window} />
+              <Ga4Widget days={window} />
+            </div>
+          </TrafficSection>
+
+          {/* ── Site performance ── real field Core Web Vitals (p75), also
+              range-aware. */}
+          <TrafficSection title="Site performance" hint={`Real-visitor Core Web Vitals (p75), last ${window} days`}>
             <WebVitalsWidget days={window} />
-          </div>
-          <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
-            <TopPagesWidget />
-            <TopEventsWidget />
-          </div>
+          </TrafficSection>
+
+          {/* ── On-site behaviour ── PostHog top pages/events. These read the
+              daily 7-day snapshot (each card captions its own window), so they
+              stay fixed regardless of the picker. */}
+          <TrafficSection title="On-site behaviour" hint="Most-visited pages and tracked events (rolling 7-day snapshot)">
+            <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <TopPagesWidget />
+              <TopEventsWidget />
+            </div>
+          </TrafficSection>
         </>
       )}
 
