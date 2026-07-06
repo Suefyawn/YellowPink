@@ -26,6 +26,7 @@ import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtToget
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
 import { FromTheBlog } from '@/components/pdp/FromTheBlog';
 import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd, truncateOnWord } from '@/lib/seo';
+import { parseCommerceConfig } from '@/lib/commerce';
 import { effectiveProductFaq } from '@/lib/product-faq';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { isEnabled } from '@/lib/flags';
@@ -260,6 +261,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   ]);
   // Loyalty earn rate (points per PKR) drives the PDP "earn points" nudge.
   // Defaults to the same 0.1 the loyalty settings form seeds.
+  // Live shipping config → the Product JSON-LD emits the real per-item rate
+  // (free over the threshold, else the flat rate) instead of a blanket "free".
+  const commerce = parseCommerceConfig(siteSettings);
   const pointsPerPkr = Number(siteSettings.loyalty_points_per_pkr ?? '0.1') || 0;
   // Points granted when a review is approved (reviews_award_points trigger).
   // Surfaced on the review form to actually drive review volume → ★ snippets.
@@ -306,7 +310,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     <main className="fade-in" style={{ minHeight: '100vh' }}>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(productLd(product, firstPartyReviews, variantData.variants)) }}
+        dangerouslySetInnerHTML={{ __html: jsonLd(productLd(product, firstPartyReviews, variantData.variants, {
+          freeShippingEnabled: commerce.freeShippingEnabled,
+          freeShippingThreshold: commerce.freeShippingThreshold,
+          defaultShippingRate: commerce.defaultShippingRate,
+        })) }}
       />
       <script
         type="application/ld+json"

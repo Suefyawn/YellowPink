@@ -6,7 +6,17 @@
 import type { Metadata } from 'next';
 import type { Product, BlogPost, ProductReview, ProductVariant } from '@/types';
 import { brandPlusName } from '@/lib/product-display';
+import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE } from '@/lib/commerce';
 import type { MedicalReviewer } from '@/lib/eeat';
+
+/** Shipping inputs for the Offer's OfferShippingDetails. Passed from the PDP
+ *  (parseCommerceConfig of the live site settings) so the structured-data rate
+ *  matches what the shopper actually pays, instead of a hardcoded "free". */
+export interface ShippingLd {
+  freeShippingEnabled: boolean;
+  freeShippingThreshold: number;
+  defaultShippingRate: number;
+}
 
 // Resolution order: explicit NEXT_PUBLIC_SITE_URL (set this once a custom
 // domain is live) → Vercel's production URL → a safe default. The final
@@ -268,6 +278,7 @@ export function productLd(
   product: Product,
   reviews: ReviewForLd[] = [],
   variants: ProductVariant[] = [],
+  shipping?: ShippingLd,
 ) {
   const ratingCount = reviews.length;
   const avg = ratingCount
@@ -288,14 +299,28 @@ export function productLd(
   const anyVariantInStock = product.track_inventory === false
     || enabledVariants.some(v => v.stock > 0) || product.stock > 0;
 
+  // Shipping cost for THIS offer, matching what the shopper actually pays:
+  // free only once the item's price clears the free-shipping threshold,
+  // otherwise the flat default rate. Declaring a blanket "free" when checkout
+  // charges 200 is inaccurate markup and Google suppresses the shipping
+  // annotation it can't reconcile — so we compute it from the live settings.
+  const ship = shipping ?? {
+    freeShippingEnabled: true,
+    freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
+    defaultShippingRate: DEFAULT_SHIPPING_RATE,
+  };
+  const repPrice = variantPrices.length ? lowPrice : product.price;
+  const shippingCost = ship.freeShippingEnabled && repPrice >= ship.freeShippingThreshold
+    ? 0
+    : ship.defaultShippingRate;
+
   // Shipping + return policies, these qualify the listing for richer
   // free-shipping / 30-day-returns annotations in Google Shopping.
   const shippingDetails = {
     '@type': 'OfferShippingDetails',
     shippingRate: {
       '@type': 'MonetaryAmount',
-      // We charge for shipping under PKR 5,000, free above.
-      value: 0,
+      value: shippingCost,
       currency: 'PKR',
     },
     shippingDestination: {
