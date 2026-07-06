@@ -10,6 +10,7 @@ import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 import { AdminCollapsible } from '@/components/admin/AdminCollapsible';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { saveReviewer, setDefaultReviewer, deleteReviewer, sendReviewerInvite, approveReviewerApplication, rejectReviewerApplication } from './actions';
+import { REVIEW_TOPICS, canonicalTopics } from '@/lib/review-topics';
 
 interface ReviewerRow {
   id: string; slug: string; name: string;
@@ -50,7 +51,16 @@ function ReviewerForm({ r }: { r?: ReviewerRow }) {
       <div><label style={lbl}>Education / training</label><input name="education" defaultValue={r?.education ?? ''} placeholder="King Edward Medical University" style={inp} /></div>
       <div><label style={lbl}>Years of experience</label><input name="experience_years" type="number" min="0" defaultValue={r?.experience_years ?? ''} placeholder="8" style={inp} /></div>
       <div><label style={lbl}>Languages (comma-separated)</label><input name="languages" defaultValue={r?.languages?.join(', ') ?? ''} placeholder="English, Urdu" style={inp} /></div>
-      <div><label style={lbl}>Review topics (comma-separated)</label><input name="review_topics" defaultValue={r?.review_topics?.join(', ') ?? ''} placeholder="fertility, PCOS, pregnancy" style={inp} /></div>
+      <div style={{ gridColumn: '1 / -1' }}>
+        <label style={lbl}>Review topics <span style={{ fontWeight: 400, color: '#9ca3af' }}>(tick everything this doctor can review; articles tagged with a topic route straight to them)</span></label>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(210px, 1fr))', gap: '6px 14px', marginTop: 6 }}>
+          {(() => { const checked = new Set(canonicalTopics(r?.review_topics ?? [])); return REVIEW_TOPICS.map(t => (
+            <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: '#374151' }}>
+              <input type="checkbox" name="review_topics" value={t} defaultChecked={checked.has(t)} /> {t}
+            </label>
+          )); })()}
+        </div>
+      </div>
       <div><label style={lbl}>Sort order</label><input name="sort_order" type="number" defaultValue={r?.sort_order ?? 0} style={inp} /></div>
       <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: '#374151' }}>
         <input type="checkbox" name="active" defaultChecked={r ? r.active : true} /> Active (visible on the board)

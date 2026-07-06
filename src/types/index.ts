@@ -229,6 +229,9 @@ export interface BlogPost {
   /** Byline + Article schema author. Backfilled to the editorial team; admins
    *  can set a named individual per post for stronger E-E-A-T. */
   author?: string | null;
+  /** Reviewer-topic catalogue label (lib/review-topics). Drives the direct
+   *  match to a medical reviewer who covers that topic. */
+  topic?: string | null;
   created_at?: string;
   updated_at?: string;
 }

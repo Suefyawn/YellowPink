@@ -14,6 +14,7 @@ interface PostRow {
   title: string;
   category: string;
   excerpt: string | null;
+  topic: string | null;
   reviewer_id: string | null;
 }
 
@@ -34,7 +35,7 @@ export default async function ReviewerAssignmentsPage({
 
   const admin = supabaseAdmin();
   const [{ data: postRows }, { data: reviewerRows }] = await Promise.all([
-    admin.from('blog_posts').select('id, slug, title, category, excerpt, reviewer_id').order('category').order('title'),
+    admin.from('blog_posts').select('id, slug, title, category, excerpt, topic, reviewer_id').order('category').order('title'),
     admin.from('content_reviewers').select('id, name, specialty, review_topics, is_default, active'),
   ]);
   const posts = (postRows ?? []) as PostRow[];
