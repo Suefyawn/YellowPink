@@ -204,6 +204,18 @@ export function ProductForm({ product, vendors = [], initialName }: { product?: 
               </div>
             </div>
 
+            <div className="adm-form-2col" style={row2}>
+              <div style={fieldWrap}>
+                <label style={lbl}>Packaging</label>
+                <select name="packaging" defaultValue={product?.packaging ?? 'standard'} style={inp}>
+                  <option value="standard">Standard (boxed)</option>
+                  <option value="tester">Tester (fragrances)</option>
+                  <option value="no_box">Without box</option>
+                </select>
+                <span style={hint}>Genuine items sold without full retail packaging show a disclosure badge on the storefront. Testers feed the &ldquo;Perfume Testers&rdquo; collection.</span>
+              </div>
+            </div>
+
             <div className="adm-form-2col" style={{ ...row2, marginBottom: 0 }}>
               <div style={fieldWrap}>
                 <label style={lbl}>Status *</label>

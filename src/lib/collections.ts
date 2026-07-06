@@ -12,7 +12,7 @@ import type { Product } from '@/types';
 export type CollectionType = 'manual' | 'smart';
 
 export interface SmartCondition {
-  field: 'tag' | 'brand' | 'category' | 'price' | 'on_sale' | 'featured' | 'bestseller';
+  field: 'tag' | 'brand' | 'category' | 'price' | 'on_sale' | 'featured' | 'bestseller' | 'packaging';
   op: 'in' | 'lte' | 'gte' | 'is';
   value: string[] | number | boolean;
 }
@@ -41,6 +41,7 @@ function matchCondition(p: Product, c: SmartCondition, productTags: string[]): b
     case 'tag':      return Array.isArray(c.value) && c.value.some(v => productTags.includes(String(v)));
     case 'brand':    return Array.isArray(c.value) && !!p.brand && c.value.map(String).includes(p.brand);
     case 'category': return Array.isArray(c.value) && !!p.category && c.value.map(String).includes(p.category);
+    case 'packaging': return Array.isArray(c.value) && !!p.packaging && c.value.map(String).includes(p.packaging);
     case 'price':
       if (typeof c.value !== 'number') return false;
       return c.op === 'gte' ? p.price >= c.value : p.price <= c.value;
