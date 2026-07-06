@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { PK_TZ } from '@/lib/dates';
+import { fmtPKR, fmtInt } from '@/components/admin/insights/format';
 
 // Shopify-style store overview: a row of clickable metric tiles (each with its
 // own trend vs the previous period + a mini sparkline) driving one large
@@ -32,8 +33,11 @@ interface MetricDef {
   fmt: (n: number) => string;
 }
 
-const PKR = (n: number) => `PKR ${Math.round(n).toLocaleString()}`;
-const INT = (n: number) => Math.round(n).toLocaleString();
+// Shared, locale-pinned formatters (en-US grouping on server + client). Bare
+// `.toLocaleString()` here mismatched the SSR HTML on non-en-US browsers,
+// which is what tripped the hydration error on /admin/dashboard.
+const PKR = fmtPKR;
+const INT = fmtInt;
 const sum = (days: OverviewDay[], f: (d: OverviewDay) => number | null) => days.reduce((s, d) => s + (f(d) ?? 0), 0);
 
 const METRICS: MetricDef[] = [
