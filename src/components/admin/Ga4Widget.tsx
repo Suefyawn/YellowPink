@@ -14,17 +14,18 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export async function Ga4Widget() {
+export async function Ga4Widget({ days = 28 }: { days?: number } = {}) {
   const conn = await getGoogleConnection();
   if (!conn?.ga4_property_id) return null;
 
+  const startDate = `${Math.max(1, days)}daysAgo`;
   let sessions = 0, users = 0, views = 0, orders = 0, revenue = 0;
   let channels: { name: string; sessions: number }[] = [];
   let failed = false;
   try {
     const [totals, byChannel] = await Promise.all([
-      ga4RunReport({ propertyId: conn.ga4_property_id, startDate: '28daysAgo', endDate: 'today', metrics: ['sessions', 'totalUsers', 'screenPageViews', 'transactions', 'purchaseRevenue'] }),
-      ga4RunReport({ propertyId: conn.ga4_property_id, startDate: '28daysAgo', endDate: 'today', dimensions: ['sessionDefaultChannelGroup'], metrics: ['sessions'], limit: 6 }),
+      ga4RunReport({ propertyId: conn.ga4_property_id, startDate, endDate: 'today', metrics: ['sessions', 'totalUsers', 'screenPageViews', 'transactions', 'purchaseRevenue'] }),
+      ga4RunReport({ propertyId: conn.ga4_property_id, startDate, endDate: 'today', dimensions: ['sessionDefaultChannelGroup'], metrics: ['sessions'], limit: 6 }),
     ]);
     const m = totals[0]?.metrics ?? [];
     sessions = m[0] ?? 0; users = m[1] ?? 0; views = m[2] ?? 0; orders = m[3] ?? 0; revenue = m[4] ?? 0;
@@ -38,7 +39,7 @@ export async function Ga4Widget() {
     <div style={card}>
       <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
-          Google Analytics · last 28 days
+          Google Analytics · last {days} days
           {conn.ga4_property_name && <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.8125rem' }}> · {conn.ga4_property_name}</span>}
         </h2>
         <a href="https://analytics.google.com" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8125rem', color: '#C5286A', textDecoration: 'none' }}>Open →</a>

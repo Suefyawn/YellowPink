@@ -907,6 +907,8 @@ A dated history of user-facing changes, newest first.
 
 ### 6 July 2026
 
+- **Analytics → Traffic now has a working time filter and a cleaner layout.** The 7 / 30 / 90-day / 1-year range picker now applies to the Traffic tab, driving the SEO-trend chart, Search Console, Google Analytics and Core Web Vitals cards together (previously each was locked to its own fixed window). The tab is also organised into labelled sections, **Search & discovery**, **Site performance** and **On-site behaviour**, so it reads as a dashboard instead of a stack of cards. (The on-site pages/events cards keep their rolling 7-day snapshot and say so, since that data is cached daily.)
+- **Product shipping is now stated correctly in Google's data.** Each product's structured data was declaring free shipping on everything; it now shows the real cost, free over the free-shipping threshold, otherwise the flat rate, so the shipping shown in Google matches what a shopper actually pays. Also recovered two old fertility URLs that were 404ing (they now redirect to the right guide/product).
 - **Search demand now has a time-range toggle, trend lines, and CSV export.** A **7 / 30 / 60 / 90-day** switch at the top changes the on-site window (it was fixed at 60 days). Every on-site row gets a small **Trend** sparkline showing whether that search is rising or fading over the window, so you can tell a one-off spike from real, growing demand. And an **Export CSV** button downloads the on-site list (term, searches, people, products shown, trend) for procurement or sharing. A note: the on-site numbers are pulled **live** every time you open the page (no manual refresh needed); the Google/Search Console figures update once a day.
 
 ### 5 July 2026

@@ -16,12 +16,12 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export async function SearchConsoleWidget() {
+export async function SearchConsoleWidget({ days = 28 }: { days?: number } = {}) {
   const conn = await getGoogleConnection();
   if (!conn?.gsc_site_url) return null;
 
   const today = new Date();
-  const start = fmt(new Date(today.getTime() - 28 * 86_400_000));
+  const start = fmt(new Date(today.getTime() - Math.max(1, days) * 86_400_000));
   const end = fmt(today);
 
   let totals: GscRow | undefined;
@@ -39,7 +39,7 @@ export async function SearchConsoleWidget() {
   return (
     <div style={card}>
       <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Search Console · last 28 days</h2>
+        <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Search Console · last {days} days</h2>
         <a href="https://search.google.com/search-console" target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8125rem', color: '#C5286A', textDecoration: 'none' }}>Open →</a>
       </div>
       {failed ? (
