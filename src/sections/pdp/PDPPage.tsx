@@ -206,6 +206,23 @@ function Gallery({
   const [active, setActive] = useState<string | null>(hero);
   const [videoActive, setVideoActive] = useState(false);
   const hasVideo = Boolean(videoUrl);
+  // Thumbnail buttons register here by image url so the active shot can be
+  // scrolled into view on either rail orientation.
+  const thumbRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  // Variant → gallery link (industry standard): picking a shade/size shows that
+  // variant's photo. The whole gallery is keyed on the variant image in the
+  // parent, so a variant change remounts this component with the new hero
+  // already active — no in-render state juggling. This effect then scrolls the
+  // active thumbnail into view (on that remount, and on manual clicks).
+  // 'nearest' is a no-op when it's already visible, so manual clicks stay calm.
+  useEffect(() => {
+    if (!active) return;
+    const raf = requestAnimationFrame(() => {
+      thumbRefs.current.get(active)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [active]);
 
   // One image and no video → simple zoomable hero, no thumbnail rail.
   if (images.length <= 1 && !hasVideo) {
@@ -228,6 +245,7 @@ function Gallery({
           return (
             <button
               key={img.id}
+              ref={el => { if (el) thumbRefs.current.set(img.url, el); else thumbRefs.current.delete(img.url); }}
               type="button"
               onClick={() => { setActive(img.url); setVideoActive(false); }}
               aria-label={img.alt || alt}
@@ -495,7 +513,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             the right column grows the row and the aspect-ratio image scales
             up/down with it. */}
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto', alignItems: 'start' }} className="pdp-grid">
-          <Gallery images={galleryToShow} alt={`${product.brand ?? ''} ${displayName}`.trim()} fallback={product.image_url} brandLabel={product.brand ?? undefined} videoUrl={product.video_url} />
+          {/* Keyed on the picked variant's image so choosing a shade/size
+              remounts the gallery with that variant's photo as the active hero
+              (see Gallery: the variant→gallery link). Non-variable products key
+              on 'base' and never remount. */}
+          <Gallery key={displayImageOverride ?? 'base'} images={galleryToShow} alt={`${product.brand ?? ''} ${displayName}`.trim()} fallback={product.image_url} brandLabel={product.brand ?? undefined} videoUrl={product.video_url} />
 
           <div style={{ minWidth: 0 }}>
             {product.brand && (

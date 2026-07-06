@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { ProductForm } from '@/components/admin/ProductForm';
 import { VariantsSection } from '@/components/admin/VariantsSection';
+import { ProductGallerySection } from '@/components/admin/ProductGallerySection';
 import { ProductTagsEditor } from '@/components/admin/ProductTagsEditor';
 import { ProductInventoryHistory } from '@/components/admin/ProductInventoryHistory';
 import type { Product, ProductAttribute, AttributeValue, ProductVariant, Vendor } from '@/types';
@@ -80,6 +81,11 @@ export default async function EditProductPage({
   // vendors RLS has no policy, read with the service role.
   const { data: vendorData } = await supabaseAdmin().from('vendors').select('*').order('name');
 
+  // Gallery images (product-page photos, cover first) for the reorder editor.
+  const { data: galleryRows } = await supabase
+    .from('product_images').select('id, url, alt').eq('product_id', product.id).order('sort_order');
+  const galleryImages = (galleryRows ?? []) as Array<{ id: string; url: string; alt: string | null }>;
+
   // Tags: this product's current set + the full tag vocabulary for suggestions.
   const [{ data: mapRows }, { data: allTagRows }] = await Promise.all([
     supabase.from('product_tag_map').select('product_tags(name)').eq('product_id', product.id),
@@ -114,6 +120,7 @@ export default async function EditProductPage({
       <ProductForm product={product} vendors={(vendorData ?? []) as Vendor[]} />
       <div style={{ padding: '0 36px 32px' }}>
         <ProductTagsEditor productId={product.id} initialTags={productTags} suggestions={allTags} />
+        <ProductGallerySection productId={product.id} initialImages={galleryImages} />
         <VariantsSection
           productId={product.id}
           productKind={product.kind ?? 'simple'}
