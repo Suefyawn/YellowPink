@@ -5,8 +5,11 @@
 export { fmtPKR } from '@/lib/money';
 import { PK_TZ } from '@/lib/dates';
 
+// Locale pinned to 'en-US' (see lib/money.ts) so grouping is identical on the
+// server and the client — a bare toLocaleString() groups by the runtime locale
+// and mismatches the SSR HTML on non-en-US browsers, tripping hydration.
 export const fmtInt = (n: number | string | null | undefined) =>
-  Math.round(Number(n ?? 0) || 0).toLocaleString();
+  Math.round(Number(n ?? 0) || 0).toLocaleString('en-US');
 
 // Compact form for axis labels and sparkline captions: 950 → "950",
 // 12,400 → "12.4k", 3,400,000 → "3.4M". Trailing ".0" is trimmed.

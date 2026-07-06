@@ -9,6 +9,7 @@ import { StarRating } from './StarRating';
 import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { brandPlusName } from '@/lib/product-display';
+import { fmtPKR } from '@/lib/money';
 import type { Product } from '@/types';
 
 interface ProductTileProps {
@@ -219,12 +220,12 @@ export function ProductTile({ product }: ProductTileProps) {
         )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
           <span className="tabular-nums" style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
-            PKR {price.toLocaleString()}
+            {fmtPKR(price)}
           </span>
           {(original_price ?? 0) > price && (
             <span className="tabular-nums" style={{
               textDecoration: 'line-through', color: 'var(--brand-pink-text, var(--brand-pink))', fontSize: '0.8125rem',
-            }}>PKR {(original_price ?? 0).toLocaleString()}</span>
+            }}>{fmtPKR(original_price ?? 0)}</span>
           )}
         </div>
       </Link>
