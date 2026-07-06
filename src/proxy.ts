@@ -113,6 +113,26 @@ async function resolveRedirect(pathname: string): Promise<string | null> {
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
+  // ─── Canonical host: apex → www in a SINGLE hop ───────────────────────────
+  // Middleware runs before Next's built-in trailing-slash normalization, so
+  // switching the host here — and stripping any trailing slash in the same
+  // redirect — collapses what used to be a two-hop chain (308 slash-strip on
+  // the apex host, THEN 308 apex→www) into one 308 straight to the canonical
+  // www URL. That two-hop shape is exactly what every WordPress-era inbound
+  // link hits, since the old site used apex + trailing slashes. The
+  // next.config apex→www redirect stays as a fallback for the paths this
+  // middleware matcher skips (static assets, etc.).
+  if (request.headers.get('host') === 'yellowpink.pk') {
+    const url = request.nextUrl.clone();
+    url.protocol = 'https:';
+    url.host = 'www.yellowpink.pk';
+    url.port = '';
+    if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
+      url.pathname = url.pathname.replace(/\/+$/, '');
+    }
+    return NextResponse.redirect(url, 308);
+  }
+
   // ─── Admin auth gate ──────────────────────────────────────────────────────
   // The legacy admin_session cookie is HMAC-signed (see lib/signed-cookie.ts);
   // we verify the signature + age here in Edge. The staff_session cookie's
