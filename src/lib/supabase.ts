@@ -82,7 +82,7 @@ async function safe<T>(
 // tile reads. Switching from select('*') saves ~400KB on /shop and
 // /shop?taxon=*.
 const PRODUCT_TILE_COLUMNS =
-  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, image_url, is_bestseller, is_featured, status, created_at, rating, review_count';
+  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, image_url, is_bestseller, is_featured, is_popular, status, created_at, rating, review_count';
 
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;
@@ -149,6 +149,43 @@ export async function getBestsellers(limit = 8): Promise<Product[]> {
       .or('stock.gt.0,track_inventory.is.false')
       .order('is_bestseller', { ascending: false })
       .order('popularity_score', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return (data ?? []) as Product[];
+  }, DEMO_PRODUCTS.slice(0, limit));
+}
+
+/** "Best Sellers" rail — ordered by real units sold (nightly `units_sold`),
+ *  with the manual is_bestseller pin still leading as the owner override.
+ *  Zero-sale products sort last by recency, so the rail is never empty. */
+export async function getTopSellers(limit = 4): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getTopSellers', async () => {
+    const { data } = await supabase
+      .from('products')
+      .select(PRODUCT_TILE_COLUMNS)
+      .eq('status', 'published')
+      .or('stock.gt.0,track_inventory.is.false')
+      .order('is_bestseller', { ascending: false })
+      .order('units_sold', { ascending: false })
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return (data ?? []) as Product[];
+  }, DEMO_PRODUCTS.slice(0, limit));
+}
+
+/** "Trending Now" rail — ordered purely by recent momentum (nightly
+ *  `trend_score` = views + add-to-carts). No manual pin: trending is a live
+ *  signal by definition. Zero-signal products sort last by recency. */
+export async function getTrending(limit = 4): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getTrending', async () => {
+    const { data } = await supabase
+      .from('products')
+      .select(PRODUCT_TILE_COLUMNS)
+      .eq('status', 'published')
+      .or('stock.gt.0,track_inventory.is.false')
+      .order('trend_score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
     return (data ?? []) as Product[];

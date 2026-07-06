@@ -4,7 +4,8 @@
 export const revalidate = 300;
 
 import {
-  getBestsellers,
+  getTopSellers,
+  getTrending,
   getFeatured,
   getOnSale,
   getProductsByBrands,
@@ -43,7 +44,7 @@ import { TrustBar } from '@/sections/home/TrustBar';
 import { FeaturedProducts } from '@/sections/home/FeaturedProducts';
 import { EditorialDuo } from '@/sections/home/EditorialDuo';
 import { SaleCollection } from '@/sections/home/SaleCollection';
-import { BestsellersBand } from '@/sections/home/BestsellersBand';
+import { ProductRail } from '@/sections/home/ProductRail';
 import { WellnessSection } from '@/sections/home/WellnessSection';
 import { KBeautySection } from '@/sections/home/KBeautySection';
 import { CategoryTiles } from '@/sections/home/CategoryTiles';
@@ -59,9 +60,10 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, bestsellers, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections] = await Promise.all([
+  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections] = await Promise.all([
     getFeatured(6),
-    getBestsellers(8),
+    getTopSellers(4),
+    getTrending(8),
     getOnSale(8),
     getWellnessProducts(),
     getProductsByBrands(K_BEAUTY_BRANDS, 4),
@@ -69,6 +71,12 @@ export default async function HomePage() {
     getBlogPosts(),
     getPublishedCollectionsWithCovers(3),
   ]);
+
+  // Keep the two rails distinct: a product that's a top seller shouldn't also
+  // fill the Trending rail (most visible when both fall back to recency before
+  // the nightly trend refresh has run).
+  const topSellerIds = new Set(topSellers.map(p => p.id));
+  const trendingRail = trending.filter(p => !topSellerIds.has(p.id)).slice(0, 4);
 
   // Shape the full wellness set into per-concern cards + a featured rail.
   const wellness = buildWellnessShowcase(wellnessProducts);
@@ -109,7 +117,7 @@ export default async function HomePage() {
     <main className="fade-in">
       <HeroSection settings={heroSettings} />
       <TrustBar />
-      <FeaturedProducts products={featured.length ? featured.slice(0, 4) : bestsellers.slice(0, 4)} />
+      <FeaturedProducts products={featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4)} />
       <QuizBand />
       <KBeautySection products={kBeautyProducts} />
       <EditorialDuo />
@@ -122,7 +130,26 @@ export default async function HomePage() {
           ctaUrl={settings.sale_cta_url || '/shop?sale=1'}
         />
       )}
-      <BestsellersBand products={bestsellers.slice(0, 4)} />
+      {/* Two data-driven rails, refreshed nightly by the popularity cron:
+          Best Sellers = what's actually bought (units_sold, owner pin leads);
+          Trending Now = recent momentum (views + add-to-carts). */}
+      <ProductRail
+        overline="Best Sellers"
+        heading="What everyone's buying."
+        blurb="Ranked by what our customers actually order, refreshed daily."
+        ctaHref="/shop"
+        ctaLabel="Shop all"
+        products={topSellers}
+        tinted
+      />
+      <ProductRail
+        overline="Trending Now"
+        heading="Picking up steam."
+        blurb="The products getting the most attention this week."
+        ctaHref="/shop"
+        ctaLabel="See what's hot"
+        products={trendingRail}
+      />
       <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
       <CategoryTiles groups={categoryGroups} />
       <CollectionsSection collections={collections} />

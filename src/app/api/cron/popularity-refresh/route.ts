@@ -114,30 +114,46 @@ export async function GET(req: NextRequest) {
   // ── views + carts per product from PostHog ──
   const demand = await phDemand();
 
-  // ── blend into a score per product ──
-  const scores = new Map<string, number>();
+  // ── per-product signals: the blended score (for ordering + the Popular
+  //    badge), the trend-only score (Trending rail), and units sold (Best
+  //    Sellers rail). Kept separate so the two homepage rails can differ. ──
+  interface Sig { score: number; trend: number; units: number }
+  const sig = new Map<string, Sig>();
   const ids = new Set<string>([...demand.keys(), ...sales.keys()]);
   for (const id of ids) {
     const d = demand.get(id);
-    const score =
-      (d?.views ?? 0) * W_VIEW +
-      (d?.carts ?? 0) * W_CART +
-      (sales.get(id) ?? 0) * W_SALE;
-    if (score > 0) scores.set(id, score);
+    const units = sales.get(id) ?? 0;
+    const trend = (d?.views ?? 0) * W_VIEW + (d?.carts ?? 0) * W_CART;
+    const score = trend + units * W_SALE;
+    if (score > 0) sig.set(id, { score, trend, units });
   }
 
-  // Decay yesterday's scores to 0 first, then write the fresh ones, so a
-  // product whose demand dried up falls out of the rail instead of sticking.
-  await sb.from('products').update({ popularity_score: 0 }).neq('popularity_score', 0);
+  // Top demand tier gets the automatic "Popular" badge (is_popular). Capped so
+  // the badge stays meaningful (a scarce signal, not on half the catalogue).
+  const POPULAR_TOP_N = 12;
+  const popularIds = new Set(
+    [...sig.entries()].sort((a, b) => b[1].score - a[1].score).slice(0, POPULAR_TOP_N).map(([id]) => id),
+  );
+
+  // Decay every non-default row back to zero/false first, then write the fresh
+  // signals, so a product whose demand dried up drops off the rails and loses
+  // its badge instead of sticking.
+  await sb.from('products')
+    .update({ popularity_score: 0, trend_score: 0, units_sold: 0, is_popular: false })
+    .or('popularity_score.neq.0,trend_score.neq.0,units_sold.neq.0,is_popular.eq.true');
+
   let written = 0;
-  for (const [id, score] of scores) {
-    const { error } = await sb.from('products').update({ popularity_score: score }).eq('id', id);
+  for (const [id, s] of sig) {
+    const { error } = await sb.from('products')
+      .update({ popularity_score: s.score, trend_score: s.trend, units_sold: s.units, is_popular: popularIds.has(id) })
+      .eq('id', id);
     if (!error) written++;
   }
 
   return NextResponse.json({
     ok: true,
     scored: written,
+    popular: popularIds.size,
     signals: { products_with_demand: demand.size, products_with_sales: sales.size },
     posthog: process.env.POSTHOG_PERSONAL_API_KEY ? 'queried' : 'skipped (no key)',
   });

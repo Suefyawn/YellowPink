@@ -28,7 +28,7 @@ export function ProductTile({ product }: ProductTileProps) {
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlist();
-  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count, is_bestseller } = product;
+  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count, is_bestseller, is_popular } = product;
   const wishlisted = isWishlisted(id);
 
   // Quick-add UX matrix:
@@ -130,13 +130,23 @@ export function ProductTile({ product }: ProductTileProps) {
                 fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
               }}>Sale</span>
             )}
-            {is_bestseller && (
+            {/* Manual "Bestseller" pin is the owner override and wins the slot.
+                Otherwise an automatic "Popular" badge shows when the nightly
+                demand refresh put this product in the top tier (is_popular),
+                so the badge reflects real views+carts+sales, not a hand-flip. */}
+            {is_bestseller ? (
               <span style={{
                 background: 'var(--brand-pink)', color: '#fff',
                 padding: '2px 8px', borderRadius: 'var(--radius-pill)',
                 fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
               }}>Bestseller</span>
-            )}
+            ) : is_popular ? (
+              <span style={{
+                background: 'var(--ink-900)', color: '#fff',
+                padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}>Popular</span>
+            ) : null}
             {lowStock && (
               <span style={{
                 background: 'rgba(255,255,255,0.95)', color: 'var(--ink-900)',

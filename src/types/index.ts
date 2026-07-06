@@ -90,6 +90,14 @@ export interface Product {
   // Migration 076, homepage curation flags.
   is_bestseller?: boolean | null;
   is_featured?: boolean | null;
+  // Migrations 500/550, demand signals refreshed nightly by the
+  // popularity-refresh cron. popularity_score = blended views+carts+sales;
+  // units_sold / trend_score power the Best Sellers / Trending rails;
+  // is_popular flags the top demand tier for the automatic "Popular" badge.
+  popularity_score?: number | null;
+  units_sold?: number | null;
+  trend_score?: number | null;
+  is_popular?: boolean | null;
   // Migration 081, admin-controlled SEO + content fields.
   seo_title?: string | null;
   seo_description?: string | null;
