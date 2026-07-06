@@ -200,6 +200,9 @@ export const blogPostInputSchema = z.object({
   slug:      slugSchema,
   excerpt:   z.string().trim().min(1, 'Excerpt is required').max(300),
   category:  z.string().trim().min(1, 'Category is required'),
+  // Fixed reviewer-topic catalogue value (see lib/review-topics). Drives the
+  // direct reviewer↔article match. Empty ("no specific topic") → null.
+  topic:     z.preprocess(v => (v === '' || v == null ? null : v), z.string().max(80).nullable()),
   // ISO 'YYYY-MM-DD' only, matching the admin form's native <input type="date">.
   // A free-text field here previously let imported rows in as e.g. "June 30,
   // 2026", a value that sorts wrong against ISO dates as plain text and isn't

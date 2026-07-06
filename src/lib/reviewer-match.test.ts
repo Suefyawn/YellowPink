@@ -57,4 +57,16 @@ describe('suggestReviewer', () => {
     const s = suggestReviewer({ title: 'Our new packaging', category: 'Heart Health' }, BOARD);
     expect(s).not.toBeNull();
   });
+
+  it('an explicit post topic routes to a reviewer who covers it, over the default', () => {
+    // Generic title/category that wouldn't key any fertility keyword; the topic
+    // alone should carry it to the fertility-covering specialist (Muneeba, a
+    // non-default, beats the default Areej who also covers it on the tie-break).
+    const s = suggestReviewer(
+      { title: 'A general wellness update', category: 'Wellness', topic: 'Fertility' },
+      BOARD,
+    );
+    expect(s?.reviewerId).toBe('muneeba');
+    expect(s?.reason).toContain('covers Fertility');
+  });
 });

@@ -5,6 +5,7 @@ import { createBlogPost, updateBlogPost } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
 import { SubmitToIndexButton } from './IndexingButtons';
 import { suggestReviewer } from '@/lib/reviewer-match';
+import { REVIEW_TOPICS } from '@/lib/review-topics';
 import type { BlogPost } from '@/types';
 
 export interface BlogFormReviewer {
@@ -75,14 +76,17 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
   // Category + reviewer are controlled so the reviewer suggestion can react
   // to the category choice and "Use suggestion" can set the picker.
   const [category, setCategory] = useState(post?.category ?? '');
+  // Health topic drives the direct reviewer match; controlled so the reviewer
+  // suggestion reacts to it.
+  const [topic, setTopic] = useState(post?.topic ?? '');
   const [reviewerId, setReviewerId] = useState((post as { reviewer_id?: string | null } | undefined)?.reviewer_id ?? '');
 
   // Live specialty-match against the review board (same scorer the bulk
   // assignment page uses). Purely a hint — staff still choose.
   const suggestion = useMemo(() => {
     if (!category || reviewers.length === 0) return null;
-    return suggestReviewer({ title, category }, reviewers);
-  }, [title, category, reviewers]);
+    return suggestReviewer({ title, category, topic }, reviewers);
+  }, [title, category, topic, reviewers]);
 
   return (
     <div style={{ padding: '32px 36px' }}>
@@ -165,6 +169,18 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
               <label style={lbl}>Read Time *</label>
               <input name="read_time" required defaultValue={post?.read_time} style={inp} placeholder="5 min read" />
             </div>
+          </div>
+
+          {/* Health topic: matches the post to a reviewer who covers it. */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>Health topic</label>
+            <select name="topic" value={topic} onChange={e => setTopic(e.target.value)} style={inp}>
+              <option value="">None (not health-specific)</option>
+              {REVIEW_TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'block' }}>
+              Pick the topic this article is about; the reviewer suggestion below jumps to a board doctor who covers it.
+            </span>
           </div>
 
           {/* Author */}

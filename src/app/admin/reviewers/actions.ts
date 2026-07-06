@@ -7,6 +7,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import { sendReviewerApprovedEmail, sendReviewerProfileInviteEmail } from '@/lib/email';
+import { canonicalTopics } from '@/lib/review-topics';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // The Medical Review Board rides the `blog` permission, it's content/editorial
@@ -48,8 +49,9 @@ export async function saveReviewer(formData: FormData): Promise<void> {
   if (!name) fail('A name is required.');
 
   const slug = str(formData, 'slug') ? slugify(str(formData, 'slug')) : slugify(name);
-  const topics = str(formData, 'review_topics')
-    .split(',').map(t => t.trim()).filter(Boolean);
+  // Topics now come from the catalogue checkbox group (multiple values under
+  // the same name); canonicalise so only valid catalogue labels are stored.
+  const topics = canonicalTopics(formData.getAll('review_topics').map(v => String(v)));
   const languages = str(formData, 'languages').split(',').map(t => t.trim()).filter(Boolean);
   const years = parseInt(str(formData, 'experience_years'), 10);
 

@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { getSignedInReviewer, getReviewedPosts } from '@/lib/reviewer-portal';
 import { updateReviewerProfile, signOutReviewer } from './actions';
 import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
+import { REVIEW_TOPICS, canonicalTopics } from '@/lib/review-topics';
 import { PK_TZ } from '@/lib/dates';
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.yellowpink.pk';
@@ -106,9 +107,15 @@ export default async function ReviewerDashboard() {
               </div>
             </div>
             <div>
-              <label htmlFor="d-topics" style={label}>Review topics</label>
-              <input id="d-topics" name="review_topics" defaultValue={reviewer.review_topics.join(', ')} style={field} placeholder="Women's Health, Fertility" />
-              <p style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 4 }}>Comma-separated.</p>
+              <label style={label}>Review topics</label>
+              <p style={{ fontSize: '0.75rem', color: 'var(--ink-500)', margin: '0 0 8px' }}>Tick the areas you&apos;re comfortable reviewing. Articles on these topics are routed to you.</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '6px 14px' }}>
+                {(() => { const checked = new Set(canonicalTopics(reviewer.review_topics)); return REVIEW_TOPICS.map(t => (
+                  <label key={t} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.875rem', color: 'var(--ink-700)' }}>
+                    <input type="checkbox" name="review_topics" value={t} defaultChecked={checked.has(t)} /> {t}
+                  </label>
+                )); })()}
+              </div>
             </div>
             <div>
               <label htmlFor="d-profile" style={label}>Verifiable profile link</label>

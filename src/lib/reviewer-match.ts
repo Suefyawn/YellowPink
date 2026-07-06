@@ -21,6 +21,9 @@ export interface MatchablePost {
   title: string;
   category: string;
   excerpt?: string | null;
+  /** The post's catalogue topic (lib/review-topics). When set, a reviewer who
+   *  covers this exact topic is the direct, dominant match. */
+  topic?: string | null;
 }
 
 export interface ReviewerSuggestion {
@@ -82,6 +85,7 @@ export function suggestReviewer(
 
   const title = normalise(post.title ?? '');
   const excerpt = normalise(post.excerpt ?? '');
+  const postTopic = normalise(post.topic ?? '');
   const candidates = reviewers.filter(r => r.active);
   if (candidates.length === 0) return null;
 
@@ -96,6 +100,14 @@ export function suggestReviewer(
     const topics = (r.review_topics ?? []).map(normalise);
     let score = 0;
     const reasons: string[] = [];
+
+    // 0. Direct topic match — the whole point of the topic catalogue. When the
+    // post is tagged with a topic and this reviewer covers it, that's the
+    // strongest, most defensible signal, well above any keyword guess.
+    if (postTopic && topics.includes(postTopic)) {
+      score += 6;
+      reasons.push(`covers ${post.topic}`);
+    }
 
     for (const topic of topics) {
       // 1. Category coverage — the strongest, most defensible signal.

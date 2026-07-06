@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase-server';
+import { canonicalTopics } from '@/lib/review-topics';
 import { log } from '@/lib/logger';
 
 const str = (fd: FormData, k: string) => ((fd.get(k) as string | null) ?? '').trim();
@@ -16,7 +17,7 @@ export async function updateReviewerProfile(formData: FormData): Promise<void> {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) redirect('/reviewer/login');
 
-  const topics = str(formData, 'review_topics').split(',').map(t => t.trim()).filter(Boolean);
+  const topics = canonicalTopics(formData.getAll('review_topics').map(v => String(v)));
   const languages = str(formData, 'languages').split(',').map(t => t.trim()).filter(Boolean);
   const years = parseInt(str(formData, 'experience_years'), 10);
   const { error } = await sb
