@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 5 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 6 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -904,6 +904,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 6 July 2026
+
+- **Search demand now has a time-range toggle, trend lines, and CSV export.** A **7 / 30 / 60 / 90-day** switch at the top changes the on-site window (it was fixed at 60 days). Every on-site row gets a small **Trend** sparkline showing whether that search is rising or fading over the window, so you can tell a one-off spike from real, growing demand. And an **Export CSV** button downloads the on-site list (term, searches, people, products shown, trend) for procurement or sharing. A note: the on-site numbers are pulled **live** every time you open the page (no manual refresh needed); the Google/Search Console figures update once a day.
 
 ### 5 July 2026
 

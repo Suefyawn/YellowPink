@@ -5,8 +5,10 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { can, canAny } from '@/lib/permissions';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getSearchDemand, type GscRow, type OnsiteRow } from './actions';
+import { getSearchDemand, RANGE_OPTIONS, type GscRow, type OnsiteRow } from './actions';
 import { SynonymManager, type Synonym } from '@/components/admin/SynonymManager';
+import { SearchDemandExport } from '@/components/admin/SearchDemandExport';
+import { Sparkline } from '@/components/admin/insights/Sparkline';
 import { fmtDatePK } from '@/lib/dates';
 
 const th: React.CSSProperties = { textAlign: 'left', padding: '8px 12px', fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: '#6b7280', borderBottom: '1px solid #e5e7eb', whiteSpace: 'nowrap' };
@@ -100,6 +102,7 @@ function OnsiteTable({ rows, acts, withSynonym = false }: { rows: OnsiteRow[]; a
         <th style={th}>What they typed</th>
         <th style={{ ...th, textAlign: 'right' }}>Searches</th>
         <th style={{ ...th, textAlign: 'right' }}>People</th>
+        <th style={th}>Trend</th>
         <th style={{ ...th, textAlign: 'right' }}>Products shown</th>
         {showActs && <th style={{ ...th, textAlign: 'right' }}>Act</th>}
       </tr></thead>
@@ -109,6 +112,9 @@ function OnsiteTable({ rows, acts, withSynonym = false }: { rows: OnsiteRow[]; a
             <td style={td}>{r.query}</td>
             <td style={num}>{r.searches}</td>
             <td style={num}>{r.people}</td>
+            <td style={{ ...td, width: 72 }}>
+              {r.spark.some(v => v > 0) ? <Sparkline values={r.spark} color="#C5286A" /> : <span style={{ color: '#d1d5db' }}>—</span>}
+            </td>
             <td style={{ ...num, textAlign: 'right' }}>{resultBadge(r.results)}</td>
             {showActs && <td style={num}><RowActions term={r.query} acts={acts} synonym={withSynonym} /></td>}
           </tr>
@@ -121,20 +127,21 @@ function OnsiteTable({ rows, acts, withSynonym = false }: { rows: OnsiteRow[]; a
 export default async function SearchDemandPage({
   searchParams,
 }: {
-  searchParams: Promise<{ map?: string }>;
+  searchParams: Promise<{ map?: string; range?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || !canAny(session, ['analytics', 'products.view', 'blog'])) {
     return <NoAccess section="Search demand" />;
   }
 
-  const { winnable, lowCtr, onsite, gscUpdatedAt, posthog } = await getSearchDemand();
+  const { map: prefillTerm, range } = await searchParams;
+  const rangeDays = parseInt(range ?? '', 10) || undefined;
+  const { winnable, lowCtr, onsite, gscUpdatedAt, posthog, days } = await getSearchDemand(rangeDays);
 
   // Which one-click actions this viewer may take on a demand row.
   const acts = { product: can(session, 'products.edit'), guide: can(session, 'blog') };
 
   // The synonym map is part of the catalogue's search behaviour → products.edit.
-  const { map: prefillTerm } = await searchParams;
   let synonyms: Synonym[] = [];
   if (acts.product) {
     const { data } = await supabaseAdmin()
@@ -156,6 +163,30 @@ export default async function SearchDemandPage({
           which pages to strengthen. Two sources: your own on-site search box, and Google (Search Console).
           {(acts.product || acts.guide) && ' Any row can start a matching product or guide in one click, pre-filled with the searched term.'}
         </p>
+      </div>
+
+      {/* ── Controls: on-site window range + CSV export ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
+        <div style={{ display: 'inline-flex', border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden' }}>
+          {RANGE_OPTIONS.map(n => {
+            const active = n === days;
+            return (
+              <Link
+                key={n}
+                href={`/admin/search-demand?range=${n}`}
+                style={{
+                  padding: '6px 12px', fontSize: '0.8125rem', fontWeight: 600, textDecoration: 'none',
+                  background: active ? '#C5286A' : '#fff', color: active ? '#fff' : '#6b7280',
+                  borderLeft: n === RANGE_OPTIONS[0] ? 'none' : '1px solid #e5e7eb',
+                }}
+              >
+                {n}d
+              </Link>
+            );
+          })}
+        </div>
+        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>on-site window</span>
+        <span style={{ marginLeft: 'auto' }}><SearchDemandExport rows={onsite} days={days} /></span>
       </div>
 
       {/* ── On-site gaps: the stock/create shopping list ── */}
@@ -218,7 +249,8 @@ export default async function SearchDemandPage({
       )}
 
       <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 8 }}>
-        Google data refreshes daily. On-site search covers the last 60 days. See ranking detail in{' '}
+        Google data refreshes daily (Search Console&apos;s own rolling window, unaffected by the toggle).
+        On-site search and the trend sparklines cover the last {days} days. See ranking detail in{' '}
         <Link href="/admin/analytics" style={{ color: '#6b7280', textDecoration: 'underline' }}>Analytics</Link>.
       </p>
     </div>
