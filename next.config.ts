@@ -28,14 +28,6 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
-  // Trailing-slash normalization is handled in middleware (src/proxy.ts) so it
-  // can be combined with the apex→www host switch into a SINGLE 308 redirect.
-  // Next's built-in slash-strip runs before middleware and preserves the host,
-  // which turned every apex+trailing-slash URL (the shape of WordPress-era
-  // backlinks) into a needless two-hop chain. Disabling it lets middleware do
-  // host + slash in one hop; middleware still strips the slash for the www host
-  // too, so there's no duplicate /x vs /x/ surface.
-  skipTrailingSlashRedirect: true,
   // The admin "User manual" page (/admin/help) reads docs/USER-MANUAL.md from
   // disk at request time. That file isn't statically imported, so Next's trace
   // wouldn't bundle it into the serverless function — force-include it for this
