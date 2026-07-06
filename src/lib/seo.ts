@@ -356,6 +356,7 @@ export function productLd(
         highPrice,
         offerCount: enabledVariants.length,
         priceValidUntil,
+        itemCondition: 'https://schema.org/NewCondition',
         availability: anyVariantInStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
@@ -369,6 +370,7 @@ export function productLd(
         priceCurrency: 'PKR',
         price: product.price,
         priceValidUntil,
+        itemCondition: 'https://schema.org/NewCondition',
         availability: anyVariantInStock
           ? 'https://schema.org/InStock'
           : 'https://schema.org/OutOfStock',
@@ -497,33 +499,61 @@ export function breadcrumbLd(items: { name: string; path: string }[]) {
   };
 }
 
+export interface ListEntry {
+  name: string;
+  path: string;
+  /** Product fields — when present, the ListItem embeds a valid Product with a
+   *  minimal priced Offer, making the collection/category/brand page eligible
+   *  for product-list rich results. Omit them (e.g. blog index) to fall back to
+   *  a lean URL summary ListItem. */
+  image?: string | null;
+  brand?: string | null;
+  price?: number | null;
+}
+
 /**
- * ItemList for collection / index pages. Google uses this to associate
- * the listed URLs with the parent page and surface site-link grids.
- * Pass a header name (e.g. "Bestsellers" / "Skincare products") + the
- * items in display order; each item maps to a Product schema only when
- * we have the brand/name/price tuple, otherwise we emit a lean
- * ListItem with `url` + `name`.
+ * ItemList for collection / category / brand / homepage index pages. Google
+ * uses it to associate the listed items with the parent page and to power
+ * product-list / carousel results.
+ *
+ * Two element shapes, chosen per item:
+ *   • With a price → a full `Product` (name, url, image, brand, priced Offer,
+ *     `@id` pointing at the PDP's Product node so they de-duplicate). This is
+ *     what makes a listing page product-rich, and it's a VALID Product because
+ *     it carries offers, not the partial-Product case validators reject.
+ *   • Without a price (e.g. the blog index) → a lean summary ListItem with
+ *     `url` + `name`, which is correct for non-product summaries.
  */
-export function itemListLd(
-  name: string,
-  items: Array<{ name: string; path: string }>,
-) {
-  // A summary-page ItemList: each entry is a ListItem pointing at its detail
-  // page via `url`. We deliberately do NOT embed partial Product objects,   // an incomplete Product (no offers/review/rating) is flagged as a markup
-  // error by validators, and a blog post is not a Product at all. The full
-  // Product schema lives on each PDP via `productLd`.
+export function itemListLd(name: string, items: ListEntry[]) {
   return {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
     name,
     numberOfItems: items.length,
-    itemListElement: items.map((it, i) => ({
-      '@type': 'ListItem',
-      position: i + 1,
-      url: absoluteUrl(it.path),
-      name: it.name,
-    })),
+    itemListElement: items.map((it, i) => {
+      const base = { '@type': 'ListItem', position: i + 1 } as const;
+      if (it.price != null && it.price > 0) {
+        return {
+          ...base,
+          item: {
+            '@type': 'Product',
+            '@id': absoluteUrl(it.path) + '#product',
+            name: brandPlusName(it.brand ?? undefined, it.name),
+            url: absoluteUrl(it.path),
+            image: absoluteImageUrl(it.image) ?? undefined,
+            brand: it.brand ? { '@type': 'Brand', name: it.brand } : undefined,
+            offers: {
+              '@type': 'Offer',
+              url: absoluteUrl(it.path),
+              price: it.price,
+              priceCurrency: 'PKR',
+              itemCondition: 'https://schema.org/NewCondition',
+            },
+          },
+        };
+      }
+      return { ...base, url: absoluteUrl(it.path), name: it.name };
+    }),
   };
 }
 

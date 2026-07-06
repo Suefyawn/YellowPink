@@ -13,6 +13,7 @@ import {
   getSiteSettings,
   getBlogPosts,
 } from '@/lib/supabase';
+import { jsonLd, itemListLd } from '@/lib/seo';
 import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
 import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 import { buildWellnessShowcase } from '@/lib/wellness-data';
@@ -115,6 +116,19 @@ export default async function HomePage() {
 
   return (
     <main className="fade-in">
+      {/* Best-sellers ItemList so the homepage's product links are eligible for
+          a product carousel / richer sitelinks (Organization + WebSite schema
+          are emitted site-wide from the root layout). */}
+      {topSellers.length > 0 && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: jsonLd(itemListLd('Best sellers', topSellers.map(p => ({
+              name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price,
+            })))),
+          }}
+        />
+      )}
       <HeroSection settings={heroSettings} />
       <TrustBar />
       <FeaturedProducts products={featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4)} />
