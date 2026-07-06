@@ -113,24 +113,23 @@ async function resolveRedirect(pathname: string): Promise<string | null> {
 export async function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
-  // ─── Canonical host: apex → www in a SINGLE hop ───────────────────────────
-  // Middleware runs before Next's built-in trailing-slash normalization, so
-  // switching the host here — and stripping any trailing slash in the same
-  // redirect — collapses what used to be a two-hop chain (308 slash-strip on
-  // the apex host, THEN 308 apex→www) into one 308 straight to the canonical
-  // www URL. That two-hop shape is exactly what every WordPress-era inbound
-  // link hits, since the old site used apex + trailing slashes. The
-  // next.config apex→www redirect stays as a fallback for the paths this
-  // middleware matcher skips (static assets, etc.).
-  if (request.headers.get('host') === 'yellowpink.pk') {
-    const url = request.nextUrl.clone();
-    url.protocol = 'https:';
-    url.host = 'www.yellowpink.pk';
-    url.port = '';
-    if (url.pathname.length > 1 && url.pathname.endsWith('/')) {
-      url.pathname = url.pathname.replace(/\/+$/, '');
+  // ─── Canonical host + trailing slash, in a SINGLE redirect ────────────────
+  // next.config sets `skipTrailingSlashRedirect` so Next no longer emits its
+  // own (host-preserving) slash-strip 308 ahead of middleware. That built-in
+  // redirect ran *before* middleware, so an apex URL with a trailing slash took
+  // two hops: strip-slash on the apex host, THEN apex→www. WordPress-era
+  // backlinks are almost all exactly that shape (apex + trailing slash). Here we
+  // compute the canonical host (always www) AND strip any trailing slash in the
+  // same redirect, so every variant lands on the canonical URL in one 308.
+  {
+    const isApex = (request.headers.get('host') ?? '') === 'yellowpink.pk';
+    const hasTrailingSlash = pathname.length > 1 && pathname.endsWith('/');
+    if (isApex || hasTrailingSlash) {
+      const url = request.nextUrl.clone();
+      if (isApex) { url.protocol = 'https:'; url.host = 'www.yellowpink.pk'; url.port = ''; }
+      if (hasTrailingSlash) url.pathname = pathname.replace(/\/+$/, '');
+      return NextResponse.redirect(url, 308);
     }
-    return NextResponse.redirect(url, 308);
   }
 
   // ─── Admin auth gate ──────────────────────────────────────────────────────
