@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { breadcrumbLd, jsonLd, productLd, truncateOnWord } from './seo';
+import { breadcrumbLd, itemListLd, jsonLd, productLd, truncateOnWord } from './seo';
 import type { Product, ProductReview, ProductVariant } from '@/types';
 
 const sampleProduct: Product = {
@@ -78,9 +78,28 @@ describe('SEO JSON-LD helpers', () => {
 
   it('includes shipping + return policy on every offer', () => {
     const ld = productLd(sampleProduct);
-    const offer = ld.offers as { shippingDetails: unknown; hasMerchantReturnPolicy: unknown };
+    const offer = ld.offers as { shippingDetails: unknown; hasMerchantReturnPolicy: unknown; itemCondition: string };
     expect(offer.shippingDetails).toBeDefined();
     expect(offer.hasMerchantReturnPolicy).toBeDefined();
+    expect(offer.itemCondition).toBe('https://schema.org/NewCondition');
+  });
+
+  describe('itemListLd', () => {
+    it('embeds a priced Product for entries with a price', () => {
+      const ld = itemListLd('Skincare', [{ name: 'Moisturizer', path: '/product/x', image: '/i.jpg', brand: 'CeraVe', price: 2400 }]);
+      const el = (ld.itemListElement as Array<Record<string, unknown>>)[0];
+      const item = el.item as { '@type': string; offers: { price: number; priceCurrency: string } };
+      expect(item['@type']).toBe('Product');
+      expect(item.offers.price).toBe(2400);
+      expect(item.offers.priceCurrency).toBe('PKR');
+    });
+
+    it('falls back to a lean URL summary when no price (e.g. blog index)', () => {
+      const ld = itemListLd('Latest posts', [{ name: 'A post', path: '/blog/a' }]);
+      const el = (ld.itemListElement as Array<Record<string, unknown>>)[0];
+      expect(el.item).toBeUndefined();
+      expect(el.url).toContain('/blog/a');
+    });
   });
 
   describe('truncateOnWord', () => {

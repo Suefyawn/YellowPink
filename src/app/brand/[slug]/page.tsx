@@ -80,7 +80,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: jsonLd(itemListLd(`${brand} products`, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}` })))),
+            __html: jsonLd(itemListLd(`${brand} products`, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price })))),
           }}
         />
       )}

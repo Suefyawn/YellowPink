@@ -237,6 +237,9 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
               scopedProducts.map(p => ({
                 name: p.name,
                 path: `/product/${p.slug}`,
+                image: p.image_url,
+                brand: p.brand,
+                price: p.price,
               })),
             )),
           }}

@@ -74,7 +74,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: jsonLd(itemListLd(c.title, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}` })))),
+            __html: jsonLd(itemListLd(c.title, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price })))),
           }}
         />
       )}
