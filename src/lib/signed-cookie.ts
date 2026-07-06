@@ -89,8 +89,9 @@ export const OWNER_COOKIE_TTL_SEC = 60 * 60 * 24 * 7;
 export const STAFF_COOKIE_TTL_SEC = 10 * 60 * 60; // 10h
 
 /** Edge-compatible verification of the staff_session token minted by
- *  lib/staff-auth.ts signToken(): base64url("<staffId>|<issuedMs>|<hexSig>")
- *  where hexSig = HMAC-SHA256("<staffId>|<issuedMs>", secret).
+ *  lib/staff-auth.ts signToken(): base64url("<staffId>|<epoch>|<issuedMs>|<hexSig>")
+ *  where hexSig = HMAC-SHA256("<staffId>|<epoch>|<issuedMs>", secret). A legacy
+ *  pre-epoch cookie has the 2-field payload "<staffId>|<issuedMs>".
  *
  *  Returns the staffId on a valid, unexpired signature, else null. This
  *  deliberately does NOT hit the database (Edge can't, cheaply) — the page
@@ -111,7 +112,16 @@ export async function verifyStaffTokenEdge(token: string, secret: string): Promi
   const got = new Uint8Array(32);
   for (let i = 0; i < 32; i++) got[i] = parseInt(sigHex.slice(i * 2, i * 2 + 2), 16);
   if (!timingSafeEq(expected, got)) return null;
-  const [staffId, ts] = payload.split('|');
+  // Payload fields, matching staff-auth.ts verifyToken(): the issued-at
+  // timestamp is the LAST field — the 3rd for a current id|epoch|issuedMs
+  // token, the 2nd for a legacy id|issuedMs one. Reading the 2nd field
+  // unconditionally grabbed the epoch (always "0") on current tokens, so the
+  // age check computed ~55 years and rejected every live staff cookie —
+  // bouncing staff into an /admin redirect loop while the owner (separate
+  // admin_session cookie) was unaffected.
+  const parts = payload.split('|');
+  const staffId = parts[0];
+  const ts = parts.length >= 3 ? parts[2] : parts[1];
   if (!staffId || !ts) return null;
   if (Date.now() - Number(ts) > STAFF_COOKIE_TTL_SEC * 1000) return null;
   return staffId;
