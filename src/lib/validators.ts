@@ -68,6 +68,16 @@ export const productInputSchema = z.object({
                     v => (v === '' || v == null ? null : v),
                     z.enum(['New','Sale','Bestseller','Featured','Limited']).nullable(),
                   ),
+  // Packaging condition. 'standard' = normal boxed retail unit; 'tester' = a
+  // genuine manufacturer tester (fragrances — matches how buyers search);
+  // 'no_box' = original product supplied without its retail box. Drives the
+  // storefront disclosure badge, the shop filter and the "Perfume Testers"
+  // smart collection. Empty option → undefined so an update leaves the stored
+  // value untouched and a new insert falls through to the DB default.
+  packaging:      z.preprocess(
+                    v => (v === '' || v == null ? undefined : v),
+                    z.enum(['standard','tester','no_box']).optional(),
+                  ),
   slug:           slugSchema,
   // Publication status. The admin form always submits it (new products
   // default to 'draft' there); optional so older callers that never sent a

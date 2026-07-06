@@ -12,6 +12,7 @@ type Field = SmartCondition['field'];
 const FIELD_LABELS: Record<Field, string> = {
   tag: 'Tag', brand: 'Brand', category: 'Category', price: 'Price',
   on_sale: 'On sale', featured: 'Featured', bestseller: 'Bestseller',
+  packaging: 'Packaging',
 };
 const BOOL_FIELDS: Field[] = ['on_sale', 'featured', 'bestseller'];
 
@@ -81,6 +82,14 @@ export function CollectionRulesEditor({
               <select value={(Array.isArray(c.value) && c.value[0]) || ''} onChange={e => patch(i, { op: 'in', value: e.target.value ? [e.target.value] : [] })} style={sel}>
                 <option value="">— choose category —</option>
                 {allCategories.map(cat => <option key={cat} value={cat}>{cat}</option>)}
+              </select>
+            )}
+            {c.field === 'packaging' && (
+              <select value={(Array.isArray(c.value) && c.value[0]) || ''} onChange={e => patch(i, { op: 'in', value: e.target.value ? [e.target.value] : [] })} style={sel}>
+                <option value="">— choose packaging —</option>
+                <option value="standard">Standard</option>
+                <option value="tester">Tester</option>
+                <option value="no_box">Without box</option>
               </select>
             )}
             {c.field === 'price' && (

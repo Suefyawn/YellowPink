@@ -29,7 +29,7 @@ export function ProductTile({ product }: ProductTileProps) {
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlist();
-  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count, is_bestseller, is_popular } = product;
+  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count, is_bestseller, is_popular, packaging } = product;
   const wishlisted = isWishlisted(id);
 
   // Quick-add UX matrix:
@@ -156,6 +156,23 @@ export function ProductTile({ product }: ProductTileProps) {
                 boxShadow: '0 1px 3px rgba(0,0,0,0.12)', whiteSpace: 'nowrap',
               }}>Only {stock} left</span>
             )}
+            {/* Packaging disclosure badge — "Tester" (fragrances) / "Without
+                box" for genuine items sold without full retail packaging, so
+                the condition is visible before the shopper even opens the PDP. */}
+            {packaging === 'tester' ? (
+              <span style={{
+                background: 'var(--ink-700, #374151)', color: '#fff',
+                padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}>Tester</span>
+            ) : packaging === 'no_box' ? (
+              <span style={{
+                background: 'var(--ink-700, #374151)', color: '#fff',
+                padding: '2px 8px', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase',
+                whiteSpace: 'nowrap',
+              }}>Without box</span>
+            ) : null}
           </div>
           {/* Desktop quick-add overlay, opacity-0 until tile hover; the
               `quick-add-overlay` CSS class hides it on touch/phone viewports

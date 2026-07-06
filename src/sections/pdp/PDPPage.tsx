@@ -554,6 +554,33 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 <span style={{ display: 'inline-block', padding: '3px 10px', background: '#f0fdf4', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#15803d' }}>In Stock</span>
               )}
             </div>
+            {/* Packaging disclosure — genuine items sold as a tester or without
+                their retail box. Placed in the buy box so the condition is
+                impossible to miss before adding to cart; copy leads on
+                authenticity because that's the shopper's first question. */}
+            {product.packaging && product.packaging !== 'standard' && (
+              <div style={{
+                marginBottom: 20, padding: '12px 14px', borderRadius: 10,
+                background: '#fffbeb', border: '1px solid #fde68a',
+                display: 'flex', gap: 10, alignItems: 'flex-start',
+              }}>
+                <span aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1.3 }}>📦</span>
+                <p className="small-text" style={{ margin: 0, color: '#92400e', lineHeight: 1.5 }}>
+                  {product.packaging === 'tester' ? (
+                    <>
+                      <strong style={{ fontWeight: 700 }}>Tester unit.</strong> This is a 100% genuine manufacturer&rsquo;s
+                      tester — the same product inside, at a lower price. It may arrive without the full retail
+                      box or cap.
+                    </>
+                  ) : (
+                    <>
+                      <strong style={{ fontWeight: 700 }}>Sold without box.</strong> This is a 100% original,
+                      unused product supplied without its retail box — same item, lower price.
+                    </>
+                  )}
+                </p>
+              </div>
+            )}
             <hr className="hairline" style={{ marginBottom: 24 }} />
 
             {attributes.length > 0 && (

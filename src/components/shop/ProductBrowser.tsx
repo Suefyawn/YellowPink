@@ -29,6 +29,7 @@ export function ProductBrowser({ products }: { products: Product[] }) {
   const [sortBy, setSortBy] = useState<SortKey>('featured');
   const [inStockOnly, setInStockOnly] = useState(false);
   const [activeCats, setActiveCats] = useState<string[]>([]);
+  const [activePackaging, setActivePackaging] = useState<string[]>([]);
 
   // Category facets, only worth showing when the set spans more than one.
   const categories = useMemo(() => {
@@ -37,13 +38,29 @@ export function ProductBrowser({ products }: { products: Product[] }) {
     return [...counts.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => a.name.localeCompare(b.name));
   }, [products]);
 
+  // Packaging facets (Tester / Without box). Only surfaced when this product
+  // set actually contains non-standard packaging, so a normal brand page shows
+  // no clutter.
+  const PACKAGING_LABELS: Record<string, string> = { tester: 'Tester', no_box: 'Without box' };
+  const packagings = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of products) {
+      const pk = p.packaging;
+      if (pk && pk !== 'standard') counts.set(pk, (counts.get(pk) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([value, count]) => ({ value, count }));
+  }, [products]);
+
   const toggleCat = (c: string) =>
     setActiveCats(prev => (prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]));
+  const togglePackaging = (v: string) =>
+    setActivePackaging(prev => (prev.includes(v) ? prev.filter(x => x !== v) : [...prev, v]));
 
   const visible = useMemo(() => {
     let list = products;
     if (inStockOnly) list = list.filter(inStock);
     if (activeCats.length) list = list.filter(p => p.category && activeCats.includes(p.category));
+    if (activePackaging.length) list = list.filter(p => p.packaging && activePackaging.includes(p.packaging));
 
     const sorted = [...list];
     switch (sortBy) {
@@ -62,7 +79,7 @@ export function ProductBrowser({ products }: { products: Product[] }) {
         break;
     }
     return sorted;
-  }, [products, sortBy, inStockOnly, activeCats]);
+  }, [products, sortBy, inStockOnly, activeCats, activePackaging]);
 
   const chip = (active: boolean): React.CSSProperties => ({
     padding: '6px 14px', borderRadius: 'var(--radius-pill, 999px)',
@@ -94,6 +111,11 @@ export function ProductBrowser({ products }: { products: Product[] }) {
               ))}
             </>
           )}
+          {packagings.map(pk => (
+            <button key={pk.value} type="button" onClick={() => togglePackaging(pk.value)} style={chip(activePackaging.includes(pk.value))}>
+              {PACKAGING_LABELS[pk.value] ?? pk.value}
+            </button>
+          ))}
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
@@ -125,7 +147,7 @@ export function ProductBrowser({ products }: { products: Product[] }) {
       ) : (
         <p className="body-text" style={{ color: 'var(--ink-700)', padding: '24px 0' }}>
           No products match these filters.{' '}
-          <button type="button" onClick={() => { setActiveCats([]); setInStockOnly(false); }} className="text-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+          <button type="button" onClick={() => { setActiveCats([]); setActivePackaging([]); setInStockOnly(false); }} className="text-link" style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
             Clear filters
           </button>
         </p>
