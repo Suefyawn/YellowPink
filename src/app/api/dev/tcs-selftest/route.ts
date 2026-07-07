@@ -150,13 +150,17 @@ export async function GET(req: Request) {
       } catch (e) { return { label, error: (e as Error).message }; }
     }
 
-    steps.push({ step: 'probe:areacode(header)', ...(await hit('areacode', '/ecom/api/setup/areacode', 'POST', { citycode: 'KHI', area: '' }, true)) });
-    steps.push({ step: 'probe:areacode(body-token)', ...(await hit('areacode', '/ecom/api/setup/areacode', 'POST', { citycode: 'KHI', area: '', accesstoken: token }, false)) });
+    // (a) setup/areacode is a GET; token in Authorization header. Pure token
+    //     validity — no account/cost-centre involved.
+    steps.push({ step: 'probe:areacode(GET,header)', ...(await hit('areacode', '/ecom/api/setup/areacode', 'GET', null, true, '?citycode=KHI&area=')) });
+    steps.push({ step: 'probe:areacode(GET,noauth)', ...(await hit('areacode', '/ecom/api/setup/areacode', 'GET', null, false, '?citycode=KHI&area=')) });
     // (b) cost-centre inquiry — lists the REAL cost centres for the account.
-    steps.push({ step: 'probe:costcenter(acct-as-customerno)', ...(await hit('cci', '/ecom/inquiry/costcenterinquiry', 'POST', { accesstoken: token, customerno: acct }, true)) });
-    steps.push({ step: 'probe:costcenter(get)', ...(await hit('cci', '/ecom/inquiry/costcenterinquiry', 'GET', null, true, `?customerno=${encodeURIComponent(acct)}`)) });
-    // (c) tracking with a dummy CN — same token via Authorization header.
-    steps.push({ step: 'probe:track(dummy)', ...(await hit('track', '/tracking/api/Tracking/GetDynamicTrackDetail', 'POST', { consignee: ['0000000000'] }, true)) });
+    //     Try both documented path spellings, GET + POST.
+    steps.push({ step: 'probe:cci(api,POST)', ...(await hit('cci', '/ecom/api/inquiry/costcenterinquiry', 'POST', { accesstoken: token, customerno: acct }, true)) });
+    steps.push({ step: 'probe:cci(noapi,POST)', ...(await hit('cci', '/ecom/inquiry/costcenterinquiry', 'POST', { accesstoken: token, customerno: acct }, true)) });
+    steps.push({ step: 'probe:cci(api,GET)', ...(await hit('cci', '/ecom/api/inquiry/costcenterinquiry', 'GET', null, true, `?customerno=${encodeURIComponent(acct)}`)) });
+    // (c) tracking with a dummy CN — GET, token via Authorization header.
+    steps.push({ step: 'probe:track(GET)', ...(await hit('track', '/tracking/api/Tracking/GetDynamicTrackDetail', 'GET', null, true, '?consignee=0000000000')) });
 
     return NextResponse.json({ ok: true, summary: 'Token-validity + config probes — see steps.', steps }, { status: 200 });
   }
