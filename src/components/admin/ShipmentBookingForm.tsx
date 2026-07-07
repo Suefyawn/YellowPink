@@ -15,6 +15,8 @@ interface Props {
     courier: string;
     tracking_number: string;
     status: string;
+    /** Printable label/AWB PDF captured at booking (courier API), if any. */
+    labelUrl?: string | null;
   } | null;
   /** orders.delivery_cost — when already recorded the booking forms show it
    *  instead of the optional "Courier charge" input (never clobbered). */
@@ -72,12 +74,20 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
           <div style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
             {shipment.courier} · <span style={{ fontFamily: 'monospace' }}>{shipment.tracking_number}</span>
           </div>
-          {trackUrl && (
-            <a href={trackUrl} target="_blank" rel="noreferrer noopener"
-               style={{ fontSize: '0.75rem', color: '#C5286A', textDecoration: 'underline' }}>
-              Open on {shipment.courier} ↗
-            </a>
-          )}
+          <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 2 }}>
+            {trackUrl && (
+              <a href={trackUrl} target="_blank" rel="noreferrer noopener"
+                 style={{ fontSize: '0.75rem', color: '#C5286A', textDecoration: 'underline' }}>
+                Open on {shipment.courier} ↗
+              </a>
+            )}
+            {shipment.labelUrl && (
+              <a href={shipment.labelUrl} target="_blank" rel="noreferrer noopener"
+                 style={{ fontSize: '0.75rem', color: '#111827', fontWeight: 600, textDecoration: 'underline' }}>
+                Print label (PDF) ↗
+              </a>
+            )}
+          </div>
         </div>
         <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: 8 }}>
           Status: <strong>{shipment.status}</strong>

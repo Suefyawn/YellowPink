@@ -268,6 +268,15 @@ export async function bookShipment(
     return { error: result.message };
   }
 
+  // Fetch the printable label/AWB PDF (TCS exposes it via a separate endpoint,
+  // not the booking response). Best-effort — a label miss never blocks the
+  // booking; staff can re-print from the courier portal.
+  let labelUrl = result.labelUrl ?? null;
+  if (!labelUrl && adapter.label) {
+    const lbl = await adapter.label(result.trackingNumber);
+    if ('ok' in lbl && lbl.ok) labelUrl = lbl.url;
+  }
+
   // Persist the shipment row. The shipments_sync_order trigger (see
   // 20260521_040_shipments.sql) mirrors tracking_number + courier onto
   // orders for the /track + /account UI.
@@ -278,7 +287,7 @@ export async function bookShipment(
       courier,
       tracking_number: result.trackingNumber,
       weight_grams: Math.round(input.weightKg * 1000),
-      raw_label_url: result.labelUrl ?? null,
+      raw_label_url: labelUrl,
       status: 'picked_up',
     })
     .select('id')
@@ -380,6 +389,60 @@ export async function syncShipmentNow(
   revalidatePath(`/admin/orders/${s.order_id}`);
   revalidatePath('/admin/orders');
   return { success: true, updated, current: newest ?? s.status };
+}
+
+// ─── TCS payment reconciliation ───────────────────────────────────────────
+// Pull the courier's billing ledger (Payment Detail API) for a date range and
+// write the ACTUAL delivery charge (courier charge + GST) back onto each
+// matching order's delivery_cost — so the shipping-margin figures run on real
+// courier costs instead of a manually-keyed estimate. Best-effort per record;
+// a courier that can't reconcile (no adapter / no TCS_CUSTOMER_NO) returns a
+// clear message.
+export async function reconcileTcsPayments(
+  _prev: { error?: string; success?: boolean; scanned?: number; matched?: number; updated?: number } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean; scanned?: number; matched?: number; updated?: number }> {
+  const session = await assertOrders();
+
+  const adapter = getAdapter('TCS');
+  if (!adapter || !adapter.payment) {
+    return { error: 'TCS payment reconciliation isn’t available — set TCS_CUSTOMER_NO (and the TCS API keys) first.' };
+  }
+
+  const daysRaw = formData.get('days');
+  const days = typeof daysRaw === 'string' && daysRaw ? Math.min(180, Math.max(1, Number(daysRaw))) : 30;
+  const fmtDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  const now = Date.now();
+  const res = await adapter.payment(fmtDate(now - days * 86_400_000), fmtDate(now));
+  if (!('ok' in res) || !res.ok) return { error: res.message };
+
+  const admin = supabaseAdmin();
+  let matched = 0;
+  let updated = 0;
+  for (const rec of res.records) {
+    if (!rec.trackingNumber || rec.deliveryCharges == null) continue;
+    // The real cost to us is the courier charge plus GST on it.
+    const cost = Math.round(rec.deliveryCharges + (rec.gst ?? 0));
+    const { data: ord } = await admin
+      .from('orders')
+      .select('id, delivery_cost')
+      .eq('tracking_number', rec.trackingNumber)
+      .maybeSingle();
+    if (!ord) continue;
+    matched++;
+    if (Number((ord as { delivery_cost: number | null }).delivery_cost ?? NaN) === cost) continue;
+    const { error } = await admin.from('orders').update({ delivery_cost: cost }).eq('id', (ord as { id: string }).id);
+    if (!error) updated++;
+  }
+
+  await logAudit(session, {
+    action: 'shipment.reconcile_payments',
+    entity: 'orders',
+    diff: { courier: 'TCS', days, scanned: res.records.length, matched, updated },
+  });
+  revalidatePath('/admin/finance');
+  revalidatePath('/admin/orders');
+  return { success: true, scanned: res.records.length, matched, updated };
 }
 
 // ─── Cancel a shipment via courier API ────────────────────────────────────

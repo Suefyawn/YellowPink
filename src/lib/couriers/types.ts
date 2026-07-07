@@ -73,6 +73,42 @@ export interface TrackResult {
   raw?: unknown;
 }
 
+/** A printable shipping label / AWB the courier issues for a consignment. */
+export interface LabelResult {
+  ok: true;
+  /** URL of the label PDF (what TCS's print/label endpoint returns). */
+  url: string;
+  raw?: unknown;
+}
+
+/** One consignment's billing + COD line from the courier's payment ledger,
+ *  used to reconcile the ACTUAL delivery cost + COD collection back to the
+ *  order (vs. hand-keying it). All amounts PKR. */
+export interface PaymentRecord {
+  /** Courier consignment number (matches shipments.tracking_number). */
+  trackingNumber: string;
+  /** What the courier billed us to deliver this parcel (excl. GST). */
+  deliveryCharges: number | null;
+  /** GST on the courier charge, if broken out. */
+  gst: number | null;
+  /** COD amount the courier is collecting / collected for us. */
+  codAmount: number | null;
+  /** COD cash actually remitted to us so far. */
+  amountPaid: number | null;
+  /** Whether the courier has paid the COD out to us ('Y'/'N' → boolean). */
+  paid: boolean;
+  /** Courier's latest status string for this CN (already normalisable). */
+  status: string | null;
+  /** Delivery date the courier recorded, ISO if parseable. */
+  deliveredAt: string | null;
+}
+
+export interface PaymentResult {
+  ok: true;
+  records: PaymentRecord[];
+  raw?: unknown;
+}
+
 export type AdapterError = {
   ok: false;
   /** Human-readable message for the merchant. Never raw API jargon. */
@@ -96,10 +132,20 @@ export interface CourierAdapter {
     book: boolean;
     cancel: boolean;
     track: boolean;
+    /** Can fetch a printable label/AWB PDF for a consignment. */
+    label: boolean;
+    /** Can fetch the payment/COD ledger to reconcile actual delivery cost. */
+    payment: boolean;
   };
   /** Whether the necessary env vars are set in this deployment. */
   isConfigured(): boolean;
   book(input: BookingInput): Promise<Result<BookingResult>>;
   cancel(trackingNumber: string): Promise<Result<CancelResult>>;
   track(trackingNumber: string): Promise<Result<TrackResult>>;
+  /** Fetch the printable label/AWB for a booked consignment. */
+  label?(trackingNumber: string): Promise<Result<LabelResult>>;
+  /** Fetch the courier's payment ledger for a date range so we can reconcile
+   *  the real delivery cost + COD collection back to orders. Requires the
+   *  merchant's customer number. */
+  payment?(fromDate: string, toDate: string): Promise<Result<PaymentResult>>;
 }

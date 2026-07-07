@@ -94,7 +94,7 @@ export default async function OrderDetailPage({
   // a "Book pickup" button; everything else falls back to manual entry.
   const { data: shipmentRow } = await supabaseAdmin()
     .from('shipments')
-    .select('id, courier, tracking_number, status')
+    .select('id, courier, tracking_number, status, raw_label_url')
     .eq('order_id', id)
     .order('created_at', { ascending: false })
     .limit(1)
@@ -686,6 +686,7 @@ export default async function OrderDetailPage({
             courier: shipmentRow.courier as string,
             tracking_number: shipmentRow.tracking_number as string,
             status: shipmentRow.status as string,
+            labelUrl: (shipmentRow.raw_label_url as string | null) ?? null,
           } : null}
         />
       </div>

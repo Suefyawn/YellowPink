@@ -3,6 +3,8 @@ export const dynamic = 'force-dynamic';
 import { Suspense } from 'react';
 import { supabaseAdmin, getSiteSettings } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
+import { configuredAdapterIds } from '@/lib/couriers';
+import { ReconcileTcsButton } from '@/components/admin/ReconcileTcsButton';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { fmtPKR as fmt } from '@/lib/money';
@@ -336,6 +338,10 @@ export default async function FinancePage({
             </div>
           </div>
         </div>
+        {/* When TCS is wired, pull the real per-consignment charge from its
+            Payment Detail ledger so these numbers run on actuals, not the
+            typical-cost estimate. */}
+        {configuredAdapterIds().includes('TCS') && <ReconcileTcsButton />}
       </div>
 
       {/* Revenue & profit by payment method */}
