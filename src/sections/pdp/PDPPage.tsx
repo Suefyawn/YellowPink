@@ -75,10 +75,12 @@ function VariantPicker({
         return (
           <div key={attr.id}>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-900)' }}>{attr.name}</span>
+              <span id={`attr-label-${attr.id}`} style={{ fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-900)' }}>{attr.name}</span>
               {selectedLabel && <span style={{ fontSize: '0.8125rem', color: 'var(--ink-500)' }}>{selectedLabel}</span>}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {/* role=group + labelledby so AT announces the option set as e.g.
+                "Shade, group" instead of a run of ungrouped toggle buttons. */}
+            <div role="group" aria-labelledby={`attr-label-${attr.id}`} style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {attr.values.map(v => {
                 const reachable = isReachable(attr.id, v.id);
                 const active = selectedValueId === v.id;
@@ -314,7 +316,6 @@ function Gallery({
 // ─── PDPPage ───────────────────────────────────────────────────────────────
 export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], estimatedDays = null, pointsPerPkr = 0 }: Props) {
   const [qty, setQty] = useState(1);
-  const [expandedSection, setExpandedSection] = useState<string | null>(null);
   const [addedFlash, setAddedFlash] = useState(false);
   // Sticky mobile buy-bar: shown once the in-page buy panel scrolls out of
   // view so the Add-to-Cart action is always one tap away on a phone.
@@ -805,25 +806,22 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             ] as Array<{ key: string; title: string; content: string } | null>)
               .filter(Boolean)
               .map(sec => sec && (
-              <div key={sec.key} style={{ borderBottom: '1px solid var(--line)' }}>
-                <button
-                  type="button"
-                  aria-expanded={expandedSection === sec.key}
-                  aria-controls={`pdp-section-${sec.key}`}
-                  onClick={() => setExpandedSection(expandedSection === sec.key ? null : sec.key)}
-                  style={{
-                    width: '100%', padding: '16px 0', background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-900)',
-                  }}
-                >
-                  {sec.title}
-                  <span aria-hidden="true" style={{ transform: expandedSection === sec.key ? 'rotate(180deg)' : 'rotate(0)', transition: 'transform 200ms ease-out', fontSize: '0.75rem' }}>▼</span>
-                </button>
-                {expandedSection === sec.key && (
-                  <div id={`pdp-section-${sec.key}`} className="body-text" style={{ color: 'var(--ink-700)', paddingBottom: 16 }}>{sec.content}</div>
-                )}
-              </div>
+              // Native <details> so the body ships in the server HTML — the
+              // ingredients/INCI list and directions are exactly the keyword-rich
+              // copy search needs, and were previously mounted only on click
+              // (invisible to crawlers). The title is a real <h2> inside the
+              // summary, giving the PDP a proper heading outline. Open by default
+              // on desktop via CSS; collapsible without JS.
+              <details key={sec.key} className="pdp-accordion" style={{ borderBottom: '1px solid var(--line)' }}>
+                <summary style={{
+                  width: '100%', padding: '16px 0', cursor: 'pointer', listStyle: 'none',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                }}>
+                  <h2 style={{ margin: 0, fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: 600, color: 'var(--ink-900)' }}>{sec.title}</h2>
+                  <span aria-hidden="true" className="pdp-accordion-chevron" style={{ fontSize: '0.75rem', color: 'var(--ink-500, #6b7280)' }}>▼</span>
+                </summary>
+                <div className="body-text" style={{ color: 'var(--ink-700)', paddingBottom: 16, whiteSpace: 'pre-wrap' }}>{sec.content}</div>
+              </details>
             ))}
           </div>
         </div>
@@ -881,7 +879,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
       {relatedProducts.length > 0 && (
         <section style={{ padding: '64px 0' }}>
           <div className="container">
-            <Overline style={{ display: 'block', marginBottom: 32 }}>Pairs With</Overline>
+            <Overline as="h2" style={{ display: 'block', marginBottom: 32 }}>Pairs With</Overline>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
               {relatedProducts.map((p) => (
                 <ProductTile key={p.id} product={p} />

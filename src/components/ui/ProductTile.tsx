@@ -125,11 +125,13 @@ export function ProductTile({ product }: ProductTileProps) {
               }}>Sold out</span>
             )}
             {(original_price ?? 0) > price && (
+              // Show the actual saving ("-25%") rather than a generic "Sale" —
+              // a concrete discount reads faster and lifts grid CTR.
               <span style={{
                 background: 'var(--brand-yellow)', color: 'var(--ink-900)',
                 padding: '2px 8px', borderRadius: 'var(--radius-pill)',
-                fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
-              }}>Sale</span>
+                fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.04em',
+              }}>-{Math.round((1 - price / (original_price as number)) * 100)}%</span>
             )}
             {/* Manual "Bestseller" pin is the owner override and wins the slot.
                 Otherwise an automatic "Popular" badge shows when the nightly
