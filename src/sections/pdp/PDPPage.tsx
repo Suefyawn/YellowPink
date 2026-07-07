@@ -140,62 +140,18 @@ function VariantPicker({
   );
 }
 
-// ─── Multi-image gallery ───────────────────────────────────────────────────
-// Hover-zoom wrapper. Tracks mouse position over the container, sets
-// transform-origin to the cursor, and scales the inner image. Pointer-events
-// only, touch users get the native pinch-zoom from the OS instead.
-function ZoomableImage({ src, alt, label, fallback }: { src: string | null; alt: string; label?: string; fallback?: string | null }) {
-  const [zoomed, setZoomed] = useState(false);
-  const [origin, setOrigin] = useState({ x: 50, y: 50 });
-  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = ((e.clientX - r.left) / r.width) * 100;
-    const y = ((e.clientY - r.top)  / r.height) * 100;
-    setOrigin({ x, y });
-  };
-  return (
-    <div
-      className="pdp-hero"
-      style={{
-        // Square (1/1) on every viewport. Product photography is shot
-        // square, so a portrait box cropped the image with objectFit:cover
-        // and made the bottle look zoomed-in on phones.
-        flex: 1, aspectRatio: '1 / 1',
-        borderRadius: 'var(--radius-card)', overflow: 'hidden',
-        background: 'var(--paper2)',
-        cursor: zoomed ? 'zoom-out' : 'zoom-in',
-        position: 'relative',
-      }}
-      onPointerEnter={e => e.pointerType === 'mouse' && setZoomed(true)}
-      onPointerLeave={() => setZoomed(false)}
-      onMouseMove={onMove}
-    >
-      <div
-        style={{
-          width: '100%', height: '100%',
-          // Gentle magnify on hover — 1.8× was jarring on the large desktop
-          // hero. Enough to inspect texture without lurching.
-          transform: zoomed ? 'scale(1.35)' : 'scale(1)',
-          transformOrigin: `${origin.x}% ${origin.y}%`,
-          transition: 'transform 220ms ease-out',
-          willChange: 'transform',
-        }}
-      >
-        <ProductImage
-          src={src ?? fallback}
-          alt={alt}
-          label={label}
-          priority
-          // PDP hero is the LCP: full column width on mobile (~100vw),
-          // ~45vw on desktop (right column of a 2-col split). Without an
-          // explicit sizes hint the default 320px clamp serves a blurry
-          // upscale.
-          sizes="(max-width: 900px) 100vw, 45vw"
-        />
-      </div>
-    </div>
-  );
-}
+// ─── Product image gallery (horizontal slider) ─────────────────────────────
+// Scroll-snap slider: swipe/scroll or use the arrows to move between shots, tap
+// a thumbnail to jump. objectFit:contain so a portrait bottle shows whole (no
+// crop / "zoomed-in" look), height capped so the hero never dominates the page.
+// No hover-zoom. Works the same on desktop and mobile (native swipe).
+const SLIDER_ARROW: React.CSSProperties = {
+  position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+  width: 36, height: 36, borderRadius: '50%',
+  background: 'rgba(255,255,255,0.92)', border: '1px solid var(--line)',
+  color: 'var(--ink-900)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  cursor: 'pointer', zIndex: 2, boxShadow: '0 1px 4px rgba(0,0,0,0.12)',
+};
 
 function Gallery({
   images, alt, fallback, brandLabel, videoUrl,
@@ -206,110 +162,129 @@ function Gallery({
   brandLabel?: string;
   videoUrl?: string | null;
 }) {
-  const hero = images[0]?.url ?? fallback ?? null;
-  const [active, setActive] = useState<string | null>(hero);
-  const [videoActive, setVideoActive] = useState(false);
-  const hasVideo = Boolean(videoUrl);
-  // Thumbnail buttons register here by image url so the active shot can be
-  // scrolled into view on either rail orientation.
-  const thumbRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  // Ordered slide list: product images (or the fallback) + an optional trailing
+  // video slide.
+  const slides = useMemo(() => {
+    const imgs = images.length
+      ? images.map(i => ({ key: i.id, url: i.url, alt: i.alt || alt, video: false }))
+      : (fallback ? [{ key: 'fallback', url: fallback, alt, video: false }] : []);
+    return videoUrl
+      ? [...imgs, { key: 'video', url: fallback ?? imgs[0]?.url ?? '', alt: `${alt} video`, video: true }]
+      : imgs;
+  }, [images, fallback, videoUrl, alt]);
 
-  // Variant → gallery link (industry standard): picking a shade/size shows that
-  // variant's photo. The whole gallery is keyed on the variant image in the
-  // parent, so a variant change remounts this component with the new hero
-  // already active — no in-render state juggling. This effect then scrolls the
-  // active thumbnail into view (on that remount, and on manual clicks).
-  // 'nearest' is a no-op when it's already visible, so manual clicks stay calm.
-  useEffect(() => {
-    if (!active) return;
-    const raf = requestAnimationFrame(() => {
-      thumbRefs.current.get(active)?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
-    });
-    return () => cancelAnimationFrame(raf);
-  }, [active]);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [idx, setIdx] = useState(0);
 
-  // One image and no video → simple zoomable hero, no thumbnail rail.
-  if (images.length <= 1 && !hasVideo) {
-    return <ZoomableImage src={active} alt={alt} label={brandLabel} fallback={fallback} />;
-  }
+  const goTo = (i: number) => {
+    const t = trackRef.current;
+    if (!t) return;
+    (t.children[i] as HTMLElement | undefined)?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  };
+  const onScroll = () => {
+    const t = trackRef.current;
+    if (!t) return;
+    const i = Math.max(0, Math.min(slides.length - 1, Math.round(t.scrollLeft / t.clientWidth)));
+    setIdx(prev => (prev === i ? prev : i));
+  };
+
+  const many = slides.length > 1;
 
   return (
-    // Desktop: vertical thumbnail rail on the left + main image. Mobile (per
-    // .pdp-gallery in globals.css): flip to column-reverse so the main image
-    // gets the full width and the thumbnails sit underneath as a horizontal
-    // strip, no more 64px sidebar stealing space on a phone.
-    // minWidth: 0 lets this flex item shrink below the thumbnail strip's
-    // min-content width — without it a many-image product (9 thumbs ≈ 640px)
-    // balloons .pdp-hero past the viewport on phones and the buy box gets
-    // clipped by the root overflow-x.
-    <div className="pdp-gallery" style={{ display: 'flex', gap: 12, flex: 1, minWidth: 0 }}>
-      <div className="pdp-gallery-thumbs" role="group" aria-label="Product images" style={{ display: 'flex', flexDirection: 'column', gap: 8, width: 64, flexShrink: 0 }}>
-        {images.map(img => {
-          const sel = !videoActive && active === img.url;
-          return (
-            <button
-              key={img.id}
-              ref={el => { if (el) thumbRefs.current.set(img.url, el); else thumbRefs.current.delete(img.url); }}
-              type="button"
-              onClick={() => { setActive(img.url); setVideoActive(false); }}
-              aria-label={img.alt || alt}
-              aria-current={sel ? 'true' : undefined}
-              className="pdp-gallery-thumb"
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1, minWidth: 0 }}>
+      <div style={{ position: 'relative' }}>
+        <div
+          ref={trackRef}
+          onScroll={onScroll}
+          className="pdp-slider-track"
+          role="group"
+          aria-roledescription="carousel"
+          aria-label="Product images"
+          style={{
+            display: 'flex', overflowX: 'auto', scrollSnapType: 'x mandatory',
+            borderRadius: 'var(--radius-card)', background: 'var(--paper2)', scrollbarWidth: 'none',
+          }}
+        >
+          {slides.map((s, i) => (
+            <div
+              key={s.key}
               style={{
-                width: 64, height: 80, padding: 0,
-                border: '1px solid ' + (sel ? 'var(--ink-900)' : 'var(--line)'),
-                borderRadius: 'var(--radius-card)', overflow: 'hidden',
-                background: 'var(--paper2)', cursor: 'pointer',
-                flexShrink: 0,
+                flex: '0 0 100%', scrollSnapAlign: 'center',
+                aspectRatio: '1 / 1', maxHeight: 440,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                background: s.video ? '#000' : undefined,
               }}
             >
-              <ProductImage src={img.url} alt={img.alt || alt} label={brandLabel} width={80} height={80} />
+              {s.video && videoUrl ? (
+                <video
+                  src={videoUrl}
+                  poster={s.url || undefined}
+                  controls
+                  preload="none"
+                  playsInline
+                  style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
+                />
+              ) : (
+                <ProductImage
+                  src={s.url}
+                  alt={s.alt}
+                  label={brandLabel}
+                  fit="contain"
+                  priority={i === 0}
+                  sizes="(max-width: 900px) 100vw, 440px"
+                />
+              )}
+            </div>
+          ))}
+        </div>
+        {many && (
+          <>
+            <button
+              type="button"
+              aria-label="Previous image"
+              onClick={() => goTo(Math.max(0, idx - 1))}
+              disabled={idx === 0}
+              style={{ ...SLIDER_ARROW, left: 8, opacity: idx === 0 ? 0.35 : 1 }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m15 18-6-6 6-6" /></svg>
             </button>
-          );
-        })}
-        {hasVideo && (
-          <button
-            type="button"
-            onClick={() => setVideoActive(true)}
-            aria-label="Play product video"
-            aria-current={videoActive ? 'true' : undefined}
-            className="pdp-gallery-thumb"
-            style={{
-              width: 64, height: 80, padding: 0, position: 'relative',
-              border: '1px solid ' + (videoActive ? 'var(--ink-900)' : 'var(--line)'),
-              borderRadius: 'var(--radius-card)', overflow: 'hidden',
-              background: 'var(--paper2)', cursor: 'pointer', flexShrink: 0,
-            }}
-          >
-            <ProductImage src={hero} alt={alt} label={brandLabel} width={80} height={80} />
-            <span aria-hidden="true" style={{
-              position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: 'rgba(0,0,0,0.28)', color: '#fff',
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-            </span>
-          </button>
+            <button
+              type="button"
+              aria-label="Next image"
+              onClick={() => goTo(Math.min(slides.length - 1, idx + 1))}
+              disabled={idx === slides.length - 1}
+              style={{ ...SLIDER_ARROW, right: 8, opacity: idx === slides.length - 1 ? 0.35 : 1 }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m9 18 6-6-6-6" /></svg>
+            </button>
+          </>
         )}
       </div>
-      {videoActive && videoUrl ? (
-        <div
-          className="pdp-hero"
-          style={{ flex: 1, aspectRatio: '1 / 1', borderRadius: 'var(--radius-card)', overflow: 'hidden', background: '#000' }}
-        >
-          {/* Lazy: preload="none" + no autoplay, the clip is only fetched once
-              the shopper taps play, so it never weighs on the initial PDP load
-              or the LCP. The hero image stands in as the poster. */}
-          <video
-            src={videoUrl}
-            poster={hero ?? undefined}
-            controls
-            preload="none"
-            playsInline
-            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
-          />
+      {many && (
+        <div className="pdp-slider-thumbs" role="group" aria-label="Choose image" style={{ display: 'flex', gap: 8, overflowX: 'auto', scrollbarWidth: 'none' }}>
+          {slides.map((s, i) => (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => goTo(i)}
+              aria-label={`Image ${i + 1} of ${slides.length}`}
+              aria-current={i === idx ? 'true' : undefined}
+              style={{
+                width: 56, height: 68, flexShrink: 0, padding: 0, position: 'relative',
+                border: '1px solid ' + (i === idx ? 'var(--ink-900)' : 'var(--line)'),
+                borderRadius: 'var(--radius-card)', overflow: 'hidden',
+                background: 'var(--paper2)', cursor: 'pointer',
+              }}
+            >
+              <ProductImage src={s.url} alt={s.alt} label={brandLabel} width={68} height={68} />
+              {s.video && (
+                <span aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.28)', color: '#fff' }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
+                </span>
+              )}
+            </button>
+          ))}
         </div>
-      ) : (
-        <ZoomableImage src={active} alt={alt} label={brandLabel} fallback={fallback} />
       )}
     </div>
   );
@@ -515,11 +490,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             NOT stretch to the row height, otherwise opening an accordion in
             the right column grows the row and the aspect-ratio image scales
             up/down with it. */}
-        {/* Image column capped (~440px) so the square hero stays a sensible
-            size on wide desktops instead of ballooning to a ~500px+ slab; the
-            details column takes the remaining width. Collapses to 1-col ≤900px
-            (see .pdp-grid in globals.css). */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 440px) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto', alignItems: 'start' }} className="pdp-grid">
+        {/* Image column capped (~400px) so the gallery slider stays a sensible
+            size on wide desktops instead of ballooning; the details column takes
+            the remaining width. Collapses to 1-col ≤900px (.pdp-grid in
+            globals.css). */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 400px) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto', alignItems: 'start' }} className="pdp-grid">
           {/* Keyed on the picked variant's image so choosing a shade/size
               remounts the gallery with that variant's photo as the active hero
               (see Gallery: the variant→gallery link). Non-variable products key
