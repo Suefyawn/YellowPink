@@ -5,6 +5,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { getAdapter } from '@/lib/couriers';
+import { reconcileTcsCosts } from '@/lib/couriers/reconcile-costs';
 import { attributeOrderEvents } from '@/lib/order-events';
 import { sendStatusTransitionEmail } from '@/lib/order-status-emails';
 import { notifyOrderShipmentTransition, orderStatusForShipment } from '@/lib/shipment-notify';
@@ -404,45 +405,22 @@ export async function reconcileTcsPayments(
 ): Promise<{ error?: string; success?: boolean; scanned?: number; matched?: number; updated?: number }> {
   const session = await assertOrders();
 
-  const adapter = getAdapter('TCS');
-  if (!adapter || !adapter.payment) {
-    return { error: 'TCS payment reconciliation isn’t available — set TCS_CUSTOMER_NO (and the TCS API keys) first.' };
-  }
-
   const daysRaw = formData.get('days');
   const days = typeof daysRaw === 'string' && daysRaw ? Math.min(180, Math.max(1, Number(daysRaw))) : 30;
-  const fmtDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-  const now = Date.now();
-  const res = await adapter.payment(fmtDate(now - days * 86_400_000), fmtDate(now));
-  if (!('ok' in res) || !res.ok) return { error: res.message };
 
-  const admin = supabaseAdmin();
-  let matched = 0;
-  let updated = 0;
-  for (const rec of res.records) {
-    if (!rec.trackingNumber || rec.deliveryCharges == null) continue;
-    // The real cost to us is the courier charge plus GST on it.
-    const cost = Math.round(rec.deliveryCharges + (rec.gst ?? 0));
-    const { data: ord } = await admin
-      .from('orders')
-      .select('id, delivery_cost')
-      .eq('tracking_number', rec.trackingNumber)
-      .maybeSingle();
-    if (!ord) continue;
-    matched++;
-    if (Number((ord as { delivery_cost: number | null }).delivery_cost ?? NaN) === cost) continue;
-    const { error } = await admin.from('orders').update({ delivery_cost: cost }).eq('id', (ord as { id: string }).id);
-    if (!error) updated++;
-  }
+  // Shared core (also used by the daily cron) — pulls TCS's billing ledger and
+  // writes the real courier charge onto each matching order.
+  const r = await reconcileTcsCosts(supabaseAdmin(), days);
+  if (!r.ok) return { error: r.message };
 
   await logAudit(session, {
     action: 'shipment.reconcile_payments',
     entity: 'orders',
-    diff: { courier: 'TCS', days, scanned: res.records.length, matched, updated },
+    diff: { courier: 'TCS', days, scanned: r.scanned, matched: r.matched, updated: r.updated },
   });
   revalidatePath('/admin/finance');
   revalidatePath('/admin/orders');
-  return { success: true, scanned: res.records.length, matched, updated };
+  return { success: true, scanned: r.scanned, matched: r.matched, updated: r.updated };
 }
 
 // ─── Cancel a shipment via courier API ────────────────────────────────────

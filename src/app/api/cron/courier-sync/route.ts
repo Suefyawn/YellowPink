@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '@/lib/couriers';
+import { reconcileTcsCosts } from '@/lib/couriers/reconcile-costs';
 import { notifyOrderShipmentTransition } from '@/lib/shipment-notify';
 
 interface ShipmentRow {
@@ -154,6 +155,18 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // After refreshing tracking, pull TCS's actual per-consignment billing so
+  // each order's delivery_cost runs on real courier charges (incl. failed /
+  // return legs) instead of the typical-cost estimate. Best-effort — a missing
+  // TCS_CUSTOMER_NO / API hiccup is reported but never fails the tracking sync.
+  // 45-day window comfortably covers the courier's billing lag.
+  let costReconcile: Awaited<ReturnType<typeof reconcileTcsCosts>> | null = null;
+  try {
+    costReconcile = await reconcileTcsCosts(sb, 45);
+  } catch (e) {
+    costReconcile = { ok: false, message: (e as Error).message, scanned: 0, matched: 0, updated: 0 };
+  }
+
   return NextResponse.json({
     ok: true,
     polled,
@@ -161,5 +174,6 @@ export async function GET(req: NextRequest) {
     no_adapter_couriers: Array.from(new Set(noAdapter)),
     errors: errors.slice(0, 10),
     error_count: errors.length,
+    cost_reconcile: costReconcile,
   });
 }
