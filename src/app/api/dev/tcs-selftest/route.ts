@@ -125,8 +125,10 @@ export async function GET(req: Request) {
     hasCustomerNo: Boolean(process.env.TCS_CUSTOMER_NO),
   });
 
-  if (!tcs.isConfigured() || !isUat || !rawToken) {
-    return NextResponse.json({ ok: false, summary: 'Not configured / not UAT — see config step.', steps }, { status: 200 });
+  // Prod probe/booking paths hardcode ociconnect and only need the token; the
+  // isUat gate is applied per-path (only the adapter book=1 path is UAT-only).
+  if (!tcs.isConfigured() || !rawToken) {
+    return NextResponse.json({ ok: false, summary: 'Not configured — see config step.', steps }, { status: 200 });
   }
 
   const token = rawToken.trim();
@@ -344,8 +346,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: Boolean(cn), consignmentNo: cn, winningVariant, summary: cn ? `PROD booking OK via ${winningVariant}; cancelled ${cn}.` : 'PROD booking failed — see steps.', steps }, { status: 200 });
   }
 
-  // Probe token transport variants against the booking endpoint.
-  if (url.searchParams.get('book') === '1') {
+  // Probe token transport variants against the booking endpoint (UAT ONLY —
+  // this path uses baseUrl/adapter, so refuse when pointed at prod).
+  if (url.searchParams.get('book') === '1' && isUat) {
     const v1 = await tryBook(baseUrl, token, 'body-accesstoken-only (current adapter)', false, token);
     steps.push({ step: 'book:v1', ...v1 });
     const v2 = await tryBook(baseUrl, token, 'Authorization header + body accesstoken', true, token);
