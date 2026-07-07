@@ -324,6 +324,11 @@ export interface Vendor {
   commission_pct?: number | null;
   /** Who collects the customer payment, and therefore who owes whom. */
   settlement_direction?: 'vendor_collects' | 'we_collect';
+  /** Vendor ships to the customer itself (e.g. NB Sons) — no TCS booking; its
+   *  delivery cost is delivery_fee, not a courier charge. */
+  self_delivers?: boolean;
+  /** PKR the vendor bills us per self-delivered order (0 = no charge). */
+  delivery_fee?: number | null;
   created_at?: string;
 }
 
