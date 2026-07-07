@@ -159,6 +159,40 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok, consignmentNo: cn, summary: ok ? `Adapter end-to-end OK — ${cn} booked+cancelled.` : 'Adapter booking failed — see steps.', steps }, { status: 200 });
   }
 
+  // Inspect the raw label/print response (content-type + body) to fix parsing.
+  if (url.searchParams.get('labeldbg') === '1') {
+    const P = 'https://ociconnect.tcscourier.com';
+    const u = process.env.TCS_USERNAME ?? '', p = process.env.TCS_PASSWORD ?? '';
+    const mr = await fetch(`${P}/ecom/api/authentication/token?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`, { headers: { Authorization: `Bearer ${token}` } });
+    const ecom = ((await mr.json().catch(() => null)) as { accesstoken?: string } | null)?.accesstoken ?? '';
+    // Book a CN to print.
+    const book = await tcs.book({
+      orderNumber: `LBLTEST-${Date.now().toString().slice(-6)}`,
+      consignee: { firstName: 'Label', lastName: 'Test', phone: '03001234567', email: 'selftest@example.com', address1: 'House 1, Test Street', city: 'Karachi', countryCode: 'PK' },
+      weightKg: 0.5, pieces: 1, codAmount: 1000, currency: 'PKR',
+      items: [{ description: 'Label test', quantity: 1, weightKg: 0.5, unitPrice: 1000 }],
+      remarks: 'Label debug — ignore',
+    });
+    const cn = ('ok' in book && book.ok) ? (book as { trackingNumber: string }).trackingNumber : null;
+    steps.push({ step: 'labeldbg:book', ok: Boolean(cn), cn });
+    if (cn) {
+      const variants = [
+        { name: 'GET query', run: () => fetch(`${P}/ecom/api/print/label?consignmentno=${encodeURIComponent(cn)}&shipperdetail=true&accesstoken=${encodeURIComponent(ecom)}`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } }) },
+        { name: 'POST body', run: () => fetch(`${P}/ecom/api/print/label`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ consignmentno: cn, shipperdetail: 'true', accesstoken: ecom }) }) },
+      ];
+      for (const v of variants) {
+        try {
+          const r = await v.run();
+          const ct = r.headers.get('content-type');
+          const text = await r.text();
+          steps.push({ step: `labeldbg:${v.name}`, http: r.status, contentType: ct, bodyLen: text.length, bodyHead: text.slice(0, 300) });
+        } catch (e) { steps.push({ step: `labeldbg:${v.name}`, error: (e as Error).message }); }
+      }
+      steps.push({ step: 'labeldbg:cancel', result: await tcs.cancel(cn) });
+    }
+    return NextResponse.json({ ok: true, summary: 'Label response inspection — see bodyHead/contentType.', steps }, { status: 200 });
+  }
+
   // Probe: isolate token-validity from account/cost-centre config.
   if (url.searchParams.get('probe') === '1') {
     const b = baseUrl.replace(/\/$/, '');
