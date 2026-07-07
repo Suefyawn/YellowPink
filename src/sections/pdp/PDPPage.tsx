@@ -173,7 +173,9 @@ function ZoomableImage({ src, alt, label, fallback }: { src: string | null; alt:
       <div
         style={{
           width: '100%', height: '100%',
-          transform: zoomed ? 'scale(1.8)' : 'scale(1)',
+          // Gentle magnify on hover — 1.8× was jarring on the large desktop
+          // hero. Enough to inspect texture without lurching.
+          transform: zoomed ? 'scale(1.35)' : 'scale(1)',
           transformOrigin: `${origin.x}% ${origin.y}%`,
           transition: 'transform 220ms ease-out',
           willChange: 'transform',
@@ -513,7 +515,11 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             NOT stretch to the row height, otherwise opening an accordion in
             the right column grows the row and the aspect-ratio image scales
             up/down with it. */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto', alignItems: 'start' }} className="pdp-grid">
+        {/* Image column capped (~440px) so the square hero stays a sensible
+            size on wide desktops instead of ballooning to a ~500px+ slab; the
+            details column takes the remaining width. Collapses to 1-col ≤900px
+            (see .pdp-grid in globals.css). */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 440px) minmax(0, 1fr)', gap: 48, padding: '40px 0', maxWidth: 1080, margin: '0 auto', alignItems: 'start' }} className="pdp-grid">
           {/* Keyed on the picked variant's image so choosing a shade/size
               remounts the gallery with that variant's photo as the active hero
               (see Gallery: the variant→gallery link). Non-variable products key
