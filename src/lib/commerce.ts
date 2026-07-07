@@ -8,7 +8,9 @@
 // The real, province-aware rate still comes from shipping_rates in the DB;
 // these are only the optimistic pre-address defaults.
 export const FREE_SHIPPING_THRESHOLD = 5000;
-export const DEFAULT_SHIPPING_RATE = 200;
+// The pre-address "from" rate — matches the cheapest zone (Zone 1) so the
+// optimistic estimate never sits below what any customer actually pays.
+export const DEFAULT_SHIPPING_RATE = 250;
 
 /** Resolved free-shipping / shipping configuration, derived from the
  *  owner-editable site settings (admin → Settings → Shipping). This is the

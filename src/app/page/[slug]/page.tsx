@@ -13,6 +13,7 @@ import { DEMO_PAGES } from '@/lib/demo-data';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { pageMeta, jsonLd, pageArticleLd, faqLd, breadcrumbLd, truncateOnWord } from '@/lib/seo';
 import { getPageFaq } from '@/lib/page-faqs';
+import { getShippingZonesForDisplay, shippingZonesHtml } from '@/lib/shipping';
 import { ContactForm } from '@/components/contact/ContactForm';
 import { ContactChannels } from '@/components/contact/ContactChannels';
 import { Overline } from '@/components/ui/Overline';
@@ -99,7 +100,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const commerce = parseCommerceConfig(await getSiteSettings());
   const sub = (s: string) => s
     .replaceAll('{{flat_shipping}}', formatPkr(commerce.defaultShippingRate))
-    .replaceAll('{{free_shipping_threshold}}', formatPkr(commerce.freeShippingThreshold));
+    .replaceAll('{{free_shipping_threshold}}', formatPkr(commerce.freeShippingThreshold))
+    // The zone table is body-only; strip the token from title/meta text.
+    .replaceAll('{{shipping_zones}}', '');
   return pageMeta({
     title: sub(page.meta_title ?? page.title),
     description: sub(deriveDescription(page)),
@@ -120,9 +123,17 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
   // re-sanitise here in case content was edited via raw SQL. Then substitute the
   // dynamic shipping tokens so CMS pages (Shipping, FAQ) always reflect the live
   // admin-configured rate/threshold instead of hard-coded numbers that drift.
+  // {{shipping_zones}} expands to a live zone/rate table so the Shipping and FAQ
+  // pages always mirror the real zones — no hard-coded numbers to drift. Built
+  // after sanitisation (store-controlled markup) and only when the token is used.
+  const zonesToken = '{{shipping_zones}}';
+  const zonesHtml = page.body_html.includes(zonesToken)
+    ? shippingZonesHtml(await getShippingZonesForDisplay(), commerce.freeShippingEnabled)
+    : '';
   const safeHtml = sanitizeHtml(page.body_html)
     .replaceAll('{{flat_shipping}}', formatPkr(commerce.defaultShippingRate))
-    .replaceAll('{{free_shipping_threshold}}', formatPkr(commerce.freeShippingThreshold));
+    .replaceAll('{{free_shipping_threshold}}', formatPkr(commerce.freeShippingThreshold))
+    .replaceAll(zonesToken, zonesHtml);
   const isContact = page.slug === 'contact';
   const faqs = getPageFaq(page.slug, commerce);
 
