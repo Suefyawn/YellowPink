@@ -6,6 +6,8 @@ interface SentryIssue {
   title: string;
   level: string;
   count: string;
+  userCount?: number;
+  firstSeen?: string | null;
   lastSeen: string;
   permalink: string;
 }
@@ -45,6 +47,10 @@ export async function SentryWidget() {
   }
 
   const { data: stats, updatedAt } = result;
+  // Server component renders once per request, so Date.now() is stable here;
+  // the purity rule targets client components the React Compiler may re-render.
+  // eslint-disable-next-line react-hooks/purity
+  const nowMs = Date.now();
 
   return (
     <div style={cardStyle}>
@@ -126,9 +132,16 @@ export async function SentryWidget() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Recent issues
+            Top issues by impact
           </div>
-          {stats.issues.map(issue => (
+          {stats.issues.map(issue => {
+            // "New today": first seen within the last 24h. Sentry sends ISO
+            // timestamps; a missing value just means no badge.
+            const isNew = issue.firstSeen
+              ? (nowMs - new Date(issue.firstSeen).getTime()) < 24 * 60 * 60 * 1000
+              : false;
+            const users = Number(issue.userCount ?? 0);
+            return (
             <a
               key={issue.id}
               href={issue.permalink}
@@ -149,19 +162,35 @@ export async function SentryWidget() {
                   {issue.level}
                 </span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: '0.8125rem', color: '#111827', fontWeight: 500,
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
-                    {issue.title}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    {isNew && (
+                      <span style={{
+                        flexShrink: 0, fontSize: '0.5625rem', fontWeight: 700, letterSpacing: '0.04em',
+                        color: '#b91c1c', background: '#fef2f2', border: '1px solid #fecaca',
+                        borderRadius: 4, padding: '0 4px', textTransform: 'uppercase',
+                      }}>New</span>
+                    )}
+                    <div style={{
+                      fontSize: '0.8125rem', color: '#111827', fontWeight: 500,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0,
+                    }}>
+                      {issue.title}
+                    </div>
                   </div>
                   <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>
+                    {users > 0 && (
+                      <span style={{ color: '#b91c1c', fontWeight: 600 }}>
+                        {users.toLocaleString()} {users === 1 ? 'person' : 'people'} affected
+                      </span>
+                    )}
+                    {users > 0 && ' · '}
                     {Number(issue.count).toLocaleString()} occurrences · {timeAgoShort(issue.lastSeen)}
                   </div>
                 </div>
               </div>
             </a>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

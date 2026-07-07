@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 6 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 7 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -346,7 +346,7 @@ Deeper performance data, organised as **four question tabs**:
 
 - **Sales** (am I selling more?) — revenue/orders/AOV cards with mini-trends and change vs the previous window, the revenue chart, orders by status with links into the filtered list, and top products.
 - **Customers** (who buys and do they return?) — unique customers, repeat-purchase rate, RFM segments, cohort retention.
-- **Traffic** (is anyone finding us?) — the SEO trend, live **Search Console** and **Google Analytics 4** panels once you **Connect Google** in Settings → Integrations, Core Web Vitals, top pages/events.
+- **Traffic** (is anyone finding us?) — the SEO trend, live **Search Console** and **Google Analytics 4** panels once you **Connect Google** in Settings → Integrations, and Core Web Vitals. Below those, an **on-site behaviour** block reads the rolling 7-day PostHog snapshot: top pages, top events & sources, a **device & browser** split (phone vs desktop, and which in-app browsers — Instagram/WhatsApp webviews — people arrive in), an **engagement** panel (pages per session, average session length, bounce rate) with the top **landing pages**, and a **Where visitors are** panel of the top cities and countries — the Pakistan-vs-international split that shows how much traffic can actually convert to COD. A final **Demand & product interest** block shows the top on-site **search terms** (what people type into the store search — a direct read on demand and catalogue gaps) and the **most-viewed products with their view→cart rate**, so a product pulling lots of views but no carts (a pricing/photo/description problem) is flagged for you to fix.
 - **Funnels** (where do shoppers leak?) — the conversion funnel, funnel-by-source and funnel-by-device, top user journeys, weekly active users, and PostHog session recordings.
 
 The Sales and Customers tabs open with a short **"what stands out"** strip — plain-language observations computed from the same window (e.g. *"Revenue is up 23% vs the prior 30 days"*, *"X alone drove 18% of this window's revenue"*) — so the numbers come with their own reading. The date-range pills (7/30/90 days, 1 year) apply across tabs.
@@ -906,6 +906,12 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 7 July 2026
+
+- **Analytics Traffic tab — a real behaviour dashboard.** Below Search & discovery, the Traffic tab now reads much more from PostHog: **device & browser** (phone vs desktop, and which in-app browsers — Instagram/WhatsApp webviews — people arrive in), an **engagement** panel (pages per session, average session length, bounce rate) with the **landing pages** sessions actually start on, a **Where visitors are** panel of top cities/countries (the Pakistan-vs-international split, so you can see how much traffic can convert to COD), and a **Demand & product interest** block showing the top on-site **search terms** and the **most-viewed products with their view→cart rate** — a product pulling lots of views but no carts (a pricing/photo/copy problem) is flagged for you to act on. These populate after the next analytics refresh.
+- **Sentry errors ranked by who they hurt.** The dashboard's error widget now leads with **top issues by impact** — how many real people each error affected — instead of just the most recent, tags brand-**new** issues (first seen in the last 24h), and shows the affected-people count on each row, so triage starts with what's actually costing you customers.
+- **Mobile/PWA card overflow fixed.** On phones, some cards on the Dashboard and the Analytics Traffic/Funnels tabs could push past the screen edge; the admin now stays within the viewport on every width.
 
 ### 6 July 2026
 

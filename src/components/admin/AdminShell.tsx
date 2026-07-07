@@ -82,7 +82,13 @@ export function AdminShell({
         .adm-sidebar .adm-signout { transition: all 0.15s; }
         /* Dashboard KPI cards lift slightly on hover (they're links). */
         .adm-kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16,24,40,0.10) !important; border-color: #e5e7eb !important; }
-        .adm-main { margin-left: 240px; min-height: 100vh; background: #f3f4f6; }
+        /* overflow-x: clip is a belt-and-suspenders guard so nothing inside a
+         * page can force the whole admin to scroll sideways (the reported PWA
+         * "card off-screen" bug). clip (unlike hidden) doesn't create a scroll
+         * container, so the sticky topbar and inner .adm-table-scroll regions
+         * keep working; min-width:0 lets the main column shrink to the
+         * viewport when the sidebar is off-canvas. */
+        .adm-main { margin-left: 240px; min-width: 0; overflow-x: clip; min-height: 100vh; background: #f3f4f6; }
         .adm-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 30; }
         .adm-topbar .menu-btn { display: none; }
         .adm-overlay { display: none; }
@@ -206,8 +212,11 @@ export function AdminShell({
         }
 
         @media (max-width: 1023px) {
-          .adm-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
-          .adm-analytics-grid { grid-template-columns: 1fr !important; }
+          /* minmax(0,…) so a card with a wide, unbreakable value can't expand
+           * its track and shove the grid past the viewport (the mobile
+           * card-overflow bug). */
+          .adm-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .adm-analytics-grid { grid-template-columns: minmax(0, 1fr) !important; }
         }
 
         /* ─ Settings save bar ─

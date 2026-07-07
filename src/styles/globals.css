@@ -964,13 +964,16 @@ a.underline,
   .adm-main { margin-left: 200px !important; }
   /* The 200px sidebar leaves a narrow content column on tablets — drop the
    * stat-card grids to 3-up so the dashboard / analytics KPI cards don't
-   * cram (the inline styles set 4–5 columns for desktop). */
-  .adm-stat-grid { grid-template-columns: repeat(3, 1fr) !important; }
+   * cram (the inline styles set 4–5 columns for desktop). minmax(0,…) lets a
+   * track shrink below its content's min-content width — without it a card
+   * with a wide unbreakable value (a long "PKR 1,234,567", a monospace path)
+   * expands its `1fr` track and pushes the whole grid past the viewport. */
+  .adm-stat-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
 }
 @media (max-width: 767px) {
-  .adm-stat-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .adm-analytics-grid { grid-template-columns: 1fr !important; }
-  .adm-two-col { grid-template-columns: 1fr !important; }
+  .adm-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .adm-analytics-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .adm-two-col { grid-template-columns: minmax(0, 1fr) !important; }
   /* PDP "Why Yellow Pink" trust cards: 4-up cramps badly on a phone. */
   .trust-grid { grid-template-columns: repeat(2, 1fr) !important; }
   /* Reclaim horizontal room on phones — the 36px desktop gutter is too wide. */
