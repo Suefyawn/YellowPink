@@ -101,7 +101,7 @@ export async function GET(req: Request) {
 
   steps.push({
     step: 'config',
-    buildMarker: 'cc001-final',
+    buildMarker: 'lhe-final',
     baseUrl, isUat,
     isConfigured: tcs.isConfigured(),
     adapterIds: configuredAdapterIds(),
