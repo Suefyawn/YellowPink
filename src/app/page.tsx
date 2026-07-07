@@ -13,7 +13,7 @@ import {
   getSiteSettings,
   getBlogPosts,
 } from '@/lib/supabase';
-import { jsonLd, itemListLd } from '@/lib/seo';
+import { jsonLd, itemListLd, productInStock } from '@/lib/seo';
 import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
 import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 import { buildWellnessShowcase } from '@/lib/wellness-data';
@@ -124,7 +124,7 @@ export default async function HomePage() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{
             __html: jsonLd(itemListLd('Best sellers', topSellers.map(p => ({
-              name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price,
+              name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price, inStock: productInStock(p),
             })))),
           }}
         />

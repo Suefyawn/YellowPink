@@ -88,10 +88,19 @@ describe('SEO JSON-LD helpers', () => {
     it('embeds a priced Product for entries with a price', () => {
       const ld = itemListLd('Skincare', [{ name: 'Moisturizer', path: '/product/x', image: '/i.jpg', brand: 'CeraVe', price: 2400 }]);
       const el = (ld.itemListElement as Array<Record<string, unknown>>)[0];
-      const item = el.item as { '@type': string; offers: { price: number; priceCurrency: string } };
+      const item = el.item as { '@type': string; offers: { price: number; priceCurrency: string; availability: string } };
       expect(item['@type']).toBe('Product');
       expect(item.offers.price).toBe(2400);
       expect(item.offers.priceCurrency).toBe('PKR');
+      // Google requires availability on Product offers; defaults to InStock.
+      expect(item.offers.availability).toBe('https://schema.org/InStock');
+    });
+
+    it('marks the Offer OutOfStock when inStock is false', () => {
+      const ld = itemListLd('Skincare', [{ name: 'Serum', path: '/product/y', price: 1500, inStock: false }]);
+      const el = (ld.itemListElement as Array<Record<string, unknown>>)[0];
+      const item = el.item as { offers: { availability: string } };
+      expect(item.offers.availability).toBe('https://schema.org/OutOfStock');
     });
 
     it('falls back to a lean URL summary when no price (e.g. blog index)', () => {

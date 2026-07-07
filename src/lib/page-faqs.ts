@@ -26,8 +26,8 @@ export interface FaqPolicy {
 
 const freeShippingAnswer = (p: FaqPolicy) =>
   p.freeShippingEnabled
-    ? `Free shipping is automatically applied to orders over ${formatPkr(p.freeShippingThreshold)} nationwide. Below that threshold, a flat shipping fee is calculated at checkout based on your delivery city.`
-    : 'A flat shipping fee is calculated at checkout based on your delivery city.';
+    ? `Larger orders ship free automatically — from ${formatPkr(p.freeShippingThreshold)} in Punjab, with a slightly higher threshold for other regions (the exact figure shows in your cart and at checkout). Below that, the delivery fee for your city is calculated at checkout.`
+    : 'The delivery fee for your city is calculated at checkout, based on your delivery region.';
 
 const returnsWindowAnswer = () =>
   `You can request a return within ${RETURNS_WINDOW_DAYS} days of delivery for unopened, unused items in their original packaging. Opened or used items are not eligible unless they arrived damaged or defective.`;

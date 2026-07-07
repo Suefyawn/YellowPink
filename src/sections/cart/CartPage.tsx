@@ -309,9 +309,14 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
                 <span className="body-text">Shipping</span>
                 <span className="body-text tabular-nums" style={{ fontWeight: 500, color: shipping === 0 ? 'var(--success)' : 'inherit' }}>
-                  {shipping === 0 ? 'FREE' : `PKR ${shipping}`}
+                  {shipping === 0 ? 'FREE' : `From PKR ${shipping}`}
                 </span>
               </div>
+              {shipping !== 0 && (
+                <p className="small-text" style={{ margin: '-4px 0 12px', color: 'var(--ink-500)' }}>
+                  Final delivery charge is set by your city at checkout.
+                </p>
+              )}
               <hr className="hairline" style={{ margin: '16px 0' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
                 <span className="h3">Total</span>

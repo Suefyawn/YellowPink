@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { Overline } from '@/components/ui/Overline';
 import { CollectionGrid } from '@/sections/collection/CollectionGrid';
-import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { loadTagData } from '@/lib/shop-facets';
 import { redirectIfMapped } from '@/lib/redirects';
@@ -89,7 +89,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: jsonLd(itemListLd(c.title, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price })))),
+            __html: jsonLd(itemListLd(c.title, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price, inStock: productInStock(p) })))),
           }}
         />
       )}

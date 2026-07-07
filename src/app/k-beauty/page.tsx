@@ -6,7 +6,7 @@ import type { Metadata } from 'next';
 import { getProductsByBrands } from '@/lib/supabase';
 import { K_BEAUTY_BRANDS, K_BEAUTY_FAQ, K_BEAUTY_PAGE_URL } from '@/lib/k-beauty';
 import { KBeautyCollection } from '@/sections/kbeauty/KBeautyCollection';
-import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd, absoluteUrl } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd, absoluteUrl, productInStock } from '@/lib/seo';
 
 export const metadata: Metadata = pageMeta({
   title: 'K-Beauty, Authentic Korean Skincare in Pakistan',
@@ -38,7 +38,7 @@ export default async function KBeautyPage() {
             // Pass image/brand/price so the list emits rich Product items
             // (eligible for product-list rich results), matching the
             // collection/brand/tag pages — not lean URL-only summaries.
-            products.map(p => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand ?? undefined, price: p.price })),
+            products.map(p => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand ?? undefined, price: p.price, inStock: productInStock(p) })),
           )),
         }}
       />

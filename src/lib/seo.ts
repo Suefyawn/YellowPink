@@ -509,6 +509,16 @@ export interface ListEntry {
   image?: string | null;
   brand?: string | null;
   price?: number | null;
+  /** Stock state for the Offer's `availability`. Omit → treated as in stock
+   *  (Google requires the field; most listed products are sellable). */
+  inStock?: boolean | null;
+}
+
+/** Whether a product should be advertised as available: untracked inventory is
+ *  always available; tracked inventory needs stock > 0. Mirrors the storefront
+ *  add-to-cart gate and the PDP Offer's availability. */
+export function productInStock(p: { stock?: number | null; track_inventory?: boolean | null }): boolean {
+  return p.track_inventory === false || (p.stock ?? 0) > 0;
 }
 
 /**
@@ -548,6 +558,12 @@ export function itemListLd(name: string, items: ListEntry[]) {
               price: it.price,
               priceCurrency: 'PKR',
               itemCondition: 'https://schema.org/NewCondition',
+              // Google flags Product offers without availability. Default to
+              // InStock when the caller doesn't specify (listing pages show
+              // sellable products); mark OutOfStock only when known depleted.
+              availability: it.inStock === false
+                ? 'https://schema.org/OutOfStock'
+                : 'https://schema.org/InStock',
             },
           },
         };

@@ -8,7 +8,7 @@
 // ============================================================================
 
 import { supabase, getSiteSettings } from './supabase';
-import { parseCommerceConfig } from './commerce';
+import { parseCommerceConfig, formatPkr } from './commerce';
 
 export interface ResolvedRate {
   rate: number;
@@ -96,6 +96,58 @@ export async function resolveShipping(opts: {
         ? { min: row.estimated_days_min, max: row.estimated_days_max }
         : null,
   };
+}
+
+// ─── Live zone table for CMS pages ──────────────────────────────────────────
+// The {{shipping_zones}} token on the Shipping / FAQ pages renders this, so the
+// published policy always mirrors the real zones/rates and can never drift when
+// rates change in admin.
+export interface ShippingZoneDisplay {
+  label: string;
+  rate: number;
+  freeOver: number | null;
+}
+
+export async function getShippingZonesForDisplay(): Promise<ShippingZoneDisplay[]> {
+  const [{ data: zones }, { data: rates }, { data: pz }] = await Promise.all([
+    supabase.from('shipping_zones').select('id, name, sort_order').eq('active', true).order('sort_order', { ascending: true }),
+    supabase.from('shipping_rates').select('zone_id, rate, free_shipping_threshold'),
+    supabase.from('province_zones').select('province, zone_id'),
+  ]);
+  const rateBy = new Map((rates ?? []).map(r => [r.zone_id as string, r]));
+  return ((zones ?? []) as Array<{ id: string; name: string }>).map(z => {
+    const provinces = ((pz ?? []) as Array<{ province: string; zone_id: string }>)
+      .filter(p => p.zone_id === z.id).map(p => p.province);
+    const r = rateBy.get(z.id) as { rate: number; free_shipping_threshold: number | null } | undefined;
+    // Prefer the human province list; fall back to the zone name (minus any
+    // "Zone N — " prefix) when a zone has no provinces mapped yet.
+    const label = provinces.length ? provinces.join(', ') : z.name.replace(/^Zone\s*\d+\s*[—-]\s*/i, '');
+    return { label, rate: Number(r?.rate ?? 0), freeOver: r?.free_shipping_threshold ?? null };
+  }).filter(z => z.rate > 0);
+}
+
+function esc(s: string): string {
+  return s.replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c] as string));
+}
+
+/** HTML table of the live zones for injection into CMS body_html (already
+ *  past sanitisation — content is store-controlled). `freeEnabled` mirrors the
+ *  master free-shipping switch. Returns '' when no zones so callers can drop
+ *  the token cleanly. */
+export function shippingZonesHtml(zones: ShippingZoneDisplay[], freeEnabled: boolean): string {
+  if (!zones.length) return '';
+  const rows = zones.map(z => {
+    const free = freeEnabled && z.freeOver ? `Free over ${formatPkr(z.freeOver)}` : '—';
+    return `<tr><td>${esc(z.label)}</td><td>${formatPkr(z.rate)}</td><td>${free}</td></tr>`;
+  }).join('');
+  return (
+    `<table style="width:100%;border-collapse:collapse;margin:12px 0">` +
+    `<thead><tr>` +
+    `<th style="text-align:left;padding:8px;border-bottom:2px solid #eee">Region</th>` +
+    `<th style="text-align:left;padding:8px;border-bottom:2px solid #eee">Delivery charge</th>` +
+    `<th style="text-align:left;padding:8px;border-bottom:2px solid #eee">Free delivery</th>` +
+    `</tr></thead><tbody>${rows}</tbody></table>`
+  );
 }
 
 /** Pre-address delivery estimate for storefront surfaces (PDP, cart) that

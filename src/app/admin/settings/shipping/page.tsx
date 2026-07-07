@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getSiteSettings, supabaseAdmin } from '@/lib/supabase';
 import { saveSettings } from '../actions';
 import { createZone, updateZone, deleteZone } from './actions';
+import { ZoneRateCost } from './ZoneRateCost';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import {
   inp, lbl, Section, Card, Divider, Toggle,
@@ -22,24 +23,35 @@ interface Rate {
   id: string;
   zone_id: string;
   rate: number;
+  cost: number | null;
   free_shipping_threshold: number | null;
   label: string;
   estimated_days_min: number | null;
   estimated_days_max: number | null;
 }
 
-async function loadZones(): Promise<{ zone: Zone; rate: Rate | null }[]> {
+// The 7 provinces the checkout dropdown emits — used for the per-zone
+// assignment checkboxes.
+const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
+
+async function loadZones(): Promise<{ zone: Zone; rate: Rate | null; provinces: string[] }[]> {
   const sb = supabaseAdmin();
-  const [zonesRes, ratesRes] = await Promise.all([
+  const [zonesRes, ratesRes, pzRes] = await Promise.all([
     sb.from('shipping_zones').select('*').order('sort_order', { ascending: true }),
     sb.from('shipping_rates').select('*'),
+    sb.from('province_zones').select('province, zone_id'),
   ]);
   const zones = (zonesRes.data ?? []) as Zone[];
   const rates = (ratesRes.data ?? []) as Rate[];
-  return zones.map(z => ({ zone: z, rate: rates.find(r => r.zone_id === z.id) ?? null }));
+  const pz = (pzRes.data ?? []) as { province: string; zone_id: string }[];
+  return zones.map(z => ({
+    zone: z,
+    rate: rates.find(r => r.zone_id === z.id) ?? null,
+    provinces: pz.filter(p => p.zone_id === z.id).map(p => p.province),
+  }));
 }
 
-function ZoneFields({ zone, rate }: { zone?: Zone; rate?: Rate | null }) {
+function ZoneFields({ zone, rate, provinces = [] }: { zone?: Zone; rate?: Rate | null; provinces?: string[] }) {
   return (
     <>
       <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 12 }}>
@@ -52,25 +64,39 @@ function ZoneFields({ zone, rate }: { zone?: Zone; rate?: Rate | null }) {
           <input name="sort_order" type="number" defaultValue={zone?.sort_order ?? 0} style={inp} />
         </div>
       </div>
+      {/* Rate + cost with a live margin/loss guard. */}
+      <ZoneRateCost defaultRate={rate?.rate ?? 250} defaultCost={rate?.cost ?? null} />
       <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>
-          <label style={lbl}>Rate (PKR)</label>
-          <input name="rate" type="number" min={0} defaultValue={rate?.rate ?? 200} required style={inp} />
-        </div>
         <div>
           <label style={lbl}>Free shipping at (PKR, blank for never)</label>
           <input name="free_shipping_threshold" type="number" min={0} defaultValue={rate?.free_shipping_threshold ?? ''} style={inp} placeholder="e.g. 5000" />
         </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div>
+            <label style={lbl}>Est. min days</label>
+            <input name="estimated_days_min" type="number" min={0} defaultValue={rate?.estimated_days_min ?? ''} style={inp} />
+          </div>
+          <div>
+            <label style={lbl}>Est. max days</label>
+            <input name="estimated_days_max" type="number" min={0} defaultValue={rate?.estimated_days_max ?? ''} style={inp} />
+          </div>
+        </div>
       </div>
-      <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <div>
-          <label style={lbl}>Est. min days</label>
-          <input name="estimated_days_min" type="number" min={0} defaultValue={rate?.estimated_days_min ?? ''} style={inp} />
+      {/* Province assignment — which destinations use this zone's rate. A
+          province can belong to only one zone; ticking it here moves it here. */}
+      <div>
+        <label style={lbl}>Provinces in this zone</label>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px' }}>
+          {PROVINCES.map(p => (
+            <label key={p} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.875rem', color: '#374151' }}>
+              <input type="checkbox" name="provinces" value={p} defaultChecked={provinces.includes(p)} />
+              {p}
+            </label>
+          ))}
         </div>
-        <div>
-          <label style={lbl}>Est. max days</label>
-          <input name="estimated_days_max" type="number" min={0} defaultValue={rate?.estimated_days_max ?? ''} style={inp} />
-        </div>
+        <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+          Unticked provinces fall back to the default rate above. Each province can be in only one zone.
+        </p>
       </div>
       <div>
         <label style={lbl}>Active</label>
@@ -153,7 +179,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
           No zones yet, checkout falls back to the default above. Add one to start charging per region.
         </div>
       ) : (
-        zones.map(({ zone, rate }) => (
+        zones.map(({ zone, rate, provinces }) => (
           <div key={zone.id} style={{
             background: 'white', borderRadius: 12, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)',
             padding: 24, marginBottom: 12,
@@ -168,7 +194,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
                   </span>
                 )}
               </div>
-              <ZoneFields zone={zone} rate={rate} />
+              <ZoneFields zone={zone} rate={rate} provinces={provinces} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
                 <button type="submit" style={{
                   padding: '8px 18px', background: '#C5286A', color: 'white',

@@ -7,7 +7,7 @@ import { notFound } from 'next/navigation';
 import { getProducts } from '@/lib/supabase';
 import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
-import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { brandNameFromSlug, brandSlug, getBrandRecord } from '@/lib/brands';
 import { redirectIfMapped } from '@/lib/redirects';
@@ -80,7 +80,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: jsonLd(itemListLd(`${brand} products`, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price })))),
+            __html: jsonLd(itemListLd(`${brand} products`, list.slice(0, 24).map((p: Product) => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand, price: p.price, inStock: productInStock(p) })))),
           }}
         />
       )}
