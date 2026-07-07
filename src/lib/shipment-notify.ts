@@ -19,11 +19,16 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendStatusTransitionEmail } from '@/lib/order-status-emails';
 
-// Mirror of the trigger's mapping: which order status a given (normalised)
-// shipment status resolves to, or null for statuses that don't move the order
-// (created / returned / failed / cancelled are handled elsewhere).
-export function orderStatusForShipment(shipmentStatus: string): 'shipped' | 'delivered' | null {
+// Mirror of the trigger's mapping (migration 20260708_610): which order status a
+// given (normalised) shipment status resolves to, or null for statuses that
+// don't move the order. A `returned` scan (parcel refused / returned to origin)
+// advances the order to `returned` so a refused COD delivery stops showing as
+// "shipped" — it does NOT restock (that's the returns flow, on physical
+// receipt). `failed` (a single unsuccessful attempt, may be re-attempted) and
+// `created` / `cancelled` don't move the order here.
+export function orderStatusForShipment(shipmentStatus: string): 'shipped' | 'delivered' | 'returned' | null {
   if (shipmentStatus === 'delivered') return 'delivered';
+  if (shipmentStatus === 'returned') return 'returned';
   if (shipmentStatus === 'picked_up' || shipmentStatus === 'in_transit' || shipmentStatus === 'out_for_delivery') {
     return 'shipped';
   }
