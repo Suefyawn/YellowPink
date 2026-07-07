@@ -212,6 +212,32 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, summary: 'Second-auth-system probe — see steps.', steps }, { status: 200 });
   }
 
+  // Look up valid TCS city codes (to resolve "Invalid Origin City").
+  if (url.searchParams.get('citylist') === '1') {
+    const P = 'https://ociconnect.tcscourier.com';
+    const q = (url.searchParams.get('q') || 'LAHOR').toUpperCase();
+    async function get(path: string, query: string, useMint: boolean) {
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      let target = `${P}${path}${query}`;
+      if (useMint) {
+        const u = process.env.TCS_USERNAME ?? '', p = process.env.TCS_PASSWORD ?? '';
+        const mr = await fetch(`${P}/ecom/api/authentication/token?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`, { headers: { Authorization: `Bearer ${token}` } });
+        const et = ((await mr.json().catch(() => null)) as { accesstoken?: string } | null)?.accesstoken ?? '';
+        target += `${query.includes('?') ? '&' : '?'}accesstoken=${encodeURIComponent(et)}`;
+      }
+      try {
+        const r = await fetch(target, { method: 'GET', headers });
+        const out = await r.json().catch(() => null) as null | { data?: unknown[]; message?: string; count?: unknown };
+        const data = Array.isArray(out?.data) ? out!.data as Array<Record<string, unknown>> : [];
+        const matches = data.filter(row => JSON.stringify(row).toUpperCase().includes(q));
+        return { http: r.status, message: out?.message ?? null, total: data.length, matches: matches.slice(0, 20), sample: data.slice(0, 3) };
+      } catch (e) { return { error: (e as Error).message }; }
+    }
+    steps.push({ step: 'citylist:byCountry(header)', ...(await get('/ecom/api/setup/citylistbycountry', '?countrycode=PK', false)) });
+    steps.push({ step: 'citylist:byCountry(mint)', ...(await get('/ecom/api/setup/citylistbycountry', '?countrycode=PK', true)) });
+    return NextResponse.json({ ok: true, summary: `City list — matches for "${q}".`, steps }, { status: 200 });
+  }
+
   // Look up the account's REAL cost centres via Cost Center Inquiry, using the
   // minted ecom token. Solves "No Cost Center found" from a wrong code.
   if (url.searchParams.get('cci') === '1') {
