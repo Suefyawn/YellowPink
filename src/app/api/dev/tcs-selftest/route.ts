@@ -185,6 +185,49 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, summary: 'Token-validity + config probes — see steps.', steps }, { status: 200 });
   }
 
+  // PROD smoke test: create ONE real consignment on ociconnect, validate
+  // label + track, then cancel it. Tests both token transports so we learn
+  // whether the adapter (body-token only) works on prod or needs the header.
+  if (url.searchParams.get('prodbook') === '1') {
+    const P = 'https://ociconnect.tcscourier.com';
+    async function prodBook(useHeader: boolean, bodyToken: string) {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (useHeader) headers.Authorization = `Bearer ${token}`;
+      const r = await fetch(`${P}/ecom/api/booking/create`, { method: 'POST', headers, body: JSON.stringify(buildBookingBody(bodyToken)) });
+      const out = await r.json().catch(() => null);
+      return { http: r.status, ok: r.ok && out?.status !== false && Boolean(out?.consignmentNo), cn: out?.consignmentNo ?? null, response: out };
+    }
+    async function prodCancel(cn: string) {
+      const r = await fetch(`${P}/ecom/api/booking/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ accesstoken: token, consignmentNumber: cn }) });
+      return { http: r.status, response: await r.json().catch(() => null) };
+    }
+    async function prodGet(path: string, query: string) {
+      const r = await fetch(`${P}${path}${query}`, { method: 'GET', headers: { Authorization: `Bearer ${token}` } });
+      return { http: r.status, response: await r.json().catch(() => null) };
+    }
+
+    // V1 = adapter's current behaviour (body accesstoken, no header).
+    const v1 = await prodBook(false, token);
+    steps.push({ step: 'prod:book:v1(body-only, = adapter)', ...v1 });
+    let cn: string | null = v1.ok ? String(v1.cn) : null;
+    let winningVariant = v1.ok ? 'body-only (adapter OK)' : null;
+
+    // V2 = with Authorization header, only if V1 didn't already succeed.
+    if (!cn) {
+      const v2 = await prodBook(true, token);
+      steps.push({ step: 'prod:book:v2(header+body)', ...v2 });
+      if (v2.ok) { cn = String(v2.cn); winningVariant = 'header+body (ADAPTER NEEDS HEADER FIX)'; }
+    }
+
+    if (cn) {
+      steps.push({ step: 'prod:label', ...(await prodGet('/ecom/api/print/label', `?consignmentno=${encodeURIComponent(cn)}&shipperdetail=true`)) });
+      steps.push({ step: 'prod:track', ...(await prodGet('/tracking/api/Tracking/GetDynamicTrackDetail', `?consignee=${encodeURIComponent(cn)}`)) });
+      const c = await prodCancel(cn);
+      steps.push({ step: 'prod:cancel(cleanup)', ...c });
+    }
+    return NextResponse.json({ ok: Boolean(cn), consignmentNo: cn, winningVariant, summary: cn ? `PROD booking OK via ${winningVariant}; cancelled ${cn}.` : 'PROD booking failed — see steps.', steps }, { status: 200 });
+  }
+
   // Probe token transport variants against the booking endpoint.
   if (url.searchParams.get('book') === '1') {
     const v1 = await tryBook(baseUrl, token, 'body-accesstoken-only (current adapter)', false, token);
