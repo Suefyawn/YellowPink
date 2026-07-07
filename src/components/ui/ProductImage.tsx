@@ -22,11 +22,15 @@ interface Props {
    *  is wasted bandwidth for an 80px-wide thumb). */
   width?: number;
   height?: number;
+  /** How the image fills its box. Defaults to 'cover' (tiles/thumbnails); use
+   *  'contain' for the PDP hero so a portrait bottle shows whole rather than
+   *  being cropped ("zoomed in"). */
+  fit?: 'cover' | 'contain';
 }
 
 const DEFAULT_SIZES = '(max-width: 600px) 50vw, (max-width: 1024px) 33vw, 320px';
 
-export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES, priority = false, label, width, height }: Props) {
+export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES, priority = false, label, width, height, fit = 'cover' }: Props) {
   const [errored, setErrored] = useState(false);
   // Fade the image in once it decodes so it doesn't "pop" in on top of the
   // placeholder background, a small touch that makes the grid feel calmer.
@@ -44,7 +48,7 @@ export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES
           width={width}
           height={height}
           priority={priority}
-          style={{ objectFit: 'cover', width: '100%', height: '100%', ...fade, ...style }}
+          style={{ objectFit: fit, width: '100%', height: '100%', ...fade, ...style }}
           className={className}
           onLoad={() => setLoaded(true)}
           onError={() => setErrored(true)}
@@ -60,7 +64,7 @@ export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES
           fill
           sizes={sizes}
           priority={priority}
-          style={{ objectFit: 'cover', ...fade }}
+          style={{ objectFit: fit, ...fade }}
           onLoad={() => setLoaded(true)}
           onError={() => setErrored(true)}
           unoptimized={src.startsWith('data:')}

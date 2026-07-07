@@ -526,6 +526,12 @@ a.underline,
   .pdp-gallery-thumbs::-webkit-scrollbar { display: none; }
 }
 
+/* PDP image slider: hide the horizontal scrollbars on the swipe track and the
+ * thumbnail strip (scroll-snap handles the paging; scrollbarWidth:none covers
+ * Firefox, this covers WebKit/Chromium). */
+.pdp-slider-track::-webkit-scrollbar,
+.pdp-slider-thumbs::-webkit-scrollbar { display: none; }
+
 /* Frequently-bought-together: 2fr / 1fr stacks awkwardly on phones. Drop
  * to a single column so the product rail and the totals/CTA card each
  * get the full width. */
