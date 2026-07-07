@@ -31,14 +31,21 @@ function ok(): never {
   redirect(`${PATH}?saved=1`);
 }
 
+// The 7 Pakistan provinces the checkout dropdown emits. A province maps to at
+// most one zone (province_zones PK is `province`), so assigning it here moves
+// it off any other zone.
+const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
+
 interface ZoneFields {
   name: string;
   active: boolean;
   sort_order: number;
   rate: number;
+  cost: number | null;
   free_shipping_threshold: number | null;
   estimated_days_min: number | null;
   estimated_days_max: number | null;
+  provinces: string[];
 }
 
 function parseZone(formData: FormData): ZoneFields {
@@ -49,11 +56,19 @@ function parseZone(formData: FormData): ZoneFields {
   const rate = Number(rateRaw);
   if (!Number.isFinite(rate) || rate < 0) err('Rate must be a non-negative number.');
 
+  const costRaw = (formData.get('cost') as string | null)?.trim() ?? '';
+  const cost = costRaw === '' ? null : Number(costRaw);
+  if (cost !== null && (!Number.isFinite(cost) || cost < 0)) err('Cost must be a non-negative number or blank.');
+
   const freeThresholdRaw = (formData.get('free_shipping_threshold') as string | null)?.trim() ?? '';
   const free_shipping_threshold = freeThresholdRaw === '' ? null : Number(freeThresholdRaw);
   if (free_shipping_threshold !== null && (!Number.isFinite(free_shipping_threshold) || free_shipping_threshold < 0)) {
     err('Free-shipping threshold must be a non-negative number or blank.');
   }
+
+  // Only accept known province names; the form sends one 'provinces' entry per
+  // checked box.
+  const provinces = formData.getAll('provinces').map(String).filter(p => PROVINCES.includes(p));
 
   const sortRaw = (formData.get('sort_order') as string | null)?.trim() ?? '0';
   const sort_order = Number(sortRaw);
@@ -71,10 +86,35 @@ function parseZone(formData: FormData): ZoneFields {
     active: boolField(formData, 'active'),
     sort_order,
     rate,
+    cost,
     free_shipping_threshold,
     estimated_days_min,
     estimated_days_max,
+    provinces,
   };
+}
+
+// Reassign a zone's provinces. province_zones PK is `province`, so upserting a
+// province onto this zone moves it off whatever zone it was on; clearing this
+// zone's other rows drops any province that was un-checked.
+async function syncProvinces(
+  sb: ReturnType<typeof supabaseAdmin>,
+  zoneId: string,
+  provinces: string[],
+): Promise<string | null> {
+  // Drop provinces previously on this zone that are no longer selected.
+  const del = provinces.length
+    ? await sb.from('province_zones').delete().eq('zone_id', zoneId).not('province', 'in', `(${provinces.join(',')})`)
+    : await sb.from('province_zones').delete().eq('zone_id', zoneId);
+  if (del.error) return del.error.message;
+  // Claim the selected provinces for this zone (moves them off other zones).
+  if (provinces.length) {
+    const { error } = await sb
+      .from('province_zones')
+      .upsert(provinces.map(p => ({ province: p, zone_id: zoneId })), { onConflict: 'province' });
+    if (error) return error.message;
+  }
+  return null;
 }
 
 export async function createZone(formData: FormData): Promise<void> {
@@ -96,6 +136,7 @@ export async function createZone(formData: FormData): Promise<void> {
   const { error: rateErr } = await sb.from('shipping_rates').insert({
     zone_id: zone!.id,
     rate: z.rate,
+    cost: z.cost,
     free_shipping_threshold: z.free_shipping_threshold,
     label: 'Standard',
     estimated_days_min: z.estimated_days_min,
@@ -106,6 +147,9 @@ export async function createZone(formData: FormData): Promise<void> {
     await sb.from('shipping_zones').delete().eq('id', zone!.id);
     err(rateErr.message);
   }
+
+  const provErr = await syncProvinces(sb, zone!.id, z.provinces);
+  if (provErr) err(provErr);
 
   void logAudit(session, {
     action: 'shipping_zone.create',
@@ -143,6 +187,7 @@ export async function updateZone(id: string, formData: FormData): Promise<void> 
   const ratePatch = {
     zone_id: id,
     rate: z.rate,
+    cost: z.cost,
     free_shipping_threshold: z.free_shipping_threshold,
     estimated_days_min: z.estimated_days_min,
     estimated_days_max: z.estimated_days_max,
@@ -156,6 +201,9 @@ export async function updateZone(id: string, formData: FormData): Promise<void> 
     const { error: rateErr } = await sb.from('shipping_rates').insert(ratePatch);
     if (rateErr) err(rateErr.message);
   }
+
+  const provErr = await syncProvinces(sb, id, z.provinces);
+  if (provErr) err(provErr);
 
   void logAudit(session, {
     action: 'shipping_zone.update',
