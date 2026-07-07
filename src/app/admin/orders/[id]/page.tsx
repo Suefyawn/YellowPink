@@ -271,10 +271,16 @@ export default async function OrderDetailPage({
   // the live basis (vendor rate / per-product costs / unknown gaps).
   const acqSource = (o as { acquisition_cost_source?: 'auto' | 'manual' | null }).acquisition_cost_source ?? null;
   let dispatchedVendor: { id: string; name: string | null; commission_pct: number | null } | null = null;
+  // Whether the order's vendor delivers to the customer itself (NB Sons) — the
+  // Shipment panel skips courier booking for these.
+  let vendorSelfDelivers: { name: string; deliveryFee: number } | null = null;
   if (o.vendor_id) {
     const { data: vRow } = await supabaseAdmin()
-      .from('vendors').select('id, name, commission_pct').eq('id', o.vendor_id).maybeSingle();
-    dispatchedVendor = (vRow as typeof dispatchedVendor) ?? null;
+      .from('vendors').select('id, name, commission_pct, self_delivers, delivery_fee').eq('id', o.vendor_id).maybeSingle();
+    dispatchedVendor = vRow ? { id: vRow.id as string, name: vRow.name as string | null, commission_pct: vRow.commission_pct as number | null } : null;
+    if (vRow && (vRow as { self_delivers?: boolean }).self_delivers) {
+      vendorSelfDelivers = { name: (vRow.name as string) ?? 'the vendor', deliveryFee: Number((vRow as { delivery_fee?: number | null }).delivery_fee ?? 0) };
+    }
   }
   const costEngine = resolveOrderCosts(orderItems, dispatchedVendor, engineProducts);
   const acqProvenance = ordAcq == null
@@ -689,19 +695,32 @@ export default async function OrderDetailPage({
       {canEdit && (
       <div style={section}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipment</h2>
-        <ShipmentBookingForm
-          orderId={o.id!}
-          apiAdapters={apiAdapters}
-          deliveryCost={o.delivery_cost ?? null}
-          suggestedCharge={defaultDeliveryCost > 0 ? defaultDeliveryCost : undefined}
-          shipment={shipmentRow ? {
-            id: shipmentRow.id as string,
-            courier: shipmentRow.courier as string,
-            tracking_number: shipmentRow.tracking_number as string,
-            status: shipmentRow.status as string,
-            labelUrl: (shipmentRow.raw_label_url as string | null) ?? null,
-          } : null}
-        />
+        {vendorSelfDelivers && (
+          <div style={{ marginBottom: 16, padding: '12px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: '0.8125rem', color: '#1e3a8a' }}>
+            <strong>{vendorSelfDelivers.name} delivers this order directly</strong> — no TCS booking needed.
+            {vendorSelfDelivers.deliveryFee > 0
+              ? ` Their delivery fee (PKR ${vendorSelfDelivers.deliveryFee.toLocaleString()}) is recorded as this order's delivery cost.`
+              : ' No delivery cost is charged to us for it right now.'}
+            {' '}Use the status control below to mark it shipped/delivered as {vendorSelfDelivers.name} reports progress.
+          </div>
+        )}
+        {/* Courier booking is hidden when the vendor self-delivers (there's no
+            courier), unless a shipment was already created for this order. */}
+        {(!vendorSelfDelivers || shipmentRow) && (
+          <ShipmentBookingForm
+            orderId={o.id!}
+            apiAdapters={apiAdapters}
+            deliveryCost={o.delivery_cost ?? null}
+            suggestedCharge={defaultDeliveryCost > 0 ? defaultDeliveryCost : undefined}
+            shipment={shipmentRow ? {
+              id: shipmentRow.id as string,
+              courier: shipmentRow.courier as string,
+              tracking_number: shipmentRow.tracking_number as string,
+              status: shipmentRow.status as string,
+              labelUrl: (shipmentRow.raw_label_url as string | null) ?? null,
+            } : null}
+          />
+        )}
 
         {/* Courier scan history — the granular timeline (delivery attempted /
             refused / in process / delivered) pulled from the courier's checkpoints

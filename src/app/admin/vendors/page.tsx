@@ -153,6 +153,14 @@ export default async function VendorsPage({
               <option value="vendor_collects">Vendor collects, they pay us</option>
             </select>
           </div>
+          <div>
+            <label htmlFor="vendor-delivery_fee" style={lbl}>Delivery fee they charge us</label>
+            <input id="vendor-delivery_fee" name="delivery_fee" type="number" min={0} step="1" placeholder="0" style={{ ...inp, width: 150 }} />
+          </div>
+          <label style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', paddingBottom: 8 }}>
+            <input type="checkbox" name="self_delivers" style={{ width: 16, height: 16 }} />
+            Vendor delivers to customer
+          </label>
           <div style={{ flex: 1, minWidth: 140 }}>
             <label htmlFor="vendor-notes" style={lbl}>Notes (optional)</label>
             <input id="vendor-notes" name="notes" placeholder="What they supply" style={{ ...inp, width: '100%' }} />
@@ -222,6 +230,16 @@ export default async function VendorsPage({
                           <option value="we_collect">We collect</option>
                           <option value="vendor_collects">Vendor collects</option>
                         </select>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                          <input type="checkbox" name="self_delivers" defaultChecked={v.self_delivers ?? false} aria-label={`${v.name} delivers directly`} style={{ width: 15, height: 15 }} />
+                          delivers
+                        </label>
+                        <input
+                          name="delivery_fee" type="number" min={0} step="1"
+                          defaultValue={v.delivery_fee ? Number(v.delivery_fee) : ''} placeholder="fee"
+                          aria-label={`${v.name} delivery fee`}
+                          style={{ ...inp, width: 64, padding: '6px 8px' }}
+                        />
                         <button type="submit" style={{
                           padding: '6px 12px', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb',
                           borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',

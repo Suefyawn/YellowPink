@@ -37,6 +37,13 @@ function parseDirection(raw: FormDataEntryValue | null): 'vendor_collects' | 'we
   return raw === 'vendor_collects' ? 'vendor_collects' : 'we_collect';
 }
 
+/** Non-negative delivery fee the vendor bills us per self-delivered order.
+ *  Blank / invalid → 0 ("no extra charge for now"). */
+function parseDeliveryFee(raw: FormDataEntryValue | null): number {
+  const n = Number((raw as string | null)?.trim());
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 export async function createVendor(formData: FormData) {
   const session = await assertPermission('vendors');
   const name  = (formData.get('name') as string)?.trim();
@@ -50,6 +57,8 @@ export async function createVendor(formData: FormData) {
       name, phone, notes,
       commission_pct: parseCommission(formData.get('commission_pct')),
       settlement_direction: parseDirection(formData.get('settlement_direction')),
+      self_delivers: formData.get('self_delivers') === 'on',
+      delivery_fee: parseDeliveryFee(formData.get('delivery_fee')),
     })
     .select('id')
     .single();
@@ -72,9 +81,11 @@ export async function updateVendor(formData: FormData) {
   if (!id) return;
   const commission_pct = parseCommission(formData.get('commission_pct'));
   const settlement_direction = parseDirection(formData.get('settlement_direction'));
+  const self_delivers = formData.get('self_delivers') === 'on';
+  const delivery_fee = parseDeliveryFee(formData.get('delivery_fee'));
   const { error } = await supabaseAdmin()
     .from('vendors')
-    .update({ commission_pct, settlement_direction })
+    .update({ commission_pct, settlement_direction, self_delivers, delivery_fee })
     .eq('id', id);
   if (error) {
     log.error('vendor.update_failed', { id, error: error.message });
@@ -82,7 +93,7 @@ export async function updateVendor(formData: FormData) {
   }
   void logAudit(session, {
     action: 'vendor.update', entity: 'vendors', entity_id: id,
-    diff: { commission_pct, settlement_direction },
+    diff: { commission_pct, settlement_direction, self_delivers, delivery_fee },
   });
   revalidatePath('/admin/vendors');
   vendorsSaved('Vendor terms saved.');
@@ -197,9 +208,17 @@ export async function assignOrderVendor(orderId: string, vendorId: string | null
   }
 
   const { data: vendor } = await admin
-    .from('vendors').select('id, name, active').eq('id', vendorId).maybeSingle();
+    .from('vendors').select('id, name, active, self_delivers, delivery_fee').eq('id', vendorId).maybeSingle();
   if (!vendor || !(vendor as { active: boolean }).active) {
     return { ok: false, error: 'That vendor no longer exists or is inactive.' };
+  }
+  const v = vendor as { self_delivers?: boolean; delivery_fee?: number | null };
+  // A self-delivering vendor (e.g. NB Sons) ships the order itself — no TCS
+  // booking — so its delivery cost is the vendor's own fee, not a courier
+  // charge. Pin delivery_cost to that fee (0 for now) so Finance doesn't apply
+  // the TCS typical-cost estimate to an order that never touches TCS.
+  if (v.self_delivers) {
+    await admin.from('orders').update({ delivery_cost: Number(v.delivery_fee ?? 0) }).eq('id', orderId);
   }
 
   const { error } = await admin
