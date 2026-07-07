@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 6 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 7 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -346,7 +346,7 @@ Deeper performance data, organised as **four question tabs**:
 
 - **Sales** (am I selling more?) — revenue/orders/AOV cards with mini-trends and change vs the previous window, the revenue chart, orders by status with links into the filtered list, and top products.
 - **Customers** (who buys and do they return?) — unique customers, repeat-purchase rate, RFM segments, cohort retention.
-- **Traffic** (is anyone finding us?) — the SEO trend, live **Search Console** and **Google Analytics 4** panels once you **Connect Google** in Settings → Integrations, Core Web Vitals, top pages/events.
+- **Traffic** (is anyone finding us?) — the SEO trend, live **Search Console** and **Google Analytics 4** panels once you **Connect Google** in Settings → Integrations, and Core Web Vitals. Below those, an **on-site behaviour** block reads the rolling 7-day PostHog snapshot: top pages, top events & sources, a **device & browser** split (phone vs desktop, and which in-app browsers — Instagram/WhatsApp webviews — people arrive in), an **engagement** panel (pages per session, average session length, bounce rate) with the top **landing pages**, and a **Where visitors are** panel of the top cities and countries — the Pakistan-vs-international split that shows how much traffic can actually convert to COD.
 - **Funnels** (where do shoppers leak?) — the conversion funnel, funnel-by-source and funnel-by-device, top user journeys, weekly active users, and PostHog session recordings.
 
 The Sales and Customers tabs open with a short **"what stands out"** strip — plain-language observations computed from the same window (e.g. *"Revenue is up 23% vs the prior 30 days"*, *"X alone drove 18% of this window's revenue"*) — so the numbers come with their own reading. The date-range pills (7/30/90 days, 1 year) apply across tabs.

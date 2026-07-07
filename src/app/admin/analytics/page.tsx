@@ -10,6 +10,9 @@ import { PostHogWidget } from '@/components/admin/PostHogWidget';
 import { ConversionFunnelWidget } from '@/components/admin/ConversionFunnelWidget';
 import { TopPagesWidget } from '@/components/admin/TopPagesWidget';
 import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
+import { DeviceBrowserWidget } from '@/components/admin/DeviceBrowserWidget';
+import { EngagementWidget } from '@/components/admin/EngagementWidget';
+import { GeographyWidget } from '@/components/admin/GeographyWidget';
 import { UserJourneysWidget } from '@/components/admin/UserJourneysWidget';
 import { FunnelBySourceWidget } from '@/components/admin/FunnelBySourceWidget';
 import { FunnelByDeviceWidget } from '@/components/admin/FunnelByDeviceWidget';
@@ -665,14 +668,19 @@ export default async function AnalyticsPage({
             <WebVitalsWidget days={window} />
           </TrafficSection>
 
-          {/* ── On-site behaviour ── PostHog top pages/events. These read the
-              daily 7-day snapshot (each card captions its own window), so they
-              stay fixed regardless of the picker. */}
-          <TrafficSection title="On-site behaviour" hint="Most-visited pages and tracked events (rolling 7-day snapshot)">
-            <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          {/* ── On-site behaviour ── PostHog page/event/device/engagement
+              panels. These read the daily 7-day snapshot (each card captions
+              its own window), so they stay fixed regardless of the picker. */}
+          <TrafficSection title="On-site behaviour" hint="Who's browsing, how they engage, and where they land (rolling 7-day snapshot)">
+            <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
               <TopPagesWidget />
               <TopEventsWidget />
             </div>
+            <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+              <DeviceBrowserWidget />
+              <EngagementWidget />
+            </div>
+            <GeographyWidget />
           </TrafficSection>
         </>
       )}

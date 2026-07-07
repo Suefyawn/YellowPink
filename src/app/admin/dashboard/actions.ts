@@ -62,6 +62,8 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     topPagesRows, topEventsRows, topReferrersRows,
     funnelRows,
     journeyRows, funnelBySourceRows, funnelByDeviceRows, retentionRows,
+    deviceRows, browserRows, entryPageRows, engagementRows,
+    geoCityRows, geoCountryRows,
   ] = await Promise.all([
     // ── core stats
     phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
@@ -185,6 +187,94 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       GROUP BY week
       ORDER BY week
     `),
+
+    // ── Visitors by device type (Mobile / Desktop / Tablet). The single most
+    // actionable "who's browsing" cut for a storefront whose traffic is
+    // overwhelmingly phone-first — it frames every other funnel reading.
+    phQuery(apiKey, `
+      SELECT coalesce(nullIf(properties.\`$device_type\`, ''), 'Unknown') as device,
+             count(distinct distinct_id) as visitors
+      FROM events
+      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      GROUP BY device
+      ORDER BY visitors DESC
+    `),
+
+    // ── Visitors by browser (top 6). Surfaces in-app browsers (Instagram /
+    // Facebook / WhatsApp webviews) that behave differently at checkout.
+    phQuery(apiKey, `
+      SELECT coalesce(nullIf(properties.\`$browser\`, ''), 'Unknown') as browser,
+             count(distinct distinct_id) as visitors
+      FROM events
+      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      GROUP BY browser
+      ORDER BY visitors DESC
+      LIMIT 6
+    `),
+
+    // ── Entry (landing) pages: the first pageview path of each session. Tells
+    // the owner where sessions actually begin — often not the homepage.
+    phQuery(apiKey, `
+      SELECT entry, count() as sessions
+      FROM (
+        SELECT argMin(properties.\`$pathname\`, timestamp) as entry
+        FROM events
+        WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND properties.\`$session_id\` IS NOT NULL
+        GROUP BY properties.\`$session_id\`
+      )
+      WHERE entry IS NOT NULL AND entry != ''
+      GROUP BY entry
+      ORDER BY sessions DESC
+      LIMIT 8
+    `),
+
+    // ── Engagement summary: pages/session, avg session length, bounce rate
+    // (single-pageview sessions). Computed from per-session pageview rollups so
+    // it's one cheap pass. dur = last − first pageview timestamp in seconds.
+    phQuery(apiKey, `
+      SELECT
+        count()                                        as sessions,
+        sum(pv)                                        as total_pv,
+        sum(dur)                                       as total_dur,
+        countIf(pv <= 1)                               as bounces
+      FROM (
+        SELECT properties.\`$session_id\` as sid,
+               count()                    as pv,
+               dateDiff('second', min(timestamp), max(timestamp)) as dur
+        FROM events
+        WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND properties.\`$session_id\` IS NOT NULL
+        GROUP BY sid
+      )
+    `),
+
+    // ── Top cities (with region). GeoIP is resolved by PostHog cloud from the
+    // visitor IP. For a Pakistan-first store this is the "which cities do we
+    // sell to / should we push delivery + ads in" cut. Empty if GeoIP is off.
+    phQuery(apiKey, `
+      SELECT
+        coalesce(nullIf(properties.\`$geoip_city_name\`, ''), 'Unknown') as city,
+        coalesce(nullIf(properties.\`$geoip_subdivision_1_name\`, ''), '') as region,
+        count(distinct distinct_id) as visitors
+      FROM events
+      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      GROUP BY city, region
+      ORDER BY visitors DESC
+      LIMIT 10
+    `),
+
+    // ── Visitors by country (top 6) — the local-vs-international split, so the
+    // owner can see how much traffic is outside Pakistan (won't convert to COD).
+    phQuery(apiKey, `
+      SELECT
+        coalesce(nullIf(properties.\`$geoip_country_name\`, ''), 'Unknown') as country,
+        coalesce(nullIf(properties.\`$geoip_country_code\`, ''), '') as code,
+        count(distinct distinct_id) as visitors
+      FROM events
+      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      GROUP BY country, code
+      ORDER BY visitors DESC
+      LIMIT 6
+    `),
   ]);
 
   // Build the shapes the widgets expect.
@@ -261,6 +351,31 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     users: Number(users),
   }));
 
+  // ── On-site behaviour reshape ─────────────────────────────────────────────
+  const devices = deviceRows.map(([device, visitors]) => ({
+    label: String(device), visitors: Number(visitors),
+  }));
+  const browsers = browserRows.map(([browser, visitors]) => ({
+    label: String(browser), visitors: Number(visitors),
+  }));
+  const entryPages = entryPageRows.map(([path, sessions]) => ({
+    path: String(path), sessions: Number(sessions),
+  }));
+  const e = engagementRows[0] ?? [];
+  const engSessions = Number(e[0] ?? 0);
+  const engagement = {
+    sessions:         engSessions,
+    pagesPerSession:  engSessions > 0 ? Number(e[1] ?? 0) / engSessions : 0,
+    avgSessionSeconds: engSessions > 0 ? Number(e[2] ?? 0) / engSessions : 0,
+    bounceRate:       engSessions > 0 ? Number(e[3] ?? 0) / engSessions : 0,
+  };
+  const cities = geoCityRows.map(([city, region, visitors]) => ({
+    city: String(city), region: String(region), visitors: Number(visitors),
+  }));
+  const countries = geoCountryRows.map(([country, code, visitors]) => ({
+    country: String(country), code: String(code), visitors: Number(visitors),
+  }));
+
   // ── Latest session recordings (separate endpoint, not HogQL) ──────────────
   // Best-effort: a failure here mustn't block the rest of the refresh.
   let recordings: Array<{ id: string; startTime: string; durationSeconds: number; viewerUrl: string }> = [];
@@ -296,6 +411,10 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     upsertCache(supabase, 'posthog_funnel_by_device',{ items: funnelByDevice }),
     upsertCache(supabase, 'posthog_retention',       { items: retention }),
     upsertCache(supabase, 'posthog_recordings',      { items: recordings }),
+    upsertCache(supabase, 'posthog_devices',         { devices, browsers }),
+    upsertCache(supabase, 'posthog_entry_pages',     { items: entryPages }),
+    upsertCache(supabase, 'posthog_engagement',      engagement),
+    upsertCache(supabase, 'posthog_geography',       { cities, countries }),
   ]);
 }
 
