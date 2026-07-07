@@ -7,7 +7,7 @@
 
 ## 0. The site at a glance
 - **Live:** https://www.yellowpink.pk — Next.js (App Router) + Supabase, Vercel.
-- **Market:** Pakistan. PKR, **free delivery over PKR 5,000**, COD nationwide.
+- **Market:** Pakistan. PKR, **zone-based delivery** (free over PKR 5,000 in Punjab, higher thresholds for other regions — exact figure shown at checkout), COD nationwide.
 - **Catalogue:** ~142 published products. Three pillars: **Makeup**, **Skincare**,
   **Wellness (supplements)**. Plus **Bundles**.
 - **Brands:** real imported brands (PIXI, CeraVe, Beauty of Joseon, NARS, …) **and
