@@ -162,6 +162,26 @@ export async function GET(req: Request) {
     // (c) tracking with a dummy CN — GET, token via Authorization header.
     steps.push({ step: 'probe:track(GET)', ...(await hit('track', '/tracking/api/Tracking/GetDynamicTrackDetail', 'GET', null, true, '?consignee=0000000000')) });
 
+    // (d) CROSS-ENVIRONMENT: same token, read-only areacode, against BOTH
+    //     UAT and prod hosts. If prod accepts it but UAT doesn't, the token
+    //     was minted for the wrong environment. Read-only — safe on both.
+    async function hitHost(host: string) {
+      try {
+        const r = await fetch(`${host}/ecom/api/setup/areacode?citycode=KHI&area=`, {
+          method: 'GET', headers: { Authorization: `Bearer ${token}` },
+        });
+        const out = await r.json().catch(() => null);
+        return { host, http: r.status, message: out?.message ?? null, count: out?.count ?? null, hasData: Array.isArray(out?.data) };
+      } catch (e) { return { host, error: (e as Error).message }; }
+    }
+    steps.push({ step: 'probe:xenv:UAT', ...(await hitHost('https://devconnect.tcscourier.com')) });
+    steps.push({ step: 'probe:xenv:PROD', ...(await hitHost('https://ociconnect.tcscourier.com')) });
+
+    // (e) Re-exchange: does clientid+clientsecret path exist? (Only if set.)
+    if (process.env.TCS_CLIENT_ID && process.env.TCS_CLIENT_SECRET) {
+      steps.push({ step: 'probe:reauth', ...(await hit('auth', '/auth/api/auth', 'POST', { clientid: process.env.TCS_CLIENT_ID, clientsecret: process.env.TCS_CLIENT_SECRET }, false)) });
+    }
+
     return NextResponse.json({ ok: true, summary: 'Token-validity + config probes — see steps.', steps }, { status: 200 });
   }
 
