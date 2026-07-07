@@ -99,6 +99,19 @@ export default async function OrderDetailPage({
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+
+  // Courier scan history (the granular timeline the courier reports: picked up
+  // → in transit → out for delivery → delivery attempted / refused → delivered).
+  // Populated by the courier-sync cron / "Sync tracking now" from the TCS
+  // checkpoints feed; empty until the TCS API is credentialed.
+  const shipmentEvents = shipmentRow
+    ? ((await supabaseAdmin()
+        .from('shipment_events')
+        .select('status, description, occurred_at')
+        .eq('shipment_id', shipmentRow.id as string)
+        .order('occurred_at', { ascending: false })
+        .limit(40)).data as Array<{ status: string; description: string | null; occurred_at: string }> | null) ?? []
+    : [];
   const apiAdapters = configuredAdapterIds();
 
   // Status history, every transition this order went through, oldest first.
@@ -689,6 +702,49 @@ export default async function OrderDetailPage({
             labelUrl: (shipmentRow.raw_label_url as string | null) ?? null,
           } : null}
         />
+
+        {/* Courier scan history — the granular timeline (delivery attempted /
+            refused / in process / delivered) pulled from the courier's checkpoints
+            feed. Mirrors what the courier's own portal shows, inside the admin. */}
+        {shipmentRow && (
+          <div style={{ marginTop: 18, borderTop: '1px solid #f3f4f6', paddingTop: 14 }}>
+            <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 10 }}>
+              Courier tracking history
+            </div>
+            {shipmentEvents.length === 0 ? (
+              <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
+                {apiAdapters.includes(shipmentRow.courier as string)
+                  ? 'No courier scans yet — use “Sync tracking now” above (or wait for the daily sync) to pull the latest from the courier.'
+                  : 'No courier scans yet. Add the courier API keys (see docs/TCS-SETUP.md) so the scan history (out for delivery / delivery attempted / delivered) syncs in here automatically.'}
+              </p>
+            ) : (
+              <ol style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 0 }}>
+                {shipmentEvents.map((e, i) => {
+                  const color = e.status === 'delivered' ? '#15803d'
+                    : e.status === 'returned' || e.status === 'failed' ? '#dc2626'
+                    : e.status === 'out_for_delivery' ? '#b45309'
+                    : '#6b7280';
+                  const when = new Date(e.occurred_at).toLocaleString('en-PK', { timeZone: PK_TZ, day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                  return (
+                    <li key={i} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', alignSelf: 'stretch' }}>
+                        <span style={{ width: 10, height: 10, borderRadius: '50%', background: i === 0 ? color : '#d1d5db', marginTop: 4, flexShrink: 0 }} />
+                        {i < shipmentEvents.length - 1 && <span style={{ width: 2, flex: 1, background: '#e5e7eb', minHeight: 14 }} />}
+                      </div>
+                      <div style={{ paddingBottom: 12, minWidth: 0 }}>
+                        <div style={{ fontSize: '0.8125rem', color: '#111827', fontWeight: i === 0 ? 600 : 400 }}>
+                          {e.description || e.status.replace(/_/g, ' ')}
+                          {i === 0 && <span style={{ marginLeft: 8, fontSize: '0.625rem', fontWeight: 700, color, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Latest</span>}
+                        </div>
+                        <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 1 }}>{when}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+          </div>
+        )}
       </div>
       )}
 

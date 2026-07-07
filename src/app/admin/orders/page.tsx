@@ -98,6 +98,24 @@ async function OrdersPageInner({
   const total = totalCount ?? 0;
   const list = (orders ?? []) as Order[];
 
+  // Latest courier status per listed order (from shipments), so the list mirrors
+  // the courier's own dashboard at a glance — in transit / out for delivery /
+  // delivery attempted / delivered — populated once the courier sync runs.
+  const courierStatus: Record<string, string> = {};
+  const orderIds = list.map(o => o.id).filter(Boolean) as string[];
+  if (orderIds.length) {
+    const { data: ships } = await admin
+      .from('shipments')
+      .select('order_id, status, updated_at')
+      .in('order_id', orderIds)
+      .neq('status', 'cancelled')
+      .order('updated_at', { ascending: false });
+    for (const s of (ships ?? []) as Array<{ order_id: string; status: string }>) {
+      // First row per order wins (query is newest-first).
+      if (!courierStatus[s.order_id]) courierStatus[s.order_id] = s.status;
+    }
+  }
+
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       {/* deleteOrder redirects here with ?deleted=1, surface it as a toast. */}
@@ -125,7 +143,7 @@ async function OrdersPageInner({
       <div className="adm-table-scroll" style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
         {/* Suspense: OrdersTable reads useSearchParams for the sort headers. */}
         <Suspense fallback={null}>
-          <OrdersTable orders={list} />
+          <OrdersTable orders={list} courierStatus={courierStatus} />
         </Suspense>
       </div>
 

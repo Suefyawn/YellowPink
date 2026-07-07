@@ -77,7 +77,26 @@ const QUICK_STATUSES: { value: OrderStatus; color: string }[] =
   BULK_STATUSES.filter(s => s.value !== 'cancelled');
 
 
-export function OrdersTable({ orders }: { orders: Order[] }) {
+// Friendly label + colour for a courier shipment status (the rollup of the
+// scan feed). Distinguishes the states an operator triages on at a glance:
+// out-for-delivery, a failed/refused attempt, delivered, returned.
+const COURIER_STATUS_META: Record<string, { label: string; color: string }> = {
+  created:          { label: 'Booked',           color: '#6b7280' },
+  picked_up:        { label: 'Picked up',        color: '#6366f1' },
+  in_transit:       { label: 'In transit',       color: '#6366f1' },
+  out_for_delivery: { label: 'Out for delivery', color: '#b45309' },
+  delivered:        { label: 'Delivered',        color: '#15803d' },
+  returned:         { label: 'Returned',         color: '#dc2626' },
+  failed:           { label: 'Attempt failed',   color: '#dc2626' },
+};
+
+function CourierChip({ status }: { status: string | undefined }) {
+  if (!status) return <span style={{ color: '#d1d5db' }}>—</span>;
+  const meta = COURIER_STATUS_META[status] ?? { label: status.replace(/_/g, ' '), color: '#6b7280' };
+  return <DotChip label={meta.label} color={meta.color} />;
+}
+
+export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; courierStatus?: Record<string, string> }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pending, startTransition] = useTransition();
   const toast = useToast();
@@ -173,7 +192,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
             </th>
             {([
               ['Order #', 'number'], ['Date', 'date'], ['Customer', 'customer'], ['Total', 'total'],
-              ['Payment', null], ['Fulfilment', null], ['Items', null],
+              ['Payment', null], ['Fulfilment', null], ['Courier', null], ['Items', null],
             ] as [string, string | null][]).map(([h, key]) => (
               <th scope="col" key={h}
                 aria-sort={key && sortKey === key ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
@@ -219,6 +238,9 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                 </td>
                 <td style={{ padding: '10px 16px' }}>
                   {(() => { const f = fulfilmentState(o); return <DotChip label={f.label} color={f.color} />; })()}
+                </td>
+                <td style={{ padding: '10px 16px' }}>
+                  <CourierChip status={courierStatus[o.id!]} />
                 </td>
                 <td style={{ padding: '10px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
                   {itemCount(o)} item{itemCount(o) !== 1 ? 's' : ''}
@@ -280,6 +302,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>{fmt(o.total)}</span>
                   {(() => { const p = paymentState(o); return <DotChip label={p.label} color={p.color} />; })()}
+                  {courierStatus[o.id!] && <CourierChip status={courierStatus[o.id!]} />}
                   <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
                     {o.created_at ? fmtDate(o.created_at) : '—'}
                     <AgeFlag status={st} createdAt={o.created_at} />
