@@ -129,7 +129,7 @@ export default async function SettingsHomepagePage({ searchParams }: { searchPar
             <div>
               <label style={lbl}>Message</label>
               <input name="announcement_text" defaultValue={g('announcement_text')} style={inp}
-                placeholder="Free delivery on orders over PKR 5,000, COD Nationwide" />
+                placeholder="Authentic imported beauty & wellness · COD nationwide" />
             </div>
             <div>
               <label style={lbl}>Background colour</label>

@@ -85,23 +85,28 @@ export const formatPkr = (n: number) => `PKR ${n.toLocaleString()}`;
 // hard-codes the number. Server pages pass parseCommerceConfig(settings);
 // client components read it from useCommerceSettings().
 
-/** Compact free-shipping label for trust strips / badges, e.g. "Over PKR 5,000". */
-export const freeShippingShort = (c: CommerceConfig) =>
-  `Over ${formatPkr(c.freeShippingThreshold)}`;
+// NOTE: these are deliberately NON-numeric. The free-delivery threshold now
+// varies by delivery region (zones), and we can't know the customer's region
+// before checkout, so stating a single "over Rs X" pre-address would be wrong
+// for most of the country. The exact, region-correct threshold is shown at
+// checkout (province-aware). Keep the nudge, drop the (misleading) number.
 
-/** Full announcement-bar / banner sentence, derived from the live config.
- *  Falls back to a COD line when free shipping is switched off. */
+/** Compact free-shipping label for trust strips / badges. Non-numeric: the
+ *  threshold varies by delivery zone, so we can't state a single figure before
+ *  the shopper's region is known (shown exactly at checkout). */
+export const freeShippingShort = () => 'On bigger orders';
+
+/** Full announcement-bar / banner sentence. Falls back to a COD line when free
+ *  shipping is switched off. */
 export const freeShippingSentence = (c: CommerceConfig) =>
   c.freeShippingEnabled
-    ? `Free delivery on orders over ${formatPkr(c.freeShippingThreshold)}, COD Nationwide`
+    ? 'Free delivery on bigger orders, COD nationwide'
     : 'Cash on delivery nationwide';
 
-/** One-line phone rendering of the announcement sentence — the full version
- *  wraps to two lines at 390px. Shown below 480px via AnnouncementBar's
- *  compact variant. */
+/** One-line phone rendering of the announcement sentence. */
 export const freeShippingSentenceCompact = (c: CommerceConfig) =>
   c.freeShippingEnabled
-    ? `Free delivery over ${formatPkr(c.freeShippingThreshold)} · COD`
+    ? 'Free delivery on bigger orders · COD'
     : 'COD nationwide';
 
 /** Customer-facing returns window, in days. Shared by the PDP trust copy, the
@@ -116,11 +121,6 @@ export const RETURNS_WINDOW_DAYS = 7;
 export const NON_REVENUE_ORDER_STATUSES = [
   'cancelled', 'refunded', 'returned', 'payment_failed',
 ] as const;
-
-/** The free-shipping threshold formatted as shoppers see it, e.g. "PKR 5,000".
- *  Derive display copy from this so the figure tracks the threshold constant
- *  instead of being re-typed (and left stale) in each surface. */
-export const freeShippingLabel = () => `PKR ${FREE_SHIPPING_THRESHOLD.toLocaleString()}`;
 
 // Newsletter welcome offer. The live figures are read from the WELCOME10
 // coupon (see lib/offers.ts → getWelcomeOffer) so editing the coupon updates

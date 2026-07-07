@@ -13,7 +13,7 @@ import { tapHaptic } from '@/lib/haptics';
 import { stripBrandPrefix } from '@/lib/product-display';
 import { whatsappUrl as waUrl, whatsappGoUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { BenefitIcon } from '@/components/ui/BenefitIcon';
-import { RETURNS_WINDOW_DAYS, formatPkr } from '@/lib/commerce';
+import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { effectiveProductFaq } from '@/lib/product-faq';
 import { taxonForCategory } from '@/lib/category-taxonomy';
@@ -305,14 +305,15 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const [flashPicker, setFlashPicker] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const { addToCart } = useCart();
-  // Free-shipping copy tracks the owner's live setting (threshold + on/off).
-  const { freeShippingEnabled, freeShippingThreshold } = useCommerceSettings();
-  const freeShipLabel = formatPkr(freeShippingThreshold);
+  // Free-delivery copy tracks the owner's live on/off setting. We don't state a
+  // single threshold here: it varies by delivery zone and we can't know the
+  // shopper's city on the PDP, so the exact figure is shown at checkout.
+  const { freeShippingEnabled } = useCommerceSettings();
   // Wellness/supplement products carry a "food supplement, not a medicine"
   // disclaimer (YMYL safeguard below the description); cosmetics don't.
   const isWellness = taxonForCategory(product.category)?.key === 'wellness';
   const shippingContent = freeShippingEnabled
-    ? `Free shipping on orders over ${freeShipLabel}. COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`
+    ? `Free delivery on bigger orders — the exact threshold depends on your city and is shown at checkout. COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`
     : `COD available nationwide. ${RETURNS_WINDOW_DAYS}-day return policy on unopened items.`;
 
   // Observe the in-page buy panel; surface the sticky bar only after it has

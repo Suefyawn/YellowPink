@@ -40,7 +40,7 @@ export function TrustBar() {
   const ITEMS: { icon: IconName; label: string; sub: string }[] = [
     { icon: 'authentic', label: '100% Authentic', sub: 'Imported directly' },
     ...(commerce.freeShippingEnabled
-      ? [{ icon: 'delivery' as IconName, label: 'Free Delivery', sub: freeShippingShort(commerce) }]
+      ? [{ icon: 'delivery' as IconName, label: 'Free Delivery', sub: freeShippingShort() }]
       : []),
     { icon: 'cod', label: 'COD Nationwide', sub: 'Pay on delivery' },
     { icon: 'returns', label: 'Easy Returns', sub: `${RETURNS_WINDOW_DAYS}-day policy` },

@@ -142,17 +142,21 @@ customers and spot where an order is.
 
 - **Cart** — lists everything the customer has added, with quantities and a
   running total. They can change quantities, remove items, and enter a **coupon
-  code** for a discount. The free-shipping progress bar is followed by the same
-  **estimated delivery time** shown on the product page. Below the items a
-  **"You may also like"** row suggests bestsellers (excluding what's already in
-  the bag) to encourage add-ons.
+  code** for a discount. Because the free-delivery threshold depends on the
+  delivery region (and the customer's city isn't known yet in the cart), the cart
+  and mini-cart show a plain **"free delivery on bigger orders — your exact
+  threshold shows at checkout"** note instead of a single number or a progress
+  bar to a possibly-wrong figure. Below that sits the same **estimated delivery
+  time** shown on the product page, and a **"You may also like"** row suggesting
+  bestsellers (excluding what's already in the bag) to encourage add-ons.
 - **Checkout** — the customer enters their delivery details (name, phone, email,
   full address), sees the shipping cost, and chooses how to pay. A short
   reassurance strip (authentic products, cash on delivery, 7-day returns) sits
-  by the **Place Order** button. The free-shipping threshold shoppers see in the
-  cart, mini-cart and checkout all come from one shared setting, so they always
-  agree. Free shipping is earned on the merchandise subtotal (before any
-  discount code), so applying a coupon never strips a free-shipping promise the
+  by the **Place Order** button. Only at checkout — once the province is
+  selected — does the shopper see the **exact, region-correct** delivery charge
+  and free-delivery threshold for their zone, so the promise is never wrong for
+  their area. Free delivery is earned on the merchandise subtotal (before any
+  discount code), so applying a coupon never strips a free-delivery promise the
   customer has already qualified for.
 
 ### 2.3 Ways to pay
@@ -909,6 +913,7 @@ A dated history of user-facing changes, newest first.
 
 ### 7 July 2026
 
+- **Free-delivery wording no longer promises a single "over Rs 5,000".** Because free delivery now kicks in at a different order value in each zone (Rs 5,000 in Punjab, higher elsewhere), stating one number before we know the customer's city was wrong for most of the country. Every pre-address surface was reworded to a plain **"free delivery on bigger orders — exact amount shown at checkout"**: the announcement bar no longer mentions free delivery at all (it now reads "Authentic imported beauty & wellness · Cash on delivery nationwide"), the mini-cart's and cart's number-chasing progress bars were replaced with that note, the product page's Shipping & Returns text dropped the fixed figure, and the AI/`llms.txt` and staff WhatsApp canned replies were updated to match. The **exact, region-correct** threshold and delivery charge still appear at checkout once the province is chosen (and the FAQ still explains the Punjab-vs-other-regions split), so nothing over-promises for a shopper's area.
 - **Zone-based shipping that stops the losses.** Delivery is now charged by destination region instead of one flat rate that lost money on far-off orders. Three zones (from your Lahore origin): **Zone 1 — Punjab & Islamabad (Rs 250, free over 5,000)**, **Zone 2 — Sindh & KPK (Rs 300, free over 7,000)**, **Zone 3 — remote areas: Balochistan, AJK, Gilgit-Baltistan (Rs 400, free over 10,000)**. Checkout picks the zone automatically from the customer's province, and each zone's free-delivery threshold is set high enough that a free order still covers the courier bill. Settings → Shipping now lets you **assign provinces to each zone**, set each zone's **rate, your courier cost, and free-delivery threshold**, and shows a **live margin warning** in red the moment a rate is set below what TCS bills you — so under-pricing can't slip through. (Heads-up: your previous change of the flat rate to 250 hadn't actually taken effect — the active zone's own rate was still 200 — which is part of why shipping was losing money; that's now fixed and zone-driven.) The whole site was reconciled to match: the **Shipping Policy page now shows a live zone/rate table** (it can never go stale when you change rates), the **FAQ** no longer says "flat rate," and the **cart** shows "from PKR …, final charge by city at checkout" instead of a flat number.
 - **TCS booking is live and verified.** The TCS integration was tested end-to-end against the live courier API — creating a real consignment, tracking it, and cancelling it all succeeded. Once your TCS credentials are set (now including a **username + password** for the ecom login, alongside the bearer token — see `docs/TCS-SETUP.md`), the **"Book pickup via TCS"** button on an order creates the consignment automatically and marks it shipped. (One small caveat: on this TCS account the label endpoint returns the PDF directly rather than a link, so the in-admin "Print label" link may not show yet — print the AWB from the TCS portal using the consignment number in the meantime.)
 - **Google Search results: product availability fixed.** Google Search Console flagged product listings as missing the "availability" field. Storefront listing pages (shop, brand, collection, tag, K-Beauty, homepage) now include in-stock / out-of-stock in their product structured data, so products stay eligible for rich results with price + availability in Search.

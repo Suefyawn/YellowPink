@@ -10,7 +10,7 @@ import { SITE_URL, SITE_NAME, absoluteUrl } from '@/lib/seo';
 import { categoryHref } from '@/lib/category-taxonomy';
 import { supabase, isDemo, getProducts, getSiteSettings, getBlogPosts } from '@/lib/supabase';
 import { brandPlusName } from '@/lib/product-display';
-import { parseCommerceConfig, formatPkr, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { parseCommerceConfig, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 
 export const runtime  = 'nodejs';
@@ -28,8 +28,11 @@ export async function GET() {
   const shippingLine = days
     ? `${days.min}–${days.max} working days via TCS / Leopards / M&P / BlueEx`
     : 'a few working days via TCS / Leopards / M&P / BlueEx';
+  // The free-delivery threshold varies by delivery zone (province), so we
+  // describe the promise without a single number here; the exact, city-correct
+  // figure is shown at checkout.
   const freeOver = commerce.freeShippingEnabled
-    ? `, free over ${formatPkr(commerce.freeShippingThreshold)}`
+    ? ', free delivery on larger orders'
     : '';
 
   const lines: string[] = [];
