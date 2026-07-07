@@ -131,6 +131,36 @@ export async function GET(req: Request) {
 
   const token = rawToken.trim();
 
+  // Probe: isolate token-validity from account/cost-centre config.
+  if (url.searchParams.get('probe') === '1') {
+    const b = baseUrl.replace(/\/$/, '');
+    const acct = process.env.TCS_TCS_ACCOUNT ?? '';
+
+    // (a) setup/areacode — needs the bearer token but NO account/cost-centre.
+    //     If this works, the token is valid at the gateway and the booking
+    //     failure is purely an account/cost-centre config mismatch.
+    async function hit(label: string, path: string, method: string, body: unknown, useHeader: boolean, query?: string) {
+      const headers: Record<string, string> = {};
+      if (method !== 'GET' || body) headers['Content-Type'] = 'application/json';
+      if (useHeader) headers.Authorization = `Bearer ${token}`;
+      try {
+        const r = await fetch(`${b}${path}${query ?? ''}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+        const out = await r.json().catch(() => null);
+        return { label, http: r.status, response: out };
+      } catch (e) { return { label, error: (e as Error).message }; }
+    }
+
+    steps.push({ step: 'probe:areacode(header)', ...(await hit('areacode', '/ecom/api/setup/areacode', 'POST', { citycode: 'KHI', area: '' }, true)) });
+    steps.push({ step: 'probe:areacode(body-token)', ...(await hit('areacode', '/ecom/api/setup/areacode', 'POST', { citycode: 'KHI', area: '', accesstoken: token }, false)) });
+    // (b) cost-centre inquiry — lists the REAL cost centres for the account.
+    steps.push({ step: 'probe:costcenter(acct-as-customerno)', ...(await hit('cci', '/ecom/inquiry/costcenterinquiry', 'POST', { accesstoken: token, customerno: acct }, true)) });
+    steps.push({ step: 'probe:costcenter(get)', ...(await hit('cci', '/ecom/inquiry/costcenterinquiry', 'GET', null, true, `?customerno=${encodeURIComponent(acct)}`)) });
+    // (c) tracking with a dummy CN — same token via Authorization header.
+    steps.push({ step: 'probe:track(dummy)', ...(await hit('track', '/tracking/api/Tracking/GetDynamicTrackDetail', 'POST', { consignee: ['0000000000'] }, true)) });
+
+    return NextResponse.json({ ok: true, summary: 'Token-validity + config probes — see steps.', steps }, { status: 200 });
+  }
+
   // Probe token transport variants against the booking endpoint.
   if (url.searchParams.get('book') === '1') {
     const v1 = await tryBook(baseUrl, token, 'body-accesstoken-only (current adapter)', false, token);
