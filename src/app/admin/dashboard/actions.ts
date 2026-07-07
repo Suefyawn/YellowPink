@@ -461,6 +461,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
 // ─── refreshSentry ──────────────────────────────────────────────────────────
 interface SentryIssue {
   id: string; title: string; level: string; count: string;
+  userCount?: number;
   lastSeen: string; firstSeen?: string; permalink: string;
   metadata?: { value?: string }; tags?: Array<{ key: string; value: string }>;
 }
@@ -518,10 +519,18 @@ async function refreshSentry(supabase: PermissiveSupabase): Promise<void> {
     total:    issues.length,
     errors:   issues.filter(i => i.level === 'error' || i.level === 'fatal').length,
     warnings: issues.filter(i => i.level === 'warning').length,
-    issues:   issues.slice(0, 10).map(i => ({
-      id: i.id, title: i.title, level: i.level,
-      count: i.count, lastSeen: i.lastSeen, permalink: i.permalink,
-    })),
+    // Impact-first: surface the issues hurting the most people, not just the
+    // most recently seen. userCount + firstSeen come straight off the issues
+    // API (no extra call); the widget uses them for a "N affected" line, a
+    // NEW-today badge, and impact sorting.
+    issues:   [...issues]
+      .sort((a, b) => (Number(b.userCount ?? 0) - Number(a.userCount ?? 0)) || (Number(b.count) - Number(a.count)))
+      .slice(0, 10)
+      .map(i => ({
+        id: i.id, title: i.title, level: i.level,
+        count: i.count, userCount: Number(i.userCount ?? 0),
+        firstSeen: i.firstSeen ?? null, lastSeen: i.lastSeen, permalink: i.permalink,
+      })),
     topRoutes,
     trend,
   };

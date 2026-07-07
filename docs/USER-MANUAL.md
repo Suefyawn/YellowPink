@@ -907,6 +907,12 @@ store owner.
 
 A dated history of user-facing changes, newest first.
 
+### 7 July 2026
+
+- **Analytics Traffic tab — a real behaviour dashboard.** Below Search & discovery, the Traffic tab now reads much more from PostHog: **device & browser** (phone vs desktop, and which in-app browsers — Instagram/WhatsApp webviews — people arrive in), an **engagement** panel (pages per session, average session length, bounce rate) with the **landing pages** sessions actually start on, a **Where visitors are** panel of top cities/countries (the Pakistan-vs-international split, so you can see how much traffic can convert to COD), and a **Demand & product interest** block showing the top on-site **search terms** and the **most-viewed products with their view→cart rate** — a product pulling lots of views but no carts (a pricing/photo/copy problem) is flagged for you to act on. These populate after the next analytics refresh.
+- **Sentry errors ranked by who they hurt.** The dashboard's error widget now leads with **top issues by impact** — how many real people each error affected — instead of just the most recent, tags brand-**new** issues (first seen in the last 24h), and shows the affected-people count on each row, so triage starts with what's actually costing you customers.
+- **Mobile/PWA card overflow fixed.** On phones, some cards on the Dashboard and the Analytics Traffic/Funnels tabs could push past the screen edge; the admin now stays within the viewport on every width.
+
 ### 6 July 2026
 
 - **"Without box" / tester products can now be listed honestly.** Products have a new **Packaging** setting — *Standard (boxed)*, *Tester*, or *Without box* — for genuine stock supplied without full retail packaging. Anything non-standard shows a badge on the product card and a clear, authenticity-first note on the product page (so the customer knows exactly what they're getting before they buy), and can be filtered on brand/collection pages. Fragrance **testers** auto-populate a new **Perfume Testers** collection — its own landing page aimed at the ~1,500/month Pakistani searches for "perfume tester" — which ships as a Draft; publish it once you've flagged some tester stock.
