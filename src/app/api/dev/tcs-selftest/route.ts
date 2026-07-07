@@ -185,6 +185,30 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, summary: 'Token-validity + config probes — see steps.', steps }, { status: 200 });
   }
 
+  // Probe the SECOND auth system: /ecom/api/authentication/token (username +
+  // password → opaque accesstoken for the body of transactional ecom APIs).
+  // Read-only — dummy creds, just confirming the endpoint exists & its shape.
+  if (url.searchParams.get('authprobe') === '1') {
+    const P = 'https://ociconnect.tcscourier.com';
+    async function g(label: string, path: string, query = '', useHeader = false, body?: unknown, method = 'GET') {
+      const headers: Record<string, string> = {};
+      if (useHeader) headers.Authorization = `Bearer ${token}`;
+      if (body) headers['Content-Type'] = 'application/json';
+      try {
+        const r = await fetch(`${P}${path}${query}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+        return { label, http: r.status, response: await r.json().catch(() => null) };
+      } catch (e) { return { label, error: (e as Error).message }; }
+    }
+    const acct = process.env.TCS_TCS_ACCOUNT ?? '';
+    // Does the ecom authentication endpoint exist? (GET with dummy creds.)
+    steps.push({ step: 'auth:ecom-token(GET dummy)', ...(await g('ecom-auth', '/ecom/api/authentication/token', '?username=selftest&password=selftest')) });
+    steps.push({ step: 'auth:ecom-token(GET dummy+hdr)', ...(await g('ecom-auth', '/ecom/api/authentication/token', '?username=selftest&password=selftest', true)) });
+    steps.push({ step: 'auth:ecom-token(POST dummy)', ...(await g('ecom-auth', '/ecom/api/authentication/token', '', false, { username: 'selftest', password: 'selftest' }, 'POST')) });
+    // Read transactional API with header only — does it also need a body token?
+    steps.push({ step: 'auth:cci(header only)', ...(await g('cci', '/ecom/api/inquiry/costcenterinquiry', `?customerno=${encodeURIComponent(acct)}`, true)) });
+    return NextResponse.json({ ok: true, summary: 'Second-auth-system probe — see steps.', steps }, { status: 200 });
+  }
+
   // PROD smoke test: create ONE real consignment on ociconnect, validate
   // label + track, then cancel it. Tests both token transports so we learn
   // whether the adapter (body-token only) works on prod or needs the header.
