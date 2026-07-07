@@ -134,6 +134,31 @@ export async function GET(req: Request) {
 
   const token = rawToken.trim();
 
+  // Exercise the REAL shipped adapter end-to-end (book → label → track →
+  // cancel) against the deployment's saved config. Proves tcs.ts itself.
+  if (url.searchParams.get('adapter') === '1') {
+    const book = await tcs.book({
+      orderNumber: `ADPTEST-${Date.now().toString().slice(-6)}`,
+      consignee: {
+        firstName: 'Adapter', lastName: 'Selftest', phone: '03001234567',
+        email: 'selftest@example.com', address1: 'House 1, Test Street, Gulshan-e-Iqbal',
+        city: 'Karachi', countryCode: 'PK',
+      },
+      weightKg: 0.5, pieces: 1, codAmount: 1000, currency: 'PKR',
+      items: [{ description: 'Adapter self-test item', quantity: 1, weightKg: 0.5, unitPrice: 1000 }],
+      remarks: 'Automated adapter self-test — ignore',
+    });
+    const ok = 'ok' in book && book.ok === true;
+    steps.push({ step: 'adapter.book', ok, result: book });
+    const cn = ok ? (book as { trackingNumber: string }).trackingNumber : null;
+    if (cn) {
+      if (tcs.label) steps.push({ step: 'adapter.label', result: await tcs.label(cn) });
+      steps.push({ step: 'adapter.track', result: await tcs.track(cn) });
+      steps.push({ step: 'adapter.cancel(cleanup)', result: await tcs.cancel(cn) });
+    }
+    return NextResponse.json({ ok, consignmentNo: cn, summary: ok ? `Adapter end-to-end OK — ${cn} booked+cancelled.` : 'Adapter booking failed — see steps.', steps }, { status: 200 });
+  }
+
   // Probe: isolate token-validity from account/cost-centre config.
   if (url.searchParams.get('probe') === '1') {
     const b = baseUrl.replace(/\/$/, '');

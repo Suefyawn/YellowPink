@@ -1,45 +1,56 @@
 // ============================================================================
 // TCS Courier (Pakistan), COD-API adapter.
 //
-// Spec: envio.tcscourier.com/COD-API-UserManual.pdf (copy in
-// .audit/tcs-cod-api-spec.txt). Two-tier auth: the bearer-token endpoint
-// (/auth/api/auth) uses clientId+clientSecret; the per-call ecom endpoints
-// then carry that bearer in the `accesstoken` field of the request body.
+// Spec: envio.tcscourier.com COD API User Guide (copy in
+// .audit/tcs-cod-api-spec.txt). Verified live against production, 2026-07.
+//
+// TWO-STEP AUTH (both required for the transactional ecom endpoints):
+//   1. A gateway "Bearer" JWT — sent as the `Authorization: Bearer <jwt>`
+//      HEADER on every call. Pre-issued by TCS, or minted from client
+//      id+secret via /auth/api/auth. Alone it only unlocks read-only setup
+//      APIs; transactional calls also need step 2.
+//   2. An ecom "access token" — minted from a username+password at
+//      /ecom/api/authentication/token (short-lived, cached). This goes in the
+//      request BODY (`accesstoken`) for POSTs, or the query string for the
+//      label GET. Booking/cancel/label/payment all reject the request with
+//      "Invalid access token" without it.
+//   Tracking needs only the header JWT.
 //
 // Production:  https://ociconnect.tcscourier.com
-// Sandbox/UAT: https://devconnect.tcscourier.com
+// Sandbox/UAT: https://devconnect.tcscourier.com  (needs UAT-issued creds;
+//   a production token/login is rejected on UAT as "Mismatch configuration".)
 //
 // Required env vars (set in Vercel + .env.local):
 //   TCS_BASE_URL         , pick prod or dev
 //
-// Auth (one of these two modes is required):
-//   A) Pre-issued bearer token mode (recommended; what TCS Envio's
-//      "Bearer Token for API Access" email gives you):
-//        TCS_BEARER_TOKEN , the long-lived JWT TCS issued for your account
-//      The token carries `clientid` + `services` claims and expires after
-//      ~3 years. The adapter uses it directly and skips /auth/api/auth.
-//
-//   B) Legacy OAuth mode (only if your TCS contact gave you a client
-//      id + secret pair instead of a pre-issued token):
+// Header JWT — one of these two modes:
+//   A) Pre-issued bearer token (recommended; TCS's "Bearer Token for API
+//      Access" email — a long-lived JWT):
+//        TCS_BEARER_TOKEN
+//   B) Client id + secret (adapter exchanges via /auth/api/auth, caches):
 //        TCS_CLIENT_ID
 //        TCS_CLIENT_SECRET
-//      The adapter hits /auth/api/auth on first call and caches the
-//      resulting short-lived token.
 //
-//   TCS_TCS_ACCOUNT      , your TCS account number (the "tcsaccount" field
-//                           in every booking; sometimes called "shipper account")
-//   TCS_COST_CENTER_CODE , assigned by TCS, required on every booking
+// Ecom access token (required — minted per session):
+//   TCS_USERNAME          , TCS Envio API username
+//   TCS_PASSWORD          , TCS Envio API password
+//
+//   TCS_TCS_ACCOUNT      , your TCS account (the "tcsaccount"; alphanumeric,
+//                           e.g. 'LGEC21048')
+//   TCS_COST_CENTER_CODE , your cost-centre code (e.g. '001'); look it up via
+//                           the Cost Center Inquiry API if unsure
 //   TCS_SHIPPER_NAME     , your company name (printed on the label)
 //   TCS_SHIPPER_ADDRESS  , pickup address line 1
-//   TCS_SHIPPER_CITY_CODE, TCS city code (e.g. 'KHI'). Use /setup/areacode
-//                           to look up if unsure.
+//   TCS_SHIPPER_CITY_CODE, TCS city code (e.g. 'LHE' for Lahore, 'KHI' for
+//                           Karachi — NOT the airport IATA code). Use the City
+//                           List / area-code APIs to confirm.
 //   TCS_SHIPPER_CITY_NAME, human-readable city name (printed on the label)
 //   TCS_SHIPPER_MOBILE   , your contact phone (03xxxxxxxxx)
 //   TCS_SERVICE_CODE     , e.g. 'O' for Overnight. Optional, defaults to 'O'.
 //
-// If any of the required vars are missing, `isConfigured()` returns false
-// and the booking UI falls back to manual tracking-number entry. We never
-// throw, `book` / `cancel` / `track` always resolve with `Result<…>`.
+// If any required var is missing, `isConfigured()` returns false and the
+// booking UI falls back to manual tracking-number entry. We never throw,
+// `book` / `cancel` / `track` always resolve with `Result<…>`.
 // ============================================================================
 
 import type {
@@ -80,26 +91,33 @@ function hasOauthCredentials(): boolean {
   return Boolean(env('TCS_CLIENT_ID') && env('TCS_CLIENT_SECRET'));
 }
 
-function isConfigured(): boolean {
-  if (!REQUIRED_NON_AUTH_VARS.every(k => Boolean(env(k)))) return false;
-  return hasPreIssuedToken() || hasOauthCredentials();
+// The ecom access token (step 2) is minted from a username+password. Booking,
+// cancel, label and payment all require it, so it's part of "configured".
+function hasEcomCredentials(): boolean {
+  return Boolean(env('TCS_USERNAME') && env('TCS_PASSWORD'));
 }
 
-// ─── Bearer-token cache ────────────────────────────────────────────────────
+function isConfigured(): boolean {
+  if (!REQUIRED_NON_AUTH_VARS.every(k => Boolean(env(k)))) return false;
+  if (!(hasPreIssuedToken() || hasOauthCredentials())) return false;
+  return hasEcomCredentials();
+}
+
+// ─── Step 1: gateway JWT (Authorization header) ─────────────────────────────
 // TCS auth tokens expire (the response includes an `expiry` timestamp). Cache
 // per process so we don't auth on every booking. Lambda cold-starts get a
 // fresh token; warm invocations reuse until ~60s before expiry.
 let cachedToken: { value: string; expiresAt: number } | null = null;
 const TOKEN_GRACE_SEC = 60;
 
-async function getBearerToken(): Promise<Result<string>> {
+async function getHeaderToken(): Promise<Result<string>> {
   // Mode A, pre-issued token. Skip the auth round-trip; TCS gives us
   // a JWT good for ~3 years on the account's services list. We don't
   // try to decode the `exp` claim here, if TCS rejects an expired
   // token, the per-call endpoints surface the 401 in their own
   // Result<…> error path.
   const preIssued = env('TCS_BEARER_TOKEN');
-  if (preIssued) return preIssued;
+  if (preIssued) return preIssued.trim();
 
   const now = Math.floor(Date.now() / 1000);
   if (cachedToken && cachedToken.expiresAt > now + TOKEN_GRACE_SEC) {
@@ -145,9 +163,58 @@ async function getBearerToken(): Promise<Result<string>> {
   }
 }
 
+// ─── Step 2: ecom access token (request body / query) ───────────────────────
+// Minted from username+password at /ecom/api/authentication/token (a GET with
+// the query params, authorised by the header JWT). Short-lived; cached until
+// ~60s before its `expiry`. Required by booking/cancel/label/payment.
+let cachedEcomToken: { value: string; expiresAt: number } | null = null;
+
+async function getEcomToken(headerToken: string): Promise<Result<string>> {
+  const now = Math.floor(Date.now() / 1000);
+  if (cachedEcomToken && cachedEcomToken.expiresAt > now + TOKEN_GRACE_SEC) {
+    return cachedEcomToken.value;
+  }
+  const baseUrl = env('TCS_BASE_URL')!;
+  const u = encodeURIComponent(env('TCS_USERNAME') ?? '');
+  const p = encodeURIComponent(env('TCS_PASSWORD') ?? '');
+  try {
+    const r = await fetch(
+      `${baseUrl.replace(/\/$/, '')}/ecom/api/authentication/token?username=${u}&password=${p}`,
+      { method: 'GET', headers: { Authorization: `Bearer ${headerToken}` } },
+    );
+    const body = await r.json().catch(() => null) as null | {
+      accesstoken?: string; expiry?: string; message?: string;
+    };
+    if (!r.ok || !body?.accesstoken) {
+      return {
+        ok: false,
+        message: `TCS ecom login failed (HTTP ${r.status}) — check TCS_USERNAME / TCS_PASSWORD`,
+        code: r.status,
+        raw: body,
+      };
+    }
+    const expiresAt = body.expiry
+      ? Math.floor(new Date(body.expiry).getTime() / 1000)
+      : now + 60 * 60;
+    cachedEcomToken = { value: body.accesstoken, expiresAt };
+    return body.accesstoken;
+  } catch (err) {
+    return { ok: false, message: 'TCS ecom login network error', code: 'network', raw: (err as Error).message };
+  }
+}
+
 // Helper: type-narrow a Result<X>.
 function isErr<T>(r: Result<T>): r is Extract<Result<T>, { ok: false }> {
   return typeof r === 'object' && r !== null && (r as { ok?: boolean }).ok === false;
+}
+
+// Fetch both tokens in the order the transactional endpoints need them.
+async function getTokens(): Promise<Result<{ jwt: string; ecom: string }>> {
+  const jwt = await getHeaderToken();
+  if (isErr(jwt)) return jwt;
+  const ecom = await getEcomToken(jwt);
+  if (isErr(ecom)) return ecom;
+  return { jwt, ecom };
 }
 
 // ─── Booking creation ──────────────────────────────────────────────────────
@@ -155,9 +222,9 @@ async function book(input: BookingInput): Promise<Result<BookingResult>> {
   if (!isConfigured()) {
     return { ok: false, message: 'TCS adapter is not configured, set TCS_* env vars.', code: 'not_configured' };
   }
-  const tokenOrErr = await getBearerToken();
-  if (isErr(tokenOrErr)) return tokenOrErr;
-  const token = tokenOrErr;
+  const tokensOrErr = await getTokens();
+  if (isErr(tokensOrErr)) return tokensOrErr;
+  const { jwt, ecom } = tokensOrErr;
   const baseUrl = env('TCS_BASE_URL')!;
 
   // TCS schema: "shipmentdate" is DD-MM-YYYY (the example in the spec mixes
@@ -183,7 +250,7 @@ async function book(input: BookingInput): Promise<Result<BookingResult>> {
   }));
 
   const body = {
-    accesstoken: token,
+    accesstoken: ecom,
     // We let TCS assign the consignment number, pass empty per the spec example.
     consignmentno: '',
     shipperinfo: {
@@ -228,7 +295,7 @@ async function book(input: BookingInput): Promise<Result<BookingResult>> {
   try {
     const r = await fetch(`${baseUrl.replace(/\/$/, '')}/ecom/api/booking/create`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
       body: JSON.stringify(body),
     });
     const out = await r.json().catch(() => null) as null | {
@@ -264,14 +331,15 @@ async function cancel(trackingNumber: string): Promise<Result<CancelResult>> {
   if (!isConfigured()) {
     return { ok: false, message: 'TCS adapter is not configured.', code: 'not_configured' };
   }
-  const tokenOrErr = await getBearerToken();
-  if (isErr(tokenOrErr)) return tokenOrErr;
+  const tokensOrErr = await getTokens();
+  if (isErr(tokensOrErr)) return tokensOrErr;
+  const { jwt, ecom } = tokensOrErr;
   const baseUrl = env('TCS_BASE_URL')!;
   try {
     const r = await fetch(`${baseUrl.replace(/\/$/, '')}/ecom/api/booking/cancel`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ accesstoken: tokenOrErr, consignmentNumber: trackingNumber }),
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+      body: JSON.stringify({ accesstoken: ecom, consignmentNumber: trackingNumber }),
     });
     const out = await r.json().catch(() => null) as null | { message?: string };
     if (!r.ok || !out?.message || /failure/i.test(out.message)) {
@@ -293,23 +361,24 @@ async function track(trackingNumber: string): Promise<Result<TrackResult>> {
   if (!isConfigured()) {
     return { ok: false, message: 'TCS adapter is not configured.', code: 'not_configured' };
   }
-  const tokenOrErr = await getBearerToken();
+  // Tracking only needs the header JWT (no ecom access token).
+  const tokenOrErr = await getHeaderToken();
   if (isErr(tokenOrErr)) return tokenOrErr;
   const baseUrl = env('TCS_BASE_URL')!;
   try {
-    // The spec shows `consignee` as the param name and an array body for GET, but a
-    // GET with a JSON body is not standard. Real-world TCS implementations call it
-    // as a POST with the JSON in body. Try POST first, fall back to GET.
+    // Verified live: this is a GET with `consignee` in the query string,
+    // authorised by the header JWT. (A POST returns 405.) Try GET first, fall
+    // back to POST for resilience against gateway variations.
     const url = `${baseUrl.replace(/\/$/, '')}/tracking/api/Tracking/GetDynamicTrackDetail`;
-    let r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenOrErr}` },
-      body: JSON.stringify({ consignee: [trackingNumber] }),
+    let r = await fetch(`${url}?consignee=${encodeURIComponent(trackingNumber)}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${tokenOrErr}` },
     });
     if (r.status === 404 || r.status === 405) {
-      r = await fetch(`${url}?consignee=${encodeURIComponent(trackingNumber)}`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${tokenOrErr}` },
+      r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenOrErr}` },
+        body: JSON.stringify({ consignee: [trackingNumber] }),
       });
     }
     const out = await r.json().catch(() => null) as null | {
@@ -347,20 +416,25 @@ async function label(trackingNumber: string): Promise<Result<LabelResult>> {
   if (!isConfigured()) {
     return { ok: false, message: 'TCS adapter is not configured.', code: 'not_configured' };
   }
-  const tokenOrErr = await getBearerToken();
-  if (isErr(tokenOrErr)) return tokenOrErr;
+  const tokensOrErr = await getTokens();
+  if (isErr(tokensOrErr)) return tokensOrErr;
+  const { jwt, ecom } = tokensOrErr;
   const baseUrl = env('TCS_BASE_URL')!;
   const url = `${baseUrl.replace(/\/$/, '')}/ecom/api/print/label`;
   try {
-    let r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ consignmentno: trackingNumber, shipperdetail: 'true', accesstoken: tokenOrErr }),
+    // Verified live: GET with consignmentno + shipperdetail + the ecom access
+    // token in the query string, authorised by the header JWT. (Omitting
+    // accesstoken returns "access token is required".)
+    const qs = `?consignmentno=${encodeURIComponent(trackingNumber)}&shipperdetail=true&accesstoken=${encodeURIComponent(ecom)}`;
+    let r = await fetch(`${url}${qs}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${jwt}` },
     });
     if (r.status === 404 || r.status === 405) {
-      r = await fetch(`${url}?consignmentno=${encodeURIComponent(trackingNumber)}&shipperdetail=true`, {
-        method: 'GET',
-        headers: { Authorization: `Bearer ${tokenOrErr}` },
+      r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ consignmentno: trackingNumber, shipperdetail: 'true', accesstoken: ecom }),
       });
     }
     const out = await r.json().catch(() => null) as null | { url?: string; message?: string };
@@ -386,20 +460,21 @@ async function payment(fromDate: string, toDate: string): Promise<Result<Payment
   if (!paymentConfigured()) {
     return { ok: false, message: 'TCS payment reconciliation needs TCS_CUSTOMER_NO set.', code: 'not_configured' };
   }
-  const tokenOrErr = await getBearerToken();
-  if (isErr(tokenOrErr)) return tokenOrErr;
+  const tokensOrErr = await getTokens();
+  if (isErr(tokensOrErr)) return tokensOrErr;
+  const { jwt, ecom } = tokensOrErr;
   const baseUrl = env('TCS_BASE_URL')!;
   const url = `${baseUrl.replace(/\/$/, '')}/ecom/api/Payment/detail`;
-  const payload = { accesstoken: tokenOrErr, customerno: env('TCS_CUSTOMER_NO'), fromdate: fromDate, todate: toDate };
+  const payload = { accesstoken: ecom, customerno: env('TCS_CUSTOMER_NO'), fromdate: fromDate, todate: toDate };
   try {
     let r = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
       body: JSON.stringify(payload),
     });
     if (r.status === 404 || r.status === 405) {
-      const qs = new URLSearchParams({ customerno: String(env('TCS_CUSTOMER_NO')), fromdate: fromDate, todate: toDate });
-      r = await fetch(`${url}?${qs}`, { method: 'GET', headers: { Authorization: `Bearer ${tokenOrErr}` } });
+      const qs = new URLSearchParams({ customerno: String(env('TCS_CUSTOMER_NO')), fromdate: fromDate, todate: toDate, accesstoken: ecom });
+      r = await fetch(`${url}?${qs}`, { method: 'GET', headers: { Authorization: `Bearer ${jwt}` } });
     }
     const out = await r.json().catch(() => null) as null | {
       detail?: Array<Record<string, unknown>>;
