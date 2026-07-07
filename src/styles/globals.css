@@ -1109,6 +1109,15 @@ a.underline,
 }
 .faq-item summary::-webkit-details-marker { display: none; }
 
+/* PDP info accordion (How to Use / Ingredients / Usage Tips / Shipping).
+   Native <details> so the body ships in SSR HTML (crawlable + works without JS)
+   instead of being mounted only on click. Hide the default marker and rotate
+   the chevron when open. */
+.pdp-accordion summary::-webkit-details-marker { display: none; }
+.pdp-accordion summary { list-style: none; }
+.pdp-accordion[open] .pdp-accordion-chevron { transform: rotate(180deg); }
+.pdp-accordion-chevron { transition: transform 200ms ease-out; }
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }

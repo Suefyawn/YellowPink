@@ -62,7 +62,7 @@ export function FrequentlyBoughtTogether({
   return (
     <section style={{ padding: 'var(--section-gap) 0', borderTop: '1px solid var(--line)' }}>
       <div className="container">
-        <Overline style={{ display: 'block', marginBottom: 24 }}>Frequently Bought Together</Overline>
+        <Overline as="h2" style={{ display: 'block', marginBottom: 24 }}>Frequently Bought Together</Overline>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 32, alignItems: 'start' }} className="fbt-grid">
           {/* Product rail (images with + separators) */}
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', overflowX: 'auto', paddingBottom: 12 }}>

@@ -26,10 +26,16 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const c = await loadCollection(slug);
   if (!c) return pageMeta({ title: 'Collection', description: 'Shop our curated collections.', path: `/collection/${slug}` });
+  // Keep a contentless (empty) collection out of the index — a published-but-
+  // empty edit is thin content. Membership is enough (ordering doesn't matter
+  // here), so we skip the manual-position query.
+  const [products, tagData] = await Promise.all([getProducts(), loadTagData()]);
+  const memberCount = resolveCollectionProducts(c, products, { productTagMap: tagData.productTagMap }).length;
   return pageMeta({
     title: c.seo_title || `${c.title}, Shop`,
     description: c.seo_description || c.description || `Shop the ${c.title} collection at Yellow Pink, authentic, imported, with cash-on-delivery nationwide in Pakistan.`,
     path: `/collection/${c.slug}`,
+    noIndex: memberCount === 0,
     // Use the collection's own hero as the share image so social cards /
     // SERP thumbnails are bespoke per collection instead of the generic
     // branded fallback. Falls through to app/opengraph-image.tsx when a
@@ -66,6 +72,15 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
     { name: c.title, path: `/collection/${c.slug}` },
   ];
 
+  // On-page intro copy: the admin blurb when set, else a keyword-led fallback
+  // so a collection is never a bare H1 + grid (matches the brand-page pattern
+  // and gives the page indexable content). Not shown when the collection is
+  // empty (that page is noindexed anyway).
+  const introCopy = c.description
+    || (list.length > 0
+      ? `Explore the ${c.title} edit at Yellow Pink — ${list.length} handpicked, 100% authentic ${list.length === 1 ? 'product' : 'products'}, imported and delivered with cash on delivery across Pakistan.`
+      : null);
+
   return (
     <main className="fade-in">
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd(breadcrumb)) }} />
@@ -93,7 +108,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
               <div style={{ maxWidth: 520 }}>
                 <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-700)' }}>Collection</Overline>
                 <h1 className="display-l" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', marginBottom: 14, lineHeight: 1.06 }}>{c.title}</h1>
-                {c.description && <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 440 }}>{c.description}</p>}
+                {introCopy && <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 440 }}>{introCopy}</p>}
               </div>
             </div>
           </div>
@@ -103,7 +118,7 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
           <div className="container">
             <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Collection</Overline>
             <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{c.title}</h1>
-            {c.description && <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 24 }}>{c.description}</p>}
+            {introCopy && <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 24 }}>{introCopy}</p>}
             <p className="small-text" style={{ marginBottom: 28 }}>{list.length} {list.length === 1 ? 'product' : 'products'}</p>
           </div>
         </section>

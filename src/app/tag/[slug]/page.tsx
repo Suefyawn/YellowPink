@@ -39,10 +39,15 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       .maybeSingle();
     ogImage = (img as { image_url?: string } | null)?.image_url || undefined;
   }
+  // Keep an empty tag (no published members) out of the index — a bare grid
+  // with a templated title is thin content. getProducts() is cached, so this
+  // membership count is effectively free.
+  const publishedCount = isDemo ? 0 : (await getProducts()).filter(p => tag.productIds.has(p.id)).length;
   return pageMeta({
     title: `Shop ${tag.name} in Pakistan`,
     description: `Shop ${tag.name} at Yellow Pink, authentic, imported skincare, makeup and wellness, with cash-on-delivery nationwide in Pakistan.`,
     path: `/tag/${slug}`,
+    noIndex: publishedCount === 0,
     image: ogImage,
   });
 }
@@ -77,6 +82,11 @@ export default async function TagPage({ params }: { params: Promise<{ slug: stri
         <div className="container">
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Tagged</Overline>
           <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{tag.name}</h1>
+          {list.length > 0 && (
+            <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 8 }}>
+              {list.length} {list.length === 1 ? 'product' : 'products'} tagged &ldquo;{tag.name}&rdquo; at Yellow Pink — 100% authentic and imported, with cash on delivery nationwide across Pakistan.
+            </p>
+          )}
         </div>
       </section>
 

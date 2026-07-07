@@ -30,7 +30,7 @@ function Rail({ heading, href, linkLabel, products, style }: {
   return (
     <div style={style}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, marginBottom: 32 }}>
-        <Overline>{heading}</Overline>
+        <Overline as="h2">{heading}</Overline>
         <Link href={href} className="text-link" style={{ whiteSpace: 'nowrap' }}>{linkLabel}</Link>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">

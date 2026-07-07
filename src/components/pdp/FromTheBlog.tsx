@@ -14,7 +14,7 @@ export function FromTheBlog({ posts }: { posts: BlogPost[] }) {
   return (
     <section style={{ padding: '48px 0', borderTop: '1px solid var(--line)' }} aria-label="Articles featuring this product">
       <div className="container">
-        <Overline style={{ display: 'block', marginBottom: 24 }}>From the blog</Overline>
+        <Overline as="h2" style={{ display: 'block', marginBottom: 24 }}>From the blog</Overline>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="blog-grid">
           {posts.map(p => (
             <Link key={p.id} href={`/blog/${p.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>

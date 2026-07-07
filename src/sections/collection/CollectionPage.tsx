@@ -521,13 +521,21 @@ export function CollectionPage({
   const pageTitle = singleBrand
     ?? activeSubcategory
     ?? (activeCategory === 'All' ? 'All Products' : activeCategory);
+  // Align the strongest on-page heading with the head term the <title> carries:
+  // category / taxon / subcategory landings get the " in Pakistan" geo modifier
+  // (e.g. "Cleansers & Treatments in Pakistan"). Brand landings keep the bare
+  // brand name (their intro line carries the geo cue), and "All Products" stays
+  // as-is.
+  const heading = !singleBrand && activeCategory !== 'All'
+    ? `${pageTitle} in Pakistan`
+    : pageTitle;
 
   return (
     <div>
       <section style={{ padding: '48px 0 0', borderBottom: '1px solid var(--line)' }}>
         <div className="container">
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Shop</Overline>
-          <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{pageTitle}</h1>
+          <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{heading}</h1>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 560, marginBottom: 32 }}>
             {singleBrand
               ? `Explore the full ${singleBrand} range at Yellow Pink, 100% authentic, imported, with cash-on-delivery across Pakistan.`
@@ -672,7 +680,10 @@ export function CollectionPage({
             role="dialog"
             aria-modal={filtersOpen}
             aria-label="Filter products"
-            aria-hidden={!filtersOpen}
+            // `inert` when closed removes the off-screen price/brand/tag controls
+            // from the tab order and the a11y tree — `aria-hidden` alone left
+            // focusable descendants reachable (a WCAG violation) and tabbable.
+            inert={!filtersOpen}
             style={{
               position: 'fixed', top: 0, left: 0, bottom: 0,
               width: 320, maxWidth: '88vw',

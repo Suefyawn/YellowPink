@@ -35,7 +35,10 @@ export default async function KBeautyPage() {
         dangerouslySetInnerHTML={{
           __html: jsonLd(itemListLd(
             'K-Beauty',
-            products.map(p => ({ name: p.name, path: `/product/${p.slug}` })),
+            // Pass image/brand/price so the list emits rich Product items
+            // (eligible for product-list rich results), matching the
+            // collection/brand/tag pages — not lean URL-only summaries.
+            products.map(p => ({ name: p.name, path: `/product/${p.slug}`, image: p.image_url, brand: p.brand ?? undefined, price: p.price })),
           )),
         }}
       />

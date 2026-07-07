@@ -9,7 +9,7 @@ import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref, isHealthCategory } from '@/lib/category-taxonomy';
+import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref, isHealthCategory, taxonForCategory } from '@/lib/category-taxonomy';
 import { brandSlug } from '@/lib/brands';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
@@ -180,10 +180,19 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   // Scope the JSON-LD ItemList to whatever the URL implies, taxon →
   // products in those categories, single category → that category, else
   // top of the catalog. We cap at 24 to keep the schema lean.
+  // Canonicalise the URL category so a slug form (?category=cleansers-treatments)
+  // resolves to the stored label ("Cleansers & Treatments"). Without this the
+  // ItemList filter (label ≠ slug) matched 0 products and the schema/breadcrumb
+  // showed the raw slug. CollectionPage still receives the original value (it
+  // resolves taxon-or-leaf itself); this only feeds the ItemList + breadcrumb.
+  const resolvedCategory = initialCategory !== 'All'
+    ? (canonicalCategory(initialCategory) ?? initialCategory)
+    : 'All';
+
   const scopedProducts = taxonObj
     ? products.filter(p => taxonObj.categories.includes(p.category)).slice(0, 24)
-    : initialCategory !== 'All'
-      ? products.filter(p => p.category === initialCategory).slice(0, 24)
+    : resolvedCategory !== 'All'
+      ? products.filter(p => p.category === resolvedCategory).slice(0, 24)
       : products.slice(0, 24);
 
   // On wellness/health category landings, surface the matching buyer guides.
@@ -208,13 +217,17 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       .map(g => ({ slug: g.slug, title: g.title }));
   }
 
+  // For a leaf category (not a taxon view), insert the parent taxon crumb so
+  // the trail is Home › Shop › <Taxon> › <Leaf> — a deeper, keyword-relevant
+  // path that also links up to the taxon landing page.
+  const leafCrumb = resolvedCategory !== 'All' && !taxonObj ? resolvedCategory : null;
+  const parentTaxon = leafCrumb ? taxonForCategory(leafCrumb) : null;
   const breadcrumb = [
     { name: 'Home', path: '/' },
     { name: 'Shop', path: '/shop' },
     ...(taxonObj ? [{ name: taxonObj.label, path: `/shop?taxon=${taxonObj.key}` }] : []),
-    ...(initialCategory !== 'All' && !taxonObj
-      ? [{ name: initialCategory, path: categoryHref(initialCategory) }]
-      : []),
+    ...(parentTaxon ? [{ name: parentTaxon.label, path: `/shop?taxon=${parentTaxon.key}` }] : []),
+    ...(leafCrumb ? [{ name: leafCrumb, path: categoryHref(leafCrumb) }] : []),
   ];
 
   return (
