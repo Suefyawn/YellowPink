@@ -5,7 +5,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getProductBySlug, getProducts, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings, getPostsLinkingProduct } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
-import { ogImageUrl } from '@/lib/image-loader';
 
 // Pre-render every published product at build so PDPs are served as static CDN
 // HTML (fast TTFB worldwide, incl. Pakistan) instead of cold on-demand renders.
@@ -92,9 +91,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // back to the auto-templated values so existing rows keep working.
   const title = product.seo_title?.trim() || autoTitle;
   const description = product.seo_description?.trim() || autoDescription;
-  // Serve a resized ~1200px JPEG for the share preview instead of the raw
-  // 0.5–1.8 MB packshot PNG, so WhatsApp/Facebook render the thumbnail.
-  const image = ogImageUrl(product.og_image_url?.trim() || product.image_url) ?? undefined;
+  // og:image MUST be a direct, crawlable URL on our own domain / Supabase —
+  // NOT the images.weserv.nl proxy. weserv's robots.txt disallows every
+  // `/?url=…` request (Disallow: /*?*), so a proxied og:image can't be fetched
+  // by Googlebot, which is why product results never showed a SERP thumbnail.
+  // The packshot host (yellowpink.pk/catalog or Supabase storage) is crawlable
+  // and the file sizes are fine for WhatsApp/Facebook link previews. An admin
+  // `og_image_url` (e.g. a bespoke 1200×630 card) still wins when set.
+  const image = (product.og_image_url?.trim() || product.image_url) || undefined;
   return pageMeta({
     title,
     description,
