@@ -34,7 +34,7 @@ function decodeJwt(raw: string | undefined): Record<string, unknown> | { note: s
 
 // Build the same booking body the adapter builds, so header/body experiments
 // stay faithful to production behaviour.
-function buildBookingBody(accesstoken: string) {
+function buildBookingBody(accesstoken: string, costCenterOverride?: string) {
   const now = new Date();
   const dd = String(now.getDate()).padStart(2, '0');
   const mm = String(now.getMonth() + 1).padStart(2, '0');
@@ -59,7 +59,7 @@ function buildBookingBody(accesstoken: string) {
       email: 'selftest@example.com', mobile: '03001234567',
     },
     shipmentinfo: {
-      costcentercode: process.env.TCS_COST_CENTER_CODE,
+      costcentercode: costCenterOverride || process.env.TCS_COST_CENTER_CODE,
       referenceno: `SELFTEST-${yyyy}${mm}${dd}`,
       contentdesc: 'Self-test', servicecode: process.env.TCS_SERVICE_CODE || 'O',
       shipmentdate: `${dd}-${mm}-${yyyy}`, currency: 'PKR', codamount: 1000,
@@ -288,11 +288,12 @@ export async function GET(req: Request) {
     steps.push({ step: 'mint:OK', shape: mintShape });
 
     // ── Step 2: booking, probing token placement ────────────────────────────
+    const ccOverride = url.searchParams.get('cc') || undefined;
     async function book(name: string, headerToken: string, bodyToken: string) {
       const r = await fetch(`${P}/ecom/api/booking/create`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${headerToken}` },
-        body: JSON.stringify(buildBookingBody(bodyToken)),
+        body: JSON.stringify(buildBookingBody(bodyToken, ccOverride)),
       });
       const out = await r.json().catch(() => null);
       return { name, http: r.status, ok: r.ok && out?.status !== false && Boolean(out?.consignmentNo), cn: out?.consignmentNo ?? null, response: out };
