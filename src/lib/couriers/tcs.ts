@@ -402,7 +402,24 @@ async function track(trackingNumber: string): Promise<Result<TrackResult>> {
     });
     // Sort newest first so events[0] is the latest.
     events.sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
-    return { ok: true, events, current: events[0]?.status, raw: out };
+    // `current` drives the shipment/order status. Courier feeds often stamp
+    // several checkpoints with the SAME timestamp (e.g. TCS logs "Recipient
+    // Refused" and "Shipment Returned To Origin" alongside a facility scan at
+    // the same minute), so taking events[0] blindly can land on the wrong one
+    // and leave a refused/returned parcel looking "in transit". Among the
+    // events sharing the newest timestamp, pick the most significant status.
+    const rank: Record<string, number> = {
+      delivered: 6, returned: 6, cancelled: 6, failed: 5,
+      out_for_delivery: 4, in_transit: 3, picked_up: 2, created: 1,
+    };
+    const newestAt = events[0]?.occurredAt;
+    const current = events
+      .filter(e => e.occurredAt === newestAt)
+      .reduce<string | undefined>(
+        (best, e) => (best == null || (rank[e.status] ?? 0) > (rank[best] ?? 0) ? e.status : best),
+        undefined,
+      );
+    return { ok: true, events, current: current ?? events[0]?.status, raw: out };
   } catch (err) {
     return { ok: false, message: 'TCS tracking network error', code: 'network', raw: (err as Error).message };
   }
