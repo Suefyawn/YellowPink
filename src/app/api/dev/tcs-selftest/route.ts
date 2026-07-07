@@ -209,6 +209,87 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, summary: 'Second-auth-system probe — see steps.', steps }, { status: 200 });
   }
 
+  // FULL two-step prod flow: mint the opaque ecom accesstoken from
+  // /ecom/api/authentication/token (username+password), then book → label →
+  // track → cancel on prod, probing token placement to find the exact wiring.
+  if (url.searchParams.get('prodbook2') === '1') {
+    const P = 'https://ociconnect.tcscourier.com';
+    const u = process.env.TCS_USERNAME ?? '';
+    const p = process.env.TCS_PASSWORD ?? '';
+    if (!u || !p) {
+      return NextResponse.json({ ok: false, summary: 'TCS_USERNAME / TCS_PASSWORD not set on this deployment.', steps }, { status: 200 });
+    }
+
+    // ── Step 1: mint the ecom accesstoken (try a few request shapes) ────────
+    async function mint(shape: string) {
+      const base = `${P}/ecom/api/authentication/token`;
+      const h: Record<string, string> = { Authorization: `Bearer ${token}` };
+      let r: Response;
+      try {
+        if (shape === 'GET-query') {
+          r = await fetch(`${base}?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`, { method: 'GET', headers: h });
+        } else if (shape === 'GET-body') {
+          r = await fetch(base, { method: 'GET', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
+        } else {
+          r = await fetch(base, { method: 'POST', headers: { ...h, 'Content-Type': 'application/json' }, body: JSON.stringify({ username: u, password: p }) });
+        }
+      } catch (e) { return { shape, error: (e as Error).message, accesstoken: null as string | null }; }
+      const out = await r.json().catch(() => null) as null | { accesstoken?: string; message?: string; expiry?: string };
+      return { shape, http: r.status, message: out?.message ?? null, gotToken: Boolean(out?.accesstoken), accesstoken: out?.accesstoken ?? null };
+    }
+    let ecomToken: string | null = null;
+    let mintShape: string | null = null;
+    for (const shape of ['GET-query', 'GET-body', 'POST']) {
+      const m = await mint(shape);
+      steps.push({ step: `mint(${shape})`, http: (m as { http?: number }).http, message: (m as { message?: string }).message, gotToken: Boolean(m.accesstoken), tokenLen: m.accesstoken?.length ?? 0 });
+      if (m.accesstoken) { ecomToken = m.accesstoken; mintShape = shape; break; }
+    }
+    if (!ecomToken) {
+      return NextResponse.json({ ok: false, summary: 'Could not mint ecom accesstoken — username/password rejected. See mint steps.', steps }, { status: 200 });
+    }
+    steps.push({ step: 'mint:OK', shape: mintShape });
+
+    // ── Step 2: booking, probing token placement ────────────────────────────
+    async function book(name: string, headerToken: string, bodyToken: string) {
+      const r = await fetch(`${P}/ecom/api/booking/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${headerToken}` },
+        body: JSON.stringify(buildBookingBody(bodyToken)),
+      });
+      const out = await r.json().catch(() => null);
+      return { name, http: r.status, ok: r.ok && out?.status !== false && Boolean(out?.consignmentNo), cn: out?.consignmentNo ?? null, response: out };
+    }
+    const attempts = [
+      { name: 'header=JWT, body=ecomToken', h: token, b: ecomToken },
+      { name: 'header=ecomToken, body=ecomToken', h: ecomToken, b: ecomToken },
+      { name: 'header=ecomToken, body=empty', h: ecomToken, b: '' },
+    ];
+    let cn: string | null = null; let winning: string | null = null;
+    for (const a of attempts) {
+      const res = await book(a.name, a.h, a.b);
+      steps.push({ step: `book(${a.name})`, http: res.http, ok: res.ok, cn: res.cn, response: res.response });
+      if (res.ok) { cn = String(res.cn); winning = a.name; break; }
+    }
+
+    // ── Step 3: label + track + cancel (cleanup) ────────────────────────────
+    if (cn) {
+      const bodyTok = winning?.includes('body=empty') ? '' : ecomToken;
+      const hdrTok = winning?.startsWith('header=JWT') ? token : ecomToken;
+      const lr = await fetch(`${P}/ecom/api/print/label?consignmentno=${encodeURIComponent(cn)}&shipperdetail=true`, { method: 'GET', headers: { Authorization: `Bearer ${hdrTok}` } });
+      steps.push({ step: 'label', http: lr.status, response: await lr.json().catch(() => null) });
+      const tr = await fetch(`${P}/tracking/api/Tracking/GetDynamicTrackDetail?consignee=${encodeURIComponent(cn)}`, { method: 'GET', headers: { Authorization: `Bearer ${hdrTok}` } });
+      steps.push({ step: 'track', http: tr.status, response: await tr.json().catch(() => null) });
+      const cr = await fetch(`${P}/ecom/api/booking/cancel`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${hdrTok}` }, body: JSON.stringify({ accesstoken: bodyTok, consignmentNumber: cn }) });
+      steps.push({ step: 'cancel(cleanup)', http: cr.status, response: await cr.json().catch(() => null) });
+    }
+
+    return NextResponse.json({
+      ok: Boolean(cn), consignmentNo: cn, winningPlacement: winning, mintShape,
+      summary: cn ? `PROD end-to-end OK — booked+cancelled ${cn} via [${winning}], token minted via ${mintShape}.` : 'Minted ecom token but booking still failed — see steps.',
+      steps,
+    }, { status: 200 });
+  }
+
   // PROD smoke test: create ONE real consignment on ociconnect, validate
   // label + track, then cancel it. Tests both token transports so we learn
   // whether the adapter (body-token only) works on prod or needs the header.
