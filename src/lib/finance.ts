@@ -27,7 +27,35 @@ export const FINANCE_RANGES: { key: string; label: string; days: number | null }
 // "orders placed" (dashboard) vs "orders that produced P&L" (finance) — so
 // their order counts can differ by the number of refunds. Keep both rules
 // here so they don't silently drift.
-const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'payment_pending', 'refunded']);
+const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'payment_pending', 'refunded', 'returned']);
+
+/** Orders that reached the customer's door but came back — refused on COD, or
+ *  returned to origin. These earn NO revenue (nothing was collected) yet still
+ *  cost us the courier's round-trip charge, so they're a pure delivery loss the
+ *  P&L must surface rather than hide. Kept separate from DEAD_STATES so the
+ *  Finance page can total that loss on its own. */
+export const RETURNED_STATES = new Set(['returned']);
+
+/** Sum the courier cost sunk on returned/refused orders in the window — real
+ *  loss (delivery charged by the courier for the failed round trip, zero
+ *  revenue). Falls back to the owner's typical-delivery-cost estimate when an
+ *  order has no exact recorded charge yet. Returns the count too so the UI can
+ *  say "N orders". */
+export async function loadReturnedDeliveryLoss(
+  fromISO: string | null,
+  defaultDeliveryCost: number,
+): Promise<{ count: number; loss: number }> {
+  const admin = supabaseAdmin();
+  let q = admin.from('orders').select('delivery_cost, status').in('status', [...RETURNED_STATES]);
+  if (fromISO) q = q.gte('created_at', fromISO);
+  const { data } = await fetchAll<{ delivery_cost: number | null; status: string | null }>(q);
+  const rows = data ?? [];
+  const loss = rows.reduce(
+    (s, o) => s + (o.delivery_cost != null ? (Number(o.delivery_cost) || 0) : defaultDeliveryCost),
+    0,
+  );
+  return { count: rows.length, loss };
+}
 
 export const fnum = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
 
