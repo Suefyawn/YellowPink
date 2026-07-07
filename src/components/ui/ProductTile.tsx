@@ -82,14 +82,21 @@ export function ProductTile({ product }: ProductTileProps) {
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ position: 'relative' }}
+      // Full-height flex column so every tile in a grid row is equal height and
+      // the inline "Add to cart" (a sibling of the Link) lands at a consistent
+      // bottom. Without this the button floated at different heights when
+      // titles ran 1 vs 2 lines or a rating row was present on some cards only.
+      style={{ position: 'relative', display: 'flex', flexDirection: 'column', height: '100%' }}
     >
       <Link
         href={`/product/${slug}`}
         style={{
           textDecoration: 'none',
           color: 'inherit',
+          // Grows to fill the stretched card so the trailing quick-add button
+          // is pushed to the card's bottom edge (buttons align across the row).
           display: 'block',
+          flex: '1 1 auto',
           transform: hovered ? 'translateY(-3px)' : 'translateY(0)',
           transition: 'transform 220ms ease-out',
         }}
@@ -218,9 +225,12 @@ export function ProductTile({ product }: ProductTileProps) {
           fontSize: '0.75rem', letterSpacing: '0.12em',
         }}>{brand}</Overline>
         {/* 2-line clamp keeps long names from pushing the price row down and
-            wrecking the baseline rhythm across a grid row. */}
+            wrecking the baseline rhythm across a grid row. The matching
+            min-height reserves both lines even for one-line names, so the
+            price row sits at the same offset on every card in a row. */}
         <div className="h3" style={{
           marginBottom: 2, position: 'relative',
+          lineHeight: 1.3, minHeight: '2.6em',
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
         }}>
           {name}
