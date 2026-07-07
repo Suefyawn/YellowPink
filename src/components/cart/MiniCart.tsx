@@ -12,14 +12,13 @@ import { useCommerceSettings } from '@/context/CommerceSettings';
 
 export function MiniCart() {
   const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty } = useCart();
-  const { freeShippingEnabled, freeShippingThreshold } = useCommerceSettings();
+  const { freeShippingEnabled } = useCommerceSettings();
   const router = useRouter();
   useBodyScrollLock(cartOpen);
   useEscapeKey(cartOpen, () => setCartOpen(false));
   const panelRef = useRef<HTMLDivElement | null>(null);
   useFocusTrap(cartOpen, panelRef);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-  const progress = Math.min(total / freeShippingThreshold, 1);
 
   const handleViewCart = () => {
     setCartOpen(false);
@@ -71,56 +70,14 @@ export function MiniCart() {
         </div>
 
         {freeShippingEnabled && (
-        <div
-          style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)' }}
-          aria-live="polite"
-        >
-          <div
-            className="small-text"
-            style={{
-              marginBottom: 8, color: 'var(--ink-700)',
-              display: 'flex', alignItems: 'center', gap: 8,
-            }}
-          >
-            {progress >= 1 ? (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--success)', flexShrink: 0 }}>
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-                <span style={{ color: 'var(--success)', fontWeight: 600 }}>
-                  Free shipping unlocked
-                </span>
-              </>
-            ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--ink-500)', flexShrink: 0 }}>
-                  <rect x="1" y="3" width="15" height="13" rx="1" />
-                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                  <circle cx="5.5" cy="18.5" r="2.5" />
-                  <circle cx="18.5" cy="18.5" r="2.5" />
-                </svg>
-                <span>
-                  Spend <span className="tabular-nums" style={{ fontWeight: 600, color: 'var(--ink-900)' }}>PKR {(freeShippingThreshold - total).toLocaleString()}</span> more for <span style={{ fontWeight: 600, color: 'var(--brand-pink-text)' }}>free shipping</span>
-                </span>
-              </>
-            )}
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={Math.round(progress * 100)}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="Free shipping progress"
-            style={{ height: 6, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden' }}
-          >
-            <div style={{
-              height: '100%', width: `${progress * 100}%`,
-              background: progress >= 1
-                ? 'var(--success)'
-                : 'linear-gradient(90deg, var(--brand-yellow), var(--brand-pink))',
-              borderRadius: 'var(--radius-pill)', transition: 'width 400ms ease-out, background 400ms ease-out',
-            }} />
-          </div>
+        <div className="small-text" style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)', color: 'var(--ink-700)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--ink-500)', flexShrink: 0 }}>
+            <rect x="1" y="3" width="15" height="13" rx="1" />
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+            <circle cx="5.5" cy="18.5" r="2.5" />
+            <circle cx="18.5" cy="18.5" r="2.5" />
+          </svg>
+          <span>Free delivery on bigger orders &mdash; your exact threshold shows at checkout.</span>
         </div>
         )}
 

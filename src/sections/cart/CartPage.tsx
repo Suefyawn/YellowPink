@@ -84,14 +84,13 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
       : appliedCoupon.value
     : 0;
   const total = Math.max(0, subtotal - discount);
-  // Free shipping is earned on the merchandise subtotal (pre-discount), so
-  // applying a coupon never strips a free-shipping promise the cart already
-  // made. Progress + the threshold gap track the same pre-discount figure.
-  // Threshold / enabled come from the owner's live setting (CommerceSettings),
-  // so turning free shipping off here removes the bar and the FREE rate.
-  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate } = useCommerceSettings();
-  const progress = Math.min(subtotal / freeShippingThreshold, 1);
-  const shipping = freeShipCoupon || (freeShippingEnabled && subtotal >= freeShippingThreshold) ? 0 : defaultShippingRate;
+  // The cart can't know the shopper's delivery zone yet, and the free-delivery
+  // threshold varies by zone, so we never pre-promise free here from a default
+  // threshold — only a free-shipping coupon zeroes the estimate. Checkout
+  // resolves the real, province-correct rate (and any free-delivery
+  // qualification). `freeShippingEnabled` still gates the free-delivery nudge.
+  const { freeShippingEnabled, defaultShippingRate } = useCommerceSettings();
+  const shipping = freeShipCoupon ? 0 : defaultShippingRate;
   // "You may also like", bestsellers minus whatever's already in the bag,
   // capped at a single 4-up row.
   const crossSell = recommended.filter(p => !cartItems.some(c => c.id === p.id)).slice(0, 4);
@@ -186,17 +185,15 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
         <div className="container">
           <div style={{ padding: '16px 0 32px', borderBottom: '1px solid var(--line)' }}>
             {freeShippingEnabled && (
-              <>
-                <div className="small-text" style={{ marginBottom: 8, color: 'var(--ink-700)' }}>
-                  {progress >= 1
-                    ? <span style={{ color: 'var(--success)', fontWeight: 600 }}>You qualify for free shipping!</span>
-                    : <>PKR {(freeShippingThreshold - subtotal).toLocaleString()} away from <span style={{ color: 'var(--brand-pink-text)', fontWeight: 600 }}>FREE</span> shipping</>
-                  }
-                </div>
-                <div style={{ height: 4, background: 'var(--paper2)', borderRadius: 'var(--radius-pill)', overflow: 'hidden', maxWidth: 400 }}>
-                  <div style={{ height: '100%', width: `${progress * 100}%`, background: 'linear-gradient(90deg, var(--brand-yellow), var(--brand-pink))', borderRadius: 'var(--radius-pill)', transition: 'width 400ms ease-out' }} />
-                </div>
-              </>
+              <div className="small-text" style={{ color: 'var(--ink-700)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--ink-500)', flexShrink: 0 }}>
+                  <rect x="1" y="3" width="15" height="13" rx="1" />
+                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                  <circle cx="5.5" cy="18.5" r="2.5" />
+                  <circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
+                <span>Free delivery on bigger orders &mdash; your exact threshold shows at checkout once we know your city.</span>
+              </div>
             )}
             {estimatedDays && (
               <div className="small-text" style={{ marginTop: 12, color: 'var(--ink-700)' }}>

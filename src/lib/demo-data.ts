@@ -126,7 +126,7 @@ export const DEMO_PAGES: Page[] = [
     meta_title: 'Shipping Policy | Yellow Pink',
     meta_description: 'Delivery timelines, cash-on-delivery, free-shipping thresholds, and courier partners across Pakistan.',
     excerpt: 'How orders ship across Pakistan.',
-    body_html: '<p>Yellow Pink ships to all major cities and most remote areas across Pakistan via TCS, Leopards, M&amp;P and BlueEx. Orders placed before 2 PM ship the same working day.</p><p>Cash on Delivery is available nationwide. Orders over PKR 5,000 ship free; below that a flat fee is calculated at checkout based on your city.</p>',
+    body_html: '<p>Yellow Pink ships to all major cities and most remote areas across Pakistan via TCS, Leopards, M&amp;P and BlueEx. Orders placed before 2 PM ship the same working day.</p><p>Cash on Delivery is available nationwide. Larger orders qualify for free delivery — the exact order value needed depends on your delivery region, and is shown in your cart and at checkout. Below that, the delivery fee for your city is calculated at checkout.</p>',
   },
   {
     id: 'demo-page-returns', slug: 'returns', title: 'Returns & Refunds',

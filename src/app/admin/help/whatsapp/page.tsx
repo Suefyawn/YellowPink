@@ -5,7 +5,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { hasWhatsApp, merchantNumber, whatsappUrl, WA_TEMPLATES } from '@/lib/whatsapp';
 import { getSiteSettings } from '@/lib/supabase';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
-import { parseCommerceConfig, formatPkr, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { parseCommerceConfig, RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 
 // Plain content page, no migrations, no DB writes. Lives under /admin so
 // only staff can see the setup instructions for the merchant phone.
@@ -24,7 +24,7 @@ export default async function WhatsAppHelpPage() {
   const days = await getDefaultEstimatedDays();
   const deliveryRange = days ? `${days.min}–${days.max}` : 'a few';
   const freeShipSentence = commerce.freeShippingEnabled
-    ? `Free shipping on orders over ${formatPkr(commerce.freeShippingThreshold)}.`
+    ? 'Larger orders get free delivery — the exact amount depends on the delivery city and shows at checkout.'
     : 'Shipping is calculated at checkout by city.';
 
   return (
