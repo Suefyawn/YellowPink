@@ -7,6 +7,7 @@ import { getBrowserClient } from '@/lib/supabase-browser';
 import { ORDER_STATUS_LABELS } from '@/types';
 import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
 import { brandPlusName } from '@/lib/product-display';
+import { courierTrackingUrl } from '@/lib/couriers/profiles';
 import type { Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
@@ -35,18 +36,9 @@ const statusMessages: Record<string, string> = {
   refunded:        'This order has been refunded.',
 };
 
-// Quick courier tracking URL builders for the most common PK carriers.
-function courierTrackingUrl(courier: string | undefined, tracking: string): string | null {
-  if (!courier) return null;
-  const c = courier.toLowerCase();
-  if (c.includes('tcs'))      return `https://www.tcsexpress.com/track/${encodeURIComponent(tracking)}`;
-  if (c.includes('leopard'))  return `https://www.leopardscourier.com/leopards/tracking?tracking_number=${encodeURIComponent(tracking)}`;
-  if (c.includes('m&p') || c.includes('mp'))
-                              return `https://www.mulphilog.com/tracking?cnno=${encodeURIComponent(tracking)}`;
-  if (c.includes('bluex') || c.includes('blueex'))
-                              return `https://www.blue-ex.com/tracking/${encodeURIComponent(tracking)}`;
-  return null;
-}
+// Courier tracking deep-links come from the shared client-safe profiles module
+// (src/lib/couriers/profiles.ts) so /track and the admin booking form can never
+// drift apart on which carriers are supported.
 
 const RATE_LIMIT_WINDOW = 60_000;
 const MAX_ATTEMPTS = 5;
