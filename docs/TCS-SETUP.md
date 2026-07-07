@@ -1,24 +1,48 @@
 # TCS courier integration — setup & operation
 
 The store has a complete TCS (Pakistan) integration built in — API booking,
-label-less consignment creation, live status tracking, and cancel — plus a
-manual fallback for any courier. **The code is done; TCS goes live the moment
-the credentials below are set in Vercel.** Until then, the booking form falls
-back to manual tracking-number entry and everything else keeps working.
+consignment creation, live status tracking, and cancel — plus a manual fallback
+for any courier. **Verified live end-to-end against production (book → track →
+cancel) on 7 July 2026.** If the credentials below are absent the booking form
+falls back to manual tracking-number entry and everything else keeps working.
+
+## 0. How TCS auth actually works (important)
+
+TCS's COD API uses **two credentials together** on the transactional endpoints:
+
+1. A **gateway JWT** — sent as the `Authorization: Bearer …` header on every
+   call. This is the pre-issued "Bearer Token" (or minted from a client
+   id+secret). On its own it only unlocks read-only setup APIs.
+2. An **ecom access token** — the adapter mints this from a **username +
+   password** at `/ecom/api/authentication/token`, then sends it in the request
+   body (`accesstoken`). Booking / cancel / label / payment reject the call with
+   *"Invalid access token"* without it.
+
+So you need **both** the Bearer token **and** the username/password. (Tracking
+needs only the Bearer token.)
+
+> **Environment gotcha:** a production token/login is rejected on the UAT
+> sandbox (`devconnect`) as *"Invalid Bearer token. Mismatch configuration."*
+> and vice-versa. Point `TCS_BASE_URL` at the environment your credentials were
+> issued for. TCS may issue production credentials directly (no UAT phase).
 
 ## 1. Get TCS API credentials
 
-Ask your TCS account manager for **TCS Envio / COD API access**. They issue
-either:
+Ask your TCS account manager for **TCS Envio / COD API access**. You need:
 
-- **A pre-issued Bearer token** (recommended — the "Bearer Token for API Access"
-  email; a long-lived JWT), or
-- **A client id + secret** pair (legacy OAuth; the adapter exchanges it for a
-  short-lived token automatically).
+- A **Bearer token** (the "Bearer Token for API Access" email; a long-lived
+  JWT) — or a **client id + secret** pair the adapter can exchange, and
+- A **username + password** for the ecom API (`/ecom/api/authentication/token`).
 
-You'll also need your **TCS account number**, **cost-centre code**, and your
-**pickup address + city code** (TCS's `/setup/areacode` lists city codes; e.g.
-`KHI` for Karachi, `LHR` for Lahore).
+Plus your **TCS account** (alphanumeric, e.g. `LGEC21048`), your **cost-centre
+code**, and your **pickup city code**. Tips for the last two:
+
+- **City code** is TCS's own 3-letter code, **not** the airport IATA code —
+  Lahore is `LHE` (not `LHR`), Karachi is `KHI`, Islamabad `ISB`. Wrong code →
+  booking fails with *"Invalid Origin City."*
+- **Cost-centre code** must be one registered to your account (e.g. `001`).
+  Wrong code → *"No Cost Center found."* TCS's Cost Center Inquiry API lists
+  yours.
 
 ## 2. Set the environment variables (Vercel → Project → Settings → Environment Variables)
 
@@ -26,20 +50,27 @@ Required (all deployments):
 
 | Var | Example | Notes |
 |-----|---------|-------|
-| `TCS_BASE_URL` | `https://ociconnect.tcscourier.com` | prod; UAT is `https://devconnect.tcscourier.com` |
-| `TCS_TCS_ACCOUNT` | `1234567` | your TCS account number |
-| `TCS_COST_CENTER_CODE` | `KHI-001` | assigned by TCS |
+| `TCS_BASE_URL` | `https://ociconnect.tcscourier.com` | prod; UAT is `https://devconnect.tcscourier.com` — must match where your creds were issued |
+| `TCS_TCS_ACCOUNT` | `LGEC21048` | your TCS account (alphanumeric) |
+| `TCS_COST_CENTER_CODE` | `001` | a cost-centre registered to your account |
 | `TCS_SHIPPER_NAME` | `Yellow Pink` | printed on the label |
-| `TCS_SHIPPER_ADDRESS` | `Shop 1, …` | pickup address |
-| `TCS_SHIPPER_CITY_CODE` | `KHI` | TCS city code |
-| `TCS_SHIPPER_CITY_NAME` | `Karachi` | printed on the label |
-| `TCS_SHIPPER_MOBILE` | `03001234567` | pickup contact |
+| `TCS_SHIPPER_ADDRESS` | `House 842, Allama Iqbal Town` | pickup address |
+| `TCS_SHIPPER_CITY_CODE` | `LHE` | TCS city code (not airport IATA) |
+| `TCS_SHIPPER_CITY_NAME` | `Lahore` | printed on the label |
+| `TCS_SHIPPER_MOBILE` | `03001234567` | pickup contact (11 digits, 03…) |
 | `TCS_SERVICE_CODE` | `O` | optional; defaults to `O` (Overnight) |
 
-Auth — set **one** of:
+Auth — set the header-token credential (**one** of):
 
 - `TCS_BEARER_TOKEN` (the pre-issued JWT), **or**
 - `TCS_CLIENT_ID` + `TCS_CLIENT_SECRET`.
+
+…**and** the ecom login (**both required** for booking):
+
+| Var | Notes |
+|-----|-------|
+| `TCS_USERNAME` | TCS Envio API username |
+| `TCS_PASSWORD` | TCS Envio API password |
 
 Optional (unlocks payment/COD reconciliation):
 
@@ -74,9 +105,16 @@ it. (This was previously only sent from manual admin actions.)
 
 ## 4. Printable label / AWB
 
-Booking now also fetches the consignment **label PDF** from TCS's CN-print
-endpoint (`/ecom/api/print/label`) and stores it on the shipment. The order's
-Shipment panel shows a **"Print label (PDF)"** link — stick that on the parcel.
+After booking, the adapter also calls TCS's CN-print endpoint
+(`/ecom/api/print/label`). When TCS returns a label **URL**, it's stored on the
+shipment and the order's Shipment panel shows a **"Print label (PDF)"** link.
+
+Note: on the production account tested, the print endpoint **streams the PDF
+bytes directly** (no URL), so the in-admin link may not appear — label fetch is
+best-effort and a miss never blocks the booking. Until the streaming-PDF proxy
+route lands (a small fast-follow), print the AWB from the **TCS Envio portal**
+using the consignment number shown on the order. The consignment is fully
+created either way.
 
 ## 5. Actual delivery cost + COD reconciliation
 

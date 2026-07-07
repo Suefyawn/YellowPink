@@ -437,9 +437,26 @@ async function label(trackingNumber: string): Promise<Result<LabelResult>> {
         body: JSON.stringify({ consignmentno: trackingNumber, shipperdetail: 'true', accesstoken: ecom }),
       });
     }
-    const out = await r.json().catch(() => null) as null | { url?: string; message?: string };
+    // The print endpoint returns a JSON envelope with a `url` on success and on
+    // some deployments streams the label PDF directly (Content-Type
+    // application/pdf) with no URL. Handle the JSON-url case; otherwise report
+    // cleanly (caller treats a label miss as non-fatal, staff can re-print from
+    // the TCS portal). Streaming-PDF support is a follow-up (a proxy route).
+    const ct = r.headers.get('content-type') ?? '';
+    const text = await r.text().catch(() => '');
+    let out: { url?: string; message?: string } | null = null;
+    if (ct.includes('json') || text.trim().startsWith('{')) {
+      try { out = JSON.parse(text) as { url?: string; message?: string }; } catch { out = null; }
+    }
     if (!r.ok || !out?.url) {
-      return { ok: false, message: out?.message || `TCS label unavailable (HTTP ${r.status})`, code: r.status, raw: out };
+      const isPdf = ct.includes('pdf') || text.startsWith('%PDF');
+      return {
+        ok: false,
+        message: out?.message
+          || (isPdf ? 'TCS returned the label as a direct PDF (no URL); print from the TCS portal.' : `TCS label unavailable (HTTP ${r.status})`),
+        code: r.status,
+        raw: out ?? { contentType: ct },
+      };
     }
     return { ok: true, url: out.url, raw: out };
   } catch (err) {
