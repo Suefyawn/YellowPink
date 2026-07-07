@@ -13,6 +13,7 @@ import { TopEventsWidget } from '@/components/admin/TopEventsWidget';
 import { DeviceBrowserWidget } from '@/components/admin/DeviceBrowserWidget';
 import { EngagementWidget } from '@/components/admin/EngagementWidget';
 import { GeographyWidget } from '@/components/admin/GeographyWidget';
+import { ShoppingIntentWidget } from '@/components/admin/ShoppingIntentWidget';
 import { UserJourneysWidget } from '@/components/admin/UserJourneysWidget';
 import { FunnelBySourceWidget } from '@/components/admin/FunnelBySourceWidget';
 import { FunnelByDeviceWidget } from '@/components/admin/FunnelByDeviceWidget';
@@ -681,6 +682,12 @@ export default async function AnalyticsPage({
               <EngagementWidget />
             </div>
             <GeographyWidget />
+          </TrafficSection>
+
+          {/* ── Demand ── what shoppers search for and which products pull
+              views but not carts. Rolling 7-day PostHog snapshot. */}
+          <TrafficSection title="Demand & product interest" hint="What shoppers search for, and views-vs-carts by product (rolling 7-day snapshot)">
+            <ShoppingIntentWidget />
           </TrafficSection>
         </>
       )}

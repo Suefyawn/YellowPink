@@ -64,6 +64,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     journeyRows, funnelBySourceRows, funnelByDeviceRows, retentionRows,
     deviceRows, browserRows, entryPageRows, engagementRows,
     geoCityRows, geoCountryRows,
+    searchTermRows, productIntentRows,
   ] = await Promise.all([
     // ── core stats
     phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
@@ -275,6 +276,38 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       ORDER BY visitors DESC
       LIMIT 6
     `),
+
+    // ── Top on-site search terms — what shoppers type into the store search.
+    // Currently invisible anywhere in the admin; a direct signal of demand and
+    // of catalogue gaps (searches with no matching product).
+    phQuery(apiKey, `
+      SELECT lower(trim(properties.query)) as q,
+             count() as n,
+             count(distinct distinct_id) as uniques
+      FROM events
+      WHERE event = 'search' AND ${W7} AND ${NOT_ADMIN}
+        AND properties.query IS NOT NULL AND trim(properties.query) != ''
+      GROUP BY q
+      ORDER BY n DESC
+      LIMIT 10
+    `),
+
+    // ── Product interest: most-viewed products with their view→add-to-cart
+    // conversion. A product with many views but few carts is a pricing / photo
+    // / description problem the owner can act on. Keyed on product_name (shared
+    // by the view_item + add_to_cart storefront events).
+    phQuery(apiKey, `
+      SELECT
+        coalesce(nullIf(properties.product_name, ''), properties.product_id) as product,
+        countIf(event = 'view_item')   as views,
+        countIf(event = 'add_to_cart') as carts
+      FROM events
+      WHERE event IN ('view_item', 'add_to_cart') AND ${W7} AND ${NOT_ADMIN}
+        AND coalesce(nullIf(properties.product_name, ''), properties.product_id) IS NOT NULL
+      GROUP BY product
+      ORDER BY views DESC
+      LIMIT 10
+    `),
   ]);
 
   // Build the shapes the widgets expect.
@@ -375,6 +408,12 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
   const countries = geoCountryRows.map(([country, code, visitors]) => ({
     country: String(country), code: String(code), visitors: Number(visitors),
   }));
+  const searchTerms = searchTermRows.map(([q, n, uniques]) => ({
+    term: String(q), count: Number(n), uniques: Number(uniques),
+  }));
+  const productIntent = productIntentRows.map(([product, views, carts]) => ({
+    product: String(product), views: Number(views), carts: Number(carts),
+  }));
 
   // ── Latest session recordings (separate endpoint, not HogQL) ──────────────
   // Best-effort: a failure here mustn't block the rest of the refresh.
@@ -415,6 +454,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     upsertCache(supabase, 'posthog_entry_pages',     { items: entryPages }),
     upsertCache(supabase, 'posthog_engagement',      engagement),
     upsertCache(supabase, 'posthog_geography',       { cities, countries }),
+    upsertCache(supabase, 'posthog_intent',          { searchTerms, productIntent }),
   ]);
 }
 
