@@ -8,7 +8,7 @@ import { ReconcileTcsButton } from '@/components/admin/ReconcileTcsButton';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { fmtPKR as fmt } from '@/lib/money';
-import { FINANCE_RANGES as RANGES, resolveRange, rangeStartISO, loadFinanceOrders, toOrderFinanceRow } from '@/lib/finance';
+import { FINANCE_RANGES as RANGES, resolveRange, rangeStartISO, loadFinanceOrders, loadReturnedDeliveryLoss, toOrderFinanceRow } from '@/lib/finance';
 import { PAY_METHOD_LABELS } from '@/types';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
@@ -72,6 +72,11 @@ export default async function FinancePage({
   );
   const shippingNet = shippingCharged - shippingDeliveryCost;
   const estimatedDeliveryOrders = defaultDeliveryCost > 0 ? orders.filter(o => o.delivery_cost == null).length : 0;
+  // Refused / returned-to-origin orders: no revenue was collected but the
+  // courier still billed the failed round trip — a pure loss the revenue set
+  // above (which now excludes 'returned') no longer sees. Total it separately.
+  const returned = await loadReturnedDeliveryLoss(fromISO, defaultDeliveryCost);
+  const shippingNetAfterReturns = shippingNet - returned.loss;
 
   const expByCat = new Map<string, number>();
   let adSpend = 0;
@@ -338,6 +343,20 @@ export default async function FinancePage({
             </div>
           </div>
         </div>
+        {/* Refused / returned deliveries — courier billed the round trip, no
+            revenue collected. A pure loss, shown apart from the margin above so
+            it isn't mistaken for a subsidised (but completed) sale. */}
+        {returned.count > 0 && (
+          <div style={{ marginTop: 12, padding: '12px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+            <div>
+              <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Returned / refused deliveries (loss)</div>
+              <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                {returned.count} order{returned.count === 1 ? '' : 's'} came back — courier round-trip charge, zero revenue. Net margin after returns: <strong style={{ color: shippingNetAfterReturns >= 0 ? '#15803d' : '#dc2626' }}>{shippingNetAfterReturns >= 0 ? fmt(shippingNetAfterReturns) : `(${fmt(-shippingNetAfterReturns)})`}</strong>.
+              </div>
+            </div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>(&minus;{fmt(returned.loss)})</div>
+          </div>
+        )}
         {/* When TCS is wired, pull the real per-consignment charge from its
             Payment Detail ledger so these numbers run on actuals, not the
             typical-cost estimate. */}
