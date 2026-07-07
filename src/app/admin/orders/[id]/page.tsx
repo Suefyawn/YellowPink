@@ -23,7 +23,7 @@ import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
 import { configuredAdapterIds } from '@/lib/couriers';
 import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
-import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
+import { NON_REVENUE_ORDER_STATUSES, parseCommerceConfig } from '@/lib/commerce';
 import type { Order, CartItem, OrderStatus } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -276,7 +276,19 @@ export default async function OrderDetailPage({
   const ordMargin = ordRevenue > 0 ? (ordNet / ordRevenue) * 100 : 0;
   // Configured bank/wallet accounts (Settings → Payments) for the payment
   // reconciliation picker, plus the implicit cash option.
-  const payAccountOptions = ['Cash on delivery', ...parseBankAccounts((await getSiteSettings())['pay_bank_accounts']).map(a => a.label)];
+  const siteSettings = await getSiteSettings();
+  const payAccountOptions = ['Cash on delivery', ...parseBankAccounts(siteSettings['pay_bank_accounts']).map(a => a.label)];
+
+  // Shipping margin: what we charged the customer for delivery (o.shipping) vs
+  // what the courier costs us. Uses the recorded delivery_cost when present,
+  // otherwise the owner's "typical delivery cost" baseline (Settings → Shipping)
+  // as an estimate. null when neither is available (no baseline set + no actual).
+  const shippingCharged = Number(o.shipping ?? 0);
+  const defaultDeliveryCost = parseCommerceConfig(siteSettings).defaultDeliveryCost;
+  const deliveryActual = o.delivery_cost != null ? Number(o.delivery_cost) : null;
+  const deliveryEffective = deliveryActual ?? (defaultDeliveryCost > 0 ? defaultDeliveryCost : null);
+  const shippingMarginEstimated = deliveryActual == null && deliveryEffective != null;
+  const shippingMargin = deliveryEffective != null ? shippingCharged - deliveryEffective : null;
 
   const profitLines: { label: string; value: number; kind?: 'net' }[] = [
     { label: 'Gross amount', value: ordRevenue },
@@ -668,6 +680,7 @@ export default async function OrderDetailPage({
           orderId={o.id!}
           apiAdapters={apiAdapters}
           deliveryCost={o.delivery_cost ?? null}
+          suggestedCharge={defaultDeliveryCost > 0 ? defaultDeliveryCost : undefined}
           shipment={shipmentRow ? {
             id: shipmentRow.id as string,
             courier: shipmentRow.courier as string,
@@ -806,6 +819,28 @@ export default async function OrderDetailPage({
             </label>
             <button type="submit" style={{ padding: '9px 18px', background: '#111827', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Save costs</button>
           </form>
+
+          {/* Shipping margin — what we charged for delivery vs what it costs us,
+              so the flat PKR rate's saving (or free-shipping loss) is explicit. */}
+          <div style={{ marginTop: 14, padding: '10px 14px', background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 8, fontSize: '0.8125rem' }}>
+            <span style={{ fontWeight: 600, color: '#374151' }}>Shipping margin</span>
+            {shippingMargin == null ? (
+              <span style={{ color: '#9ca3af', marginLeft: 8 }}>
+                — enter the delivery cost above (or set a typical cost in Settings → Shipping) to see it.
+              </span>
+            ) : (
+              <span style={{ marginLeft: 8, color: '#6b7280' }}>
+                charged <strong style={{ color: '#111827' }}>{shippingCharged === 0 ? 'Free' : fmt(shippingCharged)}</strong>
+                {' − '}delivery <strong style={{ color: '#111827' }}>{fmt(deliveryEffective!)}</strong>
+                {shippingMarginEstimated && <span style={{ color: '#9ca3af' }}> (est.)</span>}
+                {' = '}
+                <strong style={{ color: shippingMargin >= 0 ? '#15803d' : '#dc2626' }}>
+                  {shippingMargin >= 0 ? `+${fmt(shippingMargin)}` : `(${fmt(-shippingMargin)})`}
+                </strong>
+                <span style={{ color: '#9ca3af' }}>{shippingMargin >= 0 ? ' kept' : ' out of pocket'}</span>
+              </span>
+            )}
+          </div>
           {o.vendor_id && (
             <form action={recalcAcquisitionCost.bind(null, o.id!)} style={{ marginTop: 12 }}>
               <button type="submit" style={{

@@ -26,6 +26,13 @@ export interface CommerceConfig {
   /** Flat shipping rate (PKR) charged when the order doesn't qualify for free
    *  shipping and no shipping zone overrides it. */
   defaultShippingRate: number;
+  /** What the courier TYPICALLY bills us to deliver one order (PKR), set by the
+   *  owner in admin → Settings → Shipping. Not customer-facing — it's the cost
+   *  baseline the admin uses to estimate the shipping margin (what we charge
+   *  minus what delivery costs) on orders where the exact courier charge hasn't
+   *  been recorded yet. 0 means "not set" (margin shown only from recorded
+   *  actuals). */
+  defaultDeliveryCost: number;
   /** PKR value of one loyalty point at redemption (admin → Settings → Loyalty
    *  → "PKR per point at redemption"). Checkout converts a customer's points
    *  input to a PKR discount using this rate instead of assuming 1:1. */
@@ -39,6 +46,7 @@ export interface CommerceConfig {
 export function parseCommerceConfig(settings: Record<string, string>): CommerceConfig {
   const threshold = Number(settings.free_shipping_threshold);
   const rate = Number(settings.default_shipping_rate);
+  const deliveryCost = Number(settings.default_delivery_cost);
   const pkrPerPoint = Number(settings.loyalty_pkr_per_point);
   return {
     freeShippingEnabled: settings.free_shipping_enabled !== 'false',
@@ -46,6 +54,8 @@ export function parseCommerceConfig(settings: Record<string, string>): CommerceC
       Number.isFinite(threshold) && threshold > 0 ? threshold : FREE_SHIPPING_THRESHOLD,
     defaultShippingRate:
       Number.isFinite(rate) && rate >= 0 ? rate : DEFAULT_SHIPPING_RATE,
+    defaultDeliveryCost:
+      Number.isFinite(deliveryCost) && deliveryCost > 0 ? deliveryCost : 0,
     loyaltyPkrPerPoint:
       Number.isFinite(pkrPerPoint) && pkrPerPoint > 0 ? pkrPerPoint : DEFAULT_LOYALTY_PKR_PER_POINT,
   };
@@ -59,6 +69,7 @@ export const DEFAULT_COMMERCE_CONFIG: CommerceConfig = {
   freeShippingEnabled: true,
   freeShippingThreshold: FREE_SHIPPING_THRESHOLD,
   defaultShippingRate: DEFAULT_SHIPPING_RATE,
+  defaultDeliveryCost: 0,
   loyaltyPkrPerPoint: DEFAULT_LOYALTY_PKR_PER_POINT,
 };
 

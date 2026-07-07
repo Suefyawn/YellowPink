@@ -19,6 +19,10 @@ interface Props {
   /** orders.delivery_cost — when already recorded the booking forms show it
    *  instead of the optional "Courier charge" input (never clobbered). */
   deliveryCost?: number | null;
+  /** Owner's "typical delivery cost" baseline (Settings → Shipping); prefills
+   *  the optional courier-charge field so the actual cost gets captured on most
+   *  orders (feeds the shipping-margin view). */
+  suggestedCharge?: number;
 }
 
 const inp: React.CSSProperties = {
@@ -31,7 +35,7 @@ const lbl: React.CSSProperties = {
   color: '#374151', marginBottom: 4,
 };
 
-export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCost }: Props) {
+export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCost, suggestedCharge }: Props) {
   const [courier, setCourier] = useState<string>(apiAdapters[0] ?? 'TCS');
   const [mode, setMode] = useState<'auto' | 'manual'>(apiAdapters.length > 0 ? 'auto' : 'manual');
   const [bookState, bookAction, bookPending] = useActionState(bookShipment, null);
@@ -142,9 +146,15 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
       <label htmlFor="courier-charge" style={lbl}>Courier charge (PKR, optional)</label>
       <input
         id="courier-charge" name="courier_charge" type="number" min="0" step="any"
+        defaultValue={suggestedCharge ?? ''}
         placeholder="what the courier bills you"
         style={inp}
       />
+      {suggestedCharge != null && (
+        <p style={{ fontSize: '0.6875rem', color: '#6b7280', margin: '4px 0 0' }}>
+          Prefilled with your typical cost — adjust to the exact courier charge for this parcel.
+        </p>
+      )}
     </div>
   ) : (
     <p style={{ fontSize: '0.6875rem', color: '#6b7280', margin: 0 }}>

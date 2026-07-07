@@ -43,7 +43,7 @@ export function rangeStartISO(days: number | null): string | null {
 
 export interface FinanceOrder {
   id: string; order_number: string | null; created_at: string | null; pay_method: string | null;
-  total: number | null; delivery_cost: number | null; payment_fee: number | null;
+  total: number | null; shipping: number | null; delivery_cost: number | null; payment_fee: number | null;
   utm_source: string | null; status: string | null;
   payment_account: string | null; payment_received_at: string | null;
   acquisition_cost: number | null;
@@ -71,7 +71,7 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
   const admin = supabaseAdmin();
   // fetchAll pages past PostgREST's silent 1000-row cap; without it the P&L
   // (and its CSV export) quietly dropped every order past #1000 in the window.
-  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, acquisition_cost, items');
+  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, shipping, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, acquisition_cost, items');
   if (fromISO) oq = oq.gte('created_at', fromISO);
   const { data } = await fetchAll<FinanceOrder>(oq.order('created_at', { ascending: true }));
   const orders = (data ?? []).filter(o => !DEAD_STATES.has(o.status ?? ''));
