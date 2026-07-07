@@ -211,6 +211,42 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, summary: 'Second-auth-system probe — see steps.', steps }, { status: 200 });
   }
 
+  // Look up the account's REAL cost centres via Cost Center Inquiry, using the
+  // minted ecom token. Solves "No Cost Center found" from a wrong code.
+  if (url.searchParams.get('cci') === '1') {
+    const P = 'https://ociconnect.tcscourier.com';
+    const u = process.env.TCS_USERNAME ?? '', p = process.env.TCS_PASSWORD ?? '';
+    const acct = process.env.TCS_TCS_ACCOUNT ?? '';
+    // mint (GET-query, the shape confirmed working)
+    const mr = await fetch(`${P}/ecom/api/authentication/token?username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`, { headers: { Authorization: `Bearer ${token}` } });
+    const mj = await mr.json().catch(() => null) as null | { accesstoken?: string };
+    const ecomToken = mj?.accesstoken ?? '';
+    steps.push({ step: 'cci:mint', http: mr.status, gotToken: Boolean(ecomToken) });
+    if (!ecomToken) return NextResponse.json({ ok: false, summary: 'mint failed', steps }, { status: 200 });
+
+    async function cci(name: string, path: string, method: string, useQuery: boolean, customerno: string) {
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      let target = `${P}${path}`;
+      let body: string | undefined;
+      if (useQuery) {
+        target += `?customerno=${encodeURIComponent(customerno)}&accesstoken=${encodeURIComponent(ecomToken)}`;
+      } else {
+        headers['Content-Type'] = 'application/json';
+        body = JSON.stringify({ accesstoken: ecomToken, customerno });
+      }
+      try {
+        const r = await fetch(target, { method, headers, body });
+        return { name, http: r.status, response: await r.json().catch(() => null) };
+      } catch (e) { return { name, error: (e as Error).message }; }
+    }
+    // Try path spellings × transport × customerno = account.
+    steps.push({ step: 'cci:api-POST(acct)', ...(await cci('a', '/ecom/api/inquiry/costcenterinquiry', 'POST', false, acct)) });
+    steps.push({ step: 'cci:api-GET(acct)', ...(await cci('b', '/ecom/api/inquiry/costcenterinquiry', 'GET', true, acct)) });
+    steps.push({ step: 'cci:noapi-POST(acct)', ...(await cci('c', '/ecom/inquiry/costcenterinquiry', 'POST', false, acct)) });
+    steps.push({ step: 'cci:noapi-GET(acct)', ...(await cci('d', '/ecom/inquiry/costcenterinquiry', 'GET', true, acct)) });
+    return NextResponse.json({ ok: true, summary: 'Cost-centre inquiry — look for your real costcentercode(s).', steps }, { status: 200 });
+  }
+
   // FULL two-step prod flow: mint the opaque ecom accesstoken from
   // /ecom/api/authentication/token (username+password), then book → label →
   // track → cancel on prod, probing token placement to find the exact wiring.
