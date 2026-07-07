@@ -9,6 +9,7 @@ import { getBrowserClient } from '@/lib/supabase-browser';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
 import { brandPlusName } from '@/lib/product-display';
+import { courierTrackingUrl } from '@/lib/couriers/profiles';
 import type { Order, OrderStatus } from '@/types';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
 
@@ -198,10 +199,20 @@ export default function AccountOrdersPage() {
                       </div>
 
                       {o.tracking_number && (
-                        <div style={{ marginBottom: 16, padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, fontSize: '0.875rem' }}>
-                          <span style={{ color: '#0369a1', fontWeight: 600 }}>Tracking: </span>
-                          <span style={{ fontFamily: 'monospace', color: '#0c4a6e' }}>{o.tracking_number}</span>
-                          {o.courier && <span style={{ color: '#0369a1', marginLeft: 8 }}>· {o.courier}</span>}
+                        <div style={{ marginBottom: 16, padding: '10px 14px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 8, fontSize: '0.875rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                          <div>
+                            <span style={{ color: '#0369a1', fontWeight: 600 }}>Tracking: </span>
+                            <span style={{ fontFamily: 'monospace', color: '#0c4a6e', fontWeight: 700 }}>{o.tracking_number}</span>
+                            {o.courier && <span style={{ color: '#0369a1', marginLeft: 8 }}>· {o.courier}</span>}
+                          </div>
+                          {(() => {
+                            const url = courierTrackingUrl(o.courier, o.tracking_number!);
+                            return url ? (
+                              <a href={url} target="_blank" rel="noopener noreferrer" style={{ color: '#0369a1', fontWeight: 600, textDecoration: 'none', fontSize: '0.8125rem' }}>
+                                Open courier page →
+                              </a>
+                            ) : null;
+                          })()}
                         </div>
                       )}
 

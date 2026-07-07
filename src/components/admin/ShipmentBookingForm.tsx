@@ -1,8 +1,8 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { bookShipment, createShipment, cancelShipment } from '@/app/admin/shipment-actions';
-import { COURIER_LIST, courierTrackingUrl } from '@/lib/couriers';
+import { bookShipment, createShipment, cancelShipment, syncShipmentNow } from '@/app/admin/shipment-actions';
+import { COURIER_LIST, courierTrackingUrl } from '@/lib/couriers/profiles';
 
 interface Props {
   orderId: string;
@@ -37,10 +37,14 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
   const [bookState, bookAction, bookPending] = useActionState(bookShipment, null);
   const [manualState, manualAction, manualPending] = useActionState(createShipment, null);
   const [cancelState, cancelAction, cancelPending] = useActionState(cancelShipment, null);
+  const [syncState, syncAction, syncPending] = useActionState(syncShipmentNow, null);
 
   // ─── Already shipped, show tracking + cancel options ────────────────────
   if (shipment && shipment.status !== 'cancelled') {
     const trackUrl = courierTrackingUrl(shipment.courier, shipment.tracking_number);
+    // Live-tracking sync is only offered for couriers with a configured API
+    // adapter; others update via the courier's own tracking page.
+    const canSync = apiAdapters.includes(shipment.courier) && shipment.status !== 'delivered';
     // Result of a booking made just now, in this session. revalidatePath
     // swaps this component into the booked view as soon as the action
     // settles, so the confirmation has to render here, not in the form.
@@ -74,6 +78,32 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
         <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: 8 }}>
           Status: <strong>{shipment.status}</strong>
         </div>
+        {canSync && (
+          <form action={syncAction} style={{ marginBottom: 8 }}>
+            <input type="hidden" name="shipment_id" value={shipment.id} />
+            <button
+              type="submit"
+              disabled={syncPending}
+              style={{
+                padding: '8px 14px', background: 'transparent',
+                border: '1px solid #d1d5db', borderRadius: 6, color: '#374151',
+                fontSize: '0.75rem', fontWeight: 600, cursor: syncPending ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {syncPending ? 'Syncing…' : `Sync tracking now`}
+            </button>
+            {syncState?.error && (
+              <div role="alert" style={{ marginTop: 8, padding: '6px 10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#dc2626', fontSize: '0.75rem' }}>
+                {syncState.error}
+              </div>
+            )}
+            {syncState?.success && (
+              <div role="status" style={{ marginTop: 8, padding: '6px 10px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, color: '#166534', fontSize: '0.75rem' }}>
+                {syncState.updated ? `Updated — now “${syncState.current}”.` : 'Already up to date.'}
+              </div>
+            )}
+          </form>
+        )}
         <form action={cancelAction}>
           <input type="hidden" name="shipment_id" value={shipment.id} />
           <button

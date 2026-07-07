@@ -7,6 +7,7 @@ import { logAudit } from '@/lib/audit';
 import { getAdapter } from '@/lib/couriers';
 import { attributeOrderEvents } from '@/lib/order-events';
 import { sendStatusTransitionEmail } from '@/lib/order-status-emails';
+import { notifyOrderShipmentTransition, orderStatusForShipment } from '@/lib/shipment-notify';
 import { log } from '@/lib/logger';
 import type { BookingInput } from '@/lib/couriers/types';
 import type { StaffSession } from '@/lib/permissions';
@@ -303,6 +304,82 @@ export async function bookShipment(
   revalidatePath(`/admin/orders/${order_id}`);
   revalidatePath('/admin/orders');
   return { success: true, trackingNumber: result.trackingNumber, ...shipped, ...(courierCharge != null ? { courierCharge } : {}) };
+}
+
+// ─── On-demand tracking sync ──────────────────────────────────────────────
+// The courier-sync cron only runs daily (Vercel schedule), so staff need a way
+// to pull the latest scans for one order on demand — e.g. to confirm a delivery
+// or chase a stuck parcel. Same logic as the cron for one shipment: fetch scans
+// via the adapter, append new shipment_events, advance status, and (on a
+// shipped/delivered edge) attribute the order event + email the customer.
+export async function syncShipmentNow(
+  _prev: { error?: string; success?: boolean; updated?: boolean; current?: string } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean; updated?: boolean; current?: string }> {
+  const session = await assertOrders();
+
+  const shipment_id = formData.get('shipment_id');
+  if (typeof shipment_id !== 'string' || !shipment_id) return { error: 'shipment_id required' };
+
+  const admin = supabaseAdmin();
+  const { data: s, error: lookupErr } = await admin
+    .from('shipments')
+    .select('id, order_id, courier, tracking_number, status')
+    .eq('id', shipment_id)
+    .single();
+  if (lookupErr || !s) return { error: lookupErr?.message ?? 'Shipment not found' };
+
+  const adapter = getAdapter(s.courier);
+  if (!adapter || !adapter.capabilities.track) {
+    return { error: `${s.courier} has no live tracking API — open the courier's own tracking page for updates.` };
+  }
+
+  const r = await adapter.track(s.tracking_number);
+  if (!('ok' in r) || !r.ok) return { error: r.message };
+
+  // Dedupe vs. events we already have (same rule as the cron).
+  const { data: latest } = await admin
+    .from('shipment_events')
+    .select('occurred_at')
+    .eq('shipment_id', s.id)
+    .order('occurred_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const since = latest?.occurred_at ? new Date(latest.occurred_at as string).getTime() : 0;
+  const newEvents = r.events
+    .filter(e => new Date(e.occurredAt).getTime() > since)
+    .map(e => ({
+      shipment_id: s.id,
+      status: e.status,
+      description: e.description,
+      occurred_at: e.occurredAt,
+      raw_payload: null,
+    }));
+  if (newEvents.length > 0) await admin.from('shipment_events').insert(newEvents);
+
+  const newest = r.current ?? r.events[0]?.status;
+  let updated = false;
+  if (newest && newest !== s.status) {
+    const update: Record<string, unknown> = { status: newest };
+    if (newest === 'delivered') update.delivered_at = r.events[0]?.occurredAt ?? new Date().toISOString();
+    await admin.from('shipments').update(update).eq('id', s.id);
+    updated = true;
+    // Attribute the order-status advance the trigger logs, then email the
+    // customer on the transition edge (shipped / delivered).
+    const target = orderStatusForShipment(newest);
+    if (target) await attributeOrderEvents(admin, [s.order_id], target, session);
+    await notifyOrderShipmentTransition(admin, s.order_id, s.status, newest);
+  }
+
+  await logAudit(session, {
+    action: 'shipment.sync',
+    entity: 'shipment',
+    entity_id: s.id,
+    diff: { courier: s.courier, from: s.status, to: newest ?? s.status },
+  });
+  revalidatePath(`/admin/orders/${s.order_id}`);
+  revalidatePath('/admin/orders');
+  return { success: true, updated, current: newest ?? s.status };
 }
 
 // ─── Cancel a shipment via courier API ────────────────────────────────────

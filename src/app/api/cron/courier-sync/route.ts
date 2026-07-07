@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '@/lib/couriers';
+import { notifyOrderShipmentTransition } from '@/lib/shipment-notify';
 
 interface ShipmentRow {
   id: string;
@@ -144,6 +145,10 @@ export async function GET(req: NextRequest) {
           if (newest === 'delivered') update.delivered_at = r.events[0]?.occurredAt ?? new Date().toISOString();
           await sb.from('shipments').update(update).eq('id', s.id);
           updated++;
+          // The shipments trigger cascades this to orders.status, but the
+          // customer shipped/delivered email only fires from app code — send it
+          // here on the transition edge (fixes silent auto-delivery).
+          await notifyOrderShipmentTransition(sb, s.order_id, s.status, newest);
         }
       }));
     }

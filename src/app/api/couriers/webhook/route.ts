@@ -22,6 +22,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { normaliseCourierStatus } from '@/lib/couriers';
+import { notifyOrderShipmentTransition } from '@/lib/shipment-notify';
 
 interface Payload {
   courier?: string;
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
 
   const { data: shipment, error: lookupErr } = await sb
     .from('shipments')
-    .select('id')
+    .select('id, order_id, status')
     .eq('courier', body.courier)
     .eq('tracking_number', body.tracking_number)
     .maybeSingle();
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
   if (!shipment) return NextResponse.json({ error: 'shipment not found' }, { status: 404 });
 
   const normalised = normaliseCourierStatus(body.status);
+  const prevStatus = (shipment as { status: string }).status;
 
   await sb.from('shipment_events').insert({
     shipment_id: shipment.id,
@@ -85,6 +87,10 @@ export async function POST(req: NextRequest) {
 
   const { error: updErr } = await sb.from('shipments').update(updates).eq('id', shipment.id);
   if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+
+  // The shipments trigger cascades to orders.status; send the customer
+  // shipped/delivered email on the transition edge (app code, not the DB).
+  await notifyOrderShipmentTransition(sb, (shipment as { order_id: string }).order_id, prevStatus, normalised);
 
   return NextResponse.json({ ok: true, status: normalised });
 }
