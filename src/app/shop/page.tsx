@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
-import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd, productInStock } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref, isHealthCategory, taxonForCategory } from '@/lib/category-taxonomy';
 import { brandSlug } from '@/lib/brands';
@@ -253,6 +253,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
                 image: p.image_url,
                 brand: p.brand,
                 price: p.price,
+                inStock: productInStock(p),
               })),
             )),
           }}
