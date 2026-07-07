@@ -206,17 +206,28 @@ export async function GET(req: Request) {
       return { http: r.status, response: await r.json().catch(() => null) };
     }
 
-    // V1 = adapter's current behaviour (body accesstoken, no header).
-    const v1 = await prodBook(false, token);
-    steps.push({ step: 'prod:book:v1(body-only, = adapter)', ...v1 });
-    let cn: string | null = v1.ok ? String(v1.cn) : null;
-    let winningVariant = v1.ok ? 'body-only (adapter OK)' : null;
+    // prodBookRaw: full control over header + body accesstoken handling.
+    async function prodBookRaw(useHeader: boolean, bodyToken: string | undefined) {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (useHeader) headers.Authorization = `Bearer ${token}`;
+      const body = buildBookingBody(bodyToken ?? '');
+      if (bodyToken === undefined) delete (body as { accesstoken?: string }).accesstoken;
+      const r = await fetch(`${P}/ecom/api/booking/create`, { method: 'POST', headers, body: JSON.stringify(body) });
+      const out = await r.json().catch(() => null);
+      return { http: r.status, ok: r.ok && out?.status !== false && Boolean(out?.consignmentNo), cn: out?.consignmentNo ?? null, response: out };
+    }
 
-    // V2 = with Authorization header, only if V1 didn't already succeed.
-    if (!cn) {
-      const v2 = await prodBook(true, token);
-      steps.push({ step: 'prod:book:v2(header+body)', ...v2 });
-      if (v2.ok) { cn = String(v2.cn); winningVariant = 'header+body (ADAPTER NEEDS HEADER FIX)'; }
+    const variants: Array<{ name: string; run: () => Promise<{ http: number; ok: boolean; cn: unknown; response: unknown }> }> = [
+      { name: 'header + empty body accesstoken', run: () => prodBookRaw(true, '') },
+      { name: 'header + NO body accesstoken key', run: () => prodBookRaw(true, undefined) },
+      { name: 'header + body accesstoken=token', run: () => prodBookRaw(true, token) },
+    ];
+    let cn: string | null = null;
+    let winningVariant: string | null = null;
+    for (const v of variants) {
+      const res = await v.run();
+      steps.push({ step: `prod:book(${v.name})`, ...res });
+      if (res.ok) { cn = String(res.cn); winningVariant = v.name; break; }
     }
 
     if (cn) {
