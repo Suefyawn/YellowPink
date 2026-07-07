@@ -49,6 +49,9 @@ import type {
   CancelResult,
   TrackEvent,
   TrackResult,
+  LabelResult,
+  PaymentRecord,
+  PaymentResult,
   Result,
 } from './types';
 import { normaliseCourierStatus } from './status-mapper';
@@ -316,16 +319,112 @@ async function track(trackingNumber: string): Promise<Result<TrackResult>> {
     if (!r.ok || !out) {
       return { ok: false, message: `TCS tracking failed (HTTP ${r.status})`, code: r.status, raw: out };
     }
-    const events: TrackEvent[] = (out.deliveryinfo ?? []).map(e => ({
-      status: normaliseCourierStatus(e.status ?? e.code ?? ''),
-      description: e.status ?? e.code ?? 'In transit',
-      occurredAt: parseTcsDate(e.datetime) ?? new Date().toISOString(),
-    }));
+    // Prefer `checkpoints` — the full scan history ("Arrived at TCS Facility →
+    // Out For Delivery → Shipment Delivered") customers expect — and fall back
+    // to `deliveryinfo` (delivery-only) when it's absent.
+    const source = (out.checkpoints && out.checkpoints.length ? out.checkpoints : out.deliveryinfo) ?? [];
+    const events: TrackEvent[] = source.map(e => {
+      const label = e.status ?? (e as { code?: string }).code ?? 'In transit';
+      return {
+        status: normaliseCourierStatus(label),
+        description: label,
+        occurredAt: parseTcsDate(e.datetime) ?? new Date().toISOString(),
+      };
+    });
     // Sort newest first so events[0] is the latest.
     events.sort((a, b) => (a.occurredAt < b.occurredAt ? 1 : -1));
     return { ok: true, events, current: events[0]?.status, raw: out };
   } catch (err) {
     return { ok: false, message: 'TCS tracking network error', code: 'network', raw: (err as Error).message };
+  }
+}
+
+// ─── Label / AWB (CN Print) ────────────────────────────────────────────────
+// GET /ecom/api/print/label → the printable consignment label PDF. TCS returns
+// a JSON envelope carrying the PDF url (failure returns url:""), so we read the
+// `url` field. GET-with-body isn't standard, so POST first, fall back to GET.
+async function label(trackingNumber: string): Promise<Result<LabelResult>> {
+  if (!isConfigured()) {
+    return { ok: false, message: 'TCS adapter is not configured.', code: 'not_configured' };
+  }
+  const tokenOrErr = await getBearerToken();
+  if (isErr(tokenOrErr)) return tokenOrErr;
+  const baseUrl = env('TCS_BASE_URL')!;
+  const url = `${baseUrl.replace(/\/$/, '')}/ecom/api/print/label`;
+  try {
+    let r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ consignmentno: trackingNumber, shipperdetail: 'true', accesstoken: tokenOrErr }),
+    });
+    if (r.status === 404 || r.status === 405) {
+      r = await fetch(`${url}?consignmentno=${encodeURIComponent(trackingNumber)}&shipperdetail=true`, {
+        method: 'GET',
+        headers: { Authorization: `Bearer ${tokenOrErr}` },
+      });
+    }
+    const out = await r.json().catch(() => null) as null | { url?: string; message?: string };
+    if (!r.ok || !out?.url) {
+      return { ok: false, message: out?.message || `TCS label unavailable (HTTP ${r.status})`, code: r.status, raw: out };
+    }
+    return { ok: true, url: out.url, raw: out };
+  } catch (err) {
+    return { ok: false, message: 'TCS label network error', code: 'network', raw: (err as Error).message };
+  }
+}
+
+// ─── Payment Detail (actual delivery cost + COD reconciliation) ─────────────
+// GET /ecom/api/Payment/detail → the courier's billing ledger for a date range:
+// the real delivery charge, GST, COD amount paid and payment status per CN.
+// Needs the merchant's TCS customer number (TCS_CUSTOMER_NO), separate from the
+// account/cost-centre used for booking. Dates are 'YYYY-MM-DD'.
+function paymentConfigured(): boolean {
+  return isConfigured() && Boolean(env('TCS_CUSTOMER_NO'));
+}
+
+async function payment(fromDate: string, toDate: string): Promise<Result<PaymentResult>> {
+  if (!paymentConfigured()) {
+    return { ok: false, message: 'TCS payment reconciliation needs TCS_CUSTOMER_NO set.', code: 'not_configured' };
+  }
+  const tokenOrErr = await getBearerToken();
+  if (isErr(tokenOrErr)) return tokenOrErr;
+  const baseUrl = env('TCS_BASE_URL')!;
+  const url = `${baseUrl.replace(/\/$/, '')}/ecom/api/Payment/detail`;
+  const payload = { accesstoken: tokenOrErr, customerno: env('TCS_CUSTOMER_NO'), fromdate: fromDate, todate: toDate };
+  try {
+    let r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (r.status === 404 || r.status === 405) {
+      const qs = new URLSearchParams({ customerno: String(env('TCS_CUSTOMER_NO')), fromdate: fromDate, todate: toDate });
+      r = await fetch(`${url}?${qs}`, { method: 'GET', headers: { Authorization: `Bearer ${tokenOrErr}` } });
+    }
+    const out = await r.json().catch(() => null) as null | {
+      detail?: Array<Record<string, unknown>>;
+      message?: string;
+    };
+    if (!r.ok || !out || !Array.isArray(out.detail)) {
+      return { ok: false, message: out?.message || `TCS payment detail failed (HTTP ${r.status})`, code: r.status, raw: out };
+    }
+    const numOrNull = (v: unknown): number | null => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : null;
+    };
+    const records: PaymentRecord[] = out.detail.map(d => ({
+      trackingNumber: String(d['cn by courier'] ?? d['cnsg_no'] ?? ''),
+      deliveryCharges: numOrNull(d['delivery charges'] ?? d['courier_charges']),
+      gst: numOrNull(d['gst']),
+      codAmount: numOrNull(d['codamount']),
+      amountPaid: numOrNull(d['amount paid']),
+      paid: String(d['payment status'] ?? '').toUpperCase() === 'Y',
+      status: (d['cn status'] as string | undefined) ?? (d['status'] as string | undefined) ?? null,
+      deliveredAt: parseTcsDate(String(d['delivery date'] ?? '')) ,
+    })).filter(rec => rec.trackingNumber);
+    return { ok: true, records, raw: out };
+  } catch (err) {
+    return { ok: false, message: 'TCS payment detail network error', code: 'network', raw: (err as Error).message };
   }
 }
 
@@ -348,9 +447,11 @@ function parseTcsDate(s: string | undefined | null): string | null {
 
 export const tcs: CourierAdapter = {
   id: 'TCS',
-  capabilities: { book: true, cancel: true, track: true },
+  capabilities: { book: true, cancel: true, track: true, label: true, payment: true },
   isConfigured,
   book,
   cancel,
   track,
+  label,
+  payment,
 };

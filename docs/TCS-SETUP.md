@@ -41,6 +41,12 @@ Auth — set **one** of:
 - `TCS_BEARER_TOKEN` (the pre-issued JWT), **or**
 - `TCS_CLIENT_ID` + `TCS_CLIENT_SECRET`.
 
+Optional (unlocks payment/COD reconciliation):
+
+| Var | Notes |
+|-----|-------|
+| `TCS_CUSTOMER_NO` | your TCS customer number — enables pulling the real per-consignment delivery charge + COD ledger from TCS's Payment Detail API (Finance → "Sync actual delivery costs from TCS"). |
+
 If any required var is missing the adapter reports "not configured" and the UI
 stays on manual entry — it never errors out.
 
@@ -66,19 +72,38 @@ shipped), the customer is emailed automatically — the shipped/delivered email
 now fires on the transition regardless of whether a human or the sync triggered
 it. (This was previously only sent from manual admin actions.)
 
-## 4. What the customer sees
+## 4. Printable label / AWB
+
+Booking now also fetches the consignment **label PDF** from TCS's CN-print
+endpoint (`/ecom/api/print/label`) and stores it on the shipment. The order's
+Shipment panel shows a **"Print label (PDF)"** link — stick that on the parcel.
+
+## 5. Actual delivery cost + COD reconciliation
+
+With `TCS_CUSTOMER_NO` set, **Finance → Shipping recovery → "Sync actual
+delivery costs from TCS"** pulls TCS's Payment Detail ledger (last 30 days) and
+writes the **real courier charge (+ GST)** onto each matching order's
+`delivery_cost`. That turns the shipping-margin figures from an estimate into
+actuals. (The COD payment status is read too; full COD cash-remittance
+reconciliation into payment records is the next step — currently the sync
+updates the cost side.)
+
+## 6. What the customer sees
 
 - Tracking number + courier + a **"Open courier page →"** deep link on both
   `/track` (guest, order# + phone) and `/account/orders` (logged-in).
 - Automatic **shipped** and **delivered** emails with the tracking number.
+- Live scan history (Arrived at facility → Out for delivery → Delivered) now
+  reads TCS's full `checkpoints` timeline, not just the delivery record.
 
-## 5. Not included (deliberately, this phase)
+## 7. Not included (deliberately, this phase)
 
 - **WhatsApp/SMS** dispatch updates — both are paid channels; skipped for now.
   The thank-you page / FAQ copy that promises SMS/WhatsApp should be softened to
   "email" until a channel is funded (tracked separately).
-- **Printable AWB/label capture** — the `shipments.raw_label_url` plumbing
-  exists but TCS's `booking/create` response doesn't return a label URL; print
-  labels from the TCS portal for now.
-- **COD remittance reconciliation** — matching TCS's collected-cash file back to
-  orders is a later phase.
+- **Auto-scheduled payment reconciliation** — the "Sync actual delivery costs"
+  run is manual (a button) today; wiring it into the daily cron and marking COD
+  cash received on `orders` is the next increment.
+- **City-code resolution** (`/ecom/api/setup/citylistbycountry`) and **reverse
+  pickups** (`/ecom/api/booking/reverse`, for returns/RTO) are available in the
+  API and can be added next.
