@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from 'react';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, getSiteSettings } from '@/lib/supabase';
+import { parseCommerceConfig } from '@/lib/commerce';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { fmtPKR as fmt } from '@/lib/money';
@@ -55,6 +56,20 @@ export default async function FinancePage({
   const deliveryCost = orders.reduce((s, o) => s + num(o.delivery_cost), 0);
   const paymentFees = orders.reduce((s, o) => s + num(o.payment_fee), 0);
   const grossProfit = revenue - cogs - deliveryCost - paymentFees;
+
+  // ── Shipping recovery ── what we charged customers for delivery vs what the
+  // courier costs us. Uses each order's recorded delivery_cost, falling back to
+  // the owner's "typical delivery cost" baseline (Settings → Shipping) so orders
+  // without an exact figure still count. This makes the flat-rate saving (or the
+  // free-shipping subsidy) explicit rather than buried in the P&L.
+  const defaultDeliveryCost = parseCommerceConfig(await getSiteSettings()).defaultDeliveryCost;
+  const shippingCharged = orders.reduce((s, o) => s + num(o.shipping), 0);
+  const shippingDeliveryCost = orders.reduce(
+    (s, o) => s + (o.delivery_cost != null ? num(o.delivery_cost) : defaultDeliveryCost),
+    0,
+  );
+  const shippingNet = shippingCharged - shippingDeliveryCost;
+  const estimatedDeliveryOrders = defaultDeliveryCost > 0 ? orders.filter(o => o.delivery_cost == null).length : 0;
 
   const expByCat = new Map<string, number>();
   let adSpend = 0;
@@ -287,6 +302,39 @@ export default async function FinancePage({
               </tbody>
             </table>
           )}
+        </div>
+      </div>
+
+      {/* Shipping recovery — charged vs delivery cost, so the flat-rate saving
+          (or free-shipping subsidy) is explicit. */}
+      <div style={{ ...card, marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8, marginBottom: 4 }}>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipping recovery</h2>
+          <span style={{ fontSize: '0.75rem', color: shippingNet >= 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>
+            {shippingNet >= 0 ? `+${fmt(shippingNet)} kept` : `${fmt(-shippingNet)} subsidised`}
+          </span>
+        </div>
+        <p style={{ margin: '0 0 12px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          What you charged for delivery vs what the courier costs you, this period.
+          {defaultDeliveryCost > 0
+            ? ` Orders without a recorded courier charge use your typical cost (PKR ${defaultDeliveryCost.toLocaleString()})${estimatedDeliveryOrders > 0 ? ` — ${estimatedDeliveryOrders} order${estimatedDeliveryOrders === 1 ? '' : 's'} estimated` : ''}.`
+            : ' Set a typical delivery cost in Settings → Shipping to estimate orders where the exact courier charge isn’t recorded.'}
+        </p>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }} className="adm-stat-grid">
+          <div style={{ padding: '12px 14px', background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 8 }}>
+            <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Charged to customers</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(shippingCharged)}</div>
+          </div>
+          <div style={{ padding: '12px 14px', background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 8 }}>
+            <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Delivery cost</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(shippingDeliveryCost)}</div>
+          </div>
+          <div style={{ padding: '12px 14px', background: shippingNet >= 0 ? '#f0fdf4' : '#fef2f2', border: `1px solid ${shippingNet >= 0 ? '#bbf7d0' : '#fecaca'}`, borderRadius: 8 }}>
+            <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Net shipping margin</div>
+            <div style={{ fontSize: '1.25rem', fontWeight: 700, color: shippingNet >= 0 ? '#15803d' : '#dc2626', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>
+              {shippingNet >= 0 ? fmt(shippingNet) : `(${fmt(-shippingNet)})`}
+            </div>
+          </div>
         </div>
       </div>
 

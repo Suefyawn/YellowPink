@@ -115,6 +115,13 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
               <input name="free_shipping_threshold" type="number" min={0} defaultValue={g('free_shipping_threshold', '5000')} style={inp} />
             </div>
             <div>
+              <label style={lbl}>Typical delivery cost per order (PKR)</label>
+              <input name="default_delivery_cost" type="number" min={0} defaultValue={g('default_delivery_cost', '')} style={inp} placeholder="what the courier bills you, e.g. 180" />
+              <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+                Internal only — never shown to customers. Used to estimate your <strong>shipping margin</strong> (what you charge minus what delivery costs) on orders where the exact courier charge hasn&apos;t been entered. Leave blank to show the margin only from recorded actuals.
+              </p>
+            </div>
+            <div>
               <label style={lbl}>Tax rate (%)</label>
               <input name="tax_rate_percent" type="number" step="0.01" min={0} max={100} defaultValue={g('tax_rate_percent', '0')} style={inp} />
             </div>
