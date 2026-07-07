@@ -1,15 +1,13 @@
 // ============================================================================
-// TEMPORARY TCS self-test route. Exercises the live TCS adapter end-to-end
-// against the credentials configured in this deployment: auth → create a test
-// consignment → fetch its label → track it → cancel it (cleanup).
+// TEMPORARY TCS self-test / diagnostic route. Exercises the live TCS adapter
+// and probes token-transport variants against the deployment's credentials.
 //
 // Safety:
 //   - Gated by a one-time token (?token=…); 403 without it.
-//   - The booking step is UAT-only: refuses unless TCS_BASE_URL points at
-//     devconnect (so it can never create a real consignment in production).
-//   - Always attempts to cancel the test consignment it created.
+//   - Booking is UAT-only: refuses unless TCS_BASE_URL points at devconnect.
+//   - Never leaks the bearer token; only decodes/reports its (non-secret) claims.
 //
-// DELETE THIS FILE once TCS is verified. It is not referenced anywhere else.
+// DELETE THIS FILE once TCS is verified. Not referenced anywhere else.
 // ============================================================================
 import { NextResponse } from 'next/server';
 import { tcs } from '@/lib/couriers/tcs';
@@ -20,6 +18,72 @@ export const runtime = 'nodejs';
 
 const TOKEN = '81a15cb993efc8d40d6f64fd2a7e39ba';
 
+// Decode a JWT payload WITHOUT verifying the signature — just to inspect claims.
+function decodeJwt(raw: string | undefined): Record<string, unknown> | { note: string } {
+  if (!raw) return { note: 'no token' };
+  const t = raw.trim();
+  const parts = t.split('.');
+  if (parts.length !== 3) return { note: `not a JWT (has ${parts.length} segments)`, startsWith: t.slice(0, 8) };
+  try {
+    const json = Buffer.from(parts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf8');
+    return JSON.parse(json) as Record<string, unknown>;
+  } catch (e) {
+    return { note: 'payload decode failed', error: (e as Error).message };
+  }
+}
+
+// Build the same booking body the adapter builds, so header/body experiments
+// stay faithful to production behaviour.
+function buildBookingBody(accesstoken: string) {
+  const now = new Date();
+  const dd = String(now.getDate()).padStart(2, '0');
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(now.getFullYear());
+  return {
+    accesstoken,
+    consignmentno: '',
+    shipperinfo: {
+      tcsaccount: process.env.TCS_TCS_ACCOUNT,
+      shippername: process.env.TCS_SHIPPER_NAME,
+      address1: process.env.TCS_SHIPPER_ADDRESS,
+      countrycode: 'PK',
+      countryname: 'Pakistan',
+      citycode: process.env.TCS_SHIPPER_CITY_CODE,
+      cityname: process.env.TCS_SHIPPER_CITY_NAME,
+      mobile: process.env.TCS_SHIPPER_MOBILE,
+    },
+    consigneeinfo: {
+      firstname: 'Selftest', middlename: '', lastname: 'Customer',
+      address1: 'House 1, Test Street, Gulshan-e-Iqbal', address2: '', zip: '',
+      countrycode: 'PK', countryname: 'Pakistan', cityname: 'Karachi',
+      email: 'selftest@example.com', mobile: '03001234567',
+    },
+    shipmentinfo: {
+      costcentercode: process.env.TCS_COST_CENTER_CODE,
+      referenceno: `SELFTEST-${yyyy}${mm}${dd}`,
+      contentdesc: 'Self-test', servicecode: process.env.TCS_SERVICE_CODE || 'O',
+      shipmentdate: `${dd}-${mm}-${yyyy}`, currency: 'PKR', codamount: 1000,
+      weightinkg: 0.5, pieces: 1, fragile: false, remarks: 'Automated self-test — ignore',
+      skus: [{ description: 'Self-test item', quantity: 1, weight: 0.5, uom: 'KG', unitprice: 1000 }],
+    },
+  };
+}
+
+async function tryBook(base: string, token: string, variant: string, useHeader: boolean, bodyToken: string) {
+  const body = buildBookingBody(bodyToken);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (useHeader) headers.Authorization = `Bearer ${token}`;
+  try {
+    const r = await fetch(`${base.replace(/\/$/, '')}/ecom/api/booking/create`, {
+      method: 'POST', headers, body: JSON.stringify(body),
+    });
+    const out = await r.json().catch(() => null);
+    return { variant, http: r.status, ok: r.ok && out?.status !== false && Boolean(out?.consignmentNo), consignmentNo: out?.consignmentNo ?? null, response: out };
+  } catch (e) {
+    return { variant, ok: false, error: (e as Error).message };
+  }
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   if (url.searchParams.get('token') !== TOKEN) {
@@ -28,92 +92,64 @@ export async function GET(req: Request) {
 
   const baseUrl = process.env.TCS_BASE_URL ?? '(unset)';
   const isUat = /devconnect/i.test(baseUrl);
+  const rawToken = process.env.TCS_BEARER_TOKEN;
   const steps: Array<Record<string, unknown>> = [];
 
-  // ── Step 0: configuration ────────────────────────────────────────────────
-  const configured = tcs.isConfigured();
+  const claims = decodeJwt(rawToken);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const exp = typeof (claims as Record<string, unknown>).exp === 'number' ? (claims as { exp: number }).exp : null;
+
   steps.push({
     step: 'config',
-    baseUrl,
-    isUat,
-    isConfigured: configured,
+    baseUrl, isUat,
+    isConfigured: tcs.isConfigured(),
     adapterIds: configuredAdapterIds(),
-    authMode: process.env.TCS_BEARER_TOKEN
-      ? 'bearer-token'
-      : (process.env.TCS_CLIENT_ID && process.env.TCS_CLIENT_SECRET)
-        ? 'client-id-secret'
-        : 'none',
-    hasCustomerNo: Boolean(process.env.TCS_CUSTOMER_NO),
-    // Non-secret shipper values, so we can eyeball what was configured.
+    authMode: rawToken ? 'bearer-token' : (process.env.TCS_CLIENT_ID ? 'client-id-secret' : 'none'),
+    token: {
+      present: Boolean(rawToken),
+      length: rawToken?.length ?? 0,
+      hasWhitespace: rawToken ? rawToken !== rawToken.trim() : false,
+      startsWithBearer: rawToken ? /^bearer /i.test(rawToken) : false,
+      startsWithEyJ: rawToken ? rawToken.trim().startsWith('eyJ') : false,
+    },
+    tokenClaims: claims,
+    tokenExpired: exp ? exp < nowSec : 'unknown',
+    tokenExpiresAt: exp ? new Date(exp * 1000).toISOString() : 'unknown',
     shipper: {
       tcsAccount: process.env.TCS_TCS_ACCOUNT ?? null,
       costCenter: process.env.TCS_COST_CENTER_CODE ?? null,
       cityCode: process.env.TCS_SHIPPER_CITY_CODE ?? null,
-      cityName: process.env.TCS_SHIPPER_CITY_NAME ?? null,
-      serviceCode: process.env.TCS_SERVICE_CODE ?? '(default O)',
+      shipperName: process.env.TCS_SHIPPER_NAME ?? null,
+      mobile: process.env.TCS_SHIPPER_MOBILE ?? null,
     },
+    hasCustomerNo: Boolean(process.env.TCS_CUSTOMER_NO),
   });
 
-  if (!configured) {
-    return NextResponse.json(
-      { ok: false, summary: 'TCS adapter reports NOT configured — env vars missing on this deployment.', steps },
-      { status: 200 },
-    );
+  if (!tcs.isConfigured() || !isUat || !rawToken) {
+    return NextResponse.json({ ok: false, summary: 'Not configured / not UAT — see config step.', steps }, { status: 200 });
   }
 
-  if (!isUat) {
-    return NextResponse.json(
-      { ok: false, summary: 'Refusing to run the booking test against a non-UAT base URL. Set TCS_BASE_URL to devconnect first.', steps },
-      { status: 200 },
-    );
-  }
+  const token = rawToken.trim();
 
-  // ── Step 1: book a synthetic test consignment ────────────────────────────
-  const stamp = Date.now().toString().slice(-6);
-  const bookRes = await tcs.book({
-    orderNumber: `SELFTEST-${stamp}`,
-    consignee: {
-      firstName: 'Selftest',
-      lastName: 'Customer',
-      phone: '03001234567',
-      email: 'selftest@example.com',
-      address1: 'House 1, Test Street, Gulshan-e-Iqbal',
-      city: 'Karachi',
-      countryCode: 'PK',
-    },
-    weightKg: 0.5,
-    pieces: 1,
-    codAmount: 1000,
-    currency: 'PKR',
-    items: [{ description: 'Self-test item', quantity: 1, weightKg: 0.5, unitPrice: 1000 }],
-    remarks: 'Automated TCS integration self-test — please ignore',
-  });
-  const booked = 'ok' in bookRes && bookRes.ok === true;
-  const cn = booked ? bookRes.trackingNumber : null;
-  steps.push({ step: 'book', ok: booked, trackingNumber: cn, result: bookRes });
+  // Probe token transport variants against the booking endpoint.
+  if (url.searchParams.get('book') === '1') {
+    const v1 = await tryBook(baseUrl, token, 'body-accesstoken-only (current adapter)', false, token);
+    steps.push({ step: 'book:v1', ...v1 });
+    const v2 = await tryBook(baseUrl, token, 'Authorization header + body accesstoken', true, token);
+    steps.push({ step: 'book:v2', ...v2 });
+    const v3 = await tryBook(baseUrl, token, 'Authorization header + empty body accesstoken', true, '');
+    steps.push({ step: 'book:v3', ...v3 });
 
-  // ── Step 2–4: only if we got a consignment ───────────────────────────────
-  if (cn) {
-    if (tcs.label) {
-      const labelRes = await tcs.label(cn);
-      steps.push({ step: 'label', ok: 'ok' in labelRes && labelRes.ok === true, result: labelRes });
+    // If any variant produced a consignment, cancel it to clean up.
+    for (const v of [v1, v2, v3]) {
+      if (v.ok && v.consignmentNo) {
+        const c = await tcs.cancel(String(v.consignmentNo));
+        steps.push({ step: `cleanup-cancel ${v.consignmentNo}`, result: c });
+      }
     }
-    const trackRes = await tcs.track(cn);
-    steps.push({ step: 'track', ok: 'ok' in trackRes && trackRes.ok === true, result: trackRes });
-
-    // ── Step 5: cleanup — cancel the test consignment ──────────────────────
-    const cancelRes = await tcs.cancel(cn);
-    steps.push({ step: 'cancel(cleanup)', ok: 'ok' in cancelRes && cancelRes.ok === true, result: cancelRes });
+    const anyOk = [v1, v2, v3].some(v => v.ok);
+    return NextResponse.json({ ok: anyOk, summary: anyOk ? 'A booking variant succeeded — see which.' : 'All booking variants rejected — token/account mismatch.', steps }, { status: 200 });
   }
 
-  // ── Step 6: payment ledger (only if TCS_CUSTOMER_NO is set) ───────────────
-  if (tcs.payment && process.env.TCS_CUSTOMER_NO) {
-    const to = new Date();
-    const from = new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
-    const fmt = (d: Date) => d.toISOString().slice(0, 10);
-    const payRes = await tcs.payment(fmt(from), fmt(to));
-    steps.push({ step: 'payment(30d)', ok: 'ok' in payRes && payRes.ok === true, result: payRes });
-  }
-
-  return NextResponse.json({ ok: booked, summary: booked ? 'Booking round-trip succeeded.' : 'Booking failed — see steps.', steps }, { status: 200 });
+  return NextResponse.json({ ok: true, summary: 'Diagnostics only. Add &book=1 to probe booking variants.', steps }, { status: 200 });
 }
