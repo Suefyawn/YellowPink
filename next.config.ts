@@ -153,6 +153,10 @@ const nextConfig: NextConfig = {
       ...(supabaseHost ? [`https://${supabaseHost}`, `wss://${supabaseHost}`] : []),
       'https://*.google-analytics.com',
       'https://analytics.google.com',
+      // GA4 sends measurement hits to a REGIONAL subdomain
+      // (region1.analytics.google.com, etc.) which the bare host above doesn't
+      // match — live Sentry CSP report YELLOWPINK-A (2026-07). Wildcard it.
+      'https://*.analytics.google.com',
       'https://stats.g.doubleclick.net',
       'https://www.googletagmanager.com',
       // gtag's ad-conversion linking pings (/ccm/collect, /pagead/…) go to
@@ -196,6 +200,11 @@ const nextConfig: NextConfig = {
       // yellowpink.pk, Cloudinary/Shopify/Unsplash CDNs) plus analytics pixels;
       // a blanket https: keeps this maintainable. data:/blob: for placeholders.
       "img-src 'self' data: blob: https:",
+      // Product videos (PDP gallery) stream from Supabase storage and other
+      // CDNs; without an explicit media-src they fall back to default-src 'self'
+      // and get blocked — live Sentry CSP report YELLOWPINK-B (2026-07). Mirror
+      // img-src's blanket https: so any video host works.
+      "media-src 'self' data: blob: https:",
       // vercel.live/assets.vercel.com: the Vercel toolbar loads its own font
       // (same team-member-only surface as its script/frame allowances).
       "font-src 'self' data: https://vercel.live https://assets.vercel.com",
