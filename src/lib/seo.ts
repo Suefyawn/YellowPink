@@ -502,15 +502,13 @@ export function breadcrumbLd(items: { name: string; path: string }[]) {
 export interface ListEntry {
   name: string;
   path: string;
-  /** Product fields — when present, the ListItem embeds a valid Product with a
-   *  minimal priced Offer, making the collection/category/brand page eligible
-   *  for product-list rich results. Omit them (e.g. blog index) to fall back to
-   *  a lean URL summary ListItem. */
+  /** Optional product context. `itemListLd` now emits the summary-page format
+   *  (position + url + name only), so these aren't rendered into the ItemList —
+   *  the canonical Product markup lives on each PDP. Callers may still pass them
+   *  (they're used elsewhere / kept for forward compatibility). */
   image?: string | null;
   brand?: string | null;
   price?: number | null;
-  /** Stock state for the Offer's `availability`. Omit → treated as in stock
-   *  (Google requires the field; most listed products are sellable). */
   inStock?: boolean | null;
 }
 
@@ -522,17 +520,18 @@ export function productInStock(p: { stock?: number | null; track_inventory?: boo
 }
 
 /**
- * ItemList for collection / category / brand / homepage index pages. Google
- * uses it to associate the listed items with the parent page and to power
- * product-list / carousel results.
+ * ItemList for collection / category / brand / homepage index pages, in Google's
+ * "summary page" format: each element is a lean `ListItem` carrying only
+ * `position` + `url` (and a `name`), pointing at the PDP.
  *
- * Two element shapes, chosen per item:
- *   • With a price → a full `Product` (name, url, image, brand, priced Offer,
- *     `@id` pointing at the PDP's Product node so they de-duplicate). This is
- *     what makes a listing page product-rich, and it's a VALID Product because
- *     it carries offers, not the partial-Product case validators reject.
- *   • Without a price (e.g. the blog index) → a lean summary ListItem with
- *     `url` + `name`, which is correct for non-product summaries.
+ * We deliberately do NOT embed a Product object per item here. A listing page
+ * doesn't get per-product rich snippets from its ItemList — those come from the
+ * PDP's own complete Product markup — and embedding a *partial* Product (a
+ * priced Offer without shippingDetails / hasMerchantReturnPolicy /
+ * priceValidUntil / description / rating) just makes Search Console flag every
+ * listed item as "missing field …" in the Product-snippets and Merchant-listings
+ * reports. The summary format is the documented pattern for category pages and
+ * keeps those reports clean while the canonical Product data stays on each PDP.
  */
 export function itemListLd(name: string, items: ListEntry[]) {
   return {
@@ -540,36 +539,12 @@ export function itemListLd(name: string, items: ListEntry[]) {
     '@type': 'ItemList',
     name,
     numberOfItems: items.length,
-    itemListElement: items.map((it, i) => {
-      const base = { '@type': 'ListItem', position: i + 1 } as const;
-      if (it.price != null && it.price > 0) {
-        return {
-          ...base,
-          item: {
-            '@type': 'Product',
-            '@id': absoluteUrl(it.path) + '#product',
-            name: brandPlusName(it.brand ?? undefined, it.name),
-            url: absoluteUrl(it.path),
-            image: absoluteImageUrl(it.image) ?? undefined,
-            brand: it.brand ? { '@type': 'Brand', name: it.brand } : undefined,
-            offers: {
-              '@type': 'Offer',
-              url: absoluteUrl(it.path),
-              price: it.price,
-              priceCurrency: 'PKR',
-              itemCondition: 'https://schema.org/NewCondition',
-              // Google flags Product offers without availability. Default to
-              // InStock when the caller doesn't specify (listing pages show
-              // sellable products); mark OutOfStock only when known depleted.
-              availability: it.inStock === false
-                ? 'https://schema.org/OutOfStock'
-                : 'https://schema.org/InStock',
-            },
-          },
-        };
-      }
-      return { ...base, url: absoluteUrl(it.path), name: it.name };
-    }),
+    itemListElement: items.map((it, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      url: absoluteUrl(it.path),
+      name: it.name,
+    })),
   };
 }
 
