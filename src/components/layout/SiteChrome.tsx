@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnnouncementBar } from './AnnouncementBar';
 import { Header } from './Header';
+import { HeaderFallback } from './HeaderFallback';
 import { Footer } from './Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { MiniCart } from '@/components/cart/MiniCart';
@@ -54,8 +55,14 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
           without a Suspense boundary, static prerender bails on every
           route that doesn't itself opt out. Wrapping here lets routes
           like /forgot-password / /reset-password / /track / /login
-          prerender cleanly while Header still hydrates on the client. */}
-      <Suspense fallback={null}>
+          prerender cleanly while Header still hydrates on the client.
+          The fallback is the SAME header markup (via HeaderShell) with
+          nav-highlighting forced off, not `null`, a `null` fallback
+          reserved zero height for the static shell and made the real
+          header visibly pop in a beat later, the "body loads, header
+          jitters in after" bug. Matching size = no layout shift either
+          way. */}
+      <Suspense fallback={<HeaderFallback />}>
         <Header />
       </Suspense>
       {children}

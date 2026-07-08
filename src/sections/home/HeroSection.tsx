@@ -5,6 +5,8 @@ import Image from 'next/image';
 import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
 
+interface HeroBrand { name: string; logoUrl: string | null }
+
 interface HeroSettings {
   overline: string;
   headline: string;
@@ -14,7 +16,7 @@ interface HeroSettings {
   cta2Text: string;
   cta2Url: string;
   imageUrl: string;
-  brands: string[];
+  brands: HeroBrand[];
 }
 
 const DEFAULTS: HeroSettings = {
@@ -28,7 +30,10 @@ const DEFAULTS: HeroSettings = {
   // values are "Women's Health", "Immunity", …) and rendered an empty grid.
   cta2Url: '/shop?taxon=wellness',
   imageUrl: '',
-  brands: ['NARS', 'Kiko Milano', 'PIXI', 'CeraVe'],
+  brands: [
+    { name: 'NARS', logoUrl: null }, { name: 'Kiko Milano', logoUrl: null },
+    { name: 'PIXI', logoUrl: null }, { name: 'CeraVe', logoUrl: null },
+  ],
 };
 
 // Soft, on-brand gradient that stands in for the hero photo until the
@@ -76,6 +81,15 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
 
   return (
     <section style={{ padding: 0, borderBottom: '1px solid var(--line)' }}>
+      <style>{`
+        .hero-brand-logo { filter: grayscale(1); opacity: 0.7; transition: filter 160ms ease-out, opacity 160ms ease-out; }
+        .hero-brand-logo:hover { filter: none; opacity: 1; }
+        @media (max-width: 480px) {
+          .hero-brand-block { max-width: none !important; }
+          .hero-brand-row { gap: 18px !important; }
+          .hero-brand-logo { height: 20px !important; max-width: 76px !important; }
+        }
+      `}</style>
       <div className="container hero-grid" style={{
         display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', minHeight: 520, alignItems: 'center',
       }}>
@@ -94,10 +108,26 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
             {s.cta2Text && <Link href={s.cta2Url} className="btn-secondary">{s.cta2Text}</Link>}
           </div>
           {s.brands.length > 0 && (
-            <div style={{ marginTop: 24, display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
-              {s.brands.map(b => (
-                <span key={b} style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-500)' }}>{b}</span>
-              ))}
+            <div className="hero-brand-block" style={{ marginTop: 28, paddingTop: 20, borderTop: '1px solid var(--line)', maxWidth: 420 }}>
+              <span style={{ display: 'block', marginBottom: 12, fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-500)' }}>
+                Authentic stock from
+              </span>
+              <div className="hero-brand-row" style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
+                {s.brands.map(b => (
+                  b.logoUrl ? (
+                    // Plain <img>, not next/image: these are small trust logos of
+                    // wildly varying aspect ratio from many hosts (Shopify CDNs,
+                    // local /brands/*), a fixed-size responsive optimisation buys
+                    // nothing here. Grayscale by default, full colour on hover, a
+                    // common "as-stocked-by" treatment that reads as curated
+                    // rather than a wall of clashing brand colours.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={b.name} src={b.logoUrl} alt={b.name} title={b.name} className="hero-brand-logo" style={{ height: 26, width: 'auto', maxWidth: 96, objectFit: 'contain' }} />
+                  ) : (
+                    <span key={b.name} style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-500)' }}>{b.name}</span>
+                  )
+                ))}
+              </div>
             </div>
           )}
         </div>

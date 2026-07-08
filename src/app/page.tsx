@@ -18,6 +18,7 @@ import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
 import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 import { buildWellnessShowcase } from '@/lib/wellness-data';
 import { categoryHref } from '@/lib/category-taxonomy';
+import { resolveBrandLogos } from '@/lib/brands';
 
 // Homepage "Shop by category" tiles, four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -102,6 +103,8 @@ export default async function HomePage() {
   const seasonOn = settings.season_active === 'true';
   const heroField = (seasonKey: string, normalKey: string): string =>
     (seasonOn && settings[seasonKey]) || settings[normalKey] || '';
+  const heroBrandNames = settings.hero_brands ? settings.hero_brands.split(',').map(b => b.trim()) : [];
+  const heroBrands = await resolveBrandLogos(heroBrandNames);
   const heroSettings = {
     overline: heroField('season_hero_overline', 'hero_overline'),
     headline: heroField('season_hero_headline', 'hero_headline'),
@@ -111,7 +114,7 @@ export default async function HomePage() {
     cta2Text: settings.hero_cta2_text,
     cta2Url: settings.hero_cta2_url,
     imageUrl: heroField('season_hero_image_url', 'hero_image_url'),
-    brands: settings.hero_brands ? settings.hero_brands.split(',').map(b => b.trim()) : [],
+    brands: heroBrands,
   };
 
   return (
