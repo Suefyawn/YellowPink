@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
@@ -50,13 +50,128 @@ const ClockIcon = () => (
 );
 
 /** Parses "10 min read" → 10 so posts can be sorted shortest-first. Posts
- *  with an unparseable read_time sort last rather than crashing the sort. */
+ *  with an unparseable read_time sort last regardless of direction, rather
+ *  than crashing the sort or jumping to the front on a "longest first" sort. */
 function readMinutes(readTime: string | undefined): number {
   const n = readTime ? parseInt(readTime, 10) : NaN;
   return Number.isFinite(n) ? n : Infinity;
 }
 
-type SortMode = 'newest' | 'quick';
+function compareReadTime(a: BlogPost, b: BlogPost, direction: 1 | -1): number {
+  const ra = readMinutes(a.read_time);
+  const rb = readMinutes(b.read_time);
+  if (!Number.isFinite(ra) && !Number.isFinite(rb)) return 0;
+  if (!Number.isFinite(ra)) return 1;
+  if (!Number.isFinite(rb)) return -1;
+  return (ra - rb) * direction;
+}
+
+type SortMode = 'newest' | 'oldest' | 'quick' | 'long';
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+  { value: 'quick', label: 'Quickest read' },
+  { value: 'long', label: 'Longest read' },
+];
+
+const CheckIcon = () => (
+  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
+const SortIcon = () => (
+  <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M11 5v13M11 5 7 9M11 5l4 4" /><path d="M20 19V6M20 19l-4-4M20 19l4-4" />
+  </svg>
+);
+
+/** Sort control for the article grid. Was a bare native &lt;select&gt;, which
+ *  reads as decoration (no icon, no visible affordance) rather than a real
+ *  filter, and its only two options ("Newest" / "Quickest read") often
+ *  produced no visible reorder on the first page since most articles cluster
+ *  around 8-10 minutes, reading as "broken" even though the state was
+ *  changing correctly. A labelled trigger + checked-option panel makes the
+ *  current sort legible at a glance, and Oldest/Longest give every choice an
+ *  obviously different order to prove it's working. */
+function SortMenu({ value, onChange }: { value: SortMode; onChange: (v: SortMode) => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocPointer = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDocPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const current = SORT_OPTIONS.find(o => o.value === value) ?? SORT_OPTIONS[0];
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        style={{
+          display: 'inline-flex', alignItems: 'center', gap: 7,
+          padding: '8px 14px', borderRadius: 'var(--radius-pill)',
+          border: '1px solid ' + (open ? 'var(--ink-900)' : 'var(--line)'),
+          background: 'transparent', color: 'var(--ink-700)',
+          fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 500,
+          cursor: 'pointer', transition: 'border-color 150ms ease-out', whiteSpace: 'nowrap',
+        }}
+      >
+        <SortIcon />
+        {current.label}
+        <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+          style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 150ms ease-out' }}>
+          <path d="m6 9 6 6 6-6" />
+        </svg>
+      </button>
+      {open && (
+        <div role="listbox" aria-label="Sort articles" style={{
+          position: 'absolute', top: 'calc(100% + 8px)', right: 0, zIndex: 50,
+          minWidth: 190, padding: 6,
+          background: 'var(--paper)', border: '1px solid var(--line)',
+          borderRadius: 'var(--radius-card)', boxShadow: '0 14px 36px rgba(0,0,0,0.13)',
+        }}>
+          {SORT_OPTIONS.map(o => (
+            <button
+              key={o.value}
+              type="button"
+              role="option"
+              aria-selected={o.value === value}
+              onClick={() => { onChange(o.value); setOpen(false); }}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+                width: '100%', padding: '9px 12px', borderRadius: 8, border: 'none',
+                background: o.value === value ? 'var(--paper2, #faf6ee)' : 'transparent',
+                color: o.value === value ? 'var(--ink-900)' : 'var(--ink-700)',
+                fontFamily: 'var(--font-ui)', fontSize: '0.875rem', fontWeight: o.value === value ? 600 : 400,
+                cursor: 'pointer', textAlign: 'left',
+              }}
+              onMouseEnter={e => { if (o.value !== value) e.currentTarget.style.background = 'var(--paper2, #faf6ee)'; }}
+              onMouseLeave={e => { if (o.value !== value) e.currentTarget.style.background = 'transparent'; }}
+            >
+              {o.label}
+              {o.value === value && <span style={{ color: 'var(--brand-pink-text)', display: 'inline-flex' }}><CheckIcon /></span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function BlogPage({ posts }: { posts: BlogPost[] }) {
   // Filters are derived from the actual post categories, sorted by
@@ -99,11 +214,11 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
       const hay = `${p.title} ${p.excerpt ?? ''} ${p.category ?? ''}`.toLowerCase();
       return hay.includes(q);
     });
-    if (sortMode === 'quick') {
-      // Stable sort: posts already arrive newest-first from the server, so
-      // ties on read time keep their recency order.
-      return [...matches].sort((a, b) => readMinutes(a.read_time) - readMinutes(b.read_time));
-    }
+    // Stable sort throughout: posts already arrive newest-first from the
+    // server, so ties (e.g. same read time) keep their recency order.
+    if (sortMode === 'quick') return [...matches].sort((a, b) => compareReadTime(a, b, 1));
+    if (sortMode === 'long') return [...matches].sort((a, b) => compareReadTime(a, b, -1));
+    if (sortMode === 'oldest') return [...matches].reverse();
     return matches;
   }, [posts, activeFilter, query, sortMode]);
 
@@ -245,22 +360,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
                   </>
                 )}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <label htmlFor="blog-sort" className="small-text" style={{ color: 'var(--ink-500)' }}>Sort</label>
-                <select
-                  id="blog-sort"
-                  value={sortMode}
-                  onChange={e => updateSort(e.target.value as SortMode)}
-                  style={{
-                    padding: '8px 12px', border: '1px solid var(--line)', borderRadius: 'var(--radius-pill)',
-                    fontSize: '0.8125rem', fontFamily: 'var(--font-ui)', background: 'transparent', color: 'var(--ink-700)',
-                    cursor: 'pointer', outline: 'none',
-                  }}
-                >
-                  <option value="newest">Newest</option>
-                  <option value="quick">Quickest read</option>
-                </select>
-              </div>
+              <SortMenu value={sortMode} onChange={updateSort} />
             </div>
 
             {filtered.length === 0 ? (
