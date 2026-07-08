@@ -82,12 +82,46 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
   return (
     <section style={{ padding: 0, borderBottom: '1px solid var(--line)' }}>
       <style>{`
-        .hero-brand-logo { filter: grayscale(1); opacity: 0.7; transition: filter 160ms ease-out, opacity 160ms ease-out; }
+        /* Trust-logo marquee: a fixed-size slot per brand (so a tall square
+           logo and a wide wordmark read as the same "weight"), duplicated
+           once and scrolled by exactly half the track's width so the loop
+           is seamless, no snap-back visible. Wrapping to a second line
+           (the old flex-wrap row) was what broke once the picker grew past
+           4 brands; a marquee has no line to wrap onto. */
+        .hero-brand-marquee {
+          position: relative; overflow: hidden; width: 100%;
+          -webkit-mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+          mask-image: linear-gradient(90deg, transparent, #000 28px, #000 calc(100% - 28px), transparent);
+        }
+        .hero-brand-track {
+          display: flex; align-items: center; gap: 32px; width: max-content;
+          animation: hero-brand-scroll 24s linear infinite;
+        }
+        .hero-brand-marquee:hover .hero-brand-track { animation-play-state: paused; }
+        .hero-brand-slot {
+          display: flex; align-items: center; justify-content: center;
+          width: 92px; height: 30px; flex-shrink: 0;
+        }
+        .hero-brand-logo {
+          max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain;
+          filter: grayscale(1); opacity: 0.7; transition: filter 160ms ease-out, opacity 160ms ease-out;
+        }
         .hero-brand-logo:hover { filter: none; opacity: 1; }
+        .hero-brand-text {
+          font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.12em;
+          text-transform: uppercase; color: var(--ink-500); white-space: nowrap;
+        }
+        @keyframes hero-brand-scroll {
+          from { transform: translateX(0); }
+          to { transform: translateX(-50%); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .hero-brand-track { animation: none; }
+        }
         @media (max-width: 480px) {
           .hero-brand-block { max-width: none !important; }
-          .hero-brand-row { gap: 18px !important; }
-          .hero-brand-logo { height: 20px !important; max-width: 76px !important; }
+          .hero-brand-track { gap: 22px; }
+          .hero-brand-slot { width: 76px; height: 24px; }
         }
       `}</style>
       <div className="container hero-grid" style={{
@@ -112,21 +146,28 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
               <span style={{ display: 'block', marginBottom: 12, fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--ink-500)' }}>
                 Authentic stock from
               </span>
-              <div className="hero-brand-row" style={{ display: 'flex', gap: 24, alignItems: 'center', flexWrap: 'wrap' }}>
-                {s.brands.map(b => (
-                  b.logoUrl ? (
-                    // Plain <img>, not next/image: these are small trust logos of
-                    // wildly varying aspect ratio from many hosts (Shopify CDNs,
-                    // local /brands/*), a fixed-size responsive optimisation buys
-                    // nothing here. Grayscale by default, full colour on hover, a
-                    // common "as-stocked-by" treatment that reads as curated
-                    // rather than a wall of clashing brand colours.
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img key={b.name} src={b.logoUrl} alt={b.name} title={b.name} className="hero-brand-logo" style={{ height: 26, width: 'auto', maxWidth: 96, objectFit: 'contain' }} />
-                  ) : (
-                    <span key={b.name} style={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--ink-500)' }}>{b.name}</span>
-                  )
-                ))}
+              <div className="hero-brand-marquee">
+                <div className="hero-brand-track">
+                  {/* Rendered twice back-to-back so translateX(-50%) loops
+                      seamlessly; the second copy is aria-hidden so screen
+                      readers see the brand list once, not doubled. */}
+                  {[...s.brands, ...s.brands].map((b, i) => (
+                    <span key={`${b.name}-${i}`} className="hero-brand-slot" aria-hidden={i >= s.brands.length || undefined}>
+                      {b.logoUrl ? (
+                        // Plain <img>, not next/image: these are small trust logos of
+                        // wildly varying aspect ratio from many hosts (Shopify CDNs,
+                        // local /brands/*), a fixed-size responsive optimisation buys
+                        // nothing here. Grayscale by default, full colour on hover, a
+                        // common "as-stocked-by" treatment that reads as curated
+                        // rather than a wall of clashing brand colours.
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={b.logoUrl} alt={b.name} title={b.name} className="hero-brand-logo" />
+                      ) : (
+                        <span className="hero-brand-text">{b.name}</span>
+                      )}
+                    </span>
+                  ))}
+                </div>
               </div>
             </div>
           )}
