@@ -2,7 +2,10 @@ export const dynamic = 'force-dynamic';
 
 import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from '../actions';
+import Link from 'next/link';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { BrandLogoPicker } from '@/components/admin/BrandLogoPicker';
+import { getBrandLogoCandidates } from '@/lib/brands';
 import {
   inp, lbl, Section, Card, Divider, Toggle, ColorPicker,
   SaveBar, StatusBanner, SettingsPageHeader,
@@ -11,7 +14,7 @@ import {
 const PATH = '/admin/settings/homepage';
 
 export default async function SettingsHomepagePage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
-  const [s, sp] = await Promise.all([getSiteSettings(), searchParams]);
+  const [s, sp, brandCandidates] = await Promise.all([getSiteSettings(), searchParams, getBrandLogoCandidates()]);
   const g = (key: string, fallback = '') => s[key] ?? fallback;
 
   return (
@@ -73,9 +76,16 @@ export default async function SettingsHomepagePage({ searchParams }: { searchPar
               </p>
             </div>
             <div>
-              <label style={lbl}>Brand logos row (comma-separated)</label>
-              <input name="hero_brands" defaultValue={g('hero_brands', 'NARS,Kiko Milano,PIXI,CeraVe')} style={inp}
-                placeholder="NARS, Kiko Milano, PIXI, CeraVe" />
+              <label style={lbl}>Trusted-brand logos row</label>
+              <p style={{ margin: '0 0 8px', fontSize: '0.75rem', color: '#9ca3af' }}>
+                Shown under the hero&apos;s buttons, real logos, not just names. Pick from brands that already have a
+                logo uploaded on the <Link href="/admin/brands" style={{ color: '#C5286A', fontWeight: 600 }}>Brands</Link> page.
+              </p>
+              <BrandLogoPicker
+                name="hero_brands"
+                value={g('hero_brands', 'NARS,Kiko Milano,PIXI,CeraVe')}
+                candidates={brandCandidates}
+              />
             </div>
           </div>
         </Card>
