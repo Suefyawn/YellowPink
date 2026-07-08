@@ -344,8 +344,12 @@ export function productLd(
 
   // Google increasingly wants priceValidUntil on Offer / AggregateOffer.
   // Use a 12-month forward window; the page itself revalidates often
-  // enough that this stays roughly accurate.
-  const priceValidUntil = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // enough that this stays roughly accurate. `validFrom` (the date the offer
+  // becomes valid) is likewise flagged as missing in the Merchant-listings
+  // report — the current price is live now, so anchor it to today.
+  const now = Date.now();
+  const validFrom = new Date(now).toISOString().slice(0, 10);
+  const priceValidUntil = new Date(now + 365 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
   const offers = variantPrices.length > 1 && lowPrice !== highPrice
     ? {
@@ -355,6 +359,7 @@ export function productLd(
         lowPrice,
         highPrice,
         offerCount: enabledVariants.length,
+        validFrom,
         priceValidUntil,
         itemCondition: 'https://schema.org/NewCondition',
         availability: anyVariantInStock
@@ -369,6 +374,7 @@ export function productLd(
         url: absoluteUrl(`/product/${product.slug}`),
         priceCurrency: 'PKR',
         price: product.price,
+        validFrom,
         priceValidUntil,
         itemCondition: 'https://schema.org/NewCondition',
         availability: anyVariantInStock
