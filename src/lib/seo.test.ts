@@ -85,25 +85,32 @@ describe('SEO JSON-LD helpers', () => {
   });
 
   describe('itemListLd', () => {
-    it('embeds a priced Product for entries with a price', () => {
+    // Summary-page format: lean ListItems (position + url + name), no embedded
+    // Product. A category page's ItemList doesn't earn per-product rich results
+    // (those come from each PDP's own Product markup), and embedding a partial
+    // Product only makes Search Console flag "missing field …" on every entry.
+    it('emits a lean summary ListItem (no embedded Product) for priced entries', () => {
       const ld = itemListLd('Skincare', [{ name: 'Moisturizer', path: '/product/x', image: '/i.jpg', brand: 'CeraVe', price: 2400 }]);
       const el = (ld.itemListElement as Array<Record<string, unknown>>)[0];
-      const item = el.item as { '@type': string; offers: { price: number; priceCurrency: string; availability: string } };
-      expect(item['@type']).toBe('Product');
-      expect(item.offers.price).toBe(2400);
-      expect(item.offers.priceCurrency).toBe('PKR');
-      // Google requires availability on Product offers; defaults to InStock.
-      expect(item.offers.availability).toBe('https://schema.org/InStock');
+      expect(el['@type']).toBe('ListItem');
+      expect(el.position).toBe(1);
+      expect(el.item).toBeUndefined();
+      expect(el.url).toContain('/product/x');
+      expect(el.name).toBe('Moisturizer');
     });
 
-    it('marks the Offer OutOfStock when inStock is false', () => {
-      const ld = itemListLd('Skincare', [{ name: 'Serum', path: '/product/y', price: 1500, inStock: false }]);
-      const el = (ld.itemListElement as Array<Record<string, unknown>>)[0];
-      const item = el.item as { offers: { availability: string } };
-      expect(item.offers.availability).toBe('https://schema.org/OutOfStock');
+    it('numbers items by position and points each url at the PDP', () => {
+      const ld = itemListLd('Skincare', [
+        { name: 'A', path: '/product/a', price: 100 },
+        { name: 'B', path: '/product/b', price: 200 },
+      ]);
+      const els = ld.itemListElement as Array<Record<string, unknown>>;
+      expect(els).toHaveLength(2);
+      expect(els[1].position).toBe(2);
+      expect(els[1].url).toContain('/product/b');
     });
 
-    it('falls back to a lean URL summary when no price (e.g. blog index)', () => {
+    it('works the same for non-product summaries (e.g. blog index)', () => {
       const ld = itemListLd('Latest posts', [{ name: 'A post', path: '/blog/a' }]);
       const el = (ld.itemListElement as Array<Record<string, unknown>>)[0];
       expect(el.item).toBeUndefined();
