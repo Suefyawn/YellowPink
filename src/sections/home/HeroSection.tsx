@@ -4,10 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
-import { ProductImage } from '@/components/ui/ProductImage';
-import { fmtPKR } from '@/lib/money';
-import { brandPlusName } from '@/lib/product-display';
-import type { Product } from '@/types';
 
 interface HeroBrand { name: string; logoUrl: string | null }
 
@@ -57,15 +53,7 @@ const GradientFallback = () => (
   />
 );
 
-interface HeroSectionProps {
-  settings?: Partial<HeroSettings>;
-  /** Real catalog products for the shoppable hero collage (replaces the old
-   *  single static photo). Needs at least 2 to build the two-image layout;
-   *  fewer falls back to the settings-driven photo/gradient below. */
-  products?: Product[];
-}
-
-export function HeroSection({ settings, products = [] }: HeroSectionProps) {
+export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) {
   // Merge per-field, not by object spread: the homepage passes '' for any
   // site_settings key that's missing (fresh DB, half-seeded settings), and
   // a plain spread let those empty strings clobber the defaults, shipping a
@@ -135,37 +123,6 @@ export function HeroSection({ settings, products = [] }: HeroSectionProps) {
           .hero-brand-track { gap: 22px; }
           .hero-brand-slot { width: 76px; height: 24px; }
         }
-
-        /* Shoppable hero collage: two real product shots instead of one
-           static lifestyle photo. Both boxes are sized by aspect-ratio, not
-           a percentage of the parent's height, so they never depend on an
-           ancestor resolving a height first (the old fill-mode Image did,
-           via inset:0 against the grid's last child, fragile on any layout
-           this component doesn't fully control). */
-        .hero-collage {
-          display: grid; grid-template-columns: 1.25fr 1fr; gap: 16px;
-          width: 100%; text-decoration: none; color: inherit;
-        }
-        .hero-collage-main {
-          position: relative; aspect-ratio: 4 / 5; border-radius: var(--radius-card);
-          overflow: hidden; box-shadow: 0 20px 44px rgba(26,26,26,0.12);
-        }
-        .hero-collage-side { display: flex; flex-direction: column; gap: 16px; }
-        .hero-collage-secondary {
-          position: relative; aspect-ratio: 1; border-radius: var(--radius-card);
-          overflow: hidden; box-shadow: 0 14px 30px rgba(26,26,26,0.10);
-        }
-        .hero-collage-badge {
-          display: block; padding: 14px 16px; background: var(--paper);
-          border-radius: var(--radius-card); box-shadow: 0 14px 30px rgba(26,26,26,0.10);
-          text-decoration: none; color: inherit; transition: transform 160ms ease-out;
-        }
-        .hero-collage-badge:hover { transform: translateY(-2px); }
-        @media (max-width: 480px) {
-          .hero-collage { gap: 10px; }
-          .hero-collage-side { gap: 10px; }
-          .hero-collage-badge { padding: 10px 12px; }
-        }
       `}</style>
       <div className="container hero-grid" style={{
         display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', minHeight: 520, alignItems: 'center',
@@ -216,48 +173,24 @@ export function HeroSection({ settings, products = [] }: HeroSectionProps) {
           )}
         </div>
 
-        <div style={{ position: 'relative', alignSelf: 'stretch', display: 'flex', alignItems: 'center' }}>
-          {products.length >= 2 ? (
-            // Shoppable collage: the hero doubles as a "shop this" moment
-            // instead of a static, non-clickable lifestyle photo. Real
-            // catalog products (featured, falling back to best-sellers),
-            // never staged/fabricated content.
-            <div className="hero-collage">
-              <Link href={`/product/${products[0].slug}`} className="hero-collage-main" aria-label={brandPlusName(products[0].brand, products[0].name)}>
-                <ProductImage src={products[0].image_url} alt={brandPlusName(products[0].brand, products[0].name)} label={products[0].brand} priority sizes="(max-width: 900px) 55vw, 28vw" />
-              </Link>
-              <div className="hero-collage-side">
-                <Link href={`/product/${products[1].slug}`} className="hero-collage-secondary" aria-label={brandPlusName(products[1].brand, products[1].name)}>
-                  <ProductImage src={products[1].image_url} alt={brandPlusName(products[1].brand, products[1].name)} label={products[1].brand} sizes="(max-width: 900px) 40vw, 20vw" />
-                </Link>
-                <Link href={`/product/${products[0].slug}`} className="hero-collage-badge">
-                  <Overline style={{ display: 'block', marginBottom: 4, color: 'var(--ink-500)' }}>{products[0].brand}</Overline>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: 6, lineHeight: 1.3 }}>{products[0].name}</div>
-                  <div className="tabular-nums" style={{ fontWeight: 700, color: 'var(--brand-pink-text)' }}>{fmtPKR(products[0].price)}</div>
-                </Link>
-              </div>
-            </div>
+        <div style={{ position: 'relative', alignSelf: 'stretch' }}>
+          {s.imageUrl && !imgFailed ? (
+            <Image
+              src={s.imageUrl}
+              alt="Yellow Pink, Beauty & Wellness"
+              fill
+              // Hero shot is the LCP, mark it `priority` so Next emits a
+              // <link rel="preload"> and skips lazy-loading. `sizes`
+              // matches the grid: 90vw on phones (single column), 45vw on
+              // desktop (right column of a 1.1fr/0.9fr split).
+              priority
+              fetchPriority="high"
+              sizes="(max-width: 900px) 100vw, 45vw"
+              onError={() => setImgFailed(true)}
+              style={{ objectFit: 'cover' }}
+            />
           ) : (
-            <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: 300, borderRadius: 'var(--radius-card)', overflow: 'hidden' }}>
-              {s.imageUrl && !imgFailed ? (
-                <Image
-                  src={s.imageUrl}
-                  alt="Yellow Pink, Beauty & Wellness"
-                  fill
-                  // Hero shot is the LCP, mark it `priority` so Next emits a
-                  // <link rel="preload"> and skips lazy-loading. `sizes`
-                  // matches the grid: 90vw on phones (single column), 45vw on
-                  // desktop (right column of a 1.1fr/0.9fr split).
-                  priority
-                  fetchPriority="high"
-                  sizes="(max-width: 900px) 100vw, 45vw"
-                  onError={() => setImgFailed(true)}
-                  style={{ objectFit: 'cover' }}
-                />
-              ) : (
-                <GradientFallback />
-              )}
-            </div>
+            <GradientFallback />
           )}
           <div aria-hidden="true" style={{ position: 'absolute', bottom: 0, left: 0, width: 6, height: 80, background: 'var(--brand-yellow)' }} />
         </div>

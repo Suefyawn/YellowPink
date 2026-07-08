@@ -105,9 +105,6 @@ export default async function HomePage() {
     (seasonOn && settings[seasonKey]) || settings[normalKey] || '';
   const heroBrandNames = settings.hero_brands ? settings.hero_brands.split(',').map(b => b.trim()) : [];
   const heroBrands = await resolveBrandLogos(heroBrandNames);
-  // Same "featured, fall back to best-sellers" pattern as the rail below;
-  // the hero collage needs 2 real products to build its two-image layout.
-  const heroProducts = featured.length >= 2 ? featured.slice(0, 2) : topSellers.slice(0, 2);
   const heroSettings = {
     overline: heroField('season_hero_overline', 'hero_overline'),
     headline: heroField('season_hero_headline', 'hero_headline'),
@@ -135,7 +132,7 @@ export default async function HomePage() {
           }}
         />
       )}
-      <HeroSection settings={heroSettings} products={heroProducts} />
+      <HeroSection settings={heroSettings} />
       <TrustBar />
       <FeaturedProducts products={featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4)} />
       <QuizBand />
