@@ -172,6 +172,12 @@ Which options appear depends on what you've enabled in **Settings → Payments**
   the wallet's payment page and back.
 - **Card** — Visa/Mastercard payment.
 
+If a wallet or card payment **fails or is abandoned**, the customer is brought
+back to checkout with a clear "payment unsuccessful" notice, their bag restored
+exactly as it was, and a WhatsApp link in case money did leave their account —
+they can retry immediately or switch to Cash on Delivery. (The failed attempt
+stays on your Orders list as *Payment failed* for follow-up.)
+
 Every order gets a unique **order number** (for example `YP-A1B2C3`).
 
 ### 2.4 After placing an order
@@ -913,6 +919,10 @@ A dated history of user-facing changes, newest first.
 
 ### 9 July 2026
 
+- **Shade products can no longer fail or oversell at checkout.** Two long-standing defects in the order pipeline hit products sold in shades: (1) if a shade's price differed from the product's base price, every checkout of that shade was rejected with a mismatch error — one product was completely unbuyable; (2) stock was counted against the product as a whole rather than the specific shade, so a popular shade could oversell while the counter said fine, and cancellations drifted the two counts apart. Orders now price and count stock per shade, the product-level counter moves in lockstep (so "sold out" badges stay truthful), and every affected product's counters were reconciled. *One to know: the Milk Makeup jelly tint shades had been entered at Rs 1,699 while the product sells at Rs 4,500 — the old bug is the only reason nothing sold at the wrong price; the shades are corrected to Rs 4,500 (adjust in admin if a promo price was intended).*
+- **A failed wallet/card payment no longer strands the customer.** Previously, when a JazzCash/Easypaisa/card payment failed or was abandoned, the customer was dropped on an **empty** checkout page with no explanation — their bag had been cleared on the way to the gateway. They now come back to a clear "payment unsuccessful" notice with their bag restored exactly as it was (including any coupon), ready to retry or switch to Cash on Delivery, plus a WhatsApp link in case money left their account. Confirmation emails and the shade name on them were also tightened up: emails now include the shade the customer picked, and a "confirmed" email can no longer be sent if the order didn't actually flip to confirmed.
+- **The "Added ✓" button tells the truth.** Tapping *Add to Cart* on a sold-out shade (or when your bag already holds all remaining stock) used to flash "Added ✓" and open the cart while adding nothing. The button now only confirms when something was genuinely added.
+- **Two tap-blockers on phones fixed.** The cookie-consent bar no longer covers the sticky *Add to Cart* bar on product pages (they now stack), and the decorative logo watermark in the footer no longer swallows taps on the newsletter *Join* button.
 - **Search and cart panels now close when you go back.** On phones, opening the search panel (or the slide-out cart) and then swiping back — or pressing the browser's back button — used to leave the panel stuck open on top of the previous page. Both now close automatically the moment the page changes, however the navigation happened.
 
 ### 8 July 2026

@@ -61,9 +61,12 @@ export function ProductTile({ product }: ProductTileProps) {
       router.push(`/product/${slug}`);
       return;
     }
-    addToCart({ ...product, qty: 1 });
-    setAdded(true);
-    window.setTimeout(() => setAdded(false), 1400);
+    // addToCart returns false when the stock clamp dropped the add (cart
+    // already at the available cap) — don't flash "Added ✓" for a no-op.
+    if (addToCart({ ...product, qty: 1 })) {
+      setAdded(true);
+      window.setTimeout(() => setAdded(false), 1400);
+    }
   };
   const quickAddLabel = soldOut
     ? 'Sold out'

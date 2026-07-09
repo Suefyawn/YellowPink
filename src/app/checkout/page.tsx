@@ -12,7 +12,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default async function CheckoutRoute() {
+export default async function CheckoutRoute({ searchParams }: { searchParams: Promise<{ error?: string; order?: string }> }) {
+  // Gateway callbacks bounce failed/unverifiable payments back here as
+  // /checkout?error=<code>&order=<number>. The cart was cleared before the
+  // gateway hop, so without these props the shopper lands on "Your bag is
+  // empty" with no explanation and no way to retry (audit H1).
+  const { error: paymentError, order: failedOrder } = await searchParams;
   // Read which payment methods the merchant has toggled on in admin settings.
   // Default: all on (matching the historical hard-coded behaviour), so a
   // fresh install or a row that isn't in site_settings yet still works.
@@ -38,6 +43,8 @@ export default async function CheckoutRoute() {
         enabledMethods={enabledMethods}
         bankAccounts={bankAccounts}
         bankNotes={settings.pay_bank_instructions ?? ''}
+        paymentError={paymentError ?? null}
+        failedOrder={failedOrder ?? null}
       />
     </main>
   );

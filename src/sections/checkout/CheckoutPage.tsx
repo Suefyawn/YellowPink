@@ -20,7 +20,7 @@ import { successHaptic } from '@/lib/haptics';
 import { readAttribution } from '@/lib/attribution';
 import { readReferral } from '@/lib/referral';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
-import type { Coupon, PayMethod, LoyaltyAccount, BankAccount } from '@/types';
+import type { CartItem, Coupon, PayMethod, LoyaltyAccount, BankAccount } from '@/types';
 
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
 
@@ -55,10 +55,24 @@ interface CheckoutPageProps {
   enabledMethods?: PayMethod[];
   bankAccounts?: BankAccount[];
   bankNotes?: string;
+  /** Error code a gateway callback bounced back with
+   *  (`/checkout?error=payment_failed|signature|payment_config|order_missing`).
+   *  Triggers the payment-failed banner + cart restore below. */
+  paymentError?: string | null;
+  /** Order number of the failed payment, when the callback knew it. */
+  failedOrder?: string | null;
 }
 
-export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: CheckoutPageProps = {}) {
-  const { cartItems, clearCart, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
+// The cart is cleared right before the browser POSTs off to JazzCash /
+// Easypaisa. This key holds a snapshot of what was cleared so a failed
+// payment can put the bag back instead of dead-ending on "Your bag is empty".
+const GATEWAY_SNAPSHOT_KEY = 'yp_gateway_cart';
+// A snapshot older than this is stale history, not an in-flight payment —
+// don't resurrect last week's bag because an old ?error= URL was revisited.
+const GATEWAY_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000;
+
+export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, paymentError = null, failedOrder = null }: CheckoutPageProps = {}) {
+  const { cartItems, clearCart, restoreCart, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -124,6 +138,35 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   const [hydrated, setHydrated] = useState(false);
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setHydrated(true); }, []);
+
+  // Failed-payment recovery (audit H1): the cart was cleared before the
+  // gateway hop, so when the callback bounces back with ?error=… the shopper
+  // used to land on "Your bag is empty" with no way to retry. Restore the
+  // pre-gateway snapshot (saved in handleSubmit below) into the empty cart —
+  // silently, this is undoing our own clear, not a user add. Runs once, after
+  // the cart has hydrated so we never clobber a bag the shopper rebuilt.
+  const restoredAfterFailure = useRef(false);
+  useEffect(() => {
+    if (!paymentError || !hydrated || restoredAfterFailure.current) return;
+    restoredAfterFailure.current = true;
+    if (cartItems.length > 0) return; // bag intact — the banner alone is enough
+    try {
+      const raw = localStorage.getItem(GATEWAY_SNAPSHOT_KEY);
+      if (!raw) return;
+      const snap = JSON.parse(raw) as { order?: string; items?: CartItem[]; coupon?: Coupon | null; ts?: number };
+      // Only restore the bag that belongs to THIS failed payment, and only
+      // while it's plausibly still in flight.
+      if (failedOrder && snap.order && snap.order !== failedOrder) return;
+      if (typeof snap.ts === 'number' && Date.now() - snap.ts > GATEWAY_SNAPSHOT_TTL_MS) return;
+      if (Array.isArray(snap.items) && snap.items.length > 0 && restoreCart(snap.items)) {
+        if (snap.coupon) setAppliedCoupon(snap.coupon);
+        localStorage.removeItem(GATEWAY_SNAPSHOT_KEY);
+      }
+    } catch { /* corrupt snapshot — keep the banner, skip the restore */ }
+    // restoreCart/setAppliedCoupon are stable enough here: the run-once ref
+    // guard means re-renders can't double-restore.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentError, failedOrder, hydrated, cartItems.length]);
 
   // begin_checkout marks *reaching* checkout, not submitting it (GA4 spec).
   // Firing on submit conflated "started checkout" with "completed checkout"
@@ -382,6 +425,14 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
         input.value = orderNumber;
         form.appendChild(input);
         document.body.appendChild(form);
+        // Snapshot the bag before clearing it: if the gateway payment fails,
+        // the callback lands on /checkout?error=… and the restore effect above
+        // puts these items back so the shopper can retry (audit H1).
+        try {
+          localStorage.setItem(GATEWAY_SNAPSHOT_KEY, JSON.stringify({
+            order: orderNumber, items: cartItems, coupon: cartCoupon, ts: Date.now(),
+          }));
+        } catch { /* quota exceeded — worst case the old dead-end, never block payment */ }
         clearCart();
         form.submit();
         return;
@@ -398,7 +449,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
         province: formData.province || undefined,
         total,
         items: cartItems.map(i => ({
-          name: i.name, qty: i.qty, price: i.price, brand: i.brand ?? undefined, variant: i.variant,
+          name: i.name, qty: i.qty, price: i.price, brand: i.brand ?? undefined, variant: i.variant_label ?? i.variant,
         })),
         pay_method: payMethod,
       });
@@ -426,6 +477,42 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
   });
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.8125rem', fontWeight: 500, marginBottom: 6 };
 
+  // Payment-failed banner (audit H1). Shown whenever a gateway callback
+  // bounced back with ?error=…, in both the restored-bag form and the (rare)
+  // couldn't-restore empty state. Copy varies: a clean gateway decline is the
+  // shopper's to retry; a verification problem (signature/config/missing
+  // order) may mean they DID pay, so it points at WhatsApp instead of
+  // implying the money never moved.
+  const bagRestored = cartItems.length > 0;
+  const whatsappHref = `/go/whatsapp?src=payment_failed&text=${encodeURIComponent(
+    `Hi! My online payment${failedOrder ? ` for order ${failedOrder}` : ''} didn't go through and I need help completing my order.`
+  )}`;
+  const paymentBanner = paymentError ? (
+    <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '14px 16px', color: '#991b1b', fontSize: '0.875rem', lineHeight: 1.55, textAlign: 'left' }}>
+      <strong style={{ display: 'block', marginBottom: 4, color: '#dc2626', fontSize: '0.9375rem' }}>
+        {paymentError === 'payment_failed' ? 'Payment unsuccessful' : 'We couldn’t confirm your payment'}
+      </strong>
+      {paymentError === 'payment_failed' ? (
+        <>
+          Your payment{failedOrder ? <> for order <strong>{failedOrder}</strong></> : null} didn&rsquo;t go
+          through, so the order hasn&rsquo;t been confirmed.{' '}
+          {bagRestored
+            ? 'Your bag is back below — try again, or switch to Cash on Delivery.'
+            : 'Add your items again to retry, or choose Cash on Delivery at checkout.'}{' '}
+          If money did leave your account, <a href={whatsappHref} style={{ color: 'inherit', fontWeight: 600 }}>message us on WhatsApp</a> and we&rsquo;ll sort it out.
+        </>
+      ) : (
+        <>
+          Something went wrong while verifying the payment response
+          {failedOrder ? <> for order <strong>{failedOrder}</strong></> : null}. If you completed the
+          payment, don&rsquo;t worry — <a href={whatsappHref} style={{ color: 'inherit', fontWeight: 600 }}>message us on WhatsApp</a> with
+          your details and we&rsquo;ll confirm it manually. Otherwise you can simply try again
+          {bagRestored ? ' below' : ''}.
+        </>
+      )}
+    </div>
+  ) : null;
+
   // Empty bag → no checkout form. Mirrors the cart page's empty state so the
   // two read as one voice; gated on `hydrated` so a saved cart never flashes
   // this while localStorage is still being read.
@@ -433,6 +520,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     return (
       <section style={{ padding: 'var(--section-gap) 0', textAlign: 'center' }}>
         <div className="container" style={{ maxWidth: 560 }}>
+          {paymentBanner && <div style={{ marginBottom: 28 }}>{paymentBanner}</div>}
           {/* Lucide shopping-bag (same glyph as the header cart icon), never
               emoji or dingbats — keeps the empty state in the icon language
               the chrome already speaks. */}
@@ -473,6 +561,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes }: C
     <div>
       <section style={{ padding: '48px 0 0', borderBottom: '1px solid var(--line)' }}>
         <div className="container">
+          {paymentBanner && <div style={{ marginBottom: 24 }}>{paymentBanner}</div>}
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Checkout</Overline>
           <h1 className="display-l" style={{ fontSize: '2rem', marginBottom: 32 }}>Complete Your Order</h1>
         </div>

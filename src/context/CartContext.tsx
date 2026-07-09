@@ -21,7 +21,16 @@ interface CartContextValue {
   cartItems: CartItem[];
   cartOpen: boolean;
   setCartOpen: (open: boolean) => void;
-  addToCart: (product: AddToCartInput) => void;
+  /** Returns true when at least one unit was actually added; false when the
+   *  stock clamp dropped the add entirely (sold out, or the line is already
+   *  at the available-stock cap). Callers must not show success feedback on
+   *  false — the toast/drawer/analytics are only fired internally on true. */
+  addToCart: (product: AddToCartInput) => boolean;
+  /** Silently swap a saved snapshot back into an EMPTY cart (failed-payment
+   *  recovery). Unlike `addToCart` this fires no toast/drawer/analytics — the
+   *  shopper didn't add anything, we're undoing our own pre-gateway clear.
+   *  Returns false (and does nothing) if the cart already has items. */
+  restoreCart: (items: CartItem[]) => boolean;
   removeFromCart: (idx: number) => void;
   updateQty: (idx: number, delta: number) => void;
   clearCart: () => void;
@@ -108,39 +117,46 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch { /* quota exceeded */ }
   }, [appliedCoupon]);
 
-  const addToCart = (product: AddToCartInput) => {
-    setCartItems(prev => {
-      // Dedupe key: same product AND same variant. Adding two different shades
-      // of the same product results in two cart lines.
-      const variantId = product.variant_id ?? null;
-      const existing = prev.findIndex(i => i.id === product.id && (i.variant_id ?? null) === variantId);
-      // P1: clamp qty against available stock. `product.stock` is the live
-      // value from the PDP/grid props; treat undefined as unlimited (some
-      // demo items have no stock field). The RPC has authoritative truth
-      // and will still reject overshoot, but stopping at the UI saves a
-      // round-trip and a confusing toast.
-      // Untracked products (inventory managed externally) have no cap.
-      const stockCap = product.track_inventory === false || typeof product.stock !== 'number'
-        ? Infinity
-        : product.stock;
-      const requested = product.qty ?? 1;
-      if (existing >= 0) {
-        const current = prev[existing].qty;
-        const next = Math.min(current + requested, stockCap);
-        if (next === current) return prev; // already at cap, silently ignore
-        const updated = [...prev];
-        updated[existing] = { ...updated[existing], qty: next };
-        return updated;
-      }
+  const addToCart = (product: AddToCartInput): boolean => {
+    // Dedupe key: same product AND same variant. Adding two different shades
+    // of the same product results in two cart lines.
+    const variantId = product.variant_id ?? null;
+    // P1: clamp qty against available stock. `product.stock` is the live
+    // value from the PDP/grid props; treat undefined as unlimited (some
+    // demo items have no stock field). The RPC has authoritative truth
+    // and will still reject overshoot, but stopping at the UI saves a
+    // round-trip and a confusing toast.
+    // Untracked products (inventory managed externally) have no cap.
+    const stockCap = product.track_inventory === false || typeof product.stock !== 'number'
+      ? Infinity
+      : product.stock;
+    const requested = product.qty ?? 1;
+
+    // Decide the outcome AGAINST CURRENT STATE, before touching it, so the
+    // success feedback below (toast, drawer, analytics) can be gated on
+    // whether anything was actually added. Previously the clamp could drop
+    // the add inside the updater while the toast/drawer fired regardless —
+    // the button flashed "Added ✓" with nothing added. Safe outside the
+    // updater: adds only happen in user-event ticks, never concurrently.
+    const existing = cartItems.findIndex(i => i.id === product.id && (i.variant_id ?? null) === variantId);
+    const addedQty = existing >= 0
+      ? Math.min(cartItems[existing].qty + requested, stockCap) - cartItems[existing].qty
       // Never create a quantity-0 line: a sold-out product (stockCap 0)
       // would otherwise land in the cart as a phantom line the shopper
       // can't check out (the order RPC rejects it with a raw product-id
-      // error). Silently ignore, matching the at-cap behaviour above.
-      const qty = Math.min(requested, stockCap);
-      if (qty < 1) return prev;
+      // error).
+      : Math.min(requested, stockCap) >= 1 ? Math.min(requested, stockCap) : 0;
+    if (addedQty <= 0) return false;
+
+    setCartItems(prev => {
+      if (existing >= 0) {
+        const updated = [...prev];
+        updated[existing] = { ...updated[existing], qty: updated[existing].qty + addedQty };
+        return updated;
+      }
       return [...prev, {
         ...product,
-        qty,
+        qty: addedQty,
         variant_id: variantId,
         variant_label: product.variant_label ?? null,
       }];
@@ -154,7 +170,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         category:     product.category,
         variant:      product.variant_label ?? product.variant,
         price:        product.price,
-        qty:          product.qty ?? 1,
+        qty:          addedQty,
         currency:     'PKR',
       },
     });
@@ -163,9 +179,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       name:  product.name,
       brand: product.brand,
       price: product.price,
-      qty:   product.qty ?? 1,
+      qty:   addedQty,
     });
     setCartOpen(true);
+    return true;
+  };
+
+  const restoreCart = (items: CartItem[]): boolean => {
+    if (cartItems.length > 0 || items.length === 0) return false;
+    setCartItems(items);
+    return true;
   };
 
   const removeFromCart = (idx: number) =>
@@ -195,7 +218,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const cartCount = cartItems.reduce((s, i) => s + i.qty, 0);
 
   return (
-    <CartContext.Provider value={{ cartItems, cartOpen, setCartOpen, addToCart, removeFromCart, updateQty, clearCart, cartCount, addCounter, lastAdded, appliedCoupon, setAppliedCoupon }}>
+    <CartContext.Provider value={{ cartItems, cartOpen, setCartOpen, addToCart, restoreCart, removeFromCart, updateQty, clearCart, cartCount, addCounter, lastAdded, appliedCoupon, setAppliedCoupon }}>
       {children}
     </CartContext.Provider>
   );
