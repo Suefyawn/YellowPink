@@ -253,7 +253,7 @@ export default async function UsersPage({
       <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         {cards.map(c => (
           // KpiCard has no outline prop; the wrapper carries the active-filter ring.
-          <div key={c.label} style={{ borderRadius: 12, outline: c.active ? `1.5px solid ${c.color}` : undefined }}>
+          <div key={c.label} style={{ borderRadius: 12, outline: c.active ? '1.5px solid #C5286A' : undefined }}>
             <KpiCard label={c.label} value={c.value} href={c.href} accent={c.color} />
           </div>
         ))}

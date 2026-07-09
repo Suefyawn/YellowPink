@@ -108,7 +108,7 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
           <h2 style={{ margin: '0 0 12px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>New brand</h2>
           <form action={createBrand} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <input name="name" required placeholder="e.g. CeraVe" style={{ ...inp, minWidth: 220 }} />
-            <input name="slug" placeholder="optional, auto from name" style={{ ...inp, minWidth: 200, fontFamily: 'monospace' }} />
+            <input name="slug" placeholder="auto from name" style={{ ...inp, minWidth: 200, fontFamily: 'monospace' }} />
             <button type="submit" style={{ padding: '8px 18px', background: '#C5286A', color: 'white', border: 'none', borderRadius: 7, fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer' }}>+ Create</button>
           </form>
           <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
