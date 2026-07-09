@@ -30,6 +30,7 @@ export default function ProfilePage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
+  const [dob, setDob] = useState('');
   const [originalSnap, setOriginalSnap] = useState<string>('');
   const [hydrated, setHydrated] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -47,8 +48,9 @@ export default function ProfilePage() {
       const f = profile?.first_name ?? '';
       const l = profile?.last_name ?? '';
       const p = profile?.phone ?? '';
-      setFirstName(f); setLastName(l); setPhone(p);
-      setOriginalSnap(JSON.stringify({ f, l, p }));
+      const d = profile?.dob ?? '';
+      setFirstName(f); setLastName(l); setPhone(p); setDob(d);
+      setOriginalSnap(JSON.stringify({ f, l, p, d }));
       setHydrated(true);
     });
   }, [user, loading, router]);
@@ -62,8 +64,8 @@ export default function ProfilePage() {
 
   // ─── Dirty + valid checks ─────────────────────────────────────────────────
   const dirty = useMemo(() => {
-    return JSON.stringify({ f: firstName, l: lastName, p: phone }) !== originalSnap;
-  }, [firstName, lastName, phone, originalSnap]);
+    return JSON.stringify({ f: firstName, l: lastName, p: phone, d: dob }) !== originalSnap;
+  }, [firstName, lastName, phone, dob, originalSnap]);
 
   const phoneNormalised = phone.replace(/\s+/g, '');
   const phoneValid = phone === '' || PK_PHONE.test(phoneNormalised);
@@ -100,12 +102,13 @@ export default function ProfilePage() {
       first_name: firstName.trim() || null,
       last_name: lastName.trim() || null,
       phone: phoneNormalised || null,
+      dob: dob || null,
     } as never);
     if (error) {
       setError(error.message);
     } else {
       setSuccess(true);
-      setOriginalSnap(JSON.stringify({ f: firstName, l: lastName, p: phone }));
+      setOriginalSnap(JSON.stringify({ f: firstName, l: lastName, p: phone, d: dob }));
     }
     setSaving(false);
   };
@@ -178,6 +181,21 @@ export default function ProfilePage() {
                 {phoneValid
                   ? 'Pakistani mobile, e.g. 03001234567 or +923001234567. Used for order updates.'
                   : 'Enter a valid Pakistani mobile (11 digits starting with 03, or +92 followed by 3…).'}
+              </div>
+            </div>
+            <div>
+              <label htmlFor="profile-dob" style={lbl}>Date of birth <span style={{ fontWeight: 400, color: 'var(--ink-500)' }}>(optional)</span></label>
+              <input
+                id="profile-dob"
+                type="date"
+                autoComplete="bday"
+                value={dob}
+                onChange={e => setDob(e.target.value)}
+                max={new Date().toISOString().slice(0, 10)}
+                style={inp}
+              />
+              <div style={{ marginTop: 6, fontSize: '0.75rem', color: 'var(--ink-500)' }}>
+                Set it to receive bonus reward points on your birthday every year.
               </div>
             </div>
             <button

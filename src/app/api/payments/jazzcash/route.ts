@@ -45,7 +45,9 @@ export async function POST(req: NextRequest) {
   if (order.status !== 'payment_pending') {
     return NextResponse.json({ error: `Order is not awaiting payment (status: ${order.status})` }, { status: 409 });
   }
-  if (order.pay_method !== 'jazzcash') {
+  // 'card' orders also pay on JazzCash's hosted page (card entry lives
+  // there) — see postOrderDestination in lib/checkout-routing.ts.
+  if (order.pay_method !== 'jazzcash' && order.pay_method !== 'card') {
     return NextResponse.json({ error: `Order is not a JazzCash order (method: ${order.pay_method})` }, { status: 409 });
   }
 

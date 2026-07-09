@@ -6,7 +6,8 @@ import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { EARN_RULES, REASON_LABELS, nextTierTarget, tierForLifetime } from '@/lib/loyalty';
+import { earnRules, REASON_LABELS, nextTierTarget, tierForLifetime } from '@/lib/loyalty';
+import { useCommerceSettings } from '@/context/CommerceSettings';
 import type { LoyaltyAccount, LoyaltyLedgerEntry, Profile } from '@/types';
 import { fmtDatePK } from '@/lib/dates';
 
@@ -15,6 +16,8 @@ const lbl: React.CSSProperties = { fontSize: '0.75rem', fontWeight: 700, color: 
 export default function RewardsPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const { loyaltyEarn } = useCommerceSettings();
+  const rules = earnRules(loyaltyEarn);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [account, setAccount] = useState<LoyaltyAccount | null>(null);
   const [ledger,  setLedger]  = useState<LoyaltyLedgerEntry[]>([]);
@@ -127,7 +130,7 @@ export default function RewardsPage() {
         <div style={{ padding: 24, background: 'white', borderRadius: 12, border: '1px solid var(--line)', marginBottom: 24 }}>
           <h2 style={{ margin: '0 0 16px', fontSize: '1rem', fontWeight: 700 }}>How to earn</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {EARN_RULES.map(r => (
+            {rules.map(r => (
               <div key={r.reason} style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid var(--line)' }}>
                 <span style={{ fontSize: '0.875rem', color: 'var(--ink-700)' }}>{r.description}</span>
                 <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--brand-pink-text)', whiteSpace: 'nowrap' }}>{r.label}</span>
