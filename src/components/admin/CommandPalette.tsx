@@ -145,6 +145,14 @@ export function CommandPalette({ session }: { session: StaffSession }) {
   // mount would steal focus from the page on every admin load.
   useEffect(() => { if (open) inputRef.current?.focus(); }, [open]);
 
+  // The top-bar search pill (AdminShell) opens the palette without a
+  // keyboard — the mouse-first, discoverable entry to the same surface.
+  useEffect(() => {
+    const onOpen = () => setOpen(true);
+    window.addEventListener('yp:palette-open', onOpen);
+    return () => window.removeEventListener('yp:palette-open', onOpen);
+  }, []);
+
   const close = useCallback(() => { setOpen(false); setQ(''); setCursor(0); }, []);
 
   const go = useCallback((href: string) => {

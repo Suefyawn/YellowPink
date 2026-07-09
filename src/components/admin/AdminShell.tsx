@@ -91,6 +91,16 @@ export function AdminShell({
         .adm-main { margin-left: 240px; min-width: 0; overflow-x: clip; min-height: 100vh; background: #f3f4f6; }
         .adm-topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: white; border-bottom: 1px solid #e5e7eb; position: sticky; top: 0; z-index: 30; }
         .adm-topbar .menu-btn { display: none; }
+        /* Top-bar search pill: the mouse-first entry to the ⌘K palette. A
+         * hidden keyboard shortcut isn't discoverable; a visible search box
+         * that says what it finds is. Collapses to an icon on phones. */
+        .adm-search-pill { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; color: #6b7280; font-size: 0.8125rem; cursor: pointer; min-width: 260px; transition: border-color 0.12s, background 0.12s; }
+        .adm-search-pill:hover { border-color: #d1d5db; background: #f3f4f6; }
+        .adm-search-pill kbd { margin-left: auto; padding: 1px 6px; border: 1px solid #e5e7eb; border-radius: 4px; background: white; font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.6875rem; color: #6b7280; }
+        @media (max-width: 767px) {
+          .adm-search-pill { min-width: 0; padding: 0 9px; }
+          .adm-search-pill .adm-search-pill-label, .adm-search-pill kbd { display: none; }
+        }
         .adm-overlay { display: none; }
         .adm-bottom-nav { display: none; }
         .adm-fab { display: none; }
@@ -479,6 +489,18 @@ export function AdminShell({
             <span>Pink</span>
             <span style={{ color: '#9ca3af', fontWeight: 400, fontSize: '0.75rem', marginLeft: 8 }}>Admin</span>
           </span>
+          <button
+            type="button"
+            className="adm-search-pill"
+            aria-label="Search orders, products, customers and pages"
+            onClick={() => window.dispatchEvent(new CustomEvent('yp:palette-open'))}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <span className="adm-search-pill-label">Search orders, products…</span>
+            <kbd>⌘K</kbd>
+          </button>
           <NotificationsBell notifications={notifications} />
         </div>
         {children}
