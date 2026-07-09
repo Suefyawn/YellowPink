@@ -1,8 +1,8 @@
 'use client';
 
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
@@ -14,11 +14,20 @@ export function MiniCart() {
   const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty } = useCart();
   const { freeShippingEnabled } = useCommerceSettings();
   const router = useRouter();
+  const pathname = usePathname();
   useBodyScrollLock(cartOpen);
   useEscapeKey(cartOpen, () => setCartOpen(false));
   const panelRef = useRef<HTMLDivElement | null>(null);
   useFocusTrap(cartOpen, panelRef);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+
+  // Close on any route change, including browser/gesture back navigation,
+  // which fires none of this component's own close handlers, see the same
+  // fix in SearchOverlay.tsx.
+  useEffect(() => {
+    setCartOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   const handleViewCart = () => {
     setCartOpen(false);

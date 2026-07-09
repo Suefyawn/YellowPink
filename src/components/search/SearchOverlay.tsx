@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useSearch } from '@/context/SearchContext';
@@ -50,8 +50,22 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
+  const pathname = usePathname();
   useBodyScrollLock(searchOpen);
   useFocusTrap(searchOpen, panelRef);
+
+  // Close on any route change, including browser/gesture back navigation.
+  // goToProduct/goToSearch/goToCategory already close the overlay before
+  // their own router.push, so this only matters for navigation the overlay
+  // didn't initiate itself, a swipe-back or the back button, neither of
+  // which fires any handler in this component. Without this the overlay
+  // stayed visibly open (its `searchOpen` state lives in a provider above
+  // the router and survives the navigation) on top of whatever page the
+  // back gesture landed on.
+  useEffect(() => {
+    setSearchOpen(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   // Recent searches, persisted in localStorage, most-recent first, capped at
   // 6. Re-read each time the overlay opens so it reflects searches made in
