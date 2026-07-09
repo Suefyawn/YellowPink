@@ -3,70 +3,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { SectionDivider } from '@/components/ui/SectionDivider';
 import { Overline } from '@/components/ui/Overline';
+import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import type { HomeSocialProof } from '@/lib/supabase';
 
-// Social-proof block on the home page. Stat strip + three featured review
-// cards. Once `product_reviews` is full of real data, swap REVIEWS for a
-// server-loaded selection (highest-helpful with photos).
+// Social-proof block on the home page. Every number in the stat strip and
+// every review card comes from the live database (getHomeSocialProof) — this
+// section used to ship invented reviews and made-up totals ("2,400+ reviews",
+// "50k+ orders") under a "no paid reviews" headline, which is precisely the
+// fake-social-proof pattern shoppers (and the FTC-equivalent rules our brand
+// partners follow) punish. When the data is too thin the section hides
+// entirely rather than padding with fiction.
 
-interface Review {
-  rating: 5 | 4;
-  headline: string;
-  body: string;
-  author: string;
-  location: string;
-  product: { brand: string; name: string };
-  verified: boolean;
-  /** Visual variant, each card gets a different on-brand colour treatment.
-   *  Tint draws from the brand palette (yellow / pink / paper) so the cards
-   *  feel like they belong on this site, not like generic Google reviews. */
-  accent: 'yellow' | 'pink' | 'cream';
-}
+/** Visual variant — each card gets a different on-brand colour treatment so
+ *  the row reads as three distinct moments, not three identical white boxes. */
+type Accent = 'yellow' | 'pink' | 'cream';
+const ACCENT_ORDER: Accent[] = ['yellow', 'pink', 'cream'];
 
-const REVIEWS: Review[] = [
-  {
-    rating: 5,
-    headline: 'Worth every rupee',
-    body:    "Three weeks in and the texture of my skin is different. I don't even need a tinted moisturiser most days now.",
-    author:  'Maria J.',
-    location: 'Karachi',
-    product: { brand: 'CeraVe', name: 'Moisturising Cream' },
-    verified: true,
-    accent:  'yellow',
-  },
-  {
-    rating: 5,
-    headline: 'Finally something that works on Pakistani skin',
-    body:    "I tried four different vitamin Cs before this one. This actually penetrates and doesn't pill under sunscreen.",
-    author:  'Nida S.',
-    location: 'Lahore',
-    product: { brand: 'PIXI',   name: 'Glow Tonic' },
-    verified: true,
-    accent:  'pink',
-  },
-  {
-    rating: 5,
-    headline: "My colleagues keep asking what I changed",
-    body:    "The shade match is unreal, I have undertones that everyone else gets wrong. Stays on through Lahore summer.",
-    author:  'Ayesha K.',
-    location: 'Islamabad',
-    product: { brand: 'NARS',   name: 'Light Reflecting Foundation' },
-    verified: true,
-    accent:  'cream',
-  },
-];
-
-// Aggregate numbers for the stat strip. Replace with rollups from
-// analytics_kpis() once a real reporting view exists.
-const STATS = [
-  { label: 'Average rating',  value: '4.9★',     sub: 'from 2,400+ reviews' },
-  { label: 'Would buy again', value: '94%',      sub: 'post-purchase survey' },
-  { label: 'Orders shipped',  value: '50k+',     sub: 'across Pakistan' },
-  { label: 'Ships in',        value: '2-5 days', sub: 'COD nationwide' },
-];
+/** Round DOWN to a marketing-safe "N+" figure (53 → 50+). Never overstates. */
+const floorTen = (n: number) => Math.floor(n / 10) * 10;
 
 // Each accent picks a different background + quote-mark + avatar tint so the
 // row reads as three distinct moments, not three identical white boxes.
-const ACCENT_STYLES: Record<Review['accent'], {
+const ACCENT_STYLES: Record<Accent, {
   cardBg: string;
   cardBorder: string;
   quoteColor: string;
@@ -119,7 +77,7 @@ function initials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function RealResults() {
+export function RealResults({ proof }: { proof: HomeSocialProof | null }) {
   // Active slide index for the mobile slider's dot indicator. Updated by
   // an IntersectionObserver watching each card, pure read-only, the
   // dots are presentational (tapping them is a nice-to-have we can add
@@ -166,6 +124,18 @@ export function RealResults() {
     root.scrollTo({ left: card.offsetLeft - root.offsetLeft, behavior: 'smooth' });
   };
 
+  // No real data yet (or demo mode) → no section. Honest silence beats
+  // invented numbers.
+  if (!proof) return null;
+
+  const STATS = [
+    { label: 'Average rating',  value: `${proof.avgRating.toFixed(1)}★`, sub: `from ${floorTen(proof.reviewCount)}+ customer reviews` },
+    { label: 'Authentic brands', value: `${floorTen(proof.brandCount)}+`, sub: 'imported & local, 100% original' },
+    { label: 'Ships in',        value: '2–5 days', sub: 'COD nationwide' },
+    { label: 'Easy returns',    value: `${RETURNS_WINDOW_DAYS} days`, sub: 'no-hassle return window' },
+  ];
+  const REVIEWS = proof.reviews;
+
   return (
     <section style={{ paddingBottom: 'var(--section-gap)' }}>
       <div className="container">
@@ -181,7 +151,7 @@ export function RealResults() {
             <em style={{ color: 'var(--brand-pink-text)', fontStyle: 'italic' }}>Loved across Pakistan.</em>
           </h2>
           <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 600, marginBottom: 36, fontSize: '1.0625rem' }}>
-            Verified buyers from Karachi, Lahore, and Islamabad. No paid reviews, no influencer copy-paste.
+            Written by our customers on this site and individually approved. No paid reviews, no influencer copy-paste.
           </p>
 
           {/* ─── Stats strip ───────────────────────────────────────────── */}
@@ -248,7 +218,7 @@ export function RealResults() {
             style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }}
           >
             {REVIEWS.map((r, i) => {
-              const a = ACCENT_STYLES[r.accent];
+              const a = ACCENT_STYLES[ACCENT_ORDER[i % ACCENT_ORDER.length]];
               return (
                 <article
                   key={i}
@@ -293,7 +263,7 @@ export function RealResults() {
                   </span>
 
                   <div style={{ marginTop: 28, display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <Stars count={r.rating} />
+                    <Stars count={5} />
                     {r.verified && (
                       <span title="Verified purchase" style={{
                         fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.06em',
@@ -304,17 +274,6 @@ export function RealResults() {
                     )}
                   </div>
 
-                  <h3
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: '1.375rem', fontWeight: 500,
-                      color: 'var(--ink-900)', margin: 0,
-                      lineHeight: 1.2, letterSpacing: '-0.018em',
-                    }}
-                  >
-                    {r.headline}
-                  </h3>
-
                   <p
                     className="body-text"
                     style={{
@@ -322,7 +281,9 @@ export function RealResults() {
                       fontSize: '0.9375rem', lineHeight: 1.6,
                     }}
                   >
-                    {r.body}
+                    {/* Clamp very long reviews so the three cards stay level;
+                        the full text lives on the product page's review list. */}
+                    {r.body.length > 230 ? `${r.body.slice(0, 227).trimEnd()}…` : r.body}
                   </p>
 
                   <div
@@ -354,10 +315,9 @@ export function RealResults() {
                         }}
                       >
                         {r.author}
-                        <span style={{ fontWeight: 400, color: 'var(--ink-500)' }}> · {r.location}</span>
                       </div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 2 }}>
-                        on <span style={{ fontWeight: 600 }}>{r.product.brand}</span> {r.product.name}
+                      <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        on {r.brand && <span style={{ fontWeight: 600 }}>{r.brand} </span>}{r.product}
                       </div>
                     </div>
                   </div>

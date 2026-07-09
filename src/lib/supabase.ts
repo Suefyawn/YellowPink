@@ -127,6 +127,72 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   }, DEMO_PRODUCTS.find(p => p.slug === slug) ?? null);
 }
 
+/** Real social proof for the homepage "Real shoppers, real results" section.
+ *  Every number and every quote comes from the live database — the section
+ *  previously shipped hardcoded stats ("2,400+ reviews", "50k+ orders") and
+ *  invented review cards, which is exactly the fake-review pattern the
+ *  section's own copy disclaims. Returns null (section hides) rather than
+ *  ever padding with fiction. */
+export interface HomeSocialProof {
+  avgRating: number;
+  reviewCount: number;
+  brandCount: number;
+  reviews: Array<{ author: string; body: string; verified: boolean; brand: string | null; product: string }>;
+}
+
+export async function getHomeSocialProof(): Promise<HomeSocialProof | null> {
+  if (isDemo) return null;
+  return safe('getHomeSocialProof', async () => {
+    const [ratingsRes, reviewsRes, brandsRes] = await Promise.all([
+      supabase.from('product_reviews').select('rating').eq('approved', true),
+      supabase
+        .from('product_reviews')
+        .select('author_name, body, verified_purchase, helpful_count, products(brand, name)')
+        .eq('approved', true)
+        .eq('rating', 5)
+        .order('helpful_count', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(24),
+      supabase.from('brands').select('id', { count: 'exact', head: true }),
+    ]);
+
+    const ratings = (ratingsRes.data ?? []) as Array<{ rating: number }>;
+    if (ratings.length < 10) return null; // too thin to make claims from
+
+    type Row = {
+      author_name: string | null; body: string | null; verified_purchase: boolean | null;
+      products: { brand: string | null; name: string } | null;
+    };
+    // Substantial quotes only, at most one per brand so the row shows range,
+    // not three cards about one product line.
+    const seenBrands = new Set<string>();
+    const reviews: HomeSocialProof['reviews'] = [];
+    for (const r of (reviewsRes.data ?? []) as unknown as Row[]) {
+      const body = (r.body ?? '').trim();
+      const brand = r.products?.brand ?? null;
+      if (body.length < 80 || !r.products) continue;
+      if (brand && seenBrands.has(brand)) continue;
+      if (brand) seenBrands.add(brand);
+      reviews.push({
+        author: r.author_name ?? 'Verified customer',
+        body,
+        verified: r.verified_purchase ?? false,
+        brand,
+        product: r.products.name,
+      });
+      if (reviews.length === 3) break;
+    }
+    if (reviews.length < 3) return null;
+
+    return {
+      avgRating: Math.round((ratings.reduce((s, r) => s + r.rating, 0) / ratings.length) * 10) / 10,
+      reviewCount: ratings.length,
+      brandCount: brandsRes.count ?? 0,
+      reviews,
+    };
+  }, null);
+}
+
 /** Editorial bestsellers, flagged by `is_bestseller=true`. Falls back to
  *  the highest-stock published products if the flag hasn't been seeded yet
  * , homepage rails should never go empty. */
