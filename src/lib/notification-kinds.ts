@@ -10,7 +10,6 @@ import type { StaffSession } from '@/lib/permissions';
 // notifications the clicker isn't allowed to see).
 export const KIND_PERMISSION: Record<string, Permission | null> = {
   new_order:      'orders.view',
-  low_stock:      'products.view',
   payment_failed: 'orders.view',
   return_request: 'returns',
   new_review:     'reviews',

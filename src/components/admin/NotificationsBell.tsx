@@ -22,7 +22,6 @@ interface Notification {
 // weight across devices, so they're SVG names now like the widget kinds.
 const KIND_SVG: Record<string, AdminIconName> = {
   new_order: 'shopping-bag',
-  low_stock: 'alert-triangle',
   payment_failed: 'x-circle',
   return_request: 'undo',
   new_review: 'star',

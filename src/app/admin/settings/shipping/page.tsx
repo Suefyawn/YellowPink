@@ -147,14 +147,11 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
                 Internal only — never shown to customers. Used to estimate your <strong>shipping margin</strong> (what you charge minus what delivery costs) on orders where the exact courier charge hasn&apos;t been entered. Leave blank to show the margin only from recorded actuals.
               </p>
             </div>
-            <div>
-              <label style={lbl}>Tax rate (%)</label>
-              <input name="tax_rate_percent" type="number" step="0.01" min={0} max={100} defaultValue={g('tax_rate_percent', '0')} style={inp} />
-            </div>
-            <div>
-              <label style={lbl}>Tax-inclusive pricing</label>
-              <Toggle name="tax_inclusive" checked={g('tax_inclusive') === 'true'} />
-            </div>
+            {/* The tax rate/inclusive settings that used to sit here were
+                dead controls: nothing in checkout, order costs, or P&L ever
+                read them (Pakistan retail prices are quoted tax-inclusive).
+                Removed rather than left as toggles that silently do nothing;
+                restore alongside a real tax computation if it's ever needed. */}
           </div>
         </Card>
         <SaveBar />
