@@ -6,16 +6,17 @@ import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBo
 import { readConsent } from '@/lib/consent';
 import { WELCOME_DISCOUNT_PCT } from '@/lib/commerce';
 
-// Newsletter modal, appears on either:
-//   1. Exit-intent (desktop only): mouse exits the top edge of the viewport
-//   2. Timed fallback: 60s on page with no interaction
+// Newsletter capture. Desktop: modal on exit-intent or a 60s timed fallback.
+// Phones (< 720px): a modal popping over a small screen is too disruptive,
+// but hiding the welcome-discount offer entirely meant ~80% of traffic never
+// saw it — so mobile gets a slim, dismissible bottom banner (after 25s)
+// whose "Get my code" tap opens the same modal. Same dismissal memory.
 //
 // Dismissal is remembered for 30 days in localStorage so we don't pester
-// visitors. We also suppress if the visitor:
+// visitors. We also suppress entirely if the visitor:
 //   • Already subscribed (yp_newsletter_signed_up)
 //   • Has explicitly rejected marketing cookies
-//   • Is on an admin / checkout page (mounted elsewhere)
-//   • Is on a small screen, phones rely on the footer + post-purchase opt-in
+//   • Is on an admin / checkout / auth page
 //
 // Mounted once in src/app/layout.tsx so it's available globally; component
 // no-ops if any suppression rule triggers.
@@ -24,6 +25,7 @@ const DISMISS_KEY     = 'yp_newsletter_dismissed_at';
 const SIGNED_UP_KEY   = 'yp_newsletter_signed_up';
 const DISMISS_WINDOW  = 30 * 24 * 60 * 60 * 1000; // 30 days
 const TIMED_FALLBACK_MS = 60_000;
+const MOBILE_BANNER_MS  = 25_000;
 const MOBILE_BREAKPOINT = 720;
 
 function shouldSuppress(): boolean {
@@ -33,8 +35,6 @@ function shouldSuppress(): boolean {
     const dismissed = Number(window.localStorage.getItem(DISMISS_KEY) ?? 0);
     if (dismissed && Date.now() - dismissed < DISMISS_WINDOW) return true;
   } catch {}
-  // Don't pop on phones, too disruptive on small screens.
-  if (window.innerWidth < MOBILE_BREAKPOINT) return true;
   // Don't pop until the visitor has decided on cookies, stacking modals is rude.
   if (!readConsent()) return true;
   // Don't pop on these high-intent flows (signup/login/checkout).
@@ -48,20 +48,29 @@ function shouldSuppress(): boolean {
 // promising a discount code that checkout would reject.
 export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discountPct?: number | null } = {}) {
   const [open, setOpen] = useState(false);
+  const [banner, setBanner] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   const close = () => {
     try { window.localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch {}
     setOpen(false);
+    setBanner(false);
   };
 
   useBodyScrollLock(open);
   useEscapeKey(open, close);
   useFocusTrap(open, panelRef);
 
-  // Arm exit-intent + the timed fallback once on mount.
+  // Arm the triggers once on mount. Phones get the slim banner (a modal
+  // popping over a small screen is rude); desktop keeps exit-intent + the
+  // timed fallback straight into the modal.
   useEffect(() => {
     if (shouldSuppress()) return;
+
+    if (window.innerWidth < MOBILE_BREAKPOINT) {
+      const t = window.setTimeout(() => setBanner(true), MOBILE_BANNER_MS);
+      return () => window.clearTimeout(t);
+    }
 
     let armed = true;
     const onLeave = (e: MouseEvent) => {
@@ -102,6 +111,54 @@ export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discou
     watcher.observe(panel, { childList: true, subtree: true });
     return () => watcher.disconnect();
   }, [open]);
+
+  // Mobile bottom banner — slim, dismissible, stacks above the WhatsApp FAB
+  // via --fab-bottom-offset. Tapping the CTA opens the full signup modal.
+  if (banner && !open) {
+    return (
+      <div
+        role="region"
+        aria-label="Welcome offer"
+        style={{
+          position: 'fixed', left: 12, right: 12,
+          bottom: 'calc(12px + var(--fab-bottom-offset, 0px) + env(safe-area-inset-bottom, 0px))',
+          zIndex: 340,
+          background: 'var(--ink-900)', color: 'var(--paper)',
+          borderRadius: 12, padding: '12px 14px',
+          display: 'flex', alignItems: 'center', gap: 12,
+          boxShadow: '0 8px 28px rgba(0,0,0,0.28)',
+        }}
+      >
+        <span style={{ flex: 1, fontSize: '0.8125rem', lineHeight: 1.4 }}>
+          {discountPct !== null
+            ? <><strong style={{ fontWeight: 700 }}>{discountPct}% off</strong> your first order — join the list</>
+            : 'Get the Yellow Pink edit — one thoughtful email a fortnight'}
+        </span>
+        <button
+          type="button"
+          onClick={() => { setBanner(false); setOpen(true); }}
+          style={{
+            flexShrink: 0, padding: '8px 14px', borderRadius: 100,
+            background: 'var(--brand-pink-cta)', color: 'white', border: 'none',
+            fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer',
+          }}
+        >
+          {discountPct !== null ? 'Get my code' : 'Sign up'}
+        </button>
+        <button
+          type="button"
+          onClick={close}
+          aria-label="Dismiss offer"
+          style={{
+            flexShrink: 0, width: 32, height: 32, borderRadius: 8,
+            background: 'none', border: 'none', color: 'rgba(255,255,255,0.7)',
+            fontSize: '1.125rem', lineHeight: 1, cursor: 'pointer',
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >×</button>
+      </div>
+    );
+  }
 
   if (!open) return null;
 

@@ -6,6 +6,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { StarRating } from '@/components/ui/StarRating';
 import { TrustStrip } from '@/components/pdp/TrustStrip';
+import { ImageLightbox } from '@/components/pdp/ImageLightbox';
 import { useCart } from '@/context/CartContext';
 import { ProductDescription } from '@/components/pdp/ProductDescription';
 import { track } from '@/lib/analytics';
@@ -175,6 +176,10 @@ function Gallery({
 
   const trackRef = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
+  // Fullscreen pinch-zoom viewer (ImageLightbox); null = closed. Opened by
+  // tapping the main image — COD shoppers inspect seals/ingredient panels
+  // before committing to pay-on-delivery.
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
 
   const goTo = (i: number) => {
     const t = trackRef.current;
@@ -225,18 +230,32 @@ function Gallery({
                   style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
                 />
               ) : (
-                <ProductImage
-                  src={s.url}
-                  alt={s.alt}
-                  label={brandLabel}
-                  fit="contain"
-                  priority={i === 0}
-                  sizes="(max-width: 900px) 100vw, 440px"
-                />
+                <button
+                  type="button"
+                  onClick={() => setLightbox({ src: s.url, alt: s.alt })}
+                  aria-label={`Zoom into ${s.alt}`}
+                  style={{
+                    width: '100%', height: '100%', padding: 0, border: 'none',
+                    background: 'none', cursor: 'zoom-in', display: 'flex',
+                    alignItems: 'center', justifyContent: 'center',
+                  }}
+                >
+                  <ProductImage
+                    src={s.url}
+                    alt={s.alt}
+                    label={brandLabel}
+                    fit="contain"
+                    priority={i === 0}
+                    sizes="(max-width: 900px) 100vw, 440px"
+                  />
+                </button>
               )}
             </div>
           ))}
         </div>
+        {lightbox && (
+          <ImageLightbox src={lightbox.src} alt={lightbox.alt} onClose={() => setLightbox(null)} />
+        )}
         {many && (
           <>
             <button
