@@ -1,6 +1,7 @@
 'use client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { paletteSearch, type PaletteHit } from '@/app/admin/palette-actions';
 import type { StaffSession, Permission } from '@/lib/permissions';
 
 // Admin command palette, opens with Cmd/Ctrl+K from anywhere in /admin.
@@ -92,7 +93,7 @@ export function CommandPalette({ session }: { session: StaffSession }) {
 
   const visible = useMemo(() => COMMANDS.filter(c => canSee(c, session)), [session]);
 
-  const results = useMemo(() => {
+  const navResults = useMemo(() => {
     if (!q.trim()) return visible;
     return visible
       .map(c => ({ c, s: score(c.label, c.hint, q.trim()) }))
@@ -100,6 +101,40 @@ export function CommandPalette({ session }: { session: StaffSession }) {
       .sort((a, b) => a.s - b.s)
       .map(r => r.c);
   }, [visible, q]);
+
+  // Live-data hits (orders / products / customers) behind the same input —
+  // this is what turns the palette from a nav menu into "type an order
+  // number or a customer's phone from anywhere". Results are stored WITH the
+  // term that produced them, and rendering derives from "does the stored
+  // term match the current query?" — so stale answers and query-shrunk
+  // states need no synchronous setState resets in the effect (they simply
+  // stop matching), and `searching` is derived rather than tracked.
+  const term = q.trim();
+  const [hitState, setHitState] = useState<{ term: string; rows: PaletteHit[] }>({ term: '', rows: [] });
+  useEffect(() => {
+    if (!open || term.length < 2) return;
+    const t = setTimeout(() => {
+      paletteSearch(term)
+        .then(rows => setHitState({ term, rows }))
+        .catch(() => setHitState({ term, rows: [] }));
+    }, 250);
+    return () => clearTimeout(t);
+  }, [term, open]);
+  const hits = useMemo(
+    () => (term.length >= 2 && hitState.term === term ? hitState.rows : []),
+    [term, hitState],
+  );
+  const searching = open && term.length >= 2 && hitState.term !== term;
+
+  // One flat list for rendering + keyboard nav: page matches first (typing
+  // "ord" should offer Orders before order rows), then the data hits.
+  const results = useMemo(
+    () => [
+      ...navResults.map(c => ({ label: c.label, hint: c.hint, href: c.href, group: c.group })),
+      ...hits.map(h => ({ label: h.label, hint: h.hint || undefined, href: h.href, group: h.group })),
+    ],
+    [navResults, hits],
+  );
 
   // Clamp the cursor against the live result count so a long query that
   // narrows the list down doesn't leave the highlight pointing past the end.
@@ -190,7 +225,7 @@ export function CommandPalette({ session }: { session: StaffSession }) {
                 value={q}
                 onChange={e => setQ(e.target.value)}
                 onKeyDown={onInputKey}
-                placeholder="Jump to… (orders, products, settings)"
+                placeholder="Search orders, products, customers, pages…"
                 aria-label="Search admin"
                 style={{
                   width: '100%', border: 'none', outline: 'none',
@@ -201,13 +236,13 @@ export function CommandPalette({ session }: { session: StaffSession }) {
             <div style={{ maxHeight: '50vh', overflowY: 'auto', padding: '6px 0' }}>
               {results.length === 0 ? (
                 <div style={{ padding: '24px 16px', color: '#9ca3af', fontSize: '0.875rem', textAlign: 'center' }}>
-                  No matches
+                  {searching ? 'Searching…' : 'No matches'}
                 </div>
               ) : results.map((c, i) => {
                 const active = i === activeIndex;
                 return (
                   <button
-                    key={c.href}
+                    key={`${c.group}:${c.href}`}
                     onMouseEnter={() => setCursor(i)}
                     onClick={() => go(c.href)}
                     style={{
