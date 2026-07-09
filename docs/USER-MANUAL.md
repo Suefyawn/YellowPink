@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 7 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 9 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -632,7 +632,7 @@ what — pick a page, edit, hit **Save changes** at the bottom.
 |---|---|
 | **Store profile** (`/admin/settings/profile`) | Store name, currency, contact email and phone, and links to your social profiles (used in the footer and for search-engine data). |
 | **Branding & theme** (`/admin/settings/branding`) | Brand colours (pink, yellow, ink) and the **Seasonal Theme** — a one-switch makeover (palette, motif, hero) for Eid, Christmas, etc. |
-| **Homepage** (`/admin/settings/homepage`) | The big **Homepage Hero** (wording, buttons, image, brand logos), the store-wide **Sale** on/off switch, and the thin **Announcement Bar** at the top of every page. |
+| **Homepage** (`/admin/settings/homepage`) | The big **Homepage Hero** (wording, buttons, image), the store-wide **Sale** on/off switch, and the thin **Announcement Bar** at the top of every page. The hero's **Trusted-brand logos row** is a visual picker: click real brand logos (pulled from the Brands page, ranked by how many products each brand has) to add or remove them, with a live preview of exactly what will show — no more typing brand names and hoping the spelling matches. |
 | **Shipping & tax** (`/admin/settings/shipping`) | An **Offer free shipping** master switch, a **default fallback** rate + free-shipping threshold (used only when an address matches no zone), tax rate, and the **shipping zones** — the real engine. Each zone carries the **provinces it covers** (tick-boxes), the **rate you charge**, **your courier cost**, a **free-delivery threshold**, and estimated days. Checkout picks the zone automatically from the customer's province and charges that zone's rate; each zone's free threshold is applied on its own. When you set a rate **below your cost**, the editor shows a **live red margin warning** so you never quietly under-price a region. The current setup (from your Lahore origin): **Zone 1 Punjab & Islamabad — Rs 250, free over 5,000**; **Zone 2 Sindh & KPK — Rs 350, free over 7,000**; **Zone 3 Balochistan/AJK/Gilgit-Baltistan — Rs 450, free over 10,000**. The master switch and thresholds flow through the whole site — product page, cart, mini-cart, checkout and the Shipping Policy page (which renders a live zone table) — so nothing shows a stale number. |
 | **Payments** (`/admin/settings/payments`) | Turn each payment method on or off, and manage the bank/wallet accounts shown to customers paying by transfer. |
 | **Loyalty** (`/admin/settings/loyalty`) | How customers earn and redeem loyalty points, and the **refer-a-friend** rewards (points to the referrer, a first-order discount to the friend). Referral links now work end-to-end: when someone arrives on a `?ref=<code>` link the code is remembered for 90 days and, once they place their first order while signed in, it is stamped onto their profile so the referrer is paid out when that order is delivered. |
@@ -911,7 +911,15 @@ store owner.
 
 A dated history of user-facing changes, newest first.
 
-### 7 July 2026
+### 9 July 2026
+
+- **Search and cart panels now close when you go back.** On phones, opening the search panel (or the slide-out cart) and then swiping back — or pressing the browser's back button — used to leave the panel stuck open on top of the previous page. Both now close automatically the moment the page changes, however the navigation happened.
+
+### 8 July 2026
+
+- **Real brand logos in the homepage hero — picked visually.** The hero's "Authentic stock from" row now shows the brands' actual logos in a smooth, auto-scrolling strip (it pauses when hovered, and never wraps onto a second line no matter how many brands you pick). In **Settings → Homepage** the old comma-separated text box is replaced by a **visual logo picker**: a grid of every brand that has a logo uploaded on the Brands page, ranked by product count — click to add or remove, with a live preview of the exact row that will ship. A brand picked without a logo on file falls back to its name in text.
+- **Blog sorting that visibly works.** The Journal's sort control is now a proper labelled dropdown with four options — **Newest first, Oldest first, Quickest read, Longest read** — replacing a bare two-option select that was easy to miss and whose reorder was often invisible (most articles are 8–10 minutes, so "Quickest read" barely changed page one). The current choice always shows on the button, and the open menu checkmarks it.
+- **No more header "pop-in" on page load.** The site header used to appear a beat after the rest of the page (with a visible jump) because its placeholder reserved no space while the page loaded. The placeholder is now the full header itself, so pages render with the header already in place — the only thing that changes after load is the active nav item lighting up.
 
 - **Vendors can now deliver their own orders.** Each vendor in **Settings → Vendors** has a **"Vendor delivers"** switch and a **delivery fee** field. When it's on (NB Sons / Nazirs Group is set this way — they ship their own orders), the order page **skips TCS booking** and shows a note that the vendor delivers directly; the vendor's delivery fee (currently **0 — no extra charge**) is recorded as that order's delivery cost, so Finance never charges an NB Sons order the TCS estimate. For every other vendor nothing changes: they bring stock to you and you book the courier as usual. When NB Sons starts billing for delivery, enter the fee and it flows into the order cost + shipping margin automatically.
 - **Refused / returned deliveries are now tracked and counted as a loss.** When a customer refuses a COD parcel or it's returned to origin, the order now automatically flips to **Returned** as tracking syncs (previously it stayed stuck on "Shipped" no matter how often you synced — a courier-status bug where "Out For Delivery" was misread as "Delivered" and a return never advanced the order). A returned order also **stops counting as revenue** in Finance and instead shows up under **Finance → Shipping recovery** as a red **"Returned / refused deliveries (loss)"** line — the courier still bills us for the failed round trip, so that cost is surfaced as the loss it is rather than hidden.
