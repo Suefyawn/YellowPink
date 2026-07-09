@@ -7,6 +7,7 @@ import {
   getTopSellers,
   getTrending,
   getFeatured,
+  getHomeSocialProof,
   getOnSale,
   getProductsByBrands,
   getWellnessProducts,
@@ -62,7 +63,7 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections] = await Promise.all([
+  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections, socialProof] = await Promise.all([
     getFeatured(6),
     getTopSellers(4),
     getTrending(8),
@@ -72,6 +73,7 @@ export default async function HomePage() {
     getSiteSettings(),
     getBlogPosts(),
     getPublishedCollectionsWithCovers(3),
+    getHomeSocialProof(),
   ]);
 
   // Keep the two rails distinct: a product that's a top seller shouldn't also
@@ -170,7 +172,7 @@ export default async function HomePage() {
       <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
       <CategoryTiles groups={categoryGroups} />
       <CollectionsSection collections={collections} />
-      <RealResults />
+      <RealResults proof={socialProof} />
       <JournalSection posts={blogPosts} />
       <PressStrip />
     </main>

@@ -22,7 +22,7 @@ export function FreeShippingProgress({ subtotal }: { subtotal: number }) {
     <div aria-live="polite">
       <div className="small-text" style={{ marginBottom: 6, color: unlocked ? '#15803d' : 'var(--ink-700)', fontWeight: unlocked ? 600 : 400 }}>
         {unlocked
-          ? 'You’ve unlocked FREE delivery on this order'
+          ? 'You’ve unlocked FREE delivery for most regions'
           : <>Add <strong className="tabular-nums">PKR {remaining.toLocaleString()}</strong> more for FREE delivery</>}
       </div>
       <div
@@ -38,6 +38,14 @@ export function FreeShippingProgress({ subtotal }: { subtotal: number }) {
           background: unlocked ? '#16a34a' : 'var(--brand-pink-cta)',
           transition: 'width 300ms ease',
         }} />
+      </div>
+      {/* Delivery is zone-priced (Punjab/Islamabad unlocks lowest; Sindh/KPK
+          and remote areas a bit higher). The cart doesn't know the province
+          yet, so the bar tracks the standard (lowest, most-traffic) threshold
+          and this line keeps the promise honest; checkout shows the exact
+          zone figure once the province is picked. */}
+      <div style={{ marginTop: 5, fontSize: '0.6875rem', color: 'var(--ink-500)' }}>
+        Standard threshold — farther regions unlock slightly higher. Exact figure at checkout.
       </div>
     </div>
   );
