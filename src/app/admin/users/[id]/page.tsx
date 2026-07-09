@@ -10,6 +10,7 @@ import { DeleteButton } from '@/components/admin/DeleteButton';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge';
 import { deleteCustomer } from '@/app/admin/actions';
+import { adjustLoyaltyPoints } from '@/app/admin/users/loyalty-actions';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
 import { fmtDatePK as fmtDate, fmtDateTimePK as fmtDateTime } from '@/lib/dates';
@@ -61,6 +62,7 @@ export default async function UserDetailPage({
     return <NoAccess section="Customers" />;
   }
   const canDeleteCustomer = !session || session.isOwner || session.permissions.includes('customers.delete');
+  const canAdjustPoints = session.isOwner || session.permissions.includes('customers.edit');
   const { id } = await params;
   // deleteCustomer bounces failures back here with ?err=<message>.
   const { err } = (await searchParams) ?? {};
@@ -78,6 +80,9 @@ export default async function UserDetailPage({
   let user: AdminUser;
   let orderList: Order[];
   let activityRows: ActivityRow[] = [];
+  // Reward-points balance (registered customers only; guests have no
+  // account to hold points).
+  let loyalty: { points_balance: number; lifetime_points: number } | null = null;
 
   if (isGuest) {
     const key = Buffer.from(id.slice('guest-'.length), 'base64url').toString('utf8');
@@ -107,7 +112,7 @@ export default async function UserDetailPage({
       created_at: o.created_at ?? new Date().toISOString(),
     }));
   } else {
-    const [{ data: userData }, { data: orders }, { data: activity }] = await Promise.all([
+    const [{ data: userData }, { data: orders }, { data: activity }, { data: loyaltyRow }] = await Promise.all([
       admin.rpc('get_admin_user' as never, { p_id: id } as never),
       admin.from('orders').select('*').eq('user_id', id).order('created_at', { ascending: false }),
       // The customer's own journey, activity_log rows where they are the actor
@@ -117,6 +122,7 @@ export default async function UserDetailPage({
         .eq('actor_id', id)
         .order('created_at', { ascending: false })
         .limit(50),
+      admin.from('loyalty_accounts').select('points_balance, lifetime_points').eq('user_id', id).maybeSingle(),
     ]);
 
     // get_admin_user RETURNS TABLE, a set-returning RPC, so `.rpc()` yields an
@@ -126,6 +132,7 @@ export default async function UserDetailPage({
 
     orderList = (orders ?? []) as Order[];
     activityRows = (activity ?? []) as ActivityRow[];
+    loyalty = (loyaltyRow as { points_balance: number; lifetime_points: number } | null) ?? null;
   }
   // Lifetime spend + AOV are revenue figures, so they count only realized
   // orders, a cancelled / refunded / returned / payment-failed order brought
@@ -240,6 +247,59 @@ export default async function UserDetailPage({
               </div>
             ))}
           </div>
+
+          {/* Reward points — registered customers only (guests have no
+              account to hold a balance). Manual adjustments cover the
+              Google-review bonus (unverifiable by code, so the operator
+              grants it by hand), goodwill credits and corrections. */}
+          {!isGuest && (
+            <div style={{ ...section, marginTop: 16 }}>
+              <h2 style={{ margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: '#C5286A' }}>
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                </svg>
+                Reward points
+              </h2>
+              <div style={{ display: 'flex', gap: 12, marginBottom: canAdjustPoints ? 16 : 0 }}>
+                <div style={{ flex: 1, background: '#fdf2f8', borderRadius: 8, padding: '10px 14px' }}>
+                  <div style={{ fontSize: '0.6875rem', color: '#9d174d', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Balance</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>{(loyalty?.points_balance ?? 0).toLocaleString()}</div>
+                </div>
+                <div style={{ flex: 1, background: '#f9fafb', borderRadius: 8, padding: '10px 14px' }}>
+                  <div style={{ fontSize: '0.6875rem', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Lifetime</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>{(loyalty?.lifetime_points ?? 0).toLocaleString()}</div>
+                </div>
+              </div>
+              {canAdjustPoints && (
+                <form action={adjustLoyaltyPoints} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <input type="hidden" name="user_id" value={user.id} />
+                  <input
+                    type="number"
+                    name="delta"
+                    required
+                    placeholder="Points (e.g. 100 or -50)"
+                    style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.8125rem' }}
+                  />
+                  <input
+                    type="text"
+                    name="note"
+                    maxLength={200}
+                    placeholder="Reason (e.g. Google review bonus)"
+                    style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.8125rem' }}
+                  />
+                  <button type="submit" style={{
+                    padding: '8px 14px', background: '#111827', color: 'white', border: 'none',
+                    borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+                  }}>
+                    Adjust points
+                  </button>
+                  <p style={{ margin: 0, fontSize: '0.6875rem', color: '#9ca3af' }}>
+                    Shows on the customer&apos;s rewards page as &ldquo;Manual adjustment&rdquo;. Use a negative number to deduct.
+                  </p>
+                </form>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Order history */}

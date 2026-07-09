@@ -61,6 +61,33 @@ export default async function SettingsLoyaltyPage({ searchParams }: { searchPara
 
         <Card>
           <Section
+            title="Google review bonus"
+            desc="Extra points for customers who also review Yellow Pink on Google. Only offer this after their on-site review is approved and positive — the Reviews page shows an 'Ask for Google review' button on approved 4–5★ reviews. Google can't tell us who reviewed, so award the points manually from the customer's page once you see it land."
+          />
+          <Divider />
+          <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14 }}>
+            <div>
+              <label style={lbl}>Google review link</label>
+              <input
+                name="google_review_url"
+                type="url"
+                placeholder="https://g.page/r/…/review"
+                defaultValue={g('google_review_url')}
+                style={inp}
+              />
+              <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+                Google Business Profile → Ask for reviews → copy the short link.
+              </p>
+            </div>
+            <div>
+              <label style={lbl}>Bonus points</label>
+              <input name="loyalty_google_review_points" type="number" min={0} defaultValue={g('loyalty_google_review_points', '100')} style={inp} />
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <Section
             title="Guest reviewer reward"
             desc="Signed-in customers earn the loyalty points above when a review is approved. Guests (who review with just an email) can't hold points — so when this is on, an approved guest review is emailed a one-time discount code instead. It never double-rewards a signed-in customer."
           />
