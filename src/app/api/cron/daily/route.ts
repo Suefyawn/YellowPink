@@ -77,19 +77,39 @@ export async function GET(req: NextRequest) {
 
   // Run sequentially so we don't blow the 60 s budget with parallel
   // long-runs, and so a failure in one job doesn't abort the others.
+  //
+  // Time-budget guard: if the earlier jobs eat most of the 60 s maxDuration
+  // (courier-sync alone can touch 200 shipments), Vercel kills the function
+  // mid-job — the remaining jobs silently never run and the invocation logs
+  // nothing. Stop launching new jobs once <12 s remain and report the rest
+  // as skipped instead, so a squeezed day shows up as an explicit 207 with
+  // named skips rather than a silent half-run. Revenue-relevant jobs run
+  // first; the analytics/index refreshes at the tail are the safest to skip
+  // (they re-run tomorrow, and staff can refresh dashboards manually).
+  const JOBS = [
+    '/api/cron/abandoned-cart',
+    '/api/cron/courier-sync',
+    '/api/cron/review-requests',
+    '/api/cron/stuck-payments',
+    '/api/cron/not-found-digest',
+    '/api/cron/analytics-refresh',
+    '/api/cron/popularity-refresh',
+    '/api/cron/indexing-check',
+  ];
+  const BUDGET_MS = (maxDuration - 12) * 1000;
+  const started = Date.now();
   const results: SubJobResult[] = [];
-  results.push(await runJob(req, '/api/cron/abandoned-cart'));
-  results.push(await runJob(req, '/api/cron/courier-sync'));
-  results.push(await runJob(req, '/api/cron/review-requests'));
-  results.push(await runJob(req, '/api/cron/stuck-payments'));
-  results.push(await runJob(req, '/api/cron/not-found-digest'));
-  results.push(await runJob(req, '/api/cron/analytics-refresh'));
-  results.push(await runJob(req, '/api/cron/popularity-refresh'));
-  results.push(await runJob(req, '/api/cron/indexing-check'));
+  for (const path of JOBS) {
+    if (Date.now() - started > BUDGET_MS) {
+      results.push({ job: path, ok: false, status: 0, ms: 0, error: 'skipped: cron time budget exhausted' });
+      continue;
+    }
+    results.push(await runJob(req, path));
+  }
 
   const allOk = results.every(r => r.ok);
   return NextResponse.json(
-    { ok: allOk, ran: results.length, results },
+    { ok: allOk, ran: results.filter(r => r.error !== 'skipped: cron time budget exhausted').length, results },
     { status: allOk ? 200 : 207 },
   );
 }

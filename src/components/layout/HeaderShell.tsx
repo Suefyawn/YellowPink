@@ -371,7 +371,11 @@ export function HeaderShell({ navKey, isActiveLink, isTaxonActive, isCategoryAct
           opacity: mobileMenu ? 1 : 0,
           transition: 'transform 280ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease-out',
           zIndex: 960, // above its own overlay; below toasts at z=9999
-          maxHeight: '100vh', minHeight: 240,
+          // dvh, not vh: on mobile browsers 100vh includes the area behind the
+          // collapsing URL bar, so the drawer's bottom links could sit under
+          // the browser chrome and be unreachable. dvh tracks the real
+          // visible viewport.
+          maxHeight: '100dvh', minHeight: 240,
           overflowY: 'auto',
           WebkitOverflowScrolling: 'touch',
           paddingTop: 'env(safe-area-inset-top, 0px)',

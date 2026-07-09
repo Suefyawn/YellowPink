@@ -68,7 +68,7 @@ function StaffTab() {
         />
         {state?.error && <p style={err}>{state.error}</p>}
       </div>
-      <button type="submit" disabled={pending} style={{ ...btn, background: '#6366f1', opacity: pending ? 0.6 : 1 }}>
+      <button type="submit" disabled={pending} style={{ ...btn, background: '#C5286A', opacity: pending ? 0.6 : 1 }}>
         {pending ? 'Signing in…' : 'Sign In as Staff'}
       </button>
     </form>
