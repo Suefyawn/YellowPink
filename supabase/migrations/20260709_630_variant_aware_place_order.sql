@@ -21,6 +21,10 @@
 --      admin inventory adjustment), so parent stock now tracks the sum of
 --      variant movements instead of silently diverging. The returned
 --      balance_after stays the variant's balance when a variant is involved.
+--      Keeps migration 300's contract: the ledger records the APPLIED delta
+--      (clamped at zero) and the function returns applied_delta so the admin
+--      adjustment action can warn on a clamp. DROP + CREATE like 300 (the
+--      OUT row type is part of the signature), grants re-applied below.
 --
 --   B. place_order: for items carrying a variant_id — price comes from the
 --      variant row, the stock gate checks the variant's stock, the variant
@@ -29,7 +33,9 @@
 -- ============================================================================
 
 -- ── A. record_stock_change moves both balances when both ids are given ─────
-CREATE OR REPLACE FUNCTION public.record_stock_change(
+DROP FUNCTION IF EXISTS public.record_stock_change(uuid,uuid,integer,inventory_reason,uuid,uuid,text,text,text);
+
+CREATE FUNCTION public.record_stock_change(
   p_product_id  uuid,
   p_variant_id  uuid,
   p_qty_delta   integer,
@@ -40,13 +46,16 @@ CREATE OR REPLACE FUNCTION public.record_stock_change(
   p_actor_email text    DEFAULT NULL,
   p_note        text    DEFAULT NULL
 )
-RETURNS TABLE (ledger_id uuid, new_balance integer)
+RETURNS TABLE (ledger_id uuid, new_balance integer, applied_delta integer)
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
+  v_old_balance integer;
   v_new_balance integer;
+  v_applied     integer;
+  v_note        text;
   v_ledger_id   uuid;
 BEGIN
   IF p_product_id IS NULL AND p_variant_id IS NULL THEN
@@ -54,42 +63,63 @@ BEGIN
   END IF;
 
   IF p_variant_id IS NOT NULL THEN
-    UPDATE public.product_variants
-       SET stock = GREATEST(0, stock + p_qty_delta)
-     WHERE id = p_variant_id
-    RETURNING stock INTO v_new_balance;
+    SELECT stock INTO v_old_balance
+      FROM public.product_variants WHERE id = p_variant_id FOR UPDATE;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'record_stock_change: variant % not found', p_variant_id;
     END IF;
-    -- Keep the parent's aggregate counter in step with the variant movement,
-    -- one physical unit = one delta on both levels, same ledger row. This is
-    -- what makes grid-level "sold out" (which reads products.stock) truthful
-    -- for variable products.
-    IF p_product_id IS NOT NULL THEN
-      UPDATE public.products
-         SET stock = GREATEST(0, stock + p_qty_delta)
-       WHERE id = p_product_id;
-    END IF;
-  ELSE
-    UPDATE public.products
-       SET stock = GREATEST(0, stock + p_qty_delta)
-     WHERE id = p_product_id
+    UPDATE public.product_variants
+       SET stock = GREATEST(0, v_old_balance + p_qty_delta)
+     WHERE id = p_variant_id
     RETURNING stock INTO v_new_balance;
+  ELSE
+    SELECT stock INTO v_old_balance
+      FROM public.products WHERE id = p_product_id FOR UPDATE;
     IF NOT FOUND THEN
       RAISE EXCEPTION 'record_stock_change: product % not found', p_product_id;
     END IF;
+    UPDATE public.products
+       SET stock = GREATEST(0, v_old_balance + p_qty_delta)
+     WHERE id = p_product_id
+    RETURNING stock INTO v_new_balance;
+  END IF;
+
+  -- The delta the (variant or product) stock scalar actually moved by.
+  -- Differs from p_qty_delta only when the removal was clamped at zero.
+  v_applied := v_new_balance - COALESCE(v_old_balance, 0);
+  v_note    := p_note;
+  IF v_applied <> p_qty_delta THEN
+    v_note := COALESCE(v_note || ' — ', '')
+      || format('clamped at zero stock: requested %s, applied %s', p_qty_delta, v_applied);
+  END IF;
+
+  -- Keep the parent's aggregate counter in step with the variant movement,
+  -- one physical unit = one delta on both levels, same ledger row. This is
+  -- what makes grid-level "sold out" (which reads products.stock) truthful
+  -- for variable products. The parent moves by the APPLIED (clamped) delta
+  -- so the two levels never drift by a clamp.
+  IF p_variant_id IS NOT NULL AND p_product_id IS NOT NULL THEN
+    UPDATE public.products
+       SET stock = GREATEST(0, stock + v_applied)
+     WHERE id = p_product_id;
   END IF;
 
   INSERT INTO public.inventory_ledger
     (product_id, variant_id, qty_delta, balance_after, reason,
      order_id, return_id, actor_kind, actor_email, note)
   VALUES
-    (p_product_id, p_variant_id, p_qty_delta, v_new_balance, p_reason,
-     p_order_id, p_return_id, COALESCE(p_actor_kind, 'system'), p_actor_email, p_note)
+    (p_product_id, p_variant_id, v_applied, v_new_balance, p_reason,
+     p_order_id, p_return_id, COALESCE(p_actor_kind, 'system'), p_actor_email, v_note)
   RETURNING id INTO v_ledger_id;
 
-  RETURN QUERY SELECT v_ledger_id, v_new_balance;
+  RETURN QUERY SELECT v_ledger_id, v_new_balance, v_applied;
 END $$;
+
+-- Re-apply the migration-078 lockdown (DROP discards grants): storefront
+-- stock changes flow through place_order (SECURITY DEFINER); admin changes
+-- flow through the service role.
+REVOKE ALL ON FUNCTION public.record_stock_change(uuid,uuid,integer,inventory_reason,uuid,uuid,text,text,text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_stock_change(uuid,uuid,integer,inventory_reason,uuid,uuid,text,text,text) TO service_role;
 
 -- ── B. Variant-aware place_order ────────────────────────────────────────────
 create or replace function public.place_order(
