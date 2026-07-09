@@ -194,7 +194,11 @@ export function Footer({ socials = [], collections = [] }: FooterProps) {
       aria-label="Site footer"
       style={{ background: 'var(--ink-900)', color: 'var(--paper)', padding: '64px 0 32px', position: 'relative', overflow: 'hidden' }}
     >
-      <div style={{ position: 'absolute', bottom: 20, right: 30, opacity: 0.04 }}>
+      {/* pointerEvents none: this near-invisible 200px watermark otherwise
+          sits ON TOP of whatever occupies the footer's bottom-right corner —
+          on phones that's the newsletter Join button, which silently swallowed
+          every tap in a 200x200 zone. Decorative only, hidden from AT too. */}
+      <div aria-hidden="true" style={{ position: 'absolute', bottom: 20, right: 30, opacity: 0.04, pointerEvents: 'none' }}>
         <LogoMark size={200} />
       </div>
       <div className="container">

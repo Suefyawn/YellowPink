@@ -9,6 +9,7 @@ import { verifyEasypaisaCallback } from '@/lib/payments/easypaisa';
 import { sendOrderConfirmationEmail, sendPaymentReceivedEmail } from '@/lib/email';
 import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
 import { SITE_URL } from '@/lib/seo';
+import { log } from '@/lib/logger';
 import type { CartItem } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -21,7 +22,10 @@ export async function POST(req: NextRequest) {
   let verification;
   try {
     verification = verifyEasypaisaCallback(raw);
-  } catch {
+  } catch (err) {
+    // Misconfiguration (missing/blank credentials) bounces EVERY paying
+    // customer, so it must page the owner, not fail silently into a redirect.
+    log.error('payments.easypaisa.config_error', { err });
     return NextResponse.redirect(new URL('/checkout?error=payment_config', req.url), 303);
   }
 
@@ -30,6 +34,9 @@ export async function POST(req: NextRequest) {
   // attacker to discover; without this early-return a forged callback would
   // still pollute the matching payments row's status / raw_payload.
   if (!verification.ok) {
+    // A wrong live-vs-sandbox credential fails verification on 100% of real
+    // payments and, unlogged, masquerades as customers abandoning checkout.
+    log.error('payments.easypaisa.signature_failed', { order_number: verification.orderNumber });
     return NextResponse.redirect(new URL(`/checkout?error=signature`, req.url), 303);
   }
 
@@ -49,16 +56,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(new URL('/checkout?error=order_missing', req.url), 303);
   }
 
-  await sb.from('payments').update({
+  const { error: ledgerErr } = await sb.from('payments').update({
     status: verification.status,
     raw_payload: raw,
     error_message: verification.status === 'failed' ? verification.responseMessage : null,
   }).eq('gateway', 'easypaisa').eq('order_id', order.id);
+  if (ledgerErr) {
+    // Reconciliation row failed to record — don't block the customer flow,
+    // but the owner must know the payments ledger is missing an entry.
+    log.error('payments.easypaisa.ledger_update_failed', { err: ledgerErr, order_number: order.order_number });
+  }
 
   // P0-3: amount-tamper defence, gateway must report what we billed.
   const orderPaisa = Math.round(Number(order.total) * 100);
   const gatewayPaisa = Math.round(verification.amountPkr * 100);
   if (orderPaisa !== gatewayPaisa) {
+    // The customer may have actually been charged here — this must reach the
+    // owner immediately, not sit silently in payment_pending until the
+    // stuck-payments digest frames it as abandonment.
+    log.error('payments.easypaisa.amount_mismatch', {
+      order_number: order.order_number, order_paisa: orderPaisa, gateway_paisa: gatewayPaisa,
+    });
     await sb.from('payments').update({
       status: 'failed',
       error_message: `amount mismatch: order=${orderPaisa}p, gateway=${gatewayPaisa}p`,
@@ -67,11 +85,23 @@ export async function POST(req: NextRequest) {
   }
 
   if (verification.status === 'succeeded') {
-    // P0-4: idempotent transition, only flip if still waiting.
-    await sb.from('orders').update({ status: 'pending' })
+    // P0-4: idempotent transition, only flip if still waiting. `.select('id')`
+    // makes the row count observable, so a FAILED write can no longer
+    // masquerade as a successful transition (previously the customer got
+    // "confirmed" emails and Meta got a Purchase while the order stayed
+    // stuck in payment_pending).
+    const { data: flipped, error: flipErr } = await sb.from('orders')
+      .update({ status: 'pending' })
       .eq('id', order.id)
-      .eq('status', 'payment_pending');
-    const firstTransition = order.status === 'payment_pending';
+      .eq('status', 'payment_pending')
+      .select('id');
+    if (flipErr) {
+      log.error('payments.easypaisa.order_update_failed', { err: flipErr, order_number: order.order_number });
+    }
+    // Emails + CAPI only when THIS request actually performed the transition
+    // (exactly-once under replays, never on a failed write). The customer
+    // still lands on thank-you — their payment DID succeed.
+    const firstTransition = !flipErr && (flipped?.length ?? 0) > 0;
     if (firstTransition && order.email) {
       const items = (order.items as CartItem[]) ?? [];
       await Promise.all([
@@ -90,7 +120,7 @@ export async function POST(req: NextRequest) {
           city: '',
           order_number: order.order_number,
           total: order.total,
-          items: items.map(i => ({ name: i.name, brand: i.brand ?? undefined, variant: i.variant, qty: i.qty, price: i.price })),
+          items: items.map(i => ({ name: i.name, brand: i.brand ?? undefined, variant: i.variant_label ?? i.variant, qty: i.qty, price: i.price })),
           pay_method: 'easypaisa',
         }),
       ]);
@@ -120,9 +150,12 @@ export async function POST(req: NextRequest) {
   }
 
   // P0-4: idempotent failure transition.
-  await sb.from('orders').update({ status: 'payment_failed' })
+  const { error: failErr } = await sb.from('orders').update({ status: 'payment_failed' })
     .eq('id', order.id)
     .eq('status', 'payment_pending');
+  if (failErr) {
+    log.error('payments.easypaisa.order_update_failed', { err: failErr, order_number: order.order_number });
+  }
   return NextResponse.redirect(new URL(`/checkout?error=payment_failed&order=${encodeURIComponent(order.order_number)}`, req.url), 303);
 }
 

@@ -437,17 +437,26 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   const handleAdd = () => {
     if (variants.length > 0 && !activeVariant) return;
     tapHaptic();
-    setAddedFlash(true);
-    addToCart({
+    const added = addToCart({
       ...product,
       qty,
       // Override line-item details from the variant when one is selected.
+      // `stock` must be the variant's own count — spreading the parent's
+      // aggregate here let the cart clamp against the wrong number (a shade
+      // could silently fail to add, or oversell, based on the parent total).
       price:      displayPrice,
+      stock:      displayStock,
       image_url:  displayImageOverride ?? product.image_url,
       variant_id: activeVariant?.id ?? null,
       variant_label: variantLabel,
     });
-    setTimeout(() => setAddedFlash(false), 400);
+    // Only claim success when something was actually added — addToCart
+    // returns false when the stock clamp dropped the add (e.g. the cart
+    // already holds every available unit).
+    if (added) {
+      setAddedFlash(true);
+      setTimeout(() => setAddedFlash(false), 400);
+    }
   };
 
   // Untracked products (inventory managed externally) are always sellable,   // their stock count is meaningless, so a 0 must not disable the buy button.

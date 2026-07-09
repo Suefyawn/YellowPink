@@ -11,6 +11,7 @@ import { verifyJazzCashCallback } from '@/lib/payments/jazzcash';
 import { sendOrderConfirmationEmail, sendPaymentReceivedEmail } from '@/lib/email';
 import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
 import { SITE_URL } from '@/lib/seo';
+import { log } from '@/lib/logger';
 import type { CartItem } from '@/types';
 
 export async function POST(req: NextRequest) {
@@ -23,7 +24,10 @@ export async function POST(req: NextRequest) {
   let verification;
   try {
     verification = verifyJazzCashCallback(raw);
-  } catch {
+  } catch (err) {
+    // Misconfiguration (missing/blank salt) bounces EVERY paying customer,
+    // so it must page the owner, not fail silently into a redirect.
+    log.error('payments.jazzcash.config_error', { err, txn_ref: raw.pp_TxnRefNo });
     return NextResponse.redirect(new URL('/checkout?error=payment_config', req.url), 303);
   }
 
@@ -33,6 +37,9 @@ export async function POST(req: NextRequest) {
   // attacker-supplied data, even though the order itself is protected
   // downstream by the amount + status guards.
   if (!verification.ok) {
+    // A wrong live-vs-sandbox salt fails verification on 100% of real
+    // payments and, unlogged, masquerades as customers abandoning checkout.
+    log.error('payments.jazzcash.signature_failed', { txn_ref: verification.txnRef });
     return NextResponse.redirect(new URL(`/checkout?error=signature`, req.url), 303);
   }
 
@@ -43,11 +50,16 @@ export async function POST(req: NextRequest) {
   );
 
   // Idempotency: update the previously-inserted "initiated" payment row.
-  await sb.from('payments').update({
+  const { error: ledgerErr } = await sb.from('payments').update({
     status: verification.status,
     raw_payload: raw,
     error_message: verification.status === 'failed' ? verification.responseMessage : null,
   }).eq('gateway', 'jazzcash').eq('txn_ref', verification.txnRef);
+  if (ledgerErr) {
+    // Reconciliation row failed to record — don't block the customer flow,
+    // but the owner must know the payments ledger is missing an entry.
+    log.error('payments.jazzcash.ledger_update_failed', { err: ledgerErr, txn_ref: verification.txnRef });
+  }
 
   const { data: order } = await sb
     .from('orders')
@@ -67,6 +79,13 @@ export async function POST(req: NextRequest) {
   const orderPaisa = Math.round(Number(order.total) * 100);
   const gatewayPaisa = Math.round(verification.amountPkr * 100);
   if (orderPaisa !== gatewayPaisa) {
+    // The customer may have actually been charged here — this must reach the
+    // owner immediately, not sit silently in payment_pending until the
+    // stuck-payments digest frames it as abandonment.
+    log.error('payments.jazzcash.amount_mismatch', {
+      order_number: order.order_number, order_paisa: orderPaisa, gateway_paisa: gatewayPaisa,
+      txn_ref: verification.txnRef,
+    });
     await sb.from('payments').update({
       status: 'failed',
       error_message: `amount mismatch: order=${orderPaisa}p, gateway=${gatewayPaisa}p`,
@@ -77,16 +96,28 @@ export async function POST(req: NextRequest) {
   if (verification.status === 'succeeded') {
     // P0-4: idempotent state transition. A replayed callback (or one arriving
     // after a refund/cancel) must not flip a non-payment_pending order back
-    // to pending. The WHERE clause is the lock.
-    await sb.from('orders').update({ status: 'pending' })
+    // to pending. The WHERE clause is the lock — and `.select('id')` makes the
+    // row count observable, so a FAILED write can no longer masquerade as a
+    // successful transition (previously the customer got "confirmed" emails
+    // and Meta got a Purchase while the order stayed stuck in
+    // payment_pending).
+    const { data: flipped, error: flipErr } = await sb.from('orders')
+      .update({ status: 'pending' })
       .eq('id', order.id)
-      .eq('status', 'payment_pending');
+      .eq('status', 'payment_pending')
+      .select('id');
+    if (flipErr) {
+      log.error('payments.jazzcash.order_update_failed', {
+        err: flipErr, order_number: order.order_number, txn_ref: verification.txnRef,
+      });
+    }
 
-    // If the order already moved past payment_pending (success replay), the
-    // UPDATE was a no-op, still redirect to thank-you so the user lands
-    // somewhere sensible. Only send confirmation emails on the FIRST
-    // transition (status was still payment_pending when we loaded it).
-    const firstTransition = order.status === 'payment_pending';
+    // Emails + CAPI fire only when THIS request actually performed the
+    // transition (exactly-once even under replays, and never on a failed
+    // write). The customer still lands on thank-you either way — their
+    // payment DID succeed; a stuck order is the owner's problem to fix, not
+    // a reason to scare a paid customer back into checkout.
+    const firstTransition = !flipErr && (flipped?.length ?? 0) > 0;
 
     if (firstTransition && order.email) {
       const items = (order.items as CartItem[]) ?? [];
@@ -106,7 +137,7 @@ export async function POST(req: NextRequest) {
           city: '',
           order_number: order.order_number,
           total: order.total,
-          items: items.map(i => ({ name: i.name, brand: i.brand ?? undefined, variant: i.variant, qty: i.qty, price: i.price })),
+          items: items.map(i => ({ name: i.name, brand: i.brand ?? undefined, variant: i.variant_label ?? i.variant, qty: i.qty, price: i.price })),
           pay_method: 'jazzcash',
         }),
       ]);
@@ -138,9 +169,14 @@ export async function POST(req: NextRequest) {
 
   // P0-4: only flip to payment_failed if we were still waiting. Don't
   // resurrect a fulfilled order from a late failure callback.
-  await sb.from('orders').update({ status: 'payment_failed' })
+  const { error: failErr } = await sb.from('orders').update({ status: 'payment_failed' })
     .eq('id', order.id)
     .eq('status', 'payment_pending');
+  if (failErr) {
+    log.error('payments.jazzcash.order_update_failed', {
+      err: failErr, order_number: order.order_number, txn_ref: verification.txnRef,
+    });
+  }
   return NextResponse.redirect(new URL(`/checkout?error=payment_failed&order=${encodeURIComponent(order.order_number)}`, req.url), 303);
 }
 

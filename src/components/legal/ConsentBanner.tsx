@@ -62,17 +62,26 @@ export function ConsentBanner() {
       {/* Docked flush to the viewport's bottom edge: a full-width bottom bar
           on mobile (no floating card covering the hero CTAs), a modest
           bottom-right card on desktop. Positional styles live in this class
-          (not inline) because the split needs a media query. */}
+          (not inline) because the split needs a media query.
+
+          --fab-bottom-offset is set by the PDP's sticky buy bar while it's
+          visible (same mechanism the WhatsApp FAB and BackToTop use). Without
+          it, this banner (z 400) painted directly over the buy bar (z 90) —
+          every first-time visitor landing on a product page from a social
+          link had the price and Add-to-Cart covered until they answered the
+          cookie prompt. Now the banner stacks ABOVE the buy bar instead. */}
       <style>{`
         .consent-banner {
-          left: 0; right: 0; bottom: 0;
+          left: 0; right: 0;
+          bottom: var(--fab-bottom-offset, 0px);
           border-top: 1px solid var(--line);
           box-shadow: 0 -10px 30px rgba(0,0,0,0.12);
           padding: 16px var(--side) calc(16px + env(safe-area-inset-bottom, 0px));
         }
         @media (min-width: 769px) {
           .consent-banner {
-            left: auto; right: 20px; bottom: 20px;
+            left: auto; right: 20px;
+            bottom: calc(20px + var(--fab-bottom-offset, 0px));
             width: min(420px, calc(100vw - 40px));
             border: 1px solid var(--line);
             border-radius: var(--radius-card);

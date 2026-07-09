@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
     try {
       await sendAbandonedCartEmail({
         email:        c.email,
-        items:        c.cart_items.map(i => ({ name: i.name, brand: i.brand ?? undefined, variant: i.variant ?? undefined, qty: i.qty, price: i.price })),
+        items:        c.cart_items.map(i => ({ name: i.name, brand: i.brand ?? undefined, variant: i.variant_label ?? i.variant ?? undefined, qty: i.qty, price: i.price })),
         total:        c.subtotal,
         restore_url:  restoreUrl,
         tier,
