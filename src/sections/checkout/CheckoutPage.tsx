@@ -10,6 +10,7 @@ import { useAuth } from '@/context/AuthContext';
 import { getBrowserClient } from '@/lib/supabase-browser';
 import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/checkout/actions';
 import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
+import { checkReferralDiscount } from '@/app/checkout/rewards-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import { PK_CITIES, normalizeCity } from '@/lib/pk-cities';
 import { brandPlusName } from '@/lib/product-display';
@@ -112,6 +113,13 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // Gift-card and referral redemption are hidden from checkout until those
   // programmes have a customer-facing way to obtain a code, the server
   // actions remain in place for when they do.
+  // Referral first-order discount, offered when the shopper landed via
+  // someone's ?ref= link (lib/referral persists it 30 days). Eligibility is
+  // identity-dependent (must be their FIRST order by user/email/phone), so
+  // it's re-checked server-side as those fields fill in; place_order
+  // re-validates through the same SQL rules at submit.
+  const [referralOffer, setReferralOffer] = useState<{ code: string; pct: number } | null>(null);
+
   const [loyalty, setLoyalty]               = useState<LoyaltyAccount | null>(null);
   const [pointsRedeemInput, setPointsRedeemInput] = useState<number | ''>('');
   const [pointsRedeem, setPointsRedeem]     = useState(0);
@@ -206,7 +214,13 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       ? Math.round(subtotal * cartCoupon.value / 100)
       : cartCoupon.value
     : 0;
-  const discount = couponDiscount;
+  // Referral first-order discount: a coupon always wins (they don't stack —
+  // place_order validates exactly one discount source), so the referral line
+  // only applies when no coupon is in play.
+  const referralDiscount = !cartCoupon && referralOffer
+    ? Math.round(subtotal * referralOffer.pct / 100)
+    : 0;
+  const discount = couponDiscount > 0 ? couponDiscount : referralDiscount;
   const lineTotal = Math.max(0, subtotal - discount);
   const shipping = freeShipCoupon ? 0 : shippingInfo.rate;
   const beforeRewards = lineTotal + shipping;
@@ -222,6 +236,32 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     ? Math.min(pointsRedeem, Math.ceil(pointsDiscount / loyaltyPkrPerPoint))
     : 0;
   const total = Math.max(0, beforeRewards - pointsDiscount);
+
+  // Referral eligibility, debounced against the identity fields. Requires at
+  // least one identity signal (phone/email/user) before asking, so a
+  // returning guest never sees a discount line that vanishes once their
+  // number identifies them. Coupons win over referrals (they don't stack).
+  useEffect(() => {
+    const code = readReferral();
+    if (!code || cartCoupon) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setReferralOffer(null);
+      return;
+    }
+    const phone = formData.phone.trim();
+    const email = formData.email.trim();
+    if (!phone && !email && !user) {
+       
+      setReferralOffer(null);
+      return;
+    }
+    const t = setTimeout(() => {
+      void checkReferralDiscount({ code, email: email || null, phone: phone || null, userId: user?.id ?? null })
+        .then(res => setReferralOffer(res.eligible ? { code, pct: res.discount_pct } : null))
+        .catch(() => setReferralOffer(null));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [formData.phone, formData.email, user, cartCoupon]);
 
   // Recompute shipping whenever subtotal or province changes.
   const [shippingLoading, setShippingLoading] = useState(false);
@@ -749,7 +789,11 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               </div>
               {discount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span className="small-text" style={{ color: '#15803d' }}>Discount</span>
+                  <span className="small-text" style={{ color: '#15803d' }}>
+                    {referralDiscount > 0 && couponDiscount === 0
+                      ? `Referral discount (${referralOffer?.pct}% off your first order)`
+                      : 'Discount'}
+                  </span>
                   <span className="small-text tabular-nums" style={{ fontWeight: 500, color: '#15803d' }}>− PKR {discount.toLocaleString()}</span>
                 </div>
               )}

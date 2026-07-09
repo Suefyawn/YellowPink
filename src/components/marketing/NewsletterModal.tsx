@@ -68,7 +68,12 @@ export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discou
     if (shouldSuppress()) return;
 
     if (window.innerWidth < MOBILE_BREAKPOINT) {
-      const t = window.setTimeout(() => setBanner(true), MOBILE_BANNER_MS);
+      const t = window.setTimeout(() => {
+        // Re-check at FIRE time: the timer is armed at first page load, but
+        // by now the visitor may have client-navigated onto checkout (or
+        // subscribed) — popping there covers the Place Order button.
+        if (!shouldSuppress()) setBanner(true);
+      }, MOBILE_BANNER_MS);
       return () => window.clearTimeout(t);
     }
 
@@ -78,13 +83,15 @@ export function NewsletterModal({ discountPct = WELCOME_DISCOUNT_PCT }: { discou
       if (!armed) return;
       if (e.clientY <= 0) {
         armed = false;
-        setOpen(true);
+        if (!shouldSuppress()) setOpen(true);
       }
     };
     const t = window.setTimeout(() => {
       if (armed) {
         armed = false;
-        setOpen(true);
+        // Same fire-time re-check as the mobile banner: a visitor who loaded
+        // the site 60s ago may be mid-checkout now.
+        if (!shouldSuppress()) setOpen(true);
       }
     }, TIMED_FALLBACK_MS);
     document.addEventListener('mouseleave', onLeave);
