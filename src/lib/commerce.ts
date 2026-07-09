@@ -39,6 +39,18 @@ export interface CommerceConfig {
    *  → "PKR per point at redemption"). Checkout converts a customer's points
    *  input to a PKR discount using this rate instead of assuming 1:1. */
   loyaltyPkrPerPoint: number;
+  /** Earn-rule values (admin → Settings → Loyalty). The Postgres award
+   *  triggers read site_settings directly; these mirror them so the
+   *  customer-facing "How to earn" list always shows the live numbers
+   *  instead of hardcoded literals that drift when admin changes a value. */
+  loyaltyEarn: {
+    welcome: number;
+    review: number;
+    referral: number;
+    birthday: number;
+    /** Points earned per 1 PKR of a delivered order (0.1 = 10 pts / PKR 100). */
+    pointsPerPkr: number;
+  };
 }
 
 /** Parse the raw site_settings key/value map into a typed CommerceConfig,
@@ -50,6 +62,10 @@ export function parseCommerceConfig(settings: Record<string, string>): CommerceC
   const rate = Number(settings.default_shipping_rate);
   const deliveryCost = Number(settings.default_delivery_cost);
   const pkrPerPoint = Number(settings.loyalty_pkr_per_point);
+  const earnNum = (v: string | undefined, dflt: number) => {
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0 ? n : dflt;
+  };
   return {
     freeShippingEnabled: settings.free_shipping_enabled !== 'false',
     freeShippingThreshold:
@@ -60,6 +76,13 @@ export function parseCommerceConfig(settings: Record<string, string>): CommerceC
       Number.isFinite(deliveryCost) && deliveryCost > 0 ? deliveryCost : 0,
     loyaltyPkrPerPoint:
       Number.isFinite(pkrPerPoint) && pkrPerPoint > 0 ? pkrPerPoint : DEFAULT_LOYALTY_PKR_PER_POINT,
+    loyaltyEarn: {
+      welcome:      earnNum(settings.loyalty_welcome_points, 100),
+      review:       earnNum(settings.loyalty_review_points, 25),
+      referral:     earnNum(settings.loyalty_referral_points, 500),
+      birthday:     earnNum(settings.loyalty_birthday_points, 200),
+      pointsPerPkr: earnNum(settings.loyalty_points_per_pkr, 0.1),
+    },
   };
 }
 
@@ -73,6 +96,7 @@ export const DEFAULT_COMMERCE_CONFIG: CommerceConfig = {
   defaultShippingRate: DEFAULT_SHIPPING_RATE,
   defaultDeliveryCost: 0,
   loyaltyPkrPerPoint: DEFAULT_LOYALTY_PKR_PER_POINT,
+  loyaltyEarn: { welcome: 100, review: 25, referral: 500, birthday: 200, pointsPerPkr: 0.1 },
 };
 
 /** Format a threshold (PKR) as shoppers see it, e.g. "PKR 5,000". */

@@ -19,16 +19,21 @@ export function nextTierTarget(points: number): { next: LoyaltyTier | null; need
   return { next: null, needed: 0 };
 }
 
-// Earn rules, match site_settings defaults; admin can override in DB.
-// The actual server-side awarding is driven by Postgres functions, but the
-// rewards page uses these labels for display.
-export const EARN_RULES: { reason: string; label: string; description: string }[] = [
-  { reason: 'welcome',        label: '+100 pts',  description: 'Welcome bonus when you sign up' },
-  { reason: 'order_delivered',label: '10 pts / PKR 100', description: 'Earned when your order is marked delivered' },
-  { reason: 'review_approved',label: '+25 pts',   description: 'When a review you submit is approved' },
-  { reason: 'referral_reward',label: '+500 pts',  description: 'When someone you referred completes their first order' },
-  { reason: 'birthday',       label: '+200 pts',  description: 'On your birthday (set DOB on your profile)' },
-];
+// Earn rules for the customer-facing "How to earn" list. Built from the LIVE
+// admin settings (via CommerceConfig.loyaltyEarn) so changing a value in
+// Settings → Loyalty is reflected here — the Postgres award triggers read the
+// same site_settings rows, so display and awarding can't drift apart.
+export function earnRules(earn: {
+  welcome: number; review: number; referral: number; birthday: number; pointsPerPkr: number;
+}): { reason: string; label: string; description: string }[] {
+  return [
+    { reason: 'welcome',        label: `+${earn.welcome} pts`,  description: 'Welcome bonus when you sign up' },
+    { reason: 'order_delivered',label: `${Math.round(earn.pointsPerPkr * 100)} pts / PKR 100`, description: 'Earned when your order is marked delivered' },
+    { reason: 'review_approved',label: `+${earn.review} pts`,   description: 'When a review you submit is approved' },
+    { reason: 'referral_reward',label: `+${earn.referral} pts`, description: 'When someone you referred completes their first order' },
+    { reason: 'birthday',       label: `+${earn.birthday} pts`, description: 'On your birthday (set your date of birth on your profile)' },
+  ];
+}
 
 export const REASON_LABELS: Record<string, string> = {
   welcome:           'Welcome bonus',
