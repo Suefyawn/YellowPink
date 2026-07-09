@@ -434,6 +434,27 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
         .join(' · ')
     : null;
 
+  // "Get it by Sat 12 Jul – Wed 16 Jul": the courier's working-day estimate
+  // turned into concrete dates (couriers don't deliver Sundays in Pakistan,
+  // so Sundays are skipped). Falls back to the standard 2–5 working days
+  // when the server didn't pass an estimate, so the reassurance is always on.
+  const deliveryWindow = useMemo(() => {
+    const eta = estimatedDays ?? { min: 2, max: 5 };
+    const fmt = new Intl.DateTimeFormat('en-PK', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Asia/Karachi' });
+    const addWorkingDays = (days: number) => {
+      const d = new Date();
+      let left = days;
+      while (left > 0) {
+        d.setDate(d.getDate() + 1);
+        if (d.getDay() !== 0) left--;
+      }
+      return d;
+    };
+    const from = fmt.format(addWorkingDays(eta.min));
+    const to = fmt.format(addWorkingDays(eta.max));
+    return from === to ? from : `${from} – ${to}`;
+  }, [estimatedDays]);
+
   const handleAdd = () => {
     if (variants.length > 0 && !activeVariant) return;
     tapHaptic();
@@ -545,14 +566,33 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             {product.variant && variants.length === 0 && (
               <div className="body-text" style={{ color: 'var(--ink-500)', marginBottom: 16 }}>{product.variant}</div>
             )}
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
               <span className="tabular-nums" style={{ fontSize: '1.5rem', fontWeight: 600 }}>PKR {displayPrice.toLocaleString()}</span>
               {(displayOriginal ?? 0) > displayPrice && (
-                <span className="tabular-nums" style={{ textDecoration: 'line-through', color: 'var(--brand-pink-text)', fontSize: '1rem' }}>
-                  PKR {(displayOriginal ?? 0).toLocaleString()}
-                </span>
+                <>
+                  <span className="tabular-nums" style={{ textDecoration: 'line-through', color: 'var(--brand-pink-text)', fontSize: '1rem' }}>
+                    PKR {(displayOriginal ?? 0).toLocaleString()}
+                  </span>
+                  {/* Same % anchor the grid tile shows — repeating it at the
+                      decision point strengthens the deal framing exactly where
+                      the add-to-cart choice is made. */}
+                  <span style={{
+                    padding: '2px 8px', borderRadius: 4, background: 'var(--brand-pink-cta)',
+                    color: 'white', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.02em',
+                  }}>
+                    −{Math.round((1 - displayPrice / (displayOriginal ?? displayPrice)) * 100)}%
+                  </span>
+                </>
               )}
             </div>
+            {/* Honest social proof: real cumulative sales from the nightly
+                popularity job. Only shown once there's a number worth showing,
+                and floored to the nearest 10 so it never overstates. */}
+            {(product.units_sold ?? 0) >= 10 && (
+              <p className="small-text" style={{ marginTop: -8, marginBottom: 12, color: 'var(--ink-700)' }}>
+                <strong style={{ fontWeight: 600 }}>{Math.floor((product.units_sold ?? 0) / 10) * 10}+ sold</strong> — a customer favourite
+              </p>
+            )}
             {pointsEarned > 0 && (
               <p className="small-text" style={{ marginTop: -8, marginBottom: 16, color: 'var(--brand-pink-text)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <span aria-hidden="true">★</span>
@@ -631,9 +671,15 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </button>
             </div>
 
-            {!outOfStock && estimatedDays && (
+            {!outOfStock && (
               <p className="small-text" style={{ marginTop: -8, marginBottom: 24, color: 'var(--ink-700)' }}>
-                Delivery in <strong style={{ fontWeight: 600 }}>{estimatedDays.min} to {estimatedDays.max} working days</strong> · COD nationwide
+                {/* Concrete arrival dates beat "2–5 working days": a COD
+                    shopper deciding whether to commit wants to know WHEN the
+                    parcel (and the payment moment) lands. Range from the
+                    courier's working-day estimate, Sundays skipped, PKT.
+                    suppressHydrationWarning: a request served near midnight
+                    can prerender yesterday's dates; the client value wins. */}
+                Get it by <strong style={{ fontWeight: 600 }} suppressHydrationWarning>{deliveryWindow}</strong> · COD nationwide
               </p>
             )}
 
@@ -912,8 +958,18 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-900)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>{displayName}</div>
-          <div className="tabular-nums" style={{ fontSize: '0.875rem', fontWeight: 700 }}>
-            PKR {displayPrice.toLocaleString()}
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+            <span className="tabular-nums" style={{ fontSize: '0.875rem', fontWeight: 700, flexShrink: 0 }}>
+              PKR {displayPrice.toLocaleString()}
+            </span>
+            {/* Selected shade in the bar: after scrolling a long PDP the
+                picker is far off-screen, so without this the shopper can't
+                tell WHICH shade the one-tap add will buy. */}
+            {variantLabel && (
+              <span style={{ fontSize: '0.6875rem', color: 'var(--ink-500)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {variantLabel}
+              </span>
+            )}
           </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', flexShrink: 0 }}>

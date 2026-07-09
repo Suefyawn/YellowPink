@@ -12,6 +12,7 @@ import { track } from '@/lib/analytics';
 import { brandPlusName } from '@/lib/product-display';
 import { whatsappUrl as waUrl, whatsappGoUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { useCommerceSettings } from '@/context/CommerceSettings';
+import { FreeShippingProgress } from '@/components/cart/FreeShippingProgress';
 import type { CartItem, Coupon, Product } from '@/types';
 
 export function CartPage({ restoreToken = null, recommended = [], estimatedDays = null }: { restoreToken?: string | null; recommended?: Product[]; estimatedDays?: { min: number; max: number } | null }) {
@@ -185,14 +186,8 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
         <div className="container">
           <div style={{ padding: '16px 0 32px', borderBottom: '1px solid var(--line)' }}>
             {freeShippingEnabled && (
-              <div className="small-text" style={{ color: 'var(--ink-700)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--ink-500)', flexShrink: 0 }}>
-                  <rect x="1" y="3" width="15" height="13" rx="1" />
-                  <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-                  <circle cx="5.5" cy="18.5" r="2.5" />
-                  <circle cx="18.5" cy="18.5" r="2.5" />
-                </svg>
-                <span>Free delivery on bigger orders &mdash; your exact threshold shows at checkout once we know your city.</span>
+              <div style={{ maxWidth: 480 }}>
+                <FreeShippingProgress subtotal={cartItems.reduce((s, i) => s + i.price * i.qty, 0)} />
               </div>
             )}
             {estimatedDays && (

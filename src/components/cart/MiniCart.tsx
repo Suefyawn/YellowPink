@@ -9,6 +9,7 @@ import { useCart } from '@/context/CartContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { brandPlusName } from '@/lib/product-display';
 import { useCommerceSettings } from '@/context/CommerceSettings';
+import { FreeShippingProgress } from '@/components/cart/FreeShippingProgress';
 
 export function MiniCart() {
   const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty } = useCart();
@@ -78,15 +79,9 @@ export function MiniCart() {
           >×</button>
         </div>
 
-        {freeShippingEnabled && (
-        <div className="small-text" style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)', color: 'var(--ink-700)', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ color: 'var(--ink-500)', flexShrink: 0 }}>
-            <rect x="1" y="3" width="15" height="13" rx="1" />
-            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
-            <circle cx="5.5" cy="18.5" r="2.5" />
-            <circle cx="18.5" cy="18.5" r="2.5" />
-          </svg>
-          <span>Free delivery on bigger orders &mdash; your exact threshold shows at checkout.</span>
+        {freeShippingEnabled && cartItems.length > 0 && (
+        <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)' }}>
+          <FreeShippingProgress subtotal={cartItems.reduce((s, i) => s + i.price * i.qty, 0)} />
         </div>
         )}
 
