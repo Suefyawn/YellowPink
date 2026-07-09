@@ -95,7 +95,7 @@ export function ProfilePage({ name, email, twoFaEnabled = false, mustChangePassw
           )}
 
           <button type="submit" disabled={pending} style={{
-            padding: '10px 20px', background: '#6366f1', color: 'white',
+            padding: '10px 20px', background: '#C5286A', color: 'white',
             border: 'none', borderRadius: 8, fontWeight: 600, fontSize: '0.9375rem',
             cursor: pending ? 'not-allowed' : 'pointer', opacity: pending ? 0.6 : 1,
             alignSelf: 'flex-start',

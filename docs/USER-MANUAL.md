@@ -924,6 +924,7 @@ A dated history of user-facing changes, newest first.
 - **The "Added ✓" button tells the truth.** Tapping *Add to Cart* on a sold-out shade (or when your bag already holds all remaining stock) used to flash "Added ✓" and open the cart while adding nothing. The button now only confirms when something was genuinely added.
 - **Two tap-blockers on phones fixed.** The cookie-consent bar no longer covers the sticky *Add to Cart* bar on product pages (they now stack), and the decorative logo watermark in the footer no longer swallows taps on the newsletter *Join* button.
 - **Search and cart panels now close when you go back.** On phones, opening the search panel (or the slide-out cart) and then swiping back — or pressing the browser's back button — used to leave the panel stuck open on top of the previous page. Both now close automatically the moment the page changes, however the navigation happened.
+- **Small storefront polish.** The phone menu now sizes itself to the *visible* screen (its bottom links could previously hide behind the browser's address bar); collection, brand and tag pages show an instant loading placeholder instead of a blank screen while their products load; and all brand logos are now served from our own storage, so another site's outage can never blank the logo strip.
 
 ### 8 July 2026
 
