@@ -1,7 +1,8 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from 'react';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin, getSiteSettings } from '@/lib/supabase';
+import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { brandPlusName } from '@/lib/product-display';
@@ -67,7 +68,7 @@ export default async function ReviewsPage({
   // the policy and is the right credential for moderation.
   const admin = supabaseAdmin();
 
-  const REVIEW_COLS = 'id, author_name, rating, body, created_at, approved, product_id, photo_urls, verified_purchase, owner_reply, owner_reply_at, products(name, brand)';
+  const REVIEW_COLS = 'id, author_name, rating, body, created_at, approved, product_id, photo_urls, verified_purchase, owner_reply, owner_reply_at, user_id, reviewer_email, products(name, brand)';
 
   // Filtered list (search + product + status), paginated with a real count —
   // the old page silently capped approved reviews at the latest 20.
@@ -90,6 +91,7 @@ export default async function ReviewsPage({
     { count: allCount },
     { data: productRows },
     { data: reviewedProductRows },
+    siteSettings,
   ] = await Promise.all([
     // The moderation queue, always shown in full at the top.
     admin.from('product_reviews').select(REVIEW_COLS)
@@ -106,6 +108,7 @@ export default async function ReviewsPage({
       .limit(500),
     // Products that actually have reviews, for the filter dropdown.
     admin.from('product_reviews').select('product_id, products(name, brand)').limit(1000),
+    getSiteSettings(),
   ]);
 
   type ReviewRow = {
@@ -119,6 +122,8 @@ export default async function ReviewsPage({
     verified_purchase: boolean;
     owner_reply: string | null;
     owner_reply_at: string | null;
+    user_id: string | null;
+    reviewer_email: string | null;
     // Supabase returns a to-one embed as an object; tolerate an array too.
     products: { name: string; brand: string } | { name: string; brand: string }[] | null;
   };
@@ -138,6 +143,78 @@ export default async function ReviewsPage({
   const reviewedProducts = [...reviewedById.entries()]
     .map(([id, label]) => ({ id, label }))
     .sort((a, b) => a.label.localeCompare(b.label));
+
+  // Google-review ask: only for reviews that are already approved AND positive
+  // (4–5★). On-site reviews are moderated so a bad one can be handled quietly;
+  // a bad Google review is public and permanent — never invite one. The button
+  // opens the reviewer's WhatsApp prefilled with the Google link + the extra
+  // points offer (configured in Settings → Loyalty). Google can't tell us who
+  // reviewed, so the operator awards the points by hand from the customer page.
+  const googleReviewUrl = (siteSettings['google_review_url'] ?? '').trim();
+  const googlePoints = Math.max(0, Number(siteSettings['loyalty_google_review_points'] ?? 100) || 0);
+  const googleAskById = new Map<string, string>();
+  if (googleReviewUrl) {
+    const candidates = list.filter(r => r.approved && r.rating >= 4);
+    const userIds = [...new Set(candidates.map(r => r.user_id).filter((v): v is string => Boolean(v)))];
+    const emails = [...new Set(
+      candidates.filter(r => !r.user_id)
+        .map(r => (r.reviewer_email ?? '').trim().toLowerCase())
+        .filter(Boolean),
+    )];
+    const phoneByUser = new Map<string, string>();
+    const phoneByEmail = new Map<string, string>();
+    await Promise.all([
+      userIds.length
+        ? admin.from('profiles').select('id, phone').in('id', userIds).then(({ data }) => {
+            for (const p of (data ?? []) as Array<{ id: string; phone: string | null }>) {
+              if (p.phone) phoneByUser.set(p.id, p.phone);
+            }
+          })
+        : null,
+      // Guests: latest order phone under the same email. Order emails can be
+      // mixed-case, so match with ilike (case-insensitive equality when the
+      // pattern has no wildcards). Emails with or()-syntax characters are
+      // skipped rather than risking a malformed filter.
+      emails.length
+        ? (() => {
+            const safe = emails.filter(e => !/[,()*%]/.test(e));
+            if (!safe.length) return null;
+            return admin.from('orders').select('email, phone, created_at')
+              .not('phone', 'is', null)
+              .or(safe.map(e => `email.ilike.${e}`).join(','))
+              .order('created_at', { ascending: false })
+              .then(({ data }) => {
+                for (const o of (data ?? []) as Array<{ email: string | null; phone: string | null }>) {
+                  const key = (o.email ?? '').trim().toLowerCase();
+                  if (key && o.phone && !phoneByEmail.has(key)) phoneByEmail.set(key, o.phone);
+                }
+              });
+          })()
+        : null,
+    ]);
+    for (const r of candidates) {
+      const phone = r.user_id
+        ? phoneByUser.get(r.user_id)
+        : phoneByEmail.get((r.reviewer_email ?? '').trim().toLowerCase());
+      if (!phone) continue;
+      const first = (r.author_name ?? '').trim().split(/\s+/)[0] || '';
+      const message = [
+        `Assalam-o-Alaikum${first ? ` ${first}` : ''}!`,
+        '',
+        'Aap ka Yellow Pink par review parh kar bohat khushi hui — shukriya!',
+        '',
+        `Agar 1 minute nikaal kar wohi baat Google par bhi share kar dein to hamare liye bohat bara favour hoga${googlePoints > 0 ? ` — aur aap ko ${googlePoints} extra reward points milenge jo agle order par discount ban jaate hain` : ''}.`,
+        '',
+        'Google review yahan chhor sakte hain:',
+        googleReviewUrl,
+        '',
+        ...(googlePoints > 0 ? ['Review ho jaye to bas is message ka reply kar dein, hum points laga denge.', ''] : []),
+        'Shukriya!, Team Yellow Pink',
+      ].join('\n');
+      const href = whatsappUrlForCustomer(phone, message);
+      if (href) googleAskById.set(r.id, href);
+    }
+  }
 
   const rowStyle: React.CSSProperties = {
     borderTop: '1px solid #f3f4f6', padding: '16px 20px',
@@ -199,6 +276,25 @@ export default async function ReviewsPage({
           )}
         </div>
         <div className="adm-review-actions" style={{ display: 'flex', gap: 8, flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {googleAskById.has(r.id) && (
+            <a
+              href={googleAskById.get(r.id)}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="WhatsApp the reviewer a Google-review request with the bonus-points offer"
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'white', color: '#128C4B', textDecoration: 'none',
+                border: '1px solid #25D366',
+                padding: '6px 12px', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600,
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+              </svg>
+              Ask for Google review
+            </a>
+          )}
           {!r.approved ? (
             <form action={approveReview}>
               <input type="hidden" name="id" value={r.id} />

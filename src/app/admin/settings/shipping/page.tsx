@@ -113,7 +113,7 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
   return (
     <>
       <SettingsPageHeader
-        title="Shipping & tax"
+        title="Shipping"
         subtitle="Default rates that apply when no zone matches, plus the per-zone overrides used by checkout."
       />
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
