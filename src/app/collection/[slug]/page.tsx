@@ -25,7 +25,9 @@ async function loadCollection(slug: string): Promise<Collection | null> {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const c = await loadCollection(slug);
-  if (!c) return pageMeta({ title: 'Collection', description: 'Shop our curated collections.', path: `/collection/${slug}` });
+  // Unknown collection → real HTTP 404 from the metadata boundary (a
+  // body-only notFound() streams in after the 200 commits — soft-404).
+  if (!c) { await redirectIfMapped(`/collection/${slug}`); notFound(); }
   // Keep a contentless (empty) collection out of the index — a published-but-
   // empty edit is thin content. Membership is enough (ordering doesn't matter
   // here), so we skip the manual-position query.

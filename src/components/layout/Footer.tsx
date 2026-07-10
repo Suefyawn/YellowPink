@@ -156,9 +156,13 @@ function SocialRow({ socials }: { socials: SocialLink[] }) {
       {socials.map(s => (
         <a
           key={s.key}
-          href={s.href}
+          // WhatsApp routes through the robots-blocked /go/whatsapp redirect
+          // (same number resolution) instead of a raw wa.me href: wa.me
+          // rate-limits crawlers with 429s, which read as a broken external
+          // link on every page of the site in audit tools.
+          href={s.key === 'social_whatsapp' ? '/go/whatsapp?src=footer' : s.href}
           target="_blank"
-          rel="noopener noreferrer"
+          rel={s.key === 'social_whatsapp' ? 'nofollow noopener noreferrer' : 'noopener noreferrer'}
           aria-label={`Yellow Pink on ${s.label}`}
           title={s.label}
           className="footer-social"

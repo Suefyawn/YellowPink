@@ -29,7 +29,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const [products, record] = await Promise.all([getProducts(), getBrandRecord(slug)]);
   const brand = record?.name ?? brandNameFromSlug(slug, products);
-  if (!brand) return pageMeta({ title: 'Brand', description: 'Shop by brand at Yellow Pink.', path: `/brand/${slug}` });
+  // Unknown brand → real HTTP 404 from the metadata boundary (a body-only
+  // notFound() streams in after the 200 commits — the soft-404 trap).
+  if (!brand) { await redirectIfMapped(`/brand/${slug}`); notFound(); }
   // Lead the title with "Buy <brand> in Pakistan", PK shoppers search the
   // brand name + "pakistan" (e.g. "cerave pakistan", "the ordinary pakistan"),
   // so front-loading that intent beats a bare "<brand>, Shop".
