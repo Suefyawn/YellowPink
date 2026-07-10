@@ -51,6 +51,20 @@ const lbl: React.CSSProperties = {
   fontWeight: 600, color: '#374151', marginBottom: 5,
 };
 
+// Grouped form sections: a labelled divider so the long single column reads
+// as Basics / Attribution / Media / Content instead of one undifferentiated
+// scroll. Matches ProductForm's grouping grammar.
+function Section({ title, first = false, children }: { title: string; first?: boolean; children: React.ReactNode }) {
+  return (
+    <section style={{ marginTop: first ? 0 : 28, paddingTop: first ? 0 : 24, borderTop: first ? 'none' : '1px solid #f3f4f6' }}>
+      <h2 style={{ margin: '0 0 16px', fontSize: '0.8125rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
 export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPost; reviewers?: BlogFormReviewer[]; initialTitle?: string }) {
   const isEdit = Boolean(post);
   const boundAction = isEdit ? updateBlogPost.bind(null, post!.id) : createBlogPost;
@@ -123,6 +137,7 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
           }}
           onInput={() => { if (!dirty) setDirty(true); }}
         >
+          <Section title="Basics" first>
           {/* Title */}
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Title *</label>
@@ -171,6 +186,9 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
             </div>
           </div>
 
+          </Section>
+
+          <Section title="Byline & medical review">
           {/* Health topic: matches the post to a reviewer who covers it. */}
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Health topic</label>
@@ -233,6 +251,9 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
             </span>
           </div>
 
+          </Section>
+
+          <Section title="Media & placement">
           {/* Cover Image */}
           <div style={{ marginBottom: 16 }}>
             <ImageUpload name="image_url" currentUrl={imageUrl} label="Cover Image" aspect={16 / 9} />
@@ -250,6 +271,9 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
             </label>
           </div>
 
+          </Section>
+
+          <Section title="Content">
           {/* Excerpt */}
           <div style={{ marginBottom: 16 }}>
             <label style={lbl}>Excerpt *</label>
@@ -274,27 +298,42 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
             />
           </div>
 
-          {/* Actions */}
-          <div style={{ display: 'flex', gap: 12 }}>
-            <button type="submit" disabled={pending} style={{
-              padding: '10px 24px', background: pending ? '#9ca3af' : '#C5286A',
-              color: 'white', border: 'none', borderRadius: 7,
-              fontSize: '0.875rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
-            }}>
-              {pending ? 'Saving…' : isEdit ? 'Save Changes' : 'Publish Post'}
-            </button>
-            <Link href="/admin/blog" style={{
-              padding: '10px 20px', background: 'white', color: '#374151',
-              border: '1px solid #d1d5db', borderRadius: 7,
-              fontSize: '0.875rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
-            }}>
-              Cancel
-            </Link>
-            {isEdit && post?.slug && (
-              <span style={{ marginLeft: 'auto' }}>
-                <SubmitToIndexButton path={`/blog/${post.slug}`} />
-              </span>
-            )}
+          </Section>
+
+          {/* Sticky save bar, pins to the viewport bottom on long posts.
+              Same pattern as ProductForm. */}
+          <div
+            className="adm-sticky-actions"
+            style={{
+              position: 'sticky', bottom: 0,
+              marginTop: 8, padding: '12px 16px',
+              background: 'rgba(255,255,255,0.94)',
+              backdropFilter: 'saturate(140%) blur(8px)',
+              WebkitBackdropFilter: 'saturate(140%) blur(8px)',
+              borderTop: '1px solid #e5e7eb',
+              borderRadius: '0 0 10px 10px',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              gap: 12, flexWrap: 'wrap',
+              boxShadow: '0 -6px 18px rgba(0,0,0,0.04)',
+              zIndex: 5,
+            }}
+          >
+            <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+              {pending
+                ? 'Saving…'
+                : isEdit
+                  ? <>Editing <strong style={{ color: '#111827' }}>{post?.title ?? 'post'}</strong></>
+                  : 'Drafting a new post'}
+            </div>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              {isEdit && post?.slug && <SubmitToIndexButton path={`/blog/${post.slug}`} />}
+              <Link href="/admin/blog" className="adm-btn adm-btn-secondary">
+                Cancel
+              </Link>
+              <button type="submit" disabled={pending} className="adm-btn adm-btn-primary" style={{ padding: '10px 24px', fontSize: '0.875rem' }}>
+                {pending ? 'Saving…' : isEdit ? 'Save Changes' : 'Publish Post'}
+              </button>
+            </div>
           </div>
         </form>
       </div>
