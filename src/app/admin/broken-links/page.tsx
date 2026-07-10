@@ -151,13 +151,13 @@ export default async function BrokenLinksPage({
                     <form action={addRedirect} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                       <input type="hidden" name="from_path" value={r.path} />
                       <input name="to_path" placeholder="/shop or /product/…" style={inp} aria-label={`Redirect ${r.path} to`} required />
-                      <button type="submit" style={{ padding: '7px 14px', fontSize: '0.8125rem', borderRadius: 7, background: '#111827', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                      <button type="submit" className="adm-btn adm-btn-primary">
                         Redirect
                       </button>
                     </form>
                     <form action={ignoreNotFound} style={{ marginTop: 8 }}>
                       <input type="hidden" name="path" value={r.path} />
-                      <button type="submit" style={{ padding: 0, fontSize: '0.75rem', background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', textDecoration: 'underline' }}>
+                      <button type="submit" className="adm-btn adm-btn-secondary" style={{ padding: '4px 10px', fontSize: '0.75rem' }}>
                         Ignore (it&apos;s meant to be gone)
                       </button>
                     </form>

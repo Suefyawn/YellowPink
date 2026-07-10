@@ -298,7 +298,7 @@ function RoleRow({ role, memberCount, onEdit }: { role: Role; memberCount: numbe
           </form>
         </div>
       ) : (
-        <button style={btn('#ef4444', true)} onClick={() => setConfirm(true)}>Delete</button>
+        <button className="adm-btn adm-btn-danger" onClick={() => setConfirm(true)}>Delete</button>
       )}
     </div>
   );
@@ -613,19 +613,19 @@ function StaffRow({ staff, roles }: { staff: Staff; roles: Role[] }) {
       </td>
       <td style={{ padding: '14px 20px' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button style={btn('#C5286A', true)} onClick={() => setEditing(true)}>Edit</button>
+          <button className="adm-btn adm-btn-secondary" onClick={() => setEditing(true)}>Edit</button>
           <form action={toggleStaffActive} style={{ display: 'inline' }}>
             <input type="hidden" name="id" value={staff.id} />
             <input type="hidden" name="is_active" value={String(staff.is_active)} />
-            <button type="submit" style={btn(staff.is_active ? '#f59e0b' : '#22c55e', true)}>
+            <button type="submit" className="adm-btn adm-btn-secondary">
               {staff.is_active ? 'Deactivate' : 'Activate'}
             </button>
           </form>
           {confirm ? (
             <form action={deleteStaffMember} style={{ display: 'inline' }}>
               <input type="hidden" name="id" value={staff.id} />
-              <button type="submit" style={btn('#ef4444')}>Confirm Delete</button>
-              <button type="button" style={{ ...btn('#6b7280', true), marginLeft: 6 }} onClick={() => setConfirm(false)}>
+              <button type="submit" className="adm-btn adm-btn-danger">Confirm Delete</button>
+              <button type="button" className="adm-btn adm-btn-secondary" style={{ marginLeft: 6 }} onClick={() => setConfirm(false)}>
                 Cancel
               </button>
             </form>

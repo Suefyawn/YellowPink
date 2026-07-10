@@ -298,10 +298,7 @@ export default async function ReviewsPage({
           {!r.approved ? (
             <form action={approveReview}>
               <input type="hidden" name="id" value={r.id} />
-              <button type="submit" style={{
-                padding: '6px 14px', background: '#15803d', color: 'white',
-                border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
-              }}>Approve</button>
+              <button type="submit" className="adm-btn adm-btn-primary">Approve</button>
             </form>
           ) : (
             <UnapproveButton id={r.id} />

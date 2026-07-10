@@ -122,7 +122,7 @@ export function EditReviewButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        style={{ padding: '6px 14px', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+        className="adm-btn adm-btn-secondary"
       >
         Edit
       </button>
@@ -218,7 +218,7 @@ export function UnapproveButton({ id }: { id: string }) {
         type="submit"
         disabled={pending}
         title="Move back to Pending Approval"
-        style={{ padding: '6px 14px', background: '#fff7ed', color: '#9a3412', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer' }}
+        className="adm-btn adm-btn-secondary"
       >
         {pending ? '…' : 'Unapprove'}
       </button>

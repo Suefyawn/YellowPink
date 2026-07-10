@@ -166,6 +166,27 @@ export function AdminShell({
           background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d1d5db' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
         }
 
+        /* ─ Button grammar ─
+         * Three roles, one look. primary = the page's main action (brand),
+         * secondary = everything else, danger = destructive (outline until
+         * hovered so tables full of rows don't scream red). Replaces the
+         * green/navy/black/ghost-trio mix the audit found. */
+        .adm-btn {
+          display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+          padding: 7px 14px; border-radius: 7px;
+          font-size: 0.8125rem; font-weight: 600; line-height: 1.2;
+          text-decoration: none; cursor: pointer; white-space: nowrap;
+          border: 1px solid transparent;
+          transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+        }
+        .adm-btn:disabled { opacity: 0.55; cursor: default; }
+        .adm-btn-primary { background: #C5286A; color: #fff; }
+        .adm-btn-primary:not(:disabled):hover { background: #ad2059; }
+        .adm-btn-secondary { background: #fff; color: #374151; border-color: #d1d5db; }
+        .adm-btn-secondary:not(:disabled):hover { background: #f9fafb; border-color: #9ca3af; }
+        .adm-btn-danger { background: #fff; color: #b91c1c; border-color: #fca5a5; }
+        .adm-btn-danger:not(:disabled):hover { background: #b91c1c; color: #fff; border-color: #b91c1c; }
+
         /* ─ Responsive table → card-stack utility ─
          * Put .adm-table-cards on a <table>, add data-label="…" on each <td>,
          * and below 768 px the table reflows into one stacked card per row
