@@ -400,11 +400,7 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
       )}
 
       <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-        <button type="submit" className="adm-btn-primary" disabled={pending || lines.length === 0} style={{
-          padding: '10px 20px', borderRadius: 8, border: 'none', cursor: pending ? 'wait' : 'pointer',
-          background: '#111827', color: 'white', fontWeight: 600, fontSize: '0.875rem',
-          opacity: pending || lines.length === 0 ? 0.6 : 1,
-        }}>
+        <button type="submit" className="adm-btn adm-btn-primary" disabled={pending || lines.length === 0} style={{ padding: '10px 20px', fontSize: '0.875rem' }}>
           {pending ? 'Creating…' : 'Create order'}
         </button>
         <Link href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Cancel</Link>

@@ -136,7 +136,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                     });
                   }}
                   disabled={acting}
-                  style={{ padding: '6px 14px', background: '#111827', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                  className="adm-btn adm-btn-primary"
                 >
                   Mark as received & restock
                 </button>
@@ -160,7 +160,7 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                     });
                   }}
                   disabled={acting}
-                  style={{ padding: '6px 14px', background: '#111827', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                  className="adm-btn adm-btn-primary"
                 >
                   Mark as refunded
                 </button>
@@ -205,14 +205,14 @@ export function ReturnsQueue({ rows, orderMap, canManage }: {
                   <>
                     <button
                       onClick={() => { setRejectingFor(null); setDecisionFor(r.id); }}
-                      style={{ padding: '6px 14px', background: '#16a34a', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                      className="adm-btn adm-btn-primary"
                     >
                       Approve…
                     </button>
                     <button
                       onClick={() => { setDecisionFor(null); setRejectingFor(r.id); }}
                       disabled={acting}
-                      style={{ padding: '6px 14px', background: 'transparent', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+                      className="adm-btn adm-btn-danger"
                     >
                       Reject…
                     </button>

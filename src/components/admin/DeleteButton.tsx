@@ -49,20 +49,10 @@ export function DeleteButton({ id, action, confirmMsg, label = 'Delete' }: Props
 
   return (
     <button
+      className="adm-btn adm-btn-danger"
       onClick={() => setConfirming(true)}
       disabled={pending}
       title={confirmMsg}
-      style={{
-        padding: '5px 12px',
-        background: '#fef2f2',
-        color: '#dc2626',
-        border: 'none',
-        borderRadius: 6,
-        fontSize: '0.8125rem',
-        fontWeight: 500,
-        cursor: pending ? 'not-allowed' : 'pointer',
-        opacity: pending ? 0.6 : 1,
-      }}
     >
       {pending ? '…' : label}
     </button>
