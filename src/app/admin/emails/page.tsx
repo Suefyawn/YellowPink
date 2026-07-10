@@ -186,7 +186,7 @@ export default async function EmailLogPage({
             </EmptyState>
           )
         ) : (
-          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <table className="adm-table-cards adm-cards-dense" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['Recipient', 'Subject', 'Type', 'Status', 'Sent'].map(h => (

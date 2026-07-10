@@ -231,6 +231,11 @@ export function AdminShell({
             text-transform: uppercase; letter-spacing: 0.05em;
             text-align: left; flex-shrink: 0;
           }
+          /* Dense variant for log-type tables (activity, email log, stock
+           * movements): tighter cards so 50 rows stay scannable on a phone. */
+          .adm-cards-dense tr { padding: 2px 14px 6px; margin-bottom: 8px; }
+          .adm-cards-dense td { padding: 5px 0 !important; font-size: 0.75rem !important; }
+          .adm-cards-dense td::before { font-size: 0.625rem; }
           /* Cells without a data-label (usually the actions column) stay full-width. */
           .adm-table-cards td:not([data-label]) {
             justify-content: flex-end;
