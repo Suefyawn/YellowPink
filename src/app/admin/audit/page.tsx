@@ -86,6 +86,33 @@ function DiffView({ diff }: { diff: Record<string, unknown> }) {
   );
 }
 
+// Collapse consecutive runs of the same event by the same actor (bulk
+// newsletter imports, signup bursts) into one expandable row. Only runs of
+// 3+ collapse — pairs read fine as-is. Grouping is per page slice, which is
+// exactly the span the reader is scanning.
+type Grouped = { kind: 'single'; row: AuditRow } | { kind: 'run'; rows: AuditRow[] };
+
+function groupRuns(rows: AuditRow[]): Grouped[] {
+  const out: Grouped[] = [];
+  let i = 0;
+  while (i < rows.length) {
+    let j = i + 1;
+    // actor_email is deliberately NOT in the key: a signup burst is one
+    // event repeated by many different people, which is exactly the run
+    // worth collapsing. The expanded list shows each actor.
+    while (
+      j < rows.length &&
+      rows[j].action === rows[i].action &&
+      rows[j].actor_kind === rows[i].actor_kind &&
+      (rows[j].entity ?? '') === (rows[i].entity ?? '')
+    ) j++;
+    if (j - i >= 3) out.push({ kind: 'run', rows: rows.slice(i, j) });
+    else for (let k = i; k < j; k++) out.push({ kind: 'single', row: rows[k] });
+    i = j;
+  }
+  return out;
+}
+
 export default async function ActivityLogPage({
   searchParams,
 }: {
@@ -145,6 +172,7 @@ export default async function ActivityLogPage({
     ...ACTOR_TABS.map(t => countFor(t.key)),
   ]);
   const rows = (data ?? []) as AuditRow[];
+  const grouped = groupRuns(rows);
   const countByTab = new Map(ACTOR_TABS.map((t, i) => [t.key, tabCounts[i].count ?? 0]));
 
   const tabHref = (kind: string) => {
@@ -191,7 +219,61 @@ export default async function ActivityLogPage({
               </tr>
             </thead>
             <tbody>
-              {rows.map(r => (
+              {grouped.map(g => {
+                if (g.kind === 'run') {
+                  const first = g.rows[0];
+                  const last = g.rows[g.rows.length - 1];
+                  const t = (iso: string) => new Date(iso).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
+                  return (
+                    <tr key={first.id} style={{ borderTop: '1px solid #f3f4f6', background: '#fcfcfd' }}>
+                      <td data-label="When" style={{ padding: '10px 16px', whiteSpace: 'nowrap', color: '#6b7280', fontSize: '0.75rem' }}>
+                        {t(last.created_at)} – {t(first.created_at)}
+                      </td>
+                      <td data-label="Actor" style={{ padding: '10px 16px', color: '#111827' }}>
+                        <DotChip
+                          label={first.actor_kind.charAt(0).toUpperCase() + first.actor_kind.slice(1)}
+                          color={ACTOR_COLORS[first.actor_kind] ?? '#6b7280'}
+                        />
+                        {(() => {
+                          const emails = new Set(g.rows.map(r => r.actor_email ?? ''));
+                          if (emails.size === 1 && first.actor_email) {
+                            return <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{first.actor_email}</div>;
+                          }
+                          return <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>{emails.size} different accounts</div>;
+                        })()}
+                      </td>
+                      <td data-label="Event" style={{ padding: '10px 16px', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>
+                        {prettyAction(first.action)}
+                        <span style={{ marginLeft: 6, padding: '1px 8px', borderRadius: 999, background: '#f3f4f6', color: '#6b7280', fontSize: '0.6875rem', fontWeight: 700 }}>
+                          × {g.rows.length}
+                        </span>
+                      </td>
+                      <td data-label="Entity" style={{ padding: '10px 16px', fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+                        {first.entity ? `${g.rows.length} ${first.entity}${g.rows.length !== 1 ? 's' : ''}` : '—'}
+                      </td>
+                      <td data-label="Details" style={{ padding: '10px 16px', fontSize: '0.6875rem', color: '#374151' }}>
+                        <details>
+                          <summary style={{ cursor: 'pointer', color: '#6b7280' }}>show all {g.rows.length}</summary>
+                          <ul style={{ margin: '6px 0 0', paddingLeft: 16, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            {g.rows.map(r => {
+                              const href = entityHref(r.entity, r.entity_id);
+                              const label = `${t(r.created_at)}${r.actor_email ? ` · ${r.actor_email}` : ''}${r.entity_id ? ` · ${r.entity_id.slice(0, 8)}…` : ''}`;
+                              return (
+                                <li key={r.id}>
+                                  {href
+                                    ? <Link href={href} style={{ color: '#C5286A', textDecoration: 'none' }}>{label}</Link>
+                                    : <span>{label}</span>}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        </details>
+                      </td>
+                    </tr>
+                  );
+                }
+                const r = g.row;
+                return (
                 <tr key={r.id} style={{ borderTop: '1px solid #f3f4f6' }}>
                   <td data-label="When" style={{ padding: '10px 16px', whiteSpace: 'nowrap', color: '#6b7280', fontSize: '0.75rem' }}>
                     {new Date(r.created_at).toLocaleString('en-PK', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ })}
@@ -222,7 +304,8 @@ export default async function ActivityLogPage({
                       : '—'}
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         )}
