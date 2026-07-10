@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 9 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 10 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -920,6 +920,11 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 10 July 2026
+
+- **Dashboard, sharper morning read.** The home page gains one-tap **quick actions** (New order / Add product / Coupons / New post, each shown only to staff with that permission); the Today cards now show **yesterday's numbers** underneath so early mornings aren't a wall of zeros; a new **"COD cash in transit"** card totals the cash your couriers are carrying on shipped COD orders (tap through to those orders); and Top Products gained product photos with each row linking to the product.
+- **Doctors are no longer counted as customers.** Approving a medical reviewer creates a sign-in account for their reviewer dashboard — and the system was treating those accounts as shoppers: they appeared in admin → Customers, inflated the "New customers" number, and even collected signup welcome points. Reviewer accounts are now excluded from every customer surface, and the mistakenly-granted welcome points were removed.
 
 ### 9 July 2026
 
