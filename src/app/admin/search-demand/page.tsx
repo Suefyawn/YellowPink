@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { getStaffSession } from '@/lib/staff-auth';
 import { can, canAny } from '@/lib/permissions';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { EmptyState } from '@/components/admin/EmptyState';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getSearchDemand, RANGE_OPTIONS, type GscRow, type OnsiteRow, type ConvRow, type RollupRow } from './actions';
 import { SynonymManager, type Synonym } from '@/components/admin/SynonymManager';
@@ -53,7 +54,7 @@ function Card({ title, subtitle, children }: { title: string; subtitle: string; 
 }
 
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p style={{ margin: 0, padding: '18px', fontSize: '0.8125rem', color: '#9ca3af' }}>{children}</p>;
+  return <EmptyState compact icon="search" title="Nothing here yet">{children}</EmptyState>;
 }
 
 function pct(n: number) { return `${(n * 100).toFixed(1)}%`; }
@@ -248,7 +249,11 @@ export default async function SearchDemandPage({
         subtitle="People searched your site for these and saw nothing. Each is a product to stock, a page to create, or a naming mismatch to map with a synonym."
       >
         {gaps.length > 0 ? <OnsiteTable rows={gaps} acts={acts} withSynonym />
-          : posthog === 'no-key' ? <Empty>On-site search analytics aren&apos;t connected.</Empty>
+          : posthog === 'no-key' ? (
+            <EmptyState compact icon="plug" title="On-site search analytics aren't connected" ctaHref="/admin/settings/integrations" ctaLabel="Open Integrations">
+              Connect PostHog to see what shoppers search for on the site and find nothing.
+            </EmptyState>
+          )
           : <Empty>No zero-result searches in the last 60 days. Nice.</Empty>}
       </Card>
 

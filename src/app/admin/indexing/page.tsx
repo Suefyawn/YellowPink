@@ -6,6 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { getGoogleConnection } from '@/lib/google';
 import { getQuotaState } from '@/lib/indexing-status';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { EmptyState } from '@/components/admin/EmptyState';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { DotChip } from '@/components/admin/OrderChips';
 import { ListToolbar } from '@/components/admin/ListToolbar';
@@ -98,8 +99,10 @@ export default async function IndexingPage({
       </p>
 
       {!gscSite ? (
-        <div style={{ padding: '40px 24px', textAlign: 'center', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, color: '#374151', fontSize: '0.9375rem' }}>
-          Connect a Search Console property in <a href="/admin/settings/integrations" style={{ color: '#C5286A', textDecoration: 'underline' }}>Settings → Integrations</a> first.
+        <div style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+          <EmptyState icon="plug" title="Search Console isn't connected" ctaHref="/admin/settings/integrations" ctaLabel="Open Integrations">
+            Connect a Search Console property to see which pages Google has indexed and which still need a &ldquo;Request indexing&rdquo; click.
+          </EmptyState>
         </div>
       ) : (
         <>

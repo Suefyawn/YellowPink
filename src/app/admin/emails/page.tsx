@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { EmptyState } from '@/components/admin/EmptyState';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { DotChip } from '@/components/admin/OrderChips';
 import { Pagination } from '@/components/admin/Pagination';
@@ -175,9 +176,15 @@ export default async function EmailLogPage({
 
       <div style={{ background: 'white', borderRadius: 12, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)', overflow: 'hidden' }}>
         {emails.length === 0 ? (
-          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            {search || kind || activeFilter !== 'all' ? 'No emails match this filter.' : 'No emails logged yet.'}
-          </div>
+          search || kind || activeFilter !== 'all' ? (
+            <EmptyState compact icon="search" title="No emails match this filter">
+              Try clearing the search or switching back to the All tab.
+            </EmptyState>
+          ) : (
+            <EmptyState icon="inbox" title="No emails logged yet">
+              Every order confirmation, shipping update and review request the system sends will appear here with its delivery status.
+            </EmptyState>
+          )
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
