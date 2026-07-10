@@ -443,7 +443,7 @@ Guests are grouped by email (a guest's repeat orders show as one customer); if a
 
 ### Messages in detail
 
-A **threaded inbox** for the storefront **contact form** and **inbound email** (direct emails to your store address show an **Email** tag). Messages are grouped into **conversations by customer**, shown as a chat (their messages on the left, your replies on the right).
+A **threaded inbox** for the storefront **contact form** and **inbound email** (direct emails to your store address show an **Email** tag). Messages are grouped into **conversations by customer** and laid out like a mail app: a **thread list on the left** (unread threads bold with a pink dot, plus a preview of the last message) and the **open conversation on the right**, shown as a chat (their messages on the left, your replies on the right). On phones the panes become screens — the list first, then the conversation with a back link.
 
 - **Order history at a glance** — each conversation's header shows how many orders the customer has placed, their lifetime total, and the latest order with its status (e.g. *3 orders · PKR 12,400 · last: YP-1042 (shipped)*), so you know who you're talking to before you reply; click it to open their filtered order list.
 - **Reply right here** — the box at the bottom of a conversation sends your reply **from your store address via email**, and the reply is saved into the thread, so the whole exchange stays on record. When the customer replies, it threads back into the same conversation automatically.
