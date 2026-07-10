@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // slug is resolved. (A loading.tsx here would downgrade invalid slugs to
   // soft-404s: 200 + 404-styled UI.) Posts are pre-rendered via
   // generateStaticParams, so the skeleton is not missed.
-  if (!post) notFound();
+  if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
   return pageMeta({
     title: post.title,
     description: post.excerpt ?? post.title,

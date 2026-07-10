@@ -24,8 +24,11 @@ async function loadTag(slug: string): Promise<{ name: string; productIds: Set<st
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const tag = await loadTag(slug);
-  // Unknown tag → the page 404s; keep that thin fallback out of the index.
-  if (!tag) return pageMeta({ title: 'Tag', description: 'Shop by tag at Yellow Pink.', path: `/tag/${slug}`, noIndex: true });
+  // Unknown tag → 404 HERE, in metadata: with streaming, a notFound() thrown
+  // only in the page body lands after the 200 status has been committed, so
+  // dead tags were soft-404ing (HTTP 200 with a 404 body). Honour a manual
+  // redirect first — same order as the page body.
+  if (!tag) { await redirectIfMapped(`/tag/${slug}`); notFound(); }
   // One representative packshot for the social card (single lightweight query
   // over just this tag's products) rather than the generic branded fallback.
   let ogImage: string | undefined;
