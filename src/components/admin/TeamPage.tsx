@@ -701,6 +701,7 @@ export function TeamPage({ staff, roles, ownerEmail }: { staff: Staff[]; roles: 
                     padding: '12px 20px', textAlign: 'left',
                     fontSize: '0.75rem', fontWeight: 600,
                     color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em',
+                    whiteSpace: 'nowrap',
                   }}>{h}</th>
                 ))}
               </tr>

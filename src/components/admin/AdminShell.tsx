@@ -124,6 +124,48 @@ export function AdminShell({
         .adm-hover-row { transition: background 0.12s; }
         .adm-hover-row:hover { background: #fafafa; }
 
+        /* ─ Form-control kit ─
+         * One look for every native control in admin without touching each
+         * call-site. The !important image/padding declarations intentionally
+         * beat the inline background/padding shorthands legacy selects carry
+         * (author !important > inline non-important in the cascade). */
+        .adm-main select {
+          appearance: none !important;
+          -webkit-appearance: none !important;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+          background-repeat: no-repeat !important;
+          background-position: right 9px center !important;
+          background-size: 13px 13px !important;
+          padding-right: 30px !important;
+          cursor: pointer;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+        .adm-main select:hover { border-color: #9ca3af !important; }
+        .adm-main input[type="date"],
+        .adm-main input[type="datetime-local"] { cursor: pointer; }
+        .adm-main input[type="checkbox"],
+        .adm-main input[type="radio"] {
+          accent-color: #C5286A;
+          width: 16px; height: 16px;
+          cursor: pointer;
+        }
+        /* Brand focus ring instead of the browser default on every field. */
+        .adm-main select:focus-visible,
+        .adm-main textarea:focus-visible,
+        .adm-main input:focus-visible:not([type="checkbox"]):not([type="radio"]) {
+          outline: none;
+          border-color: #C5286A !important;
+          box-shadow: 0 0 0 3px rgba(197, 40, 106, 0.13) !important;
+        }
+        .adm-main input[type="checkbox"]:focus-visible,
+        .adm-main input[type="radio"]:focus-visible {
+          outline: 2px solid #C5286A; outline-offset: 2px;
+        }
+        /* Dark bulk-action bars need the light chevron. */
+        .adm-bulk-bar select {
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d1d5db' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") !important;
+        }
+
         /* ─ Responsive table → card-stack utility ─
          * Put .adm-table-cards on a <table>, add data-label="…" on each <td>,
          * and below 768 px the table reflows into one stacked card per row
