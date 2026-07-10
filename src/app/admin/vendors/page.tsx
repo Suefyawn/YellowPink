@@ -3,12 +3,13 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { DeleteButton } from '@/components/admin/DeleteButton';
-import { createVendor, deleteVendor, updateVendor, markSettlementSettled, settleVendorPending } from '@/app/admin/vendor-actions';
+import { createVendor, deleteVendor, markSettlementSettled, settleVendorPending } from '@/app/admin/vendor-actions';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { DotChip } from '@/components/admin/OrderChips';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
+import { VendorTermsEditor } from '@/components/admin/VendorTermsEditor';
 import { fmtDatePK } from '@/lib/dates';
 import type { Vendor, VendorSettlement } from '@/types';
 
@@ -43,7 +44,7 @@ export default async function VendorsPage({
   const admin = supabaseAdmin();
   // vendors / vendor_settlements RLS has no policy, admin reads need service role.
   const [{ data: vendorData }, { data: settlementData }, { data: orphanRows }] = await Promise.all([
-    admin.from('vendors').select('*').order('created_at', { ascending: false }),
+    admin.from('vendors').select('*').order('created_at', { ascending: false }).order('name'),
     admin.from('vendor_settlements').select('*').order('created_at', { ascending: false }).limit(200),
     // Integrity guard: orders that carry a vendor + engine cost but have NO
     // payout row would silently understate the outstanding totals (this
@@ -213,38 +214,7 @@ export default async function VendorsPage({
                       </a>
                     </td>
                     <td data-label="Settlement terms" style={{ padding: '12px 16px' }}>
-                      <form action={updateVendor} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                        <input type="hidden" name="id" value={v.id} />
-                        <input
-                          name="commission_pct" type="number" min={0} max={100} step="0.01"
-                          defaultValue={v.commission_pct ?? ''} placeholder="—"
-                          aria-label={`${v.name} commission %`}
-                          style={{ ...inp, width: 72, padding: '6px 8px' }}
-                        />
-                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>% kept</span>
-                        <select
-                          name="settlement_direction" defaultValue={v.settlement_direction ?? 'we_collect'}
-                          aria-label={`${v.name} settlement direction`}
-                          style={{ ...inp, padding: '6px 8px', fontSize: '0.8125rem' }}
-                        >
-                          <option value="we_collect">We collect</option>
-                          <option value="vendor_collects">Vendor collects</option>
-                        </select>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                          <input type="checkbox" name="self_delivers" defaultChecked={v.self_delivers ?? false} aria-label={`${v.name} delivers directly`} style={{ width: 15, height: 15 }} />
-                          delivers
-                        </label>
-                        <input
-                          name="delivery_fee" type="number" min={0} step="1"
-                          defaultValue={v.delivery_fee ? Number(v.delivery_fee) : ''} placeholder="fee"
-                          aria-label={`${v.name} delivery fee`}
-                          style={{ ...inp, width: 64, padding: '6px 8px' }}
-                        />
-                        <button type="submit" style={{
-                          padding: '6px 12px', background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb',
-                          borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                        }}>Save</button>
-                      </form>
+                      <VendorTermsEditor vendor={v} />
                     </td>
                     <td data-label="Outstanding" style={{ padding: '12px 16px', fontSize: '0.875rem' }}>
                       {outstanding > 0 ? (
@@ -258,10 +228,7 @@ export default async function VendorsPage({
                           {/* One transfer usually clears the whole balance. */}
                           <form action={settleVendorPending}>
                             <input type="hidden" name="vendor_id" value={v.id} />
-                            <button type="submit" style={{
-                              padding: '5px 11px', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
-                              border: '1px solid #e5e7eb', background: 'white', color: '#374151',
-                            }}>
+                            <button type="submit" className="adm-btn adm-btn-secondary" style={{ padding: '4px 11px', fontSize: '0.75rem' }}>
                               Settle all
                             </button>
                           </form>
