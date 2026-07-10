@@ -23,7 +23,7 @@ interface AuditRow {
   created_at: string;
 }
 
-const ROW_LIMIT = 100;
+const ROW_LIMIT = 50;
 
 // Friendly labels for the events the activity triggers + audit helper emit.
 const ACTION_LABELS: Record<string, string> = {
