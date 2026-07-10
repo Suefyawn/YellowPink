@@ -8,6 +8,7 @@
 import { useActionState, useMemo, useRef, useState, startTransition } from 'react';
 import Link from 'next/link';
 import { createManualOrder, type ManualOrderState } from './actions';
+import { EmptyState } from '@/components/admin/EmptyState';
 
 export interface PickerProduct {
   id: string;
@@ -180,9 +181,9 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
         </div>
 
         {lines.length === 0 ? (
-          <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
-            No items yet — search above to add the products the customer asked for.
-          </p>
+          <EmptyState compact icon="layers" title="No items yet">
+            Search above to add the products the customer asked for.
+          </EmptyState>
         ) : (
           <div className="adm-table-scroll" style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>

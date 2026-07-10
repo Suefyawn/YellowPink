@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
+import { EmptyState } from '@/components/admin/EmptyState';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { suggestReviewer, type MatchableReviewer } from '@/lib/reviewer-match';
 import { assignPostReviewer } from '../actions';
@@ -79,7 +80,9 @@ export default async function ReviewerAssignmentsPage({
       <p style={{ margin: '0 0 12px', fontSize: '0.8125rem', color: '#6b7280' }}>{hint}</p>
       <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
         {rows.length === 0 ? (
-          <div style={{ padding: 32, textAlign: 'center', color: '#9ca3af', fontSize: '0.8125rem' }}>Nothing here.</div>
+          <EmptyState compact icon="file" title="No posts in this group">
+            Health posts land here as they&apos;re written — when the reviewer suggestion disagrees with the current byline, this is where you settle it.
+          </EmptyState>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
