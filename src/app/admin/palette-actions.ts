@@ -70,7 +70,7 @@ export async function paletteSearch(query: string): Promise<PaletteHit[]> {
 
   if (session.isOwner || can(session, 'customers.view')) {
     jobs.push(
-      sb.from('profiles')
+      sb.from('customer_profiles')
         .select('id, first_name, last_name, phone')
         .or(`first_name.ilike.${like},last_name.ilike.${like},phone.ilike.${like}`)
         .limit(5)

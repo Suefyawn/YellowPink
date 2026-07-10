@@ -73,6 +73,7 @@ export default async function DashboardPage() {
     { count: openReturnsCount },
     { count: unreadMessageCount },
     { count: pendingReviewCount },
+    { data: codTransitRows },
   ] = await Promise.all([
     admin.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
     // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
@@ -85,10 +86,10 @@ export default async function DashboardPage() {
     // shows the exact count.
     supabase.from('products').select('*').eq('track_inventory', true).lte('stock', 5).order('stock', { ascending: true }).limit(50),
     supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lte('stock', 5),
-    admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
+    admin.from('customer_profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     // Prior-period customer comparison for the trend pill (revenue/orders/
     // sessions trends are computed in the Overview chart from its own series).
-    admin.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
+    admin.from('customer_profiles').select('*', { count: 'exact', head: true }).gte('created_at', sixtyDaysAgo).lt('created_at', thirtyDaysAgo),
     // "Needs attention" counters, surface state that's drifted past the
     // expected SLA so the owner can clear it from the dashboard:
     //  • payment_pending older than 24h (gateway likely never confirmed)
@@ -106,6 +107,10 @@ export default async function DashboardPage() {
       .eq('status', 'new'),
     admin.from('product_reviews').select('*', { count: 'exact', head: true })
       .eq('approved', false),
+    // COD cash pipeline: orders on the road, the cash the courier is
+    // carrying for you right now. The single most-asked number in a
+    // COD-heavy store.
+    admin.from('orders').select('total').eq('status', 'shipped').eq('pay_method', 'cod'),
   ]);
 
   // 180-day daily series for the interactive Overview chart (it shows up to a
@@ -168,9 +173,22 @@ export default async function DashboardPage() {
     acc[s] = kpis.status_counts[s] ?? 0;
     return acc;
   }, {});
-  const topProducts = kpis.top_products.map(p => ({ name: p.name, brand: p.brand, qty: p.qty }));
+  // Thumbnails for the Top Products card — one query for the (max 5) ids.
+  const topIds = kpis.top_products.map(p => p.id).filter(Boolean);
+  const { data: topImgRows } = topIds.length
+    ? await admin.from('products').select('id, image_url').in('id', topIds)
+    : { data: [] };
+  const imgById = new Map(((topImgRows ?? []) as { id: string; image_url: string | null }[]).map(r => [r.id, r.image_url]));
+  const topProducts = kpis.top_products.map(p => ({ id: p.id, name: p.name, brand: p.brand, qty: p.qty, image: imgById.get(p.id) ?? null }));
 
   const ordersToFulfill = (statusCounts.pending ?? 0) + (statusCounts.processing ?? 0);
+  const codInTransit = ((codTransitRows ?? []) as { total: number }[]).reduce((t, o) => t + Number(o.total ?? 0), 0);
+  const codTransitCount = (codTransitRows ?? []).length;
+  // Yesterday's full-day numbers give the always-zero early morning some
+  // context (the delta pill compares same-weekday-last-week; this line is
+  // simply "what did we do yesterday").
+  const yesterday = overviewSeries[overviewSeries.length - 2];
+  const yesterdayAov = yesterday.orders > 0 ? yesterday.revenue / yesterday.orders : 0;
 
   const customerDelta = pctDelta(newCustomerCount ?? 0, prevCustomerCount ?? 0);
 
@@ -217,10 +235,17 @@ export default async function DashboardPage() {
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8 }}>
+      <div className="adm-page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 8 }}>
         <h1 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', margin: 0 }}>
           {greeting}{firstName ? `, ${firstName}` : ''}
         </h1>
+        {/* One-tap starts for the most common jobs; each is permission-gated. */}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {can(session, 'orders.edit') && <Link href="/admin/orders/new" className="adm-btn adm-btn-primary">+ New order</Link>}
+          {can(session, 'products.edit') && <Link href="/admin/products/new" className="adm-btn adm-btn-secondary">Add product</Link>}
+          {can(session, 'coupons') && <Link href="/admin/coupons" className="adm-btn adm-btn-secondary">Coupons</Link>}
+          {can(session, 'blog') && <Link href="/admin/blog/new" className="adm-btn adm-btn-secondary">New post</Link>}
+        </div>
       </div>
       <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: '0 0 24px' }}>
         Here&apos;s what&apos;s happening with your store today.
@@ -242,7 +267,7 @@ export default async function DashboardPage() {
           accent="#10b981"
           delta={pctDelta(today.revenue, lastSameWeekday.revenue) != null ? { pct: pctDelta(today.revenue, lastSameWeekday.revenue)!, goodWhenUp: true, vs: vsLabel } : null}
           spark={spark14(d => d.revenue)}
-          hint={vsLabel}
+          hint={`Yesterday ${fmtPKR(yesterday.revenue)}`}
         />
         <KpiCard
           label="Orders today"
@@ -251,7 +276,7 @@ export default async function DashboardPage() {
           href="/admin/orders?range=1d"
           delta={pctDelta(today.orders, lastSameWeekday.orders) != null ? { pct: pctDelta(today.orders, lastSameWeekday.orders)!, goodWhenUp: true, vs: vsLabel } : null}
           spark={spark14(d => d.orders)}
-          hint={vsLabel}
+          hint={`Yesterday ${fmtInt(yesterday.orders)}`}
         />
         <KpiCard
           label="Avg order value"
@@ -259,7 +284,7 @@ export default async function DashboardPage() {
           accent="#6366f1"
           delta={pctDelta(todayAov, lastAov) != null ? { pct: pctDelta(todayAov, lastAov)!, goodWhenUp: true, vs: vsLabel } : null}
           spark={spark14(d => (d.orders > 0 ? d.revenue / d.orders : 0))}
-          hint={vsLabel}
+          hint={`Yesterday ${fmtPKR(yesterdayAov)}`}
         />
         {sessionDay && (
           <KpiCard
@@ -324,8 +349,8 @@ export default async function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 32 }} className="adm-stat-grid">
         <KpiCard label="Orders to fulfil" value={ordersToFulfill} href="/admin/orders?status=tofulfil" accent="#C5286A"
           hint={ordersToFulfill > 0 ? 'Needs action' : 'All clear'} />
-        <KpiCard label="Low stock items" value={lowStockCount ?? 0} href="/admin/inventory" accent="#f59e0b"
-          hint={(lowStockCount ?? 0) > 0 ? 'Restock soon' : 'Healthy'} />
+        <KpiCard label="COD cash in transit" value={fmtPKR(codInTransit)} href="/admin/orders?status=shipped" accent="#f59e0b"
+          hint={codTransitCount > 0 ? `${codTransitCount} shipped COD order${codTransitCount === 1 ? '' : 's'}` : 'Nothing on the road'} />
         <KpiCard label="New customers · 30d" value={newCustomerCount ?? 0} href="/admin/users" accent="#6366f1"
           delta={customerDelta != null ? { pct: customerDelta, goodWhenUp: true, vs: 'vs prev 30d' } : null} />
       </div>
@@ -392,7 +417,7 @@ export default async function DashboardPage() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#92400e' }}>
-              ⚠ Low Stock Alert ({lowStockProducts.length} item{lowStockProducts.length > 1 ? 's' : ''})
+              ⚠ Low Stock Alert ({lowStockCount ?? lowStockProducts.length} item{(lowStockCount ?? lowStockProducts.length) > 1 ? 's' : ''})
             </h2>
             <Link href="/admin/products" style={{ fontSize: '0.8125rem', color: '#d97706', textDecoration: 'none' }}>
               Manage products →
@@ -459,17 +484,23 @@ export default async function DashboardPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {topProducts.map((p, i) => (
-                <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <Link key={p.id ?? p.name} href={p.id ? `/admin/products/${p.id}` : '/admin/products'} style={{ display: 'flex', alignItems: 'center', gap: 12, textDecoration: 'none' }}>
                   <span style={{
-                    width: 24, height: 24, borderRadius: '50%', background: '#fdf2f8',
+                    width: 20, height: 20, borderRadius: '50%', background: '#fdf2f8',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '0.75rem', fontWeight: 700, color: '#C5286A', flexShrink: 0,
+                    fontSize: '0.6875rem', fontWeight: 700, color: '#C5286A', flexShrink: 0,
                   }}>{i + 1}</span>
+                  {p.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={p.image} alt="" width={36} height={36} style={{ width: 36, height: 36, objectFit: 'cover', borderRadius: 8, border: '1px solid #f3f4f6', flexShrink: 0 }} />
+                  ) : (
+                    <span style={{ width: 36, height: 36, borderRadius: 8, background: '#f9fafb', flexShrink: 0 }} />
+                  )}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.8125rem', color: '#111827', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{brandPlusName(p.brand, p.name)}</div>
                   </div>
                   <span style={{ fontSize: '0.8125rem', color: '#6b7280', fontWeight: 600, flexShrink: 0 }}>{p.qty} sold</span>
-                </div>
+                </Link>
               ))}
             </div>
           )}
