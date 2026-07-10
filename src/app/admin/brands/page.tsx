@@ -205,8 +205,8 @@ export default async function AdminBrandsPage({ searchParams }: { searchParams?:
                       <DotChip label={b.status === 'published' ? 'Published' : 'Draft'} color={b.status === 'published' ? '#15803d' : '#6b7280'} />
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
-                        <Link href={`/admin/brands/${b.id}`} style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}>Edit</Link>
+                      <div className="adm-row-actions" style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'flex-end' }}>
+                        <Link href={`/admin/brands/${b.id}`} className="adm-btn adm-btn-secondary">Edit</Link>
                         {canEdit && <DeleteButton id={b.id} action={deleteBrand} confirmMsg={`Delete the metadata for "${b.name}"? Products keep their brand string and the landing page will fall back to the templated description.`} />}
                       </div>
                     </td>

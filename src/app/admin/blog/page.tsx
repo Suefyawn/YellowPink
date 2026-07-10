@@ -113,11 +113,8 @@ export default async function BlogAdminPage({
                     )}
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <Link href={`/admin/blog/${p.id}`} style={{
-                        padding: '5px 12px', background: '#f3f4f6', color: '#374151',
-                        borderRadius: 6, textDecoration: 'none', fontSize: '0.8125rem', fontWeight: 500,
-                      }}>
+                    <div className="adm-row-actions" style={{ display: 'flex', gap: 8 }}>
+                      <Link href={`/admin/blog/${p.id}`} className="adm-btn adm-btn-secondary">
                         Edit
                       </Link>
                       <DeleteButton

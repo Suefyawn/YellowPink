@@ -187,6 +187,17 @@ export function AdminShell({
         .adm-btn-danger { background: #fff; color: #b91c1c; border-color: #fca5a5; }
         .adm-btn-danger:not(:disabled):hover { background: #b91c1c; color: #fff; border-color: #b91c1c; }
 
+        /* ─ Hover-reveal row actions ─
+         * Mark a row's action cluster with .adm-row-actions: it fades in on
+         * row hover or keyboard focus, so 20-row tables don't render 40+
+         * always-on buttons. Desktop fine-pointer only — touch devices and
+         * the mobile card layout keep actions always visible. */
+        @media (hover: hover) and (pointer: fine) {
+          .adm-main tbody tr .adm-row-actions { opacity: 0; transition: opacity 0.12s ease; }
+          .adm-main tbody tr:hover .adm-row-actions,
+          .adm-main tbody tr:focus-within .adm-row-actions { opacity: 1; }
+        }
+
         /* ─ Responsive table → card-stack utility ─
          * Put .adm-table-cards on a <table>, add data-label="…" on each <td>,
          * and below 768 px the table reflows into one stacked card per row
