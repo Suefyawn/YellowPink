@@ -7,6 +7,7 @@ import { bulkUpdateOrderStatus } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
 import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 import { paymentState, fulfilmentState, DotChip, itemCount } from '@/components/admin/OrderChips';
+import { OrderPeekDrawer } from '@/components/admin/OrderPeekDrawer';
 import { SortHeader } from '@/components/admin/SortHeader';
 import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import type { Order, OrderStatus } from '@/types';
@@ -98,6 +99,8 @@ function CourierChip({ status }: { status: string | undefined }) {
 
 export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; courierStatus?: Record<string, string> }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Quick-view drawer: peek at an order without leaving the list.
+  const [peek, setPeek] = useState<Order | null>(null);
   const [pending, startTransition] = useTransition();
   const toast = useToast();
   const router = useRouter();
@@ -243,13 +246,30 @@ export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; c
                   <CourierChip status={courierStatus[o.id!]} />
                 </td>
                 <td style={{ padding: '10px 16px', fontSize: '0.8125rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                  {itemCount(o)} item{itemCount(o) !== 1 ? 's' : ''}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                    {itemCount(o)} item{itemCount(o) !== 1 ? 's' : ''}
+                    <button
+                      type="button"
+                      className="adm-row-actions adm-btn adm-btn-secondary"
+                      onClick={() => setPeek(o)}
+                      title={`Quick view ${o.order_number}`}
+                      style={{ padding: '3px 8px' }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                      Peek
+                    </button>
+                  </span>
                 </td>
               </tr>
             );
           })}
         </tbody>
       </table>
+
+      {peek && <OrderPeekDrawer order={peek} onClose={() => setPeek(null)} />}
 
       {/* ── Mobile: swipe cards. Swipe a card left to reveal quick status
            actions; the card itself still links to the order detail. ── */}
