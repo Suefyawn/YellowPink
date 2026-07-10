@@ -210,7 +210,7 @@ export default async function ActivityLogPage({
             {search || actor !== 'all' || range ? 'No activity matches this filter.' : 'No activity yet.'}
           </div>
         ) : (
-          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+          <table className="adm-table-cards adm-cards-dense" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['When', 'Actor', 'Event', 'Entity', 'Details'].map(h => (

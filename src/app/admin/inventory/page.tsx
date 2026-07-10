@@ -247,7 +247,7 @@ export default async function InventoryPage({
           </div>
         ) : (
           <div style={{ maxHeight: 440, overflowY: 'auto' }}>
-            <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <table className="adm-table-cards adm-cards-dense" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                   {['Product', 'Stock', 'Status', ''].map(h => (
@@ -341,7 +341,7 @@ export default async function InventoryPage({
         {rows.length === 0 ? (
           <div style={{ padding: 60, textAlign: 'center', color: '#9ca3af' }}>No stock movements yet.</div>
         ) : (
-          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+          <table className="adm-table-cards adm-cards-dense" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
             <thead>
               <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
                 {['When','Product','Δ','Balance','Reason','Order','Actor','Note'].map(h => (
