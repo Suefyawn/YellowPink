@@ -44,7 +44,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // headers flush and the response is a real 404, while the branded
   // not-found UI still renders via app/not-found.tsx. PDPs are pre-rendered
   // via generateStaticParams, so the skeleton was rarely seen anyway.
-  if (!product) notFound();
+  // Honour a manual redirect first (admin Broken links → Add redirect): the
+  // page body's redirectIfMapped never runs when metadata 404s before it.
+  if (!product) { await redirectIfMapped(`/product/${slug}`); notFound(); }
   // Use the dedupe-aware composer so WP imports that already prefix the
   // brand inside `name` don't render "Kiko Milano Kiko Milano …" in titles.
   const displayName = brandPlusName(product.brand, product.name);
