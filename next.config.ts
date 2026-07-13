@@ -41,10 +41,12 @@ const nextConfig: NextConfig = {
     // Vercel's Image Optimization (the /_next/image transformer) is metered;
     // on the free plan we exhausted the monthly quota, after which it 402s and
     // images render blank. Instead of serving originals un-optimised, we route
-    // every <Image> through a custom loader (src/lib/image-loader.ts) that
-    // proxies images.weserv.nl — a free CDN that resizes to the requested
-    // width and re-encodes to WebP, with no Vercel quota and no Supabase plan
-    // change. deviceSizes/imageSizes still drive the responsive srcSet widths.
+    // every <Image> through a custom loader (src/lib/image-loader.ts) to the
+    // same-origin /img route (src/app/img/route.ts), which resizes via
+    // images.weserv.nl SERVER-side. Same free resizing, but the URLs in the
+    // HTML are ours — weserv's robots.txt blocks crawlers, and while the site
+    // linked weserv URLs directly Google had zero indexable images (no SERP
+    // thumbnails). deviceSizes/imageSizes still drive the srcSet widths.
     loader: 'custom',
     loaderFile: './src/lib/image-loader.ts',
     // Tight breakpoint set so we don't request dozens of derivatives per
