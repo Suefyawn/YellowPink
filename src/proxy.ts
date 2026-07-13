@@ -71,6 +71,7 @@ function isOwnedPath(pathname: string): boolean {
     pathname.startsWith('/brand/') ||
     pathname.startsWith('/tag/') ||
     pathname.startsWith('/collection/') ||
+    pathname === '/img' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
     pathname === '/favicon.ico' ||
