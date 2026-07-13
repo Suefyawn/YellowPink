@@ -17,15 +17,23 @@ import { NextRequest, NextResponse } from 'next/server';
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://www.yellowpink.pk').replace(/\/$/, '');
 
+const hostOf = (u: string | undefined): string | null => {
+  try { return u ? new URL(u).hostname : null; } catch { return null; }
+};
+
 // Every host that appears in catalogue/blog image URLs (verified against
 // production data): our own domain, Supabase storage, and the brand Shopify
-// CDNs the galleries hotlink (task: multi-image galleries).
-const ALLOWED_HOSTS = new Set([
-  'www.yellowpink.pk',
-  'yellowpink.pk',
-  'cngsjtthiexcfpjpcpsg.supabase.co',
-  'cdn.shopify.com',
-]);
+// CDNs the galleries hotlink. The site + Supabase hosts derive from env so
+// local/preview stacks (different Supabase URL) work without edits.
+const ALLOWED_HOSTS = new Set(
+  [
+    'www.yellowpink.pk',
+    'yellowpink.pk',
+    'cdn.shopify.com',
+    hostOf(SITE),
+    hostOf(process.env.NEXT_PUBLIC_SUPABASE_URL),
+  ].filter((h): h is string => Boolean(h)),
+);
 
 // Mirror next.config deviceSizes/imageSizes bounds.
 const MIN_W = 16;
