@@ -118,13 +118,20 @@ export function isHealthCategory(category: string | null | undefined): boolean {
   return HEALTH_BLOG_CATEGORIES.has(category.trim().toLowerCase());
 }
 
-/** Canonical href for a category landing page. Built with URLSearchParams
- *  (space -> "+", "'" -> "%27") so every internal link is byte-identical to
- *  the shop page's self-canonical and the sitemap entry. Using
- *  encodeURIComponent here instead ("%20"/raw "'") makes internal links point
- *  at a non-canonical URL variant, which Google then has to collapse. */
+/** URL slug for a leaf category. "Lip & Cheek Tints" → "lip-cheek-tints". */
+export function categorySlug(category: string): string {
+  return category.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/** Canonical href for a category landing page. Leaf categories live at the
+ *  path route /category/<slug> — a clean, crawlable, ISR-cached URL (the old
+ *  /shop?category= parameter pages were fully dynamic, near-unlinked
+ *  internally, and normalised poorly in search). A taxon label still points
+ *  at its /shop?taxon= landing page. */
 export function categoryHref(category: string): string {
-  return `/shop?${new URLSearchParams({ category }).toString()}`;
+  const taxon = findTaxon(category);
+  if (taxon) return `/shop?taxon=${taxon.key}`;
+  return `/category/${categorySlug(category)}`;
 }
 
 // Richer on-page intro copy for the wellness category landing pages, these
@@ -257,15 +264,12 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 /** Every fine-grained leaf category, flattened across all taxons. */
 export const ALL_CATEGORIES: readonly string[] = TAXONS.flatMap(t => t.categories);
 
-const slugifyCategory = (s: string) =>
-  s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
 // Leaf category lookup keyed by both the lower-cased label and its slug
 // ("combo-packs"), so either URL form resolves to the canonical label.
 const CATEGORY_BY_KEY: Record<string, string> = Object.fromEntries(
   ALL_CATEGORIES.flatMap(c => [
     [c.toLowerCase(), c] as [string, string],
-    [slugifyCategory(c), c] as [string, string],
+    [categorySlug(c), c] as [string, string],
   ]),
 );
 

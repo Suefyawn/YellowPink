@@ -71,6 +71,10 @@ function isOwnedPath(pathname: string): boolean {
     pathname.startsWith('/brand/') ||
     pathname.startsWith('/tag/') ||
     pathname.startsWith('/collection/') ||
+    // Leaf-category landing pages. Must be owned or the legacy WordPress
+    // pattern rules would hijack them (WP blogs also used /category/<slug>;
+    // the route's own fallback handles unknown slugs sensibly).
+    pathname.startsWith('/category/') ||
     pathname === '/img' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
@@ -248,10 +252,11 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(new URL(to + suffix, request.url), 301);
     }
     // Fallback: any /product-category/<slug> not in the redirects table still
-    // lands on the shop category filter rather than 404.
+    // lands on the category landing route rather than 404 (the route itself
+    // resolves the slug: real leaf → landing page, unknown → search fallback).
     const pc = pathname.match(/^\/product-category\/([^/]+)\/?$/);
     if (pc) {
-      return NextResponse.redirect(new URL(`/shop?category=${encodeURIComponent(pc[1])}`, request.url), 301);
+      return NextResponse.redirect(new URL(`/category/${encodeURIComponent(pc[1])}`, request.url), 301);
     }
   }
 
@@ -285,15 +290,13 @@ function wpPatternRedirect(pathname: string, params: URLSearchParams): string | 
   const blogPage = pathname.match(/^\/blog\/page\/(\d+)\/?$/);
   if (blogPage) return `/blog?page=${blogPage[1]}`;
 
-  // /category/<slug>/ → /shop?category=<slug> (legacy WordPress blog/category
-  // URLs). NOTE: /brand/<slug> is NOT handled here any more, it's a real Next
-  // route (the brand archive page), so it's listed in isOwnedPath above and
-  // never reaches this function. /product-category/<slug> is also deliberately
-  // excluded, those old WordPress slugs don't match the new taxonomy (e.g.
-  // bone-health ≠ bone-joint), so they're resolved via the per-slug `redirects`
-  // table, with a slug-passthrough fallback in the proxy for anything unmapped.
-  const cat = pathname.match(/^\/category\/([^/]+)\/?$/);
-  if (cat) return `/shop?category=${encodeURIComponent(cat[1])}`;
+  // NOTE: /category/<slug> is NOT handled here any more — it's a real Next
+  // route (the leaf-category landing page), listed in isOwnedPath above, and
+  // the route itself resolves legacy WordPress blog-category slugs (real leaf
+  // → landing, unknown → manual mapping, then shop-search fallback).
+  // /brand/<slug> likewise. /product-category/<slug> is resolved via the
+  // per-slug `redirects` table, with a /category/<slug> passthrough fallback
+  // in the proxy for anything unmapped.
 
   // /product-tag/<slug>/… → /tag/<slug>. There's no /product-tag route (it
   // always 404s), so funnel every legacy WP product-tag URL, including the

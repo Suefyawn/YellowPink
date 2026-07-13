@@ -6,7 +6,7 @@ import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { track } from '@/lib/analytics';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
-import { TAXONS, findTaxon, taxonForCategory, canonicalCategory, CATEGORY_DESCRIPTIONS, CATEGORY_INTRO } from '@/lib/category-taxonomy';
+import { TAXONS, findTaxon, taxonForCategory, canonicalCategory, categorySlug, CATEGORY_DESCRIPTIONS, CATEGORY_INTRO } from '@/lib/category-taxonomy';
 import type { Product, ProductAttribute, AttributeValue } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -357,6 +357,24 @@ export function CollectionPage({
   const shopUrlFor = useCallback((pageN: number) => {
     const sp = new URLSearchParams();
     if (q.trim()) sp.set('q', q.trim());
+    // A pure leaf-category view (no search, no facet filters) lives at the
+    // /category/<slug> path route — writing the /shop?category= form here
+    // would immediately 308 back to the path URL (server redirect in
+    // shop/page.tsx), a wasted round-trip on every tab click. Mirror the
+    // server's rule: leaf + only sort/page → path URL; anything with extra
+    // filters stays on /shop (the category page has no facet UI).
+    const hasShopOnlyFilters =
+      q.trim() !== '' || selectedBrands.size > 0 || selectedTags.size > 0 ||
+      selectedValueIds.size > 0 || priceMin !== '' || priceMax !== '' ||
+      inStockOnly || onSaleOnly || featuredOnly || bestsellerOnly;
+    const leaf = activeSubcategory
+      ?? (activeCategory && activeCategory !== 'All' && !findTaxon(activeCategory) ? activeCategory : null);
+    if (leaf && !hasShopOnlyFilters) {
+      if (sortBy !== 'featured') sp.set('sort', sortBy);
+      if (pageN !== 1) sp.set('page', String(pageN));
+      const qs2 = sp.toString();
+      return `/category/${categorySlug(canonicalCategory(leaf) ?? leaf)}${qs2 ? `?${qs2}` : ''}`;
+    }
     // Use `category=` / `subcategory=` (matches header nav + sitemap +
     // breadcrumb canonical URLs, see audit SEV-2 on cat/category mismatch).
     if (activeCategory && activeCategory !== 'All') sp.set('category', activeCategory);

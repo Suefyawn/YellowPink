@@ -7,7 +7,7 @@ import type { MetadataRoute } from 'next';
 import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
 import { brandSlug } from '@/lib/brands';
-import { canonicalCategory, findTaxon } from '@/lib/category-taxonomy';
+import { canonicalCategory, categoryHref, findTaxon } from '@/lib/category-taxonomy';
 
 // Regenerate hourly so posts/products added via the DB, the blog API or the
 // admin (none of which trigger a deploy) appear in the sitemap within an hour.
@@ -135,13 +135,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly' as const,
       priority: 0.7,
     })),
+    // Leaf categories live at the /category/<slug> path routes (ISR-cached,
+    // crawlable). categoryHref() is the single source of the URL shape, the
+    // same helper every internal link uses.
     ...Array.from(categoryLabels).map(cat => ({
-      // Build the query string exactly as the shop page's self-canonical does
-      // (URLSearchParams → space "+", "'" "%27"). Using encodeURIComponent here
-      // produced "%20"/raw "'", which differs from the canonical, so GSC flagged
-      // every multi-word category ("Women's Health", "Face Makeup", …) as
-      // "Alternate page with proper canonical tag", the sitemap "errors".
-      url: `${SITE_URL}/shop?${new URLSearchParams({ category: cat }).toString()}`,
+      url: absoluteUrl(categoryHref(cat)),
       changeFrequency: 'weekly' as const,
       priority: 0.7,
     })),
