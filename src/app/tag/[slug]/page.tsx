@@ -2,7 +2,7 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
@@ -11,7 +11,7 @@ import { redirectIfMapped } from '@/lib/redirects';
 import type { Product } from '@/types';
 
 // Resolve a tag slug → { name, productIds }. Returns null when the tag
-// doesn't exist so the route can 404 cleanly.
+// doesn't exist so the route can fall through to shop search.
 async function loadTag(slug: string): Promise<{ name: string; productIds: Set<string> } | null> {
   if (isDemo) return null;
   const { data: tag } = await supabase.from('product_tags').select('id, name').eq('slug', slug).maybeSingle();
@@ -24,11 +24,18 @@ async function loadTag(slug: string): Promise<{ name: string; productIds: Set<st
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const tag = await loadTag(slug);
-  // Unknown tag → 404 HERE, in metadata: with streaming, a notFound() thrown
-  // only in the page body lands after the 200 status has been committed, so
-  // dead tags were soft-404ing (HTTP 200 with a 404 body). Honour a manual
-  // redirect first — same order as the page body.
-  if (!tag) { await redirectIfMapped(`/tag/${slug}`); notFound(); }
+  // Unknown tag → resolve HERE, in metadata: with streaming, anything thrown
+  // only in the page body lands after the 200 status has been committed.
+  // Order: a manual redirect mapping wins; otherwise fall through to shop
+  // search for the tag's words. A tag IS a keyword, so search is the natural
+  // successor page for the long tail of dead WordPress-era tag URLs bots keep
+  // re-crawling — the visitor gets matching products instead of a 404, and
+  // the admin Broken-links queue stops accumulating them. /shop?q= is
+  // noindex, so the old thin tag URLs drop out of Google either way.
+  if (!tag) {
+    await redirectIfMapped(`/tag/${slug}`);
+    permanentRedirect(`/shop?q=${encodeURIComponent(slug.replace(/-/g, ' '))}`);
+  }
   // One representative packshot for the social card (single lightweight query
   // over just this tag's products) rather than the generic branded fallback.
   let ogImage: string | undefined;
@@ -60,7 +67,11 @@ export default async function TagPage({ params }: { params: Promise<{ slug: stri
   const [tag, products] = await Promise.all([loadTag(slug), getProducts()]);
   // Legacy WP taxonomy (incl. /product-tag/* funnelled here by the proxy) often
   // has no live tag, honour a manual redirect before 404ing.
-  if (!tag) { await redirectIfMapped(`/tag/${slug}`); notFound(); }
+  if (!tag) {
+    // Kept in sync with generateMetadata (which resolves first at runtime).
+    await redirectIfMapped(`/tag/${slug}`);
+    permanentRedirect(`/shop?q=${encodeURIComponent(slug.replace(/-/g, ' '))}`);
+  }
 
   const list = products.filter(p => tag.productIds.has(p.id));
   const breadcrumb = [
