@@ -179,9 +179,13 @@ export function ContactChannels({
             {socials.map(s => (
               <a
                 key={s.key}
-                href={s.href}
+                // WhatsApp routes through the robots-blocked /go/whatsapp
+                // redirect (same number resolution) — wa.me rate-limits
+                // crawlers with 429s, which audits read as a broken external
+                // link. Same treatment as the footer social row.
+                href={s.key === 'social_whatsapp' ? '/go/whatsapp?src=contact-social' : s.href}
                 target="_blank"
-                rel="noopener noreferrer"
+                rel={s.key === 'social_whatsapp' ? 'nofollow noopener noreferrer' : 'noopener noreferrer'}
                 aria-label={`Yellow Pink on ${s.label}`}
                 title={s.label}
                 className="contact-social"

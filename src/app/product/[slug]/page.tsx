@@ -180,6 +180,22 @@ async function loadVariantData(productId: string): Promise<{
   return { variants: variantsWithOptions, attributes };
 }
 
+// This product's tags → crawlable "Tagged:" chips on the PDP. Tag archive
+// pages (/tag/[slug]) are in the sitemap but the shop's Tags facet is
+// client-side buttons, so without these links they'd have zero internal
+// links (Semrush "orphaned sitemap page").
+async function loadProductTags(productId: string): Promise<{ slug: string; name: string }[]> {
+  if (isDemo) return [];
+  const { data } = await supabase
+    .from('product_tag_map')
+    .select('tag:product_tags(slug, name)')
+    .eq('product_id', productId);
+  return ((data ?? []) as Array<{ tag: { slug: string; name: string } | { slug: string; name: string }[] | null }>)
+    .map(r => (Array.isArray(r.tag) ? r.tag[0] : r.tag))
+    .filter((t): t is { slug: string; name: string } => Boolean(t))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 async function loadGallery(productId: string): Promise<ProductImage[]> {
   if (isDemo) return [];
   const { data } = await supabase
@@ -275,7 +291,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Surfaced on the review form to actually drive review volume → ★ snippets.
   const reviewPoints = Math.max(0, Number(siteSettings.loyalty_review_points ?? '25') || 0);
 
-  const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts] = await Promise.all([
+  const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts, productTags] = await Promise.all([
     isDemo
       ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>> })
       : supabase
@@ -291,6 +307,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getProductsByBrand(product.brand, 12),
     getProductsByTaxon(product.category, 12),
     getPostsLinkingProduct(product.slug),
+    loadProductTags(product.id),
   ]);
 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>[];
@@ -351,6 +368,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         gallery={gallery}
         estimatedDays={estimatedDays}
         pointsPerPkr={pointsPerPkr}
+        tags={productTags}
       />
       {/* Keyed like PDPPage so a product→product navigation re-seeds the
           bundle's checkbox state for the new product. Prefixed: PDPPage above

@@ -49,6 +49,10 @@ interface Props {
   /** Loyalty points earned per PKR spent (site setting). 0 hides the
    *  "earn points" nudge. */
   pointsPerPkr?: number;
+  /** This product's tags. Rendered as crawlable links to /tag/<slug> — the
+   *  tag archive pages otherwise exist only in the sitemap (the shop's Tags
+   *  facet is client-side buttons), which audits flag as orphaned pages. */
+  tags?: { slug: string; name: string }[];
 }
 
 // ─── Variant picker ─────────────────────────────────────────────────────────
@@ -310,7 +314,7 @@ function Gallery({
 }
 
 // ─── PDPPage ───────────────────────────────────────────────────────────────
-export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], estimatedDays = null, pointsPerPkr = 0 }: Props) {
+export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], estimatedDays = null, pointsPerPkr = 0, tags = [] }: Props) {
   const [qty, setQty] = useState(1);
   const [addedFlash, setAddedFlash] = useState(false);
   // Sticky mobile buy-bar: shown once the in-page buy panel scrolls out of
@@ -879,6 +883,30 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 <div className="body-text" style={{ color: 'var(--ink-700)', paddingBottom: 16, whiteSpace: 'pre-wrap' }}>{sec.content}</div>
               </details>
             ))}
+
+            {/* Tag chips — real <a> links so the /tag/<slug> archive pages get
+                crawlable internal links (the shop's Tags facet is client-side
+                buttons, so without these the tag pages live only in the
+                sitemap). Mirrors the brand → /brand/<slug> link above. */}
+            {tags.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginTop: 20 }}>
+                <span className="small-text" style={{ color: 'var(--ink-500, #6b7280)' }}>Tagged:</span>
+                {tags.map(t => (
+                  <a
+                    key={t.slug}
+                    href={`/tag/${t.slug}`}
+                    className="small-text"
+                    style={{
+                      color: 'var(--ink-700)', textDecoration: 'none',
+                      border: '1px solid var(--line)', borderRadius: 999,
+                      padding: '3px 12px', background: 'var(--paper2, #faf6ee)',
+                    }}
+                  >
+                    {t.name}
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
