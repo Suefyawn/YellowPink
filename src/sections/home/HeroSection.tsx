@@ -160,8 +160,21 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
                         // nothing here. Grayscale by default, full colour on hover, a
                         // common "as-stocked-by" treatment that reads as curated
                         // rather than a wall of clashing brand colours.
+                        // Lazy: these are decorative below-the-headline trust
+                        // marks — eager plain <img> in the initial HTML made
+                        // the framework emit a head <link rel="preload"> for
+                        // every logo, competing with the real LCP for
+                        // bandwidth. Remote logo URLs route through the
+                        // same-origin /img proxy like all other imagery.
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={b.logoUrl} alt={b.name} title={b.name} className="hero-brand-logo" />
+                        <img
+                          src={/^https?:\/\//.test(b.logoUrl) ? `/img?src=${encodeURIComponent(b.logoUrl)}&w=184&q=75` : b.logoUrl}
+                          alt={b.name}
+                          title={b.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="hero-brand-logo"
+                        />
                       ) : (
                         <span className="hero-brand-text">{b.name}</span>
                       )}
@@ -179,11 +192,13 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
               src={s.imageUrl}
               alt="Yellow Pink, Beauty & Wellness"
               fill
-              // Hero shot is the LCP, mark it `priority` so Next emits a
-              // <link rel="preload"> and skips lazy-loading. `sizes`
-              // matches the grid: 90vw on phones (single column), 45vw on
-              // desktop (right column of a 1.1fr/0.9fr split).
-              priority
+              // Hero shot is the LCP, `preload` (this fork's replacement for
+              // the deprecated `priority`) emits a <link rel="preload">;
+              // eager + fetchpriority make the browser fetch it first.
+              // `sizes` matches the grid: 90vw on phones (single column),
+              // 45vw on desktop (right column of a 1.1fr/0.9fr split).
+              preload
+              loading="eager"
               fetchPriority="high"
               sizes="(max-width: 900px) 100vw, 45vw"
               onError={() => setImgFailed(true)}

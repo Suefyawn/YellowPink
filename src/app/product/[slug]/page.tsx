@@ -24,9 +24,8 @@ import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
 import { FromTheBlog } from '@/components/pdp/FromTheBlog';
-import { pageMeta, jsonLd, productLd, breadcrumbLd, faqLd, truncateOnWord } from '@/lib/seo';
+import { pageMeta, jsonLd, productLd, breadcrumbLd, truncateOnWord } from '@/lib/seo';
 import { parseCommerceConfig } from '@/lib/commerce';
-import { effectiveProductFaq } from '@/lib/product-faq';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { isEnabled } from '@/lib/flags';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
@@ -337,7 +336,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           freeShippingEnabled: commerce.freeShippingEnabled,
           freeShippingThreshold: commerce.freeShippingThreshold,
           defaultShippingRate: commerce.defaultShippingRate,
-        })) }}
+        }, gallery.map(g => g.url))) }}
       />
       <script
         type="application/ld+json"
@@ -346,15 +345,11 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         }}
       />
       <Breadcrumbs items={crumbs} />
-      {/* FAQPage schema for rich-result eligibility. Uses the admin-authored
-          FAQ when present, otherwise the store-fact fallback, so every PDP is
-          rich-result eligible. */}
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: jsonLd(faqLd(effectiveProductFaq(product.faq, { estimatedDays }).map(f => ({ question: f.q, answer: f.a })))),
-        }}
-      />
+      {/* No FAQPage JSON-LD here (the visible FAQ section below stays):
+          Google restricted FAQ rich results to authoritative gov/health
+          sites in Aug 2023, so the markup could never render anything for a
+          store — and the store-fact fallback made it identical boilerplate
+          across most PDPs, diluting page uniqueness for no possible gain. */}
       {/* Keyed on the product id so a related-product click (product→product
           navigation, which otherwise reuses this client component) remounts
           PDPPage, resetting the variant picker and quantity to the new

@@ -53,7 +53,12 @@ interface PageRow {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
+  // NOTE: static/derived URLs (home, /shop, categories, brands, tags,
+  // collections) deliberately carry NO lastModified. The route regenerates
+  // hourly, so stamping them with `new Date()` produced a provably-false
+  // "modified just now" on every fetch — Google documents that it learns to
+  // distrust (and then ignores) lastmod from such sitemaps, which would also
+  // devalue the REAL dates on products and blog posts below.
 
   let products: ProductRow[] = [];
   let posts: PostRow[] = [];
@@ -100,7 +105,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticUrls: MetadataRoute.Sitemap = STATIC_ROUTES.map(r => ({
     url: absoluteUrl(r.path),
-    lastModified: now,
     changeFrequency: r.freq,
     priority: r.priority,
   }));
@@ -128,7 +132,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // index targets with bespoke TAXON_SEO titles/descriptions.
     ...Array.from(taxonKeys).map(key => ({
       url: `${SITE_URL}/shop?${new URLSearchParams({ taxon: key }).toString()}`,
-      lastModified: now,
       changeFrequency: 'weekly' as const,
       priority: 0.7,
     })),
@@ -139,7 +142,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // every multi-word category ("Women's Health", "Face Makeup", …) as
       // "Alternate page with proper canonical tag", the sitemap "errors".
       url: `${SITE_URL}/shop?${new URLSearchParams({ category: cat }).toString()}`,
-      lastModified: now,
       changeFrequency: 'weekly' as const,
       priority: 0.7,
     })),
@@ -149,7 +151,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const brands = Array.from(new Set(products.map(p => p.brand).filter((b): b is string => Boolean(b))));
   const brandUrls: MetadataRoute.Sitemap = brands.map(brand => ({
     url: absoluteUrl(`/brand/${brandSlug(brand)}`),
-    lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.6,
   }));
@@ -157,7 +158,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Tag archive pages (/tag/[slug]).
   const tagUrls: MetadataRoute.Sitemap = tagSlugs.map(slug => ({
     url: absoluteUrl(`/tag/${slug}`),
-    lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.5,
   }));
@@ -165,7 +165,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Collection landing pages (/collection/[slug]).
   const collectionUrls: MetadataRoute.Sitemap = collectionSlugs.map(slug => ({
     url: absoluteUrl(`/collection/${slug}`),
-    lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.7,
   }));
@@ -174,7 +173,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // expertise nodes, worth crawling/indexing.
   const reviewerUrls: MetadataRoute.Sitemap = reviewerSlugs.map(slug => ({
     url: absoluteUrl(`/medical-review-board/${slug}`),
-    lastModified: now,
     changeFrequency: 'monthly',
     priority: 0.4,
   }));
@@ -189,7 +187,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const last = p.updated_at ?? p.created_at;
     return {
       url: absoluteUrl(`/product/${p.slug}`),
-      lastModified: last ? new Date(last) : now,
+      lastModified: last ? new Date(last) : undefined,
       changeFrequency: 'weekly',
       priority: 0.8,
       images: p.image_url ? [absImage(p.image_url)] : undefined,
@@ -200,7 +198,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const last = p.updated_at ?? p.date;
     return {
       url: absoluteUrl(`/blog/${p.slug}`),
-      lastModified: last ? new Date(last) : now,
+      lastModified: last ? new Date(last) : undefined,
       changeFrequency: 'monthly',
       priority: 0.6,
       images: p.image_url ? [absImage(p.image_url)] : undefined,
@@ -211,7 +209,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const last = p.updated_at ?? p.created_at;
     return {
       url: absoluteUrl(`/page/${p.slug}`),
-      lastModified: last ? new Date(last) : now,
+      lastModified: last ? new Date(last) : undefined,
       changeFrequency: 'monthly',
       priority: 0.5,
     };

@@ -252,19 +252,13 @@ export function websiteLd() {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     '@id': absoluteUrl('/#website'),
+    // `name` powers the site-name display in Google results — keep this node.
+    // A SearchAction/sitelinks-searchbox block used to live here; Google
+    // removed the sitelinks search box entirely (late 2024), so the markup
+    // was dead weight and was dropped.
     name: SITE_NAME,
     url: SITE_URL,
     publisher: { '@id': ORGANIZATION_ID },
-    potentialAction: {
-      '@type': 'SearchAction',
-      // EntryPoint form, the current schema.org/Google recommendation;
-      // a bare string `target` is the legacy syntax.
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${SITE_URL}/shop?q={search_term_string}`,
-      },
-      'query-input': 'required name=search_term_string',
-    },
   };
 }
 
@@ -279,6 +273,10 @@ export function productLd(
   reviews: ReviewForLd[] = [],
   variants: ProductVariant[] = [],
   shipping?: ShippingLd,
+  /** Additional gallery image URLs. Google's merchant-listing guidance wants
+   *  multiple high-res images per product; the PDP passes its gallery here so
+   *  the markup carries every angle, not just the packshot. */
+  galleryImages: string[] = [],
 ) {
   const ratingCount = reviews.length;
   const avg = ratingCount
@@ -408,8 +406,19 @@ export function productLd(
     '@id': absoluteUrl(`/product/${product.slug}#product`),
     name: `${brandPlusName(product.brand, product.name)}${product.variant ? ` ${product.variant}` : ''}`,
     description: product.description ?? undefined,
-    image: absoluteImageUrl(product.image_url),
-    sku: product.id,
+    // Array of every product image (packshot first, then gallery, deduped) —
+    // merchant listings want multiple images, and all of these are now
+    // crawlable same-origin/direct URLs.
+    image: (() => {
+      const urls = [product.image_url, ...galleryImages]
+        .map(u => absoluteImageUrl(u))
+        .filter((u): u is string => Boolean(u));
+      const unique = [...new Set(urls)];
+      return unique.length > 1 ? unique : unique[0];
+    })(),
+    // Human-readable, stable identifier (the DB UUID it replaced reads as
+    // noise in Search Console and can't be matched against feed ids).
+    sku: product.slug,
     // Omit `brand` entirely when the product has none, emitting
     // `{ name: null }` is an invalid-markup error. Many imported products
     // (generic/local SKUs) legitimately have no brand.

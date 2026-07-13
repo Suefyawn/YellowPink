@@ -79,8 +79,12 @@ function item(p: FeedProduct, variant?: FeedVariant): string {
 
   const lines = [
     `    <item>`,
-    `      <g:id>${xmlEscape(variant ? variant.id : p.id)}</g:id>`,
-    variant ? `      <g:item_group_id>${xmlEscape(p.id)}</g:item_group_id>` : '',
+    // Human-readable stable ids (slug / slug--sku) so feed rows match the
+    // Product JSON-LD `sku` and read sensibly in Merchant Center diagnostics.
+    // Safe to choose now: the feed has never been submitted, so no id history
+    // exists to preserve.
+    `      <g:id>${xmlEscape(variant ? `${p.slug}--${variant.sku || variant.id}` : p.slug)}</g:id>`,
+    variant ? `      <g:item_group_id>${xmlEscape(p.slug)}</g:item_group_id>` : '',
     `      <g:title>${xmlEscape(title)}</g:title>`,
     `      <g:description>${xmlEscape(description)}</g:description>`,
     `      <g:link>${xmlEscape(link)}</g:link>`,

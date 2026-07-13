@@ -34,8 +34,17 @@ export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES
   const [errored, setErrored] = useState(false);
   // Fade the image in once it decodes so it doesn't "pop" in on top of the
   // placeholder background, a small touch that makes the grid feel calmer.
+  // NEVER for priority images: the fade starts at opacity:0 and only clears
+  // after hydration + onLoad, which pushed the LCP paint of every PDP hero
+  // ~1.3s past the actual pixel arrival (field p75 3.9s). The LCP element
+  // must be visible the moment its bytes decode.
   const [loaded, setLoaded] = useState(false);
-  const fade: React.CSSProperties = { opacity: loaded ? 1 : 0, transition: 'opacity 300ms ease-out' };
+  const fade: React.CSSProperties = priority ? {} : { opacity: loaded ? 1 : 0, transition: 'opacity 300ms ease-out' };
+  // This Next fork deprecates `priority` in favour of `preload`; pair it with
+  // eager loading + fetchpriority so the browser treats it as the LCP image.
+  const lcpProps = priority
+    ? { preload: true, loading: 'eager' as const, fetchPriority: 'high' as const }
+    : {};
 
   if (src && !errored) {
     // Fixed-size mode for thumbnails, Next emits a tight srcSet around
@@ -47,7 +56,7 @@ export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES
           alt={alt}
           width={width}
           height={height}
-          priority={priority}
+          {...lcpProps}
           style={{ objectFit: fit, width: '100%', height: '100%', ...fade, ...style }}
           className={className}
           onLoad={() => setLoaded(true)}
@@ -63,7 +72,7 @@ export function ProductImage({ src, alt, style, className, sizes = DEFAULT_SIZES
           alt={alt}
           fill
           sizes={sizes}
-          priority={priority}
+          {...lcpProps}
           style={{ objectFit: fit, ...fade }}
           onLoad={() => setLoaded(true)}
           onError={() => setErrored(true)}
