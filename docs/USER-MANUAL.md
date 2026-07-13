@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 10 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 14 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -57,7 +57,8 @@ customers and spot where an order is.
 ### 2.1 Browsing the store
 
 - **Home page** — the landing page. It shows a hero banner, curated product
-  rails (featured items, bestsellers, wellness picks), shop-by-category tiles,
+  rails (featured items, bestsellers, wellness picks), shop-by-category tiles
+  plus a "Shop by category" row linking every category in the store,
   the latest blog posts, and trust/press sections. A dedicated **"Beauty starts
   from within"** wellness showcase presents every health concern (Women's
   Health, Immunity, Bone & Joint, and more) as its own card with a live product
@@ -115,6 +116,12 @@ customers and spot where an order is.
   `/shop?tag=viral`). Results are paginated. Product cards show a **Sale** badge
   when discounted and an **"Only N left"** badge when stock is running low (5 or
   fewer remaining, for products whose inventory the store tracks).
+- **Category pages** (`/category/hair-care`, `/category/womens-health`, …) —
+  every product category has its own fast, shareable web address with an intro,
+  the product grid (sort + pagination), a short FAQ, and, for health
+  categories, links to matching buyer guides. Old `/shop?category=…` links
+  redirect here automatically, and picking a category on the Shop page takes
+  the shopper to that category's page.
 - **Search overlay** — the header magnifying glass opens a full-width search
   panel. When the box is empty it shows the shopper's **Recent** searches as
   one-tap chips (the last 6, deduped), then Trending brands and Categories.

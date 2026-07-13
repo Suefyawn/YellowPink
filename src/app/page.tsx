@@ -18,7 +18,8 @@ import { jsonLd, itemListLd, productInStock } from '@/lib/seo';
 import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
 import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 import { buildWellnessShowcase } from '@/lib/wellness-data';
-import { categoryHref } from '@/lib/category-taxonomy';
+import { ALL_CATEGORIES, categoryHref } from '@/lib/category-taxonomy';
+import Link from 'next/link';
 import { resolveBrandLogos } from '@/lib/brands';
 
 // Homepage "Shop by category" tiles, four makeup/skincare + four wellness,
@@ -171,6 +172,36 @@ export default async function HomePage() {
       />
       <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
       <CategoryTiles groups={categoryGroups} />
+      {/* Crawlable link to EVERY leaf category. The 8 image tiles above cover
+          the popular ones; this row completes the set (audit: only 12 of 21
+          category landings had any homepage link, and the homepage carried
+          ~1/3 the internal links of competitor homepages — the strongest page
+          on a low-authority domain must pass PageRank to every landing). */}
+      <section style={{ padding: '0 0 var(--section-gap)' }}>
+        <div className="container">
+          <h2 className="small-text" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--ink-500)', margin: '0 0 14px' }}>
+            Shop by category
+          </h2>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {ALL_CATEGORIES.map(c => (
+              <li key={c}>
+                <Link
+                  href={categoryHref(c)}
+                  className="small-text"
+                  style={{
+                    display: 'inline-block', padding: '7px 14px',
+                    border: '1px solid var(--line)', borderRadius: 999,
+                    color: 'var(--ink-700)', textDecoration: 'none',
+                    background: 'var(--paper2, #faf6ee)',
+                  }}
+                >
+                  {c}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
       <CollectionsSection collections={collections} />
       <RealResults proof={socialProof} />
       <JournalSection posts={blogPosts} />

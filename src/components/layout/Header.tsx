@@ -2,7 +2,7 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import { HeaderShell } from './HeaderShell';
-import type { Taxon } from '@/lib/category-taxonomy';
+import { canonicalCategory, type Taxon } from '@/lib/category-taxonomy';
 
 /** Thin wrapper: the only thing this component does is turn the route
  *  (pathname + search params) into "what's active" answers for HeaderShell.
@@ -36,12 +36,20 @@ export function Header() {
     return true;
   }
 
+  // Leaf-category landings live at /category/<slug>; resolve the slug back
+  // to its canonical label so nav highlighting keeps working there (the old
+  // /shop?category= form still resolves via curCat for filtered views).
+  const pathCat = pathname.startsWith('/category/')
+    ? canonicalCategory(pathname.slice('/category/'.length).split('/')[0])
+    : null;
+  const activeCat = pathCat ?? curCat;
+
   function isTaxonActive(taxon: Taxon): boolean {
-    return searchParams.get('taxon') === taxon.key || (!!curCat && taxon.categories.includes(curCat));
+    return searchParams.get('taxon') === taxon.key || (!!activeCat && taxon.categories.includes(activeCat));
   }
 
   function isCategoryActive(cat: string): boolean {
-    return curCat === cat;
+    return activeCat === cat;
   }
 
   return (

@@ -5,11 +5,12 @@ export const revalidate = 300;
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref, isHealthCategory, taxonForCategory } from '@/lib/category-taxonomy';
+import { canonicalCategory, categorySlug, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref, isHealthCategory, taxonForCategory } from '@/lib/category-taxonomy';
 import { brandSlug } from '@/lib/brands';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
@@ -35,8 +36,41 @@ function landingFaqs(label: string, estimatedDays?: { min: number; max: number }
 }
 import { loadFacetData, loadTagData } from '@/lib/shop-facets';
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; q?: string; brand?: string }> }): Promise<Metadata> {
-  const { category, subcategory, cat, taxon, q, brand } = await searchParams;
+// Params that survive a redirect onto /category/<slug> (CollectionGrid
+// understands ?sort= and ?page=). Anything else (brand/attr/price/…) is a
+// /shop-only filter — those URLs keep serving here and canonicalize instead.
+const CATEGORY_SAFE_PARAMS = ['sort', 'page'] as const;
+
+// A pure leaf-category view of /shop moved to the /category/<slug> path
+// route (crawlable, ISR-cached). Returns the redirect target, or null when
+// this request must keep rendering on /shop (search, brand or facet filters
+// have no UI on the category landing).
+function categoryRedirectTarget(sp: Record<string, string | undefined>): string | null {
+  const leaf = (() => {
+    const viaSub = canonicalCategory(sp.subcategory);
+    if (viaSub && !findTaxon(viaSub)) return viaSub;
+    const raw = sp.category ?? sp.cat;
+    if (findTaxon(raw)) return null; // taxon landings stay at /shop?taxon=
+    const viaCat = canonicalCategory(raw);
+    return viaCat && !findTaxon(viaCat) ? viaCat : null;
+  })();
+  if (!leaf) return null;
+  const blockers = ['q', 'brand', 'tag', 'attr', 'min', 'max', 'stock', 'sale', 'on_sale', 'featured', 'bestseller', 'taxon'];
+  if (blockers.some(k => sp[k])) return null;
+  const carry = new URLSearchParams();
+  for (const k of CATEGORY_SAFE_PARAMS) if (sp[k]) carry.set(k, sp[k]!);
+  const qs = carry.toString();
+  return `/category/${categorySlug(leaf)}${qs ? `?${qs}` : ''}`;
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }): Promise<Metadata> {
+  const sp = await searchParams;
+  const { category, subcategory, cat, taxon, q, brand, page } = sp;
+  // Pure leaf-category views moved to /category/<slug> — 308 before any
+  // metadata is emitted (with streaming, a redirect thrown only in the page
+  // body lands after the 200 status has been committed).
+  const categoryTarget = categoryRedirectTarget(sp);
+  if (categoryTarget) permanentRedirect(categoryTarget);
   // Resolve ?category= (or the legacy ?cat=) to its canonical label, so the
   // slug form (?category=combo-packs) and the label form (?category=Combo
   // Packs) collapse onto ONE title + canonical URL instead of two duplicates.
@@ -91,14 +125,19 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   const brandOnly = Boolean(
     trimmedBrand && !resolvedCategory && !resolvedSubcategory && !resolvedTaxon && !trimmedQ,
   );
-  // A subcategory IS a leaf category that also lives at /shop?category=<leaf>,
-  // so `/shop?category=Wellness&subcategory=Immunity` and `/shop?category=Immunity`
-  // are the same page. Canonicalize the subcategory form onto the leaf-category
-  // URL (drop the parent param) so the two don't compete as duplicates.
+  // Leaf-category views that DIDN'T redirect (they carry /shop-only filters
+  // like ?brand=) canonicalize onto the /category/<slug> path route — the
+  // filter URL keeps working for shoppers, only the indexing hint changes.
+  const leafLabel = resolvedSubcategory ?? resolvedCategory;
   const canonicalParams = new URLSearchParams();
-  if (resolvedSubcategory) canonicalParams.set('category', resolvedSubcategory);
-  else if (resolvedCategory) canonicalParams.set('category', resolvedCategory);
-  else if (resolvedTaxon) canonicalParams.set('taxon', resolvedTaxon.key);
+  if (!leafLabel && resolvedTaxon) canonicalParams.set('taxon', resolvedTaxon.key);
+  // Plain /shop pagination: pages 2+ used to canonicalize to page 1, telling
+  // Google ~127 of 175 products live on "duplicate" pages. Google's
+  // post-rel-prev/next guidance is self-canonical paginated pages.
+  const pageNum = Math.max(1, Number(page ?? '1') || 1);
+  const plainShop = !leafLabel && !resolvedTaxon && !trimmedQ && !trimmedBrand;
+  if (plainShop && pageNum > 1) canonicalParams.set('page', String(pageNum));
+  if (plainShop && pageNum > 1) title = `${title} — Page ${pageNum}`;
   const qs = canonicalParams.toString();
   // Slug from the RAW brand param, not the sanitised `trimmedBrand`: the
   // sanitiser strips apostrophes ("Nature's Bounty" → "Natures Bounty"), which
@@ -107,7 +146,9 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   // matches how /brand/[slug] (and the sitemap) derive the slug.
   const canonicalPath = brandOnly
     ? `/brand/${brandSlug(brand ?? trimmedBrand)}`
-    : `/shop${qs ? `?${qs}` : ''}`;
+    : leafLabel
+      ? categoryHref(leafLabel)
+      : `/shop${qs ? `?${qs}` : ''}`;
 
   // Description: search > subcategory copy > category landing copy > brand
   // line > generic. Every category, subcategory and brand page gets its OWN
@@ -136,14 +177,18 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   });
 }
 
-export default async function ShopPage({ searchParams }: { searchParams: Promise<{ category?: string; subcategory?: string; cat?: string; taxon?: string; on_sale?: string; q?: string; brand?: string; tag?: string; featured?: string; bestseller?: string; page?: string }> }) {
+export default async function ShopPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
+  // Kept in sync with generateMetadata (which resolves first at runtime).
+  const categoryTarget = categoryRedirectTarget(sp);
+  if (categoryTarget) permanentRedirect(categoryTarget);
   const [products, facetData, tagData, estimatedDays] = await Promise.all([
     getProducts(),
     loadFacetData(),
     loadTagData(),
     getDefaultEstimatedDays(),
   ]);
-  const { category, subcategory, cat, taxon, on_sale, q, brand, tag: tagParam, featured, bestseller, page } = await searchParams;
+  const { category, subcategory, cat, taxon, on_sale, q, brand, tag: tagParam, featured, bestseller, page } = sp;
   const searchParamsFeatured = featured === '1';
   const searchParamsBestseller = bestseller === '1';
   // Server-seeded for the same first-render reason as initialBrand:
@@ -151,6 +196,12 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
   // generated route, so a crawler/shopper landing on /shop?page=3 was
   // silently reset to page 1.
   const initialPage = Math.max(1, Number(page ?? '1') || 1);
+  // Out-of-range pages on the plain listing 404 instead of serving a
+  // soft-200 empty grid (audit: /shop?page=9 returned an empty fallback).
+  // Filtered views can't cheaply know their count here, so only the plain
+  // listing gets the hard guard; PAGE_SIZE mirrors CollectionPage's.
+  const plainListing = !category && !cat && !subcategory && !taxon && !q && !brand && !tagParam && !on_sale && !featured && !bestseller;
+  if (plainListing && initialPage > 1 && initialPage > Math.ceil(products.length / 48)) notFound();
 
   // Free-text searches resolve through the SAME pg_trgm search_products RPC
   // the header typeahead uses, previously this page substring-filtered
