@@ -7,7 +7,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
-import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd, productInStock } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { canonicalCategory, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref, isHealthCategory, taxonForCategory } from '@/lib/category-taxonomy';
 import { brandSlug } from '@/lib/brands';
@@ -299,10 +299,10 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         // mobile, where there's no maxWidth to mask it).
         return (
           <section className="container" style={{ paddingTop: 8, paddingBottom: 'var(--section-gap)' }}>
-            <script
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(faqs.map(f => ({ question: f.q, answer: f.a })))) }}
-            />
+            {/* Visible FAQ only — no FAQPage JSON-LD. Google restricted FAQ
+                rich results to authoritative gov/health sites (Aug 2023), and
+                these category questions are templated, so the markup was dead
+                weight that also flagged as site-wide boilerplate in audits. */}
             <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 16px' }}>
               {landingLabel}, frequently asked
             </h2>
