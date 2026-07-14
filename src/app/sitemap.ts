@@ -108,7 +108,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
 
   const staticUrls: MetadataRoute.Sitemap = STATIC_ROUTES.map(r => ({
-    url: absoluteUrl(r.path),
+    // Root as the slashless origin: Next normalizes the page canonical to
+    // the slashless form (not configurable), and sitemap URLs must match
+    // the canonicals byte-for-byte or GSC flags the mismatch.
+    url: r.path === '/' ? SITE_URL : absoluteUrl(r.path),
     changeFrequency: r.freq,
     priority: r.priority,
   }));
