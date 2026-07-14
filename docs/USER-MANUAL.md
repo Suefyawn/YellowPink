@@ -129,7 +129,11 @@ customers and spot where an order is.
 - **Search overlay** — the header magnifying glass opens a full-width search
   panel. When the box is empty it shows the shopper's **Recent** searches as
   one-tap chips (the last 6, deduped), then Trending brands and Categories.
-  Typing brings up live product results.
+  Typing brings up live product results **and matching journal articles**
+  ("From the journal"). If no products match, the panel shows matching
+  articles instead of a dead end — someone searching a brand you don't stock
+  (e.g. *Elevit*) lands on your alternatives guide. The full results page
+  (`/shop?q=…`) shows the same matching articles below the product grid.
 - **Product page** — each product has its images, price (and the crossed-out
   original price if it's on sale), description, ingredients, how-to-use, key
   benefits, FAQs, and its customer star rating. If a product has a **short
@@ -967,6 +971,7 @@ A dated history of user-facing changes, newest first.
 
 ### 14 July 2026
 
+- **Site search now finds your articles too.** The header search and the full results page surface matching journal guides alongside products ("From the journal"), and a search with no product matches shows the relevant guides instead of a dead "No results" screen. First beneficiary: shoppers searching *elevit* now get the Elevit-alternatives guide plus the prenatal products it recommends (via a new search synonym).
 - **Win back lapsed customers over WhatsApp.** New **Admin → Customers → Win-back** page lists every past buyer with a phone number who hasn't ordered in 90+ days. Tune the message template and coupon once, then tap **Open in WhatsApp** on each row — your own WhatsApp opens with a personalised message (name, what they bought last, the coupon, and a shop link that applies the code automatically) ready to send. A shared "messaged" checklist keeps the whole team from double-messaging anyone, and the resulting orders are attributed under **Analytics → Sources**.
 - **Customers can ask questions on product pages.** Every product page now has a **Questions & answers** section under the reviews: shoppers ask with just a name and their question, and nothing shows publicly until staff answer and approve it in the new **Admin → Questions** queue (sidebar badge shows how many are waiting; approving *requires* an answer, and a published Q&A can be unpublished any time). Published Q&As show the question, your answer, the asker's first name and dates — real buyer questions, answered, right where the next buyer is deciding.
 - **The editorial byline now has its own page.** "By Yellow Pink Editorial Team" on blog posts links to a new author page (`/author/yellow-pink-editorial`) with an honest description of how the journal is written and medically reviewed, plus the full list of the team's articles. Old WordPress `/author/…` links resolve sensibly (known author → the page, unknown → a proper 404 you can redirect from Broken links).

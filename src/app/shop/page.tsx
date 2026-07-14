@@ -272,6 +272,19 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       .map(g => ({ slug: g.slug, title: g.title }));
   }
 
+  // Free-text searches also surface matching journal articles in the same
+  // strip. This is what rescues a query like "elevit": zero products match
+  // (we don't stock it), but the journal has a dedicated alternatives guide —
+  // previously the page was a hard dead end.
+  if (q?.trim() && !isDemo) {
+    const { data: postRows } = await supabase.rpc('search_posts' as never, {
+      p_query: q.trim(),
+      p_limit: 3,
+    } as never);
+    landingGuides = ((postRows ?? []) as Array<{ slug: string; title: string }>)
+      .map(g => ({ slug: g.slug, title: g.title }));
+  }
+
   // For a leaf category (not a taxon view), insert the parent taxon crumb so
   // the trail is Home › Shop › <Taxon> › <Leaf> — a deeper, keyword-relevant
   // path that also links up to the taxon landing page.
@@ -380,7 +393,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
       {landingGuides.length > 0 && (
         <section className="container" style={{ paddingBottom: 'var(--section-gap)' }}>
           <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 16px' }}>
-            Guides worth reading
+            {q?.trim() ? <>From the journal, matching &ldquo;{q.trim().replace(/[<>"'&]/g, '').slice(0, 80)}&rdquo;</> : 'Guides worth reading'}
           </h2>
           <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12 }}>
             {landingGuides.map(g => (
