@@ -13,14 +13,17 @@ import { getProducts } from '@/lib/supabase';
 import { NotFoundBeacon } from '@/components/layout/NotFoundBeacon';
 import { ProductTile } from '@/components/ui/ProductTile';
 
-// No robots directive here: Next already injects <meta name="robots"
-// content="noindex"> automatically on not-found renders, and declaring our
-// own produced TWO robots metas on every 404 — a latent footgun if the two
-// ever disagree. The framework's noindex is sufficient.
+// The explicit robots override here is LOAD-BEARING: the root layout sets a
+// site-wide `index, follow` default, and Next also injects its own bare
+// `noindex` meta on not-found renders. Without this override the 404 carried
+// the contradictory pair noindex + index,follow (verified on a preview
+// deploy). With it, the two metas agree on noindex — the duplication is
+// harmless, the agreement is what matters.
 export const metadata: Metadata = {
   title: 'Page not found',
   description:
     'The page you are looking for could not be found. Browse our latest beauty, skincare and wellness products.',
+  robots: { index: false, follow: true },
 };
 
 const POPULAR_LINKS = [
