@@ -38,6 +38,7 @@ export type AdminIconName =
   | 'pen-line'
   | 'shield-check'
   | 'star'
+  | 'help-circle'
   | 'message-circle'
   | 'mail'
   | 'inbox'
@@ -234,6 +235,13 @@ const ICONS: Record<AdminIconName, ReactElement> = {
   ),
   star: (
     <path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z" />
+  ),
+  'help-circle': (
+    <>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </>
   ),
   'message-circle': (
     <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22z" />

@@ -3,7 +3,9 @@ export const revalidate = 600;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getBlogPostBySlug, getBlogPosts, getProducts } from '@/lib/supabase';
+import { getBlogPostBySlug, getBlogPosts, getProducts, getSiteSettings } from '@/lib/supabase';
+import { socialSameAs } from '@/lib/socials';
+import { authorForName } from '@/lib/authors';
 import { redirectIfMapped } from '@/lib/redirects';
 import { type MedicalReviewer } from '@/lib/eeat';
 import { getReviewerById, getActiveReviewers } from '@/lib/reviewers';
@@ -47,10 +49,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function BlogPostRoute({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const [post, allPosts, allProducts] = await Promise.all([
+  const [post, allPosts, allProducts, siteSettings] = await Promise.all([
     getBlogPostBySlug(slug),
     getBlogPosts(),
     getProducts(),
+    getSiteSettings(),
   ]);
   // Unpublished/renamed post? Honour a manual redirect before 404ing.
   if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
@@ -130,7 +133,15 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
     <main className="fade-in">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: jsonLd(articleLd(post, { reviewer })) }}
+        dangerouslySetInnerHTML={{
+          // authorSameAs: only meaningful when the byline is in the AUTHORS
+          // registry (the in-house editorial team → the store's own social
+          // profiles); skipped for unregistered bylines.
+          __html: jsonLd(articleLd(post, {
+            reviewer,
+            authorSameAs: authorForName(post.author) ? socialSameAs(siteSettings) : undefined,
+          })),
+        }}
       />
       <script
         type="application/ld+json"

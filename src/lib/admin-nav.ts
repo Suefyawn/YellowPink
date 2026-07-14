@@ -48,6 +48,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     { href: '/admin/segments',  label: 'Segments',  icon: 'target', permission: 'customers.view' },
     { href: '/admin/messages',  label: 'Messages',  icon: 'message-circle', permission: 'messages' },
     { href: '/admin/reviews',   label: 'Reviews',   icon: 'star', permission: 'reviews' },
+    { href: '/admin/questions', label: 'Questions', icon: 'help-circle', permission: 'reviews' },
   ]},
   { label: 'Marketing', items: [
     { href: '/admin/coupons',   label: 'Coupons',   icon: 'ticket', permission: 'coupons' },

@@ -255,6 +255,18 @@ export const reviewSchema = z.object({
 });
 export type ReviewInput = z.infer<typeof reviewSchema>;
 
+// Product Q&A ask form (PDP). Questions go through the same moderation
+// pipeline as reviews: inserted as status='pending', published only once an
+// admin answers + approves in admin → Questions.
+export const questionSchema = z.object({
+  product_id:  z.string().uuid(),
+  author_name: z.string().trim().min(1, 'Add your name').max(80, 'Name must be 80 characters or fewer'),
+  question:    z.string().trim()
+    .min(10, 'Question must be at least 10 characters')
+    .max(500, 'Question must be 500 characters or fewer'),
+});
+export type QuestionInput = z.infer<typeof questionSchema>;
+
 export const couponSchema = z.object({
   code:       z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]+$/, 'Letters, numbers, hyphens and underscores only').max(40),
   type:       z.enum(['percent','fixed']),
