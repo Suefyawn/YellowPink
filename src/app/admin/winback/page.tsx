@@ -30,7 +30,7 @@ const CAMPAIGN = 'winback-2026-07';
 
 const DEFAULT_TEMPLATE =
   `Hi {name}! It's Yellow Pink 💛 We noticed it's been a while since your last order ({last_product}). ` +
-  `We'd love to have you back — here's {coupon} for 15% off your next order. ` +
+  `We'd love to have you back, so here's {coupon} for 15% off your next order. ` +
   `Browse what's new: {link} (code applies automatically). Reply here if you'd like a recommendation!`;
 
 interface OrderRow {
