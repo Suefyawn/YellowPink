@@ -15,6 +15,14 @@ section, the order/fulfilment workflow, settings, roles, or payment options —
 update `docs/USER-MANUAL.md` in the same change so the manual never drifts from
 the product. Refresh its "Last updated" date when you do.
 
+# Customer-facing copy
+
+Write product descriptions, marketing messages, SEO text and any other
+copy a shopper reads like a person, not a language model. Concretely: no
+em-dashes (use a comma, colon, parenthesis or a new sentence), no "it's
+not just X, it's Y" constructions, no tidy rule-of-three flourishes, no
+"elevate/unleash/discover" openers. Plain, specific, confident sentences.
+
 # Icons
 
 Admin sidebar and storefront chrome use inline SVG icons (lucide-style:

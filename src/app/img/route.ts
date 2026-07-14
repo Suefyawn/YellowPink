@@ -22,18 +22,15 @@ const hostOf = (u: string | undefined): string | null => {
 };
 
 // Every host that appears in catalogue/blog image URLs (verified against
-// production data): our own domain, Supabase storage, and the brand Shopify
-// CDNs the galleries hotlink. The site + Supabase hosts derive from env so
+// production data): our own domain and Supabase storage. All catalogue
+// images were re-hosted into our own storage (July 2026), so third-party
+// brand CDNs are no longer whitelisted — new products must upload their
+// shots rather than hotlink. The site + Supabase hosts derive from env so
 // local/preview stacks (different Supabase URL) work without edits.
 const ALLOWED_HOSTS = new Set(
   [
     'www.yellowpink.pk',
     'yellowpink.pk',
-    'cdn.shopify.com',
-    // SHEGLAM's product CDN (SHEIN/ltwebstatic) — the SHEGLAM catalogue
-    // entries hotlink their official product shots, same as the Shopify
-    // brand galleries above.
-    'img.ltwebstatic.com',
     hostOf(SITE),
     hostOf(process.env.NEXT_PUBLIC_SUPABASE_URL),
   ].filter((h): h is string => Boolean(h)),
