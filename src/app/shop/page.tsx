@@ -167,6 +167,10 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   } else {
     description = 'Browse authentic imported skincare, makeup and wellness supplements at Yellow Pink, 100% genuine international brands, with cash on delivery nationwide in Pakistan.';
   }
+  // Paginated plain-shop pages are self-canonical (see above), so like the
+  // title they need a distinct description per page — identical descriptions
+  // across /shop?page=N tripped Semrush's duplicate-meta check.
+  if (plainShop && pageNum > 1) description = `Page ${pageNum} of the catalogue. ${description}`;
 
   return pageMeta({
     title,
