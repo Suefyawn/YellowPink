@@ -76,6 +76,7 @@ function isOwnedPath(pathname: string): boolean {
     // the route's own fallback handles unknown slugs sensibly).
     pathname.startsWith('/category/') ||
     pathname === '/img' ||
+    pathname === '/deals' ||
     pathname === '/robots.txt' ||
     pathname === '/sitemap.xml' ||
     pathname === '/favicon.ico' ||

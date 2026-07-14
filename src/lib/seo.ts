@@ -230,11 +230,14 @@ export function organizationLd(sameAs: string[] = [], contact: OrgContact = {}) 
     '@type': 'OnlineStore',
     '@id': ORGANIZATION_ID,
     name: SITE_NAME,
+    legalName: 'Yellow Pink',
     url: SITE_URL,
     // Google explicitly recommends raster (PNG/JPG, ≥112×112) for
-    // Organization.logo; SVG gets flagged in Rich Results Test.
-    logo: absoluteUrl('/icon-192.png'),
-    image: absoluteUrl('/icon-192.png'),
+    // Organization.logo; SVG gets flagged in Rich Results Test. The 512px
+    // icon is the largest square brand raster shipped (Google's merchant
+    // guidance prefers ≥336px, which the 192px PWA icon missed).
+    logo: absoluteUrl('/icon-512.png'),
+    image: absoluteUrl('/icon-512.png'),
     description:
       'Imported beauty, skincare and wellness products delivered across Pakistan with cash-on-delivery.',
     areaServed: { '@type': 'Country', name: 'Pakistan' },
@@ -435,6 +438,27 @@ export function productLd(
         }
       : undefined,
     review: topReviews.length ? topReviews : undefined,
+  };
+}
+
+/** VideoObject for a product's demo/swatch video. Without this markup the
+ *  uploaded videos were invisible to Google Video (no thumbnail, no Video-tab
+ *  presence) despite rendering on the PDP. Returns null when the product has
+ *  no video so callers can `{video && <script …>}`. */
+export function videoLd(product: Product) {
+  if (!product.video_url) return null;
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'VideoObject',
+    name: `${brandPlusName(product.brand, product.name)} — product video`,
+    description: product.short_description?.trim()
+      || product.description?.trim().slice(0, 160)
+      || `See ${product.name} up close before you buy.`,
+    thumbnailUrl: absoluteImageUrl(product.image_url),
+    contentUrl: product.video_url,
+    // Google requires uploadDate; the product's creation date is the closest
+    // truthful proxy we store for when the media went live.
+    uploadDate: (product.created_at ?? '2026-01-01').slice(0, 10),
   };
 }
 

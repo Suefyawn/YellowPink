@@ -99,7 +99,10 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
   },
   alternates: {
-    canonical: SITE_URL,
+    // Slashed root: the server 308s / and the sitemap emits the slashed form,
+    // so a slashless canonical here was the one URL variant disagreeing with
+    // itself (GSC noise on the most important URL of the site).
+    canonical: `${SITE_URL}/`,
   },
   // Google Search Console verification is rendered as a runtime <meta> in
   // RootLayout (below) so the owner can paste the code in Admin → Settings →

@@ -116,6 +116,10 @@ customers and spot where an order is.
   `/shop?tag=viral`). Results are paginated. Product cards show a **Sale** badge
   when discounted and an **"Only N left"** badge when stock is running low (5 or
   fewer remaining, for products whose inventory the store tracks).
+- **Deals page** (`/deals`) — every product with a genuine discount, deepest
+  discounts first, updated automatically as offers start and end. The header's
+  **Sale** link now points here (it's a shareable, searchable page instead of a
+  filter view).
 - **Category pages** (`/category/hair-care`, `/category/womens-health`, …) —
   every product category has its own fast, shareable web address with an intro,
   the product grid (sort + pagination), a short FAQ, and, for health
