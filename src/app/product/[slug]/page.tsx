@@ -20,6 +20,7 @@ export async function generateStaticParams() {
 }
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
+import { QuestionsSection, type ProductQuestionItem } from '@/components/pdp/QuestionsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
@@ -290,7 +291,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Surfaced on the review form to actually drive review volume → ★ snippets.
   const reviewPoints = Math.max(0, Number(siteSettings.loyalty_review_points ?? '25') || 0);
 
-  const [{ data: reviewRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts, productTags] = await Promise.all([
+  const [{ data: reviewRows }, { data: questionRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts, productTags] = await Promise.all([
     isDemo
       ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>> })
       : supabase
@@ -298,6 +299,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           .select('id, author_name, rating, body, created_at, photo_urls, verified_purchase, helpful_count, owner_reply, owner_reply_at, source')
           .eq('product_id', product.id)
           .eq('approved', true)
+          .order('created_at', { ascending: false }),
+    // Approved product Q&As (audit D1). The anon SELECT policy filters to
+    // status='approved' anyway; the explicit filter keeps the query honest.
+    isDemo
+      ? Promise.resolve({ data: [] as ProductQuestionItem[] })
+      : supabase
+          .from('product_questions')
+          .select('id, author_name, question, answer, created_at, answered_at')
+          .eq('product_id', product.id)
+          .eq('status', 'approved')
           .order('created_at', { ascending: false }),
     product.kind === 'variable' ? loadVariantData(product.id) : Promise.resolve({ variants: [], attributes: [] }),
     loadGallery(product.id),
@@ -388,6 +399,10 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       />
       <FromTheBlog posts={blogPosts} />
       <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} rewardPoints={reviewPoints} />
+      {/* Product Q&A (audit D1): approved questions + answers as unique
+          long-tail PDP content, plus the ask form feeding the moderation
+          queue (admin → Questions). */}
+      <QuestionsSection productId={product.id} questions={(questionRows ?? []) as ProductQuestionItem[]} />
       <RecentlyViewed currentProductId={product.id} />
     </main>
   );

@@ -45,6 +45,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { count: unreadMessageCount },
     { count: pendingReturnCount },
     { count: pendingReviewCount },
+    { count: pendingQuestionCount },
     { data: rawNotifications },
   ] = await Promise.all([
     // Orders still needing fulfilment, pending OR processing. Matches the
@@ -69,6 +70,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       .from('product_reviews')
       .select('id', { count: 'exact', head: true })
       .eq('approved', false),
+    // Product questions awaiting an answer — the Questions sidebar badge.
+    admin
+      .from('product_questions')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending'),
     admin
       .from('admin_notifications')
       .select('id, kind, title, body, link, read, created_at')
@@ -98,6 +104,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         unreadMessageCount={unreadMessageCount ?? 0}
         pendingReturnCount={pendingReturnCount ?? 0}
         pendingReviewCount={pendingReviewCount ?? 0}
+        pendingQuestionCount={pendingQuestionCount ?? 0}
         notifications={notifications}
       >
         {children}

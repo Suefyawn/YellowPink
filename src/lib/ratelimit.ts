@@ -60,6 +60,7 @@ function makeLimiter(prefix: string, max: number, windowSec: number): LimiterLik
 export const authLimiter      = makeLimiter('auth',      5, 60);   // 5 per minute
 export const checkoutLimiter  = makeLimiter('checkout', 20, 60);   // 20 per minute
 export const reviewLimiter    = makeLimiter('review',    5, 60);   // 5 per minute
+export const questionLimiter  = makeLimiter('question',  5, 60);   // 5 per minute (PDP Q&A ask form, mirrors reviews)
 export const trackLimiter     = makeLimiter('track',    10, 60);   // 10 per minute
 export const uploadLimiter    = makeLimiter('upload',   30, 60);   // 30 per minute
 export const newsletterLimiter = makeLimiter('newsletter', 5, 60 * 10);  // 5 per 10 minutes per IP

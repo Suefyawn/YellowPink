@@ -47,6 +47,7 @@ const COMMANDS: Cmd[] = [
   { label: 'Segments',       group: 'Customers', href: '/admin/segments', permission: 'customers.view' },
   { label: 'Messages',       hint: 'contact inbox', group: 'Customers', href: '/admin/messages', permission: 'messages' },
   { label: 'Reviews',        group: 'Customers', href: '/admin/reviews', permission: 'reviews' },
+  { label: 'Questions',      hint: 'product Q&A', group: 'Customers', href: '/admin/questions', permission: 'reviews' },
 
   { label: 'Coupons',        group: 'Marketing', href: '/admin/coupons', permission: 'coupons' },
   { label: 'Blog',           group: 'Marketing', href: '/admin/blog', permission: 'blog' },

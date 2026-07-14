@@ -142,7 +142,11 @@ customers and spot where an order is.
   Add-to-Cart button. Further down the page, a **"From the blog"** row shows
   up to three journal articles that feature the product (it appears
   automatically when a blog post links to the product, and stays hidden
-  otherwise).
+  otherwise). Below the reviews, a **Questions & answers** section shows
+  staff-answered customer questions about the product, plus an **"Ask a
+  question"** form (name + question). Nothing a customer asks appears publicly
+  until you answer and approve it in **Admin → Questions** — the shopper sees
+  *"We'll publish your question once it's answered."*
 - **Sitemap page** (`/sitemap`, linked from the footer Help column) — a single
   human-readable index of the whole store: every shop category (grouped by
   Makeup / Skincare / Wellness), all collections, brands, journal posts and
@@ -238,6 +242,12 @@ for you to approve or reject.
   appears under the review as *"Response from Yellow Pink"* with its date —
   answering a complaint publicly shows every future shopper you look after
   customers.
+- **Product questions** — any shopper (no account needed) can ask a question
+  from a product page's **Questions & answers** section. The question goes to
+  the admin **Questions** queue; once a staff member writes an answer and
+  approves it, the question *and* answer publish together on that product
+  page, credited to the asker's first name. Rejected questions are never
+  shown.
 - **Newsletter** — customers can subscribe via the footer sign-up form or the
   prompt shown after a purchase.
 
@@ -329,13 +339,14 @@ Here's what each link is for:
 | **Segments** | Customer groupings (e.g. high-spenders) for targeting and analysis. Each customer row links to their profile, and guests without an email are identified by their phone number so nobody drops out of the counts. |
 | **Messages** | A threaded inbox for the storefront contact form and inbound email — reply by email straight from the thread, with order history in each conversation header. Full breakdown in [Messages in detail](#messages-in-detail). |
 | **Reviews** | Moderate customer reviews, reply to them publicly, and seed reviews yourself. Full breakdown in [Reviews in detail](#reviews-in-detail). |
+| **Questions** | Answer customer product questions before they publish on the product page. Full breakdown in [Questions in detail](#questions-in-detail). |
 
 **Marketing** — content and campaigns
 
 | Section | What it's for |
 |---|---|
 | **Coupons** | Discount codes — three types (Percent %, Fixed PKR, Free shipping), with limits, expiry and an on/off status pill. Full breakdown in [Coupons in detail](#coupons-in-detail). |
-| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. Each post has an **Author** field for the byline (defaults to "Yellow Pink Editorial Team"); naming a real expert on health/beauty posts strengthens their search-engine trust signals. You can also attach a **Medical reviewer** (see below) to a health post, which adds a *"Medically reviewed by Dr. …"* byline and reviewer schema. |
+| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. Each post has an **Author** field for the byline (defaults to "Yellow Pink Editorial Team"); naming a real expert on health/beauty posts strengthens their search-engine trust signals. The editorial-team byline links to its own **author page** (`/author/yellow-pink-editorial`) with the team's bio and every article it has written — bylines that aren't in the site's author registry stay plain text (author pages are added by the development team, only for real authors). You can also attach a **Medical reviewer** (see below) to a health post, which adds a *"Medically reviewed by Dr. …"* byline and reviewer schema. |
 | **Medical reviewers** (`/admin/reviewers`) | The panel of qualified doctors who medically review your health/supplement content — self-serve applications, approval, and their own reviewer dashboards. Full breakdown in [Medical reviewers in detail](#medical-reviewers-in-detail). |
 | **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |
 
@@ -468,6 +479,27 @@ Moderate customer reviews and talk back to them. The **Pending Approval** queue 
 On any live review, **Reply publicly** posts a *"Response from Yellow Pink"* that appears under the review on the product page (edit or clear it any time — saving an empty box removes it). You can also seed reviews yourself (migration / phoned-in feedback) via the **+ Add review** button in the page header.
 
 **Ask for Google review** — approved **4–5★** reviews whose reviewer has a phone number on file get a green **Ask for Google review** button. It opens the reviewer's WhatsApp pre-filled with a roman-Urdu thank-you, your Google review link, and the extra-points offer (both set in **Settings → Loyalty → Google review bonus** — the button only appears once the link is saved there). The ask is deliberately limited to *already-approved, positive* on-site reviews: an unhappy on-site review can be handled privately in moderation, but a bad Google review is public and permanent — so never invite one. When the Google review shows up, award the bonus points from the customer's page (see [Customers in detail](#customers-in-detail)); the message asks them to reply once they've reviewed so you know to credit it.
+
+### Questions in detail
+
+Customer product questions, moderated the same way as reviews and gated by the
+same **Reviews** staff permission. The **Awaiting an Answer** queue sits at the
+top (the sidebar shows a badge with its count); each pending question shows the
+product, the question, who asked and when, with an answer box right there —
+write the public answer and press **Answer & approve** to publish the Q&A on
+that product page (approving without an answer is refused: a published question
+is never left hanging). **Reject** quietly drops a question (spam, duplicates,
+things better handled in Messages); the customer is not notified either way.
+
+Below the queue, **Published Q&As** lists everything currently live on product
+pages, newest first — **Unpublish** pulls a Q&A off its product page
+immediately. Both approve and reject are recorded in the Activity log.
+
+Published Q&As appear in the product page's **Questions & answers** section
+(question, your answer, the asker's first name and dates). Good answers do
+double duty: they close the sale for the shopper who asked, and they're unique
+product content search engines index — questions real customers ask are
+exactly what other buyers search for.
 
 ### Coupons in detail
 
@@ -931,6 +963,11 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 14 July 2026
+
+- **Customers can ask questions on product pages.** Every product page now has a **Questions & answers** section under the reviews: shoppers ask with just a name and their question, and nothing shows publicly until staff answer and approve it in the new **Admin → Questions** queue (sidebar badge shows how many are waiting; approving *requires* an answer, and a published Q&A can be unpublished any time). Published Q&As show the question, your answer, the asker's first name and dates — real buyer questions, answered, right where the next buyer is deciding.
+- **The editorial byline now has its own page.** "By Yellow Pink Editorial Team" on blog posts links to a new author page (`/author/yellow-pink-editorial`) with an honest description of how the journal is written and medically reviewed, plus the full list of the team's articles. Old WordPress `/author/…` links resolve sensibly (known author → the page, unknown → a proper 404 you can redirect from Broken links).
 
 ### 10 July 2026
 

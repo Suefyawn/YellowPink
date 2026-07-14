@@ -7,6 +7,7 @@ import type { MetadataRoute } from 'next';
 import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
 import { brandSlug } from '@/lib/brands';
+import { AUTHORS } from '@/lib/authors';
 import { canonicalCategory, categoryHref, findTaxon } from '@/lib/category-taxonomy';
 
 // Regenerate hourly so posts/products added via the DB, the blog API or the
@@ -182,6 +183,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.4,
   }));
 
+  // Author profile pages (/author/[slug]) from the static registry — the
+  // E-E-A-T byline anchors. Like the reviewer pages, no lastModified: there is
+  // no real per-page modification date to report.
+  const authorUrls: MetadataRoute.Sitemap = AUTHORS.map(a => ({
+    url: absoluteUrl(`/author/${a.slug}`),
+    changeFrequency: 'monthly',
+    priority: 0.4,
+  }));
+
   // <image:loc> requires an ABSOLUTE URL. Blog hero assets are stored as
   // site-relative paths (/blog-heroes/x.webp, served from /public); product
   // images are already absolute (Supabase storage or the /catalog CDN). GSC
@@ -228,5 +238,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     };
   });
 
-  return [...staticUrls, ...categoryUrls, ...brandUrls, ...tagUrls, ...collectionUrls, ...reviewerUrls, ...productUrls, ...blogUrls, ...pageUrls];
+  return [...staticUrls, ...categoryUrls, ...brandUrls, ...tagUrls, ...collectionUrls, ...reviewerUrls, ...authorUrls, ...productUrls, ...blogUrls, ...pageUrls];
 }

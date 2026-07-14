@@ -71,6 +71,10 @@ function isOwnedPath(pathname: string): boolean {
     pathname.startsWith('/brand/') ||
     pathname.startsWith('/tag/') ||
     pathname.startsWith('/collection/') ||
+    // Author profile pages (SEO batch 4b). WP legacy /author/<user> URLs land
+    // here too; unknown slugs 404 via the route (after a manual-redirect
+    // check), which is the honest response for retired WP author archives.
+    pathname.startsWith('/author/') ||
     // Leaf-category landing pages. Must be owned or the legacy WordPress
     // pattern rules would hijack them (WP blogs also used /category/<slug>;
     // the route's own fallback handles unknown slugs sensibly).
@@ -307,8 +311,11 @@ function wpPatternRedirect(pathname: string, params: URLSearchParams): string | 
   const productTag = pathname.match(/^\/product-tag\/([^/]+)(?:\/.*)?$/);
   if (productTag) return `/tag/${productTag[1]}`;
 
-  // /author/<name>/<page?>/ → /blog (we don't have author archives)
-  if (/^\/author\/[^/]+(?:\/page\/\d+)?\/?$/.test(pathname)) return '/blog';
+  // /author/<slug> is a real Next route now (author profile pages, listed in
+  // isOwnedPath above) — the route itself 404s unknown WP-era author slugs.
+  // Only the WP pagination suffix still needs folding onto the base page.
+  const authorPage = pathname.match(/^\/author\/([^/]+)\/page\/\d+\/?$/);
+  if (authorPage) return `/author/${authorPage[1]}`;
 
   // WP standard slugs that map to our CMS page route.
   const PAGE_SLUG_MAP: Record<string, string> = {

@@ -17,6 +17,7 @@ export function AdminSidebar({
   session, onClose,
   pendingOrderCount = 0, unreadMessageCount = 0,
   pendingReturnCount = 0, pendingReviewCount = 0,
+  pendingQuestionCount = 0,
 }: {
   session: StaffSession;
   onClose?: () => void;
@@ -24,6 +25,7 @@ export function AdminSidebar({
   unreadMessageCount?: number;
   pendingReturnCount?: number;
   pendingReviewCount?: number;
+  pendingQuestionCount?: number;
 }) {
   const pathname = usePathname();
   const visibleGroups = ADMIN_NAV
@@ -103,6 +105,7 @@ export function AdminSidebar({
                 href === '/admin/messages' && unreadMessageCount > 0 ? unreadMessageCount :
                 href === '/admin/returns'  && pendingReturnCount > 0 ? pendingReturnCount :
                 href === '/admin/reviews'  && pendingReviewCount > 0 ? pendingReviewCount :
+                href === '/admin/questions' && pendingQuestionCount > 0 ? pendingQuestionCount :
                 0;
               return (
                 <Link key={href} href={href} onClick={onClose} className="adm-nav-link" style={{

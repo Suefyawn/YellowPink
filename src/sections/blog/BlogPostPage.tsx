@@ -14,6 +14,7 @@ import { formatBlogDate, PK_TZ } from '@/lib/dates';
 import { MedicalDisclaimer } from '@/components/MedicalDisclaimer';
 import { isHealthCategory } from '@/lib/category-taxonomy';
 import { reviewerLabel, type MedicalReviewer } from '@/lib/eeat';
+import { authorForName } from '@/lib/authors';
 import type { BlogPost, Product } from '@/types';
 
 interface BlogPostPageProps {
@@ -218,13 +219,25 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProdu
             const initials = author
               .replace(/^(dr|mr|ms|mrs)\.?\s+/i, '')
               .split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || 'YP';
+            // Byline → author page when the byline exists in the registry
+            // (lib/authors.ts); plain text otherwise.
+            const authorEntry = authorForName(author);
             return (
               <div style={{ display: 'flex', gap: 16, alignItems: 'center', paddingBottom: 16 }}>
                 <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 600 }}>{initials}</span>
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>By {author}</div>
+                  <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
+                    By{' '}
+                    {authorEntry ? (
+                      <Link href={`/author/${authorEntry.slug}`} style={{ color: 'inherit', textDecoration: 'underline', textUnderlineOffset: 2 }}>
+                        {author}
+                      </Link>
+                    ) : (
+                      author
+                    )}
+                  </div>
                   <div className="small-text">
                     {formatBlogDate(post.date)}
                     {reviewer && <> · Medically reviewed</>}

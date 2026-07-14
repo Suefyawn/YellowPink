@@ -8,6 +8,7 @@ import type { Product, BlogPost, ProductReview, ProductVariant } from '@/types';
 import { brandPlusName } from '@/lib/product-display';
 import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE } from '@/lib/commerce';
 import type { MedicalReviewer } from '@/lib/eeat';
+import { authorForName } from '@/lib/authors';
 
 /** Shipping inputs for the Offer's OfferShippingDetails. Passed from the PDP
  *  (parseCommerceConfig of the live site settings) so the structured-data rate
@@ -466,14 +467,33 @@ export function videoLd(product: Product) {
 // Person. Picking the right @type matters, Google's Article guidance wants a
 // Person for individual authors (E-E-A-T), but flags a Person whose name is
 // clearly an organisation. Defaults to Organization when no author is set.
-function articleAuthorLd(author?: string | null) {
+//
+// Bylines in the AUTHORS registry (lib/authors.ts) additionally carry the
+// on-site author page as `url` (Google's recommended way to disambiguate the
+// author entity) plus optional `sameAs` profiles passed by the caller.
+function articleAuthorLd(author?: string | null, sameAs?: string[]) {
   const name = author?.trim();
   if (!name) return { '@type': 'Organization', name: SITE_NAME };
+  const entry = authorForName(name);
+  if (entry) {
+    return {
+      '@type': entry.type,
+      name,
+      url: absoluteUrl(`/author/${entry.slug}`),
+      ...(sameAs?.length ? { sameAs } : {}),
+    };
+  }
   const isOrg = /\b(team|editorial|staff|desk|group|yellow\s*pink)\b/i.test(name);
   return isOrg ? { '@type': 'Organization', name } : { '@type': 'Person', name };
 }
 
-export function articleLd(post: BlogPost, opts?: { reviewer?: MedicalReviewer | null }) {
+export function articleLd(post: BlogPost, opts?: {
+  reviewer?: MedicalReviewer | null;
+  /** Public profiles for the author's `sameAs` — only used when the byline is
+   *  in the AUTHORS registry (for the in-house editorial team these are the
+   *  store's own social profiles, via lib/socials). */
+  authorSameAs?: string[];
+}) {
   const reviewer = opts?.reviewer;
   return {
     '@context': 'https://schema.org',
@@ -493,7 +513,7 @@ export function articleLd(post: BlogPost, opts?: { reviewer?: MedicalReviewer | 
     // dates either side. The DB column exists (used by the blog sitemap)
     // even though the type previously omitted it.
     dateModified: post.updated_at ?? post.date,
-    author: articleAuthorLd(post.author),
+    author: articleAuthorLd(post.author, opts?.authorSameAs),
     // E-E-A-T: a credentialed medical reviewer is the strongest trust signal
     // for YMYL health content. Emitted only when the store has configured a
     // real reviewer (see lib/eeat.ts), never fabricated.

@@ -16,7 +16,8 @@ interface Notification {
 
 export function AdminShell({
   children, session, pendingOrderCount = 0, unreadMessageCount = 0,
-  pendingReturnCount = 0, pendingReviewCount = 0, notifications = [],
+  pendingReturnCount = 0, pendingReviewCount = 0, pendingQuestionCount = 0,
+  notifications = [],
 }: {
   children: React.ReactNode;
   session: StaffSession;
@@ -24,6 +25,7 @@ export function AdminShell({
   unreadMessageCount?: number;
   pendingReturnCount?: number;
   pendingReviewCount?: number;
+  pendingQuestionCount?: number;
   notifications?: Notification[];
 }) {
   const [open, setOpen] = useState(false);
@@ -535,7 +537,7 @@ export function AdminShell({
         aria-label="Admin navigation"
         aria-hidden={isMobile && !open ? 'true' : undefined}
       >
-        <AdminSidebar session={session} onClose={() => setOpen(false)} pendingOrderCount={pendingOrderCount} unreadMessageCount={unreadMessageCount} pendingReturnCount={pendingReturnCount} pendingReviewCount={pendingReviewCount} />
+        <AdminSidebar session={session} onClose={() => setOpen(false)} pendingOrderCount={pendingOrderCount} unreadMessageCount={unreadMessageCount} pendingReturnCount={pendingReturnCount} pendingReviewCount={pendingReviewCount} pendingQuestionCount={pendingQuestionCount} />
       </div>
 
       {/* `<main>` instead of `<div>` so screen-reader landmark navigation

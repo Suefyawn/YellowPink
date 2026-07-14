@@ -4,8 +4,8 @@ import { revalidatePath } from 'next/cache';
 import { headers, cookies } from 'next/headers';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { reviewLimiter, ipFromHeaders } from '@/lib/ratelimit';
-import { reviewSchema, parseForm, firstError } from '@/lib/validators';
+import { reviewLimiter, questionLimiter, ipFromHeaders } from '@/lib/ratelimit';
+import { reviewSchema, questionSchema, parseForm, firstError } from '@/lib/validators';
 
 function findSupabaseAuthCookie(all: { name: string; value: string }[]): string | null {
   const c = all.find(c => /^sb-.+-auth-token$/.test(c.name));
@@ -92,6 +92,35 @@ export async function submitReview(
   if (error) return { error: error.message };
 
   revalidatePath(`/product`);
+  return { success: true };
+}
+
+// ─── Product Q&A ask action ────────────────────────────────────────────────
+// Mirrors submitReview: rate-limited, Zod-validated, inserted pending via the
+// service role. The RLS insert policy on product_questions already forces
+// public inserts to status='pending' with no answer; the service role is used
+// here for symmetry with submitReview (one trusted server-side write path).
+// Questions publish on the PDP only after staff answer + approve them in
+// admin → Questions.
+export async function submitQuestion(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error: string } | { success: true }> {
+  const h = await headers();
+  const { success: rateOk } = await questionLimiter.limit(ipFromHeaders(h));
+  if (!rateOk) return { error: 'Please slow down, try again in a minute.' };
+
+  const parsed = parseForm(questionSchema, formData);
+  if (!parsed.success) return { error: firstError(parsed.error) };
+
+  const { error } = await supabaseAdmin().from('product_questions').insert({
+    product_id:  parsed.data.product_id,
+    author_name: parsed.data.author_name,
+    question:    parsed.data.question,
+    status:      'pending',
+  });
+  if (error) return { error: error.message };
+
   return { success: true };
 }
 
