@@ -5,9 +5,9 @@ import { QuizClient } from '@/components/quiz/QuizClient';
 
 export function generateMetadata(): Metadata {
   return pageMeta({
-    title: 'Find your match, skincare & wellness quiz',
+    title: 'Routine Finder, build your skincare or wellness plan',
     description:
-      'Take our quick quiz and get personalised skincare and wellness product recommendations, with cash-on-delivery across Pakistan.',
+      'Answer two quick questions and get a step-by-step skincare routine or supplement plan matched to you, saved to a link you can share. Cash on delivery across Pakistan.',
     path: '/quiz',
   });
 }
@@ -26,7 +26,7 @@ export default function QuizPage() {
           footer dominating a short page. */}
       <section style={{ padding: '56px var(--side)', minHeight: '60vh' }}>
         <div className="container" style={{ maxWidth: 720, margin: '0 auto' }}>
-          <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Takes 2 minutes · A few quick questions</Overline>
+          <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Routine Finder · Two questions · Saved to a shareable link</Overline>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, margin: '0 0 28px' }}>
             What does your routine need?
           </h1>
