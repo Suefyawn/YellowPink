@@ -13,7 +13,7 @@ import { useSearch } from '@/context/SearchContext';
 // importing it can't drag that client in.
 import { isDemo } from '@/lib/is-demo';
 import { getBrowserClient } from '@/lib/supabase-browser';
-import { DEMO_PRODUCTS } from '@/lib/demo-data';
+import { DEMO_PRODUCTS, DEMO_BLOG_POSTS } from '@/lib/demo-data';
 import { useBodyScrollLock, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { brandPlusName } from '@/lib/product-display';
 import { categoryHref } from '@/lib/category-taxonomy';
@@ -26,6 +26,13 @@ import type { Product } from '@/types';
 const TRENDING_FALLBACK = ['CeraVe', 'NARS', 'Kiko Milano', 'PIXI', 'Rhode'];
 const CATEGORIES_FALLBACK = ['Skincare', 'Lip Tints', 'Foundations', 'Sunscreen', 'Wellness'];
 const RECENT_KEY = 'yp_recent_searches';
+
+/** Journal article hit from the search_posts RPC. */
+interface PostHit {
+  slug: string;
+  title: string;
+  read_time: string | null;
+}
 
 interface SearchOverlayProps {
   /** Server-fetched top brands (top 5 by in-stock product count). */
@@ -42,6 +49,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   const { searchOpen, setSearchOpen } = useSearch();
   const [query, setQuery] = useState('');
   const [products, setProducts] = useState<Product[]>([]);
+  const [posts, setPosts] = useState<PostHit[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   // Keyboard navigation through the typeahead results. -1 = nothing
   // highlighted (focus stays in the input). Indexes 0..n-1 are the result
@@ -115,6 +123,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
     setHighlightedIndex(-1);
     if (!searchOpen || query.trim().length === 0) {
       setProducts([]);
+      setPosts([]);
       return;
     }
     if (isDemo) {
@@ -127,11 +136,23 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
           (p.subcategory ?? '').toLowerCase().includes(q)
         ).slice(0, 8)
       );
+      setPosts(
+        DEMO_BLOG_POSTS.filter(b =>
+          b.title.toLowerCase().includes(q) || (b.excerpt ?? '').toLowerCase().includes(q)
+        ).slice(0, 3).map(b => ({ slug: b.slug, title: b.title, read_time: b.read_time ?? null }))
+      );
       return;
     }
     const handle = setTimeout(() => {
-      getBrowserClient().rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
+      const client = getBrowserClient();
+      client.rpc('search_products' as never, { p_query: query, p_limit: 8 } as never).then(({ data }) => {
         setProducts((data ?? []) as Product[]);
+      });
+      // Journal articles alongside products — a query like "elevit" (a brand
+      // we don't stock but wrote a buyer's guide about) used to dead-end on
+      // "No results" while the exact answer sat in the blog.
+      client.rpc('search_posts' as never, { p_query: query, p_limit: 3 } as never).then(({ data }) => {
+        setPosts((data ?? []) as PostHit[]);
       });
     }, 200);
     return () => clearTimeout(handle);
@@ -180,6 +201,43 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
     setSearchOpen(false);
     router.push(categoryHref(cat));
   };
+  const goToPost = (p: PostHit) => {
+    track({ name: 'select_item', payload: { product_name: `article: ${p.title}`, query: query.trim() || undefined } });
+    if (query.trim()) pushRecent(query);
+    setSearchOpen(false);
+    router.push(`/blog/${p.slug}`);
+  };
+
+  // Shared "From the journal" block, rendered under the product results and
+  // on the no-product screen (where a matching article is the whole answer).
+  const articleResults = posts.length > 0 && (
+    <div style={{ marginTop: 20 }}>
+      <Overline style={{ display: 'block', marginBottom: 4, color: 'var(--ink-500)' }}>From the journal</Overline>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        {posts.map(p => (
+          <button
+            key={p.slug}
+            type="button"
+            onClick={() => goToPost(p)}
+            style={{
+              display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', textAlign: 'left',
+              font: 'inherit', color: 'inherit', border: 'none',
+              padding: '11px 0', borderBottom: '1px solid var(--line)', cursor: 'pointer',
+              background: 'transparent',
+            }}
+          >
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, color: 'var(--ink-500)', alignSelf: 'center' }}>
+              <path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" />
+            </svg>
+            <span style={{ flex: 1, minWidth: 0, fontSize: '0.875rem', fontWeight: 600, lineHeight: 1.4 }}>{p.title}</span>
+            {p.read_time && (
+              <span style={{ flexShrink: 0, fontSize: '0.75rem', color: 'var(--ink-500)' }}>{p.read_time}</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 
   // Escape closes the overlay; ArrowUp/ArrowDown move a highlighted index
   // through the visible result rows (plus the "See all results" link one
@@ -287,7 +345,18 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
           {query.length > 0 ? (
             <div>
               {filtered.length === 0 ? (
-                <div style={{ padding: '24px 0', textAlign: 'center' }}>
+                <div style={{ padding: '24px 0', textAlign: posts.length > 0 ? 'left' : 'center' }}>
+                  {/* A matching article can be the whole answer (e.g. searching a
+                      brand we don't stock but wrote a buyer's guide about), so
+                      show it instead of a bare dead end. */}
+                  {posts.length > 0 ? (
+                    <div style={{ marginBottom: 8 }}>
+                      <p className="body-text" style={{ color: 'var(--ink-700)', margin: '0 0 4px', fontWeight: 600 }}>
+                        No products match &ldquo;{query}&rdquo; — but we&rsquo;ve written about it:
+                      </p>
+                      {articleResults}
+                    </div>
+                  ) : (<>
                   <div aria-hidden="true" style={{ fontSize: '2rem', marginBottom: 8, opacity: 0.35 }}>○</div>
                   <p className="body-text" style={{ color: 'var(--ink-700)', margin: '0 0 6px', fontWeight: 600 }}>
                     No results for &ldquo;{query}&rdquo;
@@ -295,6 +364,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                   <p className="small-text" style={{ color: 'var(--ink-500)', margin: '0 0 16px' }}>
                     Try a different search term, or jump to a category below.
                   </p>
+                  </>)}
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
                     {POPULAR_CATS.map(c => (
                       <button
@@ -362,6 +432,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
                   >
                     See all results for &ldquo;{query}&rdquo; →
                   </button>
+                  {articleResults}
                 </div>
               )}
             </div>
