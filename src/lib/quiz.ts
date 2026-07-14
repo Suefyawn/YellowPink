@@ -179,7 +179,7 @@ export const SKINCARE_STEPS: RoutineStepDef[] = [
   {
     key: 'treat', label: 'Treat',
     note: 'The targeted step that works on your main concern.',
-    match: ['serum', 'essence', 'toner', 'ampoule', 'treatment', 'mask', 'spot ', 'exfoli', 'peel'],
+    match: ['serum', 'essence', 'toner', 'ampoule', 'treatment', 'mask', 'spot ', 'exfoli', 'peel', 'solution', 'retinol', 'retinal', 'squalane'],
   },
   {
     key: 'moisturize', label: 'Moisturise',

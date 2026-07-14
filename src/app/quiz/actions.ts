@@ -151,7 +151,11 @@ function wellnessSections(all: Product[], answers: QuizAnswers): RoutineSection[
     key: 'core', label: 'Start here', note: 'The pick that fits your answers most closely.',
     picks: [{ product: core.product, why: buildWhy(rule.label, core.hits) }],
   }];
-  const supporting = rest.slice(0, 3).map(r => ({
+  // Supporting picks must actually match the focus keywords; a no-hit
+  // category-mate (a sweetener next to a fibre supplement) reads as filler.
+  // Only when nothing else matches do the top category-mates stand in.
+  const withHits = rest.filter(r => r.hits.length > 0).slice(0, 3);
+  const supporting = (withHits.length > 0 ? withHits : rest.slice(0, 2)).map(r => ({
     product: r.product,
     why: r.hits.length > 0 ? buildWhy(rule.label, r.hits) : 'Pairs well with the pick above',
   }));
