@@ -24,7 +24,7 @@ import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
 import { FrequentlyBoughtTogether } from '@/components/pdp/FrequentlyBoughtTogether';
 import { MoreToExplore } from '@/components/pdp/MoreToExplore';
 import { FromTheBlog } from '@/components/pdp/FromTheBlog';
-import { pageMeta, jsonLd, productLd, breadcrumbLd, truncateOnWord } from '@/lib/seo';
+import { pageMeta, jsonLd, productLd, videoLd, breadcrumbLd, truncateOnWord } from '@/lib/seo';
 import { parseCommerceConfig } from '@/lib/commerce';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { isEnabled } from '@/lib/flags';
@@ -344,6 +344,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           __html: jsonLd(breadcrumbLd(crumbs)),
         }}
       />
+      {/* VideoObject when the product has a demo/swatch video — without it
+          the uploaded videos were invisible to Google Video despite
+          rendering in the gallery. */}
+      {product.video_url && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: jsonLd(videoLd(product)!) }}
+        />
+      )}
       <Breadcrumbs items={crumbs} />
       {/* No FAQPage JSON-LD here (the visible FAQ section below stays):
           Google restricted FAQ rich results to authoritative gov/health

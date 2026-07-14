@@ -70,6 +70,19 @@ export async function POST(req: NextRequest) {
     route = body.route.split(/[?#]/)[0].slice(0, 512);
   }
 
+  // Staff-only surfaces are not customer field data — /admin and /reviewer
+  // rows were polluting the p75s the WebVitalsWidget reports (audit C8).
+  if (route && (route.startsWith('/admin') || route.startsWith('/reviewer'))) {
+    return new NextResponse(null, { status: 204 });
+  }
+  // A single desktop client hammering one blog post drove TTFB p75 to a
+  // fake-poor 4.9s (30s+ samples, 61 of 100 desktop rows). A real user's
+  // timing beyond 30s is a dead connection or a scraper, not page
+  // performance — drop it instead of letting one client define the p75.
+  if (metric !== 'CLS' && value > 30_000) {
+    return new NextResponse(null, { status: 204 });
+  }
+
   const connection = typeof body.connection === 'string'
     ? body.connection.slice(0, 16)
     : null;

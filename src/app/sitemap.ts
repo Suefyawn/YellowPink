@@ -24,6 +24,7 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
   { path: '/k-beauty',   priority: 0.8, freq: 'weekly' },
   { path: '/quiz',       priority: 0.6, freq: 'monthly' },
   { path: '/blog',       priority: 0.7, freq: 'weekly' },
+  { path: '/deals',      priority: 0.7, freq: 'daily' },
   { path: '/medical-review-board', priority: 0.5, freq: 'monthly' },
   { path: '/sitemap',    priority: 0.3, freq: 'weekly' },
   // NOTE: /faq is intentionally NOT listed, it 301-redirects to the CMS page
@@ -34,9 +35,12 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
 
 interface ProductRow {
   slug: string;
+  name?: string | null;
   brand: string | null;
   category: string | null;
   image_url: string | null;
+  video_url?: string | null;
+  short_description?: string | null;
   updated_at: string | null;
   created_at: string | null;
 }
@@ -78,7 +82,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Only published products / pages, drafts and archived rows must not
     // appear in the sitemap (they 404 or noindex).
     const [prod, blog, cms] = await Promise.all([
-      supabase.from('products').select('slug, brand, category, image_url, updated_at, created_at').eq('status', 'published'),
+      supabase.from('products').select('slug, name, brand, category, image_url, video_url, short_description, updated_at, created_at').eq('status', 'published'),
       supabase.from('blog_posts').select('slug, image_url, updated_at, date'),
       supabase.from('pages').select('slug, updated_at, created_at').eq('status', 'published'),
     ]);
@@ -189,6 +193,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly',
       priority: 0.8,
       images: p.image_url ? [absImage(p.image_url)] : undefined,
+      // Video sitemap entries for products with demo/swatch videos — pairs
+      // with the PDP's VideoObject markup so Google Video can index them.
+      videos: p.video_url && p.image_url ? [{
+        title: `${p.name ?? p.slug} — product video`,
+        thumbnail_loc: absImage(p.image_url),
+        description: (p.short_description ?? `See ${p.name ?? 'this product'} up close before you buy.`).slice(0, 2048),
+        content_loc: p.video_url,
+      }] : undefined,
     };
   });
 
