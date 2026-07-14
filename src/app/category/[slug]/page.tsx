@@ -15,10 +15,12 @@
 export const revalidate = 300;
 
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { permanentRedirect } from 'next/navigation';
 import Link from 'next/link';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { CollectionGrid } from '@/sections/collection/CollectionGrid';
+import { ProductTile } from '@/components/ui/ProductTile';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
@@ -159,7 +161,22 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
           {list.length > 0 ? (
-            <CollectionGrid products={list} basePath={`/category/${slug}`} />
+            // CollectionGrid reads useSearchParams (sort/page), which forces a
+            // CSR bailout during the static prerender — without a Suspense
+            // boundary the build fails outright ("missing-suspense-with-
+            // csr-bailout", found on the first Vercel build of this route).
+            // The fallback is a real server-rendered grid of the same
+            // products, so the prerendered HTML crawlers index still carries
+            // every tile; hydration swaps in the interactive toolbar.
+            <Suspense
+              fallback={
+                <div className="product-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }}>
+                  {list.slice(0, 24).map(p => <ProductTile key={p.id} product={p} />)}
+                </div>
+              }
+            >
+              <CollectionGrid products={list} basePath={`/category/${slug}`} />
+            </Suspense>
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
               Nothing here right now, <Link href="/shop" className="text-link">browse the full catalogue</Link>.
