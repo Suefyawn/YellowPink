@@ -202,7 +202,7 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
     router.push(categoryHref(cat));
   };
   const goToPost = (p: PostHit) => {
-    track({ name: 'select_item', payload: { product_name: `article: ${p.title}`, query: query.trim() || undefined } });
+    track({ name: 'select_item', payload: { product_id: `blog:${p.slug}`, product_name: `article: ${p.title}`, query: query.trim() || undefined } });
     if (query.trim()) pushRecent(query);
     setSearchOpen(false);
     router.push(`/blog/${p.slug}`);
