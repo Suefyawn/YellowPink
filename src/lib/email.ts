@@ -605,6 +605,60 @@ export async function sendNewsletterWelcomeEmail(args: { email: string; source: 
   });
 }
 
+// ─── 11.5a. Customer: Routine Finder results ────────────────────────────────
+// Sends the shopper's ACTUAL quiz picks (grouped by routine step, with the
+// per-pick reason) plus a link to their saved result. The welcome offer is
+// folded in because the quiz signup also subscribes them to the newsletter;
+// one action, one email.
+export async function sendQuizResultsEmail(args: {
+  email: string;
+  headline: string;
+  code: string;
+  items: { name: string; brand: string; price: number; slug: string; why: string; section: string }[];
+}): Promise<void> {
+  const offer = await getWelcomeOffer();
+  const resultUrl = `${SITE_URL}/quiz/r/${encodeURIComponent(args.code)}`;
+  const rows = args.items.map(it => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid ${LINE}">
+        <p style="margin:0 0 2px;color:${MUTED};font-size:11px;letter-spacing:0.06em;text-transform:uppercase">${escapeHtml(it.section)}</p>
+        <a href="${SITE_URL}/product/${encodeURIComponent(it.slug)}" style="color:${INK};font-weight:600;text-decoration:none">${escapeHtml(it.brand ? `${it.brand} ${it.name}` : it.name)}</a>
+        <p style="margin:2px 0 0;color:${INK_700};font-size:13px">${escapeHtml(it.why)}</p>
+      </td>
+      <td style="padding:10px 0;border-bottom:1px solid ${LINE};text-align:right;white-space:nowrap;vertical-align:top">
+        <strong>${money(it.price)}</strong>
+      </td>
+    </tr>`).join('');
+  const giftBox = offer ? `
+    <table role="presentation" style="width:100%;border-collapse:collapse;margin:20px 0 0">
+      <tr><td style="background:${PAPER};border:1px dashed ${BRAND_PINK};border-radius:10px;padding:18px 22px;text-align:center">
+        <p style="margin:0 0 4px;color:${MUTED};font-size:12px;letter-spacing:0.08em;text-transform:uppercase">Welcome gift</p>
+        <p style="margin:0 0 4px;color:${INK};font-size:24px;font-weight:700;letter-spacing:0.06em;font-family:'Courier New',monospace">${escapeHtml(offer.code)}</p>
+        <p style="margin:0;color:${INK_700};font-size:13px">${offer.pct}% off your first order. Apply it at checkout.</p>
+      </td></tr>
+    </table>` : '';
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:20px;color:${INK};font-family:Georgia,serif;font-weight:500">${escapeHtml(args.headline)}</h2>
+    <p style="margin:0 0 16px;color:${INK_700};line-height:1.5">Here are your picks from the Routine Finder, saved so you can come back to them any time.</p>
+    <table role="presentation" style="width:100%;border-collapse:collapse">${rows}</table>
+    ${giftBox}
+    <p style="margin:24px 0 0;text-align:center">
+      <a href="${resultUrl}" style="display:inline-block;padding:12px 28px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">View your saved routine</a>
+    </p>
+    <p style="margin:20px 0 0;color:${MUTED};font-size:12px;line-height:1.5">
+      You are getting this because <strong>${escapeHtml(args.email)}</strong> asked for quiz results on yellowpink.pk.
+      This also added you to our fortnightly newsletter; the unsubscribe link below removes you instantly.
+    </p>
+  `, { marketingRecipient: args.email });
+  await send({
+    to: args.email,
+    subject: `${args.headline}, saved for you`,
+    html,
+    kind: 'batch',
+    category: 'Quiz results',
+  });
+}
+
 // ─── 11.5b. Newsletter broadcast (admin-composed campaign) ──────────────────
 // Turns the merchant's plain-text newsletter body into branded HTML: blank
 // lines split paragraphs, bare URLs become links. One call per recipient so

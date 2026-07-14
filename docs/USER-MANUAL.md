@@ -78,11 +78,18 @@ customers and spot where an order is.
   short FAQ. Products appear here automatically when they carry a brand from
   the curated K-beauty list — there is nothing extra to configure per product
   beyond setting its brand.
-- **Find Your Match quiz** (`/quiz`, in the main menu) — a short interactive
-  quiz that recommends products. The shopper picks a path (skincare or
-  wellness), answers one or two quick questions, and gets a personalised set of
-  product picks drawn live from the catalogue, with an option to have their
-  results emailed along with a welcome discount (which also adds them to the
+- **Routine Finder** (`/quiz`, in the main menu) — the shopper picks a path
+  (skincare or wellness) and answers two questions. Skincare answers build a
+  numbered routine (Cleanse → Treat → Moisturise → Protect) where each step
+  is filled by matching the shopper's skin type and concern against the live
+  catalogue's ingredients and descriptions, with a one-line reason under
+  every pick and an alternate where one exists. Wellness answers build a
+  supplement plan (a core pick plus supporting picks) the same way, and both
+  paths link the matching buyer guides from the journal. Results are **saved
+  to a shareable link** (`/quiz/r/<code>`) that survives refreshes and can be
+  sent over WhatsApp; there's a one-tap **Add all picks to cart**, and the
+  email option sends the shopper their actual picks with the reasons, the
+  saved link and the welcome discount (which also adds them to the
   newsletter). Every step is tracked, and the **Dashboard** shows the quiz
   funnel (starts → completions → emails) and most-recommended products.
 - **Brand pages** (`/brand/<brand>`) — every brand has its own landing page
@@ -971,6 +978,7 @@ A dated history of user-facing changes, newest first.
 
 ### 14 July 2026
 
+- **The quiz became a real Routine Finder.** Instead of showing six loosely-related products, the quiz now builds a numbered skincare routine (Cleanse → Treat → Moisturise → Protect) or a supplement plan, matching the shopper's answers against actual product ingredients, with the reason stated under every pick. Results are saved to a shareable link, can be added to the cart in one tap, link the relevant buyer guides, and the email option now sends the shopper's actual picks instead of a generic welcome mail.
 - **Site search now finds your articles too.** The header search and the full results page surface matching journal guides alongside products ("From the journal"), and a search with no product matches shows the relevant guides instead of a dead "No results" screen. First beneficiary: shoppers searching *elevit* now get the Elevit-alternatives guide plus the prenatal products it recommends (via a new search synonym).
 - **Win back lapsed customers over WhatsApp.** New **Admin → Customers → Win-back** page lists every past buyer with a phone number who hasn't ordered in 90+ days. Tune the message template and coupon once, then tap **Open in WhatsApp** on each row — your own WhatsApp opens with a personalised message (name, what they bought last, the coupon, and a shop link that applies the code automatically) ready to send. A shared "messaged" checklist keeps the whole team from double-messaging anyone, and the resulting orders are attributed under **Analytics → Sources**.
 - **Customers can ask questions on product pages.** Every product page now has a **Questions & answers** section under the reviews: shoppers ask with just a name and their question, and nothing shows publicly until staff answer and approve it in the new **Admin → Questions** queue (sidebar badge shows how many are waiting; approving *requires* an answer, and a published Q&A can be unpublished any time). Published Q&As show the question, your answer, the asker's first name and dates — real buyer questions, answered, right where the next buyer is deciding.
