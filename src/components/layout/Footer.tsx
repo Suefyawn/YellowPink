@@ -162,7 +162,9 @@ function SocialRow({ socials }: { socials: SocialLink[] }) {
           // link on every page of the site in audit tools.
           href={s.key === 'social_whatsapp' ? '/go/whatsapp?src=footer' : s.href}
           target="_blank"
-          rel={s.key === 'social_whatsapp' ? 'nofollow noopener noreferrer' : 'noopener noreferrer'}
+          // No nofollow on the WhatsApp entry: /go/whatsapp is an internal,
+          // robots-disallowed redirect, and internal nofollow trips audits.
+          rel="noopener noreferrer"
           aria-label={`Yellow Pink on ${s.label}`}
           title={s.label}
           className="footer-social"

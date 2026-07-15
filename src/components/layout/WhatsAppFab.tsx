@@ -31,11 +31,12 @@ export function WhatsAppFab({ number }: { number?: string }) {
     <a
       href={href}
       target="_blank"
-      // nofollow: a wa.me chat-intent link, not a destination worth passing
-      // PageRank to. It also sits in site-wide chrome, so without nofollow it
-      // reads to crawlers as a sitewide external link (Semrush flagged 1 per
-      // page, all 429-rate-limited false "broken external link" hits).
-      rel="nofollow noopener noreferrer"
+      // No nofollow: the href is the internal /go/whatsapp redirect, which
+      // robots.txt already disallows — nofollow on an internal link is
+      // discouraged (Google) and lit up Semrush's internal-nofollow check on
+      // every page. The old sitewide-external-link concern died when this
+      // moved off raw wa.me.
+      rel="noopener noreferrer"
       aria-label="Chat with us on WhatsApp"
       title="Chat with us on WhatsApp"
       onMouseEnter={() => setHover(true)}

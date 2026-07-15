@@ -37,7 +37,7 @@ export function WhatsAppButton({ message, size = 'full', label = 'Chat on WhatsA
       <a
         href={href}
         target="_blank"
-        rel="nofollow noopener noreferrer"
+        rel="noopener noreferrer"
         aria-label={label}
         title={label}
         style={{
@@ -58,7 +58,7 @@ export function WhatsAppButton({ message, size = 'full', label = 'Chat on WhatsA
     <a
       href={href}
       target="_blank"
-      rel="nofollow noopener noreferrer"
+      rel="noopener noreferrer"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 8,
         background: '#25D366', color: '#fff', textDecoration: 'none',
