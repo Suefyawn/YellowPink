@@ -609,7 +609,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
 
       <section style={{ padding: '40px 0 var(--section-gap)' }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48 }} className="checkout-grid">
+          {/* minmax(0, …): a bare fr track's minimum is its content's min-content
+              size, so a long unbreakable value (email, promo code) could push the
+              form column past the container and scroll the page sideways. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 48 }} className="checkout-grid">
             <div>
               <Overline style={{ display: 'block', marginBottom: 16 }}>Contact</Overline>
               <div style={{ marginBottom: 24 }}>
@@ -726,7 +729,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
                       placeholder="Promo code (e.g. SAVE10)"
-                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', background: 'white', fontFamily: 'var(--font-ui)', textTransform: 'uppercase' }}
+                      // minWidth 0: an input's intrinsic minimum (~20ch) stops flex
+                      // shrinking it, pushing the Apply button off-screen on phones.
+                      style={{ flex: 1, minWidth: 0, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', background: 'white', fontFamily: 'var(--font-ui)', textTransform: 'uppercase' }}
                     />
                     <button onClick={applyCoupon} disabled={couponLoading} aria-busy={couponLoading} style={{
                       padding: '8px 14px', background: '#111827', color: 'white', border: 'none',

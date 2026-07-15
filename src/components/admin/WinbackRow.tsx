@@ -41,13 +41,15 @@ export function WinbackRow({ c }: { c: WinbackCustomer }) {
 
   return (
     <tr style={{ opacity: sent ? 0.55 : 1 }}>
-      <td>
+      {/* data-label: feeds the .adm-table-cards stacked-card mode on phones,
+          which prints the column name beside each value. */}
+      <td data-label="Customer">
         <div style={{ fontWeight: 600, color: '#111827' }}>{c.name}</div>
         <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>{c.phone}</div>
       </td>
-      <td style={{ whiteSpace: 'nowrap' }}>{c.segment}</td>
-      <td style={{ whiteSpace: 'nowrap' }}>{c.orders} · {fmt(c.revenue)}</td>
-      <td>
+      <td data-label="Segment" style={{ whiteSpace: 'nowrap' }}>{c.segment}</td>
+      <td data-label="Orders · Spent" style={{ whiteSpace: 'nowrap' }}>{c.orders} · {fmt(c.revenue)}</td>
+      <td data-label="Last order">
         <div style={{ whiteSpace: 'nowrap' }}>{c.lastOrderAt}</div>
         {c.lastProduct && (
           <div style={{ fontSize: '0.75rem', color: '#9ca3af', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -55,7 +57,7 @@ export function WinbackRow({ c }: { c: WinbackCustomer }) {
           </div>
         )}
       </td>
-      <td style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+      <td data-label="Outreach" style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
         {sent ? (
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
             <span style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: 600 }}>

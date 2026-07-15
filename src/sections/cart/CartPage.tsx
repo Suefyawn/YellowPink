@@ -197,23 +197,25 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
             )}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48, marginTop: 32 }} className="cart-grid">
+          {/* minmax(0,…): bare fr tracks grow to their content's min-content
+              (long product names made cart rows push the page sideways). */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 48, marginTop: 32 }} className="cart-grid">
             <div>
               {/* Column labels, hidden on mobile via .cart-row-head, replaced
                   by inline labels on each row card. */}
-              <div className="cart-row-head" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
+              <div className="cart-row-head" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 32px', gap: 16, paddingBottom: 12, borderBottom: '1px solid var(--line)' }}>
                 <Overline style={{ color: 'var(--ink-500)' }}>Product</Overline>
                 <Overline style={{ color: 'var(--ink-500)', textAlign: 'center' }}>Quantity</Overline>
                 <Overline style={{ color: 'var(--ink-500)', textAlign: 'right' }}>Total</Overline>
                 <span />
               </div>
               {cartItems.map((item, i) => (
-                <div key={i} className="cart-row" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 32px', gap: 16, alignItems: 'center', padding: '20px 0', borderBottom: '1px solid var(--line)' }}>
+                <div key={i} className="cart-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) 32px', gap: 16, alignItems: 'center', padding: '20px 0', borderBottom: '1px solid var(--line)' }}>
                   <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
                     <div style={{ width: 72, height: 72, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
                       <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} width={72} height={72} />
                     </div>
-                    <div>
+                    <div style={{ minWidth: 0 }}>
                       <Overline style={{ color: 'var(--ink-500)', fontSize: '0.5625rem', display: 'block' }}>{item.brand}</Overline>
                       <div style={{ fontSize: '0.9375rem', fontWeight: 600 }}>{item.name}</div>
                       {(item.variant_label ?? item.variant) && (
@@ -262,7 +264,10 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
                       onKeyDown={e => e.key === 'Enter' && applyCoupon()}
                       placeholder="Promo code (e.g. SAVE10)"
                       style={{
-                        flex: 1, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8,
+                        // minWidth 0: an input's intrinsic minimum (~20ch) stops
+                        // flex shrinking it, pushing the Apply button off-screen
+                        // on 360px phones.
+                        flex: 1, minWidth: 0, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8,
                         fontSize: '0.875rem', fontFamily: 'var(--font-ui)', background: 'white',
                         color: 'var(--ink-900)', textTransform: 'uppercase',
                       }}

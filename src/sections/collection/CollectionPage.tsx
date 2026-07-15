@@ -599,7 +599,12 @@ export function CollectionPage({
 
           {/* ─── Toolbar above the grid: Filters toggle · chips · sort · count ─ */}
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
+            {/* flex-basis auto (not `flex: 1` = basis 0): with basis 0 this group
+                always "fits" any leftover space so the toolbar row never wraps,
+                and on phones the group shrank narrower than the Filters pill,
+                which then painted over the product count. Basis auto makes the
+                row wrap the count/sort cluster onto its own line instead. */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flex: '1 1 auto' }}>
               <button
                 type="button"
                 onClick={() => setFiltersOpen(o => !o)}

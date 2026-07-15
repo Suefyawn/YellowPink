@@ -367,6 +367,10 @@ export default async function DashboardPage() {
             No orders yet
           </div>
         ) : (
+          /* Inner scroller: on tablet widths the table's natural width exceeds
+             the card, and the card's overflow:hidden would clip the last
+             columns with no way to reach them. */
+          <div className="adm-table-scroll" style={{ overflowX: 'auto' }}>
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ background: '#f9fafb' }}>
@@ -406,6 +410,7 @@ export default async function DashboardPage() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

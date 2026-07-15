@@ -200,7 +200,9 @@ export default async function WinbackPage() {
         </span>
       </div>
 
-      <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+      {/* adm-table-scroll (not overflow:hidden): on tablet widths the table is
+          wider than the card and hidden clipped the Outreach column. */}
+      <div className="adm-table-scroll" style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb' }}>
         {audience.length === 0 ? (
           <div style={{ padding: 48, textAlign: 'center', color: '#9ca3af' }}>
             No lapsed customers with phone numbers right now — everyone has ordered within the last 90 days. 🎉
