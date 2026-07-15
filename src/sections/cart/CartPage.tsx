@@ -264,7 +264,10 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
                       onKeyDown={e => e.key === 'Enter' && applyCoupon()}
                       placeholder="Promo code (e.g. SAVE10)"
                       style={{
-                        flex: 1, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8,
+                        // minWidth 0: an input's intrinsic minimum (~20ch) stops
+                        // flex shrinking it, pushing the Apply button off-screen
+                        // on 360px phones.
+                        flex: 1, minWidth: 0, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8,
                         fontSize: '0.875rem', fontFamily: 'var(--font-ui)', background: 'white',
                         color: 'var(--ink-900)', textTransform: 'uppercase',
                       }}

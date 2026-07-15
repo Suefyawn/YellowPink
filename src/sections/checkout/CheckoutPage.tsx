@@ -729,7 +729,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
                       placeholder="Promo code (e.g. SAVE10)"
-                      style={{ flex: 1, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', background: 'white', fontFamily: 'var(--font-ui)', textTransform: 'uppercase' }}
+                      // minWidth 0: an input's intrinsic minimum (~20ch) stops flex
+                      // shrinking it, pushing the Apply button off-screen on phones.
+                      style={{ flex: 1, minWidth: 0, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 6, fontSize: '0.8125rem', background: 'white', fontFamily: 'var(--font-ui)', textTransform: 'uppercase' }}
                     />
                     <button onClick={applyCoupon} disabled={couponLoading} aria-busy={couponLoading} style={{
                       padding: '8px 14px', background: '#111827', color: 'white', border: 'none',
