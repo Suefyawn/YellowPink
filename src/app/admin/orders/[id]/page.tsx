@@ -502,7 +502,10 @@ export default async function OrderDetailPage({
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 380px', gap: 20, alignItems: 'start', marginBottom: 20 }}>
       <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      {/* auto-fit minmax: at ~1024px the outer rail leaves this pair ~600px, and
+          fixed 1fr 1fr squeezed each card into an unreadable sliver. Below
+          ~640px of available width the cards stack instead. */}
+      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
         {/* Customer */}
         <div style={section}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', marginBottom: 16, gap: 12 }}>
@@ -663,7 +666,7 @@ export default async function OrderDetailPage({
         <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
           Confirm the order with the customer on WhatsApp (button at the top), mark it confirmed here, then forward it to a vendor.
         </p>
-        <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
           {/* Customer confirmation */}
           <div>
             <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 6 }}>Customer confirmation</div>

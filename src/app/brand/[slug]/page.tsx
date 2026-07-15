@@ -108,8 +108,9 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
                 <p className="body-text" style={{ color: 'var(--ink-700)' }}>{description}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <span className="small-text" style={{ color: 'var(--ink-700)' }}>{list.length} {list.length === 1 ? 'product' : 'products'}</span>
+                  {/* No literal arrow: .text-link::after already renders one. */}
                   <Link href={`/shop?brand=${encodeURIComponent(brand)}`} className="text-link">
-                    Filter &amp; sort all {brand} products →
+                    Filter &amp; sort all {brand} products
                   </Link>
                 </div>
               </div>
@@ -127,7 +128,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
               <span className="small-text">{list.length} {list.length === 1 ? 'product' : 'products'}</span>
               <Link href={`/shop?brand=${encodeURIComponent(brand)}`} className="text-link">
-                Filter &amp; sort all {brand} products →
+                Filter &amp; sort all {brand} products
               </Link>
             </div>
           </div>

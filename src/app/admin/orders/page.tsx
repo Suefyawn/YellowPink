@@ -140,7 +140,9 @@ async function OrdersPageInner({
         <OrdersFilter total={total} />
       </Suspense>
 
-      <div className="adm-table-scroll" style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>
+      {/* overflowX auto (not hidden): on narrow screens the table is wider than
+          the card, and hidden would clip columns with no way to reach them. */}
+      <div className="adm-table-scroll" style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflowX: 'auto' }}>
         {/* Suspense: OrdersTable reads useSearchParams for the sort headers. */}
         <Suspense fallback={null}>
           <OrdersTable orders={list} courierStatus={courierStatus} />

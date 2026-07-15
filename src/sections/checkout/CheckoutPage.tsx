@@ -609,7 +609,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
 
       <section style={{ padding: '40px 0 var(--section-gap)' }}>
         <div className="container">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 48 }} className="checkout-grid">
+          {/* minmax(0, …): a bare fr track's minimum is its content's min-content
+              size, so a long unbreakable value (email, promo code) could push the
+              form column past the container and scroll the page sideways. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 48 }} className="checkout-grid">
             <div>
               <Overline style={{ display: 'block', marginBottom: 16 }}>Contact</Overline>
               <div style={{ marginBottom: 24 }}>

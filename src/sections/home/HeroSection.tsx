@@ -125,7 +125,12 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
         }
       `}</style>
       <div className="container hero-grid" style={{
-        display: 'grid', gridTemplateColumns: '1.1fr 0.9fr', minHeight: 520, alignItems: 'center',
+        // minmax(0, …): a bare fr track's automatic minimum is its content's
+        // min-content size, and the brand marquee inside the left column is
+        // width:max-content (~1.6k px with 8 brands duplicated for the loop).
+        // Without the 0 floor the column blows out to the marquee's width and
+        // the whole homepage scrolls sideways on phones.
+        display: 'grid', gridTemplateColumns: 'minmax(0, 1.1fr) minmax(0, 0.9fr)', minHeight: 520, alignItems: 'center',
       }}>
         <div style={{ paddingRight: 48, paddingTop: 48, paddingBottom: 48 }}>
           <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>{s.overline}</Overline>

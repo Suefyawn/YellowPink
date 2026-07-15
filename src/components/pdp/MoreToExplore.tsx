@@ -62,7 +62,8 @@ export function MoreToExplore({ brand, category, brandProducts, categoryProducts
             // /shop?brand= filter URL, the filter now canonicalizes to the
             // brand page, so internal links should target it directly.
             href={`/brand/${brandSlug(brand as string)}`}
-            linkLabel={`Shop all ${brand} →`}
+            // No literal arrow: .text-link::after already renders one.
+            linkLabel={`Shop all ${brand}`}
             products={brandRow}
           />
         )}
@@ -70,7 +71,7 @@ export function MoreToExplore({ brand, category, brandProducts, categoryProducts
           <Rail
             heading={`More in ${category}`}
             href={categoryHref(category)}
-            linkLabel={`Shop all ${category} →`}
+            linkLabel={`Shop all ${category}`}
             products={categoryRow}
             style={showBrand ? { marginTop: 56 } : undefined}
           />

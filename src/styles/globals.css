@@ -500,7 +500,10 @@ a.underline,
   .wellness-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .display-xl { font-size: 2.75rem !important; }
   .display-l { font-size: 1.75rem !important; }
-  .hero-grid { grid-template-columns: 1fr !important; min-height: auto !important; }
+  /* minmax(0,…) not 1fr: the hero brand marquee is width:max-content, and a
+     bare fr track grows to its content's min-content — the S24 sideways-
+     scroll bug. Same guard as the inline desktop columns in HeroSection. */
+  .hero-grid { grid-template-columns: minmax(0, 1fr) !important; min-height: auto !important; }
   .hero-grid > div:last-child { min-height: 300px; position: relative !important; }
 }
 /* Below 700px the editorial splits stack like every other duo. */
@@ -546,7 +549,7 @@ a.underline,
 @media (max-width: 700px) {
   .cart-row-head { display: none !important; }
   .cart-row {
-    grid-template-columns: 1fr 1fr !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
     gap: 12px 16px !important;
     padding: 18px 0 !important;
     position: relative;
@@ -844,8 +847,6 @@ a.underline,
   .product-grid, .cat-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .blog-grid { grid-template-columns: 1fr !important; }
   .trust-grid { grid-template-columns: repeat(2, 1fr) !important; }
-  .desktop-nav { display: none !important; }
-  .mobile-menu-btn { display: flex !important; }
   .display-xl { font-size: 2.25rem !important; }
   /* Account + wishlist move into the mobile menu drawer, so the header row
    * has room for the logo without it wrapping to two lines. */
@@ -935,7 +936,17 @@ a.underline,
     border-radius: 4px;
   }
 }
-@media (min-width: 601px) {
+/* Header nav collapse point. The full desktop header (wordmark + 6 nav links
+ * + 4 action icons) needs ~800px; between 601 and 839px it used to render
+ * anyway, colliding the logo with the first nav link and pushing the cart
+ * icon past the viewport edge (every iPad-portrait visitor saw a cut-off
+ * header). The burger takes over below 840px; account/wishlist icons stay
+ * visible down to 600px, below which they move into the drawer. */
+@media (max-width: 839px) {
+  .desktop-nav { display: none !important; }
+  .mobile-menu-btn { display: flex !important; }
+}
+@media (min-width: 840px) {
   .mobile-menu-btn { display: none !important; }
 }
 
@@ -947,9 +958,9 @@ a.underline,
 
 /* Checkout / Cart responsive */
 @media (max-width: 860px) {
-  .checkout-grid { grid-template-columns: 1fr !important; }
+  .checkout-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .checkout-grid > div:last-child { position: static !important; }
-  .cart-grid { grid-template-columns: 1fr !important; }
+  .cart-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .cart-grid > div:last-child { position: static !important; }
   .addr-grid-3 { grid-template-columns: 1fr 1fr !important; }
 }
@@ -1011,7 +1022,10 @@ a.underline,
  * that left those tables to overflow uncontained, fixed here.) */
 .adm-table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 @media (max-width: 767px) {
-  .adm-table-scroll table { min-width: 480px; }
+  /* :not(.adm-table-cards): card-pattern tables collapse to stacked cards on
+   * phones (below) and must shrink to the viewport, not hold 480px inside
+   * the scroller. */
+  .adm-table-scroll table:not(.adm-table-cards) { min-width: 480px; }
 }
 
 /* Admin data tables → stacked cards on phones.
