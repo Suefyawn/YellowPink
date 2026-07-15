@@ -19,10 +19,9 @@ import { FunnelBySourceWidget } from '@/components/admin/FunnelBySourceWidget';
 import { FunnelByDeviceWidget } from '@/components/admin/FunnelByDeviceWidget';
 import { RetentionWidget } from '@/components/admin/RetentionWidget';
 import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
-import { SearchConsoleWidget } from '@/components/admin/SearchConsoleWidget';
-import { Ga4Widget } from '@/components/admin/Ga4Widget';
 import { WebVitalsWidget } from '@/components/admin/WebVitalsWidget';
-import { SeoTrendWidget } from '@/components/admin/SeoTrendWidget';
+import { TrafficSearchDashboard } from '@/components/admin/insights/TrafficSearchDashboard';
+import { getTrafficSearchData } from '@/lib/traffic-insights';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
 import { RangePicker } from '@/components/admin/insights/RangePicker';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
@@ -651,16 +650,13 @@ export default async function AnalyticsPage({
 
       {tab === 'traffic' && canTraffic && (
         <>
-          {/* ── Search & discovery ── the range picker above drives all four
-              cards in this section (SEO trend, Search Console, GA4). */}
-          <TrafficSection title="Search & discovery" hint={`Google Search Console + Analytics, last ${window} days`}>
-            <div style={{ marginBottom: 16 }}>
-              <SeoTrendWidget days={window} />
-            </div>
-            <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              <SearchConsoleWidget days={window} />
-              <Ga4Widget days={window} />
-            </div>
+          {/* ── Search & discovery ── the interactive Traffic & Search
+              dashboard (GA4 channel growth, share donut, GSC performance,
+              top queries/pages, indexing). It carries its own 7/30/90-day
+              pills and slices a 180-day server payload client-side, so
+              range switches are instant. */}
+          <TrafficSection title="Search & discovery" hint="Google Analytics + Search Console, interactive">
+            <TrafficSearchDashboard data={await getTrafficSearchData()} />
           </TrafficSection>
 
           {/* ── Site performance ── real field Core Web Vitals (p75), also
