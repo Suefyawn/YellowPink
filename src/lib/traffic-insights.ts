@@ -21,18 +21,16 @@ import { log } from '@/lib/logger';
 // instead of staying holes in every trend forever.
 // ============================================================================
 
-/** Channel labels are GA4's default channel groups, normalised to the fixed
- *  set the chart knows. Order here is the palette order — never re-sort. */
-export const CHANNELS = [
-  'Organic Search',
-  'Direct',
-  'Referral',
-  'Organic Social',
-  'Paid',
-  'Email',
-  'Other',
-] as const;
-export type Channel = (typeof CHANNELS)[number];
+import {
+  type Channel,
+  type ChannelDay,
+  type GscDay,
+  type IndexingBucket,
+  type TrafficSearchData,
+} from '@/lib/traffic-shared';
+
+export { CHANNELS } from '@/lib/traffic-shared';
+export type { Channel, ChannelDay, GscDay, IndexingBucket, TrafficSearchData } from '@/lib/traffic-shared';
 
 function normaliseChannel(ga4Group: string): Channel {
   const g = ga4Group.toLowerCase();
@@ -43,36 +41,6 @@ function normaliseChannel(ga4Group: string): Channel {
   if (g.includes('paid') || g.includes('display') || g.includes('cross-network')) return 'Paid';
   if (g.includes('email')) return 'Email';
   return 'Other';
-}
-
-export interface ChannelDay {
-  date: string; // YYYY-MM-DD
-  sessions: Partial<Record<Channel, number>>;
-}
-
-export interface GscDay {
-  date: string;
-  clicks: number;
-  impressions: number;
-  ctr: number;      // 0..1
-  position: number; // average
-}
-
-export interface IndexingBucket { state: string; count: number }
-
-export interface TrafficSearchData {
-  /** False when the Google account isn't connected (charts fall back to the
-   *  seo_daily_metrics history where possible). */
-  connected: boolean;
-  /** Ascending by date, up to 180 days. Empty when GA4 unavailable. */
-  channelDaily: ChannelDay[];
-  /** Ascending by date, up to 180 days. From GSC, else seo_daily_metrics. */
-  gscDaily: GscDay[];
-  /** Top search queries, last 28 days (clicks desc). */
-  topQueries: GscRow[];
-  /** Top pages in search, last 28 days (clicks desc). */
-  topPages: GscRow[];
-  indexing: IndexingBucket[];
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);

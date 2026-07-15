@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { fmtInt, fmtCompact, fmtDateShort, pctDelta } from '@/components/admin/insights/format';
-import { CHANNELS, type Channel, type ChannelDay, type GscDay, type IndexingBucket, type TrafficSearchData } from '@/lib/traffic-insights';
+import { CHANNELS, type Channel, type ChannelDay, type GscDay, type IndexingBucket, type TrafficSearchData } from '@/lib/traffic-shared';
 
 // ============================================================================
 // Traffic & Search dashboard (Site Kit style): one 180-day dataset from the
@@ -262,15 +262,16 @@ function DonutCard({ daily }: { daily: ChannelDay[] }) {
     .map(ch => ({ ch, value: sumChannel(cur, ch), prevValue: sumChannel(prev, ch) }))
     .filter(s => s.value > 0);
 
-  // Donut geometry: 2px surface gaps between segments via stroke.
+  // Donut geometry: 2px surface gaps between segments via stroke. Offsets are
+  // cumulative fractions, computed immutably (reduce) to satisfy the
+  // react-hooks immutability rule for render-scope values.
   const R = 62, STROKE = 22, C = 2 * Math.PI * R;
-  let acc = 0;
-  const segs = slices.map(s => {
+  const segs = slices.reduce<Array<(typeof slices)[number] & { frac: number; offset: number }>>((out, s) => {
     const frac = total > 0 ? s.value / total : 0;
-    const seg = { ...s, frac, offset: acc };
-    acc += frac;
-    return seg;
-  });
+    const offset = out.length > 0 ? out[out.length - 1].offset + out[out.length - 1].frac : 0;
+    out.push({ ...s, frac, offset });
+    return out;
+  }, []);
 
   return (
     <div style={{ ...card, marginBottom: 0, height: '100%' }}>
@@ -407,15 +408,17 @@ function SearchPerfCard({ daily }: { daily: GscDay[] }) {
             role="img"
             aria-label="Daily Search Console impressions and clicks"
           >
-            {/* Impressions panel */}
-            <text x={PAD_L} y={IMP_TOP - 2} fontSize={10} fontWeight={700} fill="#2a78d6">IMPRESSIONS</text>
+            {/* Impressions panel. Labels wear ink; the swatch carries identity. */}
+            <rect x={PAD_L} y={IMP_TOP - 10} width={8} height={8} rx={2} fill="#2a78d6" />
+            <text x={PAD_L + 12} y={IMP_TOP - 2} fontSize={10} fontWeight={700} fill="#6b7280">IMPRESSIONS</text>
             <line x1={PAD_L} x2={W - PAD_R} y1={IMP_TOP + IMP_H} y2={IMP_TOP + IMP_H} stroke="#e5e7eb" strokeWidth={1} />
             <text x={PAD_L - 6} y={IMP_TOP + 8} textAnchor="end" fontSize={10} fill="#9ca3af">{fmtCompact(imp.max)}</text>
             <path d={imp.area} fill="#2a78d6" opacity={0.12} />
             <path d={imp.line} fill="none" stroke="#2a78d6" strokeWidth={2} strokeLinejoin="round" />
 
             {/* Clicks panel */}
-            <text x={PAD_L} y={CLK_TOP - 2} fontSize={10} fontWeight={700} fill="#008300">CLICKS</text>
+            <rect x={PAD_L} y={CLK_TOP - 10} width={8} height={8} rx={2} fill="#008300" />
+            <text x={PAD_L + 12} y={CLK_TOP - 2} fontSize={10} fontWeight={700} fill="#6b7280">CLICKS</text>
             <line x1={PAD_L} x2={W - PAD_R} y1={CLK_TOP + CLK_H} y2={CLK_TOP + CLK_H} stroke="#e5e7eb" strokeWidth={1} />
             <text x={PAD_L - 6} y={CLK_TOP + 8} textAnchor="end" fontSize={10} fill="#9ca3af">{fmtCompact(clk.max)}</text>
             <path d={clk.area} fill="#008300" opacity={0.12} />
