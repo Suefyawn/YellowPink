@@ -31,7 +31,9 @@ const MAIN_PAGES: { label: string; path: string }[] = [
   { label: 'Brands', path: '/brands' },
   { label: 'K-Beauty', path: '/k-beauty' },
   { label: 'Journal (Blog)', path: '/blog' },
-  { label: 'Contact', path: '/contact' },
+  // /page/contact directly: /contact is a 301 alias (proxy.ts), and linking
+  // the redirect wastes a hop on every crawl.
+  { label: 'Contact', path: '/page/contact' },
   { label: 'Track order', path: '/track' },
 ];
 

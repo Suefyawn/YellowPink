@@ -126,7 +126,10 @@ export function ContactChannels({
           <a
             key={c.key}
             href={c.href}
-            {...(c.external ? { target: '_blank', rel: 'nofollow noopener noreferrer' } : {})}
+            // external means "opens a new tab"; the only such channel (WhatsApp)
+            // points at the internal robots-disallowed /go/whatsapp redirect,
+            // so no nofollow — internal nofollow trips audits.
+            {...(c.external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
             className="contact-channel-card"
             // One emphasis device for the preferred channel: the tinted
             // background (plus the small "Fastest" badge). Border, icon chip
@@ -185,7 +188,7 @@ export function ContactChannels({
                 // link. Same treatment as the footer social row.
                 href={s.key === 'social_whatsapp' ? '/go/whatsapp?src=contact-social' : s.href}
                 target="_blank"
-                rel={s.key === 'social_whatsapp' ? 'nofollow noopener noreferrer' : 'noopener noreferrer'}
+                rel="noopener noreferrer"
                 aria-label={`Yellow Pink on ${s.label}`}
                 title={s.label}
                 className="contact-social"

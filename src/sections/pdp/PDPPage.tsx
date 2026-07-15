@@ -725,7 +725,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                   <a
                     href={href}
                     target="_blank"
-                    rel="nofollow noopener noreferrer"
+                    rel="noopener noreferrer"
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: 8,
                       background: 'transparent', color: '#0f766e',
@@ -816,7 +816,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                       <a
                         href={consultHref}
                         target="_blank"
-                        rel="nofollow noopener noreferrer"
+                        rel="noopener noreferrer"
                         style={{
                           display: 'inline-flex', alignItems: 'center', gap: 8,
                           background: '#25D366', color: '#fff',

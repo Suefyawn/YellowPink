@@ -330,7 +330,7 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
                   <a
                     href={href}
                     target="_blank"
-                    rel="nofollow noopener noreferrer"
+                    rel="noopener noreferrer"
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                       marginTop: 12, padding: '10px 14px',
