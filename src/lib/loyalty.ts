@@ -24,14 +24,13 @@ export function nextTierTarget(points: number): { next: LoyaltyTier | null; need
 // Settings → Loyalty is reflected here — the Postgres award triggers read the
 // same site_settings rows, so display and awarding can't drift apart.
 export function earnRules(earn: {
-  welcome: number; review: number; referral: number; birthday: number; pointsPerPkr: number;
+  welcome: number; review: number; referral: number; pointsPerPkr: number;
 }): { reason: string; label: string; description: string }[] {
   return [
     { reason: 'welcome',        label: `+${earn.welcome} pts`,  description: 'Welcome bonus when you sign up' },
     { reason: 'order_delivered',label: `${Math.round(earn.pointsPerPkr * 100)} pts / PKR 100`, description: 'Earned when your order is marked delivered' },
     { reason: 'review_approved',label: `+${earn.review} pts`,   description: 'When a review you submit is approved' },
     { reason: 'referral_reward',label: `+${earn.referral} pts`, description: 'When someone you referred completes their first order' },
-    { reason: 'birthday',       label: `+${earn.birthday} pts`, description: 'On your birthday (set your date of birth on your profile)' },
   ];
 }
 
@@ -41,7 +40,6 @@ export const REASON_LABELS: Record<string, string> = {
   review_approved:   'Review approved',
   referral_reward:   'Referral reward',
   redemption:        'Points redeemed',
-  birthday:          'Birthday bonus',
   manual:            'Manual adjustment',
   refund_reversal:   'Refund reversed',
 };

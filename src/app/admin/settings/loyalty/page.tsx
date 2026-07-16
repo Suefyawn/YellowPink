@@ -45,10 +45,6 @@ export default async function SettingsLoyaltyPage({ searchParams }: { searchPara
               <input name="loyalty_review_points" type="number" min={0} defaultValue={g('loyalty_review_points', '25')} style={inp} />
             </div>
             <div>
-              <label style={lbl}>Birthday points</label>
-              <input name="loyalty_birthday_points" type="number" min={0} defaultValue={g('loyalty_birthday_points', '200')} style={inp} />
-            </div>
-            <div>
               <label style={lbl}>Referrer reward (points)</label>
               <input name="loyalty_referral_points" type="number" min={0} defaultValue={g('loyalty_referral_points', '500')} style={inp} />
             </div>
