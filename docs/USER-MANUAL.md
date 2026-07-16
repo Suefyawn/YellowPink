@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 14 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 16 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -976,6 +976,10 @@ store owner.
 
 A dated history of user-facing changes, newest first.
 
+### 16 July 2026
+
+- **Birthday rewards removed — and profile saving fixed.** The birthday-points feature (date-of-birth field on the customer Profile page, "Birthday points" in Settings → Loyalty, automatic points on the customer's birthday) has been removed. It never worked: the database column it depended on was missing, which also silently **broke saving any profile change** (name or phone) since 9 July — that's fixed by the removal. The rewards page no longer mentions a birthday bonus.
+
 ### 14 July 2026
 
 - **The quiz became a real Routine Finder.** Instead of showing six loosely-related products, the quiz now builds a numbered skincare routine (Cleanse → Treat → Moisturise → Protect) or a supplement plan, matching the shopper's answers against actual product ingredients, with the reason stated under every pick. Results are saved to a shareable link, can be added to the cart in one tap, link the relevant buyer guides, and the email option now sends the shopper's actual picks instead of a generic welcome mail.
@@ -1006,7 +1010,6 @@ A dated history of user-facing changes, newest first.
 - **The homepage "Real shoppers" section now tells the truth.** Its stat strip and three review cards were hardcoded samples ("2,400+ reviews", "50k+ orders", invented reviewers) — under a headline promising "no paid reviews". Both now come live from the database: the real average rating and review count (rounded *down*), your real brand count, the actual returns window, and three genuine top-rated customer reviews (best-rated, substantial, one brand each). If real data ever gets too thin, the section hides instead of padding with fiction.
 - **Shopping nudges that reduce buying friction.** The cart and mini-cart now show a live **free-delivery progress bar** ("Add PKR 800 more for FREE delivery") instead of vague copy; product pages show **concrete arrival dates** ("Get it by Sat 12 – Wed 16 Jul", Sundays skipped) instead of "2–5 working days"; a **percentage-off badge** appears next to the crossed-out price on the product page (previously only on grid tiles); products with real sales history show an honest **"120+ sold"** line (from actual order data, rounded down so it never overstates); and the mobile sticky buy bar shows **which shade is selected**, so shoppers don't scroll back up to check before tapping Add.
 - **Card payments now actually reach the payment page.** Choosing "Credit / Debit Card" at checkout previously placed the order but skipped the payment step entirely — the order sat in *Awaiting payment* and the customer was never charged. Card orders now hand off to JazzCash's hosted page (where card entry lives), exactly like wallet payments. No real orders were affected.
-- **Birthday rewards are real now.** The rewards page has always promised bonus points "on your birthday" — but there was nowhere to enter a birthday and nothing awarded the points. Customers can now set their **date of birth on the Profile page**, and every morning the system automatically credits the birthday bonus (configurable in **Settings → Loyalty → Birthday points**, default 200) to anyone celebrating that day.
 - **The "How to earn" list can't lie anymore.** The rewards page's earn values (welcome bonus, review points, referral reward, points per PKR) were hard-coded — changing them in Settings → Loyalty updated what customers *earned* but not what the page *said*. The list now reads the live settings.
 - **Wishlist joined the account hub**, so saved products are reachable from My Account, not just the header icon. And two dead controls were removed from Settings → Shipping: the tax rate and tax-inclusive toggles were never read by checkout or reports (Pakistani retail prices are tax-inclusive); they'd return only alongside a real tax computation.
 - **Shade products can no longer fail or oversell at checkout.** Two long-standing defects in the order pipeline hit products sold in shades: (1) if a shade's price differed from the product's base price, every checkout of that shade was rejected with a mismatch error — one product was completely unbuyable; (2) stock was counted against the product as a whole rather than the specific shade, so a popular shade could oversell while the counter said fine, and cancellations drifted the two counts apart. Orders now price and count stock per shade, the product-level counter moves in lockstep (so "sold out" badges stay truthful), and every affected product's counters were reconciled. *One to know: the Milk Makeup jelly tint shades had been entered at Rs 1,699 while the product sells at Rs 4,500 — the old bug is the only reason nothing sold at the wrong price; the shades are corrected to Rs 4,500 (adjust in admin if a promo price was intended).*

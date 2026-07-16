@@ -410,7 +410,6 @@ export interface Profile {
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
-  dob?: string | null;
   referral_code?: string | null;
   referred_by_code?: string | null;
   created_at: string;
@@ -425,7 +424,7 @@ export interface LoyaltyAccount {
 
 export type LoyaltyReason =
   | 'welcome' | 'order_delivered' | 'review_approved' | 'referral_reward'
-  | 'redemption' | 'birthday' | 'manual' | 'refund_reversal';
+  | 'redemption' | 'manual' | 'refund_reversal';
 
 export interface LoyaltyLedgerEntry {
   id: string;

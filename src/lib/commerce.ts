@@ -47,7 +47,6 @@ export interface CommerceConfig {
     welcome: number;
     review: number;
     referral: number;
-    birthday: number;
     /** Points earned per 1 PKR of a delivered order (0.1 = 10 pts / PKR 100). */
     pointsPerPkr: number;
   };
@@ -80,7 +79,6 @@ export function parseCommerceConfig(settings: Record<string, string>): CommerceC
       welcome:      earnNum(settings.loyalty_welcome_points, 100),
       review:       earnNum(settings.loyalty_review_points, 25),
       referral:     earnNum(settings.loyalty_referral_points, 500),
-      birthday:     earnNum(settings.loyalty_birthday_points, 200),
       pointsPerPkr: earnNum(settings.loyalty_points_per_pkr, 0.1),
     },
   };
@@ -96,7 +94,7 @@ export const DEFAULT_COMMERCE_CONFIG: CommerceConfig = {
   defaultShippingRate: DEFAULT_SHIPPING_RATE,
   defaultDeliveryCost: 0,
   loyaltyPkrPerPoint: DEFAULT_LOYALTY_PKR_PER_POINT,
-  loyaltyEarn: { welcome: 100, review: 25, referral: 500, birthday: 200, pointsPerPkr: 0.1 },
+  loyaltyEarn: { welcome: 100, review: 25, referral: 500, pointsPerPkr: 0.1 },
 };
 
 /** Format a threshold (PKR) as shoppers see it, e.g. "PKR 5,000". */
