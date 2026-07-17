@@ -611,8 +611,10 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
 
   if (conn.gsc_site_url) {
     try {
+      // 200 queries (was 25): the search-demand report mines the tail for
+      // winnable/low-CTR terms and 25 rows cut it off mid-list.
       const [queries, pages] = await Promise.all([
-        gscQuery({ siteUrl: conn.gsc_site_url, startDate: fmt(start), endDate: fmt(end), dimensions: ['query'], rowLimit: 25 }),
+        gscQuery({ siteUrl: conn.gsc_site_url, startDate: fmt(start), endDate: fmt(end), dimensions: ['query'], rowLimit: 200 }),
         gscQuery({ siteUrl: conn.gsc_site_url, startDate: fmt(start), endDate: fmt(end), dimensions: ['page'],  rowLimit: 25 }),
       ]);
       await upsertCache(supabase, 'gsc', {
@@ -625,6 +627,28 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
         queries: queries.map(r => ({ query: r.keys[0], clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position })),
         pages:   pages.map(r =>   ({ url:   r.keys[0], clicks: r.clicks, impressions: r.impressions, ctr: r.ctr, position: r.position })),
       });
+      // Accumulate per-query history (one row per day+query) so the
+      // search-demand report can show which Google queries are rising or
+      // falling — analytics_cache only ever holds the latest aggregate.
+      // Keyed on the freshest complete GSC day so re-runs the same day
+      // overwrite instead of duplicating.
+      try {
+        const snapDay = fmt(end);
+        const snapRows = queries
+          .filter(r => r.keys[0])
+          .map(r => ({
+            day: snapDay,
+            query: String(r.keys[0]).slice(0, 200),
+            impressions: Math.round(r.impressions ?? 0),
+            clicks: Math.round(r.clicks ?? 0),
+            position: r.position != null ? Number(r.position.toFixed(2)) : null,
+            ctr: r.ctr != null ? Number(r.ctr.toFixed(4)) : null,
+          }));
+        if (snapRows.length > 0) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          await (supabase.from('gsc_query_snapshots') as any).upsert(snapRows, { onConflict: 'day,query' });
+        }
+      } catch { /* history is additive; never block the cache refresh */ }
     } catch { /* best-effort: keep GA4 alive even if GSC errors */ }
   }
 
