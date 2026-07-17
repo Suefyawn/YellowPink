@@ -162,13 +162,16 @@ export function SearchOverlay({ trending, categories }: SearchOverlayProps = {})
   // log the query the shopper actually meant, not every keystroke prefix. At
   // 200ms every pause logged ("co", "coll", "collagen"), polluting the
   // search-demand report and analytics; ~1s only fires once typing stops.
+  // `results` rides along (the RPC settles at 200ms, well before this fires)
+  // so the search-demand report can chart zero-result searches per day
+  // without re-running every term against the catalogue.
   useEffect(() => {
     if (!searchOpen) return;
     const q = query.trim();
     if (q.length < 2) return;
-    const t = setTimeout(() => track({ name: 'search', payload: { query: q } }), 1000);
+    const t = setTimeout(() => track({ name: 'search', payload: { query: q, results: products.length } }), 1000);
     return () => clearTimeout(t);
-  }, [query, searchOpen]);
+  }, [query, searchOpen, products]);
 
   // Server already filtered + ranked via pg_trgm. Just rename for the JSX.
   const filtered = products;

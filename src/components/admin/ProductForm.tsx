@@ -51,7 +51,13 @@ function Section({ title, desc, first, children }: {
   );
 }
 
-export function ProductForm({ product, vendors = [], initialName }: { product?: Product; vendors?: Vendor[]; initialName?: string }) {
+export function ProductForm({ product, vendors = [], initialName, linkedPosts = [] }: {
+  product?: Product;
+  vendors?: Vendor[];
+  initialName?: string;
+  /** Journal posts whose body links to this product (dead links if unpublished). */
+  linkedPosts?: Array<{ id: string; title: string }>;
+}) {
   const isEdit = Boolean(product);
   const boundAction = isEdit ? updateProduct.bind(null, product!.id) : createProduct;
   const [state, action, pending] = useActionState(boundAction, null);
@@ -70,6 +76,8 @@ export function ProductForm({ product, vendors = [], initialName }: { product?: 
   // the Search-demand report's "Create product" action seeds the searched term
   // as the name). Only applies when creating, an edit always uses the product.
   const [name, setName] = useState(product?.name ?? initialName ?? '');
+  // Tracks the status <select> so the unpublish warning can react to it.
+  const [statusPick, setStatusPick] = useState(product?.status ?? 'draft');
   const [slug, setSlug] = useState(product?.slug ?? '');
   const [trackInv, setTrackInv] = useState(product?.track_inventory !== false);
   // Tracked so the vendor margin readout updates as the owner edits.
@@ -223,12 +231,34 @@ export function ProductForm({ product, vendors = [], initialName }: { product?: 
                     goes live (or gets pinged to search engines) by accident.
                     Archived products keep their option so an edit doesn't
                     silently resurrect them. */}
-                <select name="status" required defaultValue={product?.status ?? 'draft'} style={inp}>
+                <select
+                  name="status"
+                  required
+                  defaultValue={product?.status ?? 'draft'}
+                  style={inp}
+                  onChange={e => setStatusPick(e.target.value as 'draft' | 'published' | 'archived')}
+                >
                   <option value="draft">Draft (hidden from storefront)</option>
                   <option value="published">Published (live)</option>
                   {product?.status === 'archived' && <option value="archived">Archived</option>}
                 </select>
                 <span style={hint}>Drafts are only visible in the admin. Publishing submits the page to search engines.</span>
+                {/* Unpublish warning: live journal articles link to this page;
+                    taking it down 404s those links until the posts are edited. */}
+                {product?.status === 'published' && statusPick !== 'published' && linkedPosts.length > 0 && (
+                  <div role="alert" style={{ marginTop: 8, padding: '10px 12px', borderRadius: 8, background: '#fffbeb', border: '1px solid #fde68a', fontSize: '0.8125rem', color: '#92400e' }}>
+                    <strong>{linkedPosts.length === 1 ? '1 journal post links' : `${linkedPosts.length} journal posts link`} to this product.</strong>{' '}
+                    Unpublishing will leave {linkedPosts.length === 1 ? 'a dead link' : 'dead links'} in:
+                    <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                      {linkedPosts.map(bp => (
+                        <li key={bp.id}>
+                          <a href={`/admin/blog/${bp.id}`} target="_blank" rel="noreferrer" style={{ color: '#92400e', textDecoration: 'underline' }}>{bp.title}</a>
+                        </li>
+                      ))}
+                    </ul>
+                    Update or unlink those mentions after saving.
+                  </div>
+                )}
               </div>
             </div>
           </Section>

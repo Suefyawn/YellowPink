@@ -81,6 +81,16 @@ export default async function EditProductPage({
   // vendors RLS has no policy, read with the service role.
   const { data: vendorData } = await supabaseAdmin().from('vendors').select('*').order('name');
 
+  // Journal posts whose body links to this product's page. Unpublishing while
+  // these exist leaves dead links in live articles, so the form warns first.
+  const { data: linkingPosts } = await supabaseAdmin()
+    .from('blog_posts')
+    .select('id, title')
+    .like('body', `%/product/${product.slug}%`)
+    .limit(10);
+  const linkedPosts = ((linkingPosts ?? []) as Array<{ id: string | number; title: string }>)
+    .map(bp => ({ id: String(bp.id), title: bp.title }));
+
   // Gallery images (product-page photos, cover first) for the reorder editor.
   const { data: galleryRows } = await supabase
     .from('product_images').select('id, url, alt').eq('product_id', product.id).order('sort_order');
@@ -117,7 +127,7 @@ export default async function EditProductPage({
           {feedbackError}
         </div>
       )}
-      <ProductForm product={product} vendors={(vendorData ?? []) as Vendor[]} />
+      <ProductForm product={product} vendors={(vendorData ?? []) as Vendor[]} linkedPosts={linkedPosts} />
       <div style={{ padding: '0 36px 32px' }}>
         <ProductTagsEditor productId={product.id} initialTags={productTags} suggestions={allTags} />
         <ProductGallerySection productId={product.id} initialImages={galleryImages} />
