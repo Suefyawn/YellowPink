@@ -570,7 +570,7 @@ export function SearchDemandDashboard(p: SearchDemandDashboardProps) {
           onChange={e => setFilter(e.target.value)}
           placeholder="Filter terms…"
           aria-label="Filter all term lists"
-          style={{ padding: '7px 12px', border: `1px solid ${LINE}`, borderRadius: 8, fontSize: '0.8125rem', width: 200 }}
+          style={{ padding: '7px 12px', border: `1px solid ${LINE}`, borderRadius: '8px', fontSize: '0.8125rem', width: '200px' }}
         />
         {p.acts.product && p.ignored.length > 0 && (
           <button
