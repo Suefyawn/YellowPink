@@ -15,6 +15,13 @@ import { canonicalCategory, categoryHref, findTaxon } from '@/lib/category-taxon
 // Without this the sitemap is built once at deploy time and silently goes stale
 // as new content is published.
 export const revalidate = 3600;
+// The regeneration must READ live data: this route touches no request-time
+// APIs, so its Supabase fetches default into the persistent Data Cache and a
+// "fresh" ISR pass re-serves the same frozen rows (observed live 2026-07-18:
+// a product deleted straight in the DB stayed in the sitemap through multiple
+// regenerations AND two deploys). no-store fetches + hourly ISR = the shape
+// we actually want: cached output, fresh input.
+export const fetchCache = 'force-no-store';
 
 // Robots-disallowed (utility / private) routes are deliberately excluded, // listing them would send a conflicting signal to crawlers.
 const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [

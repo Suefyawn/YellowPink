@@ -21,6 +21,8 @@ import { googleProductCategory } from '@/lib/google-product-category';
 import { loadFeedVariants, type FeedVariant } from '@/lib/product-feed';
 
 export const revalidate = 3600; // 1h, Meta polls on a schedule; this is plenty.
+// Read live rows on every regeneration (see the matching note in app/sitemap.ts).
+export const fetchCache = 'force-no-store';
 
 interface FeedProduct {
   id: string;

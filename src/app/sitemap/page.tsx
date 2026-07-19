@@ -5,6 +5,8 @@
 // pages that the nav doesn't link directly). ISR-cached like the rest of
 // the storefront.
 export const revalidate = 600;
+// Read live rows on every regeneration (see the matching note in app/sitemap.ts).
+export const fetchCache = 'force-no-store';
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
