@@ -40,6 +40,13 @@ export function ConsentBanner() {
   // over the admin UI was pure noise. Staff still see it on the storefront.
   if (pathname?.startsWith('/admin')) return null;
 
+  // Checkout is the one page where nothing may compete with the form: the
+  // banner appears on a delay and covered the address fields mid-typing on
+  // phones (390px conversion audit, 2026-07-19). Deferring the PROMPT here
+  // costs nothing — pre-consent, analytics/marketing cookies stay off anyway
+  // — and the shopper sees it on the next non-checkout page instead.
+  if (pathname?.startsWith('/checkout')) return null;
+
   if (!mounted || !visible) return null;
 
   const handleAccept = () => { acceptAll(); setVisible(false); };
