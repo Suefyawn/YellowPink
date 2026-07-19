@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 16 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 19 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -150,7 +150,10 @@ customers and spot where an order is.
   variants (e.g. shades), the customer picks one before adding to the cart. When
   a shipping zone has a delivery estimate configured, an **estimated delivery
   time** ("Delivery in X–Y working days · COD nationwide") shows by the
-  Add-to-Cart button. Further down the page, a **"From the blog"** row shows
+  Add-to-Cart button. Under Add to Cart sits a **Buy Now** button that adds
+  the item and takes the shopper straight to checkout in one tap, skipping
+  the cart entirely (their bag is untouched otherwise: anything already in
+  it comes along to checkout as normal). Further down the page, a **"From the blog"** row shows
   up to three journal articles that feature the product (it appears
   automatically when a blog post links to the product, and stays hidden
   otherwise). Below the reviews, a **Questions & answers** section shows
@@ -975,6 +978,11 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 19 July 2026
+
+- **Buy Now on product pages.** A one-tap **Buy Now** button now sits under *Add to Cart* on every in-stock product: it adds the item and goes straight to checkout, skipping the cart for the shopper who wants just that one thing. Anything already in the bag comes along to checkout as usual, and *Add to Cart* keeps working exactly as before.
+- **The cookie bar no longer interrupts checkout.** The consent prompt used to slide up over the address form a moment after checkout loaded on phones. It now never shows on the checkout page; shoppers see it on the next regular page instead.
 
 ### 16 July 2026
 

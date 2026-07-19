@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
@@ -327,7 +328,12 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // "Select options" tap can feel like a dead scroll).
   const [flashPicker, setFlashPicker] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
-  const { addToCart } = useCart();
+  const { addToCart, cartItems } = useCart();
+  const router = useRouter();
+  // Buy Now pressed: locks the button (and swaps its label) for the beat
+  // between the tap and the checkout page taking over, so a double-tap
+  // can't queue two navigations or double the quantity.
+  const [buying, setBuying] = useState(false);
   // Free-delivery copy tracks the owner's live on/off setting. We don't state a
   // single threshold here: it varies by delivery zone and we can't know the
   // shopper's city on the PDP, so the exact figure is shown at checkout.
@@ -514,6 +520,32 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // (which lives in the in-page buy panel) instead of being a disabled
   // dead-end, the previous behaviour left mobile users tapping a greyed
   // "Select options" button with no on-screen way to act.
+  // Buy Now: add silently (no drawer — it would only flash mid-navigation)
+  // and go straight to checkout. When the add is clamped away because the
+  // cart already holds every available unit of this exact line, checkout is
+  // still the right destination — the shopper's intent is "buy this now" and
+  // the item is already in the cart.
+  const handleBuyNow = () => {
+    if (ctaDisabled || buying) return;
+    tapHaptic();
+    const added = addToCart({
+      ...product,
+      qty,
+      price:      displayPrice,
+      stock:      displayStock,
+      image_url:  displayImageOverride ?? product.image_url,
+      variant_id: activeVariant?.id ?? null,
+      variant_label: variantLabel,
+    }, { openDrawer: false });
+    const alreadyInCart = cartItems.some(
+      i => i.id === product.id && (i.variant_id ?? null) === (activeVariant?.id ?? null),
+    );
+    if (added || alreadyInCart) {
+      setBuying(true);
+      router.push('/checkout');
+    }
+  };
+
   const handleStickyCta = () => {
     if (needsSelection) {
       // Scroll to the picker itself (not the buy row below it) and flash it.
@@ -675,7 +707,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </div>
             )}
 
-            <div ref={buyPanelRef} style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
+            {/* marginBottom 12 hugs the Buy Now row below; back to 24 when
+                that row is hidden (sold out) so the TrustStrip doesn't creep up. */}
+            <div ref={buyPanelRef} style={{ display: 'flex', gap: 12, marginBottom: outOfStock ? 24 : 12 }}>
               <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)' }}>
                 <button type="button" aria-label="Decrease quantity" onClick={() => setQty(Math.max(1, qty - 1))} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>−</button>
                 <span aria-live="polite" style={{ width: 32, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
@@ -693,6 +727,24 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                   : 'Add to Cart'}
               </button>
             </div>
+
+            {/* Buy Now: one-tap path straight to checkout for the "I just want
+                this one thing" shopper — the funnel showed most PDP visitors
+                never even reach the cart. Hidden while sold out (a second
+                dead button under "Out of Stock" is noise); when a variant
+                still needs picking it stays disabled like Add to Cart, the
+                button above already reads "Select options". */}
+            {!outOfStock && (
+              <div style={{ display: 'flex', marginBottom: 24 }}>
+                <button onClick={handleBuyNow} disabled={ctaDisabled || buying} className="btn-primary" style={{
+                  flex: 1,
+                  background: ctaDisabled ? '#d1d5db' : 'var(--ink-900)',
+                  cursor: ctaDisabled ? 'not-allowed' : 'pointer',
+                }}>
+                  {buying ? 'Taking you to checkout…' : 'Buy Now'}
+                </button>
+              </div>
+            )}
 
             {!outOfStock && (
               <p className="small-text" style={{ marginTop: -8, marginBottom: 24, color: 'var(--ink-700)' }}>
