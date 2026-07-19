@@ -18,6 +18,10 @@ import { googleProductCategory } from '@/lib/google-product-category';
 import { loadFeedVariants, type FeedVariant } from '@/lib/product-feed';
 
 export const revalidate = 3600; // 1h, Merchant Center polls daily, this is plenty.
+// Read live rows on every regeneration — without this the route's Supabase
+// fetches sit in the persistent Data Cache and the feed freezes (see the
+// matching note in app/sitemap.ts; a stale Merchant feed risks disapprovals).
+export const fetchCache = 'force-no-store';
 
 interface FeedProduct {
   id: string;

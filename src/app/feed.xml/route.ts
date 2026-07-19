@@ -10,6 +10,8 @@ import { getBlogPosts } from '@/lib/supabase';
 import { SITE_URL } from '@/lib/seo';
 
 export const revalidate = 3600; // new posts appear within the hour
+// Read live rows on every regeneration (see the matching note in app/sitemap.ts).
+export const fetchCache = 'force-no-store';
 
 function esc(s: string): string {
   return s.replace(/[&<>"']/g, c =>
