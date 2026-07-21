@@ -335,8 +335,16 @@ export function CollectionPage({
   // Reset paging when *any* filter / sort / category / query changes.
   // Page state isn't derivable (it's user-driven within a filter set), so
   // resetting it on filter change has to happen in an effect.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setPage(1); }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedTags, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly, q]);
+  // MUST skip the mount run: effects fire once on mount too, and the
+  // unguarded reset bounced every direct /shop?page=N landing straight back
+  // to page 1 — the shopper (and every JS-executing crawler) got page-1
+  // content and a replaced URL on all pagination URLs (Semrush 2026-07-21:
+  // duplicate titles/content + multiple canonicals on ?page=2-4).
+  const didMountPageReset = useRef(false);
+  useEffect(() => {
+    if (!didMountPageReset.current) { didMountPageReset.current = true; return; }
+    setPage(1);
+  }, [activeCategory, activeSubcategory, sortBy, selectedBrands, selectedTags, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly, q]);
   // Brand list rebuilds per-category; when the shopper switches the top tab we
   // drop brand selections that no longer apply. This must NOT run on mount,   // doing so wiped the brand seeded from `?brand=` in the URL (e.g. landing on
   // /shop?brand=Anua from a K-Beauty brand card), flipping the page straight
@@ -395,8 +403,16 @@ export function CollectionPage({
   }, [q, activeCategory, activeSubcategory, sortBy, selectedBrands, selectedTags, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly]);
 
   useEffect(() => {
+    const target = shopUrlFor(page);
+    // Skip the no-op replace. On mount the URL already matches the state, and
+    // replacing to the same URL re-streams the route's metadata: streamed
+    // <title>/<link rel=canonical> tags are APPENDED to the DOM without the
+    // originals being removed, so JS-executing crawlers saw two canonical
+    // tags on every listing page. Skipping also saves the redundant RSC
+    // round-trip on every /shop and /category landing.
+    if (target === window.location.pathname + window.location.search) return;
     // Replace, not push, filtering shouldn't pile up history entries.
-    router.replace(shopUrlFor(page), { scroll: false });
+    router.replace(target, { scroll: false });
   }, [shopUrlFor, page, router]);
 
   const activeFilterCount =
