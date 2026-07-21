@@ -25,7 +25,10 @@ interface CartContextValue {
    *  stock clamp dropped the add entirely (sold out, or the line is already
    *  at the available-stock cap). Callers must not show success feedback on
    *  false — the toast/drawer/analytics are only fired internally on true. */
-  addToCart: (product: AddToCartInput) => boolean;
+  /** opts.openDrawer=false adds silently (no drawer, no toast) — the Buy Now
+   *  fast path navigates straight to checkout and the drawer would only
+   *  flash mid-navigation. Analytics fire either way. */
+  addToCart: (product: AddToCartInput, opts?: { openDrawer?: boolean }) => boolean;
   /** Silently swap a saved snapshot back into an EMPTY cart (failed-payment
    *  recovery). Unlike `addToCart` this fires no toast/drawer/analytics — the
    *  shopper didn't add anything, we're undoing our own pre-gateway clear.
@@ -117,7 +120,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch { /* quota exceeded */ }
   }, [appliedCoupon]);
 
-  const addToCart = (product: AddToCartInput): boolean => {
+  const addToCart = (product: AddToCartInput, opts?: { openDrawer?: boolean }): boolean => {
     // Dedupe key: same product AND same variant. Adding two different shades
     // of the same product results in two cart lines.
     const variantId = product.variant_id ?? null;
@@ -174,14 +177,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         currency:     'PKR',
       },
     });
-    setAddCounter(c => c + 1);
-    setLastAdded({
-      name:  product.name,
-      brand: product.brand,
-      price: product.price,
-      qty:   addedQty,
-    });
-    setCartOpen(true);
+    if (opts?.openDrawer !== false) {
+      setAddCounter(c => c + 1);
+      setLastAdded({
+        name:  product.name,
+        brand: product.brand,
+        price: product.price,
+        qty:   addedQty,
+      });
+      setCartOpen(true);
+    }
     return true;
   };
 
