@@ -355,6 +355,7 @@ Here's what each link is for:
 | **Abandoned** | Shoppers who started checkout (typed their phone number) but never placed the order, listed with their saved cart. **Open in WhatsApp** pre-types a personalised message (editable template + coupon) with a link that restores their cart; each send is recorded so nobody is messaged twice, and placing an order removes them from the list automatically. Complements the automatic reminder *emails*, which only reach shoppers who got as far as typing an email address. |
 | **Messages** | A threaded inbox for the storefront contact form and inbound email — reply by email straight from the thread, with order history in each conversation header. Full breakdown in [Messages in detail](#messages-in-detail). |
 | **Reviews** | Moderate customer reviews, reply to them publicly, and seed reviews yourself. Full breakdown in [Reviews in detail](#reviews-in-detail). |
+| **Review asks** | A ready-to-work queue of orders delivered in the last 30 days. **Open in WhatsApp** pre-types a personal review request (same message as the order page's Ask-for-review button) with review links for what they bought and the reward points they'll earn. Each ask is recorded so nobody is nudged twice, and the queue shows whether the automatic review-request email also reached them. |
 | **Questions** | Answer customer product questions before they publish on the product page. Full breakdown in [Questions in detail](#questions-in-detail). |
 
 **Marketing** — content and campaigns
@@ -982,6 +983,7 @@ A dated history of user-facing changes, newest first.
 
 ### 22 July 2026
 
+- **Review asks become a queue instead of a memory exercise.** A new **Customers → Review asks** page lists every order delivered in the last 30 days with a one-tap WhatsApp review request (review links + reward points pre-filled). Asks are recorded so nobody is nudged twice. Previously the WhatsApp ask existed only as a button inside each order page, so it depended on remembering to visit each delivered order; phone-only customers (who get no automated review email) were easy to miss entirely.
 - **Abandoned checkouts get a WhatsApp follow-up queue.** The store now saves a checkout the moment the shopper types their **phone number** (previously only an email triggered this), so COD shoppers who stop early are no longer lost. A new **Customers → Abandoned** page lists them with their saved cart; **Open in WhatsApp** pre-types a personalised message (editable template + coupon) with a link that restores their cart. Sends are recorded so nobody is messaged twice, placing an order removes them automatically, and shoppers who also left an email keep receiving the automatic reminder emails as before.
 - **Delivery date in the mobile buy bar.** The sticky bar that follows shoppers down a product page now shows "Get it by [dates] · COD nationwide" next to the price, so the arrival date is visible at the moment they tap Add to Cart or Buy Now.
 
