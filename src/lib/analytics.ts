@@ -23,6 +23,10 @@ export interface TrackProductPayload {
   price?: number;
   qty?: number;
   currency?: string;
+  /** Which control fired the add — 'buy_now' for the PDP fast path; absent
+   *  for ordinary Add to Cart. Lets PostHog compare Buy Now adoption and
+   *  buy-through against the cart path. */
+  source?: string;
 }
 
 export interface TrackCartPayload {

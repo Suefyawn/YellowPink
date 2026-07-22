@@ -536,7 +536,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
       image_url:  displayImageOverride ?? product.image_url,
       variant_id: activeVariant?.id ?? null,
       variant_label: variantLabel,
-    }, { openDrawer: false });
+    }, { openDrawer: false, source: 'buy_now' });
     const alreadyInCart = cartItems.some(
       i => i.id === product.id && (i.variant_id ?? null) === (activeVariant?.id ?? null),
     );
@@ -1042,12 +1042,26 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           boxShadow: '0 -6px 18px rgba(0,0,0,0.06)',
           padding: '10px var(--side)',
           paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
-          display: 'flex', alignItems: 'center', gap: 12,
+          display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 6, columnGap: 12,
           transform: showStickyBar ? 'translateY(0)' : 'translateY(110%)',
           transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
           pointerEvents: showStickyBar ? 'auto' : 'none',
         }}
       >
+        {/* Delivery confidence at the tap moment: the in-page "Get it by"
+            line is far off-screen by the time this bar shows, and for a COD
+            shopper WHEN the parcel (and payment) lands is part of the buy
+            decision. Full-width slim strip above the main row; the bar's
+            height is measured live (--fab-bottom-offset) so the extra line
+            is accounted for automatically. */}
+        {!outOfStock && (
+          <div style={{
+            flexBasis: '100%', fontSize: '0.6875rem', color: 'var(--ink-700)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            Get it by <strong style={{ fontWeight: 600, color: 'var(--ink-900)' }} suppressHydrationWarning>{deliveryWindow}</strong> · COD nationwide
+          </div>
+        )}
         {/* Title block takes the flexible space (flex:1 + minWidth:0 so the
             ellipsis works); the CTA below is flexShrink:0 so a long product
             name can never crush it into a sliver of wrapped text. Price

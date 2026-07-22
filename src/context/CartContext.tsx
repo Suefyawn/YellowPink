@@ -27,8 +27,9 @@ interface CartContextValue {
    *  false — the toast/drawer/analytics are only fired internally on true. */
   /** opts.openDrawer=false adds silently (no drawer, no toast) — the Buy Now
    *  fast path navigates straight to checkout and the drawer would only
-   *  flash mid-navigation. Analytics fire either way. */
-  addToCart: (product: AddToCartInput, opts?: { openDrawer?: boolean }) => boolean;
+   *  flash mid-navigation. Analytics fire either way; opts.source tags the
+   *  add_to_cart event (e.g. 'buy_now') so paths are comparable in PostHog. */
+  addToCart: (product: AddToCartInput, opts?: { openDrawer?: boolean; source?: string }) => boolean;
   /** Silently swap a saved snapshot back into an EMPTY cart (failed-payment
    *  recovery). Unlike `addToCart` this fires no toast/drawer/analytics — the
    *  shopper didn't add anything, we're undoing our own pre-gateway clear.
@@ -120,7 +121,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch { /* quota exceeded */ }
   }, [appliedCoupon]);
 
-  const addToCart = (product: AddToCartInput, opts?: { openDrawer?: boolean }): boolean => {
+  const addToCart = (product: AddToCartInput, opts?: { openDrawer?: boolean; source?: string }): boolean => {
     // Dedupe key: same product AND same variant. Adding two different shades
     // of the same product results in two cart lines.
     const variantId = product.variant_id ?? null;
@@ -175,6 +176,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         price:        product.price,
         qty:          addedQty,
         currency:     'PKR',
+        source:       opts?.source,
       },
     });
     if (opts?.openDrawer !== false) {
