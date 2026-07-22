@@ -47,6 +47,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     { href: '/admin/users',     label: 'Customers', icon: 'users', permission: 'customers.view' },
     { href: '/admin/segments',  label: 'Segments',  icon: 'target', permission: 'customers.view' },
     { href: '/admin/winback',   label: 'Win-back',  icon: 'send', permission: 'customers.view' },
+    { href: '/admin/abandoned', label: 'Abandoned', icon: 'cart', permission: 'customers.view' },
     { href: '/admin/messages',  label: 'Messages',  icon: 'message-circle', permission: 'messages' },
     { href: '/admin/reviews',   label: 'Reviews',   icon: 'star', permission: 'reviews' },
     { href: '/admin/questions', label: 'Questions', icon: 'help-circle', permission: 'reviews' },
