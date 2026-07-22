@@ -279,22 +279,30 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     return () => { cancelled = true; };
   }, [subtotal, formData.province]);
 
-  // Capture abandoned-cart snapshot when the user supplies an email AND the
-  // cart is non-empty. Debounced 1.2 s so we don't fire per keystroke.
+  // Capture abandoned-cart snapshot when the user supplies a phone OR an
+  // email AND the cart is non-empty. Phone is the FIRST checkout field, so
+  // keying on it catches the COD shopper who bails before typing an email —
+  // those rows feed the admin's WhatsApp follow-up queue, while email rows
+  // (also) get the automated reminder emails. Debounced 1.2 s so we don't
+  // fire per keystroke.
   useEffect(() => {
     if (cartItems.length === 0) return;
     const email = formData.email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    const phoneOk = formData.phone.replace(/\D+/g, '').length >= 10;
+    if (!emailOk && !phoneOk) return;
     const t = setTimeout(() => {
       void captureAbandonedCart({
-        email,
+        email: emailOk ? email : null,
+        phone: phoneOk ? formData.phone : null,
+        first_name: formData.firstName || null,
         items: cartItems,
         subtotal,
         user_id: user?.id ?? null,
       });
     }, 1200);
     return () => clearTimeout(t);
-  }, [formData.email, cartItems, subtotal, user?.id]);
+  }, [formData.email, formData.phone, formData.firstName, cartItems, subtotal, user?.id]);
 
   const update = (key: string, val: string) => {
     setFormData(p => ({ ...p, [key]: val }));

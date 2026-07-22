@@ -72,6 +72,10 @@ export async function GET(req: NextRequest) {
     .from('abandoned_carts')
     .select('id, email, cart_items, subtotal, restore_token, reminder_tier, last_emailed_at, last_activity_at')
     .eq('recovered', false)
+    // Phone-only captures (shopper never typed an email) can't get reminder
+    // emails; they surface in admin → Customers → Abandoned for a WhatsApp
+    // nudge instead.
+    .not('email', 'is', null)
     .lt('reminder_tier', 3)
     .lt('last_activity_at', cutoff)
     .limit(500);
