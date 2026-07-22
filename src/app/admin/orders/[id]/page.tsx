@@ -19,7 +19,7 @@ import { OrderStatusBadge, orderStatusColor } from '@/components/admin/OrderStat
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
-import { SITE_URL } from '@/lib/seo';
+import { buildReviewAskMessage } from '@/lib/review-ask';
 import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
 import { configuredAdapterIds } from '@/lib/couriers';
@@ -307,24 +307,12 @@ export default async function OrderDetailPage({
   // so the promised incentive can't drift from what the review actually
   // earns, and deep-links each product's review form.
   const reviewPoints = Math.max(0, Number(siteSettings['loyalty_review_points'] ?? 25) || 0);
-  const reviewLinks = items
-    .map(it => (it as { slug?: string }).slug)
-    .filter((s): s is string => Boolean(s))
-    .slice(0, 2)
-    .map(slug => `${SITE_URL}/product/${slug}#reviews`);
-  const reviewMessage = [
-    `Assalam-o-Alaikum${custFirst ? ` ${custFirst}` : ''}!`,
-    '',
-    `Umeed hai aap ko apna Yellow Pink order (${o.order_number}) pasand aaya!`,
-    '',
-    `Agar 2 minute nikaal kar chhota sa review chhor dein to hamare liye bohat madadgar hoga${reviewPoints > 0 ? ` — aur review approve hote hi aap ko ${reviewPoints} reward points milenge jo agle order par discount ban jaate hain` : ''}.`,
-    '',
-    ...(reviewLinks.length
-      ? ['Review yahan chhor sakte hain:', ...reviewLinks]
-      : [`Review yahan chhor sakte hain: ${SITE_URL}/shop`]),
-    '',
-    `Shukriya!, Team Yellow Pink`,
-  ].join('\n');
+  const reviewMessage = buildReviewAskMessage({
+    firstName: custFirst,
+    orderNumber: o.order_number,
+    slugs: items.map(it => (it as { slug?: string }).slug).filter((s): s is string => Boolean(s)),
+    rewardPoints: reviewPoints,
+  });
 
   // Shipping margin: what we charged the customer for delivery (o.shipping) vs
   // what the courier costs us. Uses the recorded delivery_cost when present,
