@@ -1042,7 +1042,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           boxShadow: '0 -6px 18px rgba(0,0,0,0.06)',
           padding: '10px var(--side)',
           paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
-          display: 'flex', alignItems: 'center', flexWrap: 'wrap', rowGap: 6, columnGap: 12,
+          display: 'flex', flexDirection: 'column', gap: 6,
           transform: showStickyBar ? 'translateY(0)' : 'translateY(110%)',
           transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
           pointerEvents: showStickyBar ? 'auto' : 'none',
@@ -1056,12 +1056,16 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             is accounted for automatically. */}
         {!outOfStock && (
           <div style={{
-            flexBasis: '100%', fontSize: '0.6875rem', color: 'var(--ink-700)',
+            fontSize: '0.6875rem', color: 'var(--ink-700)',
             overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
           }}>
             Get it by <strong style={{ fontWeight: 600, color: 'var(--ink-900)' }} suppressHydrationWarning>{deliveryWindow}</strong> · COD nationwide
           </div>
         )}
+        {/* Controls stay on ONE row (the column split above is only for the
+            delivery strip): a long product name must ellipsize, never wrap
+            the qty/CTA onto another line and grow the bar. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {/* Title block takes the flexible space (flex:1 + minWidth:0 so the
             ellipsis works); the CTA below is flexShrink:0 so a long product
             name can never crush it into a sliver of wrapped text. Price
@@ -1108,6 +1112,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             : addedFlash ? 'Added ✓'
             : 'Add to Cart'}
         </button>
+        </div>
       </div>
     </div>
   );
