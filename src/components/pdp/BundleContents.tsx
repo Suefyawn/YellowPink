@@ -17,7 +17,8 @@ export function BundleContents({ bundle, components }: { bundle: Product; compon
     <section style={{ padding: 'var(--section-gap) 0', borderTop: '1px solid var(--line)' }}>
       <div className="container">
         <Overline as="h2" style={{ display: 'block', marginBottom: 8 }}>What&apos;s Inside This Set</Overline>
-        {eco.saving > 0 && (
+        {/* A trivial saving ("PKR 10 (0% off)") reads worse than no claim. */}
+        {eco.saving > 0 && Math.round(eco.savingPct) >= 1 && (
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 20 }}>
             Bought separately these cost <span className="tabular-nums" style={{ textDecoration: 'line-through' }}>PKR {eco.individualTotal.toLocaleString()}</span>.
             The set price of <strong className="tabular-nums">PKR {bundle.price.toLocaleString()}</strong> saves
