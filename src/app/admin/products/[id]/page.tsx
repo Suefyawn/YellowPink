@@ -5,6 +5,8 @@ import { VariantsSection } from '@/components/admin/VariantsSection';
 import { ProductGallerySection } from '@/components/admin/ProductGallerySection';
 import { ProductTagsEditor } from '@/components/admin/ProductTagsEditor';
 import { ProductInventoryHistory } from '@/components/admin/ProductInventoryHistory';
+import { BundlePricingCard } from '@/components/admin/BundlePricingCard';
+import type { BundleComponentRow } from '@/lib/bundle-pricing';
 import type { Product, ProductAttribute, AttributeValue, ProductVariant, Vendor } from '@/types';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -106,6 +108,32 @@ export default async function EditProductPage({
     .map(t => t.name);
   const allTags = ((allTagRows ?? []) as Array<{ name: string }>).map(t => t.name);
 
+  // Bundle composition: what this set contains (admin sees drafts too — the
+  // card badges them). The panel shows for anything that has components or
+  // is named/categorised like a set, so combos can be assembled from scratch.
+  const { data: componentRows } = await supabaseAdmin()
+    .from('bundle_components')
+    .select('qty, sort_order, product:products!bundle_components_component_product_id_fkey(*)')
+    .eq('bundle_product_id', product.id)
+    .order('sort_order');
+  const bundleComponents: BundleComponentRow[] = ((componentRows ?? []) as unknown as Array<{ qty: number; product: Product | null }>)
+    .filter(r => r.product)
+    .map(r => ({ qty: r.qty, product: r.product! }));
+  const looksLikeBundle =
+    /\b(bundle|combo|set|stack|kit|duo|pack)\b/i.test(product.name) ||
+    ['Combo Packs', 'Budget Bundles'].includes(product.category ?? '');
+  const showBundleCard = bundleComponents.length > 0 || looksLikeBundle;
+  let componentOptions: Array<{ id: string; name: string; brand: string | null; price: number }> = [];
+  if (showBundleCard) {
+    const { data: optionRows } = await supabase
+      .from('products')
+      .select('id, name, brand, price')
+      .eq('status', 'published')
+      .neq('id', product.id)
+      .order('name');
+    componentOptions = (optionRows ?? []) as typeof componentOptions;
+  }
+
   return (
     <>
       <AdminFlash
@@ -131,6 +159,9 @@ export default async function EditProductPage({
       <div style={{ padding: '0 36px 32px' }}>
         <ProductTagsEditor productId={product.id} initialTags={productTags} suggestions={allTags} />
         <ProductGallerySection productId={product.id} initialImages={galleryImages} />
+        {showBundleCard && (
+          <BundlePricingCard bundle={product} components={bundleComponents} options={componentOptions} />
+        )}
         <VariantsSection
           productId={product.id}
           productKind={product.kind ?? 'simple'}
