@@ -19,6 +19,7 @@ export async function generateStaticParams() {
   return products.map(p => ({ slug: p.slug }));
 }
 import { PDPPage } from '@/sections/pdp/PDPPage';
+import { routineComplements } from '@/lib/routine-pairing';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { QuestionsSection, type ProductQuestionItem } from '@/components/pdp/QuestionsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
@@ -327,6 +328,21 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // the Product rich-snippet markup, which Google requires to be first-party.
   const firstPartyReviews = reviews.filter(r => !r.source);
 
+  // The bundle widget prefers real co-purchase pairs; a young store barely
+  // has any, so most PDPs rendered no bundle at all. Skincare products fall
+  // back to routine complements (a cleanser is offered a serum, moisturiser
+  // and SPF — the quiz's own step rules), relabelled honestly since these
+  // aren't observed purchases. Non-skincare products keep co-purchase-only.
+  let fbtSuggestions = fbt;
+  let fbtHeading: string | undefined;
+  if (fbt.length < 1 && !isDemo) {
+    const complements = routineComplements(product, await getProducts());
+    if (complements.length > 0) {
+      fbtSuggestions = complements;
+      fbtHeading = 'Complete the Routine';
+    }
+  }
+
   // Single source for both the visible trail and the BreadcrumbList schema.
   const crumbs = [
     { name: 'Home',           path: '/' },
@@ -389,13 +405,18 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           bundle's checkbox state for the new product. Prefixed: PDPPage above
           is a sibling already keyed on the bare product id, and duplicate
           sibling keys are a React error. */}
-      <FrequentlyBoughtTogether key={`fbt-${product.id}`} anchor={product} suggestions={fbt} />
+      <FrequentlyBoughtTogether
+        key={`fbt-${product.id}`}
+        anchor={product}
+        suggestions={fbtSuggestions}
+        heading={fbtHeading}
+      />
       <MoreToExplore
         brand={product.brand}
         category={product.category}
         brandProducts={brandProducts}
         categoryProducts={categoryProducts}
-        excludeIds={[product.id, ...crossSells.map(p => p.id), ...fbt.map(p => p.id)]}
+        excludeIds={[product.id, ...crossSells.map(p => p.id), ...fbtSuggestions.map(p => p.id)]}
       />
       <FromTheBlog posts={blogPosts} />
       <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} rewardPoints={reviewPoints} />
