@@ -123,6 +123,14 @@ export default async function EditProductPage({
     /\b(bundle|combo|set|stack|kit|duo|pack)\b/i.test(product.name) ||
     ['Combo Packs', 'Budget Bundles'].includes(product.category ?? '');
   const showBundleCard = bundleComponents.length > 0 || looksLikeBundle;
+  // Commission terms let the pricing panel derive costs (retail − our cut)
+  // for components with no explicit cost price entered. numeric columns can
+  // arrive as strings, so coerce.
+  const commissionByVendor: Record<string, number> = {};
+  for (const v of (vendorData ?? []) as Vendor[]) {
+    const pct = Number(v.commission_pct);
+    if (v.id && Number.isFinite(pct) && pct > 0) commissionByVendor[v.id] = pct;
+  }
   let componentOptions: Array<{ id: string; name: string; brand: string | null; price: number }> = [];
   if (showBundleCard) {
     const { data: optionRows } = await supabase
@@ -160,7 +168,12 @@ export default async function EditProductPage({
         <ProductTagsEditor productId={product.id} initialTags={productTags} suggestions={allTags} />
         <ProductGallerySection productId={product.id} initialImages={galleryImages} />
         {showBundleCard && (
-          <BundlePricingCard bundle={product} components={bundleComponents} options={componentOptions} />
+          <BundlePricingCard
+            bundle={product}
+            components={bundleComponents}
+            options={componentOptions}
+            commissionByVendor={commissionByVendor}
+          />
         )}
         <VariantsSection
           productId={product.id}
