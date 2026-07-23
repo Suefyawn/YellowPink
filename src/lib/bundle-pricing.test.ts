@@ -19,10 +19,27 @@ const row = (over: Partial<Product>, qty = 1): BundleComponentRow => ({ product:
 
 describe('componentUnitCost', () => {
   it('prefers cost_price, falls back to vendor_cost, null when neither', () => {
-    expect(componentUnitCost(P({ cost_price: 80, vendor_cost: 70 }))).toBe(80);
-    expect(componentUnitCost(P({ vendor_cost: 70 }))).toBe(70);
-    expect(componentUnitCost(P({}))).toBeNull();
-    expect(componentUnitCost(P({ cost_price: 0 }))).toBeNull();
+    expect(componentUnitCost(P({ cost_price: 80, vendor_cost: 70 }))).toEqual({ cost: 80, source: 'explicit' });
+    expect(componentUnitCost(P({ vendor_cost: 70 }))).toEqual({ cost: 70, source: 'explicit' });
+    expect(componentUnitCost(P({}))).toEqual({ cost: null, source: null });
+    expect(componentUnitCost(P({ cost_price: 0 }))).toEqual({ cost: null, source: null });
+  });
+
+  it('derives cost from vendor commission when no explicit cost', () => {
+    const p = P({ price: 1000, vendor_id: 'v1' });
+    expect(componentUnitCost(p, { v1: 35 })).toEqual({ cost: 650, source: 'commission' });
+  });
+
+  it('explicit cost overrides commission derivation', () => {
+    const p = P({ price: 1000, vendor_id: 'v1', cost_price: 700 });
+    expect(componentUnitCost(p, { v1: 35 })).toEqual({ cost: 700, source: 'explicit' });
+  });
+
+  it('does not derive without a matching vendor or with a nonsense pct', () => {
+    expect(componentUnitCost(P({ price: 1000, vendor_id: 'v2' }), { v1: 35 })).toEqual({ cost: null, source: null });
+    expect(componentUnitCost(P({ price: 1000 }), { v1: 35 })).toEqual({ cost: null, source: null });
+    expect(componentUnitCost(P({ price: 1000, vendor_id: 'v1' }), { v1: 0 })).toEqual({ cost: null, source: null });
+    expect(componentUnitCost(P({ price: 1000, vendor_id: 'v1' }), { v1: 100 })).toEqual({ cost: null, source: null });
   });
 });
 
@@ -46,6 +63,7 @@ describe('bundleEconomics', () => {
     expect(eco.margin).toBe(300);
     expect(eco.marginPct).toBe(20);
     expect(eco.missingCosts).toEqual([]);
+    expect(eco.derivedCosts).toEqual([]);
   });
 
   it('reports unverifiable (nulls + names) when any cost is missing', () => {
@@ -57,6 +75,27 @@ describe('bundleEconomics', () => {
     expect(eco.margin).toBeNull();
     expect(eco.marginPct).toBeNull();
     expect(eco.missingCosts).toEqual(['Citowit Syrup']);
+  });
+
+  it('derives missing costs from vendor commission and labels them', () => {
+    const eco = bundleEconomics(3379, [
+      row({ name: 'Femeez', price: 1000, vendor_id: 'nb' }),
+      row({ name: 'Citowit', price: 3135, vendor_id: 'nb' }),
+    ], { nb: 35 });
+    // cost = 0.65 × 4135 = 2687.75 → margin 691.25 (20.5%)
+    expect(eco.missingCosts).toEqual([]);
+    expect(eco.derivedCosts).toEqual(['Femeez', 'Citowit']);
+    expect(eco.costTotal).toBeCloseTo(2687.75);
+    expect(eco.margin).toBeCloseTo(691.25);
+  });
+
+  it('mixes explicit and derived costs, labeling only the derived ones', () => {
+    const eco = bundleEconomics(1500, [
+      row({ name: 'Explicit', price: 1000, cost_price: 600, vendor_id: 'nb' }),
+      row({ name: 'Derived', price: 1000, vendor_id: 'nb' }),
+    ], { nb: 35 });
+    expect(eco.derivedCosts).toEqual(['Derived']);
+    expect(eco.costTotal).toBeCloseTo(1250);
   });
 
   it('shows a negative saving when the set costs more than buying separately', () => {

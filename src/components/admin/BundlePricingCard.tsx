@@ -7,6 +7,7 @@ import {
   componentUnitCost,
   BUNDLE_MARGIN_FLOOR_PCT,
   type BundleComponentRow,
+  type CommissionByVendor,
 } from '@/lib/bundle-pricing';
 import { addBundleComponent, removeBundleComponent } from '@/app/admin/products/bundle-actions';
 import type { Product } from '@/types';
@@ -21,12 +22,14 @@ export function BundlePricingCard({
   bundle,
   components,
   options,
+  commissionByVendor,
 }: {
   bundle: Product;
   components: BundleComponentRow[];
   options: Array<{ id: string; name: string; brand: string | null; price: number }>;
+  commissionByVendor: CommissionByVendor;
 }) {
-  const eco = bundleEconomics(bundle.price, components);
+  const eco = bundleEconomics(bundle.price, components, commissionByVendor);
   const explainer = buildVendorBundleExplainer({
     bundleName: bundle.name,
     bundlePrice: bundle.price,
@@ -75,6 +78,13 @@ export function BundlePricingCard({
           (what the vendor bills per unit) and this panel will show the set&rsquo;s real profit.
         </div>
       )}
+      {components.length > 0 && eco.missingCosts.length === 0 && eco.derivedCosts.length > 0 && (
+        <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6, padding: '8px 12px', marginBottom: 12, color: '#075985', fontSize: '0.8125rem' }}>
+          Costs marked <em>derived</em> come from the vendor&rsquo;s commission terms
+          (retail minus our commission), since no cost price is entered on those products.
+          Enter a cost price on a product to override its derived value.
+        </div>
+      )}
       {marginLow && (
         <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, padding: '8px 12px', marginBottom: 12, color: '#dc2626', fontSize: '0.8125rem' }}>
           <strong>Thin margin:</strong> {Math.round(eco.marginPct!)}% is below
@@ -99,7 +109,7 @@ export function BundlePricingCard({
             </thead>
             <tbody>
               {components.map(c => {
-                const cost = componentUnitCost(c.product);
+                const { cost, source } = componentUnitCost(c.product, commissionByVendor);
                 return (
                   <tr key={c.product.id}>
                     <td style={td}>
@@ -117,6 +127,11 @@ export function BundlePricingCard({
                     <td style={num}>{PKR(c.product.price * c.qty)}</td>
                     <td style={{ ...num, color: cost == null ? '#b45309' : '#111827' }}>
                       {cost == null ? 'not set' : PKR(cost * c.qty)}
+                      {source === 'commission' && (
+                        <span style={{ marginLeft: 6, fontSize: '0.625rem', fontWeight: 700, color: '#0369a1', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 4, padding: '1px 5px', verticalAlign: 'middle' }}>
+                          derived
+                        </span>
+                      )}
                     </td>
                     <td style={{ ...td, textAlign: 'right' }}>
                       <form action={removeBundleComponent} style={{ display: 'inline' }}>
