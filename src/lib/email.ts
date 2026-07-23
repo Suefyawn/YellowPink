@@ -816,14 +816,14 @@ export async function sendPriceParityAlertEmail(args: {
   ).join('');
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">${escapeHtml(args.vendor)} price parity broken</h2>
-    <p>${args.items.length} individual product${args.items.length === 1 ? ' is' : 's are'} priced below ${escapeHtml(args.vendor)}'s own store. The arrangement is parity on singles, discounts only in bundles — raise ours or confirm the change with the vendor.</p>
+    <p>${args.items.length} individual product${args.items.length === 1 ? ' is' : 's are'} priced below what ${escapeHtml(args.vendor)} charges on their own store. The arrangement is parity on singles, discounts only in bundles — raise ours or confirm the change with the vendor.</p>
     <table style="width:100%;border-collapse:collapse;margin-top:12px">
       <tr><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Product</th><th align="right" style="padding:6px 8px;font-size:12px;color:#6b7280">Ours</th><th align="right" style="padding:6px 8px;font-size:12px;color:#6b7280">Theirs</th><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280"></th></tr>
       ${rows}
     </table>
     <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/products?vendor=nb" style="color:${BRAND_PINK};font-weight:600">→ Open products</a></p>
   `);
-  await send({ to: OWNER_EMAIL, subject: `Price parity: ${args.items.length} product${args.items.length === 1 ? '' : 's'} below ${args.vendor}'s price`, html, kind: 'batch', category: 'Price parity' });
+  await send({ to: OWNER_EMAIL, subject: `Price parity: ${args.items.length} product${args.items.length === 1 ? '' : 's'} below ${args.vendor} list price`, html, kind: 'batch', category: 'Price parity' });
 }
 
 // Broken-link (404) digest, the daily cron passes only NEW, unresolved misses
