@@ -89,6 +89,32 @@ export default async function OrderDetailPage({
   const items = (o.items ?? []) as CartItem[];
   const currentStatus = (o.status ?? 'pending') as OrderStatus;
 
+  // Bundle items expand into their components in the vendor message: the
+  // vendor packs individual products, not "a combo", and the arrangement
+  // (their products, our set discount, their per-item billing unchanged)
+  // must be stated on every order so there is never confusion about what a
+  // bundle line means.
+  // Legacy WordPress-era orders carry numeric item ids (or none); only real
+  // UUIDs can be bundle products, and a non-uuid value would cast-error the
+  // query and take the whole order page down with it.
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const itemIds = items.map(it => it.id).filter((v): v is string => typeof v === 'string' && UUID_RE.test(v));
+  const { data: bcRows } = itemIds.length
+    ? await supabaseAdmin()
+        .from('bundle_components')
+        .select('bundle_product_id, qty, sort_order, product:products!bundle_components_component_product_id_fkey(name, brand)')
+        .in('bundle_product_id', itemIds)
+        .order('sort_order')
+    : { data: [] };
+  const componentsByBundle = new Map<string, Array<{ qty: number; name: string; brand: string | null }>>();
+  for (const r of (bcRows ?? []) as unknown as Array<{ bundle_product_id: string; qty: number; product: { name: string; brand: string | null } | null }>) {
+    if (!r.product) continue;
+    const list = componentsByBundle.get(r.bundle_product_id) ?? [];
+    list.push({ qty: r.qty, name: r.product.name, brand: r.product.brand });
+    componentsByBundle.set(r.bundle_product_id, list);
+  }
+  const orderHasBundle = items.some(it => (componentsByBundle.get(it.id)?.length ?? 0) > 0);
+
   // Pull the most-recent shipment for this order so the booking form can
   // toggle into its "already shipped" state. Cheap query, one row max for
   // most orders. Couriers with a configured API adapter (env vars set) get
@@ -185,13 +211,24 @@ export default async function OrderDetailPage({
   const custLast = stripEmoji(o.last_name ?? '');
 
   // Prefilled WhatsApp message the owner forwards to the chosen vendor.
+  // Bundle lines expand into their components so the packer has an exact
+  // item list, and a closing note states the bundle arrangement plainly.
   const vendorMessage = [
     `Yellow Pink, Order ${o.order_number}`,
     '',
-    ...items.map(it => {
+    ...items.flatMap(it => {
       const v = it.variant_label ?? it.variant;
-      return `• ${it.qty}× ${brandPlusName(it.brand, it.name)}${v ? ` (${v})` : ''}`;
+      const line = `• ${it.qty}× ${brandPlusName(it.brand, it.name)}${v ? ` (${v})` : ''}`;
+      const comps = componentsByBundle.get(it.id) ?? [];
+      if (comps.length === 0) return [line];
+      return [
+        `${line} — ye hamara set hai, is mein pack karein:`,
+        ...comps.map(c => `   - ${c.qty * it.qty}× ${brandPlusName(c.brand, c.name)}`),
+      ];
     }),
+    ...(orderHasBundle
+      ? ['', 'Note: set wale items aap ke apne individual products hain jo hum apni website par ek sath bechte hain. Aap ki billing har item ke maujooda vendor rate par hi hogi.']
+      : []),
     '',
     'Deliver to:',
     `${custFirst} ${custLast}`,

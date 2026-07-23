@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 22 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 23 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -451,6 +451,8 @@ The catalogue. Create, edit, publish, archive, and delete products; manage varia
 - **Export CSV / Import CSV** — the spreadsheet round-trip: Export downloads the whole catalogue (all statuses) as one file whose columns match the importer, so you can mass-edit prices, stock or statuses in Excel and re-import the same file — rows are matched by their `slug` column, so don't edit that column.
 
 The product form has a **Status** field (Basics section): new products start as **Draft**, so nothing goes live — or gets submitted to search engines — until you switch it to *Published*. Deleting a product that has ever been ordered archives it instead of removing it, so order history and analytics keep the product's name.
+
+**Sets & combos.** Products named like a bundle (combo, set, kit, duo, pack) — or any product that already has components — show a **Set contents & pricing** panel on their edit page. Add the individual products the set contains (with quantities); the panel then shows what the components cost separately, what the customer saves at the set price, and **our margin per set**, computed from each component's cost price. It warns loudly when the margin can't be verified (a component has no cost price on file), when the margin is below 15%, or when the set isn't actually cheaper than buying the items one by one. The same list powers the storefront's "What's Inside This Set" section and expands the set into a per-item packing list in vendor WhatsApp messages. A **Copy vendor explainer** button gives you the ready-to-send message that introduces the set to the vendor: their individual products, sold together at our discounted set price, their per-item billing unchanged.
 
 There's also a **Packaging** field (Basics section) for genuine stock supplied without full retail packaging: choose **Standard (boxed)** for normal units, **Tester** for manufacturer perfume testers, or **Without box** for originals sold minus the box. Anything other than Standard shows a small badge on the product card *and* a clear, authenticity-first disclosure on the product page (e.g. *"Tester unit — 100% genuine, may arrive without the full retail box"*), and shoppers can filter by it on brand/collection pages. Products marked **Tester** automatically flow into the **Perfume Testers** collection (Admin → Collections) — that collection ships as a **Draft**, so publish it once you've flagged some tester stock and it will fill itself.
 
@@ -980,6 +982,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 23 July 2026
+
+- **Sets and combos now know what's inside them.** Bundle products (the NB Sons combos and any future set) carry a structured list of their component products. Three things flow from it: **product pages** show a "What's Inside This Set" section listing each component with its individual price and the money saved at the set price; the **vendor WhatsApp message** on an order expands any set into a per-item packing list (with a note that the set is our own arrangement of the vendor's individual products and their per-item billing is unchanged); and the **product edit page** gains a "Set contents & pricing" panel. That panel shows each component's retail price and vendor cost, the customer's saving, and **our margin — with loud warnings** when the margin can't be verified (a component has no cost price on file), when it falls below 15%, or when the set isn't actually cheaper than buying the items separately. A **Copy vendor explainer** button produces the ready-to-send roman-Urdu message that introduces the set to the vendor so the arrangement is always stated the same, correct way. To see real margins, enter each component's **Cost price** (what the vendor bills per unit) on its product form.
 
 ### 22 July 2026
 

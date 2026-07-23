@@ -20,6 +20,8 @@ export async function generateStaticParams() {
 }
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { routineComplements } from '@/lib/routine-pairing';
+import { BundleContents } from '@/components/pdp/BundleContents';
+import type { BundleComponentRow } from '@/lib/bundle-pricing';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { QuestionsSection, type ProductQuestionItem } from '@/components/pdp/QuestionsSection';
 import { RecentlyViewed } from '@/components/pdp/RecentlyViewed';
@@ -230,6 +232,21 @@ async function loadFrequentlyBoughtTogether(productId: string): Promise<Product[
   return ids.map(id => map.get(id)).filter((p): p is Product => Boolean(p));
 }
 
+// Components of a bundle product (empty for ordinary products). Powers the
+// "What's inside" section; the join keeps only published components so a
+// drafted component never renders a dead link.
+async function loadBundleComponents(productId: string): Promise<BundleComponentRow[]> {
+  if (isDemo) return [];
+  const { data } = await supabase
+    .from('bundle_components')
+    .select('qty, sort_order, product:products!bundle_components_component_product_id_fkey(*)')
+    .eq('bundle_product_id', productId)
+    .order('sort_order');
+  return ((data ?? []) as unknown as Array<{ qty: number; product: Product | null }>)
+    .filter(r => r.product && r.product.status === 'published')
+    .map(r => ({ product: r.product!, qty: r.qty }));
+}
+
 async function loadCrossSells(productId: string, fallbackCategory: string): Promise<Product[]> {
   if (isDemo) {
     // In demo, surface a few same-category products from stub data.
@@ -292,7 +309,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Surfaced on the review form to actually drive review volume → ★ snippets.
   const reviewPoints = Math.max(0, Number(siteSettings.loyalty_review_points ?? '25') || 0);
 
-  const [{ data: reviewRows }, { data: questionRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts, productTags] = await Promise.all([
+  const [{ data: reviewRows }, { data: questionRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts, productTags, bundleComponents] = await Promise.all([
     isDemo
       ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>> })
       : supabase
@@ -319,6 +336,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getProductsByTaxon(product.category, 12),
     getPostsLinkingProduct(product.slug),
     loadProductTags(product.id),
+    loadBundleComponents(product.id),
   ]);
 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>[];
@@ -335,7 +353,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // aren't observed purchases. Non-skincare products keep co-purchase-only.
   let fbtSuggestions = fbt;
   let fbtHeading: string | undefined;
-  if (fbt.length < 1 && !isDemo) {
+  // Bundles skip the routine fallback — the What's-inside section already
+  // tells the set's story, and a set suggesting another set reads as noise.
+  if (fbt.length < 1 && !isDemo && bundleComponents.length < 2) {
     const complements = routineComplements(product, await getProducts());
     if (complements.length > 0) {
       fbtSuggestions = complements;
@@ -405,6 +425,9 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           bundle's checkbox state for the new product. Prefixed: PDPPage above
           is a sibling already keyed on the bare product id, and duplicate
           sibling keys are a React error. */}
+      {/* What's inside + savings, bundles only. Rendered before the bundle
+          widget: on a bundle PDP the contents ARE the story. */}
+      <BundleContents bundle={product} components={bundleComponents} />
       <FrequentlyBoughtTogether
         key={`fbt-${product.id}`}
         anchor={product}
