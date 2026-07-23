@@ -799,6 +799,33 @@ export async function sendStuckPaymentsAlertEmail(args: {
   await send({ to: OWNER_EMAIL, subject: `Action needed, ${args.orders.length} payment${args.orders.length === 1 ? '' : 's'} stuck pending`, html, kind: 'batch', category: 'Stuck payments' });
 }
 
+// Price-parity alert: our arrangement with NB Sons is that their individual
+// products are never sold below their own store price (discounts live only
+// in bundles). The weekly cron compares catalogs and this alert names any
+// single of ours that has drifted below their list.
+export async function sendPriceParityAlertEmail(args: {
+  vendor: string;
+  items: { name: string; slug: string; ourPrice: number; theirPrice: number; theirHandle: string }[];
+}) {
+  if (!args.items.length) return;
+  const rows = args.items.map(i =>
+    `<tr><td style="padding:6px 8px;font-size:14px"><a href="${SITE_URL}/product/${escapeHtml(i.slug)}" style="color:#111">${escapeHtml(i.name)}</a></td>
+         <td style="padding:6px 8px;font-size:14px;text-align:right;color:#dc2626;font-weight:600">PKR ${i.ourPrice.toLocaleString()}</td>
+         <td style="padding:6px 8px;font-size:14px;text-align:right">PKR ${i.theirPrice.toLocaleString()}</td>
+         <td style="padding:6px 8px;font-size:13px"><a href="https://nbsons.com/products/${escapeHtml(i.theirHandle)}" style="color:${BRAND_PINK}">their listing →</a></td></tr>`
+  ).join('');
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">${escapeHtml(args.vendor)} price parity broken</h2>
+    <p>${args.items.length} individual product${args.items.length === 1 ? ' is' : 's are'} priced below ${escapeHtml(args.vendor)}'s own store. The arrangement is parity on singles, discounts only in bundles — raise ours or confirm the change with the vendor.</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px">
+      <tr><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Product</th><th align="right" style="padding:6px 8px;font-size:12px;color:#6b7280">Ours</th><th align="right" style="padding:6px 8px;font-size:12px;color:#6b7280">Theirs</th><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280"></th></tr>
+      ${rows}
+    </table>
+    <p style="margin:20px 0 0"><a href="${SITE_URL}/admin/products?vendor=nb" style="color:${BRAND_PINK};font-weight:600">→ Open products</a></p>
+  `);
+  await send({ to: OWNER_EMAIL, subject: `Price parity: ${args.items.length} product${args.items.length === 1 ? '' : 's'} below ${args.vendor}'s price`, html, kind: 'batch', category: 'Price parity' });
+}
+
 // Broken-link (404) digest, the daily cron passes only NEW, unresolved misses
 // (already deduped per-path), so this just renders. No-op when the list is
 // empty, so a clean day is silent.
