@@ -8,6 +8,7 @@
 //   6. analytics-refresh   , refresh PostHog + Sentry dashboard widgets
 //   7. popularity-refresh  , recompute products.popularity_score (views+carts+sales)
 //   8. indexing-check      , refresh GSC indexing status for new pages
+//   9. price-parity        , (Mondays only) NB Sons singles never below their store price
 //
 // Removed: low-stock + back-in-stock. The store runs a dropship model, so
 // shelf stock isn't tracked and there's nothing to restock-alert or notify
@@ -95,6 +96,7 @@ export async function GET(req: NextRequest) {
     '/api/cron/analytics-refresh',
     '/api/cron/popularity-refresh',
     '/api/cron/indexing-check',
+    '/api/cron/price-parity',
   ];
   const BUDGET_MS = (maxDuration - 12) * 1000;
   const started = Date.now();
