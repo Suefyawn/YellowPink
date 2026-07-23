@@ -22,10 +22,13 @@ function isPurchasable(p: Product): boolean {
 }
 
 export function FrequentlyBoughtTogether({
-  anchor, suggestions,
+  anchor, suggestions, heading = 'Frequently Bought Together',
 }: {
   anchor: Product;
   suggestions: Product[];
+  /** Overridden to "Complete the Routine" when the suggestions come from the
+   *  routine-step fallback rather than real co-purchase data. */
+  heading?: string;
 }) {
   const { addToCart } = useCart();
   // Only in-stock items take part in the bundle. If the anchor itself is
@@ -62,7 +65,7 @@ export function FrequentlyBoughtTogether({
   return (
     <section style={{ padding: 'var(--section-gap) 0', borderTop: '1px solid var(--line)' }}>
       <div className="container">
-        <Overline as="h2" style={{ display: 'block', marginBottom: 24 }}>Frequently Bought Together</Overline>
+        <Overline as="h2" style={{ display: 'block', marginBottom: 24 }}>{heading}</Overline>
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 32, alignItems: 'start' }} className="fbt-grid">
           {/* Product rail (images with + separators) */}
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', overflowX: 'auto', paddingBottom: 12 }}>
