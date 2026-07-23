@@ -86,14 +86,16 @@ export function matchCatalog(ours: OurProduct[], theirs: TheirProduct[]): Parity
   return { compared, unmatched, violations };
 }
 
-/** Their public catalog. Shopify serves 250/page; they list well under that. */
+/** Their public catalog. Shopify serves 250/page; they list well under that.
+ *  NBSONS_STORE_URL overrides the base for tests and if their domain moves. */
 export async function fetchNbSonsCatalog(): Promise<TheirProduct[]> {
+  const base = process.env.NBSONS_STORE_URL || 'https://nbsons.com';
   const out: TheirProduct[] = [];
   for (let page = 1; page <= 3; page++) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
     try {
-      const res = await fetch(`https://nbsons.com/products.json?limit=250&page=${page}`, {
+      const res = await fetch(`${base}/products.json?limit=250&page=${page}`, {
         signal: controller.signal,
         cache: 'no-store',
         headers: { 'user-agent': 'YellowPink price-parity check (yellowpink.pk)' },
