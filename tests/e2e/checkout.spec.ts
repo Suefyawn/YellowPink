@@ -34,8 +34,7 @@ test('PDP → cart → checkout golden path', async ({ page }) => {
 
   // COD is the default payment method; the form accepts a valid PK address.
   await page.locator('#co-phone').fill('03001234567');
-  await page.locator('#co-fname').fill('Test');
-  await page.locator('#co-lname').fill('Customer');
+  await page.locator('#co-name').fill('Test Customer');
   await page.locator('#co-address').fill('House 1, Street 2, Test Town');
   await page.locator('#co-city').fill('Lahore');
 
@@ -66,8 +65,7 @@ test('full COD order reaches the thank-you page', async ({ page }) => {
   await addDemoProductToCart(page);
   await page.goto('/checkout');
   await page.locator('#co-phone').fill('03001234567');
-  await page.locator('#co-fname').fill('E2E');
-  await page.locator('#co-lname').fill('Test');
+  await page.locator('#co-name').fill('E2E Test');
   await page.locator('#co-address').fill('House 1, Street 2, Test Town');
   await page.locator('#co-city').fill('Lahore');
   await page.getByRole('button', { name: /place order/i }).click();
