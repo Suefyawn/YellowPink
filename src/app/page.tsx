@@ -46,6 +46,9 @@ const CATEGORY_TILE_FILES: Record<string, string> = {
 };
 import { HeroSection } from '@/sections/home/HeroSection';
 import { TrustBar } from '@/sections/home/TrustBar';
+import { CategoryChipStrip } from '@/sections/home/CategoryChipStrip';
+import { HomeSearchPill } from '@/sections/home/HomeSearchPill';
+import { WhatsAppBand } from '@/sections/home/WhatsAppBand';
 import { FeaturedProducts } from '@/sections/home/FeaturedProducts';
 import { EditorialDuo } from '@/sections/home/EditorialDuo';
 import { SaleCollection } from '@/sections/home/SaleCollection';
@@ -56,7 +59,6 @@ import { CategoryTiles } from '@/sections/home/CategoryTiles';
 import { CollectionsSection } from '@/sections/home/CollectionsSection';
 import { RealResults } from '@/sections/home/RealResults';
 import { JournalSection } from '@/sections/home/JournalSection';
-import { PressStrip } from '@/sections/home/PressStrip';
 import { QuizBand } from '@/sections/home/QuizBand';
 
 export default async function HomePage() {
@@ -76,14 +78,20 @@ export default async function HomePage() {
     getBlogPosts(),
     getPublishedCollectionsWithCovers(3),
     getHomeSocialProof(),
-    getNewArrivals(12),
+    getNewArrivals(16),
   ]);
 
   // Keep the two rails distinct: a product that's a top seller shouldn't also
   // fill the Trending rail (most visible when both fall back to recency before
   // the nightly trend refresh has run).
   const topSellerIds = new Set(topSellers.map(p => p.id));
-  const trendingRail = trending.filter(p => !topSellerIds.has(p.id)).slice(0, 4);
+  // Trending demands real momentum: getTrending falls back to recency when
+  // trend_score is flat, which at low order volume just duplicates New In
+  // under an overclaiming label. Empty rail self-hides.
+  const trendingRail = trending
+    .filter(p => !topSellerIds.has(p.id))
+    .filter(p => (p.trend_score ?? 0) > 0)
+    .slice(0, 4);
 
   // New In: pure recency, deduped against the tiles actually DISPLAYED above
   // it so the page never shows the same product twice (recency also backs
@@ -146,9 +154,13 @@ export default async function HomePage() {
       )}
       <HeroSection settings={heroSettings} />
       <TrustBar />
+      {/* Conversion order (July 24 audit): search + category entry within one
+          thumb-flick, then nothing but product rails until every proven
+          seller has had its shot. Median mobile scroll reaches ~26% of the
+          old page; the sections that sell now live inside that window. */}
+      <HomeSearchPill />
+      <CategoryChipStrip />
       <FeaturedProducts products={featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4)} />
-      {/* Fresh stock, high on the page: returning visitors' first question is
-          "what's new?", and nothing on the homepage answered it before. */}
       <ProductRail
         overline="New In"
         heading="Just landed."
@@ -158,9 +170,6 @@ export default async function HomePage() {
         products={newInRail}
         tinted
       />
-      <QuizBand />
-      <KBeautySection products={kBeautyProducts} />
-      <EditorialDuo />
       {saleActive && (
         <SaleCollection
           products={saleProducts}
@@ -170,17 +179,16 @@ export default async function HomePage() {
           ctaUrl={settings.sale_cta_url || '/shop?sale=1'}
         />
       )}
-      {/* Two data-driven rails, refreshed nightly by the popularity cron:
+      {/* Data-driven rails, refreshed nightly by the popularity cron:
           Best Sellers = what's actually bought (units_sold, owner pin leads);
-          Trending Now = recent momentum (views + add-to-carts). */}
+          Trending Now = recent momentum, shown only when trend_score is real. */}
       <ProductRail
         overline="Best Sellers"
         heading="What everyone's buying."
         blurb="Ranked by what our customers actually order, refreshed daily."
-        ctaHref="/shop"
+        ctaHref="/collection/bestsellers"
         ctaLabel="Shop all"
         products={topSellers}
-        tinted
       />
       <ProductRail
         overline="Trending Now"
@@ -189,7 +197,11 @@ export default async function HomePage() {
         ctaHref="/shop"
         ctaLabel="See what's hot"
         products={trendingRail}
+        tinted
       />
+      <QuizBand />
+      <KBeautySection products={kBeautyProducts} />
+      <EditorialDuo />
       <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
       <CategoryTiles groups={categoryGroups} />
       {/* Crawlable link to EVERY leaf category. The 8 image tiles above cover
@@ -225,7 +237,7 @@ export default async function HomePage() {
       <CollectionsSection collections={collections} />
       <RealResults proof={socialProof} />
       <JournalSection posts={blogPosts} />
-      <PressStrip />
+      <WhatsAppBand hasNumber={Boolean(settings.store_whatsapp || settings.store_phone)} />
     </main>
   );
 }

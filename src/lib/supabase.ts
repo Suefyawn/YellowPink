@@ -263,11 +263,15 @@ export async function getTrending(limit = 4): Promise<Product[]> {
 export async function getNewArrivals(limit = 8): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
   return safe('getNewArrivals', async () => {
+    // 30-day floor so "just landed" copy can't silently describe old stock;
+    // the rail self-hides during a dry spell (ProductRail returns null on []).
+    const floor = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     const { data } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
       .or('stock.gt.0,track_inventory.is.false')
+      .gte('created_at', floor)
       .order('created_at', { ascending: false })
       .limit(limit);
     return (data ?? []) as Product[];

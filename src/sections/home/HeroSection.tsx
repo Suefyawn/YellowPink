@@ -119,9 +119,10 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
           .hero-brand-track { animation: none; }
         }
         @media (max-width: 480px) {
-          .hero-brand-block { max-width: none !important; }
-          .hero-brand-track { gap: 22px; }
-          .hero-brand-slot { width: 76px; height: 24px; }
+          /* Phones: the marquee pushed the first buyable product past the
+             first scroll; the trust logos repeat lower on the page anyway.
+             display:none also stops the lazy logo <img>s from ever loading. */
+          .hero-brand-block { display: none !important; }
         }
       `}</style>
       <div className="container hero-grid" style={{
@@ -191,7 +192,7 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
           )}
         </div>
 
-        <div style={{ position: 'relative', alignSelf: 'stretch' }}>
+        <Link href={s.cta1Url} aria-label={s.cta1Text} style={{ position: 'relative', alignSelf: 'stretch', display: 'block' }}>
           {s.imageUrl && !imgFailed ? (
             <Image
               src={s.imageUrl}
@@ -213,7 +214,7 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
             <GradientFallback />
           )}
           <div aria-hidden="true" style={{ position: 'absolute', bottom: 0, left: 0, width: 6, height: 80, background: 'var(--brand-yellow)' }} />
-        </div>
+        </Link>
       </div>
     </section>
   );

@@ -41,7 +41,7 @@ export function SaleCollection({ products, title, subtitle, ctaText, ctaUrl }: {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
           {items.map((p) => (
-            <ProductTile key={p.id} product={p} />
+            <ProductTile key={p.id} product={p} list="Sale" />
           ))}
         </div>
         <div style={{ textAlign: 'center', marginTop: 32 }}>

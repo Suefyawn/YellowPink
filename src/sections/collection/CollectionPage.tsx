@@ -907,7 +907,7 @@ export function CollectionPage({
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
             {paginated.map((p) => (
-              <ProductTile key={p.id} product={p} />
+              <ProductTile key={p.id} product={p} list="Listing" />
             ))}
           </div>
           {filtered.length === 0 && (

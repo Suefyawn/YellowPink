@@ -10,10 +10,21 @@ import { useCart } from '@/context/CartContext';
 import { useWishlist } from '@/context/WishlistContext';
 import { brandPlusName } from '@/lib/product-display';
 import { fmtPKR } from '@/lib/money';
+import { track } from '@/lib/analytics';
 import type { Product } from '@/types';
+
+// A product counts as "new" for the tile badge and the homepage New In rail
+// alike — one constant so the two can't drift. The reference time is taken
+// once at module load: render must stay pure, and a badge that flips mid-
+// session at a day boundary would be a hydration hazard for zero benefit.
+export const NEW_BADGE_DAYS = 30;
+const NEW_BADGE_CUTOFF = Date.now() - NEW_BADGE_DAYS * 24 * 60 * 60 * 1000;
 
 interface ProductTileProps {
   product: Product;
+  /** GA4-style item_list_name: which rail/grid this tile sits in, attached to
+   *  the select_item event so section performance is measurable. */
+  list?: string;
 }
 
 // The tile renders its own Link to the PDP so callers don't need to wrap
@@ -23,14 +34,15 @@ interface ProductTileProps {
 //
 // Keyboard: Tab focuses the Link (Enter → PDP). Tab again focuses the
 // wishlist button (Enter → toggle). No nested-focusable HTML.
-export function ProductTile({ product }: ProductTileProps) {
+export function ProductTile({ product, list }: ProductTileProps) {
   const [hovered, setHovered] = useState(false);
   const [added, setAdded] = useState(false);
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlist();
-  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count, is_bestseller, is_popular, packaging } = product;
+  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count, is_bestseller, is_popular, packaging, created_at } = product;
   const wishlisted = isWishlisted(id);
+  const isNew = !!created_at && new Date(created_at).getTime() > NEW_BADGE_CUTOFF;
 
   // Quick-add UX matrix:
   //  • Variable products  → "Choose options" routes to PDP (variant pick needed).
@@ -93,6 +105,7 @@ export function ProductTile({ product }: ProductTileProps) {
     >
       <Link
         href={`/product/${slug}`}
+        onClick={() => track({ name: 'select_item', payload: { product_id: id, product_name: name, list } })}
         style={{
           textDecoration: 'none',
           color: 'inherit',
@@ -159,6 +172,13 @@ export function ProductTile({ product }: ProductTileProps) {
                 padding: '2px 8px', borderRadius: 'var(--radius-pill)',
                 fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
               }}>Popular</span>
+            ) : isNew ? (
+              <span style={{
+                background: 'var(--paper, #fff)', color: 'var(--brand-pink-text, #9d174d)',
+                border: '1px solid var(--brand-pink, #E8487F)',
+                padding: '1px 8px', borderRadius: 'var(--radius-pill)',
+                fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+              }}>New</span>
             ) : null}
             {lowStock && (
               <span style={{

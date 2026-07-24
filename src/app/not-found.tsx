@@ -31,7 +31,7 @@ const POPULAR_LINKS = [
   { label: 'Skincare',   href: '/shop?taxon=skincare' },
   { label: 'Wellness',   href: '/shop?taxon=wellness' },
   { label: 'Bestsellers', href: '/shop?bestseller=1' },
-  { label: 'New In',     href: '/shop' },
+  { label: 'New In',     href: '/shop?sort=newest' },
   { label: 'Blog',       href: '/blog' },
 ];
 
