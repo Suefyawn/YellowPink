@@ -14,6 +14,7 @@ import { checkReferralDiscount } from '@/app/checkout/rewards-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import { PK_CITIES, normalizeCity } from '@/lib/pk-cities';
 import { brandPlusName } from '@/lib/product-display';
+import { hasWhatsApp, whatsappGoUrl } from '@/lib/whatsapp';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { track } from '@/lib/analytics';
@@ -87,7 +88,15 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // Default to the first enabled method so we never auto-select a hidden one.
   const defaultMethod: PayMethod = visiblePayMethods[0]?.[0] ?? 'cod';
   const [payMethod, setPayMethod] = useState<PayMethod>(defaultMethod);
-  const [formData, setFormData] = useState({ email: '', firstName: '', lastName: '', phone: '', address: '', city: '', province: '', zip: '' });
+  // One `fullName` field, not First/Last: COD needs four facts (name, phone,
+  // address, city) and every extra visible input reads as "long form" to the
+  // 82%-mobile audience. handleSubmit splits it back into the first/last
+  // columns place_order stores.
+  const [formData, setFormData] = useState({ email: '', fullName: '', phone: '', address: '', city: '', province: '', zip: '' });
+  // Province/Postal live behind a "More details" toggle: both are optional,
+  // both submit as '' when untouched, and hiding them keeps the visible form
+  // at the COD minimum. Auto-opens if a validation pass ever needs it.
+  const [moreAddress, setMoreAddress] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -181,10 +190,13 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // and made the funnel skip this step for everyone who bailed (#193). Fires
   // once per page visit, after the cart has hydrated from localStorage.
   // Focus the first REQUIRED field (phone) on mount so the customer can start
-  // typing without a tap, and so the focus ring lands on a field they must
-  // fill rather than the optional email.
+  // typing without a tap — but only on fine-pointer devices. On phones the
+  // autofocus popped the keyboard the instant the page opened, covering the
+  // order summary the shopper was trying to review.
   const phoneRef = useRef<HTMLInputElement>(null);
-  useEffect(() => { phoneRef.current?.focus(); }, []);
+  useEffect(() => {
+    if (window.matchMedia('(pointer: fine)').matches) phoneRef.current?.focus();
+  }, []);
 
   const beganCheckout = useRef(false);
   useEffect(() => {
@@ -295,14 +307,14 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       void captureAbandonedCart({
         email: emailOk ? email : null,
         phone: phoneOk ? formData.phone : null,
-        first_name: formData.firstName || null,
+        first_name: formData.fullName.trim().split(/\s+/)[0] || null,
         items: cartItems,
         subtotal,
         user_id: user?.id ?? null,
       });
     }, 1200);
     return () => clearTimeout(t);
-  }, [formData.email, formData.phone, formData.firstName, cartItems, subtotal, user?.id]);
+  }, [formData.email, formData.phone, formData.fullName, cartItems, subtotal, user?.id]);
 
   const update = (key: string, val: string) => {
     setFormData(p => ({ ...p, [key]: val }));
@@ -312,14 +324,21 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // Field key → the input's DOM id, in the form's visual order, so a failed
   // submit can take the shopper TO the first problem.
   const FIELD_IDS: [string, string][] = [
-    ['email', 'co-email'], ['phone', 'co-phone'], ['firstName', 'co-fname'],
-    ['lastName', 'co-lname'], ['address', 'co-address'], ['city', 'co-city'],
+    ['phone', 'co-phone'], ['fullName', 'co-name'],
+    ['address', 'co-address'], ['city', 'co-city'], ['email', 'co-email'],
   ];
+
+  // Split the single name field back into the first/last columns the orders
+  // table stores. One-word names get an empty last name (the column is NOT
+  // NULL but accepts '').
+  const splitName = () => {
+    const parts = formData.fullName.trim().split(/\s+/);
+    return { first: parts[0] ?? '', last: parts.slice(1).join(' ') };
+  };
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!formData.firstName.trim()) e.firstName = 'Required';
-    if (!formData.lastName.trim()) e.lastName = 'Required';
+    if (!formData.fullName.trim()) e.fullName = 'Required';
     const phone = formData.phone.trim().replace(/\s/g, '');
     if (!phone) {
       e.phone = 'Required';
@@ -417,13 +436,14 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       // backstop. On the (rare) duplicate, retry with a fresh number instead
       // of surfacing a raw constraint error to the customer.
       let orderNumber = makeOrderNumber();
+      const name = splitName();
       for (let attempt = 1; ; attempt++) {
         const { error } = await sb.rpc('place_order' as never, {
           order_data: {
             order_number: orderNumber,
             email: formData.email || '',
-            first_name: formData.firstName,
-            last_name: formData.lastName,
+            first_name: name.first,
+            last_name: name.last,
             phone: formData.phone.trim(),
             address: formData.address,
             city: normalizeCity(formData.city),
@@ -490,8 +510,8 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       void notifyNewOrder({
         order_number: orderNumber,
         email: formData.email || undefined,
-        first_name: formData.firstName,
-        last_name: formData.lastName,
+        first_name: name.first,
+        last_name: name.last,
         phone: formData.phone.trim(),
         city: normalizeCity(formData.city),
         province: formData.province || undefined,
@@ -514,6 +534,33 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       setSubmitting(false);
     }
   };
+
+  // Sticky mobile commit bar: at ≤860px the summary column (with the Place
+  // Order button and total) stacks below the entire form, so the commit
+  // button and price were invisible for the whole form-filling session.
+  // The bar shows whenever the summary panel is off-screen and reuses the
+  // same handleSubmit — validate() already scrolls to the first error.
+  const summaryRef = useRef<HTMLDivElement>(null);
+  const [showCommitBar, setShowCommitBar] = useState(false);
+  useEffect(() => {
+    const el = summaryRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(
+      ([entry]) => setShowCommitBar(!entry.isIntersecting),
+      { threshold: 0.05 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+    // Re-observe when the form mounts (the empty-bag state renders no panel).
+  }, [hydrated, cartItems.length]);
+  // Lift the WhatsApp FAB / back-to-top above the bar while it's visible
+  // (same CSS-var contract as the PDP sticky buy bar).
+  useEffect(() => {
+    const root = document.documentElement;
+    if (showCommitBar) root.style.setProperty('--fab-bottom-offset', '80px');
+    else root.style.removeProperty('--fab-bottom-offset');
+    return () => { root.style.removeProperty('--fab-bottom-offset'); };
+  }, [showCommitBar]);
 
   const inputStyle = (key: string): React.CSSProperties => ({
     width: '100%', padding: '10px 12px',
@@ -622,59 +669,74 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               form column past the container and scroll the page sideways. */}
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 48 }} className="checkout-grid">
             <div>
+              {/* COD-first field order: the four required facts (phone, name,
+                  address, city) come first; optional email moved below the
+                  address block so the form no longer OPENS with an optional
+                  field, which read as "long form" to phone shoppers. */}
               <Overline style={{ display: 'block', marginBottom: 16 }}>Contact</Overline>
-              <div style={{ marginBottom: 24 }}>
-                <label htmlFor="co-email" style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
-                <input id="co-email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
-                {errors.email && <span id="co-email-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
-              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="checkout-name-grid">
                 <div>
                   <label htmlFor="co-phone" style={labelStyle}>Phone *</label>
                   <input ref={phoneRef} id="co-phone" type="tel" autoComplete="tel" value={formData.phone} onChange={e => update('phone', e.target.value)} placeholder="+92 300 1234567" style={inputStyle('phone')} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'co-phone-error' : undefined} />
                   {errors.phone && <span id="co-phone-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.phone}</span>}
                 </div>
+                <div>
+                  <label htmlFor="co-name" style={labelStyle}>Full Name *</label>
+                  <input id="co-name" autoComplete="name" value={formData.fullName} onChange={e => update('fullName', e.target.value)} placeholder="e.g. Ayesha Khan" style={inputStyle('fullName')} aria-invalid={!!errors.fullName} aria-describedby={errors.fullName ? 'co-name-error' : undefined} />
+                  {errors.fullName && <span id="co-name-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.fullName}</span>}
+                </div>
               </div>
 
               <hr className="hairline" style={{ margin: '32px 0' }} />
               <Overline style={{ display: 'block', marginBottom: 16 }}>Shipping Address</Overline>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
-                <div>
-                  <label htmlFor="co-fname" style={labelStyle}>First Name *</label>
-                  <input id="co-fname" autoComplete="given-name" value={formData.firstName} onChange={e => update('firstName', e.target.value)} style={inputStyle('firstName')} aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? 'co-fname-error' : undefined} />
-                  {errors.firstName && <span id="co-fname-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.firstName}</span>}
-                </div>
-                <div>
-                  <label htmlFor="co-lname" style={labelStyle}>Last Name *</label>
-                  <input id="co-lname" autoComplete="family-name" value={formData.lastName} onChange={e => update('lastName', e.target.value)} style={inputStyle('lastName')} aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? 'co-lname-error' : undefined} />
-                  {errors.lastName && <span id="co-lname-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.lastName}</span>}
-                </div>
-              </div>
               <div style={{ marginBottom: 16 }}>
                 <label htmlFor="co-address" style={labelStyle}>Address *</label>
                 <input id="co-address" autoComplete="street-address" value={formData.address} onChange={e => update('address', e.target.value)} placeholder="House/flat, street, area" style={inputStyle('address')} aria-invalid={!!errors.address} aria-describedby={errors.address ? 'co-address-error' : undefined} />
                 {errors.address && <span id="co-address-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.address}</span>}
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }} className="addr-grid-3">
-                <div>
-                  <label htmlFor="co-city" style={labelStyle}>City *</label>
-                  <input id="co-city" list="pk-cities" autoComplete="address-level2" value={formData.city} onChange={e => update('city', e.target.value)} onBlur={e => update('city', normalizeCity(e.target.value))} style={inputStyle('city')} aria-invalid={!!errors.city} aria-describedby={errors.city ? 'co-city-error' : undefined} />
-                  <datalist id="pk-cities">
-                    {PK_CITIES.map(c => <option key={c} value={c} />)}
-                  </datalist>
-                  {errors.city && <span id="co-city-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.city}</span>}
+              <div style={{ marginBottom: 12 }}>
+                <label htmlFor="co-city" style={labelStyle}>City *</label>
+                <input id="co-city" list="pk-cities" autoComplete="address-level2" value={formData.city} onChange={e => update('city', e.target.value)} onBlur={e => update('city', normalizeCity(e.target.value))} style={inputStyle('city')} aria-invalid={!!errors.city} aria-describedby={errors.city ? 'co-city-error' : undefined} />
+                <datalist id="pk-cities">
+                  {PK_CITIES.map(c => <option key={c} value={c} />)}
+                </datalist>
+                {errors.city && <span id="co-city-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.city}</span>}
+              </div>
+              {/* Province + postal code are optional (both submit as '' when
+                  untouched; the shipping resolver falls back to the standard
+                  zone), so they hide behind a toggle to keep the visible form
+                  at the COD minimum. */}
+              {!moreAddress ? (
+                <button
+                  type="button"
+                  onClick={() => setMoreAddress(true)}
+                  style={{
+                    background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
+                    fontFamily: 'var(--font-ui)', fontSize: '0.8125rem', fontWeight: 600,
+                    color: 'var(--brand-pink-text)', marginBottom: 12,
+                  }}
+                >
+                  + Add province / postal code (optional)
+                </button>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="checkout-name-grid">
+                  <div>
+                    <label htmlFor="co-province" style={labelStyle}>Province</label>
+                    <select id="co-province" autoComplete="address-level1" value={formData.province} onChange={e => update('province', e.target.value)} style={{ ...inputStyle('province'), cursor: 'pointer' }}>
+                      <option value="">Select</option>
+                      {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="co-zip" style={labelStyle}>Postal Code</label>
+                    <input id="co-zip" autoComplete="postal-code" inputMode="numeric" value={formData.zip} onChange={e => update('zip', e.target.value)} style={inputStyle('zip')} />
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="co-province" style={labelStyle}>Province</label>
-                  <select id="co-province" autoComplete="address-level1" value={formData.province} onChange={e => update('province', e.target.value)} style={{ ...inputStyle('province'), cursor: 'pointer' }}>
-                    <option value="">Select</option>
-                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="co-zip" style={labelStyle}>Postal Code</label>
-                  <input id="co-zip" autoComplete="postal-code" inputMode="numeric" value={formData.zip} onChange={e => update('zip', e.target.value)} style={inputStyle('zip')} />
-                </div>
+              )}
+              <div style={{ marginBottom: 16 }}>
+                <label htmlFor="co-email" style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
+                <input id="co-email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
+                {errors.email && <span id="co-email-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
               </div>
 
               <hr className="hairline" style={{ margin: '32px 0' }} />
@@ -710,7 +772,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               )}
             </div>
 
-            <div style={{ background: 'var(--paper2)', borderRadius: 'var(--radius-card)', padding: 28, border: '1px solid var(--line)', alignSelf: 'start', position: 'sticky', top: 100, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
+            <div ref={summaryRef} style={{ background: 'var(--paper2)', borderRadius: 'var(--radius-card)', padding: 28, border: '1px solid var(--line)', alignSelf: 'start', position: 'sticky', top: 100, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
               <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>Your Order</Overline>
               {cartItems.map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
@@ -821,8 +883,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                 </div>
               )}
               <hr className="hairline" style={{ margin: '16px 0' }} />
+              {/* COD is pay-later: "Due now" on a cash order framed a
+                  pay-nothing-today checkout as an immediate charge. */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
-                <span className="h3">Due now</span>
+                <span className="h3">{payMethod === 'cod' ? 'To pay on delivery' : 'Due now'}</span>
                 <span className="h3 tabular-nums">PKR {total.toLocaleString()}</span>
               </div>
               {submitError && (
@@ -833,6 +897,11 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               <button className="btn-primary" style={{ width: '100%', ...(submitting || cartItems.length === 0 ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }} onClick={handleSubmit} disabled={submitting || cartItems.length === 0} aria-busy={submitting}>
                 {submitting ? 'Placing Order…' : payMethod === 'jazzcash' || payMethod === 'easypaisa' ? `Continue to ${payMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa'} →` : 'Place Order'}
               </button>
+              {payMethod === 'cod' && (
+                <p className="small-text" style={{ textAlign: 'center', marginTop: 8, marginBottom: 0, color: 'var(--ink-700)' }}>
+                  Pay nothing now. You pay the courier in cash when your order arrives.
+                </p>
+              )}
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)', display: 'inline-flex', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
                 <span aria-hidden="true" style={{ lineHeight: 1 }}>🔒</span> Secure checkout · COD available
               </p>
@@ -851,10 +920,70 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                   </li>
                 ))}
               </ul>
+              {/* Human escape hatch at the commit point. This link existed only
+                  on the (unvisited) cart page and the payment-failed banner —
+                  a stuck shopper mid-checkout had no way to ask a question
+                  without abandoning. */}
+              {hasWhatsApp() && (
+                <p className="small-text" style={{ textAlign: 'center', marginTop: 12, marginBottom: 0 }}>
+                  <a
+                    href={whatsappGoUrl('Hi! I need a hand completing my order on the checkout page.', { src: 'checkout' })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: '#0f766e', fontWeight: 600, textDecoration: 'underline', textUnderlineOffset: 3 }}
+                  >
+                    Stuck or have a question? WhatsApp us
+                  </a>
+                </p>
+              )}
             </div>
           </div>
         </div>
       </section>
+
+      {/* Sticky mobile commit bar (hidden ≥861px via .checkout-commit-bar in
+          globals.css). Shows the live total and the same submit action while
+          the summary panel is below the viewport, so the shopper always sees
+          what they're committing to and a way to commit. */}
+      <div
+        className="checkout-commit-bar"
+        inert={!showCommitBar}
+        style={{
+          position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 90,
+          background: 'rgba(250,246,238,0.97)',
+          backdropFilter: 'saturate(140%) blur(8px)',
+          WebkitBackdropFilter: 'saturate(140%) blur(8px)',
+          borderTop: '1px solid var(--line)',
+          boxShadow: '0 -6px 18px rgba(0,0,0,0.06)',
+          padding: '10px var(--side)',
+          paddingBottom: 'calc(10px + env(safe-area-inset-bottom, 0px))',
+          display: 'flex', alignItems: 'center', gap: 12,
+          transform: showCommitBar ? 'translateY(0)' : 'translateY(110%)',
+          transition: 'transform 220ms cubic-bezier(0.22, 1, 0.36, 1)',
+          pointerEvents: showCommitBar ? 'auto' : 'none',
+        }}
+      >
+        <div style={{ minWidth: 0, flex: '1 1 auto' }}>
+          <div style={{ fontSize: '0.6875rem', color: 'var(--ink-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {payMethod === 'cod' ? 'To pay on delivery · nothing now' : 'Due now'}
+          </div>
+          <div className="tabular-nums" style={{ fontSize: '1rem', fontWeight: 700 }}>
+            PKR {total.toLocaleString()}
+          </div>
+        </div>
+        <button
+          className="btn-primary"
+          onClick={handleSubmit}
+          disabled={submitting || cartItems.length === 0}
+          aria-busy={submitting}
+          style={{
+            flexShrink: 0, whiteSpace: 'nowrap', minHeight: 48, padding: '12px 20px',
+            ...(submitting ? { opacity: 0.6, cursor: 'not-allowed' } : {}),
+          }}
+        >
+          {submitting ? 'Placing…' : payMethod === 'jazzcash' || payMethod === 'easypaisa' ? 'Continue →' : 'Place Order'}
+        </button>
+      </div>
     </div>
   );
 }

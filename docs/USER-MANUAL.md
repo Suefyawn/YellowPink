@@ -185,15 +185,21 @@ customers and spot where an order is.
   bar to a possibly-wrong figure. Below that sits the same **estimated delivery
   time** shown on the product page, and a **"You may also like"** row suggesting
   bestsellers (excluding what's already in the bag) to encourage add-ons.
-- **Checkout** — the customer enters their delivery details (name, phone, email,
-  full address), sees the shipping cost, and chooses how to pay. A short
-  reassurance strip (authentic products, cash on delivery, 7-day returns) sits
-  by the **Place Order** button. Only at checkout — once the province is
-  selected — does the shopper see the **exact, region-correct** delivery charge
-  and free-delivery threshold for their zone, so the promise is never wrong for
+- **Checkout** — a short, COD-first form: phone, full name, address and city
+  are the only required fields (province and postal code sit behind an
+  optional "More details" link; email is optional for COD and only required
+  for online payments). On phones a **sticky bottom bar** keeps the live total
+  and the Place Order button on screen the whole time the shopper is filling
+  the form. When Cash on Delivery is selected the total reads **"To pay on
+  delivery"** with a "pay nothing now" note, so a pay-later order never looks
+  like an immediate charge. A short reassurance strip (authentic products,
+  cash on delivery, 7-day returns) and a **WhatsApp help link** sit by the
+  Place Order button. Only at checkout — once the province is selected — does
+  the shopper see the **exact, region-correct** delivery charge and
+  free-delivery threshold for their zone, so the promise is never wrong for
   their area. Free delivery is earned on the merchandise subtotal (before any
-  discount code), so applying a coupon never strips a free-delivery promise the
-  customer has already qualified for.
+  discount code), so applying a coupon never strips a free-delivery promise
+  the customer has already qualified for.
 
 ### 2.3 Ways to pay
 
@@ -992,6 +998,7 @@ A dated history of user-facing changes, newest first.
 
 ### 24 July 2026
 
+- **Checkout trimmed to the COD minimum, with the commit button always in reach.** The form now asks for four things: phone, full name (one field instead of first/last), address and city. Province and postal code moved behind an optional "More details" link, and email moved below the address and stays optional for COD. On phones a sticky bottom bar shows the live total and Place Order while the shopper fills the form (the button used to sit a full screen below it), the keyboard no longer pops up the moment the page opens, and a WhatsApp help link sits at the decision point. For COD orders the total is labelled "To pay on delivery" with a "pay nothing now" note. Orders still store first and last name separately, so nothing changes in admin, emails or courier bookings.
 - **Shop, product and cart pages tuned for phones.** The shop and category pages compress their header on phones so products appear on the first screen, the first row of product photos loads instantly instead of fading in after the page boots, the filter panel gains a pinned **"Show N products"** button (and no longer hides behind the site header or cookie banner), and filter chips, sort and page numbers meet the 44px touch size. Product pages put the photo and Add to Cart inside the first phone screen, move **customer reviews and Q&A up above the recommendation rails**, and the bottom buy bar now offers **Buy Now** next to Add to Cart. The slide-out cart got a clearer footer: a delivery line (FREE or the from-rate) above the total, one big Checkout button with the COD/returns promise under it, View Cart demoted to a small link, and the old static "free sample" note replaced by a real one-tap **"Goes well with your order"** suggestion. Collection pages shrink their photo hero on phones, and the homepage hero photo now uses a taller, face-friendly crop on phones instead of a thin strip. Also fixed: "Frequently bought together" no longer offers shade/size products it can't add correctly, and no longer repeats products already shown in "Pairs well with".
 - **Homepage rebuilt around what converts.** The order now runs hero, trust bar, a tappable search field (phones), a swipeable strip of the eight most-shopped destinations, then nothing but product rails (Featured, the new **New In** rail, Sale when active, Best Sellers, Trending) before any editorial content. The announcement bar is on with the WELCOME10 first-order offer, the hero's main button leads to Best Sellers, the hero image is tappable, and the brand logo marquee no longer shows on phones. Trending only appears when products have real momentum, so it can't duplicate New In. The pre-footer "As featured in" press strip (which implied coverage we don't have) was replaced with an **Order on WhatsApp** band, and the floating WhatsApp button now shows its "Chat with us" label on phones. Product cards across the site gained a **New** badge for products added in the last 30 days, and card clicks are now measured per section so the next homepage change can be judged on data. The Featured, Best Sellers, Trending and K-Beauty rails also **rotate daily**: each rail draws its four tiles from a wider shortlist and picks a different mix every day (Pakistan time), so regular visitors stop seeing the same static page.
 - **Single products now sell their sets.** When a product belongs to a value set, its page says so twice: a one-line nudge under the buy buttons ("Also in [set] · save 18%") and a "Better Value In A Set" section showing the set with the crossed-out separate total and the saving. Both link to the set's page. Products whose set saves less than 1% stay quiet. The homepage "Combos & Bundles" collection was also repaired: its rule matched a tag no product carried, so it had been empty; every set is now tagged and the rule also matches the bundle categories, so the collection fills itself. A "Nails" category was added under Makeup for the new nail products.

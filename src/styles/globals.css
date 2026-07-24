@@ -1036,6 +1036,13 @@ a.underline,
   }
 }
 
+/* Checkout sticky commit bar is a phone affordance: ≥861px the summary
+ * column (with the real Place Order button) sits beside the form and stays
+ * on screen, so the bar would just duplicate it. */
+@media (min-width: 861px) {
+  .checkout-commit-bar { display: none !important; }
+}
+
 /* Checkout / Cart responsive */
 @media (max-width: 860px) {
   .checkout-grid { grid-template-columns: minmax(0, 1fr) !important; }
