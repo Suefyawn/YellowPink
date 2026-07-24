@@ -34,6 +34,7 @@ export const TAXONS: readonly Taxon[] = [
       'Face Makeup',
       'Eyes',
       'Highlighters',
+      'Nails',
       'Brushes & Tools',
     ],
   },

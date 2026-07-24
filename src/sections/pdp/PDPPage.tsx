@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
@@ -50,6 +51,10 @@ interface Props {
   /** Loyalty points earned per PKR spent (site setting). 0 hides the
    *  "earn points" nudge. */
   pointsPerPkr?: number;
+  /** When this product is a component of a value set, a one-line nudge under
+   *  the buy buttons links to the set ("Also in <set> — save 18%"). Null for
+   *  products that aren't in any set. */
+  setTeaser?: { name: string; slug: string; savingPct: number } | null;
   /** This product's tags. Rendered as crawlable links to /tag/<slug> — the
    *  tag archive pages otherwise exist only in the sitemap (the shop's Tags
    *  facet is client-side buttons), which audits flag as orphaned pages. */
@@ -315,7 +320,7 @@ function Gallery({
 }
 
 // ─── PDPPage ───────────────────────────────────────────────────────────────
-export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], estimatedDays = null, pointsPerPkr = 0, tags = [] }: Props) {
+export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], estimatedDays = null, pointsPerPkr = 0, tags = [], setTeaser = null }: Props) {
   const [qty, setQty] = useState(1);
   const [addedFlash, setAddedFlash] = useState(false);
   // Sticky mobile buy-bar: shown once the in-page buy panel scrolls out of
@@ -755,6 +760,17 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                     suppressHydrationWarning: a request served near midnight
                     can prerender yesterday's dates; the client value wins. */}
                 Get it by <strong style={{ fontWeight: 600 }} suppressHydrationWarning>{deliveryWindow}</strong> · COD nationwide
+              </p>
+            )}
+
+            {/* Set upsell: this product is cheaper inside a value set. One
+                quiet line at the decision moment; the full comparison lives
+                in the "Better value in a set" section further down. */}
+            {setTeaser && !outOfStock && (
+              <p className="small-text" style={{ marginTop: -8, marginBottom: 24 }}>
+                <Link href={`/product/${setTeaser.slug}`} style={{ color: 'var(--brand-pink-text, #9d174d)', fontWeight: 600 }}>
+                  Also in {setTeaser.name} · save {Math.round(setTeaser.savingPct)}% →
+                </Link>
               </p>
             )}
 
