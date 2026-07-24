@@ -15,7 +15,7 @@ export function FeaturedProducts({ products }: { products: Product[] }) {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
           {products.slice(0, 4).map((p) => (
-            <ProductTile key={p.id} product={p} />
+            <ProductTile key={p.id} product={p} list="Featured" />
           ))}
         </div>
       </div>

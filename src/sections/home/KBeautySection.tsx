@@ -71,7 +71,7 @@ export function KBeautySection({ products }: { products: Product[] }) {
             is identical. */}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: 'var(--gutter)', maxWidth: items.length < 3 ? 720 : undefined, marginInline: 'auto' }} className="product-grid-3">
           {items.map((p) => (
-            <ProductTile key={p.id} product={p} />
+            <ProductTile key={p.id} product={p} list="K-Beauty" />
           ))}
         </div>
 

@@ -54,9 +54,16 @@ export function WhatsAppFab({ number }: { number?: string }) {
         textDecoration: 'none',
       }}
     >
-      {/* Desktop hover label, touch devices just see the bubble. */}
+      {/* Desktop: label appears on hover. Touch (no hover): the label is
+          always visible so the green bubble isn't an unexplained blob. */}
+      <style>{`
+        @media (hover: none) {
+          .wa-fab-label { opacity: 1 !important; transform: none !important; }
+        }
+      `}</style>
       <span
         aria-hidden="true"
+        className="wa-fab-label"
         style={{
           background: '#fff',
           color: 'var(--ink-900, #111827)',

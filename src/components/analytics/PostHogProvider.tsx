@@ -27,6 +27,9 @@ function initPostHog() {
         api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
         capture_pageview: false,
         capture_pageleave: true,
+        // Explicit: per-section click attribution on the storefront depends
+        // on autocapture; don't rely on the SDK default staying true.
+        autocapture: true,
         person_profiles: 'identified_only',
         // Drop events that aren't real storefront customer behaviour, so the
         // funnel/top-pages numbers the owner reads aren't skewed:

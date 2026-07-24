@@ -497,14 +497,33 @@ a.underline,
   .pdp-grid { grid-template-columns: 1fr !important; }
   .search-suggestions { grid-template-columns: 1fr !important; }
   .trust-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
-  .wellness-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Wellness concern cards: horizontal snap slider instead of a 4-row wall,
+     same pattern as .product-grid-3 — 1.6 cards visible cues the swipe. */
+  .wellness-grid {
+    display: flex !important;
+    grid-template-columns: none !important;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: var(--side);
+    margin-left: calc(var(--side) * -1);
+    margin-right: calc(var(--side) * -1);
+    padding-left: var(--side);
+    padding-right: var(--side);
+    gap: 12px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .wellness-grid::-webkit-scrollbar { display: none; }
+  .wellness-grid > * { flex: 0 0 60%; scroll-snap-align: start; }
   .display-xl { font-size: 2.75rem !important; }
   .display-l { font-size: 1.75rem !important; }
   /* minmax(0,…) not 1fr: the hero brand marquee is width:max-content, and a
      bare fr track grows to its content's min-content — the S24 sideways-
      scroll bug. Same guard as the inline desktop columns in HeroSection. */
   .hero-grid { grid-template-columns: minmax(0, 1fr) !important; min-height: auto !important; }
-  .hero-grid > div:last-child { min-height: 300px; position: relative !important; }
+  /* Phones: the hero visual is a (now tappable) accent, not a second hero —
+     180px keeps the first product rail within one flick of the headline. */
+  .hero-grid > a:last-child, .hero-grid > div:last-child { min-height: 180px; position: relative !important; display: block; }
 }
 /* Below 700px the editorial splits stack like every other duo. */
 @media (max-width: 699px) {

@@ -22,6 +22,7 @@ import { buildWellnessShowcase } from '@/lib/wellness-data';
 import { ALL_CATEGORIES, categoryHref } from '@/lib/category-taxonomy';
 import Link from 'next/link';
 import { resolveBrandLogos } from '@/lib/brands';
+import { dailyRotation } from '@/lib/rotation';
 
 // Homepage "Shop by category" tiles, four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -46,6 +47,9 @@ const CATEGORY_TILE_FILES: Record<string, string> = {
 };
 import { HeroSection } from '@/sections/home/HeroSection';
 import { TrustBar } from '@/sections/home/TrustBar';
+import { CategoryChipStrip } from '@/sections/home/CategoryChipStrip';
+import { HomeSearchPill } from '@/sections/home/HomeSearchPill';
+import { WhatsAppBand } from '@/sections/home/WhatsAppBand';
 import { FeaturedProducts } from '@/sections/home/FeaturedProducts';
 import { EditorialDuo } from '@/sections/home/EditorialDuo';
 import { SaleCollection } from '@/sections/home/SaleCollection';
@@ -56,7 +60,6 @@ import { CategoryTiles } from '@/sections/home/CategoryTiles';
 import { CollectionsSection } from '@/sections/home/CollectionsSection';
 import { RealResults } from '@/sections/home/RealResults';
 import { JournalSection } from '@/sections/home/JournalSection';
-import { PressStrip } from '@/sections/home/PressStrip';
 import { QuizBand } from '@/sections/home/QuizBand';
 
 export default async function HomePage() {
@@ -66,30 +69,44 @@ export default async function HomePage() {
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
   const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections, socialProof, newArrivals] = await Promise.all([
-    getFeatured(6),
-    getTopSellers(4),
-    getTrending(8),
+    getFeatured(12),
+    getTopSellers(8),
+    getTrending(12),
     getOnSale(8),
     getWellnessProducts(),
-    getProductsByBrands(K_BEAUTY_BRANDS, 4),
+    getProductsByBrands(K_BEAUTY_BRANDS, 10),
     getSiteSettings(),
     getBlogPosts(),
     getPublishedCollectionsWithCovers(3),
     getHomeSocialProof(),
-    getNewArrivals(12),
+    getNewArrivals(16),
   ]);
 
   // Keep the two rails distinct: a product that's a top seller shouldn't also
   // fill the Trending rail (most visible when both fall back to recency before
   // the nightly trend refresh has run).
-  const topSellerIds = new Set(topSellers.map(p => p.id));
-  const trendingRail = trending.filter(p => !topSellerIds.has(p.id)).slice(0, 4);
+  // Daily rotation (lib/rotation): each rail shows 4 of a wider candidate
+  // pool, reshuffled once per PKT day so returning visitors see fresh tiles
+  // without breaking each rail's honesty — Best Sellers rotates within the
+  // top 8 actual sellers, Trending within products with real momentum.
+  const featuredRail = dailyRotation(featured, 4, 'featured');
+  const topSellersRail = dailyRotation(topSellers, 4, 'bestsellers');
+  const topSellerIds = new Set(topSellersRail.map(p => p.id));
+  // Trending demands real momentum: getTrending falls back to recency when
+  // trend_score is flat, which at low order volume just duplicates New In
+  // under an overclaiming label. Empty rail self-hides.
+  const trendingRail = dailyRotation(
+    trending.filter(p => !topSellerIds.has(p.id)).filter(p => (p.trend_score ?? 0) > 0),
+    4,
+    'trending',
+  );
+  const kBeautyRail = dailyRotation(kBeautyProducts, 4, 'kbeauty');
 
   // New In: pure recency, deduped against the tiles actually DISPLAYED above
   // it so the page never shows the same product twice (recency also backs
   // several rails' fallbacks). Products fetched but not rendered don't count.
-  const displayedFeatured = featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4);
-  const seenIds = new Set([...displayedFeatured, ...topSellers, ...trendingRail].map(p => p.id));
+  const displayedFeatured = featuredRail.length ? featuredRail : topSellersRail;
+  const seenIds = new Set([...displayedFeatured, ...topSellersRail, ...trendingRail].map(p => p.id));
   const newInRail = newArrivals.filter(p => !seenIds.has(p.id)).slice(0, 4);
 
   // Shape the full wellness set into per-concern cards + a featured rail.
@@ -146,9 +163,13 @@ export default async function HomePage() {
       )}
       <HeroSection settings={heroSettings} />
       <TrustBar />
-      <FeaturedProducts products={featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4)} />
-      {/* Fresh stock, high on the page: returning visitors' first question is
-          "what's new?", and nothing on the homepage answered it before. */}
+      {/* Conversion order (July 24 audit): search + category entry within one
+          thumb-flick, then nothing but product rails until every proven
+          seller has had its shot. Median mobile scroll reaches ~26% of the
+          old page; the sections that sell now live inside that window. */}
+      <HomeSearchPill />
+      <CategoryChipStrip />
+      <FeaturedProducts products={displayedFeatured} />
       <ProductRail
         overline="New In"
         heading="Just landed."
@@ -158,9 +179,6 @@ export default async function HomePage() {
         products={newInRail}
         tinted
       />
-      <QuizBand />
-      <KBeautySection products={kBeautyProducts} />
-      <EditorialDuo />
       {saleActive && (
         <SaleCollection
           products={saleProducts}
@@ -170,17 +188,16 @@ export default async function HomePage() {
           ctaUrl={settings.sale_cta_url || '/shop?sale=1'}
         />
       )}
-      {/* Two data-driven rails, refreshed nightly by the popularity cron:
+      {/* Data-driven rails, refreshed nightly by the popularity cron:
           Best Sellers = what's actually bought (units_sold, owner pin leads);
-          Trending Now = recent momentum (views + add-to-carts). */}
+          Trending Now = recent momentum, shown only when trend_score is real. */}
       <ProductRail
         overline="Best Sellers"
         heading="What everyone's buying."
         blurb="Ranked by what our customers actually order, refreshed daily."
-        ctaHref="/shop"
+        ctaHref="/collection/bestsellers"
         ctaLabel="Shop all"
-        products={topSellers}
-        tinted
+        products={topSellersRail}
       />
       <ProductRail
         overline="Trending Now"
@@ -189,7 +206,11 @@ export default async function HomePage() {
         ctaHref="/shop"
         ctaLabel="See what's hot"
         products={trendingRail}
+        tinted
       />
+      <QuizBand />
+      <KBeautySection products={kBeautyRail} />
+      <EditorialDuo />
       <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
       <CategoryTiles groups={categoryGroups} />
       {/* Crawlable link to EVERY leaf category. The 8 image tiles above cover
@@ -225,7 +246,7 @@ export default async function HomePage() {
       <CollectionsSection collections={collections} />
       <RealResults proof={socialProof} />
       <JournalSection posts={blogPosts} />
-      <PressStrip />
+      <WhatsAppBand hasNumber={Boolean(settings.store_whatsapp || settings.store_phone)} />
     </main>
   );
 }

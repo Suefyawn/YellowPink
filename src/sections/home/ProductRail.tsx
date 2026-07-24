@@ -46,7 +46,7 @@ export function ProductRail({
           <Link href={ctaHref} className="btn-secondary" style={{ flex: '0 0 auto' }}>{ctaLabel}</Link>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }} className="product-grid-4">
-          {items.map(p => <ProductTile key={p.id} product={p} />)}
+          {items.map(p => <ProductTile key={p.id} product={p} list={overline} />)}
         </div>
       </div>
     </section>
