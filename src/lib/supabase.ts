@@ -258,6 +258,22 @@ export async function getTrending(limit = 4): Promise<Product[]> {
   }, DEMO_PRODUCTS.slice(0, limit));
 }
 
+/** Newest published, purchasable products — the homepage "New In" rail and
+ *  anywhere else fresh stock should surface. Pure recency, no flags. */
+export async function getNewArrivals(limit = 8): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getNewArrivals', async () => {
+    const { data } = await supabase
+      .from('products')
+      .select(PRODUCT_TILE_COLUMNS)
+      .eq('status', 'published')
+      .or('stock.gt.0,track_inventory.is.false')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return (data ?? []) as Product[];
+  }, DEMO_PRODUCTS.slice(0, limit));
+}
+
 /** Featured picks for the homepage hero/editorial slots, flagged by
  *  `is_featured=true`. Same fallback as bestsellers. */
 export async function getFeatured(limit = 6): Promise<Product[]> {

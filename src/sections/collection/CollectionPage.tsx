@@ -21,7 +21,7 @@ const PAGE_SIZE = 48;
 // surface an empty category.
 const TOP_CATEGORY_NAMES = ['All', ...TAXONS.map(t => t.label)];
 
-type SortKey = 'featured' | 'price-low' | 'price-high' | 'name';
+type SortKey = 'featured' | 'newest' | 'price-low' | 'price-high' | 'name';
 
 interface Props {
   products: Product[];
@@ -532,6 +532,7 @@ export function CollectionPage({
   if (sortBy === 'price-low') filtered = [...filtered].sort((a, b) => a.price - b.price);
   else if (sortBy === 'price-high') filtered = [...filtered].sort((a, b) => b.price - a.price);
   else if (sortBy === 'name') filtered = [...filtered].sort((a, b) => a.name.localeCompare(b.name));
+  else if (sortBy === 'newest') filtered = [...filtered].sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
   else if (qLower && searchRank) {
     // Default sort during an RPC-backed search: relevance order, matching
     // the typeahead overlay.
@@ -685,6 +686,7 @@ export function CollectionPage({
                 }}
               >
                 <option value="featured">Featured</option>
+                <option value="newest">Newest</option>
                 <option value="price-low">Price: Low → High</option>
                 <option value="price-high">Price: High → Low</option>
                 <option value="name">Name A–Z</option>
