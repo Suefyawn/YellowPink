@@ -56,10 +56,17 @@ customers and spot where an order is.
 
 ### 2.1 Browsing the store
 
-- **Home page** — the landing page. It shows a hero banner, curated product
-  rails (featured items, bestsellers, wellness picks), shop-by-category tiles
-  plus a "Shop by category" row linking every category in the store,
-  the latest blog posts, and trust/press sections. A dedicated **"Beauty starts
+- **Home page** — the landing page. It opens with a hero banner and trust bar,
+  then (on phones) a tappable search field and a swipeable strip of the eight
+  most-shopped destinations (New In, Best Sellers, Makeup, Skincare, Wellness,
+  Value Sets, Under PKR 2,000, On Sale). Product rails follow: Featured, a
+  **New In** rail of recently added products, Sale (when a sale is on), Best
+  Sellers, and Trending. The Featured, Best Sellers, Trending and K-Beauty
+  rails **rotate daily** — each day a different four products from a wider
+  shortlist take the slots, so returning visitors see a fresh page without any
+  manual re-curation. Further down come shop-by-category tiles plus a "Shop by
+  category" row linking every category in the store, the latest blog posts,
+  and a pre-footer **Order on WhatsApp** band. A dedicated **"Beauty starts
   from within"** wellness showcase presents every health concern (Women's
   Health, Immunity, Bone & Joint, and more) as its own card with a live product
   count and "from" price, a featured wellness rail, and supplement-specific
@@ -985,7 +992,7 @@ A dated history of user-facing changes, newest first.
 
 ### 24 July 2026
 
-- **Homepage rebuilt around what converts.** The order now runs hero, trust bar, a tappable search field (phones), a swipeable strip of the eight most-shopped destinations, then nothing but product rails (Featured, the new **New In** rail, Sale when active, Best Sellers, Trending) before any editorial content. The announcement bar is on with the WELCOME10 first-order offer, the hero's main button leads to Best Sellers, the hero image is tappable, and the brand logo marquee no longer shows on phones. Trending only appears when products have real momentum, so it can't duplicate New In. The pre-footer "As featured in" press strip (which implied coverage we don't have) was replaced with an **Order on WhatsApp** band, and the floating WhatsApp button now shows its "Chat with us" label on phones. Product cards across the site gained a **New** badge for products added in the last 30 days, and card clicks are now measured per section so the next homepage change can be judged on data.
+- **Homepage rebuilt around what converts.** The order now runs hero, trust bar, a tappable search field (phones), a swipeable strip of the eight most-shopped destinations, then nothing but product rails (Featured, the new **New In** rail, Sale when active, Best Sellers, Trending) before any editorial content. The announcement bar is on with the WELCOME10 first-order offer, the hero's main button leads to Best Sellers, the hero image is tappable, and the brand logo marquee no longer shows on phones. Trending only appears when products have real momentum, so it can't duplicate New In. The pre-footer "As featured in" press strip (which implied coverage we don't have) was replaced with an **Order on WhatsApp** band, and the floating WhatsApp button now shows its "Chat with us" label on phones. Product cards across the site gained a **New** badge for products added in the last 30 days, and card clicks are now measured per section so the next homepage change can be judged on data. The Featured, Best Sellers, Trending and K-Beauty rails also **rotate daily**: each rail draws its four tiles from a wider shortlist and picks a different mix every day (Pakistan time), so regular visitors stop seeing the same static page.
 - **Single products now sell their sets.** When a product belongs to a value set, its page says so twice: a one-line nudge under the buy buttons ("Also in [set] · save 18%") and a "Better Value In A Set" section showing the set with the crossed-out separate total and the saving. Both link to the set's page. Products whose set saves less than 1% stay quiet. The homepage "Combos & Bundles" collection was also repaired: its rule matched a tag no product carried, so it had been empty; every set is now tagged and the rule also matches the bundle categories, so the collection fills itself. A "Nails" category was added under Makeup for the new nail products.
 
 ### 23 July 2026
