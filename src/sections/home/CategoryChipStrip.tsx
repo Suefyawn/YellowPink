@@ -34,7 +34,9 @@ export function CategoryChipStrip() {
           font-size: 0.8125rem; font-weight: 600; text-decoration: none;
         }
         .home-chip-strip a:first-child {
-          background: var(--brand-pink, #E8487F); border-color: var(--brand-pink, #E8487F); color: #fff;
+          /* --brand-pink-cta, not --brand-pink: the chip carries white text and
+           * the decorative pink fails WCAG AA at this size (3.7:1 < 4.5:1). */
+          background: var(--brand-pink-cta, #C5286A); border-color: var(--brand-pink-cta, #C5286A); color: #fff;
         }
       `}</style>
       <div className="home-chip-strip">
