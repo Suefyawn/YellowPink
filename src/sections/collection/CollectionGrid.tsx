@@ -101,9 +101,9 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 'var(--gutter)' }}>
         {categories.length > 1 ? (
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', flex: 1, minWidth: 0 }}>
-            <button type="button" style={chipStyle(cat === 'All')} onClick={() => setParams({ cat: null, page: null })}>All</button>
+            <button type="button" className="shop-tap" style={chipStyle(cat === 'All')} onClick={() => setParams({ cat: null, page: null })}>All</button>
             {categories.map(c => (
-              <button key={c} type="button" style={chipStyle(cat === c)} onClick={() => setParams({ cat: c, page: null })}>{c}</button>
+              <button key={c} type="button" className="shop-tap" style={chipStyle(cat === c)} onClick={() => setParams({ cat: c, page: null })}>{c}</button>
             ))}
           </div>
         ) : <span />}
@@ -112,6 +112,7 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
           <select
             value={pendingSort}
             aria-label="Sort products"
+            className="shop-tap"
             onChange={e => { const s = e.target.value as SortKey; setPendingSort(s); setParams({ sort: s === 'featured' ? null : s, page: null }); track({ name: 'select_sort', payload: { sort: s } }); }}
             style={{
               padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
@@ -126,7 +127,9 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
 
       {paginated.length > 0 ? (
         <div className="product-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }}>
-          {paginated.map(p => <ProductTile key={p.id} product={p} />)}
+          {/* First four tiles on page 1 are the likely LCP candidates: preload
+              them and skip the hydration-gated fade (see ProductImage). */}
+          {paginated.map((p, i) => <ProductTile key={p.id} product={p} list="Collection" priority={clampedPage === 1 && i < 4} />)}
         </div>
       ) : (
         <p className="body-text" style={{ color: 'var(--ink-700)' }}>No products match this filter.</p>
@@ -134,12 +137,12 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
 
       {totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 'var(--section-gap)' }}>
-          <button type="button" disabled={clampedPage <= 1} style={{ ...pageBtn(false), opacity: clampedPage <= 1 ? 0.4 : 1, cursor: clampedPage <= 1 ? 'not-allowed' : 'pointer' }}
+          <button type="button" className="shop-tap" disabled={clampedPage <= 1} style={{ ...pageBtn(false), opacity: clampedPage <= 1 ? 0.4 : 1, cursor: clampedPage <= 1 ? 'not-allowed' : 'pointer' }}
             onClick={() => setParams({ page: String(clampedPage - 1) })} aria-label="Previous page">‹</button>
           {pageNumbers.map((p, i) => p === '…'
             ? <span key={`e${i}`} style={{ color: 'var(--ink-500)', padding: '0 4px' }}>…</span>
-            : <button key={p} type="button" style={pageBtn(p === clampedPage)} onClick={() => setParams({ page: p === 1 ? null : String(p) })} aria-current={p === clampedPage ? 'page' : undefined}>{p}</button>)}
-          <button type="button" disabled={clampedPage >= totalPages} style={{ ...pageBtn(false), opacity: clampedPage >= totalPages ? 0.4 : 1, cursor: clampedPage >= totalPages ? 'not-allowed' : 'pointer' }}
+            : <button key={p} type="button" className="shop-tap" style={pageBtn(p === clampedPage)} onClick={() => setParams({ page: p === 1 ? null : String(p) })} aria-current={p === clampedPage ? 'page' : undefined}>{p}</button>)}
+          <button type="button" className="shop-tap" disabled={clampedPage >= totalPages} style={{ ...pageBtn(false), opacity: clampedPage >= totalPages ? 0.4 : 1, cursor: clampedPage >= totalPages ? 'not-allowed' : 'pointer' }}
             onClick={() => setParams({ page: String(clampedPage + 1) })} aria-label="Next page">›</button>
         </div>
       )}

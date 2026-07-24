@@ -13,6 +13,7 @@ import { ScrollToTop } from './ScrollToTop';
 import { WhatsAppFab } from './WhatsAppFab';
 import { socialLinks } from '@/lib/socials';
 import { parseCommerceConfig, freeShippingSentence, freeShippingSentenceCompact } from '@/lib/commerce';
+import type { Product } from '@/types';
 
 interface SiteChromeProps {
   children: React.ReactNode;
@@ -26,9 +27,11 @@ interface SiteChromeProps {
   /** Published collections (server-resolved) for the footer's Collections
    *  column. Slim {slug,title} pairs — the footer only needs links. */
   footerCollections?: { slug: string; title: string }[];
+  /** Bestseller pool (server-resolved) for the mini-cart's cross-sell row. */
+  cartCrossSell?: Product[];
 }
 
-export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [] }: SiteChromeProps) {
+export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [], cartCrossSell = [] }: SiteChromeProps) {
   const pathname = usePathname();
   if (pathname.startsWith('/admin')) return <>{children}</>;
 
@@ -67,7 +70,7 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
       </Suspense>
       {children}
       <Footer socials={socialLinks(settings)} collections={footerCollections} />
-      <MiniCart />
+      <MiniCart crossSell={cartCrossSell} />
       <SearchOverlay trending={searchTrending} categories={searchCategories} />
       <KeyboardShortcuts />
       <BackToTop />

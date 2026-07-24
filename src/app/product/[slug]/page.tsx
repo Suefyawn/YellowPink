@@ -391,12 +391,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // back to routine complements (a cleanser is offered a serum, moisturiser
   // and SPF — the quiz's own step rules), relabelled honestly since these
   // aren't observed purchases. Non-skincare products keep co-purchase-only.
-  let fbtSuggestions = fbt;
+  // Drop suggestions that the "Pairs well with" rail (crossSells) already
+  // shows — the two loaders shared no exclusion, so the same product could
+  // appear in both sections a screen apart.
+  let fbtSuggestions = fbt.filter(p => !crossSells.some(c => c.id === p.id));
   let fbtHeading: string | undefined;
   // Bundles skip the routine fallback — the What's-inside section already
   // tells the set's story, and a set suggesting another set reads as noise.
-  if (fbt.length < 1 && !isDemo && bundleComponents.length < 2) {
-    const complements = routineComplements(product, await getProducts());
+  if (fbtSuggestions.length < 1 && !isDemo && bundleComponents.length < 2) {
+    const complements = routineComplements(product, await getProducts())
+      .filter(p => !crossSells.some(c => c.id === p.id));
     if (complements.length > 0) {
       fbtSuggestions = complements;
       fbtHeading = 'Complete the Routine';
@@ -477,6 +481,16 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         suggestions={fbtSuggestions}
         heading={fbtHeading}
       />
+      {/* Social proof BEFORE the discovery rails: for a first-visit COD
+          shopper the page must convince → reassure → act, but reviews and
+          Q&A used to sit behind MoreToExplore + FromTheBlog (~75% of the DOM
+          on long PDPs), where almost nobody scrolled. FBT stays above them —
+          it completes the current purchase rather than redirecting it. */}
+      <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} rewardPoints={reviewPoints} />
+      {/* Product Q&A (audit D1): approved questions + answers as unique
+          long-tail PDP content, plus the ask form feeding the moderation
+          queue (admin → Questions). */}
+      <QuestionsSection productId={product.id} questions={(questionRows ?? []) as ProductQuestionItem[]} />
       <MoreToExplore
         brand={product.brand}
         category={product.category}
@@ -485,11 +499,6 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         excludeIds={[product.id, ...crossSells.map(p => p.id), ...fbtSuggestions.map(p => p.id)]}
       />
       <FromTheBlog posts={blogPosts} />
-      <ReviewsSection productId={product.id} reviews={reviews} photosEnabled={reviewPhotosEnabled} rewardPoints={reviewPoints} />
-      {/* Product Q&A (audit D1): approved questions + answers as unique
-          long-tail PDP content, plus the ask form feeding the moderation
-          queue (admin → Questions). */}
-      <QuestionsSection productId={product.id} questions={(questionRows ?? []) as ProductQuestionItem[]} />
       <RecentlyViewed currentProductId={product.id} />
     </main>
   );
