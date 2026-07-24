@@ -752,6 +752,23 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
               </div>
             )}
 
+            {/* "(All Shades)" products carry no variant picker (a catalogue
+                convention, not a code one: the shade is agreed on WhatsApp
+                after ordering). Without this line the PDP asked for a blind
+                COD commitment on a shade product — the explanation lived in
+                the description's last paragraph where nobody read it, and
+                surprised shades are a parcel-refusal driver. */}
+            {/\(all shades\)\s*$/i.test(product.name) && !outOfStock && variants.length === 0 && (
+              <p className="small-text" style={{
+                marginTop: -8, marginBottom: 24, padding: '8px 12px',
+                background: 'var(--paper2, #faf6ee)', border: '1px solid var(--line)',
+                borderRadius: 'var(--radius-card)', color: 'var(--ink-900)',
+              }}>
+                <strong style={{ fontWeight: 600 }}>You choose your shade after ordering:</strong>{' '}
+                our team messages you on WhatsApp to confirm your preferred shade before dispatch.
+              </p>
+            )}
+
             {!outOfStock && (
               <p className="small-text" style={{ marginTop: -8, marginBottom: 24, color: 'var(--ink-700)' }}>
                 {/* Concrete arrival dates beat "2–5 working days": a COD

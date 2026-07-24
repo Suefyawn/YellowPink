@@ -317,7 +317,7 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProdu
               <Overline style={{ display: 'block', marginBottom: 24 }}>{relatedProductsMentioned ? 'Mentioned in This Article' : 'More from the shop'}</Overline>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid-3">
                 {relatedProducts.map((p) => (
-                  <ProductTile key={p.id} product={p} />
+                  <ProductTile key={p.id} product={p} list="Blog" />
                 ))}
               </div>
             </div>
