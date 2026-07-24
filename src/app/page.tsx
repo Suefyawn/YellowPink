@@ -85,9 +85,11 @@ export default async function HomePage() {
   const topSellerIds = new Set(topSellers.map(p => p.id));
   const trendingRail = trending.filter(p => !topSellerIds.has(p.id)).slice(0, 4);
 
-  // New In: pure recency, deduped against the rails above it so the page
-  // never shows the same tile twice (recency also backs several fallbacks).
-  const seenIds = new Set([...featured, ...topSellers, ...trendingRail].map(p => p.id));
+  // New In: pure recency, deduped against the tiles actually DISPLAYED above
+  // it so the page never shows the same product twice (recency also backs
+  // several rails' fallbacks). Products fetched but not rendered don't count.
+  const displayedFeatured = featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4);
+  const seenIds = new Set([...displayedFeatured, ...topSellers, ...trendingRail].map(p => p.id));
   const newInRail = newArrivals.filter(p => !seenIds.has(p.id)).slice(0, 4);
 
   // Shape the full wellness set into per-concern cards + a featured rail.
