@@ -81,8 +81,12 @@ async function safe<T>(
 // shipping ~277KB of inline JSON, the bulk of it long-form fields no
 // tile reads. Switching from select('*') saves ~400KB on /shop and
 // /shop?taxon=*.
+// `kind` matters on tiles: ProductTile's quick-add and the mini-cart's
+// cross-sell row route/skip variable products, but without the column every
+// product read as simple and a shade product could be one-tap added with no
+// variant on the line.
 const PRODUCT_TILE_COLUMNS =
-  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, image_url, is_bestseller, is_featured, is_popular, packaging, status, created_at, rating, review_count';
+  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, image_url, is_bestseller, is_featured, is_popular, packaging, status, created_at, rating, review_count, kind';
 
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;

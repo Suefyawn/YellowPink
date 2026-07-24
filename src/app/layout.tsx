@@ -44,7 +44,7 @@ import { getWelcomeOffer } from '@/lib/offers';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { CouponCapture } from '@/components/marketing/CouponCapture';
-import { getSiteSettings } from '@/lib/supabase';
+import { getSiteSettings, getBestsellers } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
 import { normalizeTheme } from '@/lib/themes';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
@@ -115,7 +115,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [settings, searchTrending, searchCategories, welcomeOffer, footerCollections] = await Promise.all([
+  const [settings, searchTrending, searchCategories, welcomeOffer, footerCollections, cartCrossSell] = await Promise.all([
     getSiteSettings(),
     loadTrendingBrands(),
     loadPopularCategories(),
@@ -123,6 +123,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // Footer "Collections" column: published collections, curated order.
     // Slimmed to {slug,title} below so the client chrome payload stays tiny.
     getPublishedCollections(6),
+    // Bestseller pool for the mini-cart's cross-sell row. Over-fetched so the
+    // drawer can skip whatever's already in the bag (and variable/sold-out
+    // items) and still have a candidate.
+    getBestsellers(6),
   ]);
   // Social profiles + store contact are owner-managed (admin Settings); the
   // JSON-LD reads from the same source as the footer.
@@ -207,6 +211,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             searchTrending={searchTrending}
             searchCategories={searchCategories}
             footerCollections={footerCollections.map(c => ({ slug: c.slug, title: c.title }))}
+            cartCrossSell={cartCrossSell}
           >
             {/* tabindex=-1 so the skip-link can focus #main programmatically
                 without making it a sequential Tab stop. */}

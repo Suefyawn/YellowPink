@@ -25,6 +25,10 @@ interface ProductTileProps {
   /** GA4-style item_list_name: which rail/grid this tile sits in, attached to
    *  the select_item event so section performance is measurable. */
   list?: string;
+  /** Set true for tiles in the first viewport (e.g. the first grid row on a
+   *  listing page): preloads the image and skips the opacity fade, which
+   *  otherwise hides the LCP element until hydration + onLoad. */
+  priority?: boolean;
 }
 
 // The tile renders its own Link to the PDP so callers don't need to wrap
@@ -34,7 +38,7 @@ interface ProductTileProps {
 //
 // Keyboard: Tab focuses the Link (Enter → PDP). Tab again focuses the
 // wishlist button (Enter → toggle). No nested-focusable HTML.
-export function ProductTile({ product, list }: ProductTileProps) {
+export function ProductTile({ product, list, priority = false }: ProductTileProps) {
   const [hovered, setHovered] = useState(false);
   const [added, setAdded] = useState(false);
   const router = useRouter();
@@ -131,7 +135,7 @@ export function ProductTile({ product, list }: ProductTileProps) {
             transform: hovered ? 'scale(1.035)' : 'scale(1)',
             transition: 'transform 500ms ease-out',
           }}>
-            <ProductImage src={product.image_url} alt={brandPlusName(brand, name)} label={brand} />
+            <ProductImage src={product.image_url} alt={brandPlusName(brand, name)} label={brand} priority={priority} />
           </div>
           {/* Top-left badge stack: "Sale" sits above a low-stock urgency pill
               when the tracked item is running low (mirrors the PDP "Only N

@@ -567,11 +567,15 @@ export function CollectionPage({
 
   return (
     <div>
-      <section style={{ padding: '48px 0 0', borderBottom: '1px solid var(--line)' }}>
+      {/* shop-header classes exist so the ≤600px rules in globals.css can
+          compress this chrome (a 390px phone otherwise scrolls a full screen
+          of heading + intro + tabs before the first product row). They need
+          !important there because these inline styles win the cascade. */}
+      <section className="shop-header" style={{ padding: '48px 0 0', borderBottom: '1px solid var(--line)' }}>
         <div className="container">
           <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Shop</Overline>
-          <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{heading}</h1>
-          <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 560, marginBottom: 32 }}>
+          <h1 className="display-l shop-heading" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{heading}</h1>
+          <p className="body-text shop-intro" style={{ color: 'var(--ink-700)', maxWidth: 560, marginBottom: 32 }}>
             {singleBrand
               ? `Explore the full ${singleBrand} range at Yellow Pink, 100% authentic, imported, with cash-on-delivery across Pakistan.`
               // Prefer the richer keyword-led intro for wellness head-term pages;
@@ -596,7 +600,7 @@ export function CollectionPage({
           {subcats.length > 0 && (
             <div style={{ display: 'flex', gap: 8, overflowX: 'auto', padding: '12px 0', borderTop: '1px solid var(--line)' }}>
               {subcats.map(sub => (
-                <button key={sub} onClick={() => setActiveSubcategory(activeSubcategory === sub ? null : sub)} style={{
+                <button key={sub} className="shop-tap" onClick={() => setActiveSubcategory(activeSubcategory === sub ? null : sub)} style={{
                   padding: '6px 14px', background: activeSubcategory === sub ? 'var(--ink-900)' : 'transparent',
                   border: '1px solid', borderColor: activeSubcategory === sub ? 'var(--ink-900)' : 'var(--line)',
                   borderRadius: 100, cursor: 'pointer',
@@ -649,6 +653,7 @@ export function CollectionPage({
                 <button
                   key={c.key}
                   type="button"
+                  className="shop-tap"
                   onClick={c.remove}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -679,6 +684,7 @@ export function CollectionPage({
               <span className="small-text">{filtered.length} product{filtered.length !== 1 ? 's' : ''}</span>
               <select value={sortBy} onChange={e => { const s = e.target.value as SortKey; setSortBy(s); track({ name: 'select_sort', payload: { sort: s } }); }}
                 aria-label="Sort products"
+                className="shop-tap"
                 style={{
                   padding: '6px 10px', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)',
                   background: 'var(--paper)', fontFamily: 'var(--font-ui)', fontSize: '0.8125rem',
@@ -740,7 +746,10 @@ export function CollectionPage({
               // controls (desktop and mobile), hiding Filters/close.
               zIndex: 120,
               overflowY: 'auto',
-              padding: '20px 24px 32px',
+              // Bottom padding lives on the sticky apply-footer, not here —
+              // padding on the scroll container would hold the sticky button
+              // that far off the rail's bottom edge.
+              padding: '20px 24px 0',
               display: 'flex', flexDirection: 'column',
             }}
           >
@@ -901,13 +910,34 @@ export function CollectionPage({
                   </fieldset>
                 );
               })}
+
+              {/* Sticky apply-footer: the rail covers 88vw on phones with only
+                  a small × and the backdrop as exits, and neither confirms
+                  what the filters did. This keeps a live result count and a
+                  clear way out pinned to the bottom of the rail. */}
+              <div style={{
+                position: 'sticky', bottom: 0, marginTop: 'auto',
+                padding: '12px 0 20px', background: 'var(--paper)',
+                borderTop: '1px solid var(--line)',
+              }}>
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  className="btn-primary"
+                  style={{ width: '100%', minHeight: 44 }}
+                >
+                  Show {filtered.length} product{filtered.length !== 1 ? 's' : ''}
+                </button>
+              </div>
             </aside>
 
             {/* ─── Product grid (always full-width, rail floats over the top) ─ */}
             <div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
-            {paginated.map((p) => (
-              <ProductTile key={p.id} product={p} list="Listing" />
+            {/* First four tiles on page 1 are the likely LCP candidates: preload
+                them and skip the hydration-gated fade (see ProductImage). */}
+            {paginated.map((p, i) => (
+              <ProductTile key={p.id} product={p} list="Listing" priority={page === 1 && i < 4} />
             ))}
           </div>
           {filtered.length === 0 && (
@@ -959,7 +989,10 @@ export function CollectionPage({
                     <button
                       key={c}
                       type="button"
-                      onClick={() => { setQ(''); setActiveCategory(c); }}
+                      // Clear filters too: a stuck price/stock/attribute filter
+                      // survives the category switch and can chain straight
+                      // into a second empty state.
+                      onClick={() => { clearFilters(); setActiveCategory(c); }}
                       style={{
                         padding: '10px 16px',
                         background: 'white', border: '1px solid var(--line)',
@@ -1013,6 +1046,7 @@ export function CollectionPage({
                       onClick={e => { e.preventDefault(); goToPage(p as number); }}
                       aria-label={`Page ${p}`}
                       aria-current={page === p ? 'page' : undefined}
+                      className="shop-tap"
                       style={{
                         padding: '8px 12px', border: '1px solid', borderRadius: 'var(--radius-card)',
                         borderColor: page === p ? 'var(--ink-900)' : 'var(--line)',

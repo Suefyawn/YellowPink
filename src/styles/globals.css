@@ -420,12 +420,20 @@ a.underline,
  * `position: fixed` descendants, which would trap the shop-page filter
  * drawer + cart drawer inside <main> rather than letting them anchor to the
  * viewport. Opacity-only also paints faster and avoids the brief layout
- * shift a translateY produces. */
+ * shift a translateY produces.
+ *
+ * fill-mode `backwards`, NOT `both`: a forwards-filled opacity animation
+ * keeps <main> a stacking context forever (even at opacity 1), which capped
+ * every overlay inside it — the shop filter rail (z 120) painted UNDER the
+ * sticky header (z 100) and the rail's top controls were unreachable on
+ * phones. `backwards` still covers the pre-animation frame (no flash of
+ * content before the fade starts) but releases the stacking context the
+ * moment the 400ms entry finishes. */
 @keyframes fadeUp {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-.fade-in { animation: fadeUp 0.4s ease-out both; }
+.fade-in { animation: fadeUp 0.4s ease-out backwards; }
 
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(8px); }
@@ -494,7 +502,14 @@ a.underline,
    * Keep them side-by-side 2-up down to 700px (declared after the .duo-grid
    * rule above so it wins in the 700–900 band); below 700px they stack. */
   .editorial-duo { grid-template-columns: 1fr 1fr !important; gap: var(--gutter) !important; }
-  .pdp-grid { grid-template-columns: 1fr !important; }
+  /* One column, and reclaim the fold: the inline 40px top padding + 48px
+   * column gap + full-width 1:1 gallery pushed Add to Cart entirely below an
+   * 844px viewport — a Facebook-ad click landed with no CTA on screen. The
+   * gallery slide is also height-capped here (.pdp-slide, ~75vw) so the buy
+   * panel starts a screen earlier; packshots are objectFit:contain, so the
+   * shorter box letterboxes rather than crops. */
+  .pdp-grid { grid-template-columns: 1fr !important; padding: 12px 0 32px !important; gap: 20px !important; }
+  .pdp-slide { max-height: 75vw !important; }
   .search-suggestions { grid-template-columns: 1fr !important; }
   .trust-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 16px !important; }
   /* Wellness concern cards: horizontal snap slider instead of a 4-row wall,
@@ -521,9 +536,18 @@ a.underline,
      bare fr track grows to its content's min-content — the S24 sideways-
      scroll bug. Same guard as the inline desktop columns in HeroSection. */
   .hero-grid { grid-template-columns: minmax(0, 1fr) !important; min-height: auto !important; }
-  /* Phones: the hero visual is a (now tappable) accent, not a second hero —
-     180px keeps the first product rail within one flick of the headline. */
-  .hero-grid > a:last-child, .hero-grid > div:last-child { min-height: 180px; position: relative !important; display: block; }
+  /* Phones: the hero visual is a (now tappable) accent, not a second hero.
+     A 16:9 window (~205px on a 360px phone, ~242px on a 430px one) keeps the
+     first product rail within one flick of the headline while giving the
+     photo a fair crop — the old fixed 180px band reduced the owner's
+     portrait hero (a face close-up) to a nose-and-lips strip. */
+  .hero-grid > a:last-child, .hero-grid > div:last-child {
+    aspect-ratio: 16 / 9; min-height: 180px; max-height: 260px;
+    position: relative !important; display: block; overflow: hidden;
+  }
+  /* Bias the cover crop toward the upper third: hero shots are usually
+     faces or held products, and the top-centre is where they read from. */
+  .hero-grid > a:last-child img { object-position: center 30% !important; }
 }
 /* Below 700px the editorial splits stack like every other duo. */
 @media (max-width: 699px) {
@@ -974,6 +998,43 @@ a.underline,
  * only add the always-visible close-× rule here since it's controlled
  * by a class. */
 .shop-rail-close { display: inline-block; }
+
+/* Listing pages, phone compression + tap targets.
+ *
+ * .shop-header/.shop-heading/.shop-intro: on a 390px phone the listing
+ * header (48px section padding, 2.5rem H1, 3-line intro on 32px margin)
+ * pushed the first product row a full screen down — the products ARE the
+ * landing content for an ad click, so show them on screen one. The intro
+ * clamps to one line but stays in the DOM for SEO. !important because the
+ * sizes are inline styles in CollectionPage.tsx.
+ *
+ * .shop-tap: the controls a phone shopper uses to narrow toward a PDP
+ * (subcategory + active-filter chips, sort select, pagination) rendered
+ * ~28-36px tall; bring them to the 44px minimum tap target on coarse
+ * pointers only, so desktop keeps the compact look. */
+@media (max-width: 600px) {
+  .shop-header { padding-top: 20px !important; }
+  .shop-heading { font-size: 1.6rem !important; margin-bottom: 8px !important; }
+  .shop-intro {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    margin-bottom: 14px !important;
+  }
+  /* Collection hero on phones: the 300px+ photo band ate most of the first
+   * screen before a single product row. ~210px keeps the cover visual and
+   * title while the grid starts inside screen one. */
+  .collection-hero { min-height: 210px !important; padding-top: 24px !important; padding-bottom: 24px !important; }
+}
+@media (pointer: coarse) {
+  .shop-tap {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
 
 /* Checkout / Cart responsive */
 @media (max-width: 860px) {

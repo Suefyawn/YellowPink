@@ -223,6 +223,7 @@ function Gallery({
           {slides.map((s, i) => (
             <div
               key={s.key}
+              className="pdp-slide"
               style={{
                 flex: '0 0 100%', scrollSnapAlign: 'center',
                 aspectRatio: '1 / 1', maxHeight: 440,
@@ -1078,14 +1079,10 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             Get it by <strong style={{ fontWeight: 600, color: 'var(--ink-900)' }} suppressHydrationWarning>{deliveryWindow}</strong> · COD nationwide
           </div>
         )}
-        {/* Controls stay on ONE row (the column split above is only for the
-            delivery strip): a long product name must ellipsize, never wrap
-            the qty/CTA onto another line and grow the bar. */}
+        {/* Info row: title/price take the flexible space (flex:1 + minWidth:0
+            so the ellipsis works), the qty stepper is flexShrink:0. A long
+            product name must ellipsize, never wrap and grow the bar. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {/* Title block takes the flexible space (flex:1 + minWidth:0 so the
-            ellipsis works); the CTA below is flexShrink:0 so a long product
-            name can never crush it into a sliver of wrapped text. Price
-            renders exactly once, here. */}
         <div style={{ minWidth: 0, flex: '1 1 auto' }}>
           <div style={{
             fontSize: '0.8125rem', fontWeight: 600, color: 'var(--ink-900)',
@@ -1110,6 +1107,29 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           <span aria-live="polite" style={{ width: 26, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
           <button type="button" aria-label="Increase quantity" onClick={() => setQty(qty + 1)} style={{ width: 34, height: 40, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>+</button>
         </div>
+        </div>
+        {/* CTA row. Buy Now exists because most PDP visitors never reach the
+            cart, yet this bar — the CTA surface visible at the moment of
+            highest intent, after scrolling into reviews/FBT — previously
+            offered only Add to Cart. Hidden while a variant choice is still
+            pending (the Add button reads "Select options" and scrolls to the
+            picker; a second button that can't act yet is noise) and while
+            sold out. Same ink-900 vs pink pairing as the in-page panel. */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        {!outOfStock && !needsSelection && (
+          <button
+            onClick={handleBuyNow}
+            disabled={buying}
+            className="btn-primary"
+            style={{
+              flex: '1 1 0', whiteSpace: 'nowrap', minHeight: 48, padding: '12px 14px',
+              background: 'var(--ink-900)',
+              cursor: buying ? 'wait' : 'pointer',
+            }}
+          >
+            {buying ? 'One moment…' : 'Buy Now'}
+          </button>
+        )}
         <button
           onClick={handleStickyCta}
           // Only a genuine out-of-stock disables the bar. When a variant choice
@@ -1117,7 +1137,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
           disabled={outOfStock}
           className="btn-primary"
           style={{
-            flexShrink: 0, whiteSpace: 'nowrap', minHeight: 48, padding: '12px 18px',
+            flex: '1 1 0', whiteSpace: 'nowrap', minHeight: 48, padding: '12px 14px',
             background: outOfStock ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink-cta)',
             cursor: outOfStock ? 'not-allowed' : 'pointer',
             transition: 'background 100ms ease-out',

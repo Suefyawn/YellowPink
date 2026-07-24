@@ -62,7 +62,12 @@ export function ConsentBanner() {
       style={{
         position: 'fixed',
         background: 'var(--paper)',
-        zIndex: 400,
+        // Above the sticky header (100) but BELOW the filter rail (120), the
+        // mini-cart (201) and the search overlay (300). At 400 the banner
+        // painted over the cart drawer's Checkout button and the filter
+        // rail's apply button on phones — a first-visit shopper (consent
+        // still undecided) had the two highest-intent buttons covered.
+        zIndex: 105,
         fontFamily: 'var(--font-ui)',
       }}
     >

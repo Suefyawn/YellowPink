@@ -99,14 +99,16 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
       {/* Hero */}
       {heroImage ? (
         <section style={{ position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'relative', minHeight: 'clamp(300px, 40vh, 460px)' }}>
+          {/* .collection-hero: phones compress the 300px+ hero to ~210px
+              (globals.css) so products start inside the first screen. */}
+          <div className="collection-hero" style={{ position: 'relative', minHeight: 'clamp(300px, 40vh, 460px)' }}>
             {/* Branded gradient underlay (same wash as the collection cards),
                 so a slow or broken hero image never leaves a dead grey band
                 behind the title. */}
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(140deg, #fde7f0 0%, #faf6ee 55%, #fff8e1 100%)' }} />
             <CollectionHeroImage src={heroImage} alt={c.title} />
             <div aria-hidden="true" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg, rgba(250,246,238,0.92) 0%, rgba(250,246,238,0.55) 45%, rgba(250,246,238,0.05) 80%)' }} />
-            <div className="container" style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 'clamp(300px, 40vh, 460px)', paddingTop: 40, paddingBottom: 40 }}>
+            <div className="container collection-hero" style={{ position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 'clamp(300px, 40vh, 460px)', paddingTop: 40, paddingBottom: 40 }}>
               <div style={{ maxWidth: 520 }}>
                 <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-700)' }}>Collection</Overline>
                 <h1 className="display-l" style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', marginBottom: 14, lineHeight: 1.06 }}>{c.title}</h1>
@@ -116,11 +118,11 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
           </div>
         </section>
       ) : (
-        <section style={{ padding: '48px 0 0', borderBottom: '1px solid var(--line)' }}>
+        <section className="shop-header" style={{ padding: '48px 0 0', borderBottom: '1px solid var(--line)' }}>
           <div className="container">
             <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Collection</Overline>
-            <h1 className="display-l" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{c.title}</h1>
-            {introCopy && <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 24 }}>{introCopy}</p>}
+            <h1 className="display-l shop-heading" style={{ fontSize: '2.5rem', marginBottom: 12 }}>{c.title}</h1>
+            {introCopy && <p className="body-text shop-intro" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 24 }}>{introCopy}</p>}
             <p className="small-text" style={{ marginBottom: 28 }}>{list.length} {list.length === 1 ? 'product' : 'products'}</p>
           </div>
         </section>

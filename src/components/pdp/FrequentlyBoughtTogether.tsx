@@ -16,8 +16,11 @@ import type { Product } from '@/types';
  *  inventory (track_inventory === false) is always purchasable. Sold-out
  *  items are excluded from the widget entirely, adding one produced a
  *  quantity-0 phantom cart line (addToCart clamps to stock) that dead-ended
- *  checkout. */
+ *  checkout. Variable products are excluded too: "Add selected to cart" has
+ *  no shade/size picker, so adding one created a cart line with no
+ *  variant_id — an ambiguous order nobody can fulfil. */
 function isPurchasable(p: Product): boolean {
+  if (p.kind === 'variable') return false;
   return !(p.track_inventory !== false && typeof p.stock === 'number' && p.stock <= 0);
 }
 
