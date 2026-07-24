@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import { Fragment } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getReviewerBySlug } from '@/lib/reviewers';
+import { getReviewerBySlug, getActiveReviewers } from '@/lib/reviewers';
 import { supabase, isDemo } from '@/lib/supabase';
 import { pageMeta, jsonLd, breadcrumbLd, absoluteUrl, ORGANIZATION_ID } from '@/lib/seo';
 import { Overline } from '@/components/ui/Overline';
@@ -41,6 +41,10 @@ export default async function ReviewerProfilePage({ params }: { params: Promise<
   if (!r) notFound();
 
   const posts = await reviewedPosts(r.id);
+  // Colleagues on the board — cross-linking profiles keeps every reviewer
+  // reachable from more than just the board index (newly joined reviewers
+  // have no reviewed-article links pointing at them yet).
+  const colleagues = (await getActiveReviewers()).filter(c => c.slug !== r.slug);
 
   // Person schema, the verifiable expertise node. sameAs points at the
   // reviewer's external professional profile (PMDC / hospital / LinkedIn).
@@ -154,6 +158,32 @@ export default async function ReviewerProfilePage({ params }: { params: Promise<
                   </li>
                 ))}
               </ul>
+            </div>
+          )}
+
+          {colleagues.length > 0 && (
+            <div style={{ borderTop: '1px solid var(--line)', paddingTop: 24, marginTop: posts.length > 0 ? 28 : 0 }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 500, margin: '0 0 14px' }}>
+                More from the review board
+              </h2>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 10 }}>
+                {colleagues.map(c => (
+                  <li key={c.slug}>
+                    <Link
+                      href={`/medical-review-board/${c.slug}`}
+                      style={{ display: 'flex', alignItems: 'baseline', gap: 8, textDecoration: 'none', flexWrap: 'wrap' }}
+                    >
+                      <span style={{ color: 'var(--brand-pink-text, #9d174d)', fontWeight: 600 }}>{c.name}</span>
+                      {c.specialty && <span style={{ fontSize: '0.8125rem', color: 'var(--ink-500)' }}>{c.specialty}</span>}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p style={{ margin: '14px 0 0', fontSize: '0.875rem' }}>
+                <Link href="/medical-review-board" style={{ color: 'var(--ink-700)', fontWeight: 600 }}>
+                  Meet the full board &rarr;
+                </Link>
+              </p>
             </div>
           )}
         </div>
