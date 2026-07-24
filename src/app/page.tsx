@@ -4,6 +4,7 @@
 export const revalidate = 300;
 
 import {
+  getNewArrivals,
   getTopSellers,
   getTrending,
   getFeatured,
@@ -64,7 +65,7 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections, socialProof] = await Promise.all([
+  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections, socialProof, newArrivals] = await Promise.all([
     getFeatured(6),
     getTopSellers(4),
     getTrending(8),
@@ -75,6 +76,7 @@ export default async function HomePage() {
     getBlogPosts(),
     getPublishedCollectionsWithCovers(3),
     getHomeSocialProof(),
+    getNewArrivals(12),
   ]);
 
   // Keep the two rails distinct: a product that's a top seller shouldn't also
@@ -82,6 +84,13 @@ export default async function HomePage() {
   // the nightly trend refresh has run).
   const topSellerIds = new Set(topSellers.map(p => p.id));
   const trendingRail = trending.filter(p => !topSellerIds.has(p.id)).slice(0, 4);
+
+  // New In: pure recency, deduped against the tiles actually DISPLAYED above
+  // it so the page never shows the same product twice (recency also backs
+  // several rails' fallbacks). Products fetched but not rendered don't count.
+  const displayedFeatured = featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4);
+  const seenIds = new Set([...displayedFeatured, ...topSellers, ...trendingRail].map(p => p.id));
+  const newInRail = newArrivals.filter(p => !seenIds.has(p.id)).slice(0, 4);
 
   // Shape the full wellness set into per-concern cards + a featured rail.
   const wellness = buildWellnessShowcase(wellnessProducts);
@@ -138,6 +147,17 @@ export default async function HomePage() {
       <HeroSection settings={heroSettings} />
       <TrustBar />
       <FeaturedProducts products={featured.length ? featured.slice(0, 4) : topSellers.slice(0, 4)} />
+      {/* Fresh stock, high on the page: returning visitors' first question is
+          "what's new?", and nothing on the homepage answered it before. */}
+      <ProductRail
+        overline="New In"
+        heading="Just landed."
+        blurb="The latest additions to the shelf, straight from this week's stock."
+        ctaHref="/shop?sort=newest"
+        ctaLabel="See all new arrivals"
+        products={newInRail}
+        tinted
+      />
       <QuizBand />
       <KBeautySection products={kBeautyProducts} />
       <EditorialDuo />
