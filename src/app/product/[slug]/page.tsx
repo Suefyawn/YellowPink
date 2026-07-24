@@ -21,6 +21,7 @@ export async function generateStaticParams() {
 import { PDPPage } from '@/sections/pdp/PDPPage';
 import { routineComplements } from '@/lib/routine-pairing';
 import { BundleContents } from '@/components/pdp/BundleContents';
+import { PartOfSet, type ContainingSet } from '@/components/pdp/PartOfSet';
 import type { BundleComponentRow } from '@/lib/bundle-pricing';
 import { ReviewsSection } from '@/components/pdp/ReviewsSection';
 import { QuestionsSection, type ProductQuestionItem } from '@/components/pdp/QuestionsSection';
@@ -247,6 +248,35 @@ async function loadBundleComponents(productId: string): Promise<BundleComponentR
     .map(r => ({ product: r.product!, qty: r.qty }));
 }
 
+/** Published value sets this product is a component of, with the sum of each
+ *  set's components bought individually (for the savings pitch). */
+async function loadContainingSets(productId: string): Promise<ContainingSet[]> {
+  if (isDemo) return [];
+  const { data: memberships } = await supabase
+    .from('bundle_components')
+    .select('bundle:products!bundle_components_bundle_product_id_fkey(*)')
+    .eq('component_product_id', productId);
+  const bundles = ((memberships ?? []) as unknown as Array<{ bundle: Product | null }>)
+    .map(r => r.bundle)
+    .filter((b): b is Product => !!b && b.status === 'published');
+  if (bundles.length === 0) return [];
+
+  const { data: compRows } = await supabase
+    .from('bundle_components')
+    .select('bundle_product_id, qty, product:products!bundle_components_component_product_id_fkey(price, status)')
+    .in('bundle_product_id', bundles.map(b => b.id));
+  const totals = new Map<string, number>();
+  for (const r of ((compRows ?? []) as unknown as Array<{ bundle_product_id: string; qty: number; product: { price: number; status?: string } | null }>)) {
+    if (!r.product || r.product.status !== 'published') continue;
+    totals.set(r.bundle_product_id, (totals.get(r.bundle_product_id) ?? 0) + r.product.price * r.qty);
+  }
+  return bundles
+    .map(b => ({ bundle: b, individualTotal: totals.get(b.id) ?? 0 }))
+    .filter(s => s.individualTotal > s.bundle.price)
+    .sort((a, b) => (b.individualTotal - b.bundle.price) - (a.individualTotal - a.bundle.price))
+    .slice(0, 2);
+}
+
 async function loadCrossSells(productId: string, fallbackCategory: string): Promise<Product[]> {
   if (isDemo) {
     // In demo, surface a few same-category products from stub data.
@@ -309,7 +339,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // Surfaced on the review form to actually drive review volume → ★ snippets.
   const reviewPoints = Math.max(0, Number(siteSettings.loyalty_review_points ?? '25') || 0);
 
-  const [{ data: reviewRows }, { data: questionRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts, productTags, bundleComponents] = await Promise.all([
+  const [{ data: reviewRows }, { data: questionRows }, variantData, gallery, crossSells, fbt, brandProducts, categoryProducts, blogPosts, productTags, bundleComponents, containingSets] = await Promise.all([
     isDemo
       ? Promise.resolve({ data: [] as Array<Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>> })
       : supabase
@@ -337,7 +367,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
     getPostsLinkingProduct(product.slug),
     loadProductTags(product.id),
     loadBundleComponents(product.id),
+    loadContainingSets(product.id),
   ]);
+
+  // Buy-box nudge for the best-saving set this product belongs to.
+  const bestSet = containingSets[0];
+  const setTeaser = bestSet && bestSet.individualTotal > bestSet.bundle.price
+    ? (() => {
+        const pct = ((bestSet.individualTotal - bestSet.bundle.price) / bestSet.individualTotal) * 100;
+        return Math.round(pct) >= 1 ? { name: bestSet.bundle.name, slug: bestSet.bundle.slug, savingPct: pct } : null;
+      })()
+    : null;
 
   const reviews = (reviewRows ?? []) as Pick<ProductReview, 'id' | 'author_name' | 'rating' | 'body' | 'created_at' | 'photo_urls' | 'verified_purchase' | 'helpful_count' | 'owner_reply' | 'owner_reply_at' | 'source'>[];
 
@@ -420,6 +460,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         estimatedDays={estimatedDays}
         pointsPerPkr={pointsPerPkr}
         tags={productTags}
+        setTeaser={setTeaser}
       />
       {/* Keyed like PDPPage so a product→product navigation re-seeds the
           bundle's checkbox state for the new product. Prefixed: PDPPage above
@@ -428,6 +469,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       {/* What's inside + savings, bundles only. Rendered before the bundle
           widget: on a bundle PDP the contents ARE the story. */}
       <BundleContents bundle={product} components={bundleComponents} />
+      {/* The reverse direction: this product is cheaper inside a value set. */}
+      <PartOfSet productName={product.name} sets={containingSets} />
       <FrequentlyBoughtTogether
         key={`fbt-${product.id}`}
         anchor={product}

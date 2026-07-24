@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 23 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 24 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -982,6 +982,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 24 July 2026
+
+- **Single products now sell their sets.** When a product belongs to a value set, its page says so twice: a one-line nudge under the buy buttons ("Also in [set] · save 18%") and a "Better Value In A Set" section showing the set with the crossed-out separate total and the saving. Both link to the set's page. Products whose set saves less than 1% stay quiet. The homepage "Combos & Bundles" collection was also repaired: its rule matched a tag no product carried, so it had been empty; every set is now tagged and the rule also matches the bundle categories, so the collection fills itself. A "Nails" category was added under Makeup for the new nail products.
 
 ### 23 July 2026
 
