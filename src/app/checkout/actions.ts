@@ -26,7 +26,7 @@ export async function notifyNewOrder(order: {
   city: string;
   province?: string;
   total: number;
-  items: Array<{ name: string; qty: number; price: number; brand?: string; variant?: string }>;
+  items: Array<{ name: string; qty: number; price: number; brand?: string; variant?: string; slug?: string }>;
   pay_method: string;
 }): Promise<void> {
   // sendOrderConfirmationEmail resolves to a boolean (did the provider accept
@@ -62,6 +62,9 @@ export async function notifyNewOrder(order: {
     currency: 'PKR',
     email: order.email,
     phone: order.phone,
+    // Slugs, not UUIDs: the Meta catalogue feed's item ids are product slugs,
+    // and content_ids only helps attribution when it matches the catalogue.
+    contentIds: order.items.map(i => i.slug).filter((s): s is string => Boolean(s)),
     numItems: order.items.reduce((s, i) => s + (i.qty ?? 0), 0),
     eventSourceUrl: `${SITE_URL}/thank-you`,
     fbc: ck.get('_fbc')?.value,

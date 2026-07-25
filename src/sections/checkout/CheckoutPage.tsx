@@ -208,7 +208,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
         value: cartItems.reduce((s, i) => s + i.price * i.qty, 0),
         currency: 'PKR',
         items: cartItems.map(i => ({
-          product_id: i.id, product_name: i.name, brand: i.brand ?? undefined,
+          product_id: i.id, slug: i.slug, product_name: i.name, brand: i.brand ?? undefined,
           category: i.category, variant: i.variant_label ?? i.variant,
           price: i.price, qty: i.qty, currency: 'PKR',
         })),
@@ -518,6 +518,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
         total,
         items: cartItems.map(i => ({
           name: i.name, qty: i.qty, price: i.price, brand: i.brand ?? undefined, variant: i.variant_label ?? i.variant,
+          slug: i.slug,
         })),
         pay_method: payMethod,
       });

@@ -386,6 +386,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
       name: 'view_item',
       payload: {
         product_id:   product.id,
+        slug:         product.slug,
         product_name: product.name,
         brand:        product.brand ?? undefined,
         category:     product.category,

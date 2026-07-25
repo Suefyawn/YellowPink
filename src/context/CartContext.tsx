@@ -169,6 +169,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       name: 'add_to_cart',
       payload: {
         product_id:   product.id,
+        slug:         product.slug,
         product_name: product.name,
         brand:        product.brand ?? undefined,
         category:     product.category,
