@@ -323,6 +323,80 @@ export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
   });
 }
 
+// ─── 1a2. Internal: weekly store health report (for the merchant) ───────────
+// One Monday-morning digest of the week that was: orders vs last week, the
+// shopper funnel, which storefront sections earn their clicks, abandoned
+// checkouts, review supply, and Google indexing state. Sections whose data
+// source was unreachable render a quiet "not available" line — the report
+// always ships. Data assembled by lib/weekly-report.ts.
+export async function sendWeeklyReportEmail(report: import('./weekly-report').WeeklyReport): Promise<void> {
+  const pct = (n: number) => `${Math.round(n * 100)}%`;
+  const delta = (now: number, prev: number): string => {
+    if (prev === 0 && now === 0) return '';
+    if (prev === 0) return ` <span style="color:#15803d">(new)</span>`;
+    const d = ((now - prev) / prev) * 100;
+    const col = d >= 0 ? '#15803d' : '#dc2626';
+    const arrow = d >= 0 ? '▲' : '▼';
+    return ` <span style="color:${col}">${arrow} ${Math.abs(Math.round(d))}%</span>`;
+  };
+  const row = (label: string, value: string) =>
+    `<tr><td style="padding:6px 8px;font-size:14px;color:${MUTED}">${label}</td><td style="padding:6px 8px;font-size:14px;text-align:right">${value}</td></tr>`;
+  const section = (title: string, inner: string) =>
+    `<h3 style="margin:22px 0 8px;font-size:15px;color:${INK}">${title}</h3>${inner}`;
+  const table = (rows: string) =>
+    `<table style="width:100%;border-collapse:collapse;background:#f9fafb;border-radius:6px">${rows}</table>`;
+  const na = `<p style="margin:0;color:${MUTED};font-size:13px">Data not available this week.</p>`;
+
+  const o = report.orders;
+  const ordersHtml = o ? table(
+    row('Orders', `<strong>${o.count}</strong>${delta(o.count, o.prevCount)}`)
+    + row('Revenue', `<strong>${money(o.revenue)}</strong>${delta(o.revenue, o.prevRevenue)}`)
+    + row('Average order', money(o.aov))
+    + (o.codShare != null ? row('Cash on delivery', pct(o.codShare)) : '')
+    + (o.cancelled > 0 ? row('Cancelled', String(o.cancelled)) : '')
+    + (o.topProducts.length ? row('Top sellers', o.topProducts.map(p => `${escapeHtml(p.name)} ×${p.units}`).join('<br/>')) : '')
+    + (o.bySource.length ? row('Order sources', o.bySource.map(s => `${escapeHtml(s.source)}: ${s.count}`).join('<br/>')) : '')
+  ) : na;
+
+  const f = report.funnel;
+  const funnelHtml = f ? table(
+    row('Product views', `${f.viewItem}${delta(f.viewItem, f.prevViewItem)}`)
+    + row('Added to cart', `${f.addToCart}${delta(f.addToCart, f.prevAddToCart)}`)
+    + row('Reached checkout', `${f.beginCheckout}${delta(f.beginCheckout, f.prevBeginCheckout)}`)
+    + row('Purchased', `${f.purchase}${delta(f.purchase, f.prevPurchase)}`)
+    + (f.buyNowShare != null ? row('Buy Now share of adds', pct(f.buyNowShare)) : '')
+    + (f.topLists.length ? row('Most-clicked sections', f.topLists.map(l => `${escapeHtml(l.list)}: ${l.clicks}`).join('<br/>')) : '')
+  ) : na;
+
+  const a = report.abandoned;
+  const r = report.reviews;
+  const opsHtml = (a || r) ? table(
+    (a ? row('Abandoned checkouts', `${a.created} started · ${a.recovered} recovered`) : '')
+    + (r ? row('Reviews', `${r.newThisWeek} new · <strong>${r.pendingApproval} awaiting approval</strong>`) : '')
+  ) : na;
+
+  const idx = report.indexing;
+  const idxHtml = idx && idx.length
+    ? table(idx.map(i => row(escapeHtml(i.state), String(i.pages))).join(''))
+    : na;
+
+  const html = shell(`
+    <h2 style="margin:0 0 4px;font-size:18px">Weekly store report</h2>
+    <p style="margin:0 0 8px;color:${MUTED};font-size:13px">${escapeHtml(report.periodLabel)}</p>
+    ${section('Sales', ordersHtml)}
+    ${section('Shopper funnel', funnelHtml)}
+    ${section('Follow-ups', opsHtml)}
+    ${section('Google indexing', idxHtml)}
+    <p style="margin:22px 0 0"><a href="${SITE_URL}/admin" style="color:${BRAND_PINK};text-decoration:none;font-weight:600">→ Open the admin dashboard</a></p>
+  `);
+  await send({
+    to: OWNER_EMAIL,
+    subject: `Weekly report · ${report.periodLabel}${o ? ` · ${o.count} orders, ${money(o.revenue)}` : ''}`,
+    html,
+    category: 'Weekly report',
+  });
+}
+
 // ─── 1b. Internal: new contact-form message (for the merchant) ──────────────
 // hello@yellowpink.pk has no inbox, so the storefront contact form writes to
 // the contact_messages table and forwards here. replyTo is the customer's own

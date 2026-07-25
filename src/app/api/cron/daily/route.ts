@@ -50,23 +50,31 @@ interface SubJobResult {
   error?: string;
 }
 
-async function runJob(req: NextRequest, path: string): Promise<SubJobResult> {
+async function runJob(req: NextRequest, path: string, timeoutMs: number): Promise<SubJobResult> {
   const t0 = Date.now();
   try {
     const url = new URL(path, req.url);
+    // Hard per-job deadline. The loop's budget guard only checks BEFORE a job
+    // starts — a job that hangs mid-flight (a slow courier API, a rate-limited
+    // GSC inspection) used to ride the whole function into Vercel's 60 s wall,
+    // which kills the invocation, silently drops the remaining jobs, AND fires
+    // the Sentry missed-cron alert because the run never completes. An aborted
+    // job now records as its own failure and the run still finishes.
     const res = await fetch(url, {
       method: 'GET',
       headers: { authorization: req.headers.get('authorization') ?? '' },
       // No caching, these are mutating jobs.
       cache: 'no-store',
+      signal: AbortSignal.timeout(timeoutMs),
     });
     let body: unknown = null;
     try { body = await res.json(); } catch { /* non-JSON response */ }
     return { job: path, ok: res.ok, status: res.status, ms: Date.now() - t0, body };
   } catch (err) {
+    const aborted = err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError');
     return {
       job: path, ok: false, status: 0, ms: Date.now() - t0,
-      error: err instanceof Error ? err.message : String(err),
+      error: aborted ? `timed out after ${timeoutMs}ms` : err instanceof Error ? err.message : String(err),
     };
   }
 }
@@ -97,19 +105,31 @@ export async function GET(req: NextRequest) {
     '/api/cron/popularity-refresh',
     '/api/cron/indexing-check',
     '/api/cron/price-parity',
+    // Mondays only (self-gated): the owner's weekly health digest. Last on
+    // purpose — it summarizes the week, and on a squeezed Monday it's the
+    // safest to skip (the numbers keep; staff can hit ?force=1 any time).
+    '/api/cron/weekly-report',
   ];
   const BUDGET_MS = (maxDuration - 12) * 1000;
+  // No single job may eat the whole budget: cap each at 25 s or whatever
+  // remains, so a hung job costs one slot, not the entire run.
+  const PER_JOB_CAP_MS = 25_000;
   const started = Date.now();
   const results: SubJobResult[] = [];
   for (const path of JOBS) {
-    if (Date.now() - started > BUDGET_MS) {
+    const remaining = BUDGET_MS - (Date.now() - started);
+    if (remaining <= 0) {
       results.push({ job: path, ok: false, status: 0, ms: 0, error: 'skipped: cron time budget exhausted' });
       continue;
     }
-    results.push(await runJob(req, path));
+    results.push(await runJob(req, path, Math.min(remaining, PER_JOB_CAP_MS)));
   }
 
   const allOk = results.every(r => r.ok);
+  // Log the per-job outcome so a slow/failed day is diagnosable from Vercel's
+  // runtime logs — before this, a killed invocation left no trace of which
+  // sub-job ate the budget.
+  console.log('[cron/daily]', JSON.stringify(results.map(r => ({ job: r.job, ok: r.ok, ms: r.ms, error: r.error }))));
   return NextResponse.json(
     { ok: allOk, ran: results.filter(r => r.error !== 'skipped: cron time budget exhausted').length, results },
     { status: allOk ? 200 : 207 },
