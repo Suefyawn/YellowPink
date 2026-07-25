@@ -996,6 +996,11 @@ store owner.
 
 A dated history of user-facing changes, newest first.
 
+### 25 July 2026
+
+- **A weekly report now lands in your inbox every Monday.** One email summarizes the week: orders and revenue against the week before, average order value, COD share, top sellers, where orders came from, the shopper funnel (views → carts → checkouts → purchases), which storefront sections got the most clicks, abandoned checkouts and how many were recovered, new reviews plus how many await approval, and Google indexing status. Sections whose data source is unreachable show "not available" instead of blocking the email. It goes to the owner address; staff can trigger it any time by opening `/api/cron/weekly-report?force=1` with the cron key.
+- **The nightly maintenance run can no longer be killed by one slow job.** Each of the nightly jobs (courier sync, review requests, indexing check, and the rest) now gets its own time limit, so a slow external API costs that one job instead of silently cancelling everything after it — the cause of the recent missed-run alerts. The run also logs how long each job took, so a slow night is diagnosable.
+
 ### 24 July 2026
 
 - **Blog readers can now buy without leaving the article.** The "Recommended in this guide" card near the top of each post gained a one-tap **Add** button (shade/size products route to their product page to pick options) and a cash-on-delivery/returns line, so the roughly half of all visitors who land on a blog post can put the reviewed product in their bag on the spot. Sold-out products no longer appear on the card.
