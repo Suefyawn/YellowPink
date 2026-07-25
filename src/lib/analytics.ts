@@ -16,6 +16,11 @@ import { readConsent } from './consent';
 
 export interface TrackProductPayload {
   product_id?: string;
+  /** Product slug — the catalogue identity. The Meta feed's g:id (and the
+   *  Google feed's, and the Product JSON-LD sku) is the slug, and Meta matches
+   *  Pixel content_ids against catalogue item ids, so ecommerce events must
+   *  carry it or dynamic/catalogue ads can never match a product. */
+  slug?: string;
   product_name?: string;
   brand?: string;
   category?: string;

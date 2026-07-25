@@ -32,7 +32,13 @@ const CURRENCY = 'PKR';
 // no sensible Meta standard equivalent (view_cart, remove_from_cart) are
 // dropped rather than sent as noisy custom events.
 function toMetaEvent(e: TrackEvent): { name: string; params: Record<string, unknown> } | null {
-  const ids = (p: { product_id?: string }) => (p.product_id ? [p.product_id] : undefined);
+  // content_ids must be the CATALOGUE item id — the Meta feed's g:id is the
+  // product slug (matching the Google feed and the JSON-LD sku). Sending the
+  // DB UUID here made every event unmatchable against the catalogue, which
+  // silently disables dynamic/Advantage+ catalogue ads. Slug first; UUID only
+  // as a legacy fallback for payloads that predate the slug field.
+  const contentId = (p: { slug?: string; product_id?: string }) => p.slug || p.product_id;
+  const ids = (p: { slug?: string; product_id?: string }) => (contentId(p) ? [contentId(p)] : undefined);
   switch (e.name) {
     case 'view_item':
       return { name: 'ViewContent', params: {
@@ -46,12 +52,12 @@ function toMetaEvent(e: TrackEvent): { name: string; params: Record<string, unkn
       return { name: 'InitiateCheckout', params: {
         value: e.payload.value, currency: e.payload.currency ?? CURRENCY,
         num_items: e.payload.items?.length,
-        content_ids: e.payload.items?.map(i => i.product_id).filter(Boolean) } };
+        content_ids: e.payload.items?.map(contentId).filter(Boolean) } };
     case 'purchase':
       return { name: 'Purchase', params: {
         value: e.payload.value, currency: e.payload.currency ?? CURRENCY,
         content_type: 'product',
-        content_ids: e.payload.items?.map(i => i.product_id).filter(Boolean),
+        content_ids: e.payload.items?.map(contentId).filter(Boolean),
         num_items: e.payload.items?.length } };
     case 'search':
       return { name: 'Search', params: { search_string: e.payload.query } };

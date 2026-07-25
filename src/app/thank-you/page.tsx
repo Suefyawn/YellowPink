@@ -31,7 +31,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   // to show the bank accounts for a bank-transfer order AND to render an order
   // summary so the customer sees what they bought without checking their email.
   // The page is noindex and the order number is required, so no new exposure.
-  type OrderItem = { id?: string; name: string; brand?: string | null; category?: string | null; qty: number; price: number; variant?: string | null; variant_label?: string | null };
+  type OrderItem = { id?: string; slug?: string; name: string; brand?: string | null; category?: string | null; qty: number; price: number; variant?: string | null; variant_label?: string | null };
   type OrderRow = {
     pay_method: string | null;
     items: OrderItem[] | null;
@@ -68,6 +68,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   const firePurchase = Boolean(order) && summary != null && summary.total != null;
   const purchaseItems = summaryItems.map((it) => ({
     product_id: it.id,
+    slug: it.slug ?? undefined,
     product_name: it.name,
     brand: it.brand ?? undefined,
     category: it.category ?? undefined,

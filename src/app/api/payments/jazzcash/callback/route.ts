@@ -154,6 +154,8 @@ export async function POST(req: NextRequest) {
         currency: 'PKR',
         email: order.email,
         phone: (order as { phone?: string | null }).phone ?? null,
+        // Slugs match the Meta catalogue feed's g:id for catalogue attribution.
+        contentIds: paidItems.map(i => i.slug).filter((s): s is string => Boolean(s)),
         numItems: paidItems.reduce((s, i) => s + (i.qty ?? 0), 0),
         eventSourceUrl: `${SITE_URL}/thank-you`,
         // The shopper is redirected back here in their browser, so the Pixel

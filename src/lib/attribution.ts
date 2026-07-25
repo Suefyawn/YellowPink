@@ -52,6 +52,26 @@ export function captureAttribution(): void {
     if (v) { next[k] = v.slice(0, 200); changed = true; }
   }
 
+  // Facebook click id. Every FB/IG click carries ?fbclid= even when the ad
+  // isn't UTM-tagged, and for this store most traffic is exactly that. Two
+  // uses: (1) when no UTM identifies the source, credit the order to
+  // facebook (utm_medium 'fbclid' marks it as derived, not ad-tag data);
+  // (2) write the `_fbc` cookie in Meta's documented format so the
+  // server-side CAPI Purchase gets click-level match quality even where the
+  // browser Pixel is blocked or not yet configured — the CAPI callers
+  // already read `_fbc`, which normally only the Pixel script sets.
+  const fbclid = sp.get('fbclid');
+  if (fbclid) {
+    if (!next.utm_source) {
+      next.utm_source = 'facebook';
+      if (!next.utm_medium) next.utm_medium = 'fbclid';
+      changed = true;
+    }
+    if (!document.cookie.includes('_fbc=')) {
+      document.cookie = `_fbc=fb.1.${Date.now()}.${fbclid.slice(0, 400)}; path=/; max-age=${MAX_AGE}; samesite=lax`;
+    }
+  }
+
   if (!prev) {
     // First touch in this 90-day window: record where they landed and who
     // referred them (external referrers only).
