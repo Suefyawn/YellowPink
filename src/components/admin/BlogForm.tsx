@@ -165,6 +165,22 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
             </span>
           </div>
 
+          {/* SEO title: SERP-only override. The article H1 keeps the full
+              headline; this replaces the <title>/share title so long headlines
+              stop truncating mid-phrase in Google. */}
+          <div style={{ marginBottom: 16 }}>
+            <label style={lbl}>SEO title</label>
+            <input
+              name="seo_title" maxLength={60}
+              defaultValue={post?.seo_title ?? ''}
+              style={inp}
+              placeholder="defaults to the post title"
+            />
+            <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'block' }}>
+              Shown in Google instead of the title (the article heading is unchanged). &ldquo;| Yellow Pink&rdquo; is added automatically, so keep it under ~46 characters.
+            </span>
+          </div>
+
           {/* Row: Category, Date, Read time */}
           <div className="adm-form-3col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 16 }}>
             <div>

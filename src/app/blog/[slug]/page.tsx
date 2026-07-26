@@ -35,7 +35,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // generateStaticParams, so the skeleton is not missed.
   if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
   return pageMeta({
-    title: post.title,
+    // An admin seo_title (≤46 chars) wins over the headline — same override
+    // pattern as products/brands/collections. Written for the ~148 posts whose
+    // headline + brand suffix blew past Google's ~60-char display budget
+    // (Semrush #102); the on-page H1 below still shows the full headline.
+    title: post.seo_title?.trim() || post.title,
     description: post.excerpt ?? post.title,
     path: `/blog/${post.slug}`,
     image: post.image_url ?? undefined,

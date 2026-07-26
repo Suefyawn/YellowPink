@@ -23,7 +23,7 @@ import { blogPostInputSchema } from '@/lib/validators';
 // Columns returned by every endpoint, the full row minus nothing sensitive
 // (blog_posts has no private columns). Keep in sync with the table.
 export const BLOG_COLUMNS =
-  'id, slug, title, excerpt, category, date, read_time, featured, body, image_url, author, created_at, updated_at';
+  'id, slug, title, seo_title, excerpt, category, date, read_time, featured, body, image_url, author, created_at, updated_at';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** A path segment is either a row UUID or a slug, pick the column to match. */

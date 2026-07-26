@@ -219,6 +219,10 @@ export const blogPostInputSchema = z.object({
   // valid ISO 8601 for the Article datePublished structured data.
   date:      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
   read_time: z.string().trim().default('3 min read'),
+  // SERP title override, empty → null (fall back to the headline). Capped at
+  // 60: with the layout's " | Yellow Pink" suffix anything longer is already
+  // past Google's display budget, which is the whole point of the field.
+  seo_title: z.string().trim().max(60).transform(s => s || null).nullable().optional(),
   featured:  checkboxBool,
   body:      z.string().optional().nullable(),
   image_url: imageRefSchema.optional().or(z.literal('')).nullable(),

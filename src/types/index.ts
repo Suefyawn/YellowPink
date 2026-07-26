@@ -234,6 +234,10 @@ export interface BlogPost {
   /** Byline + Article schema author. Backfilled to the editorial team; admins
    *  can set a named individual per post for stronger E-E-A-T. */
   author?: string | null;
+  /** SERP <title> override. The on-page H1 stays the full headline; this only
+   *  replaces the title tag (the layout appends " | Yellow Pink"), so keep it
+   *  ≤46 chars for a fully visible ~60-char SERP title. Null → title. */
+  seo_title?: string | null;
   /** Reviewer-topic catalogue label (lib/review-topics). Drives the direct
    *  match to a medical reviewer who covers that topic. */
   topic?: string | null;
