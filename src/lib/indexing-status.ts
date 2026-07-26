@@ -57,6 +57,27 @@ export async function trackUrl(path: string): Promise<void> {
 
 interface CandidateRow { path: string; last_checked_at: string | null; checks: number }
 
+/** Cheap same-site liveness probe. A tracked path that now redirects (slug
+ *  rename, retired product) or 404s can never reach "indexed" — left in the
+ *  table it burns one URL Inspection call per cron run forever. Returns
+ *  'dead' only on a definitive HTTP answer; network trouble returns 'keep'
+ *  so a transient outage can't mass-delete tracking history. */
+async function probePath(path: string): Promise<'live' | 'dead' | 'keep'> {
+  try {
+    const res = await fetch(pathToUrl(path), {
+      method: 'HEAD',
+      redirect: 'manual',
+      cache: 'no-store',
+      signal: AbortSignal.timeout(4_000),
+    });
+    if (res.status >= 300 && res.status < 400) return 'dead';
+    if (res.status === 404 || res.status === 410) return 'dead';
+    return 'live';
+  } catch {
+    return 'keep';
+  }
+}
+
 /** Pick the next batch to actually query this run: never-checked rows first
  *  (newest content, most useful to learn about), then already-checked but
  *  still-not-indexed rows ordered by staleness. Rows Google has confirmed
@@ -104,18 +125,20 @@ export async function getQuotaState(): Promise<GscQuotaState | null> {
  *  a missing Google connection or a single failed inspection never throws,
  *  since this runs unattended from a cron. Stops the batch immediately on a
  *  quota error instead of burning the rest of it on calls that will also
- *  fail. Returns how many it checked and whether quota was hit this run. */
-export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ checked: number; quotaExceeded: boolean }> {
+ *  fail. Returns how many it checked, how many dead paths it pruned, and
+ *  whether quota was hit this run. */
+export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ checked: number; pruned: number; quotaExceeded: boolean }> {
   const conn = await getGoogleConnection();
-  if (!conn?.gsc_site_url) return { checked: 0, quotaExceeded: false };
+  if (!conn?.gsc_site_url) return { checked: 0, pruned: 0, quotaExceeded: false };
 
   await seedRecentBlogPosts().catch(() => {});
 
   const rows = await pickBatch(batch);
-  if (rows.length === 0) return { checked: 0, quotaExceeded: false };
+  if (rows.length === 0) return { checked: 0, pruned: 0, quotaExceeded: false };
 
   const admin = supabaseAdmin();
   let checked = 0;
+  let pruned = 0;
   let quotaExceeded = false;
   // Bound the whole batch: inspections run serially and Google can be slow,
   // so without a budget a big batch can exceed the serverless function limit
@@ -126,6 +149,14 @@ export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ ch
   let consecutiveFailures = 0;
   for (const row of rows) {
     if (Date.now() > deadline || consecutiveFailures >= 3) break;
+    // Self-check before spending Google quota: a path that now redirects or
+    // 404s on our own site (slug rename, retired product) can never index —
+    // drop it from tracking instead of inspecting it every run forever.
+    if ((await probePath(row.path)) === 'dead') {
+      await admin.from('gsc_url_index_status').delete().eq('path', row.path);
+      pruned++;
+      continue;
+    }
     try {
       const status = await inspectUrl(conn.gsc_site_url, pathToUrl(row.path));
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -155,5 +186,5 @@ export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ ch
   if (checked > 0 && !quotaExceeded) {
     await setQuotaState({ exceeded: false, at: new Date().toISOString(), message: null }).catch(() => {});
   }
-  return { checked, quotaExceeded };
+  return { checked, pruned, quotaExceeded };
 }
