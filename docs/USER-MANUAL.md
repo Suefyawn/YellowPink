@@ -998,6 +998,7 @@ A dated history of user-facing changes, newest first.
 
 ### 26 July 2026
 
+- **The Indexing watch list now cleans up after itself.** When a tracked page stops existing at its old address (a renamed article, a retired product), the nightly indexing check now notices and removes it from the list instead of asking Google about it every night forever. Pages that redirect or 404 can never become "indexed", so they were quietly wasting the daily Google check quota that live pages need.
 - **Blog posts can carry a separate search-result title.** The blog editor gained an **SEO title** field: what Google and link shares display can now be a short, complete phrase while the article keeps its full headline on the page. Concise search titles were written for all 200 articles whose headline was too long to display in full, so they no longer cut off mid-sentence in Google.
 
 ### 25 July 2026
