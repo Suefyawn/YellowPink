@@ -998,7 +998,7 @@ A dated history of user-facing changes, newest first.
 
 ### 26 July 2026
 
-- **Blog posts can carry a separate search-result title.** The blog editor gained an **SEO title** field: what Google and link shares display can now be a short, complete phrase while the article keeps its full headline on the page. Concise search titles were written for all 148 articles whose headline was too long to display in full, so they no longer cut off mid-sentence in Google.
+- **Blog posts can carry a separate search-result title.** The blog editor gained an **SEO title** field: what Google and link shares display can now be a short, complete phrase while the article keeps its full headline on the page. Concise search titles were written for all 200 articles whose headline was too long to display in full, so they no longer cut off mid-sentence in Google.
 
 ### 25 July 2026
 
