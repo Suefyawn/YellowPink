@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 24 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 26 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -376,7 +376,7 @@ Here's what each link is for:
 | Section | What it's for |
 |---|---|
 | **Coupons** | Discount codes — three types (Percent %, Fixed PKR, Free shipping), with limits, expiry and an on/off status pill. Full breakdown in [Coupons in detail](#coupons-in-detail). |
-| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. Each post has an **Author** field for the byline (defaults to "Yellow Pink Editorial Team"); naming a real expert on health/beauty posts strengthens their search-engine trust signals. The editorial-team byline links to its own **author page** (`/author/yellow-pink-editorial`) with the team's bio and every article it has written — bylines that aren't in the site's author registry stay plain text (author pages are added by the development team, only for real authors). You can also attach a **Medical reviewer** (see below) to a health post, which adds a *"Medically reviewed by Dr. …"* byline and reviewer schema. |
+| **Blog** | Editorial posts shown in the storefront "Journal" and at `/blog`. Each post has an **Author** field for the byline (defaults to "Yellow Pink Editorial Team"); naming a real expert on health/beauty posts strengthens their search-engine trust signals. The editorial-team byline links to its own **author page** (`/author/yellow-pink-editorial`) with the team's bio and every article it has written — bylines that aren't in the site's author registry stay plain text (author pages are added by the development team, only for real authors). You can also attach a **Medical reviewer** (see below) to a health post, which adds a *"Medically reviewed by Dr. …"* byline and reviewer schema. An optional **SEO title** replaces the post title in Google results and link shares only (the article heading on the page is unchanged) — useful when the full headline is too long to display in search results; keep it under ~46 characters, "\| Yellow Pink" is appended automatically. |
 | **Medical reviewers** (`/admin/reviewers`) | The panel of qualified doctors who medically review your health/supplement content — self-serve applications, approval, and their own reviewer dashboards. Full breakdown in [Medical reviewers in detail](#medical-reviewers-in-detail). |
 | **Newsletter** | Compose and send newsletter emails. Manage the subscriber list directly — add, edit, unsubscribe, or resubscribe people. |
 
@@ -905,7 +905,7 @@ Endpoints (base `https://www.yellowpink.pk/api/blog`):
 | Method & path | What it does |
 |---|---|
 | `GET /api/blog` | List posts, newest first. Filters: `?category=`, `?featured=true`, `?q=` (title/excerpt search), `?limit=` (max 100), `?offset=`. |
-| `POST /api/blog` | Create a post. JSON body: `title`, `slug`, `excerpt`, `category` required; optional `body`, `image_url`, `author`, `read_time`, `featured`, `date` (defaults to today). |
+| `POST /api/blog` | Create a post. JSON body: `title`, `slug`, `excerpt`, `category` required; optional `body`, `image_url`, `author`, `read_time`, `featured`, `seo_title` (short search-result title, max 60 chars), `date` (defaults to today). |
 | `GET /api/blog/{id-or-slug}` | Fetch one post. |
 | `PATCH /api/blog/{id-or-slug}` | Update any subset of fields. |
 | `DELETE /api/blog/{id-or-slug}` | Delete a post. |
@@ -995,6 +995,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 26 July 2026
+
+- **Blog posts can carry a separate search-result title.** The blog editor gained an **SEO title** field: what Google and link shares display can now be a short, complete phrase while the article keeps its full headline on the page. Concise search titles were written for all 148 articles whose headline was too long to display in full, so they no longer cut off mid-sentence in Google.
 
 ### 25 July 2026
 
