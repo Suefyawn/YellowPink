@@ -45,7 +45,7 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
   const [cancelState, cancelAction, cancelPending] = useActionState(cancelShipment, null);
   const [syncState, syncAction, syncPending] = useActionState(syncShipmentNow, null);
 
-  // ─── Already shipped, show tracking + cancel options ────────────────────
+  // ─── Already booked/shipped, show tracking + cancel options ─────────────
   if (shipment && shipment.status !== 'cancelled') {
     const trackUrl = courierTrackingUrl(shipment.courier, shipment.tracking_number);
     // Live-tracking sync is only offered for couriers with a configured API
@@ -54,16 +54,18 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
     // Result of a booking made just now, in this session. revalidatePath
     // swaps this component into the booked view as soon as the action
     // settles, so the confirmation has to render here, not in the form.
-    const justBooked: { markedShipped?: boolean; emailed?: boolean; courierCharge?: number } | null =
+    const justBooked: { awaitingPickup?: boolean; markedShipped?: boolean; emailed?: boolean; courierCharge?: number } | null =
       bookState?.success ? bookState : manualState?.success ? manualState : null;
     return (
       <div>
         {justBooked && (
           <div role="status" style={{ marginBottom: 12, padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, color: '#166534', fontSize: '0.75rem' }}>
             Shipment booked.
-            {justBooked.markedShipped
-              ? ` Order marked shipped${justBooked.emailed ? ' + customer emailed' : ''}.`
-              : ''}
+            {justBooked.awaitingPickup
+              ? ' Awaiting pickup — the order shows Processing, and the customer gets the shipped email automatically at the courier’s first scan.'
+              : justBooked.markedShipped
+                ? ` Order marked shipped${justBooked.emailed ? ' + customer emailed' : ''}.`
+                : ''}
             {justBooked.courierCharge != null
               ? ` Courier charge PKR ${justBooked.courierCharge.toLocaleString()} saved to Order costs.`
               : ''}
@@ -90,7 +92,9 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
           </div>
         </div>
         <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: 8 }}>
-          Status: <strong>{shipment.status}</strong>
+          {/* 'created' = consignment booked, parcel not yet collected — say so
+              instead of leaking the raw enum. */}
+          Status: <strong>{shipment.status === 'created' ? 'booked — awaiting pickup' : shipment.status}</strong>
         </div>
         {canSync && (
           <form action={syncAction} style={{ marginBottom: 8 }}>
@@ -266,8 +270,8 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
           {bookState?.success && (
             <div role="status" style={{ padding: '8px 12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, color: '#166534', fontSize: '0.75rem' }}>
               Booked. Tracking: <span style={{ fontFamily: 'monospace', fontWeight: 700 }}>{bookState.trackingNumber}</span>
-              {bookState.markedShipped && (
-                <> · Order marked shipped{bookState.emailed ? ' + customer emailed' : ''}.</>
+              {bookState.awaitingPickup && (
+                <> · Awaiting pickup — the customer is emailed automatically at the courier’s first scan.</>
               )}
               {bookState.courierCharge != null && (
                 <> · Courier charge PKR {bookState.courierCharge.toLocaleString()} saved.</>
