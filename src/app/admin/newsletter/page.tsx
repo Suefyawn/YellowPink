@@ -6,7 +6,7 @@ export const maxDuration = 60;
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
-import { NewsletterComposer } from '@/components/admin/NewsletterComposer';
+import { NewsletterComposer, type NewsletterDraft } from '@/components/admin/NewsletterComposer';
 import { SubscriberList, type Subscriber } from '@/components/admin/SubscriberList';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
 
@@ -28,7 +28,7 @@ export default async function NewsletterPage() {
   // newsletter_subscribers + newsletter_campaigns are RLS-locked to the
   // service role, staff-cookie auth needs supabaseAdmin() to read them.
   const admin = supabaseAdmin();
-  const [{ count: activeCount }, { data: campaignRows }, { data: subscriberRows }] = await Promise.all([
+  const [{ count: activeCount }, { data: campaignRows }, { data: draftRows }, { data: subscriberRows }] = await Promise.all([
     admin
       .from('newsletter_subscribers')
       .select('id', { count: 'exact', head: true })
@@ -36,8 +36,15 @@ export default async function NewsletterPage() {
     admin
       .from('newsletter_campaigns')
       .select('id, subject, recipient_count, sent_count, sent_by, created_at')
+      .eq('status', 'sent')
       .order('created_at', { ascending: false })
       .limit(20),
+    admin
+      .from('newsletter_campaigns')
+      .select('id, subject, body, created_at')
+      .eq('status', 'draft')
+      .order('created_at', { ascending: false })
+      .limit(10),
     admin
       .from('newsletter_subscribers')
       .select('id, email, source, unsubscribed_at, created_at')
@@ -47,6 +54,7 @@ export default async function NewsletterPage() {
 
   const activeSubscribers = activeCount ?? 0;
   const campaigns = (campaignRows ?? []) as CampaignRow[];
+  const drafts = (draftRows ?? []) as NewsletterDraft[];
   const subscribers = (subscriberRows ?? []) as Subscriber[];
 
   return (
@@ -57,7 +65,7 @@ export default async function NewsletterPage() {
         <strong style={{ color: '#111827' }}>{activeSubscribers}</strong> active subscriber{activeSubscribers === 1 ? '' : 's'}.
       </p>
 
-      <NewsletterComposer activeCount={activeSubscribers} />
+      <NewsletterComposer activeCount={activeSubscribers} drafts={drafts} />
 
       <SubscriberList subscribers={subscribers} />
 

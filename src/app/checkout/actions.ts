@@ -1,6 +1,7 @@
 'use server';
 
 import { cookies, headers } from 'next/headers';
+import { revalidatePath } from 'next/cache';
 import {
   sendNewOrderEmail,
   sendOrderConfirmationEmail,
@@ -29,6 +30,14 @@ export async function notifyNewOrder(order: {
   items: Array<{ name: string; qty: number; price: number; brand?: string; variant?: string; slug?: string }>;
   pay_method: string;
 }): Promise<void> {
+  // The place_order RPC just decremented stock for these items; bust their
+  // PDPs so a sell-out shows immediately. This is what lets the PDP ISR
+  // window be a full hour instead of 5 minutes (admin edits already
+  // revalidate explicitly) — see /product/[slug]/page.tsx.
+  for (const slug of new Set(order.items.map(i => i.slug).filter(Boolean))) {
+    revalidatePath(`/product/${slug}`);
+  }
+
   // sendOrderConfirmationEmail resolves to a boolean (did the provider accept
   // it?); it's fire-and-forget here, so the widened element type is fine.
   const sends: Promise<void | boolean>[] = [sendNewOrderEmail(order)];

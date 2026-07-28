@@ -44,6 +44,9 @@ function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T
 export async function sendNewsletterCampaign(
   subject: string,
   body: string,
+  /** When sending a saved draft, its row is promoted to 'sent' instead of a
+   *  new campaign row being inserted, so the edition doesn't double up. */
+  draftId?: string,
 ): Promise<SendCampaignResult> {
   const session = await getStaffSession();
   if (!can(session, 'newsletter')) {
@@ -94,26 +97,47 @@ export async function sendNewsletterCampaign(
 
   // Record the campaign up front, so a send is never invisible, even if the
   // run fails partway, the owner still sees a row in "Sent newsletters".
+  // A draft send promotes the existing row (status → 'sent', timestamp reset
+  // to the actual send moment); a direct send inserts a fresh 'sent' row.
   let campaignId: string;
   try {
-    const res = await withTimeout(
-      admin
-        .from('newsletter_campaigns')
-        .insert({
-          subject: parsed.data.subject,
-          body: parsed.data.body,
-          recipient_count: emails.length,
-          sent_count: 0,
-          sent_by: session?.email ?? null,
-        })
-        .select('id')
-        .single(),
-      DB_TIMEOUT_MS,
-      'newsletter.campaign_insert',
-    );
+    const write = draftId
+      ? admin
+          .from('newsletter_campaigns')
+          .update({
+            subject: parsed.data.subject,
+            body: parsed.data.body,
+            recipient_count: emails.length,
+            sent_count: 0,
+            sent_by: session?.email ?? null,
+            status: 'sent',
+            created_at: new Date().toISOString(),
+          })
+          .eq('id', draftId)
+          .eq('status', 'draft')
+          .select('id')
+          .single()
+      : admin
+          .from('newsletter_campaigns')
+          .insert({
+            subject: parsed.data.subject,
+            body: parsed.data.body,
+            recipient_count: emails.length,
+            sent_count: 0,
+            sent_by: session?.email ?? null,
+            status: 'sent',
+          })
+          .select('id')
+          .single();
+    const res = await withTimeout(write, DB_TIMEOUT_MS, 'newsletter.campaign_insert');
     if (res.error || !res.data) {
-      log.error('newsletter.campaign_record_failed', { error: res.error?.message });
-      return { ok: false, error: 'Could not start the campaign. Please try again.' };
+      log.error('newsletter.campaign_record_failed', { error: res.error?.message, draft_id: draftId ?? null });
+      return {
+        ok: false,
+        error: draftId
+          ? 'That draft no longer exists (it may already have been sent). Refresh and try again.'
+          : 'Could not start the campaign. Please try again.',
+      };
     }
     campaignId = res.data.id as string;
   } catch (err) {
@@ -172,6 +196,99 @@ export async function sendNewsletterCampaign(
   revalidatePath('/admin/newsletter');
 
   return { ok: true, recipientCount: emails.length, sentCount };
+}
+
+// ─── Drafts ──────────────────────────────────────────────────────────────────
+// An edition can be written (or machine-prepared) ahead of time, reviewed in
+// the composer, and only then sent. Drafts live in newsletter_campaigns with
+// status 'draft' and zero counts; sending promotes the same row.
+
+export type DraftResult = { ok: true; id: string } | { ok: false; error: string };
+
+export async function saveNewsletterDraft(
+  draftId: string | null,
+  subject: string,
+  body: string,
+): Promise<DraftResult> {
+  const session = await getStaffSession();
+  if (!can(session, 'newsletter')) {
+    return { ok: false, error: 'You do not have permission to edit the newsletter.' };
+  }
+  const parsed = CampaignSchema.safeParse({ subject, body });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Please check the form.' };
+  }
+
+  const admin = supabaseAdmin();
+  try {
+    const write = draftId
+      ? admin
+          .from('newsletter_campaigns')
+          .update({ subject: parsed.data.subject, body: parsed.data.body, sent_by: session?.email ?? null })
+          .eq('id', draftId)
+          .eq('status', 'draft')
+          .select('id')
+          .single()
+      : admin
+          .from('newsletter_campaigns')
+          .insert({
+            subject: parsed.data.subject,
+            body: parsed.data.body,
+            recipient_count: 0,
+            sent_count: 0,
+            sent_by: session?.email ?? null,
+            status: 'draft',
+          })
+          .select('id')
+          .single();
+    const res = await withTimeout(write, DB_TIMEOUT_MS, 'newsletter.draft_save');
+    if (res.error || !res.data) {
+      log.error('newsletter.draft_save_failed', { error: res.error?.message });
+      return { ok: false, error: 'Could not save the draft. Please try again.' };
+    }
+    void logAudit(session, {
+      action: draftId ? 'newsletter.draft_update' : 'newsletter.draft_create',
+      entity: 'newsletter_campaign',
+      entity_id: res.data.id as string,
+      diff: { subject: parsed.data.subject },
+    }).catch(() => {});
+    revalidatePath('/admin/newsletter');
+    return { ok: true, id: res.data.id as string };
+  } catch (err) {
+    log.error('newsletter.draft_save_timeout', { error: (err as Error).message });
+    return { ok: false, error: 'The draft save took too long. Please try again.' };
+  }
+}
+
+export async function deleteNewsletterDraft(draftId: string): Promise<{ ok: boolean; error?: string }> {
+  const session = await getStaffSession();
+  if (!can(session, 'newsletter')) {
+    return { ok: false, error: 'You do not have permission to edit the newsletter.' };
+  }
+  const admin = supabaseAdmin();
+  try {
+    // Guarded to status 'draft' so a sent campaign's history can never be
+    // deleted through this path.
+    const res = await withTimeout(
+      admin.from('newsletter_campaigns').delete().eq('id', draftId).eq('status', 'draft'),
+      DB_TIMEOUT_MS,
+      'newsletter.draft_delete',
+    );
+    if (res.error) {
+      log.error('newsletter.draft_delete_failed', { error: res.error.message });
+      return { ok: false, error: 'Could not delete the draft. Please try again.' };
+    }
+    void logAudit(session, {
+      action: 'newsletter.draft_delete',
+      entity: 'newsletter_campaign',
+      entity_id: draftId,
+    }).catch(() => {});
+    revalidatePath('/admin/newsletter');
+    return { ok: true };
+  } catch (err) {
+    log.error('newsletter.draft_delete_timeout', { error: (err as Error).message });
+    return { ok: false, error: 'The delete took too long. Please try again.' };
+  }
 }
 
 // ─── Subscriber CRUD ─────────────────────────────────────────────────────────

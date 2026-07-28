@@ -1,5 +1,11 @@
-// ISR: cache the rendered PDP for 5 min; admin edits call revalidatePath('/product/...') to bust.
-export const revalidate = 300;
+// ISR: cache the rendered PDP for 1 hour. Every write path that changes what
+// a PDP shows busts it explicitly — admin edits via revalidateStorefrontCatalog,
+// customer orders via notifyNewOrder (stock just decremented) — so the periodic
+// window is only a safety net. It was 5 minutes, which quietly undid the
+// build-time prerender: with low, spread-out traffic almost every organic or
+// crawler hit landed on an expired entry and paid a cold render (Semrush
+// flagged exactly those as "slow pages").
+export const revalidate = 3600;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
