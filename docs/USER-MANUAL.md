@@ -1007,6 +1007,8 @@ A dated history of user-facing changes, newest first.
 
 ### 28 July 2026
 
+- **The Monday weekly report now actually arrives.** The weekly health report and the NB Sons price-parity check used to run at the very end of the nightly maintenance queue, and the eight jobs ahead of them used up the whole time budget every Monday, so neither ever ran. They now have their own dedicated Monday slot (about 3pm Pakistan time) with a fresh time budget. The first report lands next Monday; this week's numbers were compiled by hand in the meantime.
+
 - **Booking a courier pickup no longer tells the customer "shipped" before it's true.** Booking via the courier API (TCS) now records the consignment as **Booked — awaiting pickup** and moves the order to **Preparing**; the order becomes **Shipped** and the customer gets the shipping email automatically at the courier's first real pickup scan (or immediately via **Sync tracking now**). Previously the shipped email went out the second you clicked Book, even though the parcel was still on the shelf — and a cancelled booking left the order stuck on Shipped. Manual tracking-number entry still marks the order Shipped right away, since that's used after handing the parcel over.
 
 ### 26 July 2026

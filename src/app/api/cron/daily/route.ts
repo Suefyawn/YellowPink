@@ -8,7 +8,12 @@
 //   6. analytics-refresh   , refresh PostHog + Sentry dashboard widgets
 //   7. popularity-refresh  , recompute products.popularity_score (views+carts+sales)
 //   8. indexing-check      , refresh GSC indexing status for new pages
-//   9. price-parity        , (Mondays only) NB Sons singles never below their store price
+//
+// The two Monday-only jobs (price-parity, weekly-report) moved to their own
+// cron entry (/api/cron/weekly, Mondays 10:00 UTC): as jobs 9-10 here they
+// sat behind eight budget-hungry jobs and got skipped EVERY Monday — the
+// report never sent once. Vercel Hobby allows two cron entries; now we use
+// both.
 //
 // Removed: low-stock + back-in-stock. The store runs a dropship model, so
 // shelf stock isn't tracked and there's nothing to restock-alert or notify
@@ -104,11 +109,6 @@ export async function GET(req: NextRequest) {
     '/api/cron/analytics-refresh',
     '/api/cron/popularity-refresh',
     '/api/cron/indexing-check',
-    '/api/cron/price-parity',
-    // Mondays only (self-gated): the owner's weekly health digest. Last on
-    // purpose — it summarizes the week, and on a squeezed Monday it's the
-    // safest to skip (the numbers keep; staff can hit ?force=1 any time).
-    '/api/cron/weekly-report',
   ];
   const BUDGET_MS = (maxDuration - 12) * 1000;
   // No single job may eat the whole budget: cap each at 25 s or whatever
