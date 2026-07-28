@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 26 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 28 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -623,12 +623,21 @@ otherwise enter the courier and tracking number manually. Either way you can
 also type the optional **Courier charge (PKR)** — what the courier bills you
 for this parcel — and it is saved as the order's *Delivery cost* for Finance
 (if a delivery cost is already recorded, the form shows it instead; change it
-in *Order costs*). Booking (either way)
-automatically moves the order to **Shipped** and emails the customer their
-shipping notification with the tracking number — the confirmation under the
-form says so ("Order marked shipped + customer emailed"), and you don't need
-to change the status by hand in Step 4. An order that is already Shipped or
-Delivered is left alone and the customer is not emailed twice.
+in *Order costs*). What happens to the order depends on how you book:
+
+- **Book pickup via the courier API** records the consignment as
+  **Booked — awaiting pickup** and moves the order to **Preparing**. The order
+  flips to **Shipped** and the customer gets their shipping email with the
+  tracking number automatically when the courier's first pickup scan appears
+  (the daily tracking sync picks it up; **Sync tracking now** on the order page
+  fetches it immediately). The parcel is still on your shelf at booking time,
+  so the customer is only told "shipped" once it's true.
+- **Manual tracking entry** assumes you've already handed the parcel over
+  (you're typing a consignment number the courier gave you), so it marks the
+  order **Shipped** and emails the customer right away.
+
+Either way you don't need to change the status by hand in Step 4, and an order
+that is already Shipped or Delivered is left alone and never emailed twice.
 
 **Step 4 — Move the order through its statuses.**
 Use the **Update Order** control — at the **top-right of the order page**, next
@@ -995,6 +1004,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 28 July 2026
+
+- **Booking a courier pickup no longer tells the customer "shipped" before it's true.** Booking via the courier API (TCS) now records the consignment as **Booked — awaiting pickup** and moves the order to **Preparing**; the order becomes **Shipped** and the customer gets the shipping email automatically at the courier's first real pickup scan (or immediately via **Sync tracking now**). Previously the shipped email went out the second you clicked Book, even though the parcel was still on the shelf — and a cancelled booking left the order stuck on Shipped. Manual tracking-number entry still marks the order Shipped right away, since that's used after handing the parcel over.
 
 ### 26 July 2026
 

@@ -79,14 +79,17 @@ async function saveCourierCharge(
   return charge;
 }
 
-/** After a successful booking (API or manual tracking entry), make sure the
- *  order is 'shipped' and send the customer the same shipped email the
- *  status-update path sends. The shipments trigger flips orders.status on
- *  insert, but the customer never got the shipped email (and the timeline
- *  never got operator attribution) unless the merchant remembered to also
- *  change the status by hand. `before` is the pre-insert snapshot; it makes
- *  this idempotent — an order that was ALREADY shipped (or delivered) before
- *  this booking is left untouched and NOT re-emailed. */
+/** After a MANUAL tracking-number entry (createShipment), make sure the order
+ *  is 'shipped' and send the customer the same shipped email the status-update
+ *  path sends. Manual entry means the merchant booked outside the system and
+ *  typically has already handed the parcel over, so instant-shipped is the
+ *  right default there — unlike API bookings (bookShipment), which record as
+ *  'created' and ship on the courier's first scan. The shipments trigger flips
+ *  orders.status on a picked_up insert, but the customer never got the shipped
+ *  email (and the timeline never got operator attribution) unless the merchant
+ *  remembered to also change the status by hand. `before` is the pre-insert
+ *  snapshot; it makes this idempotent — an order that was ALREADY shipped (or
+ *  delivered) before this booking is left untouched and NOT re-emailed. */
 async function markOrderShipped(
   session: StaffSession,
   orderId: string,
@@ -186,12 +189,23 @@ export async function createShipment(
 //      tracking number the courier assigned. On failure, return the
 //      adapter's message verbatim, the UI shows it to the merchant.
 //
+// Booking is NOT shipping: at this point the parcel is still on our shelf
+// waiting for the courier to collect it. The shipment row is inserted as
+// 'created' (which the shipments trigger deliberately does NOT map to a
+// 'shipped' order) and the order advances only to 'processing'. The
+// 'shipped' flip + customer email happen on the courier's FIRST REAL SCAN,
+// via the courier-sync cron / webhook / "Sync tracking now" — all of which
+// already email exactly once on the created→picked_up edge
+// (notifyOrderShipmentTransition). Telling the customer "shipped" at
+// booking time was a lie whenever pickup slipped, and left cancelled
+// bookings stranded on 'shipped'.
+//
 // The merchant ALWAYS has the manual `createShipment` fallback above, so a
 // courier outage / API hiccup never blocks fulfillment.
 export async function bookShipment(
-  _prev: { error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean; courierCharge?: number } | null,
+  _prev: { error?: string; success?: boolean; trackingNumber?: string; awaitingPickup?: boolean; courierCharge?: number } | null,
   formData: FormData
-): Promise<{ error?: string; success?: boolean; trackingNumber?: string; markedShipped?: boolean; emailed?: boolean; courierCharge?: number }> {
+): Promise<{ error?: string; success?: boolean; trackingNumber?: string; awaitingPickup?: boolean; courierCharge?: number }> {
   const session = await assertOrders();
 
   const order_id = formData.get('order_id');
@@ -205,21 +219,14 @@ export async function bookShipment(
   }
 
   // Pull the order so we can give the courier the consignee + line items.
-  // `status` doubles as the pre-booking snapshot for markOrderShipped (the
-  // shipments trigger advances it as soon as the shipment row is inserted).
   const { data: order, error: orderErr } = await supabaseAdmin()
     .from('orders')
     .select('status, order_number, total, first_name, last_name, phone, email, address, city, province, zip, items, delivery_cost')
     .eq('id', order_id)
     .single();
   if (orderErr || !order) return { error: orderErr?.message ?? 'Order not found' };
-  const before: OrderShipSnapshot = {
-    status: (order.status ?? 'pending') as OrderStatus,
-    email: order.email ?? null,
-    first_name: order.first_name ?? null,
-    order_number: order.order_number ?? order_id,
-    delivery_cost: order.delivery_cost != null ? Number(order.delivery_cost) : null,
-  };
+  const beforeStatus = (order.status ?? 'pending') as OrderStatus;
+  const beforeDeliveryCost = order.delivery_cost != null ? Number(order.delivery_cost) : null;
 
   // Weight: estimate from line items if any have weight_grams; otherwise
   // a conservative 0.5 kg minimum (TCS's lower bound).
@@ -278,9 +285,10 @@ export async function bookShipment(
     if ('ok' in lbl && lbl.ok) labelUrl = lbl.url;
   }
 
-  // Persist the shipment row. The shipments_sync_order trigger (see
-  // 20260521_040_shipments.sql) mirrors tracking_number + courier onto
-  // orders for the /track + /account UI.
+  // Persist the shipment row as 'created' (booked, not yet collected). The
+  // shipments_sync_order trigger mirrors tracking_number + courier onto the
+  // order for the /track + /account UI but deliberately leaves orders.status
+  // alone for 'created' — the shipped flip happens on the first real scan.
   const { data: shipment, error: insErr } = await supabaseAdmin()
     .from('shipments')
     .insert({
@@ -289,7 +297,7 @@ export async function bookShipment(
       tracking_number: result.trackingNumber,
       weight_grams: Math.round(input.weightKg * 1000),
       raw_label_url: labelUrl,
-      status: 'picked_up',
+      status: 'created',
     })
     .select('id')
     .single();
@@ -302,18 +310,26 @@ export async function bookShipment(
     diff: { courier, order_id, tracking_number: result.trackingNumber },
   });
 
-  const shipped = await markOrderShipped(session, order_id, before, {
-    tracking_number: result.trackingNumber,
-    courier,
-  });
+  // Booking means fulfilment has started: advance a fresh order to
+  // 'processing' (no customer email — "Preparing" isn't a notification-worthy
+  // edge). Orders already processing/shipped/delivered are left untouched.
+  if (beforeStatus === 'pending') {
+    const { error: procErr } = await supabaseAdmin()
+      .from('orders').update({ status: 'processing' }).eq('id', order_id);
+    if (procErr) {
+      log.error('shipment.mark_processing_failed', { order_id, error: procErr.message });
+    } else {
+      await attributeOrderEvents(supabaseAdmin(), [order_id], 'processing', session);
+    }
+  }
 
   const courierCharge = await saveCourierCharge(
-    order_id, parseCourierCharge(formData.get('courier_charge')), before.delivery_cost,
+    order_id, parseCourierCharge(formData.get('courier_charge')), beforeDeliveryCost,
   );
 
   revalidatePath(`/admin/orders/${order_id}`);
   revalidatePath('/admin/orders');
-  return { success: true, trackingNumber: result.trackingNumber, ...shipped, ...(courierCharge != null ? { courierCharge } : {}) };
+  return { success: true, trackingNumber: result.trackingNumber, awaitingPickup: true, ...(courierCharge != null ? { courierCharge } : {}) };
 }
 
 // ─── On-demand tracking sync ──────────────────────────────────────────────
