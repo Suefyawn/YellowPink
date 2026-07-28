@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@supabase/supabase-js';
 import { verifyEasypaisaCallback } from '@/lib/payments/easypaisa';
 import { sendOrderConfirmationEmail, sendPaymentReceivedEmail } from '@/lib/email';
@@ -130,6 +131,11 @@ export async function POST(req: NextRequest) {
     // orders, which never fire the client Pixel. First transition only.
     if (firstTransition) {
       const paidItems = (order.items as CartItem[]) ?? [];
+      // Stock for these items was decremented at order creation; make sure
+      // their PDPs reflect it (the ISR window is an hour, busts are explicit).
+      for (const slug of new Set(paidItems.map(i => i.slug).filter(Boolean))) {
+        revalidatePath(`/product/${slug}`);
+      }
       await sendMetaPurchaseEvent({
         orderNumber: order.order_number,
         value: Number(order.total),
