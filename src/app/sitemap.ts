@@ -205,6 +205,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // rejects relative image locs as "Invalid URL", so normalise both forms.
   const absImage = (u: string): string => (/^https?:\/\//.test(u) ? u : absoluteUrl(u));
 
+  // Next's sitemap serializer interpolates the video title/description into
+  // the XML raw (dist/build/webpack/loaders/metadata/resolve-route-data.js —
+  // template literals, no encoding), so a product name containing "&" breaks
+  // the WHOLE sitemap ("Ground Rice & Honey Glow Mask" did, Semrush #17
+  // "Invalid sitemap.xml format", and an unparseable sitemap is rejected by
+  // Google outright). Escape the five XML specials in every free-text field
+  // we pass. URLs stay raw: ours are slug-based with at most one query param,
+  // and <loc> escaping would change them byte-for-byte vs the canonicals.
+  const xmlEscape = (s: string): string =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
   const productUrls: MetadataRoute.Sitemap = products.map(p => {
     const last = p.updated_at ?? p.created_at;
     return {
@@ -216,9 +228,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // Video sitemap entries for products with demo/swatch videos — pairs
       // with the PDP's VideoObject markup so Google Video can index them.
       videos: p.video_url && p.image_url ? [{
-        title: `${p.name ?? p.slug} — product video`,
+        title: xmlEscape(`${p.name ?? p.slug} — product video`),
         thumbnail_loc: absImage(p.image_url),
-        description: (p.short_description ?? `See ${p.name ?? 'this product'} up close before you buy.`).slice(0, 2048),
+        description: xmlEscape((p.short_description ?? `See ${p.name ?? 'this product'} up close before you buy.`).slice(0, 2048)),
         content_loc: p.video_url,
       }] : undefined,
     };
