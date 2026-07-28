@@ -1,9 +1,10 @@
 // ============================================================================
-// Weekly store health report — Mondays only (fanned out from /api/cron/daily,
-// same gate pattern as price-parity). Assembles the week's numbers via
-// lib/weekly-report.ts and emails the owner one glanceable digest: sales vs
-// last week, the shopper funnel, section clicks, abandoned checkouts, review
-// supply, and Google indexing state.
+// Weekly store health report — Mondays only, fanned out from /api/cron/weekly
+// (its own cron entry, 10:00 UTC Mondays; it lived at the tail of the daily
+// fanout first and got budget-starved every week). Assembles the week's
+// numbers via lib/weekly-report.ts and emails the owner one glanceable
+// digest: sales vs last week, the shopper funnel, section clicks, abandoned
+// checkouts, review supply, and Google indexing state.
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -24,7 +25,8 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   const force = new URL(req.url).searchParams.get('force') === '1';
-  // Daily cron fires at 09:00 UTC (2 pm PKT); report once a week, on Mondays.
+  // The weekly cron fires Mondays 10:00 UTC (3 pm PKT); the self-gate stays
+  // as defense against off-schedule manual hits.
   if (!force && new Date().getUTCDay() !== 1) {
     return NextResponse.json({ ok: true, skipped: 'runs Mondays (pass ?force=1 to override)' });
   }
