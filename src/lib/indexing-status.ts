@@ -22,7 +22,12 @@ import { SITE_URL } from '@/lib/seo';
 // ============================================================================
 
 const BLOG_LOOKBACK_DAYS = 45;
-const DEFAULT_BATCH = 25;
+// 60 rows ≈ nothing against the URL Inspection API's daily quota, and the
+// run's own 45 s deadline (below) is the real cap — it stops mid-batch when
+// the cron budget nears, leaving the rest for tomorrow. Raised from 25 when
+// all ~186 product pages joined the tracker (July 29) so full coverage takes
+// nights, not weeks.
+const DEFAULT_BATCH = 60;
 
 function pathToUrl(path: string): string {
   return `${SITE_URL.replace(/\/$/, '')}${path}`;

@@ -23,6 +23,7 @@ export function VendorTermsEditor({ vendor }: { vendor: Vendor }) {
     parts.push(vendor.settlement_direction === 'vendor_collects' ? 'vendor collects' : 'we collect');
     if (vendor.self_delivers) parts.push('delivers to customer');
     if (vendor.delivery_fee) parts.push(`PKR ${Number(vendor.delivery_fee).toLocaleString()} delivery`);
+    if (vendor.free_shipping_threshold) parts.push(`free shipping from PKR ${Number(vendor.free_shipping_threshold).toLocaleString()}`);
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <span style={{ fontSize: '0.8125rem', color: '#374151' }}>{parts.join(' · ')}</span>
@@ -68,6 +69,16 @@ export function VendorTermsEditor({ vendor }: { vendor: Vendor }) {
         aria-label={`${vendor.name} delivery fee`}
         style={{ ...inp, width: 64 }}
       />
+      <label style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
+        free ship from
+        <input
+          name="free_shipping_threshold" type="number" min={0} step="1"
+          defaultValue={vendor.free_shipping_threshold ? Number(vendor.free_shipping_threshold) : ''} placeholder="off"
+          aria-label={`${vendor.name} free-shipping threshold (PKR); blank turns the rule off`}
+          title="Baskets whose items from this vendor total at least this amount ship free (matches the vendor's own store). Blank = no rule."
+          style={{ ...inp, width: 76 }}
+        />
+      </label>
       <button type="submit" className="adm-btn adm-btn-primary" style={{ padding: '4px 12px', fontSize: '0.75rem' }}>Save</button>
       <button type="button" className="adm-btn adm-btn-secondary" style={{ padding: '4px 12px', fontSize: '0.75rem' }} onClick={() => setEditing(false)}>Cancel</button>
     </form>
