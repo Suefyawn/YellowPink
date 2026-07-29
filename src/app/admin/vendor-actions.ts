@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
@@ -44,6 +45,14 @@ function parseDeliveryFee(raw: FormDataEntryValue | null): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** Vendor free-shipping threshold (PKR): baskets whose items from this
+ *  vendor total at least this amount ship free (matches the vendor's own
+ *  store, e.g. NB Sons Rs 1,999). Blank / 0 / invalid → null = rule off. */
+function parseFreeShipThreshold(raw: FormDataEntryValue | null): number | null {
+  const n = Number((raw as string | null)?.trim());
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export async function createVendor(formData: FormData) {
   const session = await assertPermission('vendors');
   const name  = (formData.get('name') as string)?.trim();
@@ -59,6 +68,7 @@ export async function createVendor(formData: FormData) {
       settlement_direction: parseDirection(formData.get('settlement_direction')),
       self_delivers: formData.get('self_delivers') === 'on',
       delivery_fee: parseDeliveryFee(formData.get('delivery_fee')),
+      free_shipping_threshold: parseFreeShipThreshold(formData.get('free_shipping_threshold')),
     })
     .select('id')
     .single();
@@ -83,9 +93,10 @@ export async function updateVendor(formData: FormData) {
   const settlement_direction = parseDirection(formData.get('settlement_direction'));
   const self_delivers = formData.get('self_delivers') === 'on';
   const delivery_fee = parseDeliveryFee(formData.get('delivery_fee'));
+  const free_shipping_threshold = parseFreeShipThreshold(formData.get('free_shipping_threshold'));
   const { error } = await supabaseAdmin()
     .from('vendors')
-    .update({ commission_pct, settlement_direction, self_delivers, delivery_fee })
+    .update({ commission_pct, settlement_direction, self_delivers, delivery_fee, free_shipping_threshold })
     .eq('id', id);
   if (error) {
     log.error('vendor.update_failed', { id, error: error.message });
@@ -93,8 +104,13 @@ export async function updateVendor(formData: FormData) {
   }
   void logAudit(session, {
     action: 'vendor.update', entity: 'vendors', entity_id: id,
-    diff: { commission_pct, settlement_direction, self_delivers, delivery_fee },
+    diff: { commission_pct, settlement_direction, self_delivers, delivery_fee, free_shipping_threshold },
   });
+  // The free-shipping threshold is shown on this vendor's PDPs ("Free
+  // delivery when your … items total PKR X or more") — bust the storefront
+  // so a changed/removed rule never lingers in the hour-long ISR cache.
+  // (The checkout quote's own threshold cache expires within 5 minutes.)
+  revalidateStorefrontCatalog();
   revalidatePath('/admin/vendors');
   vendorsSaved('Vendor terms saved.');
 }
