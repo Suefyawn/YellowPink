@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 28 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 29 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1007,6 +1007,7 @@ A dated history of user-facing changes, newest first.
 
 ### 28 July 2026
 
+- **"Sync tracking now" tells you when TCS has nothing yet.** Previously, if TCS hadn't uploaded any scans for a consignment (their tracking often lags the physical pickup by a few hours), the button said "Already up to date" — which read as if tracking were synced when the courier had actually published nothing. It now shows an amber note saying TCS has no scan data yet, including TCS's own reply, and suggests confirming the CN with your account rep if it stays empty more than a day after pickup.
 - **The newsletter composer can save drafts.** An edition can now be written, saved, and reviewed before sending: drafts appear above the composer with Open and Delete buttons, and sending a draft promotes it into the sent history instead of duplicating it. The first Fortnightly Edit is waiting there as a draft — open it, adjust anything you like, and press send.
 - **Product pages stay fast between visits.** Product pages were being re-rendered from scratch whenever one sat unvisited for over five minutes, which made the first click on a quiet product noticeably slow. They now stay cached for an hour, and anything that actually changes a product page — an admin edit, or a customer order reducing stock — refreshes it immediately, so the speed comes without ever showing stale stock.
 - **The Monday weekly report now actually arrives.** The weekly health report and the NB Sons price-parity check used to run at the very end of the nightly maintenance queue, and the eight jobs ahead of them used up the whole time budget every Monday, so neither ever ran. They now have their own dedicated Monday slot (about 3pm Pakistan time) with a fresh time budget. The first report lands next Monday; this week's numbers were compiled by hand in the meantime.

@@ -2,8 +2,8 @@ import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { getBlogPosts } from '@/lib/supabase';
 import { BlogPage } from '@/sections/blog/BlogPage';
 
-// 10-min ISR, blog posts publish at most a few times per week.
-export const revalidate = 600;
+// 1-hour ISR, blog posts publish at most a few times per week; edits bust explicitly.
+export const revalidate = 3600; // writes bust explicitly; long window keeps prerendered pages warm
 
 export const metadata = pageMeta({
   title: 'Beauty & Wellness Blog, Skincare & Supplement Guides',

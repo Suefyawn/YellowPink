@@ -115,7 +115,16 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
                 {syncState.error}
               </div>
             )}
-            {syncState?.success && (
+            {syncState?.success && syncState.noData && (
+              <div role="status" style={{ marginTop: 8, padding: '6px 10px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, color: '#92400e', fontSize: '0.75rem', lineHeight: 1.5 }}>
+                TCS hasn&rsquo;t published any scan data for this consignment yet
+                {syncState.summary ? <> (their reply: &ldquo;{syncState.summary}&rdquo;)</> : null}.
+                Scans usually appear a few hours after the parcel is scanned at a TCS facility.
+                If it was picked up more than a day ago, confirm the CN number with your TCS
+                account rep — the parcel may not have been scanned into their system.
+              </div>
+            )}
+            {syncState?.success && !syncState.noData && (
               <div role="status" style={{ marginTop: 8, padding: '6px 10px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, color: '#166534', fontSize: '0.75rem' }}>
                 {syncState.updated ? `Updated — now “${syncState.current}”.` : 'Already up to date.'}
               </div>

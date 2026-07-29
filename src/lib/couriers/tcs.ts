@@ -66,6 +66,7 @@ import type {
   Result,
 } from './types';
 import { normaliseCourierStatus } from './status-mapper';
+import { log } from '@/lib/logger';
 
 // Non-auth fields required regardless of which auth mode is in use.
 const REQUIRED_NON_AUTH_VARS = [
@@ -382,11 +383,22 @@ async function track(trackingNumber: string): Promise<Result<TrackResult>> {
       });
     }
     const out = await r.json().catch(() => null) as null | {
-      deliveryinfo?: Array<{ status?: string; code?: string; datetime?: string }>;
-      checkpoints?: Array<{ status?: string; datetime?: string }>;
+      deliveryinfo?: Array<{ status?: string; code?: string; datetime?: string }> | null;
+      checkpoints?: Array<{ status?: string; datetime?: string }> | null;
+      shipmentsummary?: string | null;
+      message?: string | null;
     };
     if (!r.ok || !out) {
       return { ok: false, message: `TCS tracking failed (HTTP ${r.status})`, code: r.status, raw: out };
+    }
+    // TCS answers HTTP 200 with message:"FAIL" and null arrays when its
+    // tracking DB has nothing for the CN — either not scanned yet (data
+    // appears hours after the first facility scan) or an invalid number.
+    // Surface that as an explicit no-data result instead of an empty "all
+    // up to date" success.
+    if (out.message === 'FAIL' || /no data found/i.test(out.shipmentsummary ?? '')) {
+      log.warn('tcs.track_no_data', { tracking: trackingNumber, summary: out.shipmentsummary ?? null });
+      return { ok: true, events: [], noData: true, summary: out.shipmentsummary ?? undefined, raw: out };
     }
     // Prefer `checkpoints` — the full scan history ("Arrived at TCS Facility →
     // Out For Delivery → Shipment Delivered") customers expect — and fall back
@@ -419,7 +431,27 @@ async function track(trackingNumber: string): Promise<Result<TrackResult>> {
         (best, e) => (best == null || (rank[e.status] ?? 0) > (rank[best] ?? 0) ? e.status : best),
         undefined,
       );
-    return { ok: true, events, current: current ?? events[0]?.status, raw: out };
+    // A SUCCESS reply with zero parseable scans (e.g. booked, nothing scanned
+    // yet, or a response shape we don't recognise) — log the raw body so the
+    // real shape is visible in the logs, and fall back to the summary line's
+    // "Current Status: X" for a best-effort status.
+    let summaryStatus: string | undefined;
+    if (events.length === 0) {
+      log.warn('tcs.track_zero_events', {
+        tracking: trackingNumber,
+        raw: JSON.stringify(out).slice(0, 800),
+      });
+      const m = /current status:\s*([^\n]+)/i.exec(out.shipmentsummary ?? '');
+      if (m) summaryStatus = normaliseCourierStatus(m[1].trim());
+    }
+    return {
+      ok: true,
+      events,
+      current: current ?? events[0]?.status ?? summaryStatus,
+      noData: events.length === 0 && !summaryStatus ? true : undefined,
+      summary: out.shipmentsummary ?? undefined,
+      raw: out,
+    };
   } catch (err) {
     return { ok: false, message: 'TCS tracking network error', code: 'network', raw: (err as Error).message };
   }

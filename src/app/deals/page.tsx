@@ -8,7 +8,7 @@
 // right now (original_price > price), so it stays truthful year-round and
 // simply thins out between sale seasons. NO loading.tsx in this segment
 // (loading boundaries downgrade metadata-thrown statuses to soft responses).
-export const revalidate = 300;
+export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
 import type { Metadata } from 'next';
 import Link from 'next/link';

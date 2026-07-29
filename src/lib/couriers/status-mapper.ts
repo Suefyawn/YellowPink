@@ -32,5 +32,8 @@ export function normaliseCourierStatus(raw: string): string {
   if (s.includes('transit') || s.includes('shipped') || s.includes('arrived')
       || s.includes('depart') || s.includes('forward') || s.includes('receiv')) return 'in_transit';
   if (s.includes('pick'))                                    return 'picked_up';
+  // "BOOKED" (e.g. TCS shipmentsummary "Current Status: BOOKED") = consignment
+  // exists but nothing has been scanned — that's our 'created', not in transit.
+  if (s.includes('book'))                                    return 'created';
   return 'in_transit';
 }

@@ -1,5 +1,6 @@
-// ISR: cache for 10 min; admin blog edits call revalidatePath to bust.
-export const revalidate = 600;
+// ISR: cache for 1 hour; admin blog edits and catalogue writes (buy modules
+// embed live product data) call revalidatePath to bust.
+export const revalidate = 3600; // writes bust explicitly; long window keeps prerendered pages warm
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';

@@ -12,7 +12,7 @@
 // NO loading.tsx in this segment, deliberately: a loading boundary makes Next
 // stream a 200 shell before the slug resolves, turning unknown slugs into
 // soft-404s (see the tag/brand routes' history).
-export const revalidate = 300;
+export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
