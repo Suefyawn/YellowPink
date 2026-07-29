@@ -285,6 +285,15 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
               {bookState.courierCharge != null && (
                 <> · Courier charge PKR {bookState.courierCharge.toLocaleString()} saved.</>
               )}
+              {/* YP-A7VSBYRK8 (July 28): the API returned a CN that never
+                  appeared in TCS's Envio dashboard and the parcel had to be
+                  re-booked manually — so ask staff to verify while the parcel
+                  is still on the shelf. */}
+              <div style={{ marginTop: 6, color: '#92400e' }}>
+                Please confirm this CN appears in your TCS Envio dashboard (Tracking CN). If it
+                doesn&rsquo;t show there within a few minutes, cancel this shipment and book manually
+                in Envio, then paste the CN here via manual entry.
+              </div>
             </div>
           )}
         </form>
