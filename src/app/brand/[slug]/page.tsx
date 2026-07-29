@@ -1,4 +1,4 @@
-export const revalidate = 300;
+export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
 import type { Metadata } from 'next';
 import Link from 'next/link';

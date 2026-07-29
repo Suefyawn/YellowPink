@@ -1,7 +1,7 @@
 // 5-min ISR. Search/filter params still bypass the cache because Next keys
 // the ISR slot on (path + searchParams). Was `force-dynamic` before the
 // 2026-05-24 audit.
-export const revalidate = 300;
+export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
 import type { Metadata } from 'next';
 import Link from 'next/link';

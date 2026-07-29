@@ -1,6 +1,6 @@
 // 5-min ISR, same cadence as the homepage, the edit changes only when
 // products are published or the brand list grows.
-export const revalidate = 300;
+export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
 import type { Metadata } from 'next';
 import { getProductsByBrands } from '@/lib/supabase';

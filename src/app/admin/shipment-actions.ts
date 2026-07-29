@@ -339,9 +339,9 @@ export async function bookShipment(
 // via the adapter, append new shipment_events, advance status, and (on a
 // shipped/delivered edge) attribute the order event + email the customer.
 export async function syncShipmentNow(
-  _prev: { error?: string; success?: boolean; updated?: boolean; current?: string } | null,
+  _prev: { error?: string; success?: boolean; updated?: boolean; current?: string; noData?: boolean; summary?: string } | null,
   formData: FormData,
-): Promise<{ error?: string; success?: boolean; updated?: boolean; current?: string }> {
+): Promise<{ error?: string; success?: boolean; updated?: boolean; current?: string; noData?: boolean; summary?: string }> {
   const session = await assertOrders();
 
   const shipment_id = formData.get('shipment_id');
@@ -362,6 +362,21 @@ export async function syncShipmentNow(
 
   const r = await adapter.track(s.tracking_number);
   if (!('ok' in r) || !r.ok) return { error: r.message };
+
+  // The courier answered but has no scan data for this CN (TCS replies
+  // "No Data Found/Invalid CN" until the first facility scan is uploaded,
+  // which can lag the physical pickup by several hours). Say so — the old
+  // behaviour showed "Already up to date", which read as if tracking were
+  // synced when in fact the courier had published nothing.
+  if (r.noData) {
+    await logAudit(session, {
+      action: 'shipment.sync',
+      entity: 'shipment',
+      entity_id: s.id,
+      diff: { courier: s.courier, from: s.status, to: s.status, courier_reply: r.summary ?? 'no data' },
+    });
+    return { success: true, updated: false, current: s.status, noData: true, summary: r.summary };
+  }
 
   // Dedupe vs. events we already have (same rule as the cron).
   const { data: latest } = await admin
@@ -385,7 +400,11 @@ export async function syncShipmentNow(
 
   const newest = r.current ?? r.events[0]?.status;
   let updated = false;
-  if (newest && newest !== s.status) {
+  // `created` can come from the courier's summary line when no scans have
+  // been uploaded yet — never let it downgrade a shipment that has already
+  // been scanned (picked_up/in_transit/...).
+  const isDowngradeToCreated = newest === 'created' && s.status !== 'created';
+  if (newest && newest !== s.status && !isDowngradeToCreated) {
     const update: Record<string, unknown> = { status: newest };
     if (newest === 'delivered') update.delivered_at = r.events[0]?.occurredAt ?? new Date().toISOString();
     await admin.from('shipments').update(update).eq('id', s.id);

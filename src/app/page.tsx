@@ -1,7 +1,7 @@
 // 5-min ISR, featured products / new arrivals / hero copy change at most
 // every few hours, and the global cache header in next.config.ts already
 // puts a CDN in front. Was `force-dynamic` before the 2026-05-24 audit.
-export const revalidate = 300;
+export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
 import {
   getNewArrivals,

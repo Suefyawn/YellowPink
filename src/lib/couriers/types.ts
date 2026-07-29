@@ -70,6 +70,14 @@ export interface TrackResult {
   events: TrackEvent[];
   /** Latest status, convenience field; same as events[0]?.status. */
   current?: string;
+  /** Set when the courier answered but has no scan data for this CN (e.g.
+   *  TCS replies HTTP 200 with message:"FAIL" / "No Data Found/Invalid CN"
+   *  until the first facility scan is uploaded). Callers should surface
+   *  this instead of implying the shipment is up to date. */
+  noData?: boolean;
+  /** Courier's human-readable summary line, when provided (TCS
+   *  `shipmentsummary`, e.g. "Current Status: DELIVERED ..."). */
+  summary?: string;
   raw?: unknown;
 }
 
