@@ -55,6 +55,11 @@ interface Props {
    *  the buy buttons links to the set ("Also in <set> — save 18%"). Null for
    *  products that aren't in any set. */
   setTeaser?: { name: string; slug: string; savingPct: number } | null;
+  /** When this product's vendor has a free-shipping threshold (NB Sons:
+   *  Rs 1,999, matching their own store), the buy panel promises it — the
+   *  July 29 M-Sol cancellation showed shoppers cross-check totals against
+   *  the manufacturer's site. Null when the vendor has no such rule. */
+  vendorFreeShipOver?: number | null;
   /** This product's tags. Rendered as crawlable links to /tag/<slug> — the
    *  tag archive pages otherwise exist only in the sitemap (the shop's Tags
    *  facet is client-side buttons), which audits flag as orphaned pages. */
@@ -321,7 +326,7 @@ function Gallery({
 }
 
 // ─── PDPPage ───────────────────────────────────────────────────────────────
-export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], estimatedDays = null, pointsPerPkr = 0, tags = [], setTeaser = null }: Props) {
+export function PDPPage({ product, relatedProducts = [], variants = [], attributes = [], gallery = [], estimatedDays = null, pointsPerPkr = 0, tags = [], setTeaser = null, vendorFreeShipOver = null }: Props) {
   const [qty, setQty] = useState(1);
   const [addedFlash, setAddedFlash] = useState(false);
   // Sticky mobile buy-bar: shown once the in-page buy panel scrolls out of
@@ -790,6 +795,20 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 <Link href={`/product/${setTeaser.slug}`} style={{ color: 'var(--brand-pink-text, #9d174d)', fontWeight: 600 }}>
                   Also in {setTeaser.name} · save {Math.round(setTeaser.savingPct)}% →
                 </Link>
+              </p>
+            )}
+
+            {/* Vendor free-shipping promise (e.g. NB Sons items ship free from
+                Rs 1,999, same as the manufacturer's own store) — shown right
+                above the trust strip so a shopper comparing totals against the
+                brand site sees we match before they leave to check. */}
+            {vendorFreeShipOver != null && (
+              <p style={{
+                margin: '0 0 12px', padding: '8px 12px', borderRadius: 8,
+                background: 'var(--paper2, #faf6ee)', border: '1px dashed var(--brand-pink-text, #9d174d)',
+                fontSize: '0.8125rem', color: 'var(--ink-900)', fontWeight: 600,
+              }}>
+                Free delivery when your {product.brand ?? 'brand'} items total PKR {vendorFreeShipOver.toLocaleString()} or more.
               </p>
             )}
 
