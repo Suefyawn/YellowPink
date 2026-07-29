@@ -32,6 +32,14 @@ insert into public.products (id, name, slug, category, price, stock, track_inven
   ('00000000-0000-0000-0000-00000000000c', 'Matrix External C', 'matrix-external-c', 'Test',  800,    0, false, 'published'),
   ('00000000-0000-0000-0000-00000000000d', 'Matrix Draft D',    'matrix-draft-d',    'Test',  100,  100, true,  'draft');
 
+-- Vendor free-shipping rule (migration 770): vendor V free-ships from 1999;
+-- product E belongs to it (price 1000, so 2 × E qualifies, 1 × E doesn't).
+insert into public.vendors (id, name, phone, free_shipping_threshold)
+  values ('00000000-0000-0000-0000-0000000000f1', 'Matrix Vendor', '03000000001', 1999);
+insert into public.products (id, name, slug, category, price, stock, track_inventory, status, vendor_id) values
+  ('00000000-0000-0000-0000-00000000000e', 'Matrix Vendored E', 'matrix-vendored-e', 'Test', 1000, 1000, true, 'published',
+   '00000000-0000-0000-0000-0000000000f1');
+
 insert into public.coupons (id, code, type, value, active, expires_at, usage_limit_per_user, free_shipping) values
   ('00000000-0000-0000-0000-0000000000c1', 'MATRIX10',   'percent', 10, true,  null,                 null, false),
   ('00000000-0000-0000-0000-0000000000c2', 'MATRIXOLD',  'percent', 10, true,  now() - interval '1 day', null, false),
@@ -209,6 +217,20 @@ begin
     (select stock from public.products where id = '00000000-0000-0000-0000-00000000000c') = 0
     and not exists (select 1 from public.inventory_ledger where order_id = o.id),
     'no stock decrement, no ledger row');
+
+  -- 14a. Vendor free shipping earned: 2 × vendored E = 2000 ≥ the vendor's
+  --      1999 threshold, so shipping 0 is legitimate even though the basket
+  --      is far below the 5000 zone threshold (migration 770).
+  o := yp_tests.expect_ok('vendor free shipping earned',
+    yp_tests.payload('{"items": [{"id": "00000000-0000-0000-0000-00000000000e", "qty": 2}], "subtotal": 2000, "shipping": 0, "total": 2000}'));
+  perform yp_tests.assert('vendor free shipping applied', o.shipping = 0 and o.total = 2000,
+    'expected shipping 0/total 2000, got ' || o.shipping || '/' || o.total);
+
+  -- 14b. Vendor threshold NOT met (1 × E = 1000 < 1999): forged shipping 0
+  --      still rejects.
+  perform yp_tests.expect_reject('vendor threshold not met',
+    yp_tests.payload('{"items": [{"id": "00000000-0000-0000-0000-00000000000e", "qty": 1}], "subtotal": 1000, "shipping": 0, "total": 1000}'),
+    'shipping mismatch');
 
   -- 15. Client subtotal that disagrees with server-recomputed prices.
   perform yp_tests.expect_reject('subtotal mismatch',

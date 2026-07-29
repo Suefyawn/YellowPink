@@ -9,7 +9,7 @@ export const revalidate = 3600;
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getProductBySlug, getProducts, supabase, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings, getPostsLinkingProduct } from '@/lib/supabase';
+import { getProductBySlug, getProducts, supabase, supabaseAdmin, isDemo, getProductsByBrand, getProductsByTaxon, getSiteSettings, getPostsLinkingProduct } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
 
 // Pre-render every published product at build so PDPs are served as static CDN
@@ -330,10 +330,27 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   // before 404ing, so an indexed dead /product/<slug> can point at a live one.
   if (!product) { await redirectIfMapped(`/product/${slug}`); notFound(); }
 
-  const [reviewPhotosEnabled, estimatedDays, siteSettings] = await Promise.all([
+  const [reviewPhotosEnabled, estimatedDays, siteSettings, vendorFreeShipOver] = await Promise.all([
     isEnabled('reviews_photos'),
     getDefaultEstimatedDays(),
     getSiteSettings(),
+    // Vendor free-shipping threshold (NB Sons Rs 1,999) → buy-panel promise.
+    // Admin client: vendors is RLS-locked to staff. Best-effort (returns null
+    // in demo builds without a service key, or on any lookup error).
+    (async (): Promise<number | null> => {
+      if (!product.vendor_id || isDemo) return null;
+      try {
+        const { data } = await supabaseAdmin()
+          .from('vendors')
+          .select('free_shipping_threshold')
+          .eq('id', product.vendor_id)
+          .maybeSingle();
+        const t = Number(data?.free_shipping_threshold);
+        return Number.isFinite(t) && t > 0 ? t : null;
+      } catch {
+        return null;
+      }
+    })(),
   ]);
   // Loyalty earn rate (points per PKR) drives the PDP "earn points" nudge.
   // Defaults to the same 0.1 the loyalty settings form seeds.
@@ -468,6 +485,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         attributes={variantData.attributes}
         gallery={gallery}
         estimatedDays={estimatedDays}
+        vendorFreeShipOver={vendorFreeShipOver}
         pointsPerPkr={pointsPerPkr}
         tags={productTags}
         setTeaser={setTeaser}

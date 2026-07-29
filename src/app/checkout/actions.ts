@@ -87,8 +87,22 @@ export async function notifyNewOrder(order: {
 export async function calculateShipping(opts: {
   province?: string;
   subtotal: number;
+  /** Cart lines (vendor_id/price/qty) — enables the vendor free-shipping
+   *  rule (NB Sons items ≥ Rs 1,999 ship free, matching nbsons.com). */
+  items?: Array<{ vendor_id?: string | null; price: number; qty: number }>;
 }): Promise<{ rate: number; free: boolean; label: string }> {
-  const resolved = await resolveShipping(opts);
+  // Re-derive the amounts server-side shape only (price×qty); place_order
+  // recomputes everything from the products table at submit, so a tampered
+  // quote can only mislead the tamperer's own order summary.
+  const resolved = await resolveShipping({
+    province: opts.province,
+    subtotal: opts.subtotal,
+    items: (opts.items ?? []).map(i => ({
+      vendor_id: i.vendor_id ?? null,
+      price: Number(i.price) || 0,
+      qty: Math.max(0, Math.floor(Number(i.qty) || 0)),
+    })),
+  });
   return { rate: resolved.rate, free: resolved.free, label: resolved.label };
 }
 

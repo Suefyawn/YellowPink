@@ -7,8 +7,67 @@
 // so the storefront keeps working even if the tables aren't populated yet.
 // ============================================================================
 
-import { supabase, getSiteSettings } from './supabase';
+import { supabase, supabaseAdmin, getSiteSettings } from './supabase';
 import { parseCommerceConfig, formatPkr } from './commerce';
+
+/** Minimal slice of a cart line the vendor free-shipping rule needs. */
+export interface ShippingItem {
+  vendor_id?: string | null;
+  price: number;
+  qty: number;
+}
+
+/**
+ * Vendor-scoped free shipping (pure part, unit-tested): true when the sum of
+ * line amounts for any single vendor reaches that vendor's threshold. Matches
+ * the SQL enforcement in place_order (migration 770). The motivating case:
+ * NB Sons free-ships above Rs 1,999 on their own store, so any NB Sons basket
+ * of ours between Rs 2,000 and the zone threshold was cheaper at the source.
+ */
+export function vendorFreeShippingEligible(
+  items: ShippingItem[],
+  thresholds: Map<string, number>,
+): boolean {
+  if (thresholds.size === 0) return false;
+  const sums = new Map<string, number>();
+  for (const it of items) {
+    if (!it.vendor_id || !thresholds.has(it.vendor_id)) continue;
+    sums.set(it.vendor_id, (sums.get(it.vendor_id) ?? 0) + it.price * it.qty);
+  }
+  for (const [vendorId, sum] of sums) {
+    const threshold = thresholds.get(vendorId);
+    if (threshold != null && sum >= threshold) return true;
+  }
+  return false;
+}
+
+// The vendors table is RLS-locked to staff, so the threshold lookup runs on
+// the admin client (this module is server-only). Thresholds change ~never;
+// cache per lambda for 5 minutes to keep the checkout quote to one extra
+// query per cold start instead of one per keystroke-triggered re-quote.
+let vendorThresholdCache: { value: Map<string, number>; expiresAt: number } | null = null;
+
+async function getVendorThresholds(): Promise<Map<string, number>> {
+  if (vendorThresholdCache && vendorThresholdCache.expiresAt > Date.now()) {
+    return vendorThresholdCache.value;
+  }
+  const map = new Map<string, number>();
+  try {
+    const { data } = await supabaseAdmin()
+      .from('vendors')
+      .select('id, free_shipping_threshold')
+      .not('free_shipping_threshold', 'is', null);
+    for (const row of data ?? []) {
+      const t = Number(row.free_shipping_threshold);
+      if (Number.isFinite(t) && t > 0) map.set(row.id as string, t);
+    }
+  } catch {
+    // Quote falls back to zone rules; place_order still applies the vendor
+    // rule server-side, so a lookup hiccup can only over-quote, never under.
+  }
+  vendorThresholdCache = { value: map, expiresAt: Date.now() + 5 * 60_000 };
+  return map;
+}
 
 export interface ResolvedRate {
   rate: number;
@@ -28,8 +87,19 @@ interface Row {
 export async function resolveShipping(opts: {
   province?: string;
   subtotal: number;
+  /** Cart lines; enables the vendor free-shipping rule (NB Sons ≥ Rs 1,999). */
+  items?: ShippingItem[];
 }): Promise<ResolvedRate> {
-  const { province, subtotal } = opts;
+  const { province, subtotal, items } = opts;
+
+  // Vendor rule first: it's independent of zones and the master free-shipping
+  // switch (it exists to match the vendor's own store, not as a promotion).
+  if (items && items.length > 0) {
+    const thresholds = await getVendorThresholds();
+    if (vendorFreeShippingEligible(items, thresholds)) {
+      return { rate: 0, free: true, label: 'Standard' };
+    }
+  }
 
   // Owner config: default threshold/rate + the master free-shipping switch.
   // When free shipping is switched off, no order ever qualifies, even if a

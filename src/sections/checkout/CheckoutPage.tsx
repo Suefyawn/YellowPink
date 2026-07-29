@@ -283,12 +283,20 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       if (subtotal === 0) return;
       setShippingLoading(true);
       // Free shipping is earned on the merchandise subtotal (pre-discount), so
-      // a coupon never removes a free-shipping promise already shown. The
-      // server trusts this shipping figure, so charged matches displayed.
-      const res = await calculateShipping({ province: formData.province || undefined, subtotal });
+      // a coupon never removes a free-shipping promise already shown. Items go
+      // along for the vendor rule (NB Sons ≥ Rs 1,999 ships free); place_order
+      // re-validates the final figure server-side at submit.
+      const res = await calculateShipping({
+        province: formData.province || undefined,
+        subtotal,
+        items: cartItems.map(i => ({ vendor_id: i.vendor_id ?? null, price: i.price, qty: i.qty })),
+      });
       if (!cancelled) { setShippingInfo(res); setShippingLoading(false); }
     })();
     return () => { cancelled = true; };
+    // cartItems is intentionally keyed by subtotal: any change that affects the
+    // vendor rule also changes the subtotal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subtotal, formData.province]);
 
   // Capture abandoned-cart snapshot when the user supplies a phone OR an
