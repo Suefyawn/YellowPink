@@ -180,6 +180,45 @@ export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
   revalidatePath(`/admin/orders/${orderId}`);
 }
 
+/** Set one product's vendor price (products.vendor_cost) from the vendor
+ *  detail page — the per-product override the cost engine prefers over the
+ *  vendor's blanket commission %, for suppliers who quote different rates on
+ *  different products. Blank clears the override (falls back to commission).
+ *  Applies to FUTURE dispatches; existing orders keep their recorded costs
+ *  unless recalculated from the order page. */
+export async function setProductVendorCost(formData: FormData) {
+  const session = await assertPermission('vendors');
+  const productId = formData.get('product_id') as string;
+  if (!productId) return;
+  const base = vendorPath(formData.get('return_to'));
+  const raw = (formData.get('vendor_cost') as string | null)?.trim();
+  const n = Number(raw);
+  const vendor_cost = raw && Number.isFinite(n) && n >= 0 ? round2num(n) : null;
+  const { data: prod, error } = await supabaseAdmin()
+    .from('products')
+    .update({ vendor_cost })
+    .eq('id', productId)
+    .select('name')
+    .maybeSingle();
+  if (error || !prod) {
+    log.error('vendor.product_cost_update_failed', { productId, error: error?.message });
+    bounceVendors(`Could not save vendor price: ${error?.message ?? 'product not found'}`, base);
+  }
+  void logAudit(session, {
+    action: 'product.vendor_cost_set', entity: 'products', entity_id: productId,
+    diff: { vendor_cost },
+  });
+  revalidatePath('/admin/vendors');
+  vendorsSaved(
+    vendor_cost == null
+      ? `Cleared vendor price on ${prod.name} — commission rate applies.`
+      : `Vendor price for ${prod.name} saved.`,
+    base,
+  );
+}
+
+const round2num = (n: number) => Math.round(n * 100) / 100;
+
 /** CSV of one vendor's trading record (orders + payout state), honouring the
  *  detail page's date window so what downloads is exactly what's on screen.
  *  Built server-side for the same reason as exportOrdersCsv: anon RLS can't

@@ -7,7 +7,7 @@ import { AdminFlash } from '@/components/admin/AdminFlash';
 import { RangePicker } from '@/components/admin/insights/RangePicker';
 import { ExportVendorCsvButton } from '@/components/admin/ExportVendorCsvButton';
 import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge';
-import { updateVendor, markSettlementSettled, settleVendorPending } from '@/app/admin/vendor-actions';
+import { updateVendor, markSettlementSettled, settleVendorPending, setProductVendorCost } from '@/app/admin/vendor-actions';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { fmtDatePK } from '@/lib/dates';
 import type { Vendor, VendorSettlement, OrderStatus } from '@/types';
@@ -72,11 +72,11 @@ export default async function VendorDetailPage({
     // Pending payouts are shown regardless of the date window: an old unpaid
     // balance is exactly the thing a window must never hide.
     admin.from('vendor_settlements').select('*').eq('vendor_id', id).eq('status', 'pending').order('created_at', { ascending: true }),
-    admin.from('products').select('id, name, brand, price, status').eq('vendor_id', id).order('name'),
+    admin.from('products').select('id, name, brand, price, status, vendor_cost, cost_price').eq('vendor_id', id).order('name'),
   ]);
   const settleByOrder = new Map(((settleRows ?? []) as VendorSettlement[]).map(s => [s.order_id, s]));
   const pendingAll = (pendingRows ?? []) as VendorSettlement[];
-  const products = (productRows ?? []) as { id: string; name: string; brand: string | null; price: number | null; status: string | null }[];
+  const products = (productRows ?? []) as { id: string; name: string; brand: string | null; price: number | null; status: string | null; vendor_cost: number | null; cost_price: number | null }[];
   const pendingOrderNumbers = new Map<string, string>();
   if (pendingAll.length) {
     const { data: pendingOrders } = await admin.from('orders').select('id, order_number').in('id', pendingAll.map(s => s.order_id));
@@ -285,26 +285,86 @@ export default async function VendorDetailPage({
         </form>
       </div>
 
-      {/* ── Products sourced from this vendor ────────────────────────────── */}
-      <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginTop: 24, marginBottom: 32 }}>
-        <h2 style={{ margin: '0 0 12px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
-          Products from this vendor · {products.length}
+      {/* ── Products & per-product vendor pricing ────────────────────────── */}
+      {/* The cost engine prices a dispatched item as: per-product vendor
+          price (below) → the vendor's blanket commission % → the product's
+          own cost price. This table is where a supplier's per-product quotes
+          get recorded, so acquisition costs land right automatically. */}
+      <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginTop: 24, marginBottom: 32, overflowX: 'auto' }}>
+        <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
+          Products &amp; vendor pricing · {products.length}
         </h2>
+        <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Set what this vendor charges you per product when their quote differs from the blanket commission
+          {vendor.commission_pct != null ? ` (${vendor.commission_pct}% kept)` : ''}. Blank = commission rate applies. Changes price future dispatches; use &ldquo;Recalculate from vendor rate&rdquo; on an order to reprice it.
+        </p>
         {products.length === 0 ? (
           <p style={{ margin: 0, color: '#9ca3af', fontSize: '0.8125rem' }}>
             No products are assigned to this vendor yet. Set the vendor on a product&apos;s admin page and its dispatches will settle here automatically.
           </p>
         ) : (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {products.map(p => (
-              <Link key={p.id} href={`/admin/products/${p.id}`} style={{
-                padding: '6px 12px', borderRadius: 16, border: '1px solid #e5e7eb', background: p.status === 'published' ? 'white' : '#f9fafb',
-                fontSize: '0.75rem', fontWeight: 600, color: p.status === 'published' ? '#111827' : '#9ca3af', textDecoration: 'none',
-              }}>
-                {p.name}{p.price != null ? ` · ${fmt(Number(p.price))}` : ''}
-              </Link>
-            ))}
-          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                {['Product', 'Retail price', 'Vendor price', 'Your margin', ''].map((h, i) => (
+                  <th key={h || 'action'} scope="col" style={{ textAlign: i === 0 ? 'left' : 'right', padding: '8px 10px', color: '#6b7280', fontWeight: 600, fontSize: '0.75rem', whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {products.map(p => {
+                const retail = Number(p.price) || 0;
+                // Mirror the cost engine's precedence so the margin shown is
+                // the margin a dispatch would actually record.
+                const commissionCost = vendor.commission_pct != null ? retail * (1 - Number(vendor.commission_pct) / 100) : null;
+                const effective = p.vendor_cost ?? commissionCost ?? p.cost_price;
+                const source = p.vendor_cost != null ? 'set price' : commissionCost != null ? 'commission' : p.cost_price != null ? 'cost price' : null;
+                return (
+                  <tr key={p.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <td style={{ padding: '9px 10px', fontSize: '0.8125rem' }}>
+                      <Link href={`/admin/products/${p.id}`} style={{ color: p.status === 'published' ? '#C5286A' : '#9ca3af', fontWeight: 600, textDecoration: 'none' }}>
+                        {p.name}
+                      </Link>
+                      {p.status !== 'published' && <span style={{ marginLeft: 6, fontSize: '0.6875rem', color: '#9ca3af' }}>({p.status})</span>}
+                    </td>
+                    <td style={{ padding: '9px 10px', textAlign: 'right', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{fmt(retail)}</td>
+                    <td style={{ padding: '9px 10px', textAlign: 'right' }}>
+                      <form action={setProductVendorCost} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <input type="hidden" name="product_id" value={p.id} />
+                        <input type="hidden" name="return_to" value={selfPath} />
+                        <input
+                          name="vendor_cost"
+                          type="number"
+                          min={0}
+                          step="0.01"
+                          defaultValue={p.vendor_cost ?? ''}
+                          placeholder={commissionCost != null ? String(Math.round(commissionCost)) : '—'}
+                          aria-label={`Vendor price for ${p.name}`}
+                          style={{ ...inp, width: 96, textAlign: 'right' }}
+                        />
+                        <button type="submit" style={{ padding: '6px 12px', borderRadius: 7, border: '1px solid #d1d5db', background: 'white', color: '#374151', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                          Save
+                        </button>
+                      </form>
+                    </td>
+                    <td style={{ padding: '9px 10px', textAlign: 'right', fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {effective != null && retail > 0 ? (
+                        <span style={{ color: retail - Number(effective) > 0 ? '#15803d' : '#dc2626', fontWeight: 700 }}>
+                          {fmt(retail - Number(effective))}
+                          <span style={{ color: '#9ca3af', fontWeight: 500 }}> · {Math.round(((retail - Number(effective)) / retail) * 100)}%</span>
+                        </span>
+                      ) : (
+                        <span style={{ color: '#9ca3af' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '9px 10px', textAlign: 'right', fontSize: '0.6875rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>
+                      {source ? `via ${source}` : 'no cost basis'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         )}
       </div>
     </div>
