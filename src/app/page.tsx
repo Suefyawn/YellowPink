@@ -57,10 +57,20 @@ import { ProductRail } from '@/sections/home/ProductRail';
 import { WellnessSection } from '@/sections/home/WellnessSection';
 import { KBeautySection } from '@/sections/home/KBeautySection';
 import { CategoryTiles } from '@/sections/home/CategoryTiles';
+import { BrandStrip } from '@/sections/home/BrandStrip';
 import { CollectionsSection } from '@/sections/home/CollectionsSection';
 import { RealResults } from '@/sections/home/RealResults';
 import { JournalSection } from '@/sections/home/JournalSection';
 import { QuizBand } from '@/sections/home/QuizBand';
+
+// Names must match products.brand / brands.name exactly (resolveBrandLogos
+// matches on name). Ordered by Pakistani search volume so the tiles mirror
+// what shoppers actually look for; the /brand pages for the top three rank
+// on page 2-3 and sitewide links are what push archives like these to page 1.
+const POPULAR_BRANDS = [
+  'Saeed Ghani', 'Rivaj UK', 'Conatural', 'Christine',
+  'CeraVe', 'Beauty of Joseon', 'SHEGLAM', 'Nutrifactor',
+];
 
 export default async function HomePage() {
   // Pull each rail in parallel. The new helpers all fall back to a stock-
@@ -68,7 +78,7 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections, socialProof, newArrivals] = await Promise.all([
+  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections, socialProof, newArrivals, popularBrands] = await Promise.all([
     getFeatured(12),
     getTopSellers(8),
     getTrending(12),
@@ -80,6 +90,10 @@ export default async function HomePage() {
     getPublishedCollectionsWithCovers(3),
     getHomeSocialProof(),
     getNewArrivals(16),
+    // Shop-by-brand tiles: the brands Pakistanis search for by name (Semrush:
+    // "saeed ghani products" 22k/mo, "rivaj uk" 18k/mo, "conatural" 15k/mo …)
+    // plus the store's strongest international lines. Order = search volume.
+    resolveBrandLogos(POPULAR_BRANDS),
   ]);
 
   // Keep the two rails distinct: a product that's a top seller shouldn't also
@@ -213,6 +227,7 @@ export default async function HomePage() {
       <EditorialDuo />
       <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
       <CategoryTiles groups={categoryGroups} />
+      <BrandStrip brands={popularBrands} />
       {/* Crawlable link to EVERY leaf category. The 8 image tiles above cover
           the popular ones; this row completes the set (audit: only 12 of 21
           category landings had any homepage link, and the homepage carried

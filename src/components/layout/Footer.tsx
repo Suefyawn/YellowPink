@@ -82,6 +82,21 @@ const SHOP_LINKS = [
   { label: 'All Products', href: '/shop' },
 ];
 
+// Sitewide links to the brand archives shoppers search for by name (Semrush:
+// saeed ghani / rivaj uk / conatural are among the store's highest-volume
+// ranking keywords). Before this, each /brand page had a single internal
+// link, from /brands only.
+const BRAND_LINKS = [
+  { label: 'Saeed Ghani',      href: '/brand/saeed-ghani' },
+  { label: 'Rivaj UK',         href: '/brand/rivaj-uk' },
+  { label: 'Conatural',        href: '/brand/conatural' },
+  { label: 'Christine',        href: '/brand/christine' },
+  { label: 'CeraVe',           href: '/brand/cerave' },
+  { label: 'Beauty of Joseon', href: '/brand/beauty-of-joseon' },
+  { label: 'SHEGLAM',          href: '/brand/sheglam' },
+  { label: 'Nutrifactor',      href: '/brand/nutrifactor' },
+];
+
 const COMPANY_LINKS = [
   { label: 'About Us',           href: '/page/about' },
   { label: 'Blog',               href: '/blog' },
@@ -247,6 +262,10 @@ export function Footer({ socials = [], collections = [] }: FooterProps) {
 
           <FooterNavColumn label="Shop">
             {SHOP_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
+          </FooterNavColumn>
+
+          <FooterNavColumn label="Popular brands">
+            {BRAND_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
           </FooterNavColumn>
 
           {collections.length > 0 && (
