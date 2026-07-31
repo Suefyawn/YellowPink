@@ -8,7 +8,9 @@ import { ORDER_STATUS_LABELS } from '@/types';
 import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
 import { brandPlusName } from '@/lib/product-display';
 import { courierTrackingUrl } from '@/lib/couriers/profiles';
-import type { Order, OrderStatus } from '@/types';
+import { BankAccountsList } from '@/components/checkout/BankAccountsList';
+import { parseBankAccounts } from '@/lib/bank-accounts';
+import type { BankAccount, Order, OrderStatus } from '@/types';
 
 const fmt = (n: number) => `PKR ${n.toLocaleString()}`;
 
@@ -57,6 +59,20 @@ function TrackForm() {
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Bank accounts for unpaid bank-transfer orders, fetched from the
+  // public-readable site_settings only when actually needed.
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [bankNotes, setBankNotes] = useState('');
+  useEffect(() => {
+    if (!order || order.status !== 'payment_pending' || order.pay_method !== 'bank') return;
+    const sb = getBrowserClient();
+    sb.from('site_settings').select('key, value').in('key', ['pay_bank_accounts', 'pay_bank_instructions'])
+      .then(({ data }) => {
+        const map = new Map(((data ?? []) as { key: string; value: string }[]).map(r => [r.key, r.value]));
+        setBankAccounts(parseBankAccounts(map.get('pay_bank_accounts')));
+        setBankNotes(map.get('pay_bank_instructions') ?? '');
+      });
+  }, [order]);
 
   // If both came in via the URL, auto-submit so the customer hits the page and
   // sees their status without an extra click. The form remains visible, we
@@ -237,6 +253,15 @@ function TrackForm() {
                   events={{ pending: order.created_at ?? undefined }}
                 />
               </div>
+
+              {/* Unpaid bank-transfer order: re-show the store's accounts.
+                  The thank-you page shows them once; a customer coming back
+                  via this page had no way to find where to send the money. */}
+              {status === 'payment_pending' && order.pay_method === 'bank' && bankAccounts.length > 0 && (
+                <div style={{ marginBottom: 24 }}>
+                  <BankAccountsList accounts={bankAccounts} notes={bankNotes} reference={order.order_number} />
+                </div>
+              )}
 
               {order.tracking_number && (
                 <div style={{ padding: '14px 18px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, marginBottom: 24, fontSize: '0.9375rem' }}>

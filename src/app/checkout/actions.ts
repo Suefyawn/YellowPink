@@ -8,7 +8,8 @@ import {
 } from '@/lib/email';
 import { checkoutLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { resolveShipping } from '@/lib/shipping';
-import { supabase } from '@/lib/supabase';
+import { supabase, getSiteSettings } from '@/lib/supabase';
+import { parseBankAccounts } from '@/lib/bank-accounts';
 import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
 import { SITE_URL } from '@/lib/seo';
 
@@ -43,6 +44,18 @@ export async function notifyNewOrder(order: {
   // it?); it's fire-and-forget here, so the widened element type is fine.
   const sends: Promise<void | boolean>[] = [sendNewOrderEmail(order)];
   if (order.email) {
+    // Bank-transfer orders carry the store's accounts in the email itself:
+    // the thank-you page shows them once, but a closed tab used to mean the
+    // customer had no record of where to send the money.
+    let bankAccounts: import('@/types').BankAccount[] | undefined;
+    let bankNotes: string | undefined;
+    if (order.pay_method === 'bank') {
+      try {
+        const settings = await getSiteSettings();
+        bankAccounts = parseBankAccounts(settings.pay_bank_accounts);
+        bankNotes = settings.pay_bank_instructions ?? undefined;
+      } catch { /* email still goes out without the block */ }
+    }
     sends.push(
       sendOrderConfirmationEmail({
         email: order.email,
@@ -55,6 +68,8 @@ export async function notifyNewOrder(order: {
         total: order.total,
         items: order.items,
         pay_method: order.pay_method,
+        bankAccounts,
+        bankNotes,
       })
     );
   }
