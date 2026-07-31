@@ -30,23 +30,30 @@ export function BlogStickyBuyBar({ product }: { product: Product }) {
 
   // Same reveal rule as the PDP sticky bar: appear once the in-body buy
   // module has scrolled off the TOP of the viewport (the reader is past it),
-  // never while it's still ahead of them. Falls back to a scroll-depth
-  // threshold if the module isn't on the page.
+  // never while it's still ahead of them. Checked on scroll rather than via
+  // IntersectionObserver: an IO callback only fires when the module crosses
+  // the viewport in some rendered frame, so an instant jump (a table-of-
+  // contents anchor link, a restored scroll position) skipped straight past
+  // it and the bar never revealed. Falls back to a scroll-depth threshold if
+  // the module isn't on the page. rAF-throttled; a blog page has little else
+  // contending for frame time.
   useEffect(() => {
     if (!buyable) return;
-    const nudge = document.querySelector('.blog-product-nudge');
-    if (nudge && typeof IntersectionObserver !== 'undefined') {
-      const io = new IntersectionObserver(
-        ([entry]) => setShow(!entry.isIntersecting && entry.boundingClientRect.top < 0),
-        { threshold: 0 },
-      );
-      io.observe(nudge);
-      return () => io.disconnect();
-    }
-    const onScroll = () => setShow(window.scrollY > 900);
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      const nudge = document.querySelector('.blog-product-nudge');
+      setShow(nudge ? nudge.getBoundingClientRect().bottom < 0 : window.scrollY > 900);
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(check); };
     window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener('resize', onScroll, { passive: true });
+    check();
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
   }, [buyable]);
 
   const visible = show && !dismissed;

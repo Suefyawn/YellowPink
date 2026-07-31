@@ -328,7 +328,16 @@ export default async function OrderDetailPage({
       : 'Entered manually.';
   const ordDelivery = Number(o.delivery_cost ?? 0);
   const ordFee = Number(o.payment_fee ?? 0);
-  const ordRevenue = Number(o.total ?? 0);
+  // Revenue is what was actually COLLECTED, which for a cancelled / returned /
+  // refunded / failed order is nothing — the COD parcel came back or the money
+  // went back. The card previously used o.total regardless of status, so a
+  // returned order with recorded costs still showed a healthy "profit"; the
+  // honest picture is a loss equal to the sunk costs. Mirrors DEAD_STATES in
+  // lib/finance.ts (where these orders earn no revenue in the P&L and their
+  // delivery cost is counted as a sunk return cost).
+  const NO_REVENUE_STATUSES = new Set(['cancelled', 'payment_failed', 'payment_pending', 'refunded', 'returned']);
+  const revenueCollected = !NO_REVENUE_STATUSES.has(o.status ?? '');
+  const ordRevenue = revenueCollected ? Number(o.total ?? 0) : 0;
   const ordNet = ordRevenue - ordCogs - ordDelivery - ordFee;
   const ordMargin = ordRevenue > 0 ? (ordNet / ordRevenue) * 100 : 0;
   // Configured bank/wallet accounts (Settings → Payments) for the payment
@@ -363,11 +372,11 @@ export default async function OrderDetailPage({
   const shippingMargin = deliveryEffective != null ? shippingCharged - deliveryEffective : null;
 
   const profitLines: { label: string; value: number; kind?: 'net' }[] = [
-    { label: 'Gross amount', value: ordRevenue },
+    { label: revenueCollected ? 'Gross amount' : 'Amount collected', value: ordRevenue },
     { label: 'Cost of goods (COGS)', value: -ordCogs },
     { label: 'Delivery cost', value: -ordDelivery },
     { label: 'Payment fee', value: -ordFee },
-    { label: 'Net profit', value: ordNet, kind: 'net' },
+    { label: revenueCollected ? 'Net profit' : 'Net loss', value: ordNet, kind: 'net' },
   ];
 
   return (
@@ -1022,6 +1031,11 @@ export default async function OrderDetailPage({
         <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
           Based on the costs recorded for this order (vendor settlement, delivery, payment fee). Shared overheads like ads and salaries are accounted for in the Finance profit &amp; loss.
         </p>
+        {!revenueCollected && (
+          <p style={{ margin: '0 0 14px', padding: '8px 12px', borderRadius: 8, fontSize: '0.8125rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>
+            No revenue was collected on this {ORDER_STATUS_LABELS[o.status as OrderStatus]?.toLowerCase() ?? o.status} order, so the recorded costs are a sunk loss. If the goods went back into sellable stock or the vendor credited the return, reduce the COGS/acquisition cost above accordingly.
+          </p>
+        )}
         <table style={{ width: '100%', maxWidth: 360, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
           <tbody>
             {profitLines.map((l, i) => (
@@ -1034,7 +1048,7 @@ export default async function OrderDetailPage({
             ))}
             <tr>
               <td style={{ padding: '7px 0', color: '#6b7280' }}>Margin</td>
-              <td style={{ padding: '7px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{ordMargin.toFixed(1)}%</td>
+              <td style={{ padding: '7px 0', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{revenueCollected ? `${ordMargin.toFixed(1)}%` : '—'}</td>
             </tr>
           </tbody>
         </table>
