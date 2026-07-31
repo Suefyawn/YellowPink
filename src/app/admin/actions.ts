@@ -546,22 +546,74 @@ async function restockCancelledOrder(
   admin: ReturnType<typeof supabaseAdmin>,
   session: StaffSession,
   order: { id: string; order_number?: string | null; items?: unknown },
+  reason: 'cancellation' | 'return' = 'cancellation',
 ): Promise<void> {
   const items = (order.items ?? []) as Array<{ id: string; qty: number; variant_id?: string | null }>;
+  const label = reason === 'return' ? 'courier return' : 'order cancellation';
   for (const it of items) {
     if (!it?.id || !it.qty || it.qty <= 0) continue;
     await admin.rpc('record_stock_change' as never, {
       p_product_id:  it.id,
       p_variant_id:  it.variant_id ?? null,
       p_qty_delta:   it.qty,
-      p_reason:      'cancellation',
+      p_reason:      reason,
       p_order_id:    order.id,
       p_return_id:   null,
       p_actor_kind:  session.isOwner ? 'owner' : 'staff',
       p_actor_email: session.email ?? null,
-      p_note:        `Restock from order cancellation ${order.order_number ?? order.id.slice(0, 8)}`,
+      p_note:        `Restock from ${label} ${order.order_number ?? order.id.slice(0, 8)}`,
     } as never);
   }
+}
+
+/** Courier-return transition: encode who actually holds the goods and money.
+ *
+ *  Self-stocked vendor (settlement_direction 'vendor_collects', e.g. Nazirs):
+ *  they shipped their own goods and the refused parcel went back to THEIR
+ *  shelf — the store never touched cash or product. Any pending payout is
+ *  voided (nobody owes anybody) and an auto-recorded acquisition cost is
+ *  cleared (nothing was acquired). Manual costs are never touched.
+ *
+ *  we_collect vendor: the store bought the goods and shipped them itself.
+ *  The payable to the vendor stands — the debt is real — but the margin was
+ *  never earned (zeroed), and the parcel lands back in the store's stock, so
+ *  tracked items restock. Not a P&L loss: the goods keep their value as
+ *  inventory; only the courier round trip is sunk (Finance already shows it).
+ *
+ *  Own-stock orders (no vendor): restock, same as we_collect.
+ *
+ *  Same asymmetry as cancellation restock: moving an order OUT of returned
+ *  doesn't reverse any of this — fix stock/payouts by hand for a mis-click. */
+async function applyReturnFinancials(
+  admin: ReturnType<typeof supabaseAdmin>,
+  session: StaffSession,
+  order: { id: string; order_number?: string | null; items?: unknown; vendor_id?: string | null; acquisition_cost_source?: string | null },
+): Promise<void> {
+  if (order.vendor_id) {
+    const { data: vendor } = await admin
+      .from('vendors').select('settlement_direction').eq('id', order.vendor_id).maybeSingle();
+    if (vendor?.settlement_direction === 'vendor_collects') {
+      const { data: voided } = await admin
+        .from('vendor_settlements').delete()
+        .eq('order_id', order.id).eq('status', 'pending')
+        .select('id');
+      if (order.acquisition_cost_source === 'auto') {
+        await admin.from('orders')
+          .update({ acquisition_cost: null, acquisition_cost_source: null })
+          .eq('id', order.id);
+      }
+      void logAudit(session, {
+        action: 'order.return_voided_payout', entity: 'orders', entity_id: order.id,
+        diff: { order_number: order.order_number, voided_payouts: voided?.length ?? 0 },
+      });
+      return; // goods never left the vendor — nothing to restock
+    }
+    // we_collect: keep the payable, zero the unearned margin.
+    await admin.from('vendor_settlements')
+      .update({ our_margin: 0 })
+      .eq('order_id', order.id).eq('status', 'pending');
+  }
+  await restockCancelledOrder(admin, session, order, 'return');
 }
 
 /** Server-side CSV export for the Orders list. The browser's anon-key client
@@ -686,11 +738,12 @@ export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus):
   // signed-in operator.
   const { data: beforeRows } = await admin
     .from('orders')
-    .select('id, status, order_number, items, email, first_name, tracking_number, courier')
+    .select('id, status, order_number, items, email, first_name, tracking_number, courier, vendor_id, acquisition_cost_source')
     .in('id', ids);
   const before = (beforeRows ?? []) as Array<{
     id: string; status: OrderStatus | null; order_number: string | null; items: unknown;
     email: string | null; first_name: string | null; tracking_number: string | null; courier: string | null;
+    vendor_id: string | null; acquisition_cost_source: string | null;
   }>;
 
   const { error, count } = await admin
@@ -711,6 +764,17 @@ export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus):
       await restockCancelledOrder(admin, session, o);
     }
     if (toRestock.length > 0) revalidatePath('/admin/inventory');
+  }
+
+  // Courier returns, same per-vendor semantics as the single-order path.
+  if (status === 'returned') {
+    for (const o of changed) {
+      await applyReturnFinancials(admin, session, o);
+    }
+    if (changed.length > 0) {
+      revalidatePath('/admin/inventory');
+      revalidatePath('/admin/vendors');
+    }
   }
 
   // Customer transition emails, same shipped/delivered/cancelled notifications
@@ -748,7 +812,7 @@ export async function updateOrderStatus(
   const admin = supabaseAdmin();
   const { data: before } = await admin
     .from('orders')
-    .select('status, email, first_name, order_number, items, tracking_number, courier')
+    .select('status, email, first_name, order_number, items, tracking_number, courier, vendor_id, acquisition_cost_source')
     .eq('id', id)
     .single();
 
@@ -775,6 +839,17 @@ export async function updateOrderStatus(
   if (before && before.status !== 'cancelled' && status === 'cancelled') {
     await restockCancelledOrder(admin, session, { id, order_number: before.order_number, items: before.items });
     revalidatePath('/admin/inventory');
+  }
+
+  // Courier-return transition: void/keep the vendor payout and restock
+  // according to who actually held the goods (see applyReturnFinancials).
+  if (before && before.status !== 'returned' && status === 'returned') {
+    await applyReturnFinancials(admin, session, {
+      id, order_number: before.order_number, items: before.items,
+      vendor_id: before.vendor_id, acquisition_cost_source: before.acquisition_cost_source,
+    });
+    revalidatePath('/admin/inventory');
+    revalidatePath('/admin/vendors');
   }
 
   // Fire-and-forget transition emails. The status trigger logs the change to
