@@ -10,12 +10,13 @@ import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBo
 import { brandPlusName } from '@/lib/product-display';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
+import { vendorFreeShippingEligible } from '@/lib/vendor-shipping';
 import { FreeShippingProgress } from '@/components/cart/FreeShippingProgress';
 import type { Product } from '@/types';
 
 export function MiniCart({ crossSell = [] }: { crossSell?: Product[] }) {
   const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty, addToCart } = useCart();
-  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate } = useCommerceSettings();
+  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate, vendorFreeShipThresholds } = useCommerceSettings();
   const router = useRouter();
   const pathname = usePathname();
   useBodyScrollLock(cartOpen);
@@ -26,8 +27,11 @@ export function MiniCart({ crossSell = [] }: { crossSell?: Product[] }) {
   const [crossSellAdded, setCrossSellAdded] = useState(false);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
   // Standard-zone free-delivery check; mirrors FreeShippingProgress (which
-  // spells out the zone caveat right above these items).
-  const deliveryFree = freeShippingEnabled && freeShippingThreshold > 0 && total >= freeShippingThreshold;
+  // spells out the zone caveat right above these items). The vendor rule
+  // (NB Sons ≥ Rs 1,999) unlocks free delivery nationwide on its own.
+  const deliveryFree =
+    (freeShippingEnabled && freeShippingThreshold > 0 && total >= freeShippingThreshold) ||
+    vendorFreeShippingEligible(cartItems, vendorFreeShipThresholds);
   // One tappable cross-sell: first bestseller that isn't already in the bag
   // and is one-tap addable (simple product, purchasable). Replaces the old
   // static "Add a Free Sample" box, which promised something and offered no
@@ -95,9 +99,11 @@ export function MiniCart({ crossSell = [] }: { crossSell?: Product[] }) {
           >×</button>
         </div>
 
-        {freeShippingEnabled && cartItems.length > 0 && (
+        {/* The vendor rule applies even with the master switch off, so gate on
+            either; the bar itself returns null when neither rule is in play. */}
+        {(freeShippingEnabled || deliveryFree) && cartItems.length > 0 && (
         <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)' }}>
-          <FreeShippingProgress subtotal={cartItems.reduce((s, i) => s + i.price * i.qty, 0)} />
+          <FreeShippingProgress subtotal={cartItems.reduce((s, i) => s + i.price * i.qty, 0)} items={cartItems} />
         </div>
         )}
 

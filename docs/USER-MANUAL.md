@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 29 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 31 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -484,6 +484,8 @@ The lifecycle:
 Your suppliers/fulfilment partners. Add vendors with their **commission %** (the share of the sale price *you* keep) and settlement direction (who collects the customer's payment). The commission **applies automatically the moment you select the vendor on an order** (see [section 4, step 2](#4-processing-a-sale--the-order-workflow)): it computes the vendor cost and your margin, records the settlement, and auto-fills the order's acquisition cost with the same figure — no WhatsApp message required. A product can also name this vendor as its **default supplier** (product page → *Vendor & sourcing*), which groups Inventory reorder suggestions by vendor and makes order pages suggest them one-click.
 
 The page opens with three headline cards — **Owed to you** (pending margin vendors are holding), **You owe** (vendor costs to pay out), and **Margin earned** across all payouts — and each vendor row shows their outstanding balance with a one-click **Settle all** (one bank transfer usually clears the whole balance; individual payouts can still be settled or reopened in the **Payouts** table below, which now shows each payout's date). Vendor phone numbers are one-tap **WhatsApp** links. If an order ever ends up assigned to a vendor without a payout recorded, an amber warning appears at the top naming the orders and how to rebuild them — in a healthy system you'll never see it.
+
+**Customer free-delivery rule (per vendor).** Each vendor's Settlement terms editor (and the Add Vendor form) has a **"free ship ≥" / "Customer free delivery from (PKR)"** field. Set an amount and any basket whose items *from that vendor* total at least that much ships **free nationwide**, overriding the zone thresholds — this is how the NB Sons "free from Rs 1,999" match of their own store works, and you can now give any vendor its own threshold (or change NB Sons') without a developer. Leave it blank for no rule. The promise flows everywhere automatically: the product page's delivery line, the cart and mini-cart progress bar, checkout's quote, and the order pipeline's enforcement. Settings → Shipping lists all active vendor rules read-only so the whole delivery-pricing picture is on one screen.
 
 ### Customers in detail
 
@@ -1004,6 +1006,12 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 31 July 2026
+
+- **Vendor free-delivery thresholds are now yours to manage in admin.** The "free delivery from Rs X" rule that used to be a database-only setting for NB Sons is now an editable field on every vendor: **Vendors → Settlement terms → "free ship ≥"** (also on the Add Vendor form), and **Settings → Shipping** shows all active vendor rules in one read-only list. Change a threshold and the product-page promise, cart progress bar, checkout quote and server-side enforcement all follow immediately — no developer needed.
+- **Blog guides now sell the product they review.** The small product card inside blog posts grew into a proper buy module: the guide's main product gets a bigger image, its star rating, a one-line description, price, and an Add to Cart button; other mentioned products keep compact rows. On phones, a slim bar with the product pins to the bottom of the screen once the reader scrolls past the module, so a convinced reader can add to cart from anywhere in a long article (dismissible with the ×). Rolled out because analytics showed blog posts are the store's biggest traffic source but almost all readers were leaving without touching a product.
+- **The NB Sons free-delivery promise is now kept everywhere — a gap let one order be overcharged.** Order YP-ET8YOUQ76 (Rs 3,500 of NB Sons product, well over the Rs 1,999 threshold) was billed Rs 250 delivery: products added to the bag from a shop/collection grid tile (rather than the product page) were missing the supplier link the rule keys on, so checkout quoted the normal rate — and the order pipeline only blocked *under*charges, letting the overcharge through. Three layers are fixed: grid-tile adds now carry the supplier link; checkout re-checks every bag against the live product catalogue (so bags saved in a customer's browser before today also qualify); and the order pipeline itself now charges Rs 0 whenever the store's own rules say delivery is free, even if a stale page quotes otherwise. The cart and mini-cart also now show "You've unlocked FREE delivery" (and a Rs 0 delivery estimate) when the NB Sons rule qualifies, instead of asking the shopper to add more. *One follow-up for you: YP-ET8YOUQ76 is still in Processing with the extra Rs 250 in its COD total — either edit the order's delivery charge to 0 in admin before booking the courier, or refund/discount the Rs 250 after delivery, and mention it to the customer.*
 
 ### 28 July 2026
 

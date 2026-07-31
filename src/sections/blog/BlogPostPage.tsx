@@ -6,6 +6,7 @@ import { sanitizeHtml } from '@/lib/sanitize';
 import { linkProductMentions } from '@/lib/link-product-mentions';
 import { extractBlogFaq } from '@/lib/blog-faq';
 import { BlogProductNudge } from '@/components/blog/BlogProductNudge';
+import { BlogStickyBuyBar } from '@/components/blog/BlogStickyBuyBar';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
@@ -322,6 +323,13 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProdu
               </div>
             </div>
           </section>
+        )}
+
+        {/* Mobile sticky buy bar for the guide's own product. Only when the
+            picks were genuinely linked/named in the post — pinning a generic
+            fallback pick to the viewport would oversell it. */}
+        {relatedProductsMentioned && relatedProducts.length > 0 && showNudge && (
+          <BlogStickyBuyBar product={relatedProducts[0]} />
         )}
 
         {relatedPosts.length > 0 && (

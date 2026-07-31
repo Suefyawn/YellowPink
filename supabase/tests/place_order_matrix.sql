@@ -232,6 +232,27 @@ begin
     yp_tests.payload('{"items": [{"id": "00000000-0000-0000-0000-00000000000e", "qty": 1}], "subtotal": 1000, "shipping": 0, "total": 1000}'),
     'shipping mismatch');
 
+  -- 14c. Overcharge clamp (migration 780): the basket qualifies for vendor
+  --      free shipping but the client (stale bundle / vendor-less cart line)
+  --      quotes the paid rate anyway. The order is ACCEPTED — the client's
+  --      arithmetic is coherent — but stored with shipping 0 and the total
+  --      reduced to match; the customer is charged what the store promised.
+  --      This is the exact shape of live order YP-ET8YOUQ76 (Rs 250 delivery
+  --      billed on Rs 3,500 of NB Sons product).
+  o := yp_tests.expect_ok('vendor free shipping overcharge clamped',
+    yp_tests.payload('{"items": [{"id": "00000000-0000-0000-0000-00000000000e", "qty": 2}], "subtotal": 2000, "shipping": 250, "total": 2250}'));
+  perform yp_tests.assert('vendor free shipping overcharge clamped',
+    o.shipping = 0 and o.total = 2000,
+    'expected clamp to shipping 0/total 2000, got ' || o.shipping || '/' || o.total);
+
+  -- 14d. Overcharge clamp also covers the zone threshold: 6 × A = 6000 ≥ 5000
+  --      with the client still quoting 200 → stored free.
+  o := yp_tests.expect_ok('zone free shipping overcharge clamped',
+    yp_tests.payload('{"items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 6}], "subtotal": 6000, "shipping": 200, "total": 6200}'));
+  perform yp_tests.assert('zone free shipping overcharge clamped',
+    o.shipping = 0 and o.total = 6000,
+    'expected clamp to shipping 0/total 6000, got ' || o.shipping || '/' || o.total);
+
   -- 15. Client subtotal that disagrees with server-recomputed prices.
   perform yp_tests.expect_reject('subtotal mismatch',
     yp_tests.payload('{"subtotal": 1500, "total": 1700}'),

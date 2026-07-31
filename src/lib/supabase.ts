@@ -85,8 +85,14 @@ async function safe<T>(
 // cross-sell row route/skip variable products, but without the column every
 // product read as simple and a shade product could be one-tap added with no
 // variant on the line.
+// `vendor_id` matters on tiles too: cart lines are built by spreading the
+// product object, and the vendor free-shipping rule (NB Sons ≥ Rs 1,999,
+// migration 770) keys off cartItem.vendor_id. Without the column, a tile
+// quick-add produced a vendor-less cart line and a qualifying basket was
+// quoted the full delivery rate at checkout (a real Jul 31 order paid Rs 250
+// it shouldn't have).
 const PRODUCT_TILE_COLUMNS =
-  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, image_url, is_bestseller, is_featured, is_popular, packaging, status, created_at, rating, review_count, kind';
+  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, vendor_id, image_url, is_bestseller, is_featured, is_popular, packaging, status, created_at, rating, review_count, kind';
 
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;

@@ -9,49 +9,27 @@
 
 import { supabase, supabaseAdmin, getSiteSettings } from './supabase';
 import { parseCommerceConfig, formatPkr } from './commerce';
+import { vendorFreeShippingEligible, type ShippingItem } from './vendor-shipping';
 
-/** Minimal slice of a cart line the vendor free-shipping rule needs. */
-export interface ShippingItem {
-  vendor_id?: string | null;
-  price: number;
-  qty: number;
-}
-
-/**
- * Vendor-scoped free shipping (pure part, unit-tested): true when the sum of
- * line amounts for any single vendor reaches that vendor's threshold. Matches
- * the SQL enforcement in place_order (migration 770). The motivating case:
- * NB Sons free-ships above Rs 1,999 on their own store, so any NB Sons basket
- * of ours between Rs 2,000 and the zone threshold was cheaper at the source.
- */
-export function vendorFreeShippingEligible(
-  items: ShippingItem[],
-  thresholds: Map<string, number>,
-): boolean {
-  if (thresholds.size === 0) return false;
-  const sums = new Map<string, number>();
-  for (const it of items) {
-    if (!it.vendor_id || !thresholds.has(it.vendor_id)) continue;
-    sums.set(it.vendor_id, (sums.get(it.vendor_id) ?? 0) + it.price * it.qty);
-  }
-  for (const [vendorId, sum] of sums) {
-    const threshold = thresholds.get(vendorId);
-    if (threshold != null && sum >= threshold) return true;
-  }
-  return false;
-}
+// Pure eligibility rule lives in vendor-shipping.ts (client-safe); re-export
+// so existing server-side importers keep working.
+export { vendorFreeShippingEligible, type ShippingItem };
 
 // The vendors table is RLS-locked to staff, so the threshold lookup runs on
 // the admin client (this module is server-only). Thresholds change ~never;
 // cache per lambda for 5 minutes to keep the checkout quote to one extra
 // query per cold start instead of one per keystroke-triggered re-quote.
-let vendorThresholdCache: { value: Map<string, number>; expiresAt: number } | null = null;
+let vendorThresholdCache: { value: Record<string, number>; expiresAt: number } | null = null;
 
-async function getVendorThresholds(): Promise<Map<string, number>> {
+/** vendor_id → free-shipping threshold (PKR), for every vendor that has one.
+ *  Exported so the layout can seed CommerceSettings and client surfaces (cart
+ *  progress bar, checkout's optimistic estimate) can apply the same rule the
+ *  server enforces. */
+export async function getVendorFreeShipThresholds(): Promise<Record<string, number>> {
   if (vendorThresholdCache && vendorThresholdCache.expiresAt > Date.now()) {
     return vendorThresholdCache.value;
   }
-  const map = new Map<string, number>();
+  const map: Record<string, number> = {};
   try {
     const { data } = await supabaseAdmin()
       .from('vendors')
@@ -59,7 +37,7 @@ async function getVendorThresholds(): Promise<Map<string, number>> {
       .not('free_shipping_threshold', 'is', null);
     for (const row of data ?? []) {
       const t = Number(row.free_shipping_threshold);
-      if (Number.isFinite(t) && t > 0) map.set(row.id as string, t);
+      if (Number.isFinite(t) && t > 0) map[row.id as string] = t;
     }
   } catch {
     // Quote falls back to zone rules; place_order still applies the vendor
@@ -95,7 +73,7 @@ export async function resolveShipping(opts: {
   // Vendor rule first: it's independent of zones and the master free-shipping
   // switch (it exists to match the vendor's own store, not as a promotion).
   if (items && items.length > 0) {
-    const thresholds = await getVendorThresholds();
+    const thresholds = await getVendorFreeShipThresholds();
     if (vendorFreeShippingEligible(items, thresholds)) {
       return { rate: 0, free: true, label: 'Standard' };
     }

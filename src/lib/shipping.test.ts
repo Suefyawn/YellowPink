@@ -4,11 +4,11 @@
 // basket of ours between Rs 2,000 and the zone threshold was cheaper at the
 // source (a real July 29 order was cancelled over exactly this).
 import { describe, it, expect } from 'vitest';
-import { vendorFreeShippingEligible } from './shipping';
+import { vendorFreeShippingEligible } from './vendor-shipping';
 
 const NB = 'vendor-nb-sons';
 const OTHER = 'vendor-other';
-const thresholds = new Map([[NB, 1999]]);
+const thresholds = { [NB]: 1999 };
 
 describe('vendorFreeShippingEligible', () => {
   it('frees shipping when one vendor’s items alone reach its threshold', () => {
@@ -50,6 +50,6 @@ describe('vendorFreeShippingEligible', () => {
 
   it('handles vendor-less items and empty thresholds safely', () => {
     expect(vendorFreeShippingEligible([{ vendor_id: null, price: 9000, qty: 1 }], thresholds)).toBe(false);
-    expect(vendorFreeShippingEligible([{ vendor_id: NB, price: 9000, qty: 1 }], new Map())).toBe(false);
+    expect(vendorFreeShippingEligible([{ vendor_id: NB, price: 9000, qty: 1 }], {})).toBe(false);
   });
 });

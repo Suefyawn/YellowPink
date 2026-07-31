@@ -107,7 +107,13 @@ function ZoneFields({ zone, rate, provinces = [] }: { zone?: Zone; rate?: Rate |
 }
 
 export default async function SettingsShippingPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
-  const [s, sp, zones] = await Promise.all([getSiteSettings(), searchParams, loadZones()]);
+  const [s, sp, zones, vendorRulesRes] = await Promise.all([
+    getSiteSettings(), searchParams, loadZones(),
+    // Vendor free-delivery rules live on the vendor record (Vendors page);
+    // listed here read-only so the whole shipping picture is on one screen.
+    supabaseAdmin().from('vendors').select('id, name, free_shipping_threshold').not('free_shipping_threshold', 'is', null).order('name'),
+  ]);
+  const vendorRules = (vendorRulesRes.data ?? []) as { id: string; name: string; free_shipping_threshold: number }[];
   const g = (key: string, fallback = '') => s[key] ?? fallback;
 
   return (
@@ -156,6 +162,31 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
         </Card>
         <SaveBar />
       </form>
+
+      {/* ── Vendor free-delivery rules (read-only pointer) ──── */}
+      <div style={{ marginTop: 40 }}>
+        <Card>
+          <Section
+            title="Vendor free-delivery rules"
+            desc="Per-supplier promise that overrides zone thresholds: when a basket's items from one vendor reach that vendor's amount, the whole order ships free nationwide. Edit on the Vendors page (Settlement terms → free ship ≥); it applies to checkout, the cart bar and the product page automatically."
+          />
+          <Divider />
+          {vendorRules.length === 0 ? (
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
+              No vendor rules set. Add one from <a href="/admin/vendors" style={{ color: '#C5286A', fontWeight: 600 }}>Vendors</a> by setting a &ldquo;Customer free delivery from&rdquo; amount.
+            </p>
+          ) : (
+            <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {vendorRules.map(v => (
+                <li key={v.id} style={{ fontSize: '0.875rem', color: '#374151' }}>
+                  <strong>{v.name}</strong> — orders with their items totalling PKR {Number(v.free_shipping_threshold).toLocaleString()}+ ship free
+                  {' '}· <a href="/admin/vendors" style={{ color: '#C5286A', fontWeight: 600 }}>edit</a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
 
       {/* ── Zones ──────────────────────────────────────────── */}
       <div style={{ marginTop: 40 }}>

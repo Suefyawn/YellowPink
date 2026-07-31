@@ -4,7 +4,7 @@ export const revalidate = 3600; // writes bust explicitly; long window keeps pre
 
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getBlogPostBySlug, getBlogPosts, getProducts, getSiteSettings } from '@/lib/supabase';
+import { getBlogPostBySlug, getBlogPosts, getProducts, getSiteSettings, supabase, isDemo } from '@/lib/supabase';
 import { socialSameAs } from '@/lib/socials';
 import { authorForName } from '@/lib/authors';
 import { redirectIfMapped } from '@/lib/redirects';
@@ -133,6 +133,24 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   // presented as "Recommended in this guide" / "Mentioned in This Article";
   // the generic fallback pool is labelled "More from the shop".
   const { products: relatedProducts, mentionedInPost } = selectRelatedProducts(post, allProducts, fallbackPool, 3);
+
+  // The buy module's hero pick shows a one-line benefit, but the catalogue
+  // list (PRODUCT_TILE_COLUMNS) deliberately omits long-form fields — fetch
+  // short_description for just the picked products. Best-effort: on any
+  // failure the module simply renders without the line.
+  if (!isDemo && relatedProducts.length > 0) {
+    try {
+      const { data } = await supabase
+        .from('products')
+        .select('id, short_description')
+        .in('id', relatedProducts.map(p => p.id));
+      const descById = new Map(((data ?? []) as Array<{ id: string; short_description: string | null }>).map(r => [r.id, r.short_description]));
+      for (const p of relatedProducts) {
+        const d = descById.get(p.id);
+        if (d) p.short_description = d;
+      }
+    } catch { /* module renders without the benefit line */ }
+  }
 
   return (
     <main className="fade-in">

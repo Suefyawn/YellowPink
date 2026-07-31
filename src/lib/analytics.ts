@@ -49,6 +49,10 @@ export type TrackEvent =
   | { name: 'purchase';        payload: TrackCartPayload & { transaction_id: string; coupon?: string } }
   | { name: 'search';          payload: { query: string; results?: number } }
   | { name: 'select_item';     payload: { product_id: string; product_name: string; query?: string; list?: string } }
+  // Merchandising-module impression (GA4-style): fired once when a product
+  // module (blog buy module, sticky blog bar) first becomes visible, so
+  // module views can be compared against the add_to_cart events they drive.
+  | { name: 'view_item_list';  payload: { list: string; product_ids: string[] } }
   | { name: 'select_sort';     payload: { sort: string } }
   | { name: 'sign_up';         payload: { method?: string } };
 

@@ -12,6 +12,7 @@ import { notifyNewOrder, calculateShipping, checkoutRateGate } from '@/app/check
 import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { checkReferralDiscount } from '@/app/checkout/rewards-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
+import { vendorFreeShippingEligible } from '@/lib/vendor-shipping';
 import { PK_CITIES, normalizeCity } from '@/lib/pk-cities';
 import { brandPlusName } from '@/lib/product-display';
 import { hasWhatsApp, whatsappGoUrl } from '@/lib/whatsapp';
@@ -110,10 +111,15 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // qualifying cart shows FREE immediately instead of flashing "PKR 200"
   // before calculateShipping resolves. The effect below corrects it against
   // the real zone/rate config (and the customer's province).
-  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate, loyaltyPkrPerPoint } = useCommerceSettings();
+  const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate, loyaltyPkrPerPoint, vendorFreeShipThresholds } = useCommerceSettings();
   const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string }>(() => {
     const sub = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
-    return freeShippingEnabled && sub >= freeShippingThreshold
+    const free =
+      (freeShippingEnabled && sub >= freeShippingThreshold) ||
+      // Vendor rule (NB Sons ≥ Rs 1,999): qualify optimistically too, so a
+      // vendor-qualified basket never flashes a paid rate it won't be charged.
+      vendorFreeShippingEligible(cartItems, vendorFreeShipThresholds);
+    return free
       ? { rate: 0, free: true, label: 'Standard' }
       : { rate: defaultShippingRate, free: false, label: 'Standard' };
   });
@@ -289,7 +295,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       const res = await calculateShipping({
         province: formData.province || undefined,
         subtotal,
-        items: cartItems.map(i => ({ vendor_id: i.vendor_id ?? null, price: i.price, qty: i.qty })),
+        // `id` lets the server re-resolve vendor_id from the products table,
+        // so lines saved by older storefront code (no vendor_id) still count.
+        items: cartItems.map(i => ({ id: i.id, vendor_id: i.vendor_id ?? null, price: i.price, qty: i.qty })),
       });
       if (!cancelled) { setShippingInfo(res); setShippingLoading(false); }
     })();
@@ -445,8 +453,13 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       // of surfacing a raw constraint error to the customer.
       let orderNumber = makeOrderNumber();
       const name = splitName();
+      // The RPC returns the stored order row; place_order may record LESS
+      // shipping than quoted (it clamps to 0 when the order qualifies for
+      // free delivery server-side — migration 780), so the emails must use
+      // the server's figures, not the client quote.
+      let placed: { shipping?: number; total?: number } | null = null;
       for (let attempt = 1; ; attempt++) {
-        const { error } = await sb.rpc('place_order' as never, {
+        const { data, error } = await sb.rpc('place_order' as never, {
           order_data: {
             order_number: orderNumber,
             email: formData.email || '',
@@ -477,13 +490,21 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
           // award_referral_for_user can pay the referrer on first delivery.
           referred_by_code: readReferral(),
         } as never);
-        if (!error) break;
+        if (!error) {
+          const row = Array.isArray(data) ? data[0] : data;
+          placed = (row ?? null) as { shipping?: number; total?: number } | null;
+          break;
+        }
         if (attempt < 3 && isDuplicateOrderNumber(error.message)) {
           orderNumber = makeOrderNumber();
           continue;
         }
         throw new Error(error.message);
       }
+      // Correct the payable total by the server↔client shipping delta (0 when
+      // they agree); rewards math (points) is untouched.
+      const serverShipping = typeof placed?.shipping === 'number' ? placed.shipping : shipping;
+      const payableTotal = Math.max(0, total - shipping + serverShipping);
 
       const dest = postOrderDestination(payMethod, orderNumber);
 
@@ -523,7 +544,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
         phone: formData.phone.trim(),
         city: normalizeCity(formData.city),
         province: formData.province || undefined,
-        total,
+        total: payableTotal,
         items: cartItems.map(i => ({
           name: i.name, qty: i.qty, price: i.price, brand: i.brand ?? undefined, variant: i.variant_label ?? i.variant,
           slug: i.slug,

@@ -8,6 +8,7 @@ import {
 } from '@/lib/email';
 import { checkoutLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { resolveShipping } from '@/lib/shipping';
+import { supabase } from '@/lib/supabase';
 import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
 import { SITE_URL } from '@/lib/seo';
 
@@ -87,21 +88,46 @@ export async function notifyNewOrder(order: {
 export async function calculateShipping(opts: {
   province?: string;
   subtotal: number;
-  /** Cart lines (vendor_id/price/qty) — enables the vendor free-shipping
-   *  rule (NB Sons items ≥ Rs 1,999 ship free, matching nbsons.com). */
-  items?: Array<{ vendor_id?: string | null; price: number; qty: number }>;
+  /** Cart lines — enables the vendor free-shipping rule (NB Sons items
+   *  ≥ Rs 1,999 ship free, matching nbsons.com). `id` is the product id;
+   *  vendor_id is re-resolved server-side from it, so carts whose lines
+   *  predate the vendor_id column (old localStorage snapshots, tile adds
+   *  from before the column shipped) still qualify. */
+  items?: Array<{ id?: string; vendor_id?: string | null; price: number; qty: number }>;
 }): Promise<{ rate: number; free: boolean; label: string }> {
   // Re-derive the amounts server-side shape only (price×qty); place_order
   // recomputes everything from the products table at submit, so a tampered
   // quote can only mislead the tamperer's own order summary.
+  const items = (opts.items ?? []).map(i => ({
+    id: typeof i.id === 'string' ? i.id : undefined,
+    vendor_id: i.vendor_id ?? null,
+    price: Number(i.price) || 0,
+    qty: Math.max(0, Math.floor(Number(i.qty) || 0)),
+  }));
+
+  // Authoritative vendor mapping from the products table — never trust the
+  // client's vendor_id (it's routinely missing on lines saved by older
+  // storefront code, which is exactly how a qualifying NB Sons basket got
+  // quoted Rs 250 on Jul 31). Best-effort: on lookup failure the client
+  // value stays, and place_order's floor still can't undercharge.
+  const ids = items.map(i => i.id).filter((s): s is string => Boolean(s));
+  if (ids.length > 0) {
+    const { data } = await supabase
+      .from('products')
+      .select('id, vendor_id')
+      .in('id', ids);
+    const vendorByProduct = new Map(
+      ((data ?? []) as Array<{ id: string; vendor_id: string | null }>).map(p => [p.id, p.vendor_id]),
+    );
+    for (const it of items) {
+      if (it.id && vendorByProduct.has(it.id)) it.vendor_id = vendorByProduct.get(it.id) ?? null;
+    }
+  }
+
   const resolved = await resolveShipping({
     province: opts.province,
     subtotal: opts.subtotal,
-    items: (opts.items ?? []).map(i => ({
-      vendor_id: i.vendor_id ?? null,
-      price: Number(i.price) || 0,
-      qty: Math.max(0, Math.floor(Number(i.qty) || 0)),
-    })),
+    items,
   });
   return { rate: resolved.rate, free: resolved.free, label: resolved.label };
 }

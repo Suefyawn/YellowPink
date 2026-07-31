@@ -46,6 +46,7 @@ import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { CouponCapture } from '@/components/marketing/CouponCapture';
 import { getSiteSettings, getBestsellers } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
+import { getVendorFreeShipThresholds } from '@/lib/shipping';
 import { normalizeTheme } from '@/lib/themes';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
 import { getPublishedCollections } from '@/lib/collections-data';
@@ -115,7 +116,7 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [settings, searchTrending, searchCategories, welcomeOffer, footerCollections, cartCrossSell] = await Promise.all([
+  const [settings, searchTrending, searchCategories, welcomeOffer, footerCollections, cartCrossSell, vendorFreeShipThresholds] = await Promise.all([
     getSiteSettings(),
     loadTrendingBrands(),
     loadPopularCategories(),
@@ -127,6 +128,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     // drawer can skip whatever's already in the bag (and variable/sold-out
     // items) and still have a candidate.
     getBestsellers(6),
+    // Vendor free-shipping thresholds (NB Sons ≥ Rs 1,999) so the cart bar,
+    // mini-cart and checkout's optimistic estimate apply the same rule the
+    // server enforces instead of telling a qualified basket to "add more".
+    getVendorFreeShipThresholds(),
   ]);
   // Social profiles + store contact are owner-managed (admin Settings); the
   // JSON-LD reads from the same source as the footer.
@@ -145,7 +150,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // Single source of truth for free-shipping copy/threshold across the
   // storefront, seeds the client CommerceSettings provider so the cart,
   // mini-cart, PDP and checkout never drift from the owner's setting.
-  const commerce = parseCommerceConfig(settings);
+  const commerce = { ...parseCommerceConfig(settings), vendorFreeShipThresholds };
   // Origin that serves catalogue/blog images, used for an early preconnect.
   const supabaseOrigin = (() => {
     try { return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? '').origin; } catch { return null; }

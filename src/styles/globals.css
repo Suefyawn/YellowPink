@@ -212,6 +212,12 @@ body {
   .pdp-sticky-bar { display: none !important; }
 }
 
+/* Blog sticky buy bar: same mobile-only rule as the PDP bar — desktop keeps
+ * the in-body buy module and the "Mentioned in This Article" grid instead. */
+@media (min-width: 769px) {
+  .blog-sticky-buy { display: none !important; }
+}
+
 /* Modern reset: links never underline by default; bring it back via .underline
  * (e.g. for inline body-text links like the cart "Forgot password?" links).
  * Buttons styled as links keep clean type. */
