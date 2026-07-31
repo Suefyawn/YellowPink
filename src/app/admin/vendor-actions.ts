@@ -104,6 +104,12 @@ export async function updateVendor(formData: FormData) {
   const delivery_fee = parseDeliveryFee(formData.get('delivery_fee'));
   const free_shipping_threshold = parseFreeShipThreshold(formData.get('free_shipping_threshold'));
   const patch: Record<string, unknown> = { commission_pct, settlement_direction, self_delivers, delivery_fee, free_shipping_threshold };
+  // Only the detail page's settings form sends return_fee — same
+  // don't-blank-on-absence rule as the identity fields above.
+  if (formData.has('return_fee')) {
+    const rf = Number((formData.get('return_fee') as string | null)?.trim());
+    patch.return_fee = Number.isFinite(rf) && rf > 0 ? Math.round(rf * 100) / 100 : null;
+  }
   // Identity fields are only sent by the vendor detail page's settings form;
   // the index page's terms row doesn't include them, so their absence must
   // not blank the stored values.

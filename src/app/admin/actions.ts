@@ -591,7 +591,18 @@ async function applyReturnFinancials(
 ): Promise<void> {
   if (order.vendor_id) {
     const { data: vendor } = await admin
-      .from('vendors').select('settlement_direction').eq('id', order.vendor_id).maybeSingle();
+      .from('vendors').select('settlement_direction, self_delivers, return_fee').eq('id', order.vendor_id).maybeSingle();
+    // Some self-delivering vendors bill the store for the failed round trip
+    // (vendors.return_fee). Recorded in two places on purpose: the order's
+    // delivery_cost (Finance's sunk return-cost line reads it — only when no
+    // real courier charge is recorded yet) and a payable on the Vendors page.
+    const returnFee = vendor?.self_delivers ? Math.max(0, Number(vendor.return_fee) || 0) : 0;
+    if (returnFee > 0) {
+      const { data: o } = await admin.from('orders').select('delivery_cost').eq('id', order.id).maybeSingle();
+      if (!o?.delivery_cost || Number(o.delivery_cost) === 0) {
+        await admin.from('orders').update({ delivery_cost: returnFee }).eq('id', order.id);
+      }
+    }
     if (vendor?.settlement_direction === 'vendor_collects') {
       const { data: voided } = await admin
         .from('vendor_settlements').delete()
@@ -602,16 +613,33 @@ async function applyReturnFinancials(
           .update({ acquisition_cost: null, acquisition_cost_source: null })
           .eq('id', order.id);
       }
+      if (returnFee > 0) {
+        // The sale is void, but the round-trip charge is a real debt to the
+        // vendor. Insert skipped if a settled row already occupies the
+        // (order, vendor) slot — that money already moved, don't rewrite it.
+        await admin.from('vendor_settlements').upsert({
+          order_id: order.id, vendor_id: order.vendor_id,
+          gross_amount: 0, vendor_cost: returnFee, our_margin: -returnFee,
+          direction: 'vendor_collects', amount_due: returnFee, due_to: 'vendor',
+          status: 'pending',
+        }, { onConflict: 'order_id,vendor_id', ignoreDuplicates: true });
+      }
       void logAudit(session, {
         action: 'order.return_voided_payout', entity: 'orders', entity_id: order.id,
-        diff: { order_number: order.order_number, voided_payouts: voided?.length ?? 0 },
+        diff: { order_number: order.order_number, voided_payouts: voided?.length ?? 0, return_fee: returnFee || null },
       });
       return; // goods never left the vendor — nothing to restock
     }
-    // we_collect: keep the payable, zero the unearned margin.
-    await admin.from('vendor_settlements')
-      .update({ our_margin: 0 })
-      .eq('order_id', order.id).eq('status', 'pending');
+    // we_collect: keep the payable (plus any round-trip fee), zero the
+    // unearned margin (minus the fee — that part is a real loss).
+    const { data: pendingRow } = await admin
+      .from('vendor_settlements').select('id, amount_due')
+      .eq('order_id', order.id).eq('status', 'pending').maybeSingle();
+    if (pendingRow) {
+      await admin.from('vendor_settlements')
+        .update({ our_margin: -returnFee, amount_due: Number(pendingRow.amount_due) + returnFee })
+        .eq('id', pendingRow.id);
+    }
   }
   await restockCancelledOrder(admin, session, order, 'return');
 }
