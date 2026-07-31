@@ -195,7 +195,13 @@ export default async function VendorsPage({
                   const num = { padding: '8px', textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' as const, whiteSpace: 'nowrap' as const };
                   return (
                     <tr key={vid} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '8px', fontWeight: 600, color: '#111827' }}>{v?.name ?? 'Removed vendor'}</td>
+                      <td style={{ padding: '8px', fontWeight: 600 }}>
+                        {v ? (
+                          <Link href={`/admin/vendors/${vid}`} style={{ color: '#C5286A', textDecoration: 'none' }}>{v.name}</Link>
+                        ) : (
+                          <span style={{ color: '#111827' }}>Removed vendor</span>
+                        )}
+                      </td>
                       <td style={num}>{p.orders}</td>
                       <td style={num}>{p.delivered}</td>
                       <td style={{ ...num, color: p.returned > 0 ? '#dc2626' : undefined }}>{p.returned}</td>
