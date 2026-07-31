@@ -19,14 +19,15 @@ export const FINANCE_RANGES: { key: string; label: string; days: number | null }
 // "Revenue (paid orders)" P&L line.
 //
 // Intentional difference from v_orders_revenue on COUNT (not revenue): that
-// view keeps `refunded` rows with revenue zeroed, so the dashboard/Analytics
-// order count includes refunded orders as *placed* orders; the P&L here drops
-// them entirely because a refunded order contributes neither revenue nor a
-// meaningful cost line to profit & loss. Revenue is identical either way
-// (refunded → 0); the two surfaces answer different questions —
-// "orders placed" (dashboard) vs "orders that produced P&L" (finance) — so
-// their order counts can differ by the number of refunds. Keep both rules
-// here so they don't silently drift.
+// view keeps `refunded` and `returned` rows with revenue zeroed (migration
+// 830), so the dashboard/Analytics order count includes them as *placed*
+// orders; the P&L here drops them entirely because they contribute no
+// revenue line (returned orders DO surface their courier cost via the sunk
+// return-cost block below). Revenue is identical either way (both → 0);
+// the two surfaces answer different questions — "orders placed" (dashboard)
+// vs "orders that produced P&L" (finance) — so their order counts can
+// differ by the number of refunds/returns. Keep both rules here so they
+// don't silently drift.
 const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'payment_pending', 'refunded', 'returned']);
 
 /** Orders that reached the customer's door but came back — refused on COD, or
@@ -46,7 +47,7 @@ export async function loadReturnedDeliveryLoss(
   defaultDeliveryCost: number,
 ): Promise<{ count: number; loss: number }> {
   const admin = supabaseAdmin();
-  let q = admin.from('orders').select('delivery_cost, status').in('status', [...RETURNED_STATES]);
+  let q = admin.from('orders').select('delivery_cost, status').in('status', [...RETURNED_STATES]).is('archived_at', null);
   if (fromISO) q = q.gte('created_at', fromISO);
   const { data } = await fetchAll<{ delivery_cost: number | null; status: string | null }>(q);
   const rows = data ?? [];
@@ -99,7 +100,7 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
   const admin = supabaseAdmin();
   // fetchAll pages past PostgREST's silent 1000-row cap; without it the P&L
   // (and its CSV export) quietly dropped every order past #1000 in the window.
-  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, shipping, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, acquisition_cost, items');
+  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, shipping, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, acquisition_cost, items').is('archived_at', null);
   if (fromISO) oq = oq.gte('created_at', fromISO);
   const { data } = await fetchAll<FinanceOrder>(oq.order('created_at', { ascending: true }));
   const orders = (data ?? []).filter(o => !DEAD_STATES.has(o.status ?? ''));

@@ -98,19 +98,22 @@ export function OrdersFilter({ total }: { total: number }) {
         })}
         <select
           aria-label="More statuses"
-          value={MORE_STATUSES.includes(status as OrderStatus) ? status : ''}
+          value={MORE_STATUSES.includes(status as OrderStatus) || status === 'archived' ? status : ''}
           onChange={e => e.target.value && setStatus(e.target.value)}
           style={{
             marginLeft: 4, padding: '5px 8px', border: '1px solid #e5e7eb', borderRadius: 7,
             fontSize: '0.75rem', background: 'white',
-            color: MORE_STATUSES.includes(status as OrderStatus) ? '#111827' : '#6b7280',
-            fontWeight: MORE_STATUSES.includes(status as OrderStatus) ? 600 : 400,
+            color: MORE_STATUSES.includes(status as OrderStatus) || status === 'archived' ? '#111827' : '#6b7280',
+            fontWeight: MORE_STATUSES.includes(status as OrderStatus) || status === 'archived' ? 600 : 400,
           }}
         >
           <option value="">More…</option>
           {MORE_STATUSES.map(s => (
             <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
           ))}
+          {/* Not a status: archived orders are history (legacy imports and
+              the like), hidden from every other view. */}
+          <option value="archived">Archived</option>
         </select>
       </div>
       <SearchInput

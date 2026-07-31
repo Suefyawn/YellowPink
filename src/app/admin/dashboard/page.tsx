@@ -75,7 +75,7 @@ export default async function DashboardPage() {
     { count: pendingReviewCount },
     { data: codTransitRows },
   ] = await Promise.all([
-    admin.from('orders').select('*').order('created_at', { ascending: false }).limit(5),
+    admin.from('orders').select('*').is('archived_at', null).order('created_at', { ascending: false }).limit(5),
     // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
     // top products) in one SQL pass via dashboard_kpis() RPC. Previously
     // pulled every orders row + its JSONB items into Node and aggregated in
@@ -98,9 +98,9 @@ export default async function DashboardPage() {
     //  • unread customer messages and reviews awaiting moderation (same
     //    filters as the sidebar badges, so the two surfaces agree)
     admin.from('orders').select('*', { count: 'exact', head: true })
-      .eq('status', 'payment_pending').lt('created_at', oneDayAgo),
+      .eq('status', 'payment_pending').is('archived_at', null).lt('created_at', oneDayAgo),
     admin.from('orders').select('*', { count: 'exact', head: true })
-      .eq('status', 'pending').lt('created_at', threeDaysAgo),
+      .eq('status', 'pending').is('archived_at', null).lt('created_at', threeDaysAgo),
     admin.from('return_requests').select('*', { count: 'exact', head: true })
       .eq('status', 'pending'),
     admin.from('contact_messages').select('*', { count: 'exact', head: true })
@@ -110,7 +110,7 @@ export default async function DashboardPage() {
     // COD cash pipeline: orders on the road, the cash the courier is
     // carrying for you right now. The single most-asked number in a
     // COD-heavy store.
-    admin.from('orders').select('total').eq('status', 'shipped').eq('pay_method', 'cod'),
+    admin.from('orders').select('total').eq('status', 'shipped').eq('pay_method', 'cod').is('archived_at', null),
   ]);
 
   // 180-day daily series for the interactive Overview chart (it shows up to a
