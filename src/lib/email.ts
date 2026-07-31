@@ -323,6 +323,44 @@ export async function sendNewOrderEmail(order: OrderSummary): Promise<void> {
   });
 }
 
+// ─── 1a1. Internal: abandoned checkout alert (for staff) ───────────────────
+// Fired by the abandoned-cart cron ~1 hour after a shopper with contact
+// details goes quiet — including phone-only captures the customer reminder
+// emails can never reach. Carries a one-tap WhatsApp link so Tanya (or
+// whoever subscribes to the event) can follow up personally while the
+// intent is still warm.
+export async function sendAbandonedCartStaffAlert(cart: {
+  first_name?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  subtotal: number;
+  items: Array<{ name: string; brand?: string; variant?: string; qty: number; price: number }>;
+}): Promise<void> {
+  const phoneDigits = (cart.phone ?? '').replace(/\D+/g, '');
+  const waNumber = phoneDigits.startsWith('0') ? `92${phoneDigits.slice(1)}` : phoneDigits;
+  const waText = encodeURIComponent(
+    `Assalam o alaikum${cart.first_name ? ` ${cart.first_name}` : ''}! Yellow Pink se, aap ka cart abhi bhi mehfooz hai. Koi sawal ho to bata dein, order complete karne mein madad kar dein?`,
+  );
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">Abandoned checkout, ${money(cart.subtotal)}</h2>
+    <p style="margin:0 0 4px"><strong>Shopper:</strong> ${escapeHtml(cart.first_name?.trim() || 'No name given')}</p>
+    ${cart.phone ? `<p style="margin:0 0 4px"><strong>Phone:</strong> ${escapeHtml(cart.phone)}</p>` : ''}
+    ${cart.email ? `<p style="margin:0 0 12px"><strong>Email:</strong> ${escapeHtml(cart.email)}</p>` : ''}
+    ${renderItemsTable(cart.items)}
+    <p style="margin:16px 0 0;text-align:right;font-size:16px"><strong>Cart value: ${money(cart.subtotal)}</strong></p>
+    ${cart.email ? `<p style="margin:12px 0 0;color:${MUTED};font-size:13px">Automatic reminder emails are also going to the shopper.</p>` : `<p style="margin:12px 0 0;color:${MUTED};font-size:13px">Phone-only capture: no automatic reminder reaches this shopper, a personal WhatsApp is the only follow-up.</p>`}
+    ${waNumber.length >= 11 ? `<p style="margin:20px 0 0"><a href="https://wa.me/${waNumber}?text=${waText}" style="color:${BRAND_PINK};text-decoration:none;font-weight:600">→ WhatsApp the shopper</a></p>` : ''}
+    <p style="margin:8px 0 0"><a href="${SITE_URL}/admin/abandoned" style="color:${BRAND_PINK};text-decoration:none;font-weight:600">→ Open Abandoned checkouts in admin</a></p>
+  `);
+  const recipients = await getRecipientsForEvent('cart.abandoned');
+  await send({
+    to: recipients,
+    subject: `Abandoned checkout, ${money(cart.subtotal)}${cart.first_name ? `, ${cart.first_name.trim()}` : ''}`,
+    html,
+    category: 'Abandoned cart alert',
+  });
+}
+
 // ─── 1a2. Internal: weekly store health report (for the merchant) ───────────
 // One Monday-morning digest of the week that was: orders vs last week, the
 // shopper funnel, which storefront sections earn their clicks, abandoned

@@ -228,6 +228,36 @@ export async function bookShipment(
   const beforeStatus = (order.status ?? 'pending') as OrderStatus;
   const beforeDeliveryCost = order.delivery_cost != null ? Number(order.delivery_cost) : null;
 
+  // Unconfirmed-dispatch guard. July's returns bled 46% of the month's GMV,
+  // and the returned parcels shipped without the customer ever confirming.
+  // A 'pending' order is by definition unconfirmed (confirming is what moves
+  // it to Preparing — see the order workflow in the manual), so booking a
+  // courier for one requires the explicit override checkbox in the booking
+  // form. The manual createShipment fallback is intentionally not gated: it's
+  // used after a parcel has already been handed over.
+  if (beforeStatus === 'pending' && formData.get('confirm_unconfirmed') !== 'on') {
+    return {
+      error:
+        'This order is still Pending — the customer has not been confirmed. ' +
+        'Confirm on WhatsApp/phone and move the order to Preparing first, or tick ' +
+        '"book anyway" if you really want to ship unconfirmed.',
+    };
+  }
+
+  // COD collectible: the order total minus anything already paid (gift card,
+  // loyalty points, a gateway payment). Booking the raw total made the rider
+  // collect the full amount from customers who had already paid part of it.
+  let codAmount = Number(order.total) || 0;
+  {
+    const { data: payRows } = await supabaseAdmin()
+      .from('payments')
+      .select('amount, status')
+      .eq('order_id', order_id)
+      .eq('status', 'succeeded');
+    const paid = ((payRows ?? []) as { amount: number | null }[]).reduce((s, p) => s + Number(p.amount ?? 0), 0);
+    codAmount = Math.max(0, codAmount - paid);
+  }
+
   // Weight: estimate from line items if any have weight_grams; otherwise
   // a conservative 0.5 kg minimum (TCS's lower bound).
   const items = Array.isArray(order.items) ? order.items as Array<{ name?: string; qty?: number; price?: number; weight_grams?: number }> : [];
@@ -255,7 +285,7 @@ export async function bookShipment(
     pieces: typeof pieceOverride === 'string' && pieceOverride
       ? Math.max(1, Number(pieceOverride))
       : 1,
-    codAmount: Number(order.total) || 0,
+    codAmount,
     items: items.map(it => ({
       description: it.name ?? 'Item',
       quantity: it.qty ?? 1,

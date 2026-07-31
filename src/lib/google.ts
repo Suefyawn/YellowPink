@@ -178,12 +178,42 @@ async function getAccessToken(): Promise<string> {
       refresh_token: refresh, grant_type: 'refresh_token',
     }),
   });
-  if (!res.ok) throw new Error(`token refresh failed: ${res.status}`);
+  if (!res.ok) {
+    // The July 29 outage: the refresh token silently expired (Google hard-
+    // expires them after 7 days while the OAuth app is in "Testing" status)
+    // and every Google-backed admin surface froze with no visible signal.
+    // Surface the outage ONCE per incident: stamp refresh_failed_at and post
+    // an admin notification (bell + push fanout) on the first failure only.
+    // Best-effort — alerting must never mask the original error.
+    const body = await res.text().catch(() => '');
+    try {
+      const { data: flagRow } = await supabaseAdmin()
+        .from('google_integration').select('refresh_failed_at').eq('id', true).maybeSingle();
+      if (!(flagRow as { refresh_failed_at?: string | null } | null)?.refresh_failed_at) {
+        await supabaseAdmin().from('google_integration')
+          .update({ refresh_failed_at: new Date().toISOString() }).eq('id', true);
+        await supabaseAdmin().from('admin_notifications').insert({
+          kind: 'integration',
+          title: 'Google connection is broken',
+          body: `Search Console and GA4 data stopped updating (token refresh failed, HTTP ${res.status}). Re-link Google in Settings → Integrations. If this keeps happening every ~7 days, publish the OAuth app from "Testing" to "In production" in Google Cloud Console.`,
+          link: '/admin/settings/integrations',
+          entity_id: 'google_integration',
+        });
+      }
+    } catch (alertErr) {
+      log.warn('google.refresh_failure_alert_failed', { err: alertErr instanceof Error ? alertErr.message : String(alertErr) });
+    }
+    log.error('google.token_refresh_failed', { status: res.status, body: body.slice(0, 300) });
+    throw new Error(`token refresh failed: ${res.status}`);
+  }
   const tok = (await res.json()) as TokenResponse;
   await supabaseAdmin().from('google_integration').update({
     access_token: encrypt(tok.access_token),
     token_expiry: new Date(Date.now() + (tok.expires_in - 60) * 1000).toISOString(),
     updated_at: new Date().toISOString(),
+    // A successful refresh ends any recorded outage, so the NEXT failure
+    // notifies again.
+    refresh_failed_at: null,
   }).eq('id', true);
   return tok.access_token;
 }

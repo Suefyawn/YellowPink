@@ -57,6 +57,14 @@ insert into public.profiles (id, referral_code)
 insert into public.site_settings (key, value) values ('loyalty_referral_discount_pct', '10')
   on conflict (key) do update set value = excluded.value;
 
+-- Loyalty redemption (migration 800): a signed-in buyer with a points balance.
+insert into auth.users (id, email)
+  values ('00000000-0000-0000-0000-0000000000f2', 'matrix-loyal@example.com')
+  on conflict (id) do nothing;
+insert into public.profiles (id) values ('00000000-0000-0000-0000-0000000000f2')
+  on conflict (id) do nothing;
+select public.grant_loyalty_points('00000000-0000-0000-0000-0000000000f2', 500, 'manual', null, 'matrix seed');
+
 -- Shipping: zone rate 250 with free-shipping threshold 5000; store default
 -- rate 200 / threshold 5000. place_order floors at least(zone, default)=200.
 insert into public.site_settings (key, value) values
@@ -297,6 +305,28 @@ begin
     end if;
     raise notice 'ok (rejected): referral not first order — %', sqlerrm;
   end;
+
+  -- 14g. Loyalty redemption records a payment (migration 800): a signed-in
+  --      buyer redeems 200 points (rate defaults to 1 PKR/point) — the order
+  --      is placed at its full total, the points are deducted, AND a
+  --      succeeded 'loyalty_points' payment of 200 is recorded so the COD
+  --      collectible is total − 200. Before 800 the points vanished with no
+  --      payment trace and the courier collected the full total.
+  o := public.place_order(
+    yp_tests.payload('{"email": "matrix-loyal@example.com", "phone": "03122222222", "user_id": "00000000-0000-0000-0000-0000000000f2", "order_number": "MTX-PTS-1"}'),
+    null, 200, null);
+  perform yp_tests.assert('loyalty redemption payment recorded',
+    exists (select 1 from public.payments p
+            where p.order_id = o.id and p.gateway = 'loyalty_points'
+              and p.status = 'succeeded' and p.amount = 200),
+    'payments row gateway=loyalty_points amount=200');
+  -- Ledger delta, not an absolute balance: the welcome-points trigger on
+  -- auth.users also credits this seeded account, so the balance isn't fixed.
+  perform yp_tests.assert('loyalty balance debited',
+    exists (select 1 from public.loyalty_ledger l
+            where l.user_id = '00000000-0000-0000-0000-0000000000f2'
+              and l.order_id = o.id and l.delta = -200 and l.reason = 'redemption'),
+    'loyalty_ledger redemption row delta=-200 for the order');
 
   -- 15. Client subtotal that disagrees with server-recomputed prices.
   perform yp_tests.expect_reject('subtotal mismatch',

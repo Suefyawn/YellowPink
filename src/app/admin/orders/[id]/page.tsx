@@ -801,6 +801,7 @@ export default async function OrderDetailPage({
             apiAdapters={apiAdapters}
             deliveryCost={o.delivery_cost ?? null}
             suggestedCharge={defaultDeliveryCost > 0 ? defaultDeliveryCost : undefined}
+            unconfirmed={o.status === 'pending'}
             shipment={shipmentRow ? {
               id: shipmentRow.id as string,
               courier: shipmentRow.courier as string,

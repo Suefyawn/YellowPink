@@ -14,7 +14,7 @@ import { log } from './logger';
 
 const FALLBACK_EMAIL = process.env.OWNER_EMAIL ?? 'sooviaan@gmail.com';
 
-export type NotificationEvent = 'order.new' | 'seo.broken_links';
+export type NotificationEvent = 'order.new' | 'seo.broken_links' | 'cart.abandoned';
 
 export const NOTIFICATION_EVENTS: { key: NotificationEvent; label: string; desc: string }[] = [
   {
@@ -30,6 +30,11 @@ export const NOTIFICATION_EVENTS: { key: NotificationEvent; label: string; desc:
     key: 'seo.broken_links',
     label: 'Broken links (404s)',
     desc: 'Daily digest when a new URL starts returning 404 (e.g. a dead link a crawler or visitor hit).',
+  },
+  {
+    key: 'cart.abandoned',
+    label: 'Abandoned checkouts',
+    desc: 'Emails you when a shopper leaves contact details at checkout but does not order (about an hour after they go quiet), with a one-tap WhatsApp link so you can follow up personally.',
   },
 ];
 

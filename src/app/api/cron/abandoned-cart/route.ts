@@ -16,7 +16,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { sendAbandonedCartEmail } from '@/lib/email';
+import { sendAbandonedCartEmail, sendAbandonedCartStaffAlert } from '@/lib/email';
 import type { CartItem } from '@/types';
 
 interface AbandonedCart {
@@ -115,6 +115,45 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Staff alert pass (event 'cart.abandoned') ─────────────────────────────
+  // One internal email per abandoned cart, ~1 hour after the shopper goes
+  // quiet, to everyone subscribed in Settings → Notifications (Tanya + owner).
+  // Unlike the customer reminders above this INCLUDES phone-only captures —
+  // those shoppers can never receive a reminder email, so the personal
+  // WhatsApp nudge this alert enables is the only recovery path. Deduped via
+  // admin_alerted_at (migration 800); alert failures never fail the cron.
+  let staffAlerts = 0;
+  {
+    const { data: alertRows } = await sb
+      .from('abandoned_carts')
+      .select('id, first_name, email, phone, cart_items, subtotal, last_activity_at')
+      .eq('recovered', false)
+      .is('admin_alerted_at', null)
+      .lt('last_activity_at', cutoff)
+      .limit(100);
+    for (const c of (alertRows ?? []) as Array<{ id: string; first_name: string | null; email: string | null; phone: string | null; cart_items: CartItem[]; subtotal: number }>) {
+      try {
+        await sendAbandonedCartStaffAlert({
+          first_name: c.first_name,
+          email: c.email,
+          phone: c.phone,
+          subtotal: Number(c.subtotal) || 0,
+          items: (Array.isArray(c.cart_items) ? c.cart_items : []).map(i => ({
+            name: i.name, brand: i.brand ?? undefined, variant: i.variant_label ?? i.variant ?? undefined, qty: i.qty, price: i.price,
+          })),
+        });
+        const { error: alertUpErr } = await sb
+          .from('abandoned_carts')
+          .update({ admin_alerted_at: new Date().toISOString() })
+          .eq('id', c.id);
+        if (alertUpErr) errors.push(`alert stamp ${c.id}: ${alertUpErr.message}`);
+        staffAlerts++;
+      } catch (err) {
+        errors.push(`staff alert ${c.id}: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
   // Owner notification: the owner asked to be told when the automated
   // cart-reminder emails go out. One rolling notification per day (deduped on
   // entity_id) whose body reflects the day's running total, so the 15-min cron
@@ -151,5 +190,5 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  return NextResponse.json({ ok: true, scanned: data?.length ?? 0, sent, errors });
+  return NextResponse.json({ ok: true, scanned: data?.length ?? 0, sent, staffAlerts, errors });
 }
