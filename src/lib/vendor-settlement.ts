@@ -53,6 +53,66 @@ async function loadCostInputs(orderId: string, vendorId: string): Promise<CostIn
   };
 }
 
+/** Keep a returned order's round-trip charge in sync with the vendor
+ *  payable. Called from two places with the same semantics: the return
+ *  transition (vendor's default return_fee) and the Order costs card (the
+ *  ACTUAL amount the vendor billed, typed by staff once known).
+ *
+ *  Only self-delivering vendors are synced — when the store ships via its
+ *  own courier, the courier's bill is the store's loss alone and no payable
+ *  is created. A settled row is never rewritten (that money already moved).
+ *
+ *  vendor_collects: on a returned order the sale payout is void, so the
+ *  (order, vendor) slot holds at most a fee row — written to match `fee`,
+ *  deleted when the fee is cleared. we_collect: the pending payable's
+ *  amount_due becomes goods cost + fee, margin −fee (the fee is a real
+ *  loss; the goods part isn't — it bought back stock). */
+export async function syncReturnChargeToVendor(
+  orderId: string,
+  vendorId: string,
+  fee: number | null,
+): Promise<'synced' | 'skipped_settled' | 'not_self_delivering'> {
+  const admin = supabaseAdmin();
+  const { data: vendor } = await admin
+    .from('vendors').select('settlement_direction, self_delivers')
+    .eq('id', vendorId).maybeSingle();
+  if (!vendor?.self_delivers) return 'not_self_delivering';
+  const f = Math.max(0, Number(fee) || 0);
+  const { data: row } = await admin
+    .from('vendor_settlements').select('id, status, vendor_cost')
+    .eq('order_id', orderId).eq('vendor_id', vendorId).maybeSingle();
+  if (row?.status === 'settled') return 'skipped_settled';
+
+  if (vendor.settlement_direction === 'vendor_collects') {
+    if (row && f > 0) {
+      await admin.from('vendor_settlements').update({
+        gross_amount: 0, vendor_cost: f, our_margin: -f, amount_due: f, due_to: 'vendor',
+      }).eq('id', row.id);
+    } else if (row && f === 0) {
+      await admin.from('vendor_settlements').delete().eq('id', row.id);
+    } else if (!row && f > 0) {
+      await admin.from('vendor_settlements').insert({
+        order_id: orderId, vendor_id: vendorId,
+        gross_amount: 0, vendor_cost: f, our_margin: -f,
+        direction: 'vendor_collects', amount_due: f, due_to: 'vendor', status: 'pending',
+      });
+    }
+  } else {
+    if (row) {
+      await admin.from('vendor_settlements').update({
+        our_margin: -f, amount_due: round2(Number(row.vendor_cost) + f),
+      }).eq('id', row.id);
+    } else if (f > 0) {
+      await admin.from('vendor_settlements').insert({
+        order_id: orderId, vendor_id: vendorId,
+        gross_amount: 0, vendor_cost: 0, our_margin: -f,
+        direction: 'we_collect', amount_due: f, due_to: 'vendor', status: 'pending',
+      });
+    }
+  }
+  return 'synced';
+}
+
 /** Run the cost engine for an order against a vendor, without writing
  *  anything. Used by "Recalculate from vendor rate". */
 export async function computeOrderCosts(orderId: string, vendorId: string): Promise<OrderCostResult | null> {

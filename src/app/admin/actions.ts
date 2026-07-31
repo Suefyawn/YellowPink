@@ -16,6 +16,7 @@ import { logActionError } from '@/lib/action-log';
 import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
+import { syncReturnChargeToVendor } from '@/lib/vendor-settlement';
 import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { log } from '@/lib/logger';
@@ -613,33 +614,19 @@ async function applyReturnFinancials(
           .update({ acquisition_cost: null, acquisition_cost_source: null })
           .eq('id', order.id);
       }
-      if (returnFee > 0) {
-        // The sale is void, but the round-trip charge is a real debt to the
-        // vendor. Insert skipped if a settled row already occupies the
-        // (order, vendor) slot — that money already moved, don't rewrite it.
-        await admin.from('vendor_settlements').upsert({
-          order_id: order.id, vendor_id: order.vendor_id,
-          gross_amount: 0, vendor_cost: returnFee, our_margin: -returnFee,
-          direction: 'vendor_collects', amount_due: returnFee, due_to: 'vendor',
-          status: 'pending',
-        }, { onConflict: 'order_id,vendor_id', ignoreDuplicates: true });
-      }
+      // The sale is void, but the round-trip charge is a real debt to the
+      // vendor. Shared writer with the Order costs card so the default fee
+      // here and the actual bill typed later land in the same row.
+      if (returnFee > 0) await syncReturnChargeToVendor(order.id, order.vendor_id, returnFee);
       void logAudit(session, {
         action: 'order.return_voided_payout', entity: 'orders', entity_id: order.id,
         diff: { order_number: order.order_number, voided_payouts: voided?.length ?? 0, return_fee: returnFee || null },
       });
       return; // goods never left the vendor — nothing to restock
     }
-    // we_collect: keep the payable (plus any round-trip fee), zero the
-    // unearned margin (minus the fee — that part is a real loss).
-    const { data: pendingRow } = await admin
-      .from('vendor_settlements').select('id, amount_due')
-      .eq('order_id', order.id).eq('status', 'pending').maybeSingle();
-    if (pendingRow) {
-      await admin.from('vendor_settlements')
-        .update({ our_margin: -returnFee, amount_due: Number(pendingRow.amount_due) + returnFee })
-        .eq('id', pendingRow.id);
-    }
+    // we_collect: the payable stands; the shared writer folds in any
+    // round-trip fee and zeroes the unearned margin (−fee is real loss).
+    await syncReturnChargeToVendor(order.id, order.vendor_id, returnFee);
   }
   await restockCancelledOrder(admin, session, order, 'return');
 }
