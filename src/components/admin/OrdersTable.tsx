@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { bulkUpdateOrderStatus } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
 import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
-import { paymentState, fulfilmentState, DotChip, itemCount } from '@/components/admin/OrderChips';
+import { paymentState, fulfilmentState, needsCodConfirmation, DotChip, itemCount } from '@/components/admin/OrderChips';
 import { OrderPeekDrawer } from '@/components/admin/OrderPeekDrawer';
 import { SortHeader } from '@/components/admin/SortHeader';
 import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
@@ -240,7 +240,10 @@ export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; c
                   {(() => { const p = paymentState(o); return <DotChip label={p.label} color={p.color} title={PAY_METHOD_LABELS[o.pay_method] ?? o.pay_method} />; })()}
                 </td>
                 <td style={{ padding: '10px 16px' }}>
-                  {(() => { const f = fulfilmentState(o); return <DotChip label={f.label} color={f.color} />; })()}
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    {(() => { const f = fulfilmentState(o); return <DotChip label={f.label} color={f.color} />; })()}
+                    {needsCodConfirmation(o) && <DotChip label="Unconfirmed" color="#b45309" title="COD order awaiting the customer's WhatsApp confirmation" />}
+                  </span>
                 </td>
                 <td style={{ padding: '10px 16px' }}>
                   <CourierChip status={courierStatus[o.id!]} />
@@ -322,6 +325,7 @@ export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; c
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>{fmt(o.total)}</span>
                   {(() => { const p = paymentState(o); return <DotChip label={p.label} color={p.color} />; })()}
+                  {needsCodConfirmation(o) && <DotChip label="Unconfirmed" color="#b45309" />}
                   {courierStatus[o.id!] && <CourierChip status={courierStatus[o.id!]} />}
                   <span style={{ fontSize: '0.8125rem', color: '#9ca3af', marginLeft: 'auto' }}>
                     {o.created_at ? fmtDate(o.created_at) : '—'}

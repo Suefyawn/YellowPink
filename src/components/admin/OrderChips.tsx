@@ -19,6 +19,16 @@ export function paymentState(o: Order): { label: string; color: string; solid?: 
   return { label: 'Payment pending', color: '#b45309' };
 }
 
+/** COD order still awaiting the customer's WhatsApp yes — the window where
+ *  refusals (and courier-return losses) come from. Shown as an amber chip in
+ *  the orders list so unconfirmed parcels can't hide. */
+export function needsCodConfirmation(o: Order): boolean {
+  const st = o.status ?? 'pending';
+  return o.pay_method === 'cod'
+    && !o.confirmed_at
+    && (st === 'pending' || st === 'processing');
+}
+
 export function fulfilmentState(o: Order): { label: string; color: string } {
   const st = o.status ?? 'pending';
   if (st === 'shipped') return { label: 'Shipped', color: ORDER_STATUS_COLORS.shipped ?? '#2563eb' };

@@ -77,12 +77,31 @@ const TABS: { key: Tab; label: string; traffic?: boolean }[] = [
 // share visible so tagging links (Link builder) actually gets done.
 interface AttrOrder { utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; referrer: string | null; landing_page: string | null; total: number | null; status: string | null }
 const UNTAGGED = 'Direct / untagged';
+// Friendly names for the sources that actually reach this store. ChatGPT
+// (and the other assistants) append ?utm_source=<their domain> to links they
+// cite, which is how AI-referred orders identify themselves; search and
+// social arrive as referrer hostnames. Anything unrecognised shows raw so
+// new sources are visible instead of lumped into an "other" bucket.
+const CHANNEL_NAMES: Record<string, string> = {
+  'chatgpt.com': 'ChatGPT', 'chat.openai.com': 'ChatGPT',
+  'perplexity.ai': 'Perplexity', 'copilot.microsoft.com': 'Microsoft Copilot',
+  'gemini.google.com': 'Google Gemini', 'claude.ai': 'Claude',
+  'google.com': 'Google search', 'google': 'Google search',
+  'bing.com': 'Bing', 'bing': 'Bing', 'duckduckgo.com': 'DuckDuckGo',
+  'facebook': 'Facebook', 'facebook.com': 'Facebook', 'm.facebook.com': 'Facebook', 'fb': 'Facebook',
+  'instagram': 'Instagram', 'instagram.com': 'Instagram', 'l.instagram.com': 'Instagram', 'ig': 'Instagram',
+  'tiktok': 'TikTok', 'tiktok.com': 'TikTok',
+  'whatsapp': 'WhatsApp', 'wa': 'WhatsApp',
+};
 function channelOf(o: AttrOrder): string {
   const s = (o.utm_source ?? '').trim().toLowerCase();
-  if (s) return s;
+  if (s) return CHANNEL_NAMES[s] ?? s;
   const ref = (o.referrer ?? '').trim();
   if (ref) {
-    try { return new URL(ref).hostname.replace(/^www\./, ''); } catch { return ref.slice(0, 40); }
+    try {
+      const host = new URL(ref).hostname.replace(/^www\./, '');
+      return CHANNEL_NAMES[host] ?? host;
+    } catch { return ref.slice(0, 40); }
   }
   return UNTAGGED;
 }
@@ -256,7 +275,10 @@ export default async function AnalyticsPage({
       .is('archived_at', null)
       .gte('created_at', sinceIso);
     const rows = ((attrRaw ?? []) as (AttrOrder & { created_at: string })[])
-      .filter(o => !['cancelled', 'canceled', 'refunded'].includes((o.status ?? '').toLowerCase()));
+      // Same no-revenue states as everywhere else (see finance.ts
+      // DEAD_STATES): returned COD parcels and unconfirmed-payment orders
+      // must not credit revenue to a source.
+      .filter(o => !['cancelled', 'canceled', 'refunded', 'returned', 'payment_pending', 'payment_failed'].includes((o.status ?? '').toLowerCase()));
     const acc = (map: Map<string, SrcAgg>, key: string, rev: number) => {
       const k = key || '—';
       const cur = map.get(k) ?? { key: k, orders: 0, revenue: 0 };
@@ -498,7 +520,11 @@ export default async function AnalyticsPage({
                         <div style={{ width: `${Math.max(3, w)}%`, height: '100%', background: untagged ? '#f59e0b' : '#C5286A', borderRadius: 5 }} />
                       </div>
                       <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#111827', minWidth: 120, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-                        {fmt(s.revenue)} <span style={{ color: '#9ca3af', fontWeight: 500 }}>· {s.orders} order{s.orders === 1 ? '' : 's'}</span>
+                        {fmt(s.revenue)} <span style={{ color: '#9ca3af', fontWeight: 500 }}>
+                          · {s.orders} order{s.orders === 1 ? '' : 's'}
+                          {attrTotals.revenue > 0 && ` · ${Math.round((s.revenue / attrTotals.revenue) * 100)}%`}
+                          {s.orders > 0 && ` · AOV ${fmt(Math.round(s.revenue / s.orders))}`}
+                        </span>
                       </span>
                     </div>
                   );
