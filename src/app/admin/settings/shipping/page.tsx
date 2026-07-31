@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { getSiteSettings, supabaseAdmin } from '@/lib/supabase';
 import { saveSettings } from '../actions';
 import { createZone, updateZone, deleteZone } from './actions';
@@ -173,14 +174,14 @@ export default async function SettingsShippingPage({ searchParams }: { searchPar
           <Divider />
           {vendorRules.length === 0 ? (
             <p style={{ margin: 0, fontSize: '0.8125rem', color: '#9ca3af' }}>
-              No vendor rules set. Add one from <a href="/admin/vendors" style={{ color: '#C5286A', fontWeight: 600 }}>Vendors</a> by setting a &ldquo;Customer free delivery from&rdquo; amount.
+              No vendor rules set. Add one from <Link href="/admin/vendors" style={{ color: '#C5286A', fontWeight: 600 }}>Vendors</Link> by setting a &ldquo;Customer free delivery from&rdquo; amount.
             </p>
           ) : (
             <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
               {vendorRules.map(v => (
                 <li key={v.id} style={{ fontSize: '0.875rem', color: '#374151' }}>
                   <strong>{v.name}</strong> — orders with their items totalling PKR {Number(v.free_shipping_threshold).toLocaleString()}+ ship free
-                  {' '}· <a href="/admin/vendors" style={{ color: '#C5286A', fontWeight: 600 }}>edit</a>
+                  {' '}· <Link href={`/admin/vendors/${v.id}`} style={{ color: '#C5286A', fontWeight: 600 }}>edit</Link>
                 </li>
               ))}
             </ul>

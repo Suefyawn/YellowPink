@@ -12,16 +12,23 @@ import { recomputeSettlement, applyAutoAcquisitionCost } from '@/lib/vendor-sett
 
 // Failed writes bounce back to the vendors page with ?error=... so the admin
 // sees a banner instead of a silently unchanged list (issue #191).
-function bounceVendors(error: string): never {
-  redirect(`/admin/vendors?error=${encodeURIComponent(error)}`);
+// `base` lets actions invoked from a vendor DETAIL page land back there
+// instead of dumping the staffer on the index; only /admin/vendors paths are
+// honoured so a forged form value can't turn this into an open redirect.
+function vendorPath(raw: FormDataEntryValue | null): string {
+  const p = (raw as string | null) ?? '';
+  return p.startsWith('/admin/vendors') ? p : '/admin/vendors';
+}
+function bounceVendors(error: string, base = '/admin/vendors'): never {
+  redirect(`${base}?error=${encodeURIComponent(error)}`);
 }
 
 // Success feedback: the money actions (Settle all, Mark settled, Save, Add,
 // Delete) previously refreshed the list with no confirmation, so a staffer
 // couldn't tell a click registered. Redirect with ?saved so the page shows a
 // toast/banner. Call outside try/catch — redirect() throws by design.
-function vendorsSaved(msg: string): never {
-  redirect(`/admin/vendors?saved=${encodeURIComponent(msg)}`);
+function vendorsSaved(msg: string, base = '/admin/vendors'): never {
+  redirect(`${base}?saved=${encodeURIComponent(msg)}`);
 }
 
 /** Parse the commission % field, blank → null, otherwise clamped 0-100. */
@@ -90,29 +97,41 @@ export async function updateVendor(formData: FormData) {
   const session = await assertPermission('vendors');
   const id = formData.get('id') as string;
   if (!id) return;
+  const base = vendorPath(formData.get('return_to'));
   const commission_pct = parseCommission(formData.get('commission_pct'));
   const settlement_direction = parseDirection(formData.get('settlement_direction'));
   const self_delivers = formData.get('self_delivers') === 'on';
   const delivery_fee = parseDeliveryFee(formData.get('delivery_fee'));
   const free_shipping_threshold = parseFreeShipThreshold(formData.get('free_shipping_threshold'));
+  const patch: Record<string, unknown> = { commission_pct, settlement_direction, self_delivers, delivery_fee, free_shipping_threshold };
+  // Identity fields are only sent by the vendor detail page's settings form;
+  // the index page's terms row doesn't include them, so their absence must
+  // not blank the stored values.
+  const name = (formData.get('name') as string | null)?.trim();
+  if (formData.has('name') && name) patch.name = name;
+  if (formData.has('phone')) {
+    const phone = (formData.get('phone') as string | null)?.trim();
+    if (phone) patch.phone = phone;
+  }
+  if (formData.has('notes')) patch.notes = ((formData.get('notes') as string | null) ?? '').trim() || null;
   const { error } = await supabaseAdmin()
     .from('vendors')
-    .update({ commission_pct, settlement_direction, self_delivers, delivery_fee, free_shipping_threshold })
+    .update(patch)
     .eq('id', id);
   if (error) {
     log.error('vendor.update_failed', { id, error: error.message });
-    bounceVendors(`Could not update vendor: ${error.message}`);
+    bounceVendors(`Could not update vendor: ${error.message}`, base);
   }
   void logAudit(session, {
     action: 'vendor.update', entity: 'vendors', entity_id: id,
-    diff: { commission_pct, settlement_direction, self_delivers, delivery_fee, free_shipping_threshold },
+    diff: patch,
   });
   revalidatePath('/admin/vendors');
   // The threshold drives customer-facing promises (PDP line, cart bar,
   // checkout quote, place_order floor). Bust the storefront's ISR so the
   // copy tracks the new value instead of waiting out the hour window.
   revalidatePath('/', 'layout');
-  vendorsSaved('Vendor terms saved.');
+  vendorsSaved('Vendor settings saved.', base);
 }
 
 export async function deleteVendor(formData: FormData) {
@@ -159,6 +178,77 @@ export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
     entity: 'orders', entity_id: orderId,
   });
   revalidatePath(`/admin/orders/${orderId}`);
+}
+
+/** CSV of one vendor's trading record (orders + payout state), honouring the
+ *  detail page's date window so what downloads is exactly what's on screen.
+ *  Built server-side for the same reason as exportOrdersCsv: anon RLS can't
+ *  read orders/settlements, and the owner wants a sheet they can hand to the
+ *  vendor on a settlement call. */
+export async function exportVendorCsv(
+  filters: { vendorId: string; days?: string },
+): Promise<{ csv?: string; count?: number; error?: string }> {
+  try {
+    await assertPermission('vendors');
+  } catch {
+    return { error: 'You don’t have permission to export vendor records.' };
+  }
+  const admin = supabaseAdmin();
+  const { data: vendor } = await admin.from('vendors').select('name').eq('id', filters.vendorId).maybeSingle();
+  if (!vendor) return { error: 'Vendor not found.' };
+
+  const days = Number(filters.days);
+  const sinceIso = Number.isFinite(days) && days > 0
+    ? new Date(Date.now() - days * 86400_000).toISOString()
+    : null;
+
+  let oq = admin
+    .from('orders')
+    .select('id, order_number, created_at, status, total, pay_method')
+    .eq('vendor_id', filters.vendorId)
+    .is('archived_at', null)
+    .order('created_at', { ascending: false });
+  if (sinceIso) oq = oq.gte('created_at', sinceIso);
+  const { data: orderRows, error: oErr } = await oq;
+  if (oErr) return { error: oErr.message };
+  const orders = (orderRows ?? []) as { id: string; order_number: string | null; created_at: string | null; status: string | null; total: number | null; pay_method: string | null }[];
+  if (orders.length === 0) return { csv: '', count: 0 };
+
+  const { data: settleRows } = await admin
+    .from('vendor_settlements')
+    .select('order_id, gross_amount, vendor_cost, our_margin, amount_due, due_to, status, settled_at')
+    .eq('vendor_id', filters.vendorId)
+    .in('order_id', orders.map(o => o.id));
+  type SettleRow = { order_id: string; gross_amount: number; vendor_cost: number; our_margin: number; amount_due: number; due_to: string; status: string; settled_at: string | null };
+  const settleByOrder = new Map(((settleRows ?? []) as SettleRow[]).map(s => [s.order_id, s]));
+
+  const esc = (v: string | number | null | undefined) => {
+    const s = v == null ? '' : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const header = [
+    'Vendor', 'Order #', 'Order date', 'Order status', 'Pay method', 'Order total',
+    'Vendor cost', 'Our margin', 'Amount due', 'Due to', 'Payout status', 'Settled at',
+  ];
+  const lines = [header.join(',')];
+  for (const o of orders) {
+    const s = settleByOrder.get(o.id);
+    lines.push([
+      esc(vendor.name as string),
+      esc(o.order_number),
+      esc(o.created_at ? o.created_at.slice(0, 10) : ''),
+      esc(o.status),
+      esc(o.pay_method),
+      esc(o.total ?? 0),
+      esc(s ? Number(s.vendor_cost) : ''),
+      esc(s ? Number(s.our_margin) : ''),
+      esc(s ? Number(s.amount_due) : ''),
+      esc(s ? (s.due_to === 'us' ? 'Owed to us' : 'Owed to vendor') : ''),
+      esc(s ? s.status : 'no payout recorded'),
+      esc(s?.settled_at ? s.settled_at.slice(0, 10) : ''),
+    ].join(','));
+  }
+  return { csv: lines.join('\n'), count: orders.length };
 }
 
 export interface AssignVendorResult {
@@ -298,20 +388,21 @@ export async function markSettlementSettled(formData: FormData) {
   const id = formData.get('id') as string;
   if (!id) return;
   const settle = formData.get('settle') !== 'false';
+  const base = vendorPath(formData.get('return_to'));
   const { error } = await supabaseAdmin()
     .from('vendor_settlements')
     .update({ status: settle ? 'settled' : 'pending', settled_at: settle ? new Date().toISOString() : null })
     .eq('id', id);
   if (error) {
     log.error('vendor.settlement_update_failed', { id, settle, error: error.message });
-    bounceVendors(`Could not update settlement: ${error.message}`);
+    bounceVendors(`Could not update settlement: ${error.message}`, base);
   }
   void logAudit(session, {
     action: settle ? 'vendor.settlement_settled' : 'vendor.settlement_reopened',
     entity: 'vendor_settlements', entity_id: id,
   });
   revalidatePath('/admin/vendors');
-  vendorsSaved(settle ? 'Payout marked settled.' : 'Payout reopened.');
+  vendorsSaved(settle ? 'Payout marked settled.' : 'Payout reopened.', base);
 }
 
 /** Settle every pending payout for one vendor in one click — the common case
@@ -321,6 +412,7 @@ export async function settleVendorPending(formData: FormData) {
   const session = await assertPermission('vendors');
   const vendorId = formData.get('vendor_id') as string;
   if (!vendorId) return;
+  const base = vendorPath(formData.get('return_to'));
   const { data, error } = await supabaseAdmin()
     .from('vendor_settlements')
     .update({ status: 'settled', settled_at: new Date().toISOString() })
@@ -329,7 +421,7 @@ export async function settleVendorPending(formData: FormData) {
     .select('id');
   if (error) {
     log.error('vendor.settle_all_failed', { vendorId, error: error.message });
-    bounceVendors(`Could not settle payouts: ${error.message}`);
+    bounceVendors(`Could not settle payouts: ${error.message}`, base);
   }
   void logAudit(session, {
     action: 'vendor.settlements_settled_bulk',
@@ -337,5 +429,5 @@ export async function settleVendorPending(formData: FormData) {
     diff: { settled_count: data?.length ?? 0 },
   });
   revalidatePath('/admin/vendors');
-  vendorsSaved(`Settled ${data?.length ?? 0} payout${(data?.length ?? 0) === 1 ? '' : 's'}.`);
+  vendorsSaved(`Settled ${data?.length ?? 0} payout${(data?.length ?? 0) === 1 ? '' : 's'}.`, base);
 }
