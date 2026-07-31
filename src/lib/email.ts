@@ -493,15 +493,42 @@ export async function sendCustomerReplyEmail(args: {
 /** Returns true when Resend accepted the email; false when the send was
  *  skipped (no API key, daily cap) or rejected. Checkout callers fire and
  *  forget, but the admin "Resend confirmation" button surfaces the result. */
-export async function sendOrderConfirmationEmail(args: OrderSummary & { email: string }): Promise<boolean> {
+export async function sendOrderConfirmationEmail(
+  args: OrderSummary & {
+    email: string;
+    /** Bank-transfer orders: the store's accounts + admin instructions, so
+     *  the customer has the payment details in their inbox and not only on
+     *  the thank-you page they may have closed. */
+    bankAccounts?: import('@/types').BankAccount[];
+    bankNotes?: string;
+  },
+): Promise<boolean> {
+  const isBank = args.pay_method === 'bank' && (args.bankAccounts?.length ?? 0) > 0;
+  const bankBlock = isBank
+    ? `
+    <div style="margin:20px 0 0;padding:14px 16px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px">
+      <p style="margin:0 0 8px;font-weight:600;color:#92400e">To complete your order, transfer ${money(args.total)} to one of these accounts:</p>
+      ${(args.bankAccounts ?? []).map(a => `
+        <p style="margin:0 0 8px;font-size:14px;line-height:1.5">
+          <strong>${escapeHtml(a.label)}</strong><br/>
+          ${escapeHtml(a.title)}<br/>
+          Account: <strong style="font-family:monospace">${escapeHtml(a.number)}</strong>
+          ${a.iban ? `<br/>IBAN: <span style="font-family:monospace">${escapeHtml(a.iban)}</span>` : ''}
+        </p>`).join('')}
+      <p style="margin:8px 0 0;font-size:13px;color:${INK}">Use <strong>${escapeHtml(args.order_number)}</strong> as the payment reference and send us the receipt (WhatsApp or reply to this email). We prepare your order as soon as the payment is confirmed.</p>
+      ${args.bankNotes ? `<p style="margin:8px 0 0;font-size:13px;color:${MUTED}">${escapeHtml(args.bankNotes)}</p>` : ''}
+    </div>`
+    : '';
+  const introLine = isBank
+    ? `We've received your order <strong>${escapeHtml(args.order_number)}</strong>. It will be prepared as soon as your bank transfer is confirmed — the details are below.`
+    : `We've received your order <strong>${escapeHtml(args.order_number)}</strong> and will start preparing it shortly.
+      You'll get an email when it ships.`;
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Thanks for your order, ${escapeHtml(stripEmoji(args.first_name))}!</h2>
-    <p style="margin:0 0 16px;color:${INK};line-height:1.5">
-      We've received your order <strong>${escapeHtml(args.order_number)}</strong> and will start preparing it shortly.
-      You'll get an email when it ships.
-    </p>
+    <p style="margin:0 0 16px;color:${INK};line-height:1.5">${introLine}</p>
     ${renderItemsTable(args.items)}
     <p style="margin:8px 0 0;text-align:right;font-size:16px"><strong>Total: ${money(args.total)}</strong></p>
+    ${bankBlock}
     <p style="margin:20px 0 0">
       <a href="${SITE_URL}/track?order=${encodeURIComponent(args.order_number)}${args.phone ? `&phone=${encodeURIComponent(args.phone)}` : ''}" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track your order</a>
     </p>
