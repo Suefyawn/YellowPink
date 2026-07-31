@@ -369,6 +369,36 @@ export async function deleteProduct(formData: FormData) {
 
 // ─── Orders / customers, destructive deletes ──────────────────────────────────
 
+/** Archive an order (migration 830): history, not operations. Status stays
+ *  whatever physically happened; the order drops out of lists, dashboards,
+ *  finance, analytics and the daily nudge sweep. Reversible; both directions
+ *  are audit-logged. Gated on orders.edit. */
+export async function archiveOrder(formData: FormData) {
+  const session = await assertPermission('orders.edit');
+  const id = formData.get('id') as string;
+  const admin = supabaseAdmin();
+  const { error } = await admin.from('orders')
+    .update({ archived_at: new Date().toISOString(), archived_by: session.email })
+    .eq('id', id);
+  if (error) redirect(`/admin/orders/${id}?err=` + encodeURIComponent(error.message));
+  await logAudit(session, { action: 'order.archive', entity: 'order', entity_id: id });
+  revalidatePath('/admin/orders');
+  redirect(`/admin/orders/${id}`);
+}
+
+export async function unarchiveOrder(formData: FormData) {
+  const session = await assertPermission('orders.edit');
+  const id = formData.get('id') as string;
+  const admin = supabaseAdmin();
+  const { error } = await admin.from('orders')
+    .update({ archived_at: null, archived_by: null })
+    .eq('id', id);
+  if (error) redirect(`/admin/orders/${id}?err=` + encodeURIComponent(error.message));
+  await logAudit(session, { action: 'order.unarchive', entity: 'order', entity_id: id });
+  revalidatePath('/admin/orders');
+  redirect(`/admin/orders/${id}`);
+}
+
 /** Permanently delete an order. Dependent rows are handled by the FK rules:
  *  payments / order_events / shipments / return_requests / vendor_settlements
  *  CASCADE; ledger + redemption links SET NULL. Gated on orders.delete. */
@@ -554,7 +584,10 @@ export async function exportOrdersCsv(
   // so "Export CSV" downloads exactly the rows the filtered list shows.
   if (status === 'tofulfil') query = query.in('status', ['pending', 'processing']);
   else if (status === 'unpaid') query = query.is('payment_received_at', null).in('status', ['pending', 'processing', 'shipped', 'delivered']);
-  else if (status && status !== 'all') query = query.eq('status', status as OrderStatus);
+  else if (status && status !== 'all' && status !== 'archived') query = query.eq('status', status as OrderStatus);
+  // Archived orders (migration 830): only in the Archived view's export.
+  if (status === 'archived') query = query.not('archived_at', 'is', null);
+  else query = query.is('archived_at', null);
   // Shared with the Orders page so the export window matches the on-screen
   // filter exactly ("Today" = PKT calendar day, 7d/30d/90d rolling).
   const rangeSince = orderRangeSinceIso(range);

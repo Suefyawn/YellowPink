@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
   const { data: orderRows, error } = await sb
     .from('orders')
     .select('id, order_number, status, pay_method, vendor_sent_at, delivery_cost, acquisition_cost, payment_received_at, updated_at, created_at')
+    .is('archived_at', null)
     .in('status', ACTIVE_STATUSES)
     .gte('created_at', since)
     .limit(500);

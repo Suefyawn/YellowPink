@@ -54,6 +54,7 @@ async function loadOrders(weekStart: Date, prevStart: Date): Promise<WeeklyRepor
     const { data, error } = await sb
       .from('orders')
       .select('total, status, pay_method, created_at, items, utm_source')
+      .is('archived_at', null)
       .gte('created_at', prevStart.toISOString())
       .lt('created_at', new Date(weekStart.getTime() + 7 * DAY_MS).toISOString());
     if (error || !data) return null;

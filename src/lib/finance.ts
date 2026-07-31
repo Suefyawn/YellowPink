@@ -46,7 +46,7 @@ export async function loadReturnedDeliveryLoss(
   defaultDeliveryCost: number,
 ): Promise<{ count: number; loss: number }> {
   const admin = supabaseAdmin();
-  let q = admin.from('orders').select('delivery_cost, status').in('status', [...RETURNED_STATES]);
+  let q = admin.from('orders').select('delivery_cost, status').in('status', [...RETURNED_STATES]).is('archived_at', null);
   if (fromISO) q = q.gte('created_at', fromISO);
   const { data } = await fetchAll<{ delivery_cost: number | null; status: string | null }>(q);
   const rows = data ?? [];
@@ -99,7 +99,7 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
   const admin = supabaseAdmin();
   // fetchAll pages past PostgREST's silent 1000-row cap; without it the P&L
   // (and its CSV export) quietly dropped every order past #1000 in the window.
-  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, shipping, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, acquisition_cost, items');
+  let oq = admin.from('orders').select('id, order_number, created_at, pay_method, total, shipping, delivery_cost, payment_fee, utm_source, status, payment_account, payment_received_at, acquisition_cost, items').is('archived_at', null);
   if (fromISO) oq = oq.gte('created_at', fromISO);
   const { data } = await fetchAll<FinanceOrder>(oq.order('created_at', { ascending: true }));
   const orders = (data ?? []).filter(o => !DEAD_STATES.has(o.status ?? ''));

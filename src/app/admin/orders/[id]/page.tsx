@@ -11,7 +11,7 @@ import { VendorDispatch } from '@/components/admin/VendorDispatch';
 import { setOrderConfirmed } from '@/app/admin/vendor-actions';
 import { setOrderCosts, recalcAcquisitionCost, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
 import { resolveOrderCosts } from '@/lib/order-costs';
-import { deleteOrder } from '@/app/admin/actions';
+import { deleteOrder, archiveOrder, unarchiveOrder } from '@/app/admin/actions';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
 import { AdminFlash } from '@/components/admin/AdminFlash';
@@ -1119,6 +1119,29 @@ export default async function OrderDetailPage({
           </div>
         )}
       </div>
+
+      {canEdit && (
+        <div style={{ ...section, marginTop: 20 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Archive</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            {(o as { archived_at?: string | null }).archived_at
+              ? 'This order is archived: it stays in the database for history but is hidden from order lists, dashboards, finance and reminders. Unarchive to bring it back into the working views.'
+              : 'Archiving keeps the order for history but removes it from order lists, dashboards, finance numbers and reminders. Use it for legacy imports, tests, or anything that is not a real trading record. Reversible any time.'}
+          </p>
+          <form action={(o as { archived_at?: string | null }).archived_at ? unarchiveOrder : archiveOrder}>
+            <input type="hidden" name="id" value={o.id!} />
+            <button
+              type="submit"
+              style={{
+                padding: '8px 16px', borderRadius: 8, border: '1px solid #d1d5db',
+                background: 'white', color: '#374151', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+              }}
+            >
+              {(o as { archived_at?: string | null }).archived_at ? 'Unarchive order' : 'Archive order'}
+            </button>
+          </form>
+        </div>
+      )}
 
       {canDelete && (
         <div style={{ ...section, marginTop: 20, border: '1px solid #fecaca', background: '#fef2f2' }}>

@@ -253,6 +253,7 @@ export default async function AnalyticsPage({
     const { data: attrRaw } = await supabaseAdmin()
       .from('orders')
       .select('utm_source, utm_medium, utm_campaign, referrer, landing_page, total, status, created_at')
+      .is('archived_at', null)
       .gte('created_at', sinceIso);
     const rows = ((attrRaw ?? []) as (AttrOrder & { created_at: string })[])
       .filter(o => !['cancelled', 'canceled', 'refunded'].includes((o.status ?? '').toLowerCase()));

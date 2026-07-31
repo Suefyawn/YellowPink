@@ -75,9 +75,18 @@ async function OrdersPageInner({
   } else if (status === 'unpaid') {
     countQuery = countQuery.is('payment_received_at', null).in('status', ['pending', 'processing', 'shipped', 'delivered']);
     dataQuery = dataQuery.is('payment_received_at', null).in('status', ['pending', 'processing', 'shipped', 'delivered']);
-  } else if (status && status !== 'all') {
+  } else if (status && status !== 'all' && status !== 'archived') {
     countQuery = countQuery.eq('status', status as OrderStatus);
     dataQuery = dataQuery.eq('status', status as OrderStatus);
+  }
+  // Archived orders are history, not operations: hidden from every view
+  // except the dedicated Archived tab (migration 830).
+  if (status === 'archived') {
+    countQuery = countQuery.not('archived_at', 'is', null);
+    dataQuery = dataQuery.not('archived_at', 'is', null);
+  } else {
+    countQuery = countQuery.is('archived_at', null);
+    dataQuery = dataQuery.is('archived_at', null);
   }
   if (rangeSinceIso) {
     countQuery = countQuery.gte('created_at', rangeSinceIso);
