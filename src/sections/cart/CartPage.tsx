@@ -13,6 +13,7 @@ import { brandPlusName } from '@/lib/product-display';
 import { whatsappUrl as waUrl, whatsappGoUrl, WA_TEMPLATES as WA_T } from '@/lib/whatsapp';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { FreeShippingProgress } from '@/components/cart/FreeShippingProgress';
+import { vendorFreeShippingEligible } from '@/lib/vendor-shipping';
 import type { CartItem, Coupon, Product } from '@/types';
 
 export function CartPage({ restoreToken = null, recommended = [], estimatedDays = null }: { restoreToken?: string | null; recommended?: Product[]; estimatedDays?: { min: number; max: number } | null }) {
@@ -90,8 +91,11 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
   // threshold — only a free-shipping coupon zeroes the estimate. Checkout
   // resolves the real, province-correct rate (and any free-delivery
   // qualification). `freeShippingEnabled` still gates the free-delivery nudge.
-  const { freeShippingEnabled, defaultShippingRate } = useCommerceSettings();
-  const shipping = freeShipCoupon ? 0 : defaultShippingRate;
+  const { freeShippingEnabled, defaultShippingRate, vendorFreeShipThresholds } = useCommerceSettings();
+  // Vendor rule (NB Sons ≥ Rs 1,999): free nationwide regardless of zone, so
+  // the cart CAN promise it pre-address — unlike the zone thresholds above.
+  const vendorFreeShip = vendorFreeShippingEligible(cartItems, vendorFreeShipThresholds);
+  const shipping = freeShipCoupon || vendorFreeShip ? 0 : defaultShippingRate;
   // "You may also like", bestsellers minus whatever's already in the bag,
   // capped at a single 4-up row.
   const crossSell = recommended.filter(p => !cartItems.some(c => c.id === p.id)).slice(0, 4);
@@ -185,9 +189,9 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
       <section style={{ padding: '0 0 var(--section-gap)' }}>
         <div className="container">
           <div style={{ padding: '16px 0 32px', borderBottom: '1px solid var(--line)' }}>
-            {freeShippingEnabled && (
+            {(freeShippingEnabled || vendorFreeShip) && (
               <div style={{ maxWidth: 480 }}>
-                <FreeShippingProgress subtotal={cartItems.reduce((s, i) => s + i.price * i.qty, 0)} />
+                <FreeShippingProgress subtotal={cartItems.reduce((s, i) => s + i.price * i.qty, 0)} items={cartItems} />
               </div>
             )}
             {estimatedDays && (

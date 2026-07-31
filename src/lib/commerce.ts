@@ -50,6 +50,13 @@ export interface CommerceConfig {
     /** Points earned per 1 PKR of a delivered order (0.1 = 10 pts / PKR 100). */
     pointsPerPkr: number;
   };
+  /** vendor_id → vendor free-shipping threshold (PKR), e.g. NB Sons Rs 1,999
+   *  (migration 770). Sourced from the vendors table, not site_settings —
+   *  parseCommerceConfig leaves it empty and the server layout merges the
+   *  live values in (see app/layout.tsx). A plain Record so it serializes
+   *  across the RSC boundary into client surfaces (cart progress bar,
+   *  checkout's optimistic estimate). */
+  vendorFreeShipThresholds: Record<string, number>;
 }
 
 /** Parse the raw site_settings key/value map into a typed CommerceConfig,
@@ -81,6 +88,7 @@ export function parseCommerceConfig(settings: Record<string, string>): CommerceC
       referral:     earnNum(settings.loyalty_referral_points, 500),
       pointsPerPkr: earnNum(settings.loyalty_points_per_pkr, 0.1),
     },
+    vendorFreeShipThresholds: {},
   };
 }
 
@@ -95,6 +103,7 @@ export const DEFAULT_COMMERCE_CONFIG: CommerceConfig = {
   defaultDeliveryCost: 0,
   loyaltyPkrPerPoint: DEFAULT_LOYALTY_PKR_PER_POINT,
   loyaltyEarn: { welcome: 100, review: 25, referral: 500, pointsPerPkr: 0.1 },
+  vendorFreeShipThresholds: {},
 };
 
 /** Format a threshold (PKR) as shoppers see it, e.g. "PKR 5,000". */

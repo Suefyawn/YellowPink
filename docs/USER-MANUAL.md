@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 29 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 31 July 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1004,6 +1004,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 31 July 2026
+
+- **The NB Sons free-delivery promise is now kept everywhere — a gap let one order be overcharged.** Order YP-ET8YOUQ76 (Rs 3,500 of NB Sons product, well over the Rs 1,999 threshold) was billed Rs 250 delivery: products added to the bag from a shop/collection grid tile (rather than the product page) were missing the supplier link the rule keys on, so checkout quoted the normal rate — and the order pipeline only blocked *under*charges, letting the overcharge through. Three layers are fixed: grid-tile adds now carry the supplier link; checkout re-checks every bag against the live product catalogue (so bags saved in a customer's browser before today also qualify); and the order pipeline itself now charges Rs 0 whenever the store's own rules say delivery is free, even if a stale page quotes otherwise. The cart and mini-cart also now show "You've unlocked FREE delivery" (and a Rs 0 delivery estimate) when the NB Sons rule qualifies, instead of asking the shopper to add more. *One follow-up for you: YP-ET8YOUQ76 is still in Processing with the extra Rs 250 in its COD total — either edit the order's delivery charge to 0 in admin before booking the courier, or refund/discount the Rs 250 after delivery, and mention it to the customer.*
 
 ### 28 July 2026
 

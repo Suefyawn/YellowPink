@@ -97,7 +97,7 @@ async function catalogueForEngine(): Promise<Product[]> {
   // still satisfy the tile renderer (superset of its fields).
   const { data, error } = await supabase
     .from('products')
-    .select('id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, image_url, is_bestseller, is_featured, is_popular, packaging, status, created_at, rating, review_count, kind, short_description, description')
+    .select('id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, vendor_id, image_url, is_bestseller, is_featured, is_popular, packaging, status, created_at, rating, review_count, kind, short_description, description')
     .eq('status', 'published');
   if (error) throw error;
   return (data ?? []) as unknown as Product[];
