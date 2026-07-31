@@ -44,6 +44,16 @@ function parseDeliveryFee(raw: FormDataEntryValue | null): number {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+/** Customer-facing free-delivery threshold for this vendor's items (PKR).
+ *  Blank / 0 / invalid → null = no vendor free-shipping rule. Enforced by
+ *  place_order and quoted by lib/shipping — this field is the only knob. */
+function parseFreeShipThreshold(raw: FormDataEntryValue | null): number | null {
+  const s = (raw as string | null)?.trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : null;
+}
+
 export async function createVendor(formData: FormData) {
   const session = await assertPermission('vendors');
   const name  = (formData.get('name') as string)?.trim();
@@ -59,6 +69,7 @@ export async function createVendor(formData: FormData) {
       settlement_direction: parseDirection(formData.get('settlement_direction')),
       self_delivers: formData.get('self_delivers') === 'on',
       delivery_fee: parseDeliveryFee(formData.get('delivery_fee')),
+      free_shipping_threshold: parseFreeShipThreshold(formData.get('free_shipping_threshold')),
     })
     .select('id')
     .single();
@@ -83,9 +94,10 @@ export async function updateVendor(formData: FormData) {
   const settlement_direction = parseDirection(formData.get('settlement_direction'));
   const self_delivers = formData.get('self_delivers') === 'on';
   const delivery_fee = parseDeliveryFee(formData.get('delivery_fee'));
+  const free_shipping_threshold = parseFreeShipThreshold(formData.get('free_shipping_threshold'));
   const { error } = await supabaseAdmin()
     .from('vendors')
-    .update({ commission_pct, settlement_direction, self_delivers, delivery_fee })
+    .update({ commission_pct, settlement_direction, self_delivers, delivery_fee, free_shipping_threshold })
     .eq('id', id);
   if (error) {
     log.error('vendor.update_failed', { id, error: error.message });
@@ -93,9 +105,13 @@ export async function updateVendor(formData: FormData) {
   }
   void logAudit(session, {
     action: 'vendor.update', entity: 'vendors', entity_id: id,
-    diff: { commission_pct, settlement_direction, self_delivers, delivery_fee },
+    diff: { commission_pct, settlement_direction, self_delivers, delivery_fee, free_shipping_threshold },
   });
   revalidatePath('/admin/vendors');
+  // The threshold drives customer-facing promises (PDP line, cart bar,
+  // checkout quote, place_order floor). Bust the storefront's ISR so the
+  // copy tracks the new value instead of waiting out the hour window.
+  revalidatePath('/', 'layout');
   vendorsSaved('Vendor terms saved.');
 }
 

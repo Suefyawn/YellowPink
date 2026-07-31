@@ -333,6 +333,10 @@ export interface Vendor {
   self_delivers?: boolean;
   /** PKR the vendor bills us per self-delivered order (0 = no charge). */
   delivery_fee?: number | null;
+  /** Customer-facing free-delivery rule (migration 770): when a basket's
+   *  items from this vendor total at least this PKR amount, the order ships
+   *  free (e.g. NB Sons Rs 1,999, matching their own store). NULL = none. */
+  free_shipping_threshold?: number | null;
   created_at?: string;
 }
 

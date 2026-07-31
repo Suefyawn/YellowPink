@@ -158,6 +158,10 @@ export default async function VendorsPage({
             <label htmlFor="vendor-delivery_fee" style={lbl}>Delivery fee they charge us</label>
             <input id="vendor-delivery_fee" name="delivery_fee" type="number" min={0} step="1" placeholder="0" style={{ ...inp, width: 150 }} />
           </div>
+          <div>
+            <label htmlFor="vendor-free_shipping_threshold" style={lbl}>Customer free delivery from (PKR)</label>
+            <input id="vendor-free_shipping_threshold" name="free_shipping_threshold" type="number" min={0} step="1" placeholder="none" style={{ ...inp, width: 170 }} />
+          </div>
           <label style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', paddingBottom: 8 }}>
             <input type="checkbox" name="self_delivers" style={{ width: 16, height: 16 }} />
             Vendor delivers to customer
