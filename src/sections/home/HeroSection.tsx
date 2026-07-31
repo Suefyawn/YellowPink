@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { Overline } from '@/components/ui/Overline';
+import { brandSlug } from '@/lib/brands';
 
 interface HeroBrand { name: string; logoUrl: string | null }
 
@@ -157,8 +158,18 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
                   {/* Rendered twice back-to-back so translateX(-50%) loops
                       seamlessly; the second copy is aria-hidden so screen
                       readers see the brand list once, not doubled. */}
+                  {/* Each logo links to its /brand archive: brand names are
+                      among the store's highest-volume searches, and the
+                      marquee was the one place they appeared sitewide without
+                      a link. Duplicate copies stay out of the tab order. */}
                   {[...s.brands, ...s.brands].map((b, i) => (
-                    <span key={`${b.name}-${i}`} className="hero-brand-slot" aria-hidden={i >= s.brands.length || undefined}>
+                    <Link
+                      key={`${b.name}-${i}`}
+                      href={`/brand/${brandSlug(b.name)}`}
+                      className="hero-brand-slot"
+                      aria-hidden={i >= s.brands.length || undefined}
+                      tabIndex={i >= s.brands.length ? -1 : undefined}
+                    >
                       {b.logoUrl ? (
                         // Plain <img>, not next/image: these are small trust logos of
                         // wildly varying aspect ratio from many hosts (Shopify CDNs,
@@ -184,7 +195,7 @@ export function HeroSection({ settings }: { settings?: Partial<HeroSettings> }) 
                       ) : (
                         <span className="hero-brand-text">{b.name}</span>
                       )}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               </div>

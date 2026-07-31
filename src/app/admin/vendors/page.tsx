@@ -62,6 +62,43 @@ export default async function VendorsPage({
   const orderMap = new Map(((orderData ?? []) as { id: string; order_number: string }[]).map(o => [o.id, o.order_number]));
   const vendorMap = new Map(vendors.map(v => [v.id, v]));
 
+  // Vendor performance rollup: everything the store has ever traded with each
+  // vendor, from the orders table itself (settlements only exist for
+  // dispatched orders, so they'd undercount). Archived orders excluded like
+  // every other metric surface.
+  type VendorPerf = {
+    orders: number; delivered: number; returned: number; sales: number;
+    cogs: number; margin: number; settledAmount: number; pendingAmount: number;
+    lastOrderAt: string | null;
+  };
+  const { data: vendorOrderData } = await admin
+    .from('orders')
+    .select('vendor_id, status, total, created_at')
+    .not('vendor_id', 'is', null)
+    .is('archived_at', null);
+  const perfByVendor = new Map<string, VendorPerf>();
+  const perfFor = (vid: string): VendorPerf => {
+    let p = perfByVendor.get(vid);
+    if (!p) { p = { orders: 0, delivered: 0, returned: 0, sales: 0, cogs: 0, margin: 0, settledAmount: 0, pendingAmount: 0, lastOrderAt: null }; perfByVendor.set(vid, p); }
+    return p;
+  };
+  for (const o of (vendorOrderData ?? []) as { vendor_id: string; status: string | null; total: number | null; created_at: string | null }[]) {
+    const p = perfFor(o.vendor_id);
+    p.orders += 1;
+    const st = (o.status ?? '').toLowerCase();
+    if (st === 'delivered') { p.delivered += 1; p.sales += Number(o.total) || 0; }
+    if (st === 'returned') p.returned += 1;
+    if (o.created_at && (!p.lastOrderAt || o.created_at > p.lastOrderAt)) p.lastOrderAt = o.created_at;
+  }
+  for (const s of settlements) {
+    if (!s.vendor_id) continue;
+    const p = perfFor(s.vendor_id);
+    p.cogs += Number(s.vendor_cost) || 0;
+    p.margin += Number(s.our_margin) || 0;
+    if (s.status === 'settled') p.settledAmount += Number(s.amount_due) || 0;
+    if (s.status === 'pending') p.pendingAmount += Number(s.amount_due) || 0;
+  }
+
   // Per-vendor outstanding (pending) total. A vendor's settlement_direction is
   // fixed, so every pending row for a vendor is owed in the same direction.
   const pendingByVendor = new Map<string, number>();
@@ -130,6 +167,51 @@ export default async function VendorsPage({
         <KpiCard label="Margin earned · all payouts" value={fmt(totalMargin)} accent="#C5286A"
           hint={`${settlements.length} payout${settlements.length === 1 ? '' : 's'} recorded`} />
       </div>
+
+      {/* ── Vendor performance ──────────────────────────────────────────── */}
+      {/* The trading relationship at a glance, per vendor: what you sold
+          through them, what it cost, what you kept, and what's unsettled.
+          Sales counts delivered orders only (returned/cancelled earned
+          nothing); COGS + margin come from the recorded payouts. */}
+      {perfByVendor.size > 0 && (
+        <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 24, overflowX: 'auto' }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Vendor performance</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            All-time trading with each supplier. Sales = delivered order totals; margin is your share recorded at dispatch.
+          </p>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 760 }}>
+            <thead>
+              <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
+                {['Vendor', 'Orders', 'Delivered', 'Returned', 'Sales', 'Vendor cost', 'Your margin', 'Margin %', 'Unsettled', 'Last order'].map((h, i) => (
+                  <th key={h} scope="col" style={{ textAlign: i === 0 ? 'left' : 'right', padding: '6px 8px', color: '#6b7280', fontWeight: 600, whiteSpace: 'nowrap' }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {[...perfByVendor.entries()]
+                .sort(([, a], [, b]) => b.sales - a.sales)
+                .map(([vid, p]) => {
+                  const v = vendorMap.get(vid);
+                  const num = { padding: '8px', textAlign: 'right' as const, fontVariantNumeric: 'tabular-nums' as const, whiteSpace: 'nowrap' as const };
+                  return (
+                    <tr key={vid} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                      <td style={{ padding: '8px', fontWeight: 600, color: '#111827' }}>{v?.name ?? 'Removed vendor'}</td>
+                      <td style={num}>{p.orders}</td>
+                      <td style={num}>{p.delivered}</td>
+                      <td style={{ ...num, color: p.returned > 0 ? '#dc2626' : undefined }}>{p.returned}</td>
+                      <td style={{ ...num, fontWeight: 700 }}>{fmt(p.sales)}</td>
+                      <td style={num}>{fmt(p.cogs)}</td>
+                      <td style={{ ...num, fontWeight: 700, color: '#15803d' }}>{fmt(p.margin)}</td>
+                      <td style={num}>{p.sales > 0 ? `${Math.round((p.margin / p.sales) * 100)}%` : '—'}</td>
+                      <td style={{ ...num, color: p.pendingAmount > 0 ? '#b45309' : '#9ca3af', fontWeight: p.pendingAmount > 0 ? 700 : 400 }}>{fmt(p.pendingAmount)}</td>
+                      <td style={{ ...num, color: '#6b7280' }}>{p.lastOrderAt ? fmtDatePK(p.lastOrderAt) : '—'}</td>
+                    </tr>
+                  );
+                })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* ── Add vendor ──────────────────────────────────────────────────── */}
       <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginBottom: 24 }}>
