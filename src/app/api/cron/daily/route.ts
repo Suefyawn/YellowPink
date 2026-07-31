@@ -103,6 +103,10 @@ export async function GET(req: NextRequest) {
   const JOBS = [
     '/api/cron/abandoned-cart',
     '/api/cron/courier-sync',
+    // Order next-step nudges (confirm → dispatch → chase → record costs →
+    // reconcile → settle): cheap DB-only sweep, revenue-relevant, so it runs
+    // ahead of the analytics tail.
+    '/api/cron/order-actions',
     '/api/cron/review-requests',
     '/api/cron/stuck-payments',
     '/api/cron/not-found-digest',
