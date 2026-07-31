@@ -60,6 +60,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     { href: '/admin/newsletter', label: 'Newsletter', icon: 'mail', permission: 'newsletter' },
     { href: '/admin/link-builder', label: 'Link builder', icon: 'megaphone', permissionsAny: ['analytics', 'newsletter', 'coupons'] },
     { href: '/admin/search-demand', label: 'Search demand', icon: 'bar-chart', permissionsAny: ['analytics', 'products.view', 'blog'] },
+    { href: '/admin/seo-rankings', label: 'SEO rankings', icon: 'trend-up', permission: 'analytics' },
   ]},
   { label: 'System', items: [
     { href: '/admin/settings',  label: 'Settings',  icon: 'settings', permission: 'settings' },
