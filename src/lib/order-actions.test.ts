@@ -17,6 +17,7 @@ const base: OrderActionSnapshot = {
   hasAcquisitionCost: false,
   paymentReconciled: false,
   pendingSettlementDays: null,
+  confirmedAt: null,
 };
 const keys = (s: Partial<OrderActionSnapshot>) =>
   outstandingOrderActions({ ...base, ...s }).map(a => a.key);
@@ -28,8 +29,12 @@ describe('outstandingOrderActions', () => {
     expect(keys({ status: 'shipped', hoursInStatus: 48 })).toEqual([]);
   });
 
-  it('pending 24h+ → confirm nudge', () => {
+  it('pending 24h+ → confirm nudge; once confirmed it flips to start-preparing', () => {
     expect(keys({ status: 'pending', hoursInStatus: 25 })).toEqual(['confirm']);
+    expect(keys({ status: 'pending', hoursInStatus: 25, confirmedAt: '2026-07-30T10:00:00Z' }))
+      .toEqual(['start_preparing']);
+    // Fresh either way: staff just acted.
+    expect(keys({ status: 'pending', hoursInStatus: 2, confirmedAt: '2026-07-31T10:00:00Z' })).toEqual([]);
   });
 
   it('processing 24h+ with no dispatch → dispatch nudge; any dispatch silences it', () => {

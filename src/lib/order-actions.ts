@@ -40,6 +40,9 @@ export interface OrderActionSnapshot {
   paymentReconciled: boolean;
   /** A vendor settlement row for this order still 'pending', and its age. */
   pendingSettlementDays: number | null;
+  /** orders.confirmed_at — customer said yes (WhatsApp/call). Splits the
+   *  pending-order nudge: chase the confirmation vs act on it. */
+  confirmedAt: string | null;
 }
 
 export interface OrderAction {
@@ -60,11 +63,20 @@ export function outstandingOrderActions(o: OrderActionSnapshot): OrderAction[] {
     case 'pending':
       // The unconfirmed-COD window is where July's returns came from.
       if (o.hoursInStatus >= 24) {
-        acts.push({
-          key: 'confirm',
-          title: `Confirm order ${n}`,
-          body: `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. WhatsApp/call to confirm and mark it Preparing, or cancel it — unconfirmed parcels are where returns come from.`,
-        });
+        if (!o.confirmedAt) {
+          acts.push({
+            key: 'confirm',
+            title: `Confirm order ${n}`,
+            body: `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. Use "Send WhatsApp confirmation" on the order page and record the yes, or cancel it — unconfirmed parcels are where returns come from.`,
+          });
+        } else {
+          // Confirmed but nobody moved it forward — the yes goes stale.
+          acts.push({
+            key: 'start_preparing',
+            title: `Start preparing ${n}`,
+            body: `Customer confirmed but the order has sat in Order received for ${ageLabel(o.hoursInStatus)}. Mark it Preparing and get it dispatched while the yes is fresh.`,
+          });
+        }
       }
       break;
 

@@ -30,7 +30,7 @@ interface OrderRow {
   id: string; order_number: string; status: string; pay_method: string;
   vendor_sent_at: string | null; delivery_cost: number | null;
   acquisition_cost: number | null; payment_received_at: string | null;
-  updated_at: string | null; created_at: string;
+  updated_at: string | null; created_at: string; confirmed_at: string | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString();
   const { data: orderRows, error } = await sb
     .from('orders')
-    .select('id, order_number, status, pay_method, vendor_sent_at, delivery_cost, acquisition_cost, payment_received_at, updated_at, created_at')
+    .select('id, order_number, status, pay_method, vendor_sent_at, delivery_cost, acquisition_cost, payment_received_at, updated_at, created_at, confirmed_at')
     .is('archived_at', null)
     .in('status', ACTIVE_STATUSES)
     .gte('created_at', since)
@@ -88,6 +88,7 @@ export async function GET(req: NextRequest) {
       hasAcquisitionCost: o.acquisition_cost != null,
       paymentReconciled: o.payment_received_at != null,
       pendingSettlementDays: settleAge.get(o.id) ?? null,
+      confirmedAt: o.confirmed_at,
     };
     for (const act of outstandingOrderActions(snapshot)) {
       const dedupKey = `order_action:${o.id}:${act.key}`;
