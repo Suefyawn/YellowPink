@@ -19,14 +19,15 @@ export const FINANCE_RANGES: { key: string; label: string; days: number | null }
 // "Revenue (paid orders)" P&L line.
 //
 // Intentional difference from v_orders_revenue on COUNT (not revenue): that
-// view keeps `refunded` rows with revenue zeroed, so the dashboard/Analytics
-// order count includes refunded orders as *placed* orders; the P&L here drops
-// them entirely because a refunded order contributes neither revenue nor a
-// meaningful cost line to profit & loss. Revenue is identical either way
-// (refunded → 0); the two surfaces answer different questions —
-// "orders placed" (dashboard) vs "orders that produced P&L" (finance) — so
-// their order counts can differ by the number of refunds. Keep both rules
-// here so they don't silently drift.
+// view keeps `refunded` and `returned` rows with revenue zeroed (migration
+// 830), so the dashboard/Analytics order count includes them as *placed*
+// orders; the P&L here drops them entirely because they contribute no
+// revenue line (returned orders DO surface their courier cost via the sunk
+// return-cost block below). Revenue is identical either way (both → 0);
+// the two surfaces answer different questions — "orders placed" (dashboard)
+// vs "orders that produced P&L" (finance) — so their order counts can
+// differ by the number of refunds/returns. Keep both rules here so they
+// don't silently drift.
 const DEAD_STATES = new Set(['cancelled', 'payment_failed', 'payment_pending', 'refunded', 'returned']);
 
 /** Orders that reached the customer's door but came back — refused on COD, or

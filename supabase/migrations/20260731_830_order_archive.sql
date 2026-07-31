@@ -30,7 +30,11 @@ create or replace view public.v_orders_revenue as
 select
   o.id,
   o.created_at,
-  case when o.status = 'refunded' then 0 else o.total end as revenue,
+  -- Refunded: money went back. Returned: COD refusal, money never collected.
+  -- Either way the order stays a *placed* order (counts, conversion) but
+  -- contributes zero revenue — keeps dashboard "sales" equal to Finance
+  -- revenue instead of counting couriered-back parcels as income.
+  case when o.status in ('refunded', 'returned') then 0 else o.total end as revenue,
   o.user_id,
   lower(o.email) as email,
   o.status,
@@ -53,9 +57,12 @@ security definer
 set search_path = public
 as $$
   with revenue as (
+    -- Same revenue rule as v_orders_revenue: cancelled/unpaid excluded,
+    -- refunded and returned contribute zero. One definition everywhere.
     select coalesce(sum(total), 0) as v, count(*) as n
       from public.orders
-      where status <> 'cancelled' and archived_at is null
+      where status not in ('cancelled', 'payment_pending', 'payment_failed', 'refunded', 'returned')
+        and archived_at is null
   ),
   counts as (
     select status, count(*) as n
