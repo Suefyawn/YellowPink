@@ -201,10 +201,19 @@ export default async function VendorDetailPage({
         <div style={{ background: 'white', borderRadius: 10, padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', marginTop: 24 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
-              Pending payouts · {fmt(pendingAll.reduce((t, s) => t + Number(s.amount_due), 0))}{' '}
-              <span style={{ fontWeight: 500, color: '#6b7280' }}>
-                {pendingAll[0].due_to === 'us' ? 'owed to you' : 'you owe'}
-              </span>
+              {/* Directions can mix since return fees: sale margin owed to
+                  you alongside round-trip charges you owe. Total each side. */}
+              {(() => {
+                const owedUs = pendingAll.filter(s => s.due_to === 'us').reduce((t, s) => t + Number(s.amount_due), 0);
+                const weOwe = pendingAll.filter(s => s.due_to === 'vendor').reduce((t, s) => t + Number(s.amount_due), 0);
+                return (
+                  <>
+                    Pending payouts
+                    {owedUs > 0 && <> · {fmt(owedUs)} <span style={{ fontWeight: 500, color: '#15803d' }}>owed to you</span></>}
+                    {weOwe > 0 && <> · {fmt(weOwe)} <span style={{ fontWeight: 500, color: '#b45309' }}>you owe</span></>}
+                  </>
+                );
+              })()}
             </h2>
             <form action={settleVendorPending}>
               <input type="hidden" name="vendor_id" value={id} />
@@ -221,7 +230,9 @@ export default async function VendorDetailPage({
                   {pendingOrderNumbers.get(s.order_id) ?? 'Order'}
                 </Link>
                 <span style={{ color: '#6b7280' }}>{s.created_at ? fmtDatePK(s.created_at) : ''}</span>
-                <span style={{ fontWeight: 700, marginLeft: 'auto', fontVariantNumeric: 'tabular-nums' }}>{fmt(Number(s.amount_due))}</span>
+                <span style={{ fontWeight: 700, marginLeft: 'auto', fontVariantNumeric: 'tabular-nums', color: s.due_to === 'us' ? '#15803d' : '#b45309' }}>
+                  {fmt(Number(s.amount_due))} <span style={{ fontWeight: 500, fontSize: '0.6875rem' }}>{s.due_to === 'us' ? 'to you' : 'you owe'}</span>
+                </span>
                 <form action={markSettlementSettled}>
                   <input type="hidden" name="id" value={s.id} />
                   <input type="hidden" name="return_to" value={selfPath} />
@@ -270,6 +281,10 @@ export default async function VendorDetailPage({
           <div>
             <label htmlFor="vd-threshold" style={lbl}>Customer free delivery from (PKR)</label>
             <input id="vd-threshold" name="free_shipping_threshold" type="number" min={0} step="1" defaultValue={vendor.free_shipping_threshold ?? ''} style={{ ...inp, width: 160 }} />
+          </div>
+          <div>
+            <label htmlFor="vd-return-fee" style={lbl}>Return fee they charge us (PKR)</label>
+            <input id="vd-return-fee" name="return_fee" type="number" min={0} step="1" defaultValue={vendor.return_fee ?? ''} placeholder="none" title="What this vendor bills per refused/returned parcel (failed delivery round trip). Blank = no charge." style={{ ...inp, width: 150 }} />
           </div>
           <label style={{ ...lbl, display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', paddingBottom: 8, marginBottom: 0 }}>
             <input type="checkbox" name="self_delivers" defaultChecked={!!vendor.self_delivers} style={{ width: 16, height: 16 }} />

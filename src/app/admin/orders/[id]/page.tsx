@@ -58,7 +58,7 @@ export default async function OrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ costs?: string; pay?: string; notes?: string; err?: string }>;
+  searchParams: Promise<{ costs?: string; costs_note?: string; pay?: string; notes?: string; err?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('orders.view'))) {
@@ -78,7 +78,7 @@ export default async function OrderDetailPage({
   const sp = (await searchParams) ?? {};
   let flash: { message: string; type: 'success' | 'error' } | null = null;
   if (sp.err) flash = { message: sp.err, type: 'error' };
-  else if (sp.costs === 'saved') flash = { message: 'Order costs saved.', type: 'success' };
+  else if (sp.costs === 'saved') flash = { message: `Order costs saved.${sp.costs_note ? ` ${sp.costs_note}` : ''}`, type: 'success' };
   else if (sp.pay === 'recorded') flash = { message: 'Payment recorded.', type: 'success' };
   else if (sp.pay === 'cleared') flash = { message: 'Payment record cleared.', type: 'success' };
   else if (sp.notes === 'saved') flash = { message: 'Note saved.', type: 'success' };

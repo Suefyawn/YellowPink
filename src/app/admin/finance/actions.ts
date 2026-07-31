@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
-import { recomputeSettlement } from '@/lib/vendor-settlement';
+import { recomputeSettlement, syncReturnChargeToVendor } from '@/lib/vendor-settlement';
 
 // Finance is gated on the same permission as Analytics (owner always allowed;
 // a null session is the owner-password mode used elsewhere in admin).
@@ -83,7 +83,7 @@ export async function setOrderCosts(orderId: string, formData: FormData): Promis
 
   const { data: cur } = await supabaseAdmin()
     .from('orders')
-    .select('acquisition_cost, acquisition_cost_source')
+    .select('acquisition_cost, acquisition_cost_source, status, vendor_id')
     .eq('id', orderId)
     .maybeSingle();
   const curAcq = cur?.acquisition_cost != null ? Number(cur.acquisition_cost) : null;
@@ -105,8 +105,25 @@ export async function setOrderCosts(orderId: string, formData: FormData): Promis
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(error.message));
   }
   await logAudit(session, { action: 'order.set_costs', entity: 'order', entity_id:orderId, diff: { delivery_cost, payment_fee, acquisition_cost, acquisition_cost_source } });
+
+  // Returned vendor order: the delivery cost typed here IS the round-trip
+  // charge the vendor billed (managers record it once the actual bill is
+  // known — it usually isn't at return time). Keep the vendor payable in
+  // sync via the shared writer; self-delivering vendors only, and a settled
+  // payout is never rewritten.
+  let syncNote = '';
+  if (cur?.status === 'returned' && cur.vendor_id) {
+    const res = await syncReturnChargeToVendor(orderId, cur.vendor_id as string, delivery_cost);
+    if (res === 'synced') {
+      syncNote = ' Vendor payable updated to match.';
+      revalidatePath('/admin/vendors');
+    } else if (res === 'skipped_settled') {
+      syncNote = ' Payout already settled — vendor payable left unchanged.';
+    }
+  }
+
   revalidatePath(`/admin/orders/${orderId}`);
-  redirect(`/admin/orders/${orderId}?costs=saved`);
+  redirect(`/admin/orders/${orderId}?costs=saved${syncNote ? `&costs_note=${encodeURIComponent(syncNote.trim())}` : ''}`);
 }
 
 // "Recalculate from vendor rate" on the Order costs card: rerun the shared

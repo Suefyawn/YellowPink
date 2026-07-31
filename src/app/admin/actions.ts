@@ -16,6 +16,7 @@ import { logActionError } from '@/lib/action-log';
 import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
+import { syncReturnChargeToVendor } from '@/lib/vendor-settlement';
 import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { log } from '@/lib/logger';
@@ -591,7 +592,18 @@ async function applyReturnFinancials(
 ): Promise<void> {
   if (order.vendor_id) {
     const { data: vendor } = await admin
-      .from('vendors').select('settlement_direction').eq('id', order.vendor_id).maybeSingle();
+      .from('vendors').select('settlement_direction, self_delivers, return_fee').eq('id', order.vendor_id).maybeSingle();
+    // Some self-delivering vendors bill the store for the failed round trip
+    // (vendors.return_fee). Recorded in two places on purpose: the order's
+    // delivery_cost (Finance's sunk return-cost line reads it — only when no
+    // real courier charge is recorded yet) and a payable on the Vendors page.
+    const returnFee = vendor?.self_delivers ? Math.max(0, Number(vendor.return_fee) || 0) : 0;
+    if (returnFee > 0) {
+      const { data: o } = await admin.from('orders').select('delivery_cost').eq('id', order.id).maybeSingle();
+      if (!o?.delivery_cost || Number(o.delivery_cost) === 0) {
+        await admin.from('orders').update({ delivery_cost: returnFee }).eq('id', order.id);
+      }
+    }
     if (vendor?.settlement_direction === 'vendor_collects') {
       const { data: voided } = await admin
         .from('vendor_settlements').delete()
@@ -602,16 +614,19 @@ async function applyReturnFinancials(
           .update({ acquisition_cost: null, acquisition_cost_source: null })
           .eq('id', order.id);
       }
+      // The sale is void, but the round-trip charge is a real debt to the
+      // vendor. Shared writer with the Order costs card so the default fee
+      // here and the actual bill typed later land in the same row.
+      if (returnFee > 0) await syncReturnChargeToVendor(order.id, order.vendor_id, returnFee);
       void logAudit(session, {
         action: 'order.return_voided_payout', entity: 'orders', entity_id: order.id,
-        diff: { order_number: order.order_number, voided_payouts: voided?.length ?? 0 },
+        diff: { order_number: order.order_number, voided_payouts: voided?.length ?? 0, return_fee: returnFee || null },
       });
       return; // goods never left the vendor — nothing to restock
     }
-    // we_collect: keep the payable, zero the unearned margin.
-    await admin.from('vendor_settlements')
-      .update({ our_margin: 0 })
-      .eq('order_id', order.id).eq('status', 'pending');
+    // we_collect: the payable stands; the shared writer folds in any
+    // round-trip fee and zeroes the unearned margin (−fee is real loss).
+    await syncReturnChargeToVendor(order.id, order.vendor_id, returnFee);
   }
   await restockCancelledOrder(admin, session, order, 'return');
 }
