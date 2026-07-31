@@ -46,6 +46,17 @@ insert into public.coupons (id, code, type, value, active, expires_at, usage_lim
   ('00000000-0000-0000-0000-0000000000c3', 'MATRIXONCE', 'fixed',  100, true,  null,                 1,    false),
   ('00000000-0000-0000-0000-0000000000c4', 'MATRIXSHIP', 'fixed',    0, true,  null,                 null, true);
 
+-- Referral programme: a referrer profile whose code a first-time buyer can
+-- use for the no-coupon referral discount (migration 650, restored by 790).
+insert into auth.users (id, email)
+  values ('00000000-0000-0000-0000-0000000000f1', 'matrix-referrer@example.com')
+  on conflict (id) do nothing;
+insert into public.profiles (id, referral_code)
+  values ('00000000-0000-0000-0000-0000000000f1', 'MATRIXREF')
+  on conflict (id) do update set referral_code = excluded.referral_code;
+insert into public.site_settings (key, value) values ('loyalty_referral_discount_pct', '10')
+  on conflict (key) do update set value = excluded.value;
+
 -- Shipping: zone rate 250 with free-shipping threshold 5000; store default
 -- rate 200 / threshold 5000. place_order floors at least(zone, default)=200.
 insert into public.site_settings (key, value) values
@@ -252,6 +263,40 @@ begin
   perform yp_tests.assert('zone free shipping overcharge clamped',
     o.shipping = 0 and o.total = 6000,
     'expected clamp to shipping 0/total 6000, got ' || o.shipping || '/' || o.total);
+
+  -- 14e. Referral first-order discount (migration 650, restored by 790): a
+  --      fresh buyer (no prior orders under this email/phone) using someone's
+  --      referral code may carry a couponless 10% discount. Migration 770/780
+  --      silently dropped this branch — a referred shopper was shown the
+  --      discount and then rejected with 'discount without coupon' at submit.
+  begin
+    o := public.place_order(
+      yp_tests.payload('{"email": "matrix-referred@example.com", "phone": "03111111111", "discount_amount": 200, "total": 2000, "order_number": "MTX-REF-1"}'),
+      null, null, 'MATRIXREF');
+    raise notice 'ok (placed): referral discount accepted — % total %', o.order_number, o.total;
+  exception when others then
+    if sqlerrm like 'TEST FAIL%' then raise; end if;
+    raise exception 'TEST FAIL [referral discount accepted]: expected success, got "%"', sqlerrm;
+  end;
+  perform yp_tests.assert('referral discount accepted',
+    o.discount_amount = 200 and o.total = 2000,
+    'expected discount 200/total 2000, got ' || o.discount_amount || '/' || o.total);
+
+  -- 14f. Referral discount with a buyer who already has orders (base payload
+  --      email/phone placed several above): eligibility fails server-side even
+  --      though a code is supplied.
+  begin
+    perform public.place_order(
+      yp_tests.payload('{"discount_amount": 200, "total": 2000, "order_number": "MTX-REF-2"}'),
+      null, null, 'MATRIXREF');
+    raise exception 'TEST FAIL [referral not first order]: order was accepted, expected referral_discount_not_eligible';
+  exception when others then
+    if sqlerrm like 'TEST FAIL%' then raise; end if;
+    if position('referral_discount_not_eligible' in sqlerrm) = 0 then
+      raise exception 'TEST FAIL [referral not first order]: expected referral_discount_not_eligible, got "%"', sqlerrm;
+    end if;
+    raise notice 'ok (rejected): referral not first order — %', sqlerrm;
+  end;
 
   -- 15. Client subtotal that disagrees with server-recomputed prices.
   perform yp_tests.expect_reject('subtotal mismatch',

@@ -13,7 +13,7 @@ import { captureAbandonedCart } from '@/app/checkout/abandoned-cart-actions';
 import { checkReferralDiscount } from '@/app/checkout/rewards-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import { vendorFreeShippingEligible } from '@/lib/vendor-shipping';
-import { PK_CITIES, normalizeCity } from '@/lib/pk-cities';
+import { PK_CITIES, normalizeCity, provinceForCity } from '@/lib/pk-cities';
 import { brandPlusName } from '@/lib/product-display';
 import { hasWhatsApp, whatsappGoUrl } from '@/lib/whatsapp';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
@@ -335,6 +335,24 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   const update = (key: string, val: string) => {
     setFormData(p => ({ ...p, [key]: val }));
     if (errors[key]) setErrors(p => { const n = { ...p }; delete n[key]; return n; });
+  };
+
+  // Province auto-inference from the (required) city. The July 25 four-field
+  // form hid the province select behind an optional toggle, which nobody
+  // opens — every order since arrived with province='' and the shipping
+  // resolver fell back to the cheapest zone (Sindh/KPK undercharged Rs 100,
+  // Zone 3 Rs 200, and ETAs wrong). Deriving it from the city keeps the
+  // short form AND restores zone pricing. A province the shopper picked by
+  // hand is never overwritten (provinceTouched); an auto-filled one keeps
+  // tracking the city until they touch the select.
+  const provinceTouched = useRef(false);
+  const updateCity = (val: string) => {
+    setFormData(p => {
+      const inferred = provinceForCity(val);
+      const province = provinceTouched.current ? p.province : (inferred ?? p.province);
+      return { ...p, city: val, province };
+    });
+    if (errors.city) setErrors(p => { const n = { ...p }; delete n.city; return n; });
   };
 
   // Field key → the input's DOM id, in the form's visual order, so a failed
@@ -726,7 +744,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               </div>
               <div style={{ marginBottom: 12 }}>
                 <label htmlFor="co-city" style={labelStyle}>City *</label>
-                <input id="co-city" list="pk-cities" autoComplete="address-level2" value={formData.city} onChange={e => update('city', e.target.value)} onBlur={e => update('city', normalizeCity(e.target.value))} style={inputStyle('city')} aria-invalid={!!errors.city} aria-describedby={errors.city ? 'co-city-error' : undefined} />
+                <input id="co-city" list="pk-cities" autoComplete="address-level2" value={formData.city} onChange={e => updateCity(e.target.value)} onBlur={e => updateCity(normalizeCity(e.target.value))} style={inputStyle('city')} aria-invalid={!!errors.city} aria-describedby={errors.city ? 'co-city-error' : undefined} />
                 <datalist id="pk-cities">
                   {PK_CITIES.map(c => <option key={c} value={c} />)}
                 </datalist>
@@ -752,7 +770,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="checkout-name-grid">
                   <div>
                     <label htmlFor="co-province" style={labelStyle}>Province</label>
-                    <select id="co-province" autoComplete="address-level1" value={formData.province} onChange={e => update('province', e.target.value)} style={{ ...inputStyle('province'), cursor: 'pointer' }}>
+                    <select id="co-province" autoComplete="address-level1" value={formData.province} onChange={e => { provinceTouched.current = true; update('province', e.target.value); }} style={{ ...inputStyle('province'), cursor: 'pointer' }}>
                       <option value="">Select</option>
                       {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
                     </select>
