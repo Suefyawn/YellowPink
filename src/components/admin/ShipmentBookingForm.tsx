@@ -25,6 +25,10 @@ interface Props {
    *  the optional courier-charge field so the actual cost gets captured on most
    *  orders (feeds the shipping-margin view). */
   suggestedCharge?: number;
+  /** True while the order is still 'pending' (customer not confirmed).
+   *  Booking then requires the explicit "book anyway" override — July's
+   *  COD returns were overwhelmingly unconfirmed shipments. */
+  unconfirmed?: boolean;
 }
 
 const inp: React.CSSProperties = {
@@ -37,7 +41,7 @@ const lbl: React.CSSProperties = {
   color: '#374151', marginBottom: 4,
 };
 
-export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCost, suggestedCharge }: Props) {
+export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCost, suggestedCharge, unconfirmed }: Props) {
   const [courier, setCourier] = useState<string>(apiAdapters[0] ?? 'TCS');
   const [mode, setMode] = useState<'auto' | 'manual'>(apiAdapters.length > 0 ? 'auto' : 'manual');
   const [bookState, bookAction, bookPending] = useActionState(bookShipment, null);
@@ -248,6 +252,18 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
         <form action={bookAction} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input type="hidden" name="order_id" value={orderId} />
           <input type="hidden" name="courier" value={courier} />
+          {/* Unconfirmed-dispatch guard: July's COD returns overwhelmingly
+              shipped without customer confirmation. The server rejects a
+              booking on a 'pending' order unless this box is ticked. */}
+          {unconfirmed && (
+            <div role="alert" style={{ padding: '8px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 6, color: '#92400e', fontSize: '0.75rem', lineHeight: 1.5 }}>
+              This order is still <strong>Pending</strong> — the customer hasn&apos;t been confirmed. Confirm on WhatsApp/phone and mark the order <strong>Preparing</strong> first; unconfirmed COD parcels are where the returns come from.
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6, fontWeight: 600, cursor: 'pointer' }}>
+                <input type="checkbox" name="confirm_unconfirmed" style={{ width: 14, height: 14 }} />
+                Book anyway without confirmation
+              </label>
+            </div>
+          )}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
             <div>
               <label htmlFor="weight-kg" style={lbl}>Weight (kg, optional)</label>
