@@ -152,9 +152,14 @@ export async function GET(req: NextRequest) {
 
   // ── units sold per product from recent orders ──
   const sales = new Map<string, number>();
+  // Only orders that really sold: archived and no-revenue states out, else a
+  // refused/cancelled parcel could crown a storefront "best seller"
+  // (2026-08-01 audit).
   const { data: orders } = await sb
     .from('orders')
     .select('items')
+    .is('archived_at', null)
+    .not('status', 'in', '(cancelled,payment_failed,payment_pending,refunded,returned)')
     .gte('created_at', new Date(Date.now() - SALES_WINDOW_MS).toISOString())
     .limit(2000);
   for (const o of (orders ?? []) as { items: OrderItem[] | null }[]) {

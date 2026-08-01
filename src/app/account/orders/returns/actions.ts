@@ -109,6 +109,7 @@ export async function requestReturn(args: {
 // client; declaring them here keeps the customer/admin paths colocated.
 
 import { getStaffSession } from '@/lib/staff-auth';
+import { applyReturnFinancialsForOrder } from '@/lib/return-financials';
 import { logAudit } from '@/lib/audit';
 
 async function assertOrders() {
@@ -255,6 +256,16 @@ export async function markReturnReceived(id: string): Promise<{ error?: string; 
     .update({ status: 'returned' })
     .eq('id', row.order_id)
     .eq('status', 'delivered');
+
+  // Settlement side of the return (void pending vendor payout for
+  // self-stocked vendors, zero unearned margin for buy-first ones) — shared
+  // with every other returned path. The restock above already wrote 'return'
+  // ledger rows for this order, so the lib's idempotency guard skips its own
+  // restock; only the money rules run here.
+  await applyReturnFinancialsForOrder(row.order_id, {
+    kind: session.isOwner ? 'owner' : 'staff',
+    email: session.email ?? null,
+  });
 
   await logAudit(session, {
     action: 'return.received',
