@@ -38,11 +38,26 @@ export default async function CodReconciliationPage() {
   const admin = supabaseAdmin();
   const { data } = await admin
     .from('orders')
-    .select('id, order_number, first_name, last_name, total, status, payment_received_at, payment_account, created_at')
+    .select('id, order_number, first_name, last_name, total, status, payment_received_at, payment_account, created_at, vendor_id')
     .eq('pay_method', 'cod')
     .in('status', ['processing', 'shipped', 'delivered'])
+    .is('archived_at', null)
     .order('created_at', { ascending: false });
-  const rows = (data ?? []) as CodOrder[];
+  // Vendor-collected COD never reaches the store's courier statement — the
+  // VENDOR holds that cash and it settles on the Vendors page. Listing those
+  // orders here double-tracked the same money and buried the real
+  // receivables (owner report: "irrelevant orders in COD reconciliation").
+  const allRows = (data ?? []) as (CodOrder & { vendor_id: string | null })[];
+  const vendorIds = Array.from(new Set(allRows.map(r => r.vendor_id).filter((v): v is string => Boolean(v))));
+  const { data: vendorRows } = vendorIds.length
+    ? await admin.from('vendors').select('id, settlement_direction').in('id', vendorIds)
+    : { data: [] };
+  const vendorCollects = new Set(
+    ((vendorRows ?? []) as { id: string; settlement_direction: string | null }[])
+      .filter(v => v.settlement_direction === 'vendor_collects').map(v => v.id),
+  );
+  const excludedVendorCollected = allRows.filter(r => r.vendor_id && vendorCollects.has(r.vendor_id));
+  const rows = allRows.filter(r => !r.vendor_id || !vendorCollects.has(r.vendor_id));
 
   const outstanding = rows.filter(r => r.status === 'delivered' && !r.payment_received_at);
   const collected   = rows.filter(r => r.status === 'delivered' && r.payment_received_at);
@@ -90,6 +105,10 @@ export default async function CodReconciliationPage() {
       <p style={{ margin: '0 0 20px', fontSize: '0.8125rem', color: '#6b7280' }}>
         Cash-on-delivery money owed and collected. Mark a payment received on each order&apos;s page; it then moves from
         Outstanding to Collected here.
+        {excludedVendorCollected.length > 0 && (
+          <> {excludedVendorCollected.length} vendor-collected COD order{excludedVendorCollected.length === 1 ? '' : 's'} not shown — that
+          cash is held by the vendor and settles on the <Link href="/admin/vendors" style={{ color: '#C5286A', fontWeight: 600 }}>Vendors page</Link>.</>
+        )}
       </p>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>

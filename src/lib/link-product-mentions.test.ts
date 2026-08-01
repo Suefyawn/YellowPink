@@ -55,6 +55,23 @@ describe('linkProductMentions', () => {
     expect(matches.length).toBe(1);
   });
 
+  it('never matches inside an anchor it just injected (nested-href regression)', () => {
+    // Production bug (Aug 2026 audit): the dry-skin post's <h3> mentioned
+    // "CeraVe Hydrating Facial Cleanser"; after that phrase was wrapped, a
+    // second candidate whose phrase is a substring of the FIRST product's
+    // slug matched inside the injected href ("/product/|cerave|-hydrating…")
+    // and nested an anchor mid-attribute, emitting /product/<a href=… links.
+    const facial = p('cerave-hydrating-facial-cleanser', 'CeraVe', 'CeraVe Hydrating Facial Cleanser');
+    const bundle = p('cerave-bundle', 'CeraVe', 'CeraVe Hydrating Cleanser and Moisturizing Cream Bundle');
+    const html = '<h3>Best overall: CeraVe Hydrating Facial Cleanser, Rs 1,999</h3><p>Or get the CeraVe Hydrating Cleanser and Moisturizing Cream Bundle.</p>';
+    const out = linkProductMentions(html, [facial, bundle]);
+    expect(out).not.toContain('/product/<a');
+    expect(out).not.toMatch(/href="[^"]*<a /);
+    // Both products still get their own, well-formed link.
+    expect(out).toContain('/product/cerave-hydrating-facial-cleanser');
+    expect(out).toContain('/product/cerave-bundle');
+  });
+
   it('does not link inside an existing <a>', () => {
     const html = '<p>See <a href="/x">CeraVe Hydrating Cleanser</a> review.</p>';
     const out = linkProductMentions(html, [cerave]);
