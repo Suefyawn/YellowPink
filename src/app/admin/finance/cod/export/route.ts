@@ -27,18 +27,27 @@ export async function GET(req: NextRequest) {
 
   const onlyOutstanding = req.nextUrl.searchParams.get('outstanding') === '1';
 
-  type Row = { order_number: string; status: string; first_name: string | null; last_name: string | null; phone: string | null; address: string | null; city: string | null; province: string | null; total: number | null; payment_received_at: string | null; created_at: string };
+  type Row = { order_number: string; status: string; first_name: string | null; last_name: string | null; phone: string | null; address: string | null; city: string | null; province: string | null; total: number | null; payment_received_at: string | null; created_at: string; vendor_id: string | null; vendors: { settlement_direction: string | null } | { settlement_direction: string | null }[] | null };
   // fetchAll pages past PostgREST's silent 1000-row cap so a busy COD backlog
   // exports in full instead of truncating at 1000 rows.
   const { data } = await fetchAll<Row>(
     supabaseAdmin()
       .from('orders')
-      .select('order_number, status, first_name, last_name, phone, address, city, province, total, payment_received_at, created_at')
+      .select('order_number, status, first_name, last_name, phone, address, city, province, total, payment_received_at, created_at, vendor_id, vendors(settlement_direction)')
       .eq('pay_method', 'cod')
       .in('status', ['processing', 'shipped', 'delivered'])
+      .is('archived_at', null)
       .order('created_at', { ascending: false }),
   );
   let rows = data ?? [];
+  // Vendor-collected COD is the vendor's cash, settled on the Vendors page —
+  // it never appears on the store's courier statement (same rule as the COD
+  // reconciliation page this CSV mirrors).
+  rows = rows.filter(r => {
+    // PostgREST types the many-to-one embed as an array; runtime is object.
+    const v = Array.isArray(r.vendors) ? r.vendors[0] : r.vendors;
+    return v?.settlement_direction !== 'vendor_collects';
+  });
   // The "to collect" subset: delivered but cash not yet reconciled.
   if (onlyOutstanding) rows = rows.filter(r => r.status === 'delivered' && !r.payment_received_at);
 

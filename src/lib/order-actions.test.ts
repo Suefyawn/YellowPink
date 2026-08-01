@@ -14,6 +14,7 @@ const base: OrderActionSnapshot = {
   hasShipment: false,
   vendorDispatched: false,
   hoursSinceVendorDispatch: null,
+  vendorCollectsPayment: false,
   hasDeliveryCost: false,
   hasAcquisitionCost: false,
   paymentReconciled: false,
@@ -55,6 +56,13 @@ describe('outstandingOrderActions', () => {
 
   it('shipped 5 days+ undelivered → delivery check', () => {
     expect(keys({ status: 'shipped', hoursInStatus: 5 * 24 + 1 })).toEqual(['delivery_check']);
+  });
+
+  it('vendor-collected COD never gets the reconcile nudge (their cash, settles on Vendors page)', () => {
+    expect(keys({
+      status: 'delivered', hoursInStatus: 8 * 24,
+      hasDeliveryCost: true, hasAcquisitionCost: true, vendorCollectsPayment: true,
+    })).toEqual([]);
   });
 
   it('product-page COGS silences the record_cogs nudge (owner records costs there)', () => {

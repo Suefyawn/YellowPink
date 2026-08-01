@@ -35,6 +35,10 @@ export interface OrderActionSnapshot {
   /** Hours since vendor_sent_at (null when never dispatched). Basis for the
    *  get-tracking-from-vendor chase, independent of status-entry time. */
   hoursSinceVendorDispatch: number | null;
+  /** The order's vendor collects payment themselves (settlement_direction
+   *  'vendor_collects') — COD cash never reaches the store's courier
+   *  statement, so the reconcile nudge must not chase it. */
+  vendorCollectsPayment: boolean;
   /** orders.delivery_cost recorded (actual courier charge). */
   hasDeliveryCost: boolean;
   /** orders.acquisition_cost recorded (COGS basis). */
@@ -141,7 +145,10 @@ export function outstandingOrderActions(o: OrderActionSnapshot): OrderAction[] {
           body: `Delivered, but no acquisition cost/COGS is recorded anywhere — its profit reads as 100% margin in Finance. Set a cost price on the product page, or an acquisition cost on the order page (or pick the vendor to auto-fill).`,
         });
       }
-      if (o.pay_method === 'cod' && !o.paymentReconciled && o.hoursInStatus >= 7 * 24) {
+      // Vendor-collected COD is the vendor's cash — it settles on the
+      // Vendors page, never via the store's courier statement, so this
+      // nudge would chase money that is deliberately not coming here.
+      if (o.pay_method === 'cod' && !o.paymentReconciled && !o.vendorCollectsPayment && o.hoursInStatus >= 7 * 24) {
         acts.push({
           key: 'reconcile_cod',
           title: `Reconcile COD payout for ${n}`,

@@ -27,7 +27,7 @@ function authorize(req: NextRequest): boolean {
 }
 
 interface OrderRow {
-  id: string; order_number: string; status: string; pay_method: string;
+  id: string; order_number: string; status: string; pay_method: string; vendor_id: string | null;
   vendor_sent_at: string | null; delivery_cost: number | null;
   acquisition_cost: number | null; payment_received_at: string | null;
   updated_at: string | null; created_at: string; confirmed_at: string | null;
@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString();
   const { data: orderRows, error } = await sb
     .from('orders')
-    .select('id, order_number, status, pay_method, vendor_sent_at, delivery_cost, acquisition_cost, payment_received_at, updated_at, created_at, confirmed_at, items')
+    .select('id, order_number, status, pay_method, vendor_id, vendor_sent_at, delivery_cost, acquisition_cost, payment_received_at, updated_at, created_at, confirmed_at, items')
     .is('archived_at', null)
     .in('status', ACTIVE_STATUSES)
     .gte('created_at', since)
@@ -86,6 +86,17 @@ export async function GET(req: NextRequest) {
     ((prodRows ?? []) as { id: string; cost_price: number | null; vendor_cost: number | null }[])
       .map(p => [p.id, Number(p.cost_price) > 0 || Number(p.vendor_cost) > 0]),
   );
+  // Which vendors collect payment themselves — their COD never reaches the
+  // store's courier statement, so reconcile nudges skip those orders.
+  const orderVendorIds = Array.from(new Set(orders.map(o => o.vendor_id).filter((v): v is string => Boolean(v))));
+  const { data: vendorDirRows } = orderVendorIds.length
+    ? await sb.from('vendors').select('id, settlement_direction').in('id', orderVendorIds)
+    : { data: [] };
+  const vendorCollectsSet = new Set(
+    ((vendorDirRows ?? []) as { id: string; settlement_direction: string | null }[])
+      .filter(v => v.settlement_direction === 'vendor_collects').map(v => v.id),
+  );
+
   const itemsCovered = (o: OrderRow): boolean => {
     const items = o.items ?? [];
     if (items.length === 0) return false;
@@ -113,6 +124,7 @@ export async function GET(req: NextRequest) {
       pendingSettlementDays: settleAge.get(o.id) ?? null,
       confirmedAt: o.confirmed_at,
       itemsHaveCostBasis: itemsCovered(o),
+      vendorCollectsPayment: o.vendor_id != null && vendorCollectsSet.has(o.vendor_id),
     };
     for (const act of outstandingOrderActions(snapshot)) {
       const dedupKey = `order_action:${o.id}:${act.key}`;
