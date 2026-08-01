@@ -13,6 +13,7 @@ const base: OrderActionSnapshot = {
   hoursInStatus: 0,
   hasShipment: false,
   vendorDispatched: false,
+  hoursSinceVendorDispatch: null,
   hasDeliveryCost: false,
   hasAcquisitionCost: false,
   paymentReconciled: false,
@@ -41,7 +42,15 @@ describe('outstandingOrderActions', () => {
   it('processing 24h+ with no dispatch → dispatch nudge; any dispatch silences it', () => {
     expect(keys({ status: 'processing', hoursInStatus: 30 })).toEqual(['dispatch']);
     expect(keys({ status: 'processing', hoursInStatus: 30, hasShipment: true })).toEqual([]);
-    expect(keys({ status: 'processing', hoursInStatus: 30, vendorDispatched: true })).toEqual([]);
+    expect(keys({ status: 'processing', hoursInStatus: 30, vendorDispatched: true, hoursSinceVendorDispatch: 2 })).toEqual([]);
+  });
+
+  it('vendor-dispatched 24h+ with no tracking → chase the tracking number', () => {
+    expect(keys({ status: 'processing', hoursInStatus: 30, vendorDispatched: true, hoursSinceVendorDispatch: 26 }))
+      .toEqual(['record_tracking']);
+    // Tracking entered (shipment exists) silences it.
+    expect(keys({ status: 'processing', hoursInStatus: 30, vendorDispatched: true, hoursSinceVendorDispatch: 26, hasShipment: true }))
+      .toEqual([]);
   });
 
   it('shipped 5 days+ undelivered → delivery check', () => {

@@ -104,6 +104,9 @@ export async function GET(req: NextRequest) {
       hoursInStatus: Math.max(0, (Date.now() - new Date(enteredAt).getTime()) / 3_600_000),
       hasShipment: shipped.has(o.id),
       vendorDispatched: o.vendor_sent_at != null,
+      hoursSinceVendorDispatch: o.vendor_sent_at != null
+        ? Math.max(0, (Date.now() - new Date(o.vendor_sent_at).getTime()) / 3_600_000)
+        : null,
       hasDeliveryCost: o.delivery_cost != null,
       hasAcquisitionCost: o.acquisition_cost != null,
       paymentReconciled: o.payment_received_at != null,

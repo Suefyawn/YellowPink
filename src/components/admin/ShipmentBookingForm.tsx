@@ -316,7 +316,26 @@ export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCo
       ) : (
         <form action={manualAction} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <input type="hidden" name="order_id" value={orderId} />
-          <input type="hidden" name="courier" value={courier} />
+          {/* "Other" unlocks a free-text service name: vendor-fulfilled orders
+              arrive with a tracking number from whatever courier the VENDOR
+              used (Nazirs' rider, PostEx, …) — storing the literal "Other"
+              made the orders list and the customer's track page useless for
+              those parcels. createShipment accepts any courier string; known
+              names still get tracking deep-links via substring match. */}
+          {courier === 'Other' ? (
+            <div>
+              <label htmlFor="courier-name" style={lbl}>Courier / delivery service name *</label>
+              <input
+                id="courier-name"
+                name="courier"
+                required
+                placeholder="e.g. PostEx, vendor rider"
+                style={inp}
+              />
+            </div>
+          ) : (
+            <input type="hidden" name="courier" value={courier} />
+          )}
           <div>
             <label htmlFor="tracking-number" style={lbl}>Tracking number *</label>
             <input

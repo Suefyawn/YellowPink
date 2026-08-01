@@ -141,23 +141,36 @@ export function linkProductMentions(
       continue;
     }
 
-    let text = tok;
+    // Injected anchors are FROZEN against later candidates. Matching used to
+    // rerun over the mutated string, so a later product's phrase could match
+    // inside a just-injected href (".../product/|cerave|-hydrating-…" — "/"
+    // and "-" are both word boundaries) and nest an anchor mid-attribute,
+    // emitting a broken /product/<a href=… link the crawler 404s on.
+    const parts: Array<{ text: string; frozen: boolean }> = [{ text: tok, frozen: false }];
     for (const c of candidates) {
       if (linkedSlugs.has(c.product.slug)) continue;
       if (c.fromCatalog && catalogLinks >= maxCatalogLinks) continue;
-      const m = c.pattern.exec(text);
-      if (!m) continue;
-      const before = text.slice(0, m.index);
-      const sep    = m[1];      // leading non-alphanumeric char (or '')
-      const phrase = m[2];      // matched product phrase
-      const after  = text.slice(m.index + m[0].length);
-      const href = absoluteUrl(`/product/${c.product.slug}`);
-      const anchor = `<a href="${href}" class="blog-product-link">${escapeHtml(phrase)}</a>`;
-      text = `${before}${sep}${anchor}${after}`;
-      linkedSlugs.add(c.product.slug);
-      if (c.fromCatalog) catalogLinks++;
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i].frozen) continue;
+        const m = c.pattern.exec(parts[i].text);
+        if (!m) continue;
+        const before = parts[i].text.slice(0, m.index);
+        const sep    = m[1];      // leading non-alphanumeric char (or '')
+        const phrase = m[2];      // matched product phrase
+        const after  = parts[i].text.slice(m.index + m[0].length);
+        const href = absoluteUrl(`/product/${c.product.slug}`);
+        const anchor = `<a href="${href}" class="blog-product-link">${escapeHtml(phrase)}</a>`;
+        parts.splice(i, 1,
+          { text: `${before}${sep}`, frozen: false },
+          { text: anchor, frozen: true },
+          { text: after, frozen: false },
+        );
+        linkedSlugs.add(c.product.slug);
+        if (c.fromCatalog) catalogLinks++;
+        break; // one anchor per candidate
+      }
     }
-    linked.push(text);
+    linked.push(parts.map(p => p.text).join(''));
   }
 
   return linked.join('');

@@ -32,6 +32,9 @@ export interface OrderActionSnapshot {
   hasShipment: boolean;
   /** orders.vendor_sent_at — staff forwarded the order to a vendor. */
   vendorDispatched: boolean;
+  /** Hours since vendor_sent_at (null when never dispatched). Basis for the
+   *  get-tracking-from-vendor chase, independent of status-entry time. */
+  hoursSinceVendorDispatch: number | null;
   /** orders.delivery_cost recorded (actual courier charge). */
   hasDeliveryCost: boolean;
   /** orders.acquisition_cost recorded (COGS basis). */
@@ -90,6 +93,18 @@ export function outstandingOrderActions(o: OrderActionSnapshot): OrderAction[] {
           key: 'dispatch',
           title: `Dispatch order ${n}`,
           body: `Confirmed ${ageLabel(o.hoursInStatus)} ago but not dispatched — book the courier or send it to the vendor from the order page.`,
+        });
+      }
+      // Vendor-dispatched but no tracking recorded: the vendor ships via
+      // their own courier and sends a tracking number — until someone types
+      // it into the Shipment card (which is what marks the order Shipped and
+      // emails the customer), the parcel is invisible to everyone. Chase it.
+      if (!o.hasShipment && o.vendorDispatched
+          && o.hoursSinceVendorDispatch != null && o.hoursSinceVendorDispatch >= 24) {
+        acts.push({
+          key: 'record_tracking',
+          title: `Get tracking for ${n} from the vendor`,
+          body: `Sent to the vendor ${ageLabel(o.hoursSinceVendorDispatch)} ago with no tracking recorded. Ask them for the tracking number and enter it on the order page (Shipment → Manual, pick their courier or type its name) — that marks the order Shipped and emails the customer automatically.`,
         });
       }
       break;
