@@ -92,7 +92,7 @@ async function safe<T>(
 // quoted the full delivery rate at checkout (a real Jul 31 order paid Rs 250
 // it shouldn't have).
 const PRODUCT_TILE_COLUMNS =
-  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, vendor_id, image_url, is_bestseller, is_featured, is_popular, packaging, status, created_at, rating, review_count, kind';
+  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, vendor_id, image_url, is_bestseller, is_featured, is_popular, popularity_score, packaging, status, created_at, rating, review_count, kind';
 
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;
