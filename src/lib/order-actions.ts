@@ -78,7 +78,9 @@ export function outstandingOrderActions(o: OrderActionSnapshot): OrderAction[] {
           acts.push({
             key: 'confirm',
             title: `Confirm order ${n}`,
-            body: `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. Use "Send WhatsApp confirmation" on the order page and record the yes, or cancel it — unconfirmed parcels are where returns come from.`,
+            body: o.pay_method === 'cod'
+              ? `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. Use "Send WhatsApp confirmation" on the order page and record the yes, or cancel it — unconfirmed parcels are where returns come from.`
+              : `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. Confirm with the customer and mark it confirmed on the order page, or cancel it.`,
           });
         } else {
           // Confirmed but nobody moved it forward — the yes goes stale.

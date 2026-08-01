@@ -74,6 +74,7 @@ export default async function ReviewAsksPage() {
         .select('id, order_number, first_name, last_name, phone, items, review_request_sent_at, review_wa_sent_at')
         .in('id', [...deliveredAtByOrder.keys()])
         .eq('status', 'delivered')
+        .is('archived_at', null)
         .not('phone', 'is', null),
       getSiteSettings(),
     ]);

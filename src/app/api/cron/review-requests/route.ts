@@ -79,6 +79,7 @@ export async function GET(req: NextRequest) {
     .select('id, order_number, email, first_name, items')
     .in('id', orderIds)
     .eq('status', 'delivered')
+    .is('archived_at', null)
     .is('review_request_sent_at', null);
   if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 500 });
 

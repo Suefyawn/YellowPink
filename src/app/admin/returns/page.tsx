@@ -109,6 +109,7 @@ export default async function ReturnsPage({
   const { count: deliveredCount } = await admin
     .from('orders').select('*', { count: 'exact', head: true })
     .in('status', ['delivered', 'returned', 'refunded'])
+    .is('archived_at', null)
     .gte('created_at', new Date(since90).toISOString());
   // Distinct returned orders ÷ orders that reached the customer. Both sides now
   // count orders (not request rows), so the ratio is a real percentage and no

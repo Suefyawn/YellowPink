@@ -14,6 +14,7 @@ import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
 import { SITE_URL } from '@/lib/seo';
 import { log } from '@/lib/logger';
 import type { CartItem } from '@/types';
+import { restockFailedPaymentOrder } from '@/lib/return-financials';
 
 export async function POST(req: NextRequest) {
   const form = await req.formData();
@@ -177,9 +178,15 @@ export async function POST(req: NextRequest) {
 
   // P0-4: only flip to payment_failed if we were still waiting. Don't
   // resurrect a fulfilled order from a late failure callback.
-  const { error: failErr } = await sb.from('orders').update({ status: 'payment_failed' })
+  const { data: failedRows, error: failErr } = await sb.from('orders').update({ status: 'payment_failed' })
     .eq('id', order.id)
-    .eq('status', 'payment_pending');
+    .eq('status', 'payment_pending')
+    .select('id');
+  // Return the stock place_order reserved — only on the real transition, so
+  // a duplicate/late callback can't double-restock.
+  if (!failErr && (failedRows?.length ?? 0) > 0) {
+    await restockFailedPaymentOrder(order.id, order.order_number, order.items);
+  }
   if (failErr) {
     log.error('payments.jazzcash.order_update_failed', {
       err: failErr, order_number: order.order_number, txn_ref: verification.txnRef,

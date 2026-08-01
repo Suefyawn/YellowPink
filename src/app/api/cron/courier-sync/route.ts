@@ -68,7 +68,10 @@ export async function GET(req: NextRequest) {
   const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
   const { data: shipments, error: lookupErr } = await sb
     .from('shipments')
-    .select('id, order_id, courier, tracking_number, status')
+    // inner-join filter: archived orders are out of every operational surface,
+    // including tracking polls, status cascades and customer emails.
+    .select('id, order_id, courier, tracking_number, status, orders!inner(archived_at)')
+    .is('orders.archived_at', null)
     .not('status', 'in', `(${Array.from(TERMINAL).map(s => `'${s}'`).join(',')})`)
     .gte('shipped_at', sixtyDaysAgo)
     .neq('tracking_number', '')

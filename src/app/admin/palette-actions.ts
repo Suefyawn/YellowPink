@@ -39,14 +39,17 @@ export async function paletteSearch(query: string): Promise<PaletteHit[]> {
   if (session.isOwner || can(session, 'orders.view')) {
     jobs.push(
       sb.from('orders')
-        .select('id, order_number, first_name, last_name, phone, total, status')
+        .select('id, order_number, first_name, last_name, phone, total, status, archived_at')
         .or(`order_number.ilike.${like},first_name.ilike.${like},last_name.ilike.${like},phone.ilike.${like},email.ilike.${like}`)
         .order('created_at', { ascending: false })
         .limit(5)
         .then(({ data }) => (data ?? []).map(o => ({
           group: 'Orders' as const,
+          // Archived orders stay findable (search is a lookup tool, and the
+          // Archived view is a legitimate destination) but are labelled so
+          // nobody mistakes one for a live order.
           label: `${o.order_number} — ${[o.first_name, o.last_name].filter(Boolean).join(' ') || o.phone}`,
-          hint: `PKR ${Number(o.total).toLocaleString()} · ${String(o.status).replaceAll('_', ' ')}`,
+          hint: `PKR ${Number(o.total).toLocaleString()} · ${String(o.status).replaceAll('_', ' ')}${(o as { archived_at?: string | null }).archived_at ? ' · archived' : ''}`,
           href: `/admin/orders/${o.id}`,
         }))),
     );

@@ -290,6 +290,9 @@ export interface Order {
   vendor_id?: string | null;
   /** Set when staff forward the order to the assigned vendor. */
   vendor_sent_at?: string | null;
+  /** Set when staff archive the order (migration 830): kept forever, but out
+   *  of every list, metric, export and reminder. */
+  archived_at?: string | null;
   /** Per-order fulfilment costs (entered by staff), feed the Finance P&L. */
   delivery_cost?: number | null;
   payment_fee?: number | null;

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createHash, randomBytes } from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
-import { getStaffSession } from '@/lib/staff-auth';
+import { getStaffSession, verifyPassword } from '@/lib/staff-auth';
 import { generateSecret, otpauthUrl, verifyTotp } from '@/lib/totp';
 import { logAudit } from '@/lib/audit';
 
@@ -60,9 +60,20 @@ export async function confirm2faEnrollment(code: string): Promise<{ error?: stri
 
 export async function disable2fa(currentPassword: string): Promise<{ error?: string; success?: boolean }> {
   const session = await assertSelfStaff();
-  // We don't re-verify the password here for brevity, the session itself is the
-  // proof of authentication. In production you'd want a recent-auth check.
-  void currentPassword;
+  // Turning 2FA OFF is exactly what a session-stealing attacker wants — a
+  // live session is NOT sufficient proof. Require the account password
+  // (2026-08-01 audit: the argument was accepted and ignored).
+  const { data: staffRow } = await supabaseAdmin()
+    .from('staff_members')
+    .select('password_hash, password_salt')
+    .eq('id', session.id)
+    .maybeSingle();
+  const check = staffRow?.password_hash
+    ? verifyPassword(currentPassword, staffRow.password_hash as string, (staffRow.password_salt as string | null) ?? null)
+    : null;
+  if (!check?.ok) {
+    return { error: 'Password incorrect — 2FA stays on.' };
+  }
   await supabaseAdmin()
     .from('staff_members')
     .update({ totp_enabled: false, totp_secret: null, backup_codes: [] })

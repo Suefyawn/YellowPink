@@ -30,7 +30,10 @@ export async function attributeOrderEvents(
       .limit(1)
       .maybeSingle();
     if (evt?.id) {
-      await admin.from('order_events').update({ actor_id: actor }).eq('id', evt.id);
+      // The trigger now stamps 'system' by default (migration 900) so
+      // automated paths read honestly; manual paths claim their events here
+      // with both the kind and the operator.
+      await admin.from('order_events').update({ actor_id: actor, actor_kind: 'staff' }).eq('id', evt.id);
     }
   }
 }

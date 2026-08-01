@@ -50,7 +50,13 @@ export async function unmarkSent(custKey: string): Promise<{ ok: boolean }> {
 
 /** Persist the editable message template + campaign coupon code. */
 export async function saveWinbackSettings(formData: FormData): Promise<void> {
-  await assertWinback();
+  const session = await assertWinback();
+  // Writing templates/coupons is a SETTINGS write, not a customer read —
+  // customers.view alone must not be able to change store-wide messaging
+  // (2026-08-01 audit). Owner or the settings permission required.
+  if (!session.isOwner && !session.permissions.includes('settings')) {
+    throw new Error('Unauthorized: settings permission required');
+  }
   const template = ((formData.get('template') as string) ?? '').slice(0, 2000);
   const coupon = ((formData.get('coupon') as string) ?? '').trim().toUpperCase().slice(0, 40);
   const pairs = [

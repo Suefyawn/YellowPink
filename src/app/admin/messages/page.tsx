@@ -157,6 +157,7 @@ export default async function MessagesPage({ searchParams }: { searchParams?: Pr
       .from('orders')
       .select('email, order_number, status, total, created_at')
       .ilike('email', selected.email)
+      .is('archived_at', null)
       .order('created_at', { ascending: false });
     const rows = (orderRows ?? []) as Array<{ order_number: string; status: string; total: number | null }>;
     if (rows.length > 0) {

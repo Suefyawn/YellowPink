@@ -139,8 +139,11 @@ export default async function UserDetailPage({
   // in no money and would otherwise inflate both numbers (and AOV especially,
   // since it divides by the order count). "Orders" below still shows the full
   // count so the customer's total activity is visible.
+  // Archived orders stay visible in the history below (the customer's real
+  // past) but never count toward money metrics, same as every other surface.
   const revenueOrders = orderList.filter(
-    o => !(NON_REVENUE_ORDER_STATUSES as readonly string[]).includes(o.status ?? ''),
+    o => o.archived_at == null
+      && !(NON_REVENUE_ORDER_STATUSES as readonly string[]).includes(o.status ?? ''),
   );
   const totalSpend = revenueOrders.reduce((s, o) => s + o.total, 0);
   const deliveredCount = orderList.filter(o => o.status === 'delivered').length;

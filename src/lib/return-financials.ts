@@ -138,3 +138,31 @@ export async function applyReturnFinancialsSafe(orderId: string): Promise<void> 
     });
   }
 }
+
+/** Failed-payment restock: place_order debited stock at creation; a
+ *  payment_failed order is terminal (the customer is sent back to checkout,
+ *  which places a NEW order), so the reserved stock must return. Ledger
+ *  reason 'cancellation' — the sale fell through, same class of reversal.
+ *  Only call after the status flip actually transitioned rows (idempotency
+ *  comes from the .eq('status','payment_pending') guard on the update). */
+export async function restockFailedPaymentOrder(
+  orderId: string,
+  orderNumber: string | null,
+  items: unknown,
+): Promise<void> {
+  const admin = supabaseAdmin();
+  for (const it of ((items ?? []) as Array<{ id?: string; qty?: number; variant_id?: string | null }>)) {
+    if (!it?.id || !it.qty || it.qty <= 0) continue;
+    await admin.rpc('record_stock_change' as never, {
+      p_product_id:  it.id,
+      p_variant_id:  it.variant_id ?? null,
+      p_qty_delta:   it.qty,
+      p_reason:      'cancellation',
+      p_order_id:    orderId,
+      p_return_id:   null,
+      p_actor_kind:  'system',
+      p_actor_email: null,
+      p_note:        `Restock from failed payment ${orderNumber ?? orderId.slice(0, 8)}`,
+    } as never);
+  }
+}

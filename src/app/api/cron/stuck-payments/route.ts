@@ -41,6 +41,7 @@ export async function GET(req: NextRequest) {
     .from('orders')
     .select('order_number, total, pay_method, first_name, last_name, created_at')
     .eq('status', 'payment_pending')
+    .is('archived_at', null)
     .lte('created_at', olderThan)
     .gte('created_at', newerThan)
     .order('created_at', { ascending: true })
