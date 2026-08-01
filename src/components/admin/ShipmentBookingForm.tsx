@@ -6,6 +6,11 @@ import { COURIER_LIST, courierTrackingUrl } from '@/lib/couriers/profiles';
 
 interface Props {
   orderId: string;
+  /** Start on the Manual tab even when API couriers exist — set for vendor
+   *  self-delivered orders, where the only sensible action is recording the
+   *  tracking number the vendor sent (booking from our account would ship a
+   *  parcel the vendor is already shipping). */
+  preferManual?: boolean;
   /** Couriers we have a configured API adapter for, server passes this in
    *  via the page so the UI can show "Book pickup" vs "Enter manually". */
   apiAdapters: string[];
@@ -41,9 +46,9 @@ const lbl: React.CSSProperties = {
   color: '#374151', marginBottom: 4,
 };
 
-export function ShipmentBookingForm({ orderId, apiAdapters, shipment, deliveryCost, suggestedCharge, unconfirmed }: Props) {
+export function ShipmentBookingForm({ orderId, preferManual, apiAdapters, shipment, deliveryCost, suggestedCharge, unconfirmed }: Props) {
   const [courier, setCourier] = useState<string>(apiAdapters[0] ?? 'TCS');
-  const [mode, setMode] = useState<'auto' | 'manual'>(apiAdapters.length > 0 ? 'auto' : 'manual');
+  const [mode, setMode] = useState<'auto' | 'manual'>(preferManual || apiAdapters.length === 0 ? 'manual' : 'auto');
   const [bookState, bookAction, bookPending] = useActionState(bookShipment, null);
   const [manualState, manualAction, manualPending] = useActionState(createShipment, null);
   const [cancelState, cancelAction, cancelPending] = useActionState(cancelShipment, null);

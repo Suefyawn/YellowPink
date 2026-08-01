@@ -813,18 +813,23 @@ export default async function OrderDetailPage({
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipment</h2>
         {vendorSelfDelivers && (
           <div style={{ marginBottom: 16, padding: '12px 14px', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 8, fontSize: '0.8125rem', color: '#1e3a8a' }}>
-            <strong>{vendorSelfDelivers.name} delivers this order directly</strong> — no TCS booking needed.
+            <strong>{vendorSelfDelivers.name} ships this order with their own courier</strong> — no booking from our account needed.
             {vendorSelfDelivers.deliveryFee > 0
               ? ` Their delivery fee (PKR ${vendorSelfDelivers.deliveryFee.toLocaleString()}) is recorded as this order's delivery cost.`
               : ' No delivery cost is charged to us for it right now.'}
-            {' '}Use the status control below to mark it shipped/delivered as {vendorSelfDelivers.name} reports progress.
+            {' '}When {vendorSelfDelivers.name} sends the tracking number, enter it below (pick their courier, e.g. TCS) — that marks
+            the order shipped and emails the customer the tracking link automatically.
           </div>
         )}
-        {/* Courier booking is hidden when the vendor self-delivers (there's no
-            courier), unless a shipment was already created for this order. */}
-        {(!vendorSelfDelivers || shipmentRow) && (
+        {/* Vendor self-delivery used to HIDE the form entirely, which left no
+            way to record the tracking number the vendor sends over — exactly
+            the orders that need manual entry (owner report, 2026-08-01). The
+            form now always renders; self-delivered orders default to the
+            manual tab since there is nothing to book from our account. */}
+        {(
           <ShipmentBookingForm
             orderId={o.id!}
+            preferManual={!!vendorSelfDelivers}
             apiAdapters={apiAdapters}
             deliveryCost={o.delivery_cost ?? null}
             suggestedCharge={defaultDeliveryCost > 0 ? defaultDeliveryCost : undefined}
