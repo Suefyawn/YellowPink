@@ -313,10 +313,16 @@ export default async function OrderDetailPage({
   // Whether the order's vendor delivers to the customer itself (NB Sons) — the
   // Shipment panel skips courier booking for these.
   let vendorSelfDelivers: { name: string; deliveryFee: number } | null = null;
+  // Vendor keeps the COD cash (vendor_collects): the Payment card must not
+  // invite reconciling money that never comes to a store account.
+  let vendorCollectsPayment: string | null = null;
   if (o.vendor_id) {
     const { data: vRow } = await supabaseAdmin()
-      .from('vendors').select('id, name, commission_pct, self_delivers, delivery_fee').eq('id', o.vendor_id).maybeSingle();
+      .from('vendors').select('id, name, commission_pct, self_delivers, delivery_fee, settlement_direction').eq('id', o.vendor_id).maybeSingle();
     dispatchedVendor = vRow ? { id: vRow.id as string, name: vRow.name as string | null, commission_pct: vRow.commission_pct as number | null } : null;
+    if (vRow && (vRow as { settlement_direction?: string | null }).settlement_direction === 'vendor_collects') {
+      vendorCollectsPayment = (vRow.name as string) ?? 'The vendor';
+    }
     if (vRow && (vRow as { self_delivers?: boolean }).self_delivers) {
       vendorSelfDelivers = { name: (vRow.name as string) ?? 'the vendor', deliveryFee: Number((vRow as { delivery_fee?: number | null }).delivery_fee ?? 0) };
     }
@@ -969,6 +975,11 @@ export default async function OrderDetailPage({
               </form>
             )}
           </>
+        ) : vendorCollectsPayment && o.pay_method === 'cod' ? (
+          <div style={{ padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: '0.8125rem', color: '#92400e' }}>
+            {vendorCollectsPayment} collects this COD payment at the door — it never lands in a store account.
+            Your share settles on the <Link href={o.vendor_id ? `/admin/vendors/${o.vendor_id}` : '/admin/vendors'} style={{ color: '#b45309', fontWeight: 700 }}>Vendors page</Link>.
+          </div>
         ) : canEdit ? (
           <form action={recordPayment.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
             <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Account<br />

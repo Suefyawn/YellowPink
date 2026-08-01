@@ -62,6 +62,7 @@ export default async function WinbackPage() {
     admin
       .from('orders')
       .select('user_id, email, phone, first_name, last_name, status, total, created_at, items')
+      .is('archived_at', null)
       .order('created_at', { ascending: false })
       .limit(5000),
     admin.from('campaign_outreach').select('cust_key, sent_at').eq('campaign', CAMPAIGN),
@@ -91,7 +92,8 @@ export default async function WinbackPage() {
       // Rows arrive newest-first, so the first row already set the "latest"
       // fields; later rows only add to the counters.
       existing.orders += 1;
-      if (o.status !== 'refunded') existing.revenue += Number(o.total ?? 0);
+      // Same zero-revenue pair as everywhere else: bounced parcels earned nothing.
+      if (o.status !== 'refunded' && o.status !== 'returned') existing.revenue += Number(o.total ?? 0);
       if (!existing.phone && digitsPhone) existing.phone = o.phone!.trim();
     } else {
       byKey.set(key, {
@@ -99,7 +101,7 @@ export default async function WinbackPage() {
         name: [o.first_name, o.last_name].filter(Boolean).join(' ').trim() || (o.email ?? 'Customer'),
         phone: digitsPhone ? o.phone!.trim() : '',
         orders: 1,
-        revenue: o.status !== 'refunded' ? Number(o.total ?? 0) : 0,
+        revenue: o.status !== 'refunded' && o.status !== 'returned' ? Number(o.total ?? 0) : 0,
         lastOrderAt: o.created_at,
         lastProduct: o.items?.[0]?.name ?? null,
       });

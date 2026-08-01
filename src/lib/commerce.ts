@@ -150,7 +150,7 @@ export const RETURNS_WINDOW_DAYS = 7;
  *  order doesn't inflate the numbers. Mirrors the v_orders_revenue view's
  *  intent for the per-customer surfaces that can't use that view. */
 export const NON_REVENUE_ORDER_STATUSES = [
-  'cancelled', 'refunded', 'returned', 'payment_failed',
+  'cancelled', 'refunded', 'returned', 'payment_failed', 'payment_pending',
 ] as const;
 
 // Newsletter welcome offer. The live figures are read from the WELCOME10

@@ -125,21 +125,30 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
     const productIds = new Set<string>();
     for (const o of orders) for (const it of o.items ?? []) if (it?.id) productIds.add(it.id);
     if (productIds.size) {
-      const { data: prods } = await fetchAll<{ id: string; vendor_id: string | null; cost_price: number | null }>(
+      const { data: prods } = await fetchAll<{ id: string; vendor_id: string | null; cost_price: number | null; vendor_cost: number | null }>(
         admin
           .from('products')
-          .select('id, vendor_id, cost_price')
+          .select('id, vendor_id, cost_price, vendor_cost')
           .in('id', [...productIds])
           .order('id', { ascending: true }),
       );
       const costMap = new Map(
-        (prods ?? []).map(p => [p.id, { vendorId: p.vendor_id, cost: Number(p.cost_price ?? 0) }]),
+        (prods ?? []).map(p => [p.id, { vendorId: p.vendor_id, cost: Number(p.cost_price ?? 0), vendorCost: Number(p.vendor_cost ?? 0) }]),
       );
+      // Orders that already have a settlement snapshot: their vendor lines
+      // are covered above and must not double-count here.
+      const settled = new Set(cogsByOrder.keys());
       for (const o of orders) {
         let own = 0;
         for (const it of o.items ?? []) {
           const p = it?.id ? costMap.get(it.id) : undefined;
-          if (p && p.vendorId == null && p.cost > 0) own += p.cost * (Number(it.qty) || 0);
+          if (!p) continue;
+          if (p.vendorId == null && p.cost > 0) own += p.cost * (Number(it.qty) || 0);
+          // Vendor-sourced item on an order that was never dispatched (no
+          // settlement row): fall back to the product's fixed vendor price —
+          // the same basis the COGS nudge accepts as "handled", which used
+          // to read as 100% margin here (2026-08-01 audit split-brain).
+          else if (p.vendorId != null && !settled.has(o.id) && p.vendorCost > 0) own += p.vendorCost * (Number(it.qty) || 0);
         }
         if (own > 0) cogsByOrder.set(o.id, (cogsByOrder.get(o.id) ?? 0) + own);
       }

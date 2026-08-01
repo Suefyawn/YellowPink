@@ -14,8 +14,15 @@ async function assertAnyStaff() {
 // The bell dropdown has no error surface; a failed mark-read just leaves the
 // badge as-is on the next render. Log it so the failure is visible (#191).
 export async function markNotificationRead(id: string): Promise<void> {
-  await assertAnyStaff();
-  const { error } = await supabaseAdmin().from('admin_notifications').update({ read: true }).eq('id', id);
+  const session = await assertAnyStaff();
+  // Same visible-kind scoping as markAllNotificationsRead below: read state
+  // is store-wide, so a staffer must not be able to mark a notification of a
+  // kind they can't even see (e.g. the owner's payment alerts) as read.
+  const { visibleNotificationKinds } = await import('@/lib/notification-kinds');
+  const kinds = visibleNotificationKinds(session);
+  let query = supabaseAdmin().from('admin_notifications').update({ read: true }).eq('id', id);
+  if (kinds) query = query.in('kind', kinds);
+  const { error } = await query;
   if (error) log.error('notification.mark_read_failed', { id, error: error.message });
   revalidatePath('/admin', 'layout');
 }

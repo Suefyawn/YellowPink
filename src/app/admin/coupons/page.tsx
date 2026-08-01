@@ -43,7 +43,7 @@ export default async function CouponsPage({
   const admin = supabaseAdmin();
   const [{ data }, { data: orderRows }, { data: productRows }] = await Promise.all([
     admin.from('coupons').select('*').order('created_at', { ascending: false }),
-    admin.from('orders').select('coupon_code, discount_amount').not('coupon_code', 'is', null).neq('status', 'cancelled'),
+    admin.from('orders').select('coupon_code, discount_amount').not('coupon_code', 'is', null).is('archived_at', null).not('status', 'in', '(cancelled,payment_failed,payment_pending)'),
     // Published catalogue for the edit dialog's product-scoping pickers.
     admin.from('products').select('id, brand, name').eq('status', 'published').order('name'),
   ]);

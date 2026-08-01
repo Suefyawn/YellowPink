@@ -53,7 +53,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     admin
       .from('orders')
       .select('id', { count: 'exact', head: true })
-      .in('status', ['pending', 'processing']),
+      .in('status', ['pending', 'processing'])
+      .is('archived_at', null),
     // Unread contact messages, drives the Messages sidebar badge.
     admin
       .from('contact_messages')
