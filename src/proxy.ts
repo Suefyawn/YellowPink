@@ -338,6 +338,15 @@ function wpPatternRedirect(pathname: string, params: URLSearchParams): string | 
   const trimmed = pathname.replace(/\/$/, '') || '/';
   if (PAGE_SLUG_MAP[trimmed]) return PAGE_SLUG_MAP[trimmed];
 
+  // /search?q=foo → /shop?q=foo. There is no /search route — search lives at
+  // /shop — but AI assistants (ChatGPT referrals in the broken-links log) and
+  // some crawlers guess the conventional /search URL. Accept q, s and query as
+  // the term param; a bare /search just lands on the shop.
+  if (pathname === '/search' || pathname === '/search/') {
+    const term = params.get('q') ?? params.get('s') ?? params.get('query');
+    return term ? `/shop?q=${encodeURIComponent(term)}` : '/shop';
+  }
+
   // /?s=foo&post_type=product (or any /?s=) → /shop with q param
   if (pathname === '' || pathname === '/') {
     const s = params.get('s');
