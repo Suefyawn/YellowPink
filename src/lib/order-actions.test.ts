@@ -18,6 +18,7 @@ const base: OrderActionSnapshot = {
   paymentReconciled: false,
   pendingSettlementDays: null,
   confirmedAt: null,
+  itemsHaveCostBasis: false,
 };
 const keys = (s: Partial<OrderActionSnapshot>) =>
   outstandingOrderActions({ ...base, ...s }).map(a => a.key);
@@ -45,6 +46,12 @@ describe('outstandingOrderActions', () => {
 
   it('shipped 5 days+ undelivered → delivery check', () => {
     expect(keys({ status: 'shipped', hoursInStatus: 5 * 24 + 1 })).toEqual(['delivery_check']);
+  });
+
+  it('product-page COGS silences the record_cogs nudge (owner records costs there)', () => {
+    expect(keys({ status: 'delivered', hoursInStatus: 30, hasDeliveryCost: true, itemsHaveCostBasis: true })).toEqual([]);
+    // Order-level entry still missing AND no product basis → nudge stands.
+    expect(keys({ status: 'delivered', hoursInStatus: 30, hasDeliveryCost: true })).toEqual(['record_cogs']);
   });
 
   it('delivered: missing finance data nudges after a day, COD reconcile after a week', () => {

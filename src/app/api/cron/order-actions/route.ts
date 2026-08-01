@@ -31,6 +31,7 @@ interface OrderRow {
   vendor_sent_at: string | null; delivery_cost: number | null;
   acquisition_cost: number | null; payment_received_at: string | null;
   updated_at: string | null; created_at: string; confirmed_at: string | null;
+  items: Array<{ id?: string | null; qty?: number | null }> | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
   const since = new Date(Date.now() - LOOKBACK_DAYS * 86400_000).toISOString();
   const { data: orderRows, error } = await sb
     .from('orders')
-    .select('id, order_number, status, pay_method, vendor_sent_at, delivery_cost, acquisition_cost, payment_received_at, updated_at, created_at, confirmed_at')
+    .select('id, order_number, status, pay_method, vendor_sent_at, delivery_cost, acquisition_cost, payment_received_at, updated_at, created_at, confirmed_at, items')
     .is('archived_at', null)
     .in('status', ACTIVE_STATUSES)
     .gte('created_at', since)
@@ -72,6 +73,25 @@ export async function GET(req: NextRequest) {
     if (!lastEvent.has(e.order_id)) lastEvent.set(e.order_id, e.created_at);
   }
 
+  // Product-level cost bases, so the COGS nudge stays quiet when the owner
+  // records costs on the product page instead of per order (Finance derives
+  // COGS from cost_price/vendor_cost when acquisition_cost is absent).
+  const productIds = Array.from(new Set(
+    orders.flatMap(o => (o.items ?? []).map(it => it?.id).filter((v): v is string => Boolean(v))),
+  ));
+  const { data: prodRows } = productIds.length
+    ? await sb.from('products').select('id, cost_price, vendor_cost').in('id', productIds)
+    : { data: [] };
+  const costBasis = new Map(
+    ((prodRows ?? []) as { id: string; cost_price: number | null; vendor_cost: number | null }[])
+      .map(p => [p.id, Number(p.cost_price) > 0 || Number(p.vendor_cost) > 0]),
+  );
+  const itemsCovered = (o: OrderRow): boolean => {
+    const items = o.items ?? [];
+    if (items.length === 0) return false;
+    return items.every(it => it?.id != null && costBasis.get(it.id) === true);
+  };
+
   let notified = 0;
   const errors: string[] = [];
   for (const o of orders) {
@@ -89,6 +109,7 @@ export async function GET(req: NextRequest) {
       paymentReconciled: o.payment_received_at != null,
       pendingSettlementDays: settleAge.get(o.id) ?? null,
       confirmedAt: o.confirmed_at,
+      itemsHaveCostBasis: itemsCovered(o),
     };
     for (const act of outstandingOrderActions(snapshot)) {
       const dedupKey = `order_action:${o.id}:${act.key}`;
