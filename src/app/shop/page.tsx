@@ -7,7 +7,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
+import type { Product } from '@/types';
 import { CollectionPage } from '@/sections/collection/CollectionPage';
+import { ProductTile } from '@/components/ui/ProductTile';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { canonicalCategory, categorySlug, CATEGORY_DESCRIPTIONS, findTaxon, TAXON_SEO, categoryHref, isHealthCategory, taxonForCategory } from '@/lib/category-taxonomy';
@@ -222,6 +224,40 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     if (!error) searchIds = ((data ?? []) as Array<{ id: string }>).map(r => r.id);
   }
 
+  // Search suggestions: a missed (or thin, < 4 hits) search must not dead-end
+  // on an empty grid — a large share of these queries are ChatGPT-referred
+  // shoppers arriving via /search?q=<term we may not stock>. Two pools, in
+  // order: fuzzy matches on the query's individual words (the full phrase
+  // already ran through search_products above), then the storefront's current
+  // top sellers by popularity_score (the demand-cron blend of views, carts,
+  // searches and sales). In-stock only, capped at 8 tiles.
+  let suggested: Product[] = [];
+  if (q?.trim() && !isDemo && searchIds !== null && searchIds.length < 4) {
+    const have = new Set(searchIds);
+    const closeIds: string[] = [];
+    const words = q.trim().split(/\s+/).filter(w => w.length >= 3).slice(0, 3);
+    // A single-word query already got its fuzzy pass above — re-running the
+    // identical term would only duplicate the (empty) result.
+    if (words.length > 1) {
+      const perWord = await Promise.all(words.map(w =>
+        supabase.rpc('search_products' as never, { p_query: w, p_limit: 8 } as never)));
+      for (const { data, error } of perWord) {
+        if (error) continue;
+        for (const r of (data ?? []) as Array<{ id: string }>) {
+          if (!have.has(r.id) && !closeIds.includes(r.id)) closeIds.push(r.id);
+        }
+      }
+    }
+    const byId = new Map(products.map(p => [p.id, p]));
+    const close = closeIds
+      .map(id => byId.get(id))
+      .filter((p): p is Product => Boolean(p && productInStock(p)));
+    const popular = products
+      .filter(p => productInStock(p) && !have.has(p.id) && !closeIds.includes(p.id))
+      .sort((a, b) => (b.popularity_score ?? 0) - (a.popularity_score ?? 0));
+    suggested = [...close, ...popular].slice(0, 8);
+  }
+
   // ?category= is canonical; ?cat= is a legacy WP param the proxy already
   // 301s across. CollectionPage resolves the value (taxon or leaf) itself.
   const initialCategory = category ?? cat ?? 'All';
@@ -351,6 +387,28 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
         initialPage={initialPage}
         searchIds={searchIds}
       />
+      {/* Search-miss rescue: product suggestions under an empty (or thin)
+          search, close word-level matches first, then the shop's current
+          top sellers. Renders server-side for the URL's ?q=; the tiles are
+          the same ProductTile as the grid (cart, wishlist, analytics). */}
+      {q?.trim() && suggested.length > 0 && (
+        <section className="container" style={{ paddingBottom: 'var(--section-gap)' }}>
+          <h2 className="display-l" style={{ fontSize: '1.5rem', margin: '0 0 6px' }}>
+            {searchIds && searchIds.length === 0 ? 'Popular right now' : 'You might also like'}
+          </h2>
+          <p className="body-text" style={{ color: 'var(--ink-700)', margin: '0 0 16px', maxWidth: 640 }}>
+            {searchIds && searchIds.length === 0
+              ? <>We may not stock an exact match for &ldquo;{q.trim().replace(/[<>"'&]/g, '').slice(0, 80)}&rdquo;. Here is what shoppers are buying right now.</>
+              : 'A few more picks, based on what shoppers are buying.'}
+          </p>
+          <div className="product-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }}>
+            {suggested.map(p => (
+              <ProductTile key={p.id} product={p} list="Search suggestions" />
+            ))}
+          </div>
+        </section>
+      )}
+
       {/* Category-landing FAQ, only on a genuine category/taxon/subcategory
           landing (not search or brand-filtered views, which canonicalise away),
           so the indexable landing pages carry FAQPage structured data + on-page

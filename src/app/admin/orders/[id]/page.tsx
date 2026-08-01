@@ -967,12 +967,47 @@ export default async function OrderDetailPage({
                 </div>
               )}
             </div>
+            {(currentStatus === 'returned' || currentStatus === 'cancelled') && (
+              <div style={{ padding: '12px 14px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: '0.8125rem', color: '#92400e', marginBottom: canEdit ? 14 : 0 }}>
+                Payment was received but the order is {currentStatus} — the customer is owed {fmt(o.total)} back.
+                Once the refund is paid, set the order status to <strong>Refunded</strong> so the books close out.
+              </div>
+            )}
             {canEdit && (
               <form action={clearPayment.bind(null, o.id!)}>
                 <button type="submit" style={{ padding: '8px 14px', background: 'white', color: '#b91c1c', border: '1px solid #fca5a5', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>
                   Clear / re-record
                 </button>
               </form>
+            )}
+          </>
+        ) : currentStatus === 'returned' || currentStatus === 'cancelled' ? (
+          <>
+            <div style={{ padding: '12px 14px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.8125rem', color: '#4b5563' }}>
+              This order was {currentStatus} before any payment was recorded — there is nothing to collect.
+            </div>
+            {/* Edge case kept reachable: a COD parcel paid at the door, returned
+                later via RMA — the courier still remits that cash, so the form
+                stays available behind a fold instead of inviting mistakes. */}
+            {canEdit && (
+              <details style={{ marginTop: 10 }}>
+                <summary style={{ cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600, color: '#6b7280' }}>
+                  The customer did pay (e.g. COD collected at the door, returned afterwards)? Record it
+                </summary>
+                <form action={recordPayment.bind(null, o.id!)} style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 12 }}>
+                  <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Account<br />
+                    <select name="payment_account" defaultValue={o.pay_method === 'cod' ? 'Cash on delivery' : (payAccountOptions[1] ?? 'Cash on delivery')}
+                      style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem', background: 'white', minWidth: 180 }}>
+                      {payAccountOptions.map(a => <option key={a} value={a}>{a}</option>)}
+                    </select>
+                  </label>
+                  <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Received on<br />
+                    <input type="date" name="received_on" defaultValue={new Date().toISOString().slice(0, 10)}
+                      style={{ display: 'block', marginTop: 4, padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.875rem' }} />
+                  </label>
+                  <button type="submit" style={{ padding: '9px 18px', background: '#15803d', color: '#fff', border: 'none', borderRadius: 8, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>Mark received</button>
+                </form>
+              </details>
             )}
           </>
         ) : vendorCollectsPayment && o.pay_method === 'cod' ? (
