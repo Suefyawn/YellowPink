@@ -20,6 +20,7 @@ import { supabaseAdmin } from './supabase';
 import { SITE_URL } from './seo';
 import { getRecipientsForEvent } from './notification-recipients';
 import { getWelcomeOffer } from './offers';
+import { courierTrackingUrl } from '@/lib/couriers/profiles';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 // OWNER_EMAIL stays as the fallback recipient and as a reply-to address on
@@ -553,8 +554,14 @@ export async function sendPaymentReceivedEmail(args: { email: string; first_name
 
 // ─── 4. Customer: shipped ────────────────────────────────────────────────────
 export async function sendShippedEmail(args: { email: string; first_name: string; order_number: string; tracking_number?: string; courier?: string }) {
+  // Direct courier deep-link when the courier is recognised (TCS, Leopards,
+  // …) — vendor-shipped parcels arrive with the vendor's courier + number
+  // and the customer should be able to jump straight to that courier's
+  // tracking page, not only to our /track. Unknown couriers (vendor rider,
+  // "Other") just skip the link; the number + name still show.
+  const directUrl = args.tracking_number ? courierTrackingUrl(args.courier, args.tracking_number) : null;
   const trackInfo = args.tracking_number
-    ? `<p>Your tracking number: <strong style="font-family:monospace">${escapeHtml(args.tracking_number)}</strong>${args.courier ? ` (${escapeHtml(args.courier)})` : ''}</p>`
+    ? `<p>Your tracking number: <strong style="font-family:monospace">${escapeHtml(args.tracking_number)}</strong>${args.courier ? ` (${escapeHtml(args.courier)})` : ''}${directUrl ? ` — <a href="${directUrl}" style="color:${BRAND_PINK};font-weight:600">track it on the ${escapeHtml(args.courier ?? 'courier')} site</a>` : ''}</p>`
     : '';
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Your order is on its way</h2>
