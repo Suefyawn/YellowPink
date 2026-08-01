@@ -43,6 +43,10 @@ export interface OrderActionSnapshot {
   /** orders.confirmed_at — customer said yes (WhatsApp/call). Splits the
    *  pending-order nudge: chase the confirmation vs act on it. */
   confirmedAt: string | null;
+  /** Every line item's product carries a cost basis (cost_price or
+   *  vendor_cost) — Finance derives COGS from those when the order-level
+   *  acquisition cost is absent, so no nudge is owed. */
+  itemsHaveCostBasis: boolean;
 }
 
 export interface OrderAction {
@@ -110,11 +114,16 @@ export function outstandingOrderActions(o: OrderActionSnapshot): OrderAction[] {
           body: `Delivered, but the actual delivery cost is not recorded — the shipping margin and P&L are estimates until it is (order page → Order costs).`,
         });
       }
-      if (o.hoursInStatus >= 24 && !o.hasAcquisitionCost) {
+      // COGS handled at EITHER level counts: an order-level acquisition cost,
+      // or every line item carrying a product-level cost (cost_price /
+      // vendor_cost) — Finance derives the same COGS from those, so nagging
+      // for an order-page entry on top was a false positive (owner records
+      // COGS on the product page for own-stock items).
+      if (o.hoursInStatus >= 24 && !o.hasAcquisitionCost && !o.itemsHaveCostBasis) {
         acts.push({
           key: 'record_cogs',
           title: `Record product cost for ${n}`,
-          body: `Delivered, but no acquisition cost/COGS is recorded — its profit reads as 100% margin in Finance. Set it on the order page (or pick the vendor to auto-fill).`,
+          body: `Delivered, but no acquisition cost/COGS is recorded anywhere — its profit reads as 100% margin in Finance. Set a cost price on the product page, or an acquisition cost on the order page (or pick the vendor to auto-fill).`,
         });
       }
       if (o.pay_method === 'cod' && !o.paymentReconciled && o.hoursInStatus >= 7 * 24) {
