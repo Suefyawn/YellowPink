@@ -110,7 +110,10 @@ export default async function DashboardPage() {
     // COD cash pipeline: orders on the road, the cash the courier is
     // carrying for you right now. The single most-asked number in a
     // COD-heavy store.
-    admin.from('orders').select('total').eq('status', 'shipped').eq('pay_method', 'cod').is('archived_at', null),
+    // "Cash in transit" means cash coming to the STORE: vendor-collected COD
+    // (vendor delivers and keeps the cash; settles on the Vendors page) is
+    // excluded via the vendors join below.
+    admin.from('orders').select('total, vendor_id, vendors(settlement_direction)').eq('status', 'shipped').eq('pay_method', 'cod').is('archived_at', null),
   ]);
 
   // 180-day daily series for the interactive Overview chart (it shows up to a
@@ -182,8 +185,13 @@ export default async function DashboardPage() {
   const topProducts = kpis.top_products.map(p => ({ id: p.id, name: p.name, brand: p.brand, qty: p.qty, image: imgById.get(p.id) ?? null }));
 
   const ordersToFulfill = (statusCounts.pending ?? 0) + (statusCounts.processing ?? 0);
-  const codInTransit = ((codTransitRows ?? []) as { total: number }[]).reduce((t, o) => t + Number(o.total ?? 0), 0);
-  const codTransitCount = (codTransitRows ?? []).length;
+  type CodTransitRow = { total: number; vendors: { settlement_direction: string | null } | { settlement_direction: string | null }[] | null };
+  const codTransitStore = ((codTransitRows ?? []) as CodTransitRow[]).filter(o => {
+    const v = Array.isArray(o.vendors) ? o.vendors[0] : o.vendors;
+    return v?.settlement_direction !== 'vendor_collects';
+  });
+  const codInTransit = codTransitStore.reduce((t, o) => t + Number(o.total ?? 0), 0);
+  const codTransitCount = codTransitStore.length;
   // Yesterday's full-day numbers give the always-zero early morning some
   // context (the delta pill compares same-weekday-last-week; this line is
   // simply "what did we do yesterday").

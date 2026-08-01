@@ -61,13 +61,22 @@ async function loadOrders(weekStart: Date, prevStart: Date): Promise<WeeklyRepor
     type Row = { total: number | null; status: string | null; pay_method: string | null; created_at: string; items: { name?: string; qty?: number }[] | null; utm_source: string | null };
     const rows = data as Row[];
     const inWeek = (r: Row) => new Date(r.created_at) >= weekStart;
-    // Cancelled orders don't count toward revenue, but the owner should see
-    // how many there were.
-    const live = rows.filter(r => r.status !== 'cancelled');
+    // Same two-tier revenue convention as Finance/Analytics/v_orders_revenue
+    // (2026-08-01 audit: this report used to count unpaid orders at full
+    // value and returned/refunded at full total, so the Monday email
+    // disagreed with every admin page for the same week):
+    //   • cancelled / payment_failed / payment_pending → dropped entirely
+    //     (cancelled keeps its own counter below),
+    //   • refunded / returned → count as PLACED orders, contribute ZERO
+    //     revenue.
+    const DROPPED = new Set(['cancelled', 'payment_failed', 'payment_pending']);
+    const ZERO_REVENUE = new Set(['refunded', 'returned']);
+    const orderRevenue = (r: Row) => (ZERO_REVENUE.has(r.status ?? '') ? 0 : Number(r.total ?? 0));
+    const live = rows.filter(r => !DROPPED.has(r.status ?? ''));
     const wk = live.filter(inWeek);
     const prev = live.filter(r => !inWeek(r));
-    const revenue = wk.reduce((s, r) => s + Number(r.total ?? 0), 0);
-    const prevRevenue = prev.reduce((s, r) => s + Number(r.total ?? 0), 0);
+    const revenue = wk.reduce((s, r) => s + orderRevenue(r), 0);
+    const prevRevenue = prev.reduce((s, r) => s + orderRevenue(r), 0);
     const units = new Map<string, number>();
     for (const r of wk) for (const it of r.items ?? []) {
       if (!it?.name) continue;

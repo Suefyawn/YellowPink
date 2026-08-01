@@ -18,6 +18,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendStatusTransitionEmail } from '@/lib/order-status-emails';
+import { applyReturnFinancialsSafe } from '@/lib/return-financials';
 
 // Mirror of the trigger's mapping (migration 20260708_610): which order status a
 // given (normalised) shipment status resolves to, or null for statuses that
@@ -58,6 +59,14 @@ export async function notifyOrderShipmentTransition(
   if (!target || target === prev) return;
   // Never "downgrade"-notify (a stray shipped event after delivered).
   if (target === 'shipped' && prev === 'delivered') return;
+
+  // A courier scan just returned this parcel (the migration-610 trigger flips
+  // orders.status): apply the same settlement/fee/restock semantics the
+  // manual Returned button applies, or the books drift until someone notices
+  // (2026-08-01 audit). Runs before the email; failures log, never throw.
+  if (target === 'returned') {
+    await applyReturnFinancialsSafe(orderId);
+  }
 
   try {
     const { data } = await sb

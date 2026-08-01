@@ -143,11 +143,27 @@ export default async function FinancePage({
   // Booked revenue whose cash hasn't actually landed yet (no recorded payment):
   // COD not-yet-collected + non-COD gateway orders still unconfirmed. Surfaced
   // as a sub-line so "Revenue" isn't misread as money in hand.
+  // Vendor-collected COD is NOT store cash-in-flight: the vendor keeps it and
+  // the store's share arrives via the Vendors-page settlement, so those
+  // orders get their own account bucket instead of inflating "Unrecorded" /
+  // not-yet-received forever (2026-08-01 audit).
+  const vendorIds = Array.from(new Set(orders.map(o => o.vendor_id).filter((v): v is string => Boolean(v))));
+  const { data: finVendors } = vendorIds.length
+    ? await supabaseAdmin().from('vendors').select('id, settlement_direction').in('id', vendorIds)
+    : { data: [] };
+  const vendorCollectsIds = new Set(
+    ((finVendors ?? []) as { id: string; settlement_direction: string | null }[])
+      .filter(v => v.settlement_direction === 'vendor_collects').map(v => v.id),
+  );
+  const VENDOR_BUCKET = 'Vendor-collected (settles via Vendors)';
   let notReceivedRevenue = 0;
   for (const o of orders) {
-    if (!o.payment_received_at) notReceivedRevenue += num(o.total);
-    if (o.pay_method !== 'cod' && !o.payment_received_at) awaiting += 1;
-    const key = o.payment_account?.trim() || 'Unrecorded';
+    const vendorCollected = o.vendor_id != null && vendorCollectsIds.has(o.vendor_id);
+    if (!o.payment_received_at && !vendorCollected) notReceivedRevenue += num(o.total);
+    if (o.pay_method !== 'cod' && !o.payment_received_at && !vendorCollected) awaiting += 1;
+    const key = vendorCollected && !o.payment_account?.trim()
+      ? VENDOR_BUCKET
+      : (o.payment_account?.trim() || 'Unrecorded');
     const cur = byAccount.get(key) ?? { orders: 0, revenue: 0 };
     cur.orders += 1;
     cur.revenue += num(o.total);
@@ -160,7 +176,8 @@ export default async function FinancePage({
   // Orders still needing reconciliation: non-COD, no recorded payment. Listed
   // (latest first) so staff can action them straight from Finance.
   const awaitingOrders = orders
-    .filter(o => o.pay_method !== 'cod' && !o.payment_received_at)
+    .filter(o => o.pay_method !== 'cod' && !o.payment_received_at
+      && !(o.vendor_id != null && vendorCollectsIds.has(o.vendor_id)))
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''));
 
   // Per-order finance rows for the period, optionally narrowed to one payment

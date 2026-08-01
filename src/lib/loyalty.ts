@@ -42,4 +42,5 @@ export const REASON_LABELS: Record<string, string> = {
   redemption:        'Points redeemed',
   manual:            'Manual adjustment',
   refund_reversal:   'Refund reversed',
+  return_clawback:   'Points reversed (order returned)',
 };

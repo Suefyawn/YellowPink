@@ -435,7 +435,7 @@ export interface LoyaltyAccount {
 
 export type LoyaltyReason =
   | 'welcome' | 'order_delivered' | 'review_approved' | 'referral_reward'
-  | 'redemption' | 'manual' | 'refund_reversal';
+  | 'redemption' | 'manual' | 'refund_reversal' | 'return_clawback';
 
 export interface LoyaltyLedgerEntry {
   id: string;
