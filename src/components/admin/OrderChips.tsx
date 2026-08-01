@@ -13,6 +13,14 @@ export function paymentState(o: Order): { label: string; color: string; solid?: 
   const st = o.status ?? 'pending';
   if (st === 'refunded') return { label: 'Refunded', color: '#6b7280' };
   if (st === 'payment_failed') return { label: 'Failed', color: '#b91c1c' };
+  // Dead parcels: no payment is coming, so never show "COD — on delivery" /
+  // "Payment pending" (a returned COD order isn't awaiting anything). If money
+  // WAS received before the order died, the customer is owed it back — amber
+  // until the operator settles it and moves the order to Refunded.
+  if (st === 'returned' || st === 'cancelled') {
+    if (o.payment_received_at) return { label: 'Paid — refund due', color: '#b45309' };
+    return { label: 'Not collected', color: '#6b7280' };
+  }
   if (o.payment_received_at) return { label: 'Paid', color: '#15803d' };
   if (st === 'payment_pending') return { label: 'Awaiting gateway', color: '#b45309' };
   if (o.pay_method === 'cod') return { label: 'COD — on delivery', color: '#b45309' };

@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 31 July 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 1 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1006,6 +1006,11 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 1 August 2026
+
+- **A search that misses now suggests products instead of dead-ending.** When a storefront search finds nothing (or under four products), the page now shows up to eight suggestions under the results: the closest matches on the words in the query first, then whatever shoppers are buying most right now (from the live demand score). This matters most for shoppers arriving from ChatGPT, which links them to search pages for brands the store may not stock; they now land on real products instead of an empty grid. The `/search` web address itself (which the store never had, but ChatGPT links to anyway) also now forwards straight to the shop with the search applied.
+- **Returned and cancelled orders now show an honest payment status.** The orders list and dashboard no longer label a returned COD parcel "COD — on delivery" (no one is paying for a parcel that came back). A dead order that was never paid now reads **Not collected**; one that WAS paid before it died reads **Paid — refund due** until you refund the customer and set the order to Refunded. On the order page, the Payment received card on a returned/cancelled order now says there is nothing to collect instead of offering the "Mark received" form — with a fold-out for the one real exception, a COD parcel paid at the door and returned afterwards, where the courier still remits the cash.
 
 ### 31 July 2026
 
