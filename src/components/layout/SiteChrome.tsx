@@ -34,9 +34,16 @@ interface SiteChromeProps {
   /** Active seasonal theme, resolved SERVER-side in the root layout (client
    *  code must not read the clock — hydration would race the window edge). */
   seasonal?: SeasonalTheme | null;
+  /** The resolved data-theme value (same expression the layout renders on
+   *  <html>). Re-stamped here via an inline script because the <html>
+   *  attribute sits in the route's STATIC shell: a shell baked before a
+   *  scheduled window opens (or after it closes) keeps serving the stale
+   *  palette while the bar/hero — dynamic content — have already switched.
+   *  The script runs as soon as it is parsed, before the page paints. */
+  themeKey?: string;
 }
 
-export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [], cartCrossSell = [], seasonal = null }: SiteChromeProps) {
+export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [], cartCrossSell = [], seasonal = null, themeKey }: SiteChromeProps) {
   const pathname = usePathname();
   if (pathname.startsWith('/admin')) return <>{children}</>;
 
@@ -48,6 +55,13 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
 
   return (
     <>
+      {themeKey && (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.setAttribute('data-theme',${JSON.stringify(themeKey)});`,
+          }}
+        />
+      )}
       <ScrollToTop />
       {/* Seasonal event bar (Independence Day etc.) takes the top slot while
           its window is open; the everyday announcement bar yields to it. */}

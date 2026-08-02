@@ -142,6 +142,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // so the client chrome renders deterministically; auto-on/off by the window
   // configured in Admin → Settings → Homepage.
   const seasonal = activeSeasonalTheme(settings);
+  // The single resolved data-theme value. Rendered as the <html> attribute
+  // below AND re-stamped client-side by SiteChrome: the attribute lives in
+  // the route's static shell, which can be baked before a scheduled window
+  // opens (or after it closes), so the shell alone would keep the old
+  // palette while the bar and hero had already switched.
+  const themeKey = seasonal
+    ? seasonal.key
+    : settings.season_active === 'true' ? normalizeTheme(settings.active_theme) : 'default';
   // GA4 + Search Console are owner-managed (Admin → Settings → Integrations),
   // stored in site_settings; fall back to env so existing deployments keep
   // working. Reading them here means changing the IDs needs no redeploy.
@@ -168,7 +176,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       // dormant until the owner switches it on. A scheduled event window
       // (activeSeasonalTheme) overrides both while it is open: the theme
       // turns itself on at the start date and off at the end date.
-      data-theme={seasonal ? seasonal.key : settings.season_active === 'true' ? normalizeTheme(settings.active_theme) : 'default'}
+      data-theme={themeKey}
       className={`${fontDisplay.variable} ${fontUI.variable}`}
     >
       <head>
@@ -221,6 +229,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <SiteChrome
             settings={settings}
             seasonal={seasonal}
+            themeKey={themeKey}
             searchTrending={searchTrending}
             searchCategories={searchCategories}
             footerCollections={footerCollections.map(c => ({ slug: c.slug, title: c.title }))}
