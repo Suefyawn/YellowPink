@@ -28,6 +28,7 @@ const fontUI = Inter({
   display: 'swap',
 });
 import { SiteChrome } from '@/components/layout/SiteChrome';
+import { activeSeasonalTheme } from '@/lib/seasonal-theme';
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { MetaPixel } from '@/components/analytics/MetaPixel';
 import { AttributionCapture } from '@/components/analytics/AttributionCapture';
@@ -137,6 +138,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // JSON-LD reads from the same source as the footer.
   const sameAs = socialSameAs(settings);
   const orgContact = { phone: settings.store_phone, email: settings.store_email };
+  // Seasonal event theme (Independence Day etc.): resolved here on the server
+  // so the client chrome renders deterministically; auto-on/off by the window
+  // configured in Admin → Settings → Homepage.
+  const seasonal = activeSeasonalTheme(settings);
   // GA4 + Search Console are owner-managed (Admin → Settings → Integrations),
   // stored in site_settings; fall back to env so existing deployments keep
   // working. Reading them here means changing the IDs needs no redeploy.
@@ -160,8 +165,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang="en"
       // The seasonal makeover (palette + background motif) is gated by the
       // season_active toggle in admin Settings, a pre-selected season stays
-      // dormant until the owner switches it on.
-      data-theme={settings.season_active === 'true' ? normalizeTheme(settings.active_theme) : 'default'}
+      // dormant until the owner switches it on. A scheduled event window
+      // (activeSeasonalTheme) overrides both while it is open: the theme
+      // turns itself on at the start date and off at the end date.
+      data-theme={seasonal ? seasonal.key : settings.season_active === 'true' ? normalizeTheme(settings.active_theme) : 'default'}
       className={`${fontDisplay.variable} ${fontUI.variable}`}
     >
       <head>
@@ -213,6 +220,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <CouponCapture />
           <SiteChrome
             settings={settings}
+            seasonal={seasonal}
             searchTrending={searchTrending}
             searchCategories={searchCategories}
             footerCollections={footerCollections.map(c => ({ slug: c.slug, title: c.title }))}

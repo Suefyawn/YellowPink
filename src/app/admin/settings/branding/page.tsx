@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from '../actions';
 import { ImageUpload } from '@/components/admin/ImageUpload';
@@ -78,6 +79,49 @@ export default async function SettingsBrandingPage({ searchParams }: { searchPar
               <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
                 Recolours the storefront and adds a faint matching background motif.
               </p>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 2 }}>
+                Scheduled event window (Independence Day)
+              </div>
+              <p style={{ margin: '0 0 12px', fontSize: '0.75rem', color: '#9ca3af' }}>
+                A scheduled event turns the theme, the green announcement bar and the seasonal hero on at the
+                start time and off at the end time by itself — no need to touch the manual switch above.
+                Times are Pakistan time. Leave the event set to Off to disable scheduling.
+              </p>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div>
+                  <label style={lbl} htmlFor="set-seasonal-theme">Scheduled event</label>
+                  <select id="set-seasonal-theme" name="seasonal_theme" defaultValue={g('seasonal_theme')} style={inp}>
+                    <option value="">Off</option>
+                    <option value="independence">Independence Day (14 August)</option>
+                  </select>
+                </div>
+                <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={lbl}>Starts (PKT)</label>
+                    <input type="datetime-local" name="seasonal_theme_start" defaultValue={g('seasonal_theme_start')} style={inp} />
+                  </div>
+                  <div>
+                    <label style={lbl}>Ends (PKT)</label>
+                    <input type="datetime-local" name="seasonal_theme_end" defaultValue={g('seasonal_theme_end')} style={inp} />
+                  </div>
+                </div>
+                <div>
+                  <label style={lbl}>Announcement-bar message</label>
+                  <input name="seasonal_theme_message" defaultValue={g('seasonal_theme_message')} style={inp}
+                    placeholder="Azadi Sale is live: 14% off storewide with code AZADI14" />
+                </div>
+                <div>
+                  <label style={lbl}>Coupon code shown in the bar</label>
+                  <input name="seasonal_theme_coupon" defaultValue={g('seasonal_theme_coupon')} style={inp}
+                    placeholder="AZADI14" />
+                  <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+                    The code itself lives on the <Link href="/admin/coupons" style={{ color: '#C5286A', fontWeight: 600 }}>Coupons</Link> page — this field only controls what the bar displays.
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div>

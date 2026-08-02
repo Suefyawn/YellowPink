@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 1 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 2 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1006,6 +1006,11 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 2 August 2026
+
+- **Independence Day theme, scheduled and self-managing.** The store dresses up for 14 August automatically: from 10 August to the night of 15 August (Pakistan time), the storefront switches to a Pakistan-green palette with a crescent-and-star motif, a green announcement bar advertises the Azadi Sale with coupon code **AZADI14** (14% off storewide, already created on the Coupons page, expires by itself), and the homepage hero becomes the Azadi Sale banner. When the window ends, everything reverts on its own — nothing to take down. Control it in **Settings → Branding → Seasonal theme → Scheduled event window**: change the dates, the bar message or the displayed code, or set the event to Off. The manual seasonal switch above it still works as before for Eid, Christmas and the like (Independence Day is now also in that season list for manual use). To preview before the 10th, set the start date to today, look at the storefront, then set it back.
+- **21 St. Ives products prepared as drafts.** The full St. Ives range from the brand's site (5 face scrubs including the two BHA acne ones, the watermelon lip scrub, 8 body washes, 6 hand & body lotions, and the collagen face moisturizer jar) is listed with full descriptions, images, categories and estimated prices, saved as drafts. Review the price on each product page and press Publish when confirmed — nothing shows on the storefront until then.
 
 ### 1 August 2026
 

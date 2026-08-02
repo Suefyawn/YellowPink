@@ -2,6 +2,8 @@
 import { Suspense } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnnouncementBar } from './AnnouncementBar';
+import { SeasonalBar } from './SeasonalBar';
+import type { SeasonalTheme } from '@/lib/seasonal-theme';
 import { Header } from './Header';
 import { HeaderFallback } from './HeaderFallback';
 import { Footer } from './Footer';
@@ -29,9 +31,12 @@ interface SiteChromeProps {
   footerCollections?: { slug: string; title: string }[];
   /** Bestseller pool (server-resolved) for the mini-cart's cross-sell row. */
   cartCrossSell?: Product[];
+  /** Active seasonal theme, resolved SERVER-side in the root layout (client
+   *  code must not read the clock — hydration would race the window edge). */
+  seasonal?: SeasonalTheme | null;
 }
 
-export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [], cartCrossSell = [] }: SiteChromeProps) {
+export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [], cartCrossSell = [], seasonal = null }: SiteChromeProps) {
   const pathname = usePathname();
   if (pathname.startsWith('/admin')) return <>{children}</>;
 
@@ -44,7 +49,17 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
   return (
     <>
       <ScrollToTop />
-      {topBarActive && (
+      {/* Seasonal event bar (Independence Day etc.) takes the top slot while
+          its window is open; the everyday announcement bar yields to it. */}
+      {seasonal ? (
+        <SeasonalBar
+          message={seasonal.message}
+          compactMessage={seasonal.compactMessage}
+          coupon={seasonal.coupon}
+          bgColor={seasonal.barColor}
+          textColor={seasonal.textColor}
+        />
+      ) : topBarActive && (
         <AnnouncementBar
           text={settings.announcement_text ?? freeShippingSentence(parseCommerceConfig(settings))}
           // Compact one-liner only for the default config-derived sentence;

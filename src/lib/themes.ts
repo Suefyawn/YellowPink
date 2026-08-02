@@ -22,6 +22,7 @@ export const STORE_THEMES: StoreTheme[] = [
   { key: 'sale',      label: 'Sale / Promo',  hint: 'Bold, high-energy contrast' },
   { key: 'christmas', label: 'Christmas',     hint: 'Festive red and warm gold' },
   { key: 'easter',    label: 'Easter',        hint: 'Soft pastel spring palette' },
+  { key: 'independence', label: 'Independence Day', hint: 'Pakistan green, white and gold' },
 ];
 
 const THEME_KEYS = new Set(STORE_THEMES.map(t => t.key));

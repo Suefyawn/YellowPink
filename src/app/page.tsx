@@ -62,6 +62,7 @@ import { CollectionsSection } from '@/sections/home/CollectionsSection';
 import { RealResults } from '@/sections/home/RealResults';
 import { JournalSection } from '@/sections/home/JournalSection';
 import { QuizBand } from '@/sections/home/QuizBand';
+import { activeSeasonalTheme } from '@/lib/seasonal-theme';
 
 // Names must match products.brand / brands.name exactly (resolveBrandLogos
 // matches on name). Ordered by Pakistani search volume so the tiles mirror
@@ -143,7 +144,9 @@ export default async function HomePage() {
   // Seasonal hero override, while the seasonal makeover is on, the homepage
   // hero uses the season_hero_* settings; any field left blank falls back to
   // the normal hero value. The secondary CTA + brand-logo row aren't seasonal.
-  const seasonOn = settings.season_active === 'true';
+  // A scheduled event window (Independence Day etc.) counts as "on" too, so
+  // the hero swaps at the start date and reverts at the end date by itself.
+  const seasonOn = settings.season_active === 'true' || activeSeasonalTheme(settings) !== null;
   const heroField = (seasonKey: string, normalKey: string): string =>
     (seasonOn && settings[seasonKey]) || settings[normalKey] || '';
   const heroBrandNames = settings.hero_brands ? settings.hero_brands.split(',').map(b => b.trim()) : [];
