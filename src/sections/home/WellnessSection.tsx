@@ -56,8 +56,11 @@ export function WellnessSection({
   if (concerns.length === 0 || rail.length === 0) return null;
   const railItems = rail.slice(0, 4);
 
+  // Bottom-padding only: the previous section's bottom gap already provides
+  // the space above our divider, so top padding would stack into a ~2× dead
+  // zone (the 2 Aug homepage-gap report).
   return (
-    <section style={{ padding: 'var(--section-gap) 0' }}>
+    <section style={{ paddingBottom: 'var(--section-gap)' }}>
       <div className="container">
         <SectionDivider />
 
@@ -78,7 +81,10 @@ export function WellnessSection({
               Because real beauty is health, inside out.
             </p>
             <p className="small-text" style={{ color: 'var(--ink-500)', marginBottom: 24 }}>
-              {totalCount} supplements across {concerns.length} health concerns · imported &amp; batch-verified
+              {/* Explicit {' '} separators: the compiler drops the plain
+                  space after these expressions in the production build
+                  (live site rendered "8health concerns"). */}
+              {totalCount}{' '}supplements across {concerns.length}{' '}health concerns · imported &amp; batch-verified
             </p>
             <Link href="/shop?taxon=wellness" className="btn-primary">Explore all Wellness</Link>
           </div>
@@ -105,7 +111,7 @@ export function WellnessSection({
 
         {/* Shop by concern, all eight, with live counts + from-prices, so the
             range reads as a considered catalogue rather than four taglines. */}
-        <div style={{ marginTop: 'var(--section-gap)' }}>
+        <div style={{ marginTop: 'clamp(48px, 7vw, 64px)' }}>
           <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>Shop by health concern</Overline>
           <div className="wellness-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }}>
             {concerns.map((c) => (
@@ -144,7 +150,7 @@ export function WellnessSection({
         </div>
 
         {/* Featured wellness picks. */}
-        <div style={{ marginTop: 'var(--section-gap)' }}>
+        <div style={{ marginTop: 'clamp(48px, 7vw, 64px)' }}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
             <Overline style={{ color: 'var(--ink-500)' }}>Wellness bestsellers</Overline>
             <Link href="/shop?taxon=wellness" className="text-link">View all</Link>
@@ -155,7 +161,7 @@ export function WellnessSection({
         </div>
 
         {/* Wellness assurances. */}
-        <div className="trust-grid" style={{ marginTop: 'var(--section-gap)', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
+        <div className="trust-grid" style={{ marginTop: 'clamp(48px, 7vw, 64px)', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
           {ASSURANCES.map((a) => (
             <div key={a.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
               <span style={{ color: 'var(--brand-pink-text, #C5286A)', flexShrink: 0, marginTop: 2 }} aria-hidden="true">

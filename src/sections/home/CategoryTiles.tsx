@@ -69,7 +69,7 @@ function CatTile({ label, href, image }: CategoryTile) {
 
 export function CategoryTiles({ groups }: { groups: CategoryTileGroup[] }) {
   return (
-    <section style={{ padding: 'var(--section-gap) 0' }}>
+    <section style={{ paddingBottom: 'var(--section-gap)' }}>
       <div className="container">
         <Overline style={{ display: 'block', marginBottom: 6 }}>Shop by category</Overline>
         <h2 className="display-l" style={{ fontSize: '1.75rem', margin: '0 0 32px' }}>
