@@ -1,9 +1,9 @@
 'use client';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnnouncementBar } from './AnnouncementBar';
 import { SeasonalBar } from './SeasonalBar';
-import type { SeasonalTheme } from '@/lib/seasonal-theme';
+import { activeSeasonalTheme, type SeasonalTheme } from '@/lib/seasonal-theme';
 import { Header } from './Header';
 import { HeaderFallback } from './HeaderFallback';
 import { Footer } from './Footer';
@@ -31,21 +31,37 @@ interface SiteChromeProps {
   footerCollections?: { slug: string; title: string }[];
   /** Bestseller pool (server-resolved) for the mini-cart's cross-sell row. */
   cartCrossSell?: Product[];
-  /** Active seasonal theme, resolved SERVER-side in the root layout (client
-   *  code must not read the clock — hydration would race the window edge). */
+  /** Seasonal theme as resolved by the SERVER render (initial paint value).
+   *  The chrome sits in the route's long-cached prerendered shell, so this
+   *  prop can be stale around a scheduled window's edges — the effect below
+   *  re-resolves with the CLIENT clock and corrects bar + palette. */
   seasonal?: SeasonalTheme | null;
-  /** The resolved data-theme value (same expression the layout renders on
-   *  <html>). Re-stamped here via an inline script because the <html>
-   *  attribute sits in the route's STATIC shell: a shell baked before a
-   *  scheduled window opens (or after it closes) keeps serving the stale
-   *  palette while the bar/hero — dynamic content — have already switched.
-   *  The script runs as soon as it is parsed, before the page paints. */
-  themeKey?: string;
 }
 
-export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [], cartCrossSell = [], seasonal = null, themeKey }: SiteChromeProps) {
+export function SiteChrome({ children, settings, searchTrending, searchCategories, footerCollections = [], cartCrossSell = [], seasonal = null }: SiteChromeProps) {
   const pathname = usePathname();
-  if (pathname.startsWith('/admin')) return <>{children}</>;
+  const isAdmin = pathname.startsWith('/admin');
+
+  // Live seasonal state. Initialised from the server prop (matches the shell
+  // HTML, so hydration is clean), then re-resolved on the client clock: the
+  // shell is CDN-cached far longer than the window edges, so the client is
+  // the only place the Aug-10-00:00 style flip can land on time. The window
+  // dates ride in with `settings`; only the clock is read here. Re-checked
+  // each minute so a tab left open crosses the boundary too.
+  const [liveSeasonal, setLiveSeasonal] = useState<SeasonalTheme | null>(seasonal);
+  useEffect(() => {
+    if (isAdmin) return; // storefront skin only — never theme the admin
+    const sync = () => {
+      const t = activeSeasonalTheme(settings, new Date());
+      setLiveSeasonal(t);
+      document.documentElement.setAttribute('data-theme', t?.key ?? 'default');
+    };
+    sync();
+    const id = setInterval(sync, 60_000);
+    return () => clearInterval(id);
+  }, [settings, isAdmin]);
+
+  if (isAdmin) return <>{children}</>;
 
   // The one storefront banner: the settings-driven announcement bar
   // (Admin → Settings → Homepage). The promos table AND the richer
@@ -55,23 +71,16 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
 
   return (
     <>
-      {themeKey && (
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `document.documentElement.setAttribute('data-theme',${JSON.stringify(themeKey)});`,
-          }}
-        />
-      )}
       <ScrollToTop />
-      {/* Seasonal event bar (Independence Day etc.) takes the top slot while
-          its window is open; the everyday announcement bar yields to it. */}
-      {seasonal ? (
+      {/* Seasonal event bar takes the top slot while a theme is active (and
+          has a message); the everyday announcement bar yields to it. */}
+      {liveSeasonal?.message ? (
         <SeasonalBar
-          message={seasonal.message}
-          compactMessage={seasonal.compactMessage}
-          coupon={seasonal.coupon}
-          bgColor={seasonal.barColor}
-          textColor={seasonal.textColor}
+          message={liveSeasonal.message}
+          compactMessage={liveSeasonal.compactMessage ?? liveSeasonal.message}
+          coupon={liveSeasonal.coupon}
+          bgColor={liveSeasonal.barColor}
+          textColor={liveSeasonal.textColor}
         />
       ) : topBarActive && (
         <AnnouncementBar
