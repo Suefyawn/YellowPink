@@ -9,7 +9,7 @@ import type { Collection } from '@/lib/collections';
 export function CollectionsSection({ collections }: { collections: Collection[] }) {
   if (collections.length === 0) return null;
   return (
-    <section style={{ padding: 'var(--section-gap) 0' }}>
+    <section style={{ paddingBottom: 'var(--section-gap)' }}>
       <div className="container">
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 32 }}>
           <div>

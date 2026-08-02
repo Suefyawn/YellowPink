@@ -38,16 +38,17 @@ export function BrandStrip({ brands }: { brands: BrandLogoEntry[] }) {
               href={`/brand/${brandSlug(b.name)}`}
               style={{
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                minHeight: 84, padding: '18px 16px', borderRadius: 12,
+                minHeight: 96, padding: '18px 16px', borderRadius: 12,
                 border: '1px solid var(--ink-100, #eee)', background: 'white',
                 textDecoration: 'none',
               }}
             >
               {b.logoUrl ? (
-                // Same rationale as the hero marquee: tiny logos of varied
-                // aspect ratio, plain <img> beats a fixed-size optimizer.
+                // Plain <img> over the optimizer: the wall assets are already
+                // uniform 560x200 area-normalized canvases (2x for retina, see
+                // public/brands/wall/), so every logo renders the same box.
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={b.logoUrl} alt={b.name} loading="lazy" style={{ maxWidth: '80%', maxHeight: 40, objectFit: 'contain' }} />
+                <img src={b.logoUrl} alt={b.name} loading="lazy" style={{ maxWidth: '86%', maxHeight: 48, objectFit: 'contain' }} />
               ) : (
                 <span style={{ fontSize: '0.8125rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--ink-800)', textAlign: 'center' }}>
                   {b.name}

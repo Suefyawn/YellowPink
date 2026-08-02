@@ -16,7 +16,9 @@ export function SaleCollection({ products, title, subtitle, ctaText, ctaUrl }: {
   const items = products.slice(0, 8);
   if (items.length === 0) return null;
   return (
-    <section style={{ background: 'var(--paper2, #faf6ee)', padding: 'var(--section-gap) 0', marginBottom: 'var(--section-gap)' }}>
+    // The banded background delineates this section; the next section's own
+    // padding provides the outside gap, so an extra margin here doubled it.
+    <section style={{ background: 'var(--paper2, #faf6ee)', padding: 'var(--section-gap) 0' }}>
       <div className="container">
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <span style={{
