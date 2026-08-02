@@ -141,12 +141,11 @@ export default async function HomePage() {
     { title: 'Health & Wellness', tiles: WELLNESS_TILE_CATS.map(tile) },
   ];
 
-  // Seasonal hero override, while the seasonal makeover is on, the homepage
+  // Seasonal hero override, while a seasonal theme is active (manual or an
+  // open scheduled window — activeSeasonalTheme resolves both), the homepage
   // hero uses the season_hero_* settings; any field left blank falls back to
   // the normal hero value. The secondary CTA + brand-logo row aren't seasonal.
-  // A scheduled event window (Independence Day etc.) counts as "on" too, so
-  // the hero swaps at the start date and reverts at the end date by itself.
-  const seasonOn = settings.season_active === 'true' || activeSeasonalTheme(settings) !== null;
+  const seasonOn = activeSeasonalTheme(settings) !== null;
   const heroField = (seasonKey: string, normalKey: string): string =>
     (seasonOn && settings[seasonKey]) || settings[normalKey] || '';
   const heroBrandNames = settings.hero_brands ? settings.hero_brands.split(',').map(b => b.trim()) : [];

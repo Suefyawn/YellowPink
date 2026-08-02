@@ -48,7 +48,6 @@ import { CouponCapture } from '@/components/marketing/CouponCapture';
 import { getSiteSettings, getBestsellers } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
 import { getVendorFreeShipThresholds } from '@/lib/shipping';
-import { normalizeTheme } from '@/lib/themes';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
 import { getPublishedCollections } from '@/lib/collections-data';
 import { SITE_URL, SITE_NAME, jsonLd, organizationLd, websiteLd } from '@/lib/seo';
@@ -138,18 +137,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // JSON-LD reads from the same source as the footer.
   const sameAs = socialSameAs(settings);
   const orgContact = { phone: settings.store_phone, email: settings.store_email };
-  // Seasonal event theme (Independence Day etc.): resolved here on the server
-  // so the client chrome renders deterministically; auto-on/off by the window
-  // configured in Admin → Settings → Homepage.
+  // Seasonal theme (manual switch or scheduled window, resolved in one place
+  // by activeSeasonalTheme). This server value is the initial paint; the
+  // chrome re-resolves on the client clock because this layout render lives
+  // in the route's long-cached shell (see SiteChrome).
   const seasonal = activeSeasonalTheme(settings);
-  // The single resolved data-theme value. Rendered as the <html> attribute
-  // below AND re-stamped client-side by SiteChrome: the attribute lives in
-  // the route's static shell, which can be baked before a scheduled window
-  // opens (or after it closes), so the shell alone would keep the old
-  // palette while the bar and hero had already switched.
-  const themeKey = seasonal
-    ? seasonal.key
-    : settings.season_active === 'true' ? normalizeTheme(settings.active_theme) : 'default';
   // GA4 + Search Console are owner-managed (Admin → Settings → Integrations),
   // stored in site_settings; fall back to env so existing deployments keep
   // working. Reading them here means changing the IDs needs no redeploy.
@@ -171,12 +163,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html
       lang="en"
-      // The seasonal makeover (palette + background motif) is gated by the
-      // season_active toggle in admin Settings, a pre-selected season stays
-      // dormant until the owner switches it on. A scheduled event window
-      // (activeSeasonalTheme) overrides both while it is open: the theme
-      // turns itself on at the start date and off at the end date.
-      data-theme={themeKey}
+      // Initial palette. SiteChrome re-stamps this attribute client-side on
+      // the live clock, so a scheduled flip lands on time even when this
+      // shell render is cache-stale.
+      data-theme={seasonal?.key ?? 'default'}
       className={`${fontDisplay.variable} ${fontUI.variable}`}
     >
       <head>
@@ -229,7 +219,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <SiteChrome
             settings={settings}
             seasonal={seasonal}
-            themeKey={themeKey}
             searchTrending={searchTrending}
             searchCategories={searchCategories}
             footerCollections={footerCollections.map(c => ({ slug: c.slug, title: c.title }))}
