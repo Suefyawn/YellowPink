@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 2 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 3 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1006,6 +1006,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 3 August 2026
+
+- **Abandoned-checkout alerts now wait 20 minutes.** Previously the bell and phone push fired the instant a shopper finished the contact step of checkout, so anyone who went on to pay triggered a false "Abandoned checkout" alert seconds before their "New order" alert. The alert now fires only when a checkout has sat untouched for 20 minutes, checked every 10 minutes, so a completed purchase never makes an abandoned-cart sound. The daily reminder emails to shoppers and the staff digest are unchanged.
 
 ### 2 August 2026
 
