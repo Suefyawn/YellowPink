@@ -29,8 +29,20 @@ const addBtn: React.CSSProperties = {
 };
 const emptyNote: React.CSSProperties = { fontSize: '0.75rem', color: '#9ca3af', margin: '0 0 8px' };
 
+// DB rows aren't guaranteed to match the editor shape: imports and
+// tool-assisted inserts have stored plain strings (the 2 Aug St. Ives drafts
+// crashed this editor on r.text.trim()). Coerce every entry on init.
+function normalizeBenefits(initial?: unknown): ProductKeyBenefit[] {
+  if (!Array.isArray(initial)) return [];
+  return initial.map((r): ProductKeyBenefit => {
+    if (typeof r === 'string') return { icon: BENEFIT_ICONS[0], text: r };
+    const o = (r ?? {}) as Partial<ProductKeyBenefit>;
+    return { icon: typeof o.icon === 'string' ? o.icon : BENEFIT_ICONS[0], text: typeof o.text === 'string' ? o.text : '' };
+  });
+}
+
 export function KeyBenefitsEditor({ name, initial }: { name: string; initial?: ProductKeyBenefit[] | null }) {
-  const [rows, setRows] = useState<ProductKeyBenefit[]>(initial ?? []);
+  const [rows, setRows] = useState<ProductKeyBenefit[]>(() => normalizeBenefits(initial));
   const clean = rows.filter(r => r.text.trim());
   const serialised = clean.length ? JSON.stringify(clean) : '';
 
@@ -65,8 +77,20 @@ export function KeyBenefitsEditor({ name, initial }: { name: string; initial?: P
   );
 }
 
+// Same coercion for FAQs: tolerate missing keys and the common
+// {question, answer} alias shape from imports.
+function normalizeFaq(initial?: unknown): ProductFaqItem[] {
+  if (!Array.isArray(initial)) return [];
+  return initial.map((r): ProductFaqItem => {
+    const o = (r ?? {}) as Record<string, unknown>;
+    const q = typeof o.q === 'string' ? o.q : typeof o.question === 'string' ? o.question : '';
+    const a = typeof o.a === 'string' ? o.a : typeof o.answer === 'string' ? o.answer : '';
+    return { q, a };
+  });
+}
+
 export function FaqEditor({ name, initial }: { name: string; initial?: ProductFaqItem[] | null }) {
-  const [rows, setRows] = useState<ProductFaqItem[]>(initial ?? []);
+  const [rows, setRows] = useState<ProductFaqItem[]>(() => normalizeFaq(initial));
   const clean = rows.filter(r => r.q.trim() && r.a.trim());
   const serialised = clean.length ? JSON.stringify(clean) : '';
 
