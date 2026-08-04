@@ -64,7 +64,17 @@ interface CheckoutPageProps {
   paymentError?: string | null;
   /** Order number of the failed payment, when the callback knew it. */
   failedOrder?: string | null;
+  /** Active seasonal-sale coupon code (e.g. AZADI14 during the Azadi window).
+   *  Auto-applied on mount when the cart has no coupon yet — the storewide
+   *  sale is promised in the site chrome, so checkout must not depend on the
+   *  shopper retyping the code (order YP-6WTC3EC7V paid full price during a
+   *  live 14%-off sale). Validation still runs the normal lookup path. */
+  seasonalCoupon?: string | null;
 }
+
+// sessionStorage flag: the shopper explicitly removed the auto-applied
+// seasonal coupon, so don't force it back on them this browser session.
+const SEASONAL_COUPON_DISMISSED_KEY = 'yp_seasonal_coupon_dismissed';
 
 // The cart is cleared right before the browser POSTs off to JazzCash /
 // Easypaisa. This key holds a snapshot of what was cleared so a failed
@@ -74,7 +84,7 @@ const GATEWAY_SNAPSHOT_KEY = 'yp_gateway_cart';
 // don't resurrect last week's bag because an old ?error= URL was revisited.
 const GATEWAY_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000;
 
-export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, paymentError = null, failedOrder = null }: CheckoutPageProps = {}) {
+export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, paymentError = null, failedOrder = null, seasonalCoupon = null }: CheckoutPageProps = {}) {
   const { cartItems, clearCart, restoreCart, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
   const router = useRouter();
@@ -407,22 +417,28 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     return true;
   };
 
-  const applyCoupon = async () => {
-    if (!couponCode.trim()) return;
-    setCouponError('');
-    setCouponLoading(true);
+  // Shared by the manual Apply button and the seasonal auto-apply below.
+  // auto=true is silent: no spinners, and a failure (expired, restricted)
+  // simply leaves the cart couponless instead of surfacing an error the
+  // shopper never asked about.
+  const applyCode = async (code: string, opts: { auto?: boolean } = {}) => {
+    const trimmed = code.trim();
+    if (!trimmed) return;
+    if (!opts.auto) { setCouponError(''); setCouponLoading(true); }
     const sb = getBrowserClient();
     // coupons has RLS with no anon SELECT (migration 070), go through the
     // SECURITY DEFINER lookup_coupon RPC instead of reading the table.
-    const { data, error } = await sb.rpc('lookup_coupon' as never, { p_code: couponCode.trim() } as never);
+    const { data, error } = await sb.rpc('lookup_coupon' as never, { p_code: trimmed } as never);
 
     if (error) {
-      setCouponLoading(false);
-      setCouponError('Could not validate coupon. Try again.');
+      if (!opts.auto) { setCouponLoading(false); setCouponError('Could not validate coupon. Try again.'); }
       return;
     }
     const rows = (data ?? []) as Coupon[];
-    if (rows.length === 0) { setCouponLoading(false); setCouponError('Invalid or expired coupon code'); return; }
+    if (rows.length === 0) {
+      if (!opts.auto) { setCouponLoading(false); setCouponError('Invalid or expired coupon code'); }
+      return;
+    }
     const c = rows[0];
 
     // Per-user usage cap, pull prior redemption count when we know the user.
@@ -434,7 +450,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       perUserUsedCount = count ?? 0;
     }
 
-    setCouponLoading(false);
+    if (!opts.auto) setCouponLoading(false);
 
     const { validateCoupon } = await import('@/lib/coupon-validation');
     const verdict = validateCoupon({
@@ -442,10 +458,33 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       email: formData.email ?? null,
       perUserUsedCount,
     });
-    if (!verdict.ok) { setCouponError(verdict.error); return; }
+    if (!verdict.ok) { if (!opts.auto) setCouponError(verdict.error); return; }
     setAppliedCoupon(c);
     setCouponCode(c.code);
   };
+
+  const applyCoupon = () => applyCode(couponCode);
+
+  // Seasonal-sale auto-apply: the chrome promises "14% off with AZADI14", so
+  // checkout applies it for the shopper instead of hoping they retype it.
+  // Runs once per mount, only when no coupon is applied, and never after the
+  // shopper explicitly removed it this session (the ✕ sets the flag below).
+  const seasonalAutoApplied = useRef(false);
+  useEffect(() => {
+    if (!seasonalCoupon || seasonalAutoApplied.current || cartCoupon || cartItems.length === 0) return;
+    try {
+      if (sessionStorage.getItem(SEASONAL_COUPON_DISMISSED_KEY) === seasonalCoupon) return;
+    } catch { /* private mode — treat as not dismissed */ }
+    seasonalAutoApplied.current = true;
+    // Deferred a tick so the effect body itself stays render-pure (the apply
+    // path sets state); cleared on unmount before it fires.
+    const t = setTimeout(() => { void applyCode(seasonalCoupon, { auto: true }); }, 0);
+    return () => clearTimeout(t);
+    // applyCode is recreated per render but only reads current cart state;
+    // the run-once ref makes the dependency question moot (same pattern as
+    // the gateway-snapshot restore above).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seasonalCoupon, cartCoupon, cartItems.length]);
 
   const handleSubmit = async () => {
     // Guard against double-submit: the button is disabled while `submitting`,
@@ -865,7 +904,14 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                   <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
                     ✓ {cartCoupon.code} {freeShipCoupon ? '(free shipping)' : cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
                   </span>
-                  <button type="button" aria-label="Remove coupon" onClick={() => { setCouponCode(''); setAppliedCoupon(null); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+                  <button type="button" aria-label="Remove coupon" onClick={() => {
+                    // Removing the auto-applied seasonal code is a choice —
+                    // remember it so the effect doesn't force it straight back.
+                    if (seasonalCoupon && cartCoupon.code === seasonalCoupon) {
+                      try { sessionStorage.setItem(SEASONAL_COUPON_DISMISSED_KEY, seasonalCoupon); } catch { /* ignore */ }
+                    }
+                    setCouponCode(''); setAppliedCoupon(null);
+                  }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
                 </div>
               )}
 
