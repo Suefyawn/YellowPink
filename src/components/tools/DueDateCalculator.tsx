@@ -1,10 +1,9 @@
 'use client';
 
-// Interactive ovulation / fertile-window calculator. Pure client-side date
-// math, no network calls: results render instantly and nothing personal
-// leaves the browser. Assumes ovulation ~14 days before the NEXT period
-// (luteal phase length), which holds across cycle lengths far better than
-// "day 14 from the last period" does on long or short cycles.
+// Pregnancy due-date calculator. Naegele's rule with cycle-length adjustment:
+// EDD = LMP + 280 days + (cycle − 28). Also reports gestational age today,
+// the trimester, and the milestone dates mothers actually plan around.
+// Pure client-side; nothing personal leaves the browser.
 
 import { useMemo, useState } from 'react';
 import posthog from 'posthog-js';
@@ -16,15 +15,15 @@ function addDays(date: Date, days: number): Date {
 }
 
 function fmt(date: Date): string {
-  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long' });
+  return date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
 }
 
 interface Result {
-  fertileStart: Date;
-  fertileEnd: Date;
-  ovulation: Date;
-  nextPeriod: Date;
-  testFrom: Date;
+  edd: Date;
+  weeks: number;
+  days: number;
+  trimester: 1 | 2 | 3;
+  milestones: { label: string; date: Date; passed: boolean }[];
 }
 
 // Usage analytics for the admin Quick Answers panel: one event per completed
@@ -33,13 +32,12 @@ function captureUse(answer: string) {
   try { posthog.capture('answer_used', { answer }); } catch { /* posthog not ready */ }
 }
 
-export function OvulationCalculator() {
+export function DueDateCalculator() {
   const [lmp, setLmp] = useState('');
   const [cycleLength, setCycleLength] = useState(28);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState('');
 
-  // Date inputs cap at today: a future "last period" makes no sense.
   const today = useMemo(() => new Date().toISOString().slice(0, 10), []);
 
   function calculate() {
@@ -50,34 +48,41 @@ export function OvulationCalculator() {
       setResult(null);
       return;
     }
-    if (start.getTime() > Date.now()) {
+    const gestDays = Math.floor((Date.now() - start.getTime()) / DAY_MS);
+    if (gestDays < 0) {
       setError('That date is in the future. Use the first day of your most recent period.');
       setResult(null);
       return;
     }
-    // Roll forward so the window shown is the NEXT one, not one already past
-    // (useful when the last period entered is several cycles old).
-    let nextPeriod = addDays(start, cycleLength);
-    while (nextPeriod.getTime() < Date.now()) nextPeriod = addDays(nextPeriod, cycleLength);
-    const ovulation = addDays(nextPeriod, -14);
-    captureUse('ovulation');
+    if (gestDays > 42 * 7) {
+      setError('That date is more than 42 weeks ago. For a current pregnancy, use the most recent last period.');
+      setResult(null);
+      return;
+    }
+    const edd = addDays(start, 280 + (cycleLength - 28));
+    const weeks = Math.floor(gestDays / 7);
+    const days = gestDays % 7;
+    const trimester: 1 | 2 | 3 = weeks < 13 ? 1 : weeks < 28 ? 2 : 3;
+    const milestone = (label: string, atWeeks: number) => ({
+      label,
+      date: addDays(start, atWeeks * 7),
+      passed: gestDays >= atWeeks * 7,
+    });
+    captureUse('due-date');
     setResult({
-      ovulation,
-      nextPeriod,
-      fertileStart: addDays(ovulation, -5),
-      fertileEnd: addDays(ovulation, 1),
-      testFrom: addDays(nextPeriod, 1),
+      edd,
+      weeks,
+      days,
+      trimester,
+      milestones: [
+        milestone('First ultrasound usually possible', 6),
+        milestone('Second trimester starts (energy usually returns)', 13),
+        milestone('Big mid-pregnancy ultrasound', 19),
+        milestone('Third trimester starts', 28),
+        milestone('Baby is full term from here', 39),
+      ],
     });
   }
-
-  const rows: { label: string; value: string; strong?: boolean }[] = result
-    ? [
-        { label: 'Your best days to try for a baby', value: `${fmt(result.fertileStart)} to ${fmt(result.fertileEnd)}`, strong: true },
-        { label: 'Most likely ovulation (egg release) day', value: fmt(result.ovulation) },
-        { label: 'Next period expected around', value: fmt(result.nextPeriod) },
-        { label: 'A pregnancy test is reliable from', value: fmt(result.testFrom) },
-      ]
-    : [];
 
   return (
     <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', padding: 'clamp(20px, 4vw, 32px)' }}>
@@ -115,17 +120,25 @@ export function OvulationCalculator() {
 
       {result && (
         <div style={{ marginTop: 24, borderTop: '1px solid var(--line)', paddingTop: 20 }}>
-          <dl style={{ display: 'grid', gap: 12, margin: 0 }}>
-            {rows.map(r => (
-              <div key={r.label} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                <dt className="small-text" style={{ color: 'var(--ink-500)' }}>{r.label}</dt>
-                <dd style={{ margin: 0, fontWeight: r.strong ? 700 : 500 }}>{r.value}</dd>
+          <p style={{ margin: '0 0 4px', fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 600 }}>
+            Due date: {fmt(result.edd)}
+          </p>
+          <p className="body-text" style={{ margin: '0 0 18px', color: 'var(--ink-700)' }}>
+            You are {result.weeks} {result.weeks === 1 ? 'week' : 'weeks'}{result.days > 0 ? ` and ${result.days} ${result.days === 1 ? 'day' : 'days'}` : ''} pregnant today, in your {result.trimester === 1 ? 'first' : result.trimester === 2 ? 'second' : 'third'} trimester.
+          </p>
+          <dl style={{ display: 'grid', gap: 10, margin: 0 }}>
+            {result.milestones.map(m => (
+              <div key={m.label} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <dt className="small-text" style={{ color: m.passed ? 'var(--ink-500)' : 'inherit' }}>
+                  {m.passed ? '✓ ' : ''}{m.label}
+                </dt>
+                <dd className="small-text" style={{ margin: 0, fontWeight: 600, color: m.passed ? 'var(--ink-500)' : 'inherit' }}>{fmt(m.date)}</dd>
               </div>
             ))}
           </dl>
           <p className="small-text" style={{ color: 'var(--ink-500)', marginTop: 16, marginBottom: 0 }}>
-            Estimates assume your cycles are regular. If they vary by more than a few days, track ovulation signs
-            alongside the calendar, and do not use these dates as contraception.
+            Only about one baby in twenty arrives on the exact due date; most arrive within two weeks either
+            side. Your doctor may adjust this date after the first ultrasound, which is the more precise measure.
           </p>
         </div>
       )}

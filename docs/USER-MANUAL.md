@@ -99,14 +99,22 @@ customers and spot where an order is.
   saved link and the welcome discount (which also adds them to the
   newsletter). Every step is tracked, and the **Dashboard** shows the quiz
   funnel (starts → completions → emails) and most-recommended products.
-- **Ovulation Calculator** (`/ovulation-calculator`) — a free fertility tool:
-  the shopper enters the first day of her last period and her average cycle
-  length, and gets her fertile window, most likely ovulation day, next
-  expected period and the earliest reliable pregnancy-test date. All the
-  maths runs in the browser (nothing personal is sent to the server). The
-  page links the ovulation, irregular-periods, trying-to-conceive and folic
-  acid guides plus the couple's conception pack, so it feeds the fertility
-  content cluster and the shop.
+- **Free Tools** (`/tools`, in the main menu, the footer, and a homepage
+  band) — a family of free, no-signup tools written in plain language for a
+  layperson. All the maths runs in the browser; nothing personal is sent to
+  the server. Each tool page answers the question first and then links the
+  matching guides and, where it genuinely helps, one relevant product —
+  value first, selling second. The set:
+  - **Ovulation Calculator** (`/ovulation-calculator`) — best days to try
+    for a baby, ovulation day, next period, earliest reliable test date.
+  - **Pregnancy Calculator** (`/pregnancy-calculator`) — due date, current
+    week and trimester, and the ultrasound/milestone dates.
+  - **BMI Calculator** (`/bmi-calculator`) — weight check using the South
+    Asian ranges that apply in Pakistan (overweight from 23), with the
+    international scale shown for comparison.
+  - **Calorie Calculator** (`/calorie-calculator`) — daily calories to
+    lose / maintain / gain, plus a daily protein target.
+  - The **Routine Finder** quiz also appears in the tools family.
 - **Brand pages** (`/brand/<brand>`) — every brand has its own landing page
   with that brand's products, reachable from the **All Brands** directory
   (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each page has
@@ -1017,7 +1025,10 @@ A dated history of user-facing changes, newest first.
 
 ### 4 August 2026
 
-- **The seasonal sale code now applies itself at checkout.** While a seasonal sale window is open (like the Azadi Sale's AZADI14), checkout automatically applies the sale coupon for every shopper who reaches it without one, so nobody pays full price during a storewide sale because they missed the code in the announcement bar. The code still shows as a normal applied coupon (green chip with the discount), the shopper can remove it with ✕ (and it stays removed for their visit), and a manually entered coupon is never overridden. This was built after a real order came through at full price on day two of the live sale.
+- **Three new free tools, and tools are now easy to find.** A Pregnancy Calculator (due date, current week, scan dates), a BMI Calculator using the South Asian ranges that actually apply in Pakistan, and a Calorie Calculator (daily needs plus a protein target) join the Ovulation Calculator. All tools now live on one **Free Tools page** (`/tools`, with the Routine Finder quiz), linked from the main menu, the footer and a new homepage band, so visitors can actually discover them instead of needing a direct link. Every tool is written in plain language, runs entirely in the visitor's browser, and links the relevant guides, with at most one gentle product suggestion where it genuinely fits.
+- **Checkout now offers the seasonal sale code, one tap to apply.** While a seasonal sale window is open (like the Azadi Sale's AZADI14), the coupon box at checkout shows "Sale code AZADI14 is running — tap to apply it" whenever no coupon is applied. Nothing is applied automatically (owner decision: the shopper chooses); the tap validates and applies the code exactly like typing it would. Built after a real order came through at full price on day two of the live sale because the code only appeared in the announcement bar.
+- **Quick Answers usage now shows on the Dashboard.** Under "More insights" the new Quick Answers panel shows, for the last 7 days: each answer's page views, visitors, completed calculations and the share of visitors who actually used it, plus how many people used an answer and then went on to purchase. Data comes from the analytics refresh, so it updates on the same cadence as the other traffic panels.
+- **Sticky bars and floating buttons no longer pile up over the footer.** On product pages (and blog posts with a buy bar), the sticky add-to-cart bar now slides away once you reach the footer, and the footer reserves space for the WhatsApp bubble, so footer links are always readable and tappable on phones. The footer also gained a dedicated Quick Answers column instead of overloading the Company list.
 
 ### 3 August 2026
 

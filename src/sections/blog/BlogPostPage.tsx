@@ -8,6 +8,7 @@ import { extractBlogFaq } from '@/lib/blog-faq';
 import { BlogProductNudge } from '@/components/blog/BlogProductNudge';
 import { BlogStickyBuyBar } from '@/components/blog/BlogStickyBuyBar';
 import { QuizCtaBand } from '@/components/quiz/QuizCtaBand';
+import { AnswersCtaBand } from '@/components/tools/AnswersCtaBand';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
@@ -181,6 +182,12 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProdu
           </div>
         </section>
       )}
+
+      {/* Quick Answers matched to this post's category (fertility posts get
+          the Due Date / Fertile Days finders, wellness posts get the weight
+          and calorie checks). Renders nothing for beauty categories, which
+          keep the quiz band below as their interactive next step. */}
+      <AnswersCtaBand category={post.category} />
 
       {/* Quiz nudge at the "I finished reading, now what" moment. The quiz
           converts at 12x the site rate but almost nobody finds it; blog posts

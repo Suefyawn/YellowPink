@@ -65,6 +65,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     deviceRows, browserRows, entryPageRows, engagementRows,
     geoCityRows, geoCountryRows,
     searchTermRows, productIntentRows,
+    answersUsageRows, answersViewRows, answersConvRows,
   ] = await Promise.all([
     // ── core stats
     phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
@@ -308,6 +309,37 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       ORDER BY views DESC
       LIMIT 10
     `),
+
+    // ── Quick Answers usage: completed calculations per answer (the
+    // calculators fire answer_used on every result), the answer pages'
+    // traffic, and how many answer-users went on to purchase in the window.
+    phQuery(apiKey, `
+      SELECT toString(properties.answer) as answer,
+             count() as uses,
+             count(distinct distinct_id) as users
+      FROM events
+      WHERE event = 'answer_used' AND ${W7} AND ${NOT_ADMIN}
+      GROUP BY answer
+      ORDER BY uses DESC
+    `),
+    phQuery(apiKey, `
+      SELECT properties.\`$pathname\` as path,
+             count() as views,
+             count(distinct distinct_id) as uniques
+      FROM events
+      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+        AND properties.\`$pathname\` IN ('/answers', '/ovulation-calculator', '/pregnancy-calculator', '/bmi-calculator', '/calorie-calculator')
+      GROUP BY path
+    `),
+    phQuery(apiKey, `
+      SELECT count(distinct distinct_id)
+      FROM events
+      WHERE (event = 'purchase' OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you'))
+        AND ${W7} AND ${NOT_ADMIN}
+        AND distinct_id IN (
+          SELECT distinct distinct_id FROM events WHERE event = 'answer_used' AND ${W7}
+        )
+    `),
   ]);
 
   // Build the shapes the widgets expect.
@@ -455,6 +487,15 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     upsertCache(supabase, 'posthog_engagement',      engagement),
     upsertCache(supabase, 'posthog_geography',       { cities, countries }),
     upsertCache(supabase, 'posthog_intent',          { searchTerms, productIntent }),
+    upsertCache(supabase, 'posthog_answers', {
+      usage: answersUsageRows.map(([answer, uses, users]) => ({
+        answer: String(answer), uses: Number(uses) || 0, users: Number(users) || 0,
+      })),
+      views: answersViewRows.map(([path, views, uniques]) => ({
+        path: String(path), views: Number(views) || 0, uniques: Number(uniques) || 0,
+      })),
+      converters: Number(answersConvRows[0]?.[0] ?? 0),
+    }),
   ]);
 }
 

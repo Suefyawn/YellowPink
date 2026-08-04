@@ -97,6 +97,20 @@ const BRAND_LINKS = [
   { label: 'Nutrifactor',      href: '/brand/nutrifactor' },
 ];
 
+// Quick Answers: sitewide links put the answer pages one click from every
+// page (the target keywords live in each page's title/H1; the labels stay
+// the friendly names, owner call), same internal-linking play as
+// BRAND_LINKS. A column of their own so Company doesn't bloat and the
+// footer columns stay balanced.
+const ANSWER_LINKS = [
+  { label: 'Due Date Finder',      href: '/pregnancy-calculator' },
+  { label: 'Fertile Days Finder',  href: '/ovulation-calculator' },
+  { label: 'Healthy Weight Check', href: '/bmi-calculator' },
+  { label: 'Daily Calorie Check',  href: '/calorie-calculator' },
+  { label: 'Routine Finder',       href: '/quiz' },
+  { label: 'All Quick Answers',    href: '/answers' },
+];
+
 const COMPANY_LINKS = [
   { label: 'About Us',           href: '/page/about' },
   { label: 'Blog',               href: '/blog' },
@@ -268,6 +282,10 @@ export function Footer({ socials = [], collections = [] }: FooterProps) {
             {BRAND_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
           </FooterNavColumn>
 
+          <FooterNavColumn label="Quick Answers">
+            {ANSWER_LINKS.map(l => <FooterLink key={l.label} {...l} />)}
+          </FooterNavColumn>
+
           {collections.length > 0 && (
             <FooterNavColumn label="Collections">
               {collections.map(c => <FooterLink key={c.slug} href={`/collection/${c.slug}`} label={c.title} />)}
@@ -312,6 +330,11 @@ export function Footer({ socials = [], collections = [] }: FooterProps) {
             </a>
           </span>
         </div>
+        {/* Clearance for the floating WhatsApp bubble (56px + margins): without
+            it the FAB sits on top of the last footer row and the legal links
+            are untappable, worst on phones. Sticky buy bars already yield to
+            the footer; this reserves the corner the FAB itself occupies. */}
+        <div aria-hidden="true" style={{ height: 'calc(64px + env(safe-area-inset-bottom))' }} />
       </div>
     </footer>
   );
