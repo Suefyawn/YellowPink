@@ -29,6 +29,7 @@ export function ProductRail({
   if (items.length === 0) return null;
   return (
     <section
+      className={tinted ? 'band-tinted' : undefined}
       style={{
         padding: 'var(--section-gap) 0',
         ...(tinted

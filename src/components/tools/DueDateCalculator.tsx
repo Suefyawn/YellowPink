@@ -23,6 +23,8 @@ interface Result {
   weeks: number;
   days: number;
   trimester: 1 | 2 | 3;
+  /** 0..1 share of the 40 weeks already behind her. */
+  progress: number;
   milestones: { label: string; date: Date; passed: boolean }[];
 }
 
@@ -74,6 +76,7 @@ export function DueDateCalculator() {
       weeks,
       days,
       trimester,
+      progress: Math.min(1, gestDays / 280),
       milestones: [
         milestone('First ultrasound usually possible', 6),
         milestone('Second trimester starts (energy usually returns)', 13),
@@ -123,9 +126,22 @@ export function DueDateCalculator() {
           <p style={{ margin: '0 0 4px', fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 600 }}>
             Due date: {fmt(result.edd)}
           </p>
-          <p className="body-text" style={{ margin: '0 0 18px', color: 'var(--ink-700)' }}>
+          <p className="body-text" style={{ margin: '0 0 12px', color: 'var(--ink-700)' }}>
             You are {result.weeks} {result.weeks === 1 ? 'week' : 'weeks'}{result.days > 0 ? ` and ${result.days} ${result.days === 1 ? 'day' : 'days'}` : ''} pregnant today, in your {result.trimester === 1 ? 'first' : result.trimester === 2 ? 'second' : 'third'} trimester.
           </p>
+          {/* The 40-week journey at a glance; trimester ticks at weeks 13/28. */}
+          <div style={{ margin: '0 0 6px' }}>
+            <div style={{ position: 'relative', height: 14, borderRadius: 999, background: 'var(--paper2, #faf6ee)', border: '1px solid var(--line)', overflow: 'hidden' }}>
+              <span style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.max(2, result.progress * 100)}%`, background: 'linear-gradient(90deg, #e9b18f, #b05a2f)', borderRadius: 999 }} />
+              <span aria-hidden="true" style={{ position: 'absolute', left: `${(13 / 40) * 100}%`, top: 0, bottom: 0, width: 1, background: 'var(--line)' }} />
+              <span aria-hidden="true" style={{ position: 'absolute', left: `${(28 / 40) * 100}%`, top: 0, bottom: 0, width: 1, background: 'var(--line)' }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              <span className="small-text" style={{ fontWeight: 700 }}>Week {result.weeks} of 40</span>
+              <span className="small-text" style={{ color: 'var(--ink-500)' }}>{Math.round(result.progress * 100)}% of the way there</span>
+            </div>
+          </div>
+          <div style={{ height: 10 }} />
           <dl style={{ display: 'grid', gap: 10, margin: 0 }}>
             {result.milestones.map(m => (
               <div key={m.label} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', justifyContent: 'space-between', alignItems: 'baseline' }}>

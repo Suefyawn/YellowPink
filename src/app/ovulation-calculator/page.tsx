@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { pageMeta, jsonLd, breadcrumbLd, faqLd } from '@/lib/seo';
-import { Overline } from '@/components/ui/Overline';
+import { AnswerHero } from '@/components/tools/AnswerHero';
 import { OvulationCalculator } from '@/components/tools/OvulationCalculator';
 
 // FAQ copy doubles as FAQPage structured data.
@@ -41,16 +41,13 @@ export default function OvulationCalculatorPage() {
         ])) }}
       />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(FAQS)) }} />
-      <section style={{ padding: '56px var(--side) 0' }}>
+      <AnswerHero
+        href="/ovulation-calculator"
+        title="Ovulation Calculator"
+        intro="Enter the first day of your last period and your usual cycle length. The calculator shows your fertile window, your most likely ovulation day, and the earliest date a pregnancy test is reliable."
+      />
+      <section style={{ padding: '0 var(--side)' }}>
         <div className="container" style={{ maxWidth: 720, margin: '0 auto' }}>
-          <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Fertile Days Finder · Free · Nothing leaves your browser</Overline>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, margin: '0 0 12px' }}>
-            Ovulation Calculator
-          </h1>
-          <p className="body-text" style={{ color: 'var(--ink-700)', margin: '0 0 28px' }}>
-            Enter the first day of your last period and your usual cycle length. The calculator shows your
-            fertile window, your most likely ovulation day, and the earliest date a pregnancy test is reliable.
-          </p>
           <OvulationCalculator />
         </div>
       </section>

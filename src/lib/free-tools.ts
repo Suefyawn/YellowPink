@@ -13,6 +13,9 @@ export interface FreeTool {
   icon: 'heart' | 'baby' | 'scale' | 'flame' | 'sparkles';
   /** Blog categories where this answer earns a "try it yourself" card. */
   categories: string[];
+  /** Visual identity: soft background tint + readable accent on it. */
+  tint: string;
+  accent: string;
 }
 
 export const FREE_TOOLS: FreeTool[] = [
@@ -22,6 +25,8 @@ export const FREE_TOOLS: FreeTool[] = [
     blurb: 'When is your baby coming? Due date, current week and scan dates in one tap.',
     icon: 'baby',
     categories: ['Fertility', "Women's Health"],
+    tint: '#fdeee7',
+    accent: '#b05a2f',
   },
   {
     href: '/ovulation-calculator',
@@ -29,6 +34,8 @@ export const FREE_TOOLS: FreeTool[] = [
     blurb: 'Your best days to try for a baby this month.',
     icon: 'heart',
     categories: ['Fertility', "Women's Health"],
+    tint: '#fdf2f8',
+    accent: '#be185d',
   },
   {
     href: '/bmi-calculator',
@@ -36,6 +43,8 @@ export const FREE_TOOLS: FreeTool[] = [
     blurb: 'Is your weight healthy for your height? Uses the ranges that apply in Pakistan.',
     icon: 'scale',
     categories: ['Wellness', "Men's Health", 'Heart Health'],
+    tint: '#edf6ee',
+    accent: '#2f7d43',
   },
   {
     href: '/calorie-calculator',
@@ -43,6 +52,8 @@ export const FREE_TOOLS: FreeTool[] = [
     blurb: 'How much should you eat each day to lose, maintain or gain weight?',
     icon: 'flame',
     categories: ['Wellness', "Men's Health", 'Heart Health'],
+    tint: '#fdf5e0',
+    accent: '#9a6a08',
   },
   {
     href: '/quiz',
@@ -50,6 +61,8 @@ export const FREE_TOOLS: FreeTool[] = [
     blurb: 'Two questions, and you get a skincare routine or supplement plan built for you.',
     icon: 'sparkles',
     categories: ['Skincare', 'Makeup', 'Hair'],
+    tint: '#f3f0fa',
+    accent: '#6d4fa1',
   },
 ];
 
