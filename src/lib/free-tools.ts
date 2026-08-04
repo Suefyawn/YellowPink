@@ -16,6 +16,8 @@ export interface FreeTool {
   /** Visual identity: soft background tint + readable accent on it. */
   tint: string;
   accent: string;
+  /** Editorial hero image (public path, 1024×768 webp). Quiz has its own page art. */
+  image?: string;
 }
 
 export const FREE_TOOLS: FreeTool[] = [
@@ -27,6 +29,7 @@ export const FREE_TOOLS: FreeTool[] = [
     categories: ['Fertility', "Women's Health"],
     tint: '#fdeee7',
     accent: '#b05a2f',
+    image: '/answers/pregnancy.webp',
   },
   {
     href: '/ovulation-calculator',
@@ -36,6 +39,7 @@ export const FREE_TOOLS: FreeTool[] = [
     categories: ['Fertility', "Women's Health"],
     tint: '#fdf2f8',
     accent: '#be185d',
+    image: '/answers/ovulation.webp',
   },
   {
     href: '/bmi-calculator',
@@ -45,6 +49,7 @@ export const FREE_TOOLS: FreeTool[] = [
     categories: ['Wellness', "Men's Health", 'Heart Health'],
     tint: '#edf6ee',
     accent: '#2f7d43',
+    image: '/answers/bmi.webp',
   },
   {
     href: '/calorie-calculator',
@@ -54,6 +59,7 @@ export const FREE_TOOLS: FreeTool[] = [
     categories: ['Wellness', "Men's Health", 'Heart Health'],
     tint: '#fdf5e0',
     accent: '#9a6a08',
+    image: '/answers/calorie.webp',
   },
   {
     href: '/quiz',
