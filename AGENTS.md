@@ -23,6 +23,16 @@ em-dashes (use a comma, colon, parenthesis or a new sentence), no "it's
 not just X, it's Y" constructions, no tidy rule-of-three flourishes, no
 "elevate/unleash/discover" openers. Plain, specific, confident sentences.
 
+# Blog posts ship with their hero image
+
+A new `blog_posts` row is not done until its hero exists. In the same work
+session that inserts the post: generate the hero, write it to
+`public/blog-heroes/<slug>.webp` (1216×688, webp), ship it in the same
+PR/deploy, and set `image_url = '/blog-heroes/<slug>.webp'` on the row once
+the deploy carrying the file is live. Never leave a published post with a
+NULL `image_url` — the listing falls back to a plain monogram tile and the
+post loses its social share image.
+
 # Icons
 
 Admin sidebar and storefront chrome use inline SVG icons (lucide-style:
