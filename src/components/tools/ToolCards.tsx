@@ -3,6 +3,7 @@
 // (house icon rules: 24×24 viewBox, stroke=currentColor, strokeWidth 2).
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { FREE_TOOLS, type FreeTool } from '@/lib/free-tools';
 
 export function ToolIcon({ icon, size = 18 }: { icon: FreeTool['icon']; size?: number }) {
@@ -31,11 +32,23 @@ export function ToolCards({ compact = false, tools = FREE_TOOLS }: { compact?: b
           style={{
             display: 'flex', flexDirection: 'column', gap: 8,
             background: '#fff', border: '1px solid var(--line)',
-            borderRadius: 'var(--radius-card)',
-            padding: compact ? '18px 18px 16px' : '24px 22px 20px',
+            borderRadius: 'var(--radius-card)', overflow: 'hidden',
+            padding: 0,
             textDecoration: 'none', color: 'inherit',
           }}
         >
+          {/* Full-size cards (the /answers hub) lead with the editorial image;
+              compact cards (homepage band, blog bands) stay icon-led. */}
+          {!compact && tool.image && (
+            <Image
+              src={tool.image}
+              alt=""
+              width={512}
+              height={384}
+              style={{ width: '100%', height: 150, objectFit: 'cover', display: 'block' }}
+            />
+          )}
+          <span style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: compact ? '18px 18px 16px' : '16px 22px 20px' }}>
           <span aria-hidden="true" style={{
             width: 38, height: 38, borderRadius: 10,
             background: tool.tint,
@@ -48,6 +61,7 @@ export function ToolCards({ compact = false, tools = FREE_TOOLS }: { compact?: b
             {tool.name}
           </span>
           <span className="small-text" style={{ color: 'var(--ink-700)' }}>{tool.blurb}</span>
+          </span>
         </Link>
       ))}
     </div>
