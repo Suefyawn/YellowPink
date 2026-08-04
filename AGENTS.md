@@ -33,6 +33,18 @@ the deploy carrying the file is live. Never leave a published post with a
 NULL `image_url` — the listing falls back to a plain monogram tile and the
 post loses its social share image.
 
+# People in imagery: no bindis, ever
+
+The store serves Pakistan. Women in generated or sourced imagery must
+**never** wear a bindi, sindoor, or any dot/marking on the forehead —
+those are Indian/Hindu cultural markers, not Pakistani (owner directive,
+4 Aug 2026). Image models add them to South Asian faces by default even
+when told not to, so treat every face as suspect: zoom into the forehead
+of each generated face at full resolution before shipping, and retouch
+the dot out (sample nearby skin, feathered patch) or regenerate if one
+is present. Prefer modest styling (dupatta or hijab where it fits the
+scene) for editorial/health imagery.
+
 # Icons
 
 Admin sidebar and storefront chrome use inline SVG icons (lucide-style:
