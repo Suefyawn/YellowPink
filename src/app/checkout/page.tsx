@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { CheckoutPage } from '@/sections/checkout/CheckoutPage';
 import { getSiteSettings } from '@/lib/supabase';
 import { parseBankAccounts } from '@/lib/bank-accounts';
+import { activeSeasonalTheme } from '@/lib/seasonal-theme';
 import { jazzcashConfigured, easypaisaConfigured } from '@/lib/payments/configured';
 import type { PayMethod } from '@/types';
 
@@ -37,6 +38,11 @@ export default async function CheckoutRoute({ searchParams }: { searchParams: Pr
     (isEnabled('pay_bank_enabled') && bankAccounts.length > 0) && 'bank',
   ].filter(Boolean) as PayMethod[];
 
+  // Active seasonal-sale coupon (e.g. AZADI14 while the Azadi window is
+  // open). Checkout auto-applies it so a storewide sale can't be missed by
+  // shoppers who never saw or retyped the bar's code.
+  const seasonalCoupon = activeSeasonalTheme(settings)?.coupon ?? null;
+
   return (
     <main className="fade-in">
       <CheckoutPage
@@ -45,6 +51,7 @@ export default async function CheckoutRoute({ searchParams }: { searchParams: Pr
         bankNotes={settings.pay_bank_instructions ?? ''}
         paymentError={paymentError ?? null}
         failedOrder={failedOrder ?? null}
+        seasonalCoupon={seasonalCoupon}
       />
     </main>
   );

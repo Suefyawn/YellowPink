@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 3 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 4 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1014,6 +1014,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 4 August 2026
+
+- **The seasonal sale code now applies itself at checkout.** While a seasonal sale window is open (like the Azadi Sale's AZADI14), checkout automatically applies the sale coupon for every shopper who reaches it without one, so nobody pays full price during a storewide sale because they missed the code in the announcement bar. The code still shows as a normal applied coupon (green chip with the discount), the shopper can remove it with ✕ (and it stays removed for their visit), and a manually entered coupon is never overridden. This was built after a real order came through at full price on day two of the live sale.
 
 ### 3 August 2026
 
