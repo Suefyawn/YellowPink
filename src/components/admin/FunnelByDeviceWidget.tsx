@@ -2,7 +2,7 @@ import { readAnalyticsCache, timeAgoShort } from '@/lib/analytics-cache';
 
 interface Row {
   device: string;
-  home: number; product: number; cart: number; checkout: number; purchase: number;
+  visit: number; product: number; cart: number; checkout: number; purchase: number;
 }
 interface Data { items: Row[] }
 
@@ -50,7 +50,7 @@ export async function FunnelByDeviceWidget() {
           <thead>
             <tr style={{ borderBottom: '1px solid #e5e7eb' }}>
               <th scope="col" style={{ padding: '6px 8px', textAlign: 'left',  color: '#6b7280', fontWeight: 600 }}>Device</th>
-              <th scope="col" style={{ padding: '6px 8px', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>Home</th>
+              <th scope="col" style={{ padding: '6px 8px', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>Visits</th>
               <th scope="col" style={{ padding: '6px 8px', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>→ Product</th>
               <th scope="col" style={{ padding: '6px 8px', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>→ Cart</th>
               <th scope="col" style={{ padding: '6px 8px', textAlign: 'right', color: '#6b7280', fontWeight: 600 }}>→ Checkout</th>
@@ -62,12 +62,12 @@ export async function FunnelByDeviceWidget() {
             {result.data.items.map(r => (
               <tr key={r.device} style={{ borderTop: '1px solid #f3f4f6' }}>
                 <td style={{ padding: '8px', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{r.device}</td>
-                <td style={{ padding: '8px', textAlign: 'right', color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{r.home.toLocaleString()}</td>
-                <td style={{ padding: '8px', textAlign: 'right', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{pct(r.product, r.home)}</td>
+                <td style={{ padding: '8px', textAlign: 'right', color: '#374151', fontVariantNumeric: 'tabular-nums' }}>{r.visit.toLocaleString()}</td>
+                <td style={{ padding: '8px', textAlign: 'right', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{pct(r.product, r.visit)}</td>
                 <td style={{ padding: '8px', textAlign: 'right', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{pct(r.cart, r.product)}</td>
                 <td style={{ padding: '8px', textAlign: 'right', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{pct(r.checkout, r.cart)}</td>
                 <td style={{ padding: '8px', textAlign: 'right', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>{pct(r.purchase, r.checkout)}</td>
-                <td style={{ padding: '8px', textAlign: 'right', color: '#C5286A', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{pct(r.purchase, r.home)}</td>
+                <td style={{ padding: '8px', textAlign: 'right', color: '#C5286A', fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{pct(r.purchase, r.visit)}</td>
               </tr>
             ))}
           </tbody>
