@@ -22,6 +22,45 @@ function categorize(bmi: number, cuts: [number, number, number], labels: [string
   return labels[3];
 }
 
+// Where the number lands, visually: the South Asian bands with a marker at
+// the reader's BMI. Labels are written on the bands (never colour alone).
+const SCALE_MIN = 15, SCALE_MAX = 35;
+const SCALE_BANDS = [
+  { from: SCALE_MIN, to: 18.5, label: 'Under', bg: '#dbeafe', fg: '#1e40af' },
+  { from: 18.5, to: 23, label: 'Healthy', bg: '#dcfce7', fg: '#15803d' },
+  { from: 23, to: 27.5, label: 'Over', bg: '#fef3c7', fg: '#92400e' },
+  { from: 27.5, to: SCALE_MAX, label: 'Obese', bg: '#fee2e2', fg: '#b91c1c' },
+];
+
+function BmiScale({ bmi }: { bmi: number }) {
+  const pct = Math.min(98.5, Math.max(1.5, ((bmi - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)) * 100));
+  return (
+    <div style={{ margin: '18px 0 4px' }}>
+      <div style={{ position: 'relative', display: 'flex', height: 34, borderRadius: 8, overflow: 'hidden' }}>
+        {SCALE_BANDS.map(b => (
+          <span
+            key={b.label}
+            style={{
+              width: `${((b.to - b.from) / (SCALE_MAX - SCALE_MIN)) * 100}%`,
+              background: b.bg, color: b.fg,
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: '0.6875rem', fontWeight: 700, letterSpacing: '0.02em',
+            }}
+          >
+            {b.label}
+          </span>
+        ))}
+        <span aria-hidden="true" style={{ position: 'absolute', left: `${pct}%`, top: 2, bottom: 2, width: 3, background: 'var(--ink-900)', transform: 'translateX(-1.5px)', borderRadius: 2 }} />
+      </div>
+      <div style={{ position: 'relative', height: 20, marginTop: 2 }}>
+        <span className="small-text" style={{ position: 'absolute', left: `${pct}%`, transform: 'translateX(-50%)', fontWeight: 700 }}>
+          ▲ {bmi.toFixed(1)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // Usage analytics for the admin Quick Answers panel: one event per completed
 // calculation, no personal values attached.
 function captureUse(answer: string) {
@@ -104,6 +143,7 @@ export function BmiCalculator() {
           <p style={{ margin: '0 0 4px', fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 600 }}>
             BMI {result.bmi.toFixed(1)}: {result.asianCategory}
           </p>
+          <BmiScale bmi={result.bmi} />
           <dl style={{ display: 'grid', gap: 10, margin: '14px 0 0' }}>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <dt className="small-text" style={{ color: 'var(--ink-500)' }}>South Asian scale (applies in Pakistan)</dt>

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { pageMeta, jsonLd, breadcrumbLd, faqLd } from '@/lib/seo';
-import { Overline } from '@/components/ui/Overline';
+import { AnswerHero } from '@/components/tools/AnswerHero';
 import { CalorieCalculator } from '@/components/tools/CalorieCalculator';
 
 // FAQ copy doubles as FAQPage structured data; questions carry this page's
@@ -46,16 +46,13 @@ export default function CalorieCalculatorPage() {
         ])) }}
       />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(FAQS)) }} />
-      <section style={{ padding: '56px var(--side) 0' }}>
+      <AnswerHero
+        href="/calorie-calculator"
+        title="Calorie Calculator"
+        intro="Answer five quick questions and get your daily calorie needs: how much keeps your weight steady, what to eat to lose or gain at a healthy pace, and your daily protein target."
+      />
+      <section style={{ padding: '0 var(--side)' }}>
         <div className="container" style={{ maxWidth: 720, margin: '0 auto' }}>
-          <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Daily Calorie Check · Free · Nothing leaves your browser</Overline>
-          <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, margin: '0 0 12px' }}>
-            Calorie Calculator
-          </h1>
-          <p className="body-text" style={{ color: 'var(--ink-700)', margin: '0 0 28px' }}>
-            Answer five quick questions and get your daily calorie needs: how much keeps your weight steady,
-            what to eat to lose or gain at a healthy pace, and your daily protein target.
-          </p>
           <CalorieCalculator />
         </div>
       </section>

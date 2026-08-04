@@ -1287,3 +1287,16 @@ a.underline,
     linear-gradient(to right, transparent, transparent),
     linear-gradient(to right, rgba(0,0,0,0.06), transparent 100%) 100% 0 / 28px 100% no-repeat local;
 }
+
+/* ─── Tinted band seams (2026-08-04, owner report) ───────────────────────────
+   Homepage rhythm gives sections bottom padding only; the section above
+   provides the top space. A tinted full-bleed band breaks that: its padding
+   lives INSIDE the tint, so whatever follows starts flush against the tint
+   edge (seen: "Shop by category" jammed under the Quick Answers band; same
+   seam after the tinted product rail → quiz band and K-Beauty → editorial).
+   Every tinted band carries .band-tinted; the section right after one gets
+   its top space here. Inline padding-top on a follower still wins (inline
+   beats stylesheet), so symmetric sections are unaffected. */
+section.band-tinted + section {
+  padding-top: var(--section-gap);
+}

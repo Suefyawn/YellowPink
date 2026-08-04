@@ -18,7 +18,7 @@ export function SaleCollection({ products, title, subtitle, ctaText, ctaUrl }: {
   return (
     // The banded background delineates this section; the next section's own
     // padding provides the outside gap, so an extra margin here doubled it.
-    <section style={{ background: 'var(--paper2, #faf6ee)', padding: 'var(--section-gap) 0' }}>
+    <section className="band-tinted" style={{ background: 'var(--paper2, #faf6ee)', padding: 'var(--section-gap) 0' }}>
       <div className="container">
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <span style={{

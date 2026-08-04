@@ -25,6 +25,45 @@ interface Result {
   ovulation: Date;
   nextPeriod: Date;
   testFrom: Date;
+  /** Cycle-strip geometry, frozen at calculation time (1-based day numbers). */
+  cycleLen: number;
+  fertileFromDay: number;
+  fertileToDay: number;
+  ovulationDay: number;
+}
+
+// The month at a glance: period days, the fertile window and ovulation as a
+// labelled strip across the cycle. Colour never stands alone — the legend
+// names each segment.
+function CycleStrip({ r }: { r: Result }) {
+  const days = Array.from({ length: r.cycleLen }, (_, i) => i + 1);
+  const kind = (d: number) =>
+    d === r.ovulationDay ? 'ovulation'
+    : d >= r.fertileFromDay && d <= r.fertileToDay ? 'fertile'
+    : d <= 5 ? 'period'
+    : 'rest';
+  const bg = { period: '#fde3e3', fertile: '#dcfce7', ovulation: '#15803d', rest: 'var(--paper2, #faf6ee)' } as const;
+  return (
+    <div style={{ margin: '0 0 18px' }}>
+      <div style={{ display: 'flex', gap: 2, height: 26, borderRadius: 6, overflow: 'hidden' }}>
+        {days.map(d => (
+          <span key={d} title={`Day ${d}`} style={{ flex: 1, background: bg[kind(d)], minWidth: 0 }} />
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 8 }}>
+        {[
+          { swatch: bg.period, label: 'Period (approx.)' },
+          { swatch: bg.fertile, label: `Fertile days ${r.fertileFromDay}–${r.fertileToDay}` },
+          { swatch: bg.ovulation, label: `Ovulation day ${r.ovulationDay}` },
+        ].map(l => (
+          <span key={l.label} className="small-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--ink-700)' }}>
+            <span aria-hidden="true" style={{ width: 12, height: 12, borderRadius: 3, background: l.swatch, border: '1px solid rgba(0,0,0,0.08)' }} />
+            {l.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // Usage analytics for the admin Quick Answers panel: one event per completed
@@ -61,12 +100,17 @@ export function OvulationCalculator() {
     while (nextPeriod.getTime() < Date.now()) nextPeriod = addDays(nextPeriod, cycleLength);
     const ovulation = addDays(nextPeriod, -14);
     captureUse('ovulation');
+    const ovulationDay = cycleLength - 14 + 1;
     setResult({
       ovulation,
       nextPeriod,
       fertileStart: addDays(ovulation, -5),
       fertileEnd: addDays(ovulation, 1),
       testFrom: addDays(nextPeriod, 1),
+      cycleLen: cycleLength,
+      fertileFromDay: Math.max(1, ovulationDay - 5),
+      fertileToDay: Math.min(cycleLength, ovulationDay + 1),
+      ovulationDay,
     });
   }
 
@@ -115,6 +159,7 @@ export function OvulationCalculator() {
 
       {result && (
         <div style={{ marginTop: 24, borderTop: '1px solid var(--line)', paddingTop: 20 }}>
+          <CycleStrip r={result} />
           <dl style={{ display: 'grid', gap: 12, margin: 0 }}>
             {rows.map(r => (
               <div key={r.label} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', justifyContent: 'space-between', alignItems: 'baseline' }}>

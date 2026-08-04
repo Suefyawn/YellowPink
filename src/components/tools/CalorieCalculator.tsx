@@ -103,17 +103,28 @@ export function CalorieCalculator() {
       {result && (
         <div style={{ marginTop: 24, borderTop: '1px solid var(--line)', paddingTop: 20 }}>
           <p style={{ margin: '0 0 14px', fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 600 }}>
-            Maintenance: about {result.maintain.toLocaleString()} kcal a day
+            Your daily calories
           </p>
+          {/* Pick-your-goal cards; maintenance carries the accent so the
+              anchor number reads first. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10, margin: '0 0 16px' }}>
+            {[
+              { label: 'To lose weight', value: result.lose, sub: 'about 0.5 kg a week', main: false },
+              { label: 'To stay the same', value: result.maintain, sub: 'your maintenance', main: true },
+              { label: 'To gain / build', value: result.gain, sub: 'steady surplus', main: false },
+            ].map(c => (
+              <div key={c.label} style={{
+                borderRadius: 10, padding: '14px 14px 12px', textAlign: 'center',
+                background: c.main ? '#fdf5e0' : 'var(--paper2, #faf6ee)',
+                border: `1px solid ${c.main ? '#e5cf9a' : 'var(--line)'}`,
+              }}>
+                <div style={{ fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', color: c.main ? '#9a6a08' : 'var(--ink-500)' }}>{c.label}</div>
+                <div style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 600, margin: '4px 0 2px', fontVariantNumeric: 'tabular-nums' }}>{c.value.toLocaleString()}</div>
+                <div className="small-text" style={{ color: 'var(--ink-500)' }}>kcal · {c.sub}</div>
+              </div>
+            ))}
+          </div>
           <dl style={{ display: 'grid', gap: 10, margin: 0 }}>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <dt className="small-text" style={{ color: 'var(--ink-500)' }}>To lose weight steadily (about 0.5 kg a week)</dt>
-              <dd className="small-text" style={{ margin: 0, fontWeight: 600 }}>{result.lose.toLocaleString()} kcal</dd>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <dt className="small-text" style={{ color: 'var(--ink-500)' }}>To gain weight or build muscle</dt>
-              <dd className="small-text" style={{ margin: 0, fontWeight: 600 }}>{result.gain.toLocaleString()} kcal</dd>
-            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <dt className="small-text" style={{ color: 'var(--ink-500)' }}>Resting metabolism (BMR)</dt>
               <dd className="small-text" style={{ margin: 0, fontWeight: 600 }}>{result.bmr.toLocaleString()} kcal</dd>

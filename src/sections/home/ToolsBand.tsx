@@ -8,7 +8,7 @@ import { ToolCards } from '@/components/tools/ToolCards';
 
 export function ToolsBand() {
   return (
-    <section style={{ padding: 'var(--section-gap) 0', background: 'var(--paper2, #faf6ee)' }}>
+    <section className="band-tinted" style={{ padding: 'var(--section-gap) 0', background: 'var(--paper2, #faf6ee)' }}>
       <div className="container">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '4px 16px', marginBottom: 20 }}>
           <div>
