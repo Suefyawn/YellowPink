@@ -53,6 +53,8 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
   // storefront traffic. (before_send in PostHogProvider stops new admin
   // events; this also drops any already in the 7-day window.)
   const NOT_ADMIN = `NOT startsWith(coalesce(properties.\`$pathname\`, ''), '/admin')`;
+  // Session id, the unit every funnel step counts (see the funnel comment).
+  const SESS = 'properties.`$session_id`';
 
   // Pull every panel in parallel so the refresh stays under ~2 s even when
   // PostHog is slow. The four "core" stats keep the existing 'posthog' cache
@@ -95,33 +97,47 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       LIMIT 10
     `),
 
-    // ── top 10 referrers (initial referring_domain)
+    // ── top 10 referrers, by each session's ENTRY referring domain.
+    // ($initial_referring_domain is NOT captured in this project — verified
+    // live 2026-08-04; the old coalesce silently branded every visitor
+    // 'direct'. $referring_domain at the session's first event is the honest
+    // source; own-domain and '$direct' normalize to 'direct'.)
     phQuery(apiKey, `
-      SELECT coalesce(nullIf(properties.\`$initial_referring_domain\`, ''), 'direct') as src,
-             count(distinct distinct_id) as visitors
-      FROM events
-      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      SELECT source as src, count(distinct did) as visitors
+      FROM (
+        SELECT ${SESS} as sid,
+               any(distinct_id) as did,
+               CASE WHEN coalesce(argMin(properties.\`$referring_domain\`, timestamp), '') IN ('', '$direct', 'www.yellowpink.pk', 'yellowpink.pk')
+                    THEN 'direct'
+                    ELSE argMin(properties.\`$referring_domain\`, timestamp) END as source
+        FROM events
+        WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND ${SESS} IS NOT NULL
+        GROUP BY sid
+      )
       GROUP BY src
       ORDER BY visitors DESC
       LIMIT 10
     `),
 
-    // ── 5-step funnel: home_view → product_view → add_to_cart → begin_checkout → purchase
-    // Use the simple session-based count of each event; conversion is the
-    // ratio of step n+1 to step n. Not as accurate as PostHog's Funnel
-    // insight, but lightweight and good enough for an at-a-glance chart.
+    // ── 5-step funnel: visit → product_view → add_to_cart → begin_checkout →
+    // purchase, counted as UNIQUE SESSIONS per step. Step 1 is any session
+    // entry (2026-08-04 fix): the old version anchored on homepage views, so
+    // organic visitors — who overwhelmingly land on blog and product pages —
+    // never entered the funnel, and the by-source slice showed only "direct".
+    // Session-scoping also stops one shopper's five product views from
+    // reading as five funnel entrants.
     // NOT_ADMIN matters here too: without it the funnel counts staff
     // adding-to-cart / placing test orders from the dashboard, inflating it
     // out of step with every other panel (which all exclude /admin).
     phQuery(apiKey, `
       SELECT
-        countIf(event = '$pageview' AND properties.\`$pathname\` = '/')                    as home_view,
-        countIf(event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/')) as product_view,
-        countIf(event = 'add_to_cart')                                                     as add_to_cart,
-        countIf(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as begin_checkout,
-        countIf(event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
+        uniq(${SESS})                                                                          as visit,
+        uniqIf(${SESS}, event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/')) as product_view,
+        uniqIf(${SESS}, event = 'add_to_cart')                                                 as add_to_cart,
+        uniqIf(${SESS}, event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as begin_checkout,
+        uniqIf(${SESS}, event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
       FROM events
-      WHERE ${W7} AND ${NOT_ADMIN}
+      WHERE ${W7} AND ${NOT_ADMIN} AND ${SESS} IS NOT NULL
     `),
 
     // ── Top 15 user journeys (4-page sequences per session)
@@ -145,19 +161,35 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       LIMIT 15
     `),
 
-    // ── Funnel sliced by traffic source, top 8 sources by home view
+    // ── Funnel sliced by traffic source, top 8 by sessions. Source = the
+    // session's ENTRY referring domain ($referring_domain at its first
+    // event; $initial_referring_domain is not captured in this project —
+    // the old query coalesced that missing property to 'direct' for every
+    // session, which is why the panel only ever showed one row). Steps are
+    // per-session flags, so a Google visitor landing on a blog post counts
+    // as a google entrant wherever they land. Validated live 2026-08-04:
+    // google 41 sessions / 1 purchase, chatgpt 10, bing 4, ...
     phQuery(apiKey, `
       SELECT
-        coalesce(nullIf(properties.\`$initial_referring_domain\`, ''), 'direct') as source,
-        countIf(event = '$pageview' AND properties.\`$pathname\` = '/')                    as home,
-        countIf(event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/')) as product,
-        countIf(event = 'add_to_cart')                                                     as cart,
-        countIf(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as checkout,
-        countIf(event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
-      FROM events
-      WHERE ${W7} AND ${NOT_ADMIN}
+        CASE WHEN raw IN ('', '$direct', 'www.yellowpink.pk', 'yellowpink.pk') THEN 'direct' ELSE raw END as source,
+        count() as visit,
+        sum(p)  as product,
+        sum(c)  as cart,
+        sum(b)  as checkout,
+        sum(pu) as purchase
+      FROM (
+        SELECT ${SESS} as sid,
+               coalesce(argMin(properties.\`$referring_domain\`, timestamp), '') as raw,
+               max(if(event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/'), 1, 0)) as p,
+               max(if(event = 'add_to_cart', 1, 0)) as c,
+               max(if(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout'), 1, 0)) as b,
+               max(if(event = 'purchase' OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you'), 1, 0)) as pu
+        FROM events
+        WHERE ${W7} AND ${NOT_ADMIN} AND ${SESS} IS NOT NULL
+        GROUP BY sid
+      )
       GROUP BY source
-      ORDER BY home DESC
+      ORDER BY visit DESC
       LIMIT 8
     `),
 
@@ -168,15 +200,15 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     phQuery(apiKey, `
       SELECT
         coalesce(nullIf(properties.\`$device_type\`, ''), 'Unknown') as device,
-        countIf(event = '$pageview' AND properties.\`$pathname\` = '/')                    as home,
-        countIf(event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/')) as product,
-        countIf(event = 'add_to_cart')                                                     as cart,
-        countIf(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as checkout,
-        countIf(event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
+        uniq(${SESS})                                                                          as visit,
+        uniqIf(${SESS}, event = '$pageview' AND startsWith(properties.\`$pathname\`, '/product/')) as product,
+        uniqIf(${SESS}, event = 'add_to_cart')                                                 as cart,
+        uniqIf(${SESS}, event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as checkout,
+        uniqIf(${SESS}, event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
       FROM events
-      WHERE ${W7} AND ${NOT_ADMIN}
+      WHERE ${W7} AND ${NOT_ADMIN} AND ${SESS} IS NOT NULL
       GROUP BY device
-      ORDER BY home DESC
+      ORDER BY visit DESC
     `),
 
     // ── 4-week active-user curve (weekly retention proxy)
@@ -362,7 +394,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
   const f = funnelRows[0] ?? [];
   const funnel = {
     steps: [
-      { label: 'Home',     event: 'home_view',      count: Number(f[0] ?? 0) },
+      { label: 'Visits',   event: 'visit',          count: Number(f[0] ?? 0) },
       { label: 'Product',  event: 'product_view',   count: Number(f[1] ?? 0) },
       { label: 'Add to cart', event: 'add_to_cart', count: Number(f[2] ?? 0) },
       { label: 'Checkout', event: 'begin_checkout', count: Number(f[3] ?? 0) },
@@ -393,18 +425,18 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     sessions: Number(sessions),
   }));
 
-  const funnelBySource = funnelBySourceRows.map(([source, home, product, cart, checkout, purchase]) => ({
+  const funnelBySource = funnelBySourceRows.map(([source, visit, product, cart, checkout, purchase]) => ({
     source: String(source),
-    home: Number(home),
+    visit: Number(visit),
     product: Number(product),
     cart: Number(cart),
     checkout: Number(checkout),
     purchase: Number(purchase),
   }));
 
-  const funnelByDevice = funnelByDeviceRows.map(([device, home, product, cart, checkout, purchase]) => ({
+  const funnelByDevice = funnelByDeviceRows.map(([device, visit, product, cart, checkout, purchase]) => ({
     device: String(device),
-    home: Number(home),
+    visit: Number(visit),
     product: Number(product),
     cart: Number(cart),
     checkout: Number(checkout),

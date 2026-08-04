@@ -10,7 +10,8 @@ interface FunnelData {
   steps: FunnelStep[];
 }
 
-// 5-step horizontal funnel: home → product → cart → checkout → purchase.
+// 5-step horizontal funnel: visits (any entry page, unique sessions) →
+// product → cart → checkout → purchase.
 // Each bar is sized as % of the top-of-funnel step so drop-off is visible
 // at a glance. Conversion % between consecutive steps shown below the labels.
 
