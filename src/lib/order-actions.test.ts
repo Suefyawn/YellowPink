@@ -34,6 +34,11 @@ describe('outstandingOrderActions', () => {
 
   it('pending 24h+ → confirm nudge; once confirmed it flips to start-preparing', () => {
     expect(keys({ status: 'pending', hoursInStatus: 25 })).toEqual(['confirm']);
+    // 72h with no reply escalates to the cancel push (fresh key so the
+    // phone push fires again); confirming at any point silences both.
+    expect(keys({ status: 'pending', hoursInStatus: 72 })).toEqual(['cancel_unconfirmed']);
+    expect(keys({ status: 'pending', hoursInStatus: 100, confirmedAt: '2026-08-01T10:00:00Z' }))
+      .toEqual(['start_preparing']);
     expect(keys({ status: 'pending', hoursInStatus: 25, confirmedAt: '2026-07-30T10:00:00Z' }))
       .toEqual(['start_preparing']);
     // Fresh either way: staff just acted.

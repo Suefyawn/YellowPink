@@ -75,13 +75,24 @@ export function outstandingOrderActions(o: OrderActionSnapshot): OrderAction[] {
       // The unconfirmed-COD window is where July's returns came from.
       if (o.hoursInStatus >= 24) {
         if (!o.confirmedAt) {
-          acts.push({
-            key: 'confirm',
-            title: `Confirm order ${n}`,
-            body: o.pay_method === 'cod'
-              ? `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. Use "Send WhatsApp confirmation" on the order page and record the yes, or cancel it — unconfirmed parcels are where returns come from.`
-              : `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. Confirm with the customer and mark it confirmed on the order page, or cancel it.`,
-          });
+          if (o.hoursInStatus >= 72) {
+            // Escalation (owner decision 2026-08-04: no auto-cancel — a
+            // sharper push and a human cancels). New key so the phone push
+            // fires again even though 'confirm' was deduped at 24h.
+            acts.push({
+              key: 'cancel_unconfirmed',
+              title: `Cancel unanswered order ${n}?`,
+              body: `Still no reply to the confirmation after ${ageLabel(o.hoursInStatus)}. Try one last WhatsApp/call; if there is no answer today, cancel it from the order page so the stock frees up — shipping unconfirmed parcels is how returns happen.`,
+            });
+          } else {
+            acts.push({
+              key: 'confirm',
+              title: `Confirm order ${n}`,
+              body: o.pay_method === 'cod'
+                ? `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. Use "Send WhatsApp confirmation" on the order page and record the yes, or cancel it — unconfirmed parcels are where returns come from.`
+                : `Awaiting customer confirmation for ${ageLabel(o.hoursInStatus)}. Confirm with the customer and mark it confirmed on the order page, or cancel it.`,
+            });
+          }
         } else {
           // Confirmed but nobody moved it forward — the yes goes stale.
           acts.push({
