@@ -5,6 +5,7 @@
 // only, nothing personal leaves the browser.
 
 import { useState } from 'react';
+import posthog from 'posthog-js';
 
 const ACTIVITY = [
   { label: 'Mostly sitting (desk job, little exercise)', factor: 1.2 },
@@ -21,6 +22,12 @@ interface Result {
   gain: number;
   proteinMin: number;
   proteinMax: number;
+}
+
+// Usage analytics for the admin Quick Answers panel: one event per completed
+// calculation, no personal values attached.
+function captureUse(answer: string) {
+  try { posthog.capture('answer_used', { answer }); } catch { /* posthog not ready */ }
 }
 
 export function CalorieCalculator() {
@@ -40,6 +47,7 @@ export function CalorieCalculator() {
     if (!h || h < 120 || h > 230) { setError('Enter a height between 120 and 230 cm.'); setResult(null); return; }
     const bmr = Math.round(10 * w + 6.25 * h - 5 * a + (sex === 'male' ? 5 : -161));
     const maintain = Math.round(bmr * ACTIVITY[activity].factor);
+    captureUse('calorie');
     setResult({
       bmr,
       maintain,

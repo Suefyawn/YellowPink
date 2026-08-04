@@ -7,6 +7,7 @@
 // "day 14 from the last period" does on long or short cycles.
 
 import { useMemo, useState } from 'react';
+import posthog from 'posthog-js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -24,6 +25,12 @@ interface Result {
   ovulation: Date;
   nextPeriod: Date;
   testFrom: Date;
+}
+
+// Usage analytics for the admin Quick Answers panel: one event per completed
+// calculation, no personal values attached.
+function captureUse(answer: string) {
+  try { posthog.capture('answer_used', { answer }); } catch { /* posthog not ready */ }
 }
 
 export function OvulationCalculator() {
@@ -53,6 +60,7 @@ export function OvulationCalculator() {
     let nextPeriod = addDays(start, cycleLength);
     while (nextPeriod.getTime() < Date.now()) nextPeriod = addDays(nextPeriod, cycleLength);
     const ovulation = addDays(nextPeriod, -14);
+    captureUse('ovulation');
     setResult({
       ovulation,
       nextPeriod,

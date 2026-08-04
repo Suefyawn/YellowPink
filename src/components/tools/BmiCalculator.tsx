@@ -6,6 +6,7 @@
 // client-side maths, nothing leaves the browser.
 
 import { useState } from 'react';
+import posthog from 'posthog-js';
 
 interface Result {
   bmi: number;
@@ -19,6 +20,12 @@ function categorize(bmi: number, cuts: [number, number, number], labels: [string
   if (bmi < cuts[1]) return labels[1];
   if (bmi < cuts[2]) return labels[2];
   return labels[3];
+}
+
+// Usage analytics for the admin Quick Answers panel: one event per completed
+// calculation, no personal values attached.
+function captureUse(answer: string) {
+  try { posthog.capture('answer_used', { answer }); } catch { /* posthog not ready */ }
 }
 
 export function BmiCalculator() {
@@ -40,6 +47,7 @@ export function BmiCalculator() {
     if (!cm || cm < 100 || cm > 250) { setError(unit === 'cm' ? 'Enter a height between 100 and 250 cm.' : 'Enter a height between 3 ft 4 in and 8 ft.'); setResult(null); return; }
     const m = cm / 100;
     const bmi = w / (m * m);
+    captureUse('bmi');
     setResult({
       bmi,
       asianCategory: categorize(bmi, [18.5, 23, 27.5], ['Underweight', 'Healthy weight', 'Overweight', 'Obese']),

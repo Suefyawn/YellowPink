@@ -1,8 +1,29 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { pageMeta, jsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, faqLd } from '@/lib/seo';
 import { Overline } from '@/components/ui/Overline';
 import { CalorieCalculator } from '@/components/tools/CalorieCalculator';
+
+// FAQ copy doubles as FAQPage structured data; questions carry this page's
+// Semrush long-tail (bmr calculator, tdee calculator, calorie deficit).
+const FAQS = [
+  {
+    question: 'How many calories should I eat a day?',
+    answer: 'It depends on your size, age, sex and activity, which is what the calculator above works out. As a rough anchor, most Pakistani women maintain on 1,800 to 2,200 kcal and most men on 2,200 to 2,800 kcal.',
+  },
+  {
+    question: 'What is BMR?',
+    answer: 'BMR (basal metabolic rate) is what your body burns at complete rest, just keeping you alive. This calculator uses the Mifflin-St Jeor equation, the formula dietitians consider the most accurate from basic measurements.',
+  },
+  {
+    question: 'What is TDEE?',
+    answer: 'TDEE (total daily energy expenditure) is your BMR multiplied by how active you are; the "maintenance" number above is your TDEE. Eat below it and you lose weight, above it and you gain.',
+  },
+  {
+    question: 'How big should a calorie deficit be?',
+    answer: 'About 500 kcal below maintenance loses roughly half a kilo a week, which research shows is far more sustainable than crash dieting. Never go below 1,200 kcal a day without medical supervision.',
+  },
+];
 
 export function generateMetadata(): Metadata {
   return pageMeta({
@@ -20,13 +41,14 @@ export default function CalorieCalculatorPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd([
           { name: 'Home', path: '/' },
-          { name: 'Free Tools', path: '/tools' },
+          { name: 'Quick Answers', path: '/answers' },
           { name: 'Calorie Calculator', path: '/calorie-calculator' },
         ])) }}
       />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(FAQS)) }} />
       <section style={{ padding: '56px var(--side) 0' }}>
         <div className="container" style={{ maxWidth: 720, margin: '0 auto' }}>
-          <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Free tool · Nothing leaves your browser</Overline>
+          <Overline style={{ display: 'block', marginBottom: 12, color: 'var(--ink-500)' }}>Daily Calorie Check · Free · Nothing leaves your browser</Overline>
           <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 500, letterSpacing: '-0.025em', lineHeight: 1.1, margin: '0 0 12px' }}>
             Calorie Calculator
           </h1>
@@ -62,8 +84,17 @@ export default function CalorieCalculatorPage() {
             <Link href="/bmi-calculator" className="text-link">BMI calculator</Link> takes ten seconds and uses the South Asian
             ranges that apply here.
           </p>
+          <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, margin: '8px 0 0' }}>Common questions</h2>
+          {FAQS.map(f => (
+            <div key={f.question}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600, margin: '0 0 6px' }}>{f.question}</h3>
+              <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0 }}>{f.answer}</p>
+            </div>
+          ))}
           <p className="small-text" style={{ color: 'var(--ink-500)', margin: 0 }}>
-            Estimates are for healthy adults. If you have diabetes, thyroid disease, or are pregnant or
+            Estimates use the{' '}
+            <a href="https://pubmed.ncbi.nlm.nih.gov/2305711/" target="_blank" rel="noopener" className="text-link">Mifflin-St Jeor equation</a>{' '}
+            and are for healthy adults. If you have diabetes, thyroid disease, or are pregnant or
             breastfeeding, set targets with your doctor instead.
           </p>
         </div>

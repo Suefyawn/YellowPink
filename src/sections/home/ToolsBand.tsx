@@ -12,12 +12,12 @@ export function ToolsBand() {
       <div className="container">
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '4px 16px', marginBottom: 20 }}>
           <div>
-            <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Free tools</Overline>
+            <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>Quick Answers</Overline>
             <h2 className="display-l" style={{ fontSize: 'clamp(1.5rem, 3.5vw, 2rem)', margin: 0 }}>
-              Quick answers, no signup.
+              Little questions, answered free.
             </h2>
           </div>
-          <Link href="/tools" className="text-link">All tools</Link>
+          <Link href="/answers" className="text-link">See them all</Link>
         </div>
         <ToolCards compact />
       </div>

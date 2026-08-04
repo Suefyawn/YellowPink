@@ -6,6 +6,7 @@
 // Pure client-side; nothing personal leaves the browser.
 
 import { useMemo, useState } from 'react';
+import posthog from 'posthog-js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -23,6 +24,12 @@ interface Result {
   days: number;
   trimester: 1 | 2 | 3;
   milestones: { label: string; date: Date; passed: boolean }[];
+}
+
+// Usage analytics for the admin Quick Answers panel: one event per completed
+// calculation, no personal values attached.
+function captureUse(answer: string) {
+  try { posthog.capture('answer_used', { answer }); } catch { /* posthog not ready */ }
 }
 
 export function DueDateCalculator() {
@@ -61,6 +68,7 @@ export function DueDateCalculator() {
       date: addDays(start, atWeeks * 7),
       passed: gestDays >= atWeeks * 7,
     });
+    captureUse('due-date');
     setResult({
       edd,
       weeks,

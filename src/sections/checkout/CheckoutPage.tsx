@@ -65,16 +65,11 @@ interface CheckoutPageProps {
   /** Order number of the failed payment, when the callback knew it. */
   failedOrder?: string | null;
   /** Active seasonal-sale coupon code (e.g. AZADI14 during the Azadi window).
-   *  Auto-applied on mount when the cart has no coupon yet — the storewide
-   *  sale is promised in the site chrome, so checkout must not depend on the
-   *  shopper retyping the code (order YP-6WTC3EC7V paid full price during a
-   *  live 14%-off sale). Validation still runs the normal lookup path. */
+   *  Shown as a one-tap suggestion in the coupon box — NEVER auto-applied
+   *  (owner decision 4 Aug: the shopper chooses). The tap runs the same
+   *  validation path as typing the code. */
   seasonalCoupon?: string | null;
 }
-
-// sessionStorage flag: the shopper explicitly removed the auto-applied
-// seasonal coupon, so don't force it back on them this browser session.
-const SEASONAL_COUPON_DISMISSED_KEY = 'yp_seasonal_coupon_dismissed';
 
 // The cart is cleared right before the browser POSTs off to JazzCash /
 // Easypaisa. This key holds a snapshot of what was cleared so a failed
@@ -465,26 +460,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
 
   const applyCoupon = () => applyCode(couponCode);
 
-  // Seasonal-sale auto-apply: the chrome promises "14% off with AZADI14", so
-  // checkout applies it for the shopper instead of hoping they retype it.
-  // Runs once per mount, only when no coupon is applied, and never after the
-  // shopper explicitly removed it this session (the ✕ sets the flag below).
-  const seasonalAutoApplied = useRef(false);
-  useEffect(() => {
-    if (!seasonalCoupon || seasonalAutoApplied.current || cartCoupon || cartItems.length === 0) return;
-    try {
-      if (sessionStorage.getItem(SEASONAL_COUPON_DISMISSED_KEY) === seasonalCoupon) return;
-    } catch { /* private mode — treat as not dismissed */ }
-    seasonalAutoApplied.current = true;
-    // Deferred a tick so the effect body itself stays render-pure (the apply
-    // path sets state); cleared on unmount before it fires.
-    const t = setTimeout(() => { void applyCode(seasonalCoupon, { auto: true }); }, 0);
-    return () => clearTimeout(t);
-    // applyCode is recreated per render but only reads current cart state;
-    // the run-once ref makes the dependency question moot (same pattern as
-    // the gateway-snapshot restore above).
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [seasonalCoupon, cartCoupon, cartItems.length]);
+  // Seasonal-sale coupon OFFER (owner decision 4 Aug: never auto-apply — the
+  // shopper chooses). When a seasonal window is open and no coupon is applied,
+  // the coupon box shows a one-tap "Apply" suggestion (rendered below); the
+  // tap runs the same non-silent path as typing the code.
 
   const handleSubmit = async () => {
     // Guard against double-submit: the button is disabled while `submitting`,
@@ -880,6 +859,21 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
 
               {!cartCoupon ? (
                 <div style={{ marginBottom: 12 }}>
+                  {seasonalCoupon && (
+                    <button
+                      type="button"
+                      onClick={() => applyCode(seasonalCoupon)}
+                      disabled={couponLoading}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
+                        marginBottom: 8, padding: '8px 10px',
+                        background: '#f0fdf4', border: '1px dashed #86efac', borderRadius: 6,
+                        fontSize: '0.8125rem', color: '#15803d', fontFamily: 'var(--font-ui)',
+                      }}
+                    >
+                      Sale code <strong>{seasonalCoupon}</strong> is running — tap to apply it
+                    </button>
+                  )}
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       aria-label="Coupon code"
@@ -904,14 +898,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                   <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
                     ✓ {cartCoupon.code} {freeShipCoupon ? '(free shipping)' : cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
                   </span>
-                  <button type="button" aria-label="Remove coupon" onClick={() => {
-                    // Removing the auto-applied seasonal code is a choice —
-                    // remember it so the effect doesn't force it straight back.
-                    if (seasonalCoupon && cartCoupon.code === seasonalCoupon) {
-                      try { sessionStorage.setItem(SEASONAL_COUPON_DISMISSED_KEY, seasonalCoupon); } catch { /* ignore */ }
-                    }
-                    setCouponCode(''); setAppliedCoupon(null);
-                  }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
+                  <button type="button" aria-label="Remove coupon" onClick={() => { setCouponCode(''); setAppliedCoupon(null); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
                 </div>
               )}
 

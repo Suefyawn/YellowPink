@@ -13,10 +13,10 @@ const ICON_PATHS: Record<FreeTool['icon'], React.ReactNode> = {
   sparkles: <><path d="m12 3-1.9 5.8a2 2 0 0 1-1.287 1.288L3 12l5.8 1.9a2 2 0 0 1 1.288 1.287L12 21l1.9-5.8a2 2 0 0 1 1.287-1.288L21 12l-5.8-1.9a2 2 0 0 1-1.288-1.287Z" /></>,
 };
 
-export function ToolCards({ compact = false }: { compact?: boolean }) {
+export function ToolCards({ compact = false, tools = FREE_TOOLS }: { compact?: boolean; tools?: FreeTool[] }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(${compact ? 200 : 240}px, 1fr))`, gap: compact ? 12 : 'var(--gutter)' }}>
-      {FREE_TOOLS.map(tool => (
+      {tools.map(tool => (
         <Link
           key={tool.href}
           href={tool.href}
