@@ -32,6 +32,18 @@ export interface Opportunity {
   position: number | null;
 }
 
+/** One row of the all-queries explorer: a query's full GSC history rollup. */
+export interface AllQuery {
+  query: string;
+  impressions: number;
+  clicks: number;
+  lastPosition: number | null;
+  firstSeen: string;
+  lastSeen: string;
+  tracked: boolean;
+  branded: boolean;
+}
+
 type Bucket = 'all' | 'top3' | 'page1' | 'page2' | 'beyond' | 'unranked';
 type SortKey = 'volume' | 'position' | 'movement' | 'clicks' | 'impressions';
 
@@ -92,7 +104,7 @@ const th: React.CSSProperties = { textAlign: 'left', padding: '8px 10px', fontSi
 const td: React.CSSProperties = { padding: '9px 10px', fontSize: '0.8125rem', color: '#111827', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' };
 const num: React.CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
 
-export function SeoRankingsClient({ rows, opportunities }: { rows: KeywordRow[]; opportunities: Opportunity[] }) {
+export function SeoRankingsClient({ rows, opportunities, allQueries = [] }: { rows: KeywordRow[]; opportunities: Opportunity[]; allQueries?: AllQuery[] }) {
   const [q, setQ] = useState('');
   const [bucket, setBucket] = useState<Bucket>('all');
   const [sort, setSort] = useState<SortKey>('volume');
@@ -300,6 +312,151 @@ export function SeoRankingsClient({ rows, opportunities }: { rows: KeywordRow[];
           </div>
         </div>
       )}
+
+      {/* All-queries explorer: the COMPLETE Search Console footprint, not the
+          curated slices above. Collapsed by default; native <details>. */}
+      {allQueries.length > 0 && (
+        <details style={{ marginTop: 28 }}>
+          <summary style={{ cursor: 'pointer', fontSize: '1rem', fontWeight: 700, color: '#111827', listStyle: 'none', padding: '12px 16px', background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12 }}>
+            All queries explorer — every search Google has shown you for ({allQueries.length.toLocaleString()}) ▾
+          </summary>
+          <div style={{ marginTop: 12 }}>
+            <AllQueriesExplorer queries={allQueries} onTrack={submitTrack} pending={pending} />
+          </div>
+        </details>
+      )}
+    </>
+  );
+}
+
+type AllFilter = 'all' | 'clicked' | 'untracked' | 'top10';
+type AllSort = 'impressions' | 'clicks' | 'position' | 'lastSeen';
+
+function AllQueriesExplorer({ queries, onTrack, pending }: { queries: AllQuery[]; onTrack: (k: string) => void; pending: boolean }) {
+  const [q, setQ] = useState('');
+  const [filter, setFilter] = useState<AllFilter>('all');
+  const [sort, setSort] = useState<AllSort>('impressions');
+  const [shown, setShown] = useState(50);
+
+  const view = useMemo(() => {
+    const needle = q.toLowerCase().trim();
+    const filtered = queries.filter(r =>
+      (!needle || r.query.includes(needle)) &&
+      (filter === 'all'
+        || (filter === 'clicked' && r.clicks > 0)
+        || (filter === 'untracked' && !r.tracked && !r.branded)
+        || (filter === 'top10' && r.lastPosition != null && r.lastPosition <= 10)),
+    );
+    return [...filtered].sort((a, b) => {
+      switch (sort) {
+        case 'clicks': return b.clicks - a.clicks;
+        case 'position': return (a.lastPosition ?? 999) - (b.lastPosition ?? 999);
+        case 'lastSeen': return b.lastSeen.localeCompare(a.lastSeen);
+        default: return b.impressions - a.impressions;
+      }
+    });
+  }, [queries, q, filter, sort]);
+
+  const chips: { key: AllFilter; label: string }[] = [
+    { key: 'all', label: `All (${queries.length})` },
+    { key: 'clicked', label: `With clicks (${queries.filter(r => r.clicks > 0).length})` },
+    { key: 'top10', label: `Top 10 (${queries.filter(r => r.lastPosition != null && r.lastPosition <= 10).length})` },
+    { key: 'untracked', label: `Untracked (${queries.filter(r => !r.tracked && !r.branded).length})` },
+  ];
+
+  const chip = (active: boolean): React.CSSProperties => ({
+    padding: '5px 11px', borderRadius: 999, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+    border: `1px solid ${active ? '#be185d' : '#e5e7eb'}`,
+    background: active ? '#fdf2f8' : '#fff',
+    color: active ? '#be185d' : '#374151',
+  });
+
+  return (
+    <>
+      <p style={{ margin: '0 0 10px', fontSize: '0.75rem', color: '#6b7280', maxWidth: 680 }}>
+        Aggregated over the full snapshot history (impressions and clicks are lifetime totals; position is the
+        most recent day Google reported one). The tables above are curated slices; nothing is hidden here.
+      </p>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Search all queries…"
+          style={{ padding: '7px 12px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.8125rem', width: 220 }}
+        />
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {chips.map(c => (
+            <button key={c.key} type="button" style={chip(filter === c.key)} onClick={() => { setFilter(c.key); setShown(50); }}>
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <select
+          value={sort}
+          onChange={e => setSort(e.target.value as AllSort)}
+          style={{ padding: '7px 10px', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: '0.8125rem', marginLeft: 'auto' }}
+        >
+          <option value="impressions">Sort: impressions</option>
+          <option value="clicks">Sort: clicks</option>
+          <option value="position">Sort: best position</option>
+          <option value="lastSeen">Sort: recently seen</option>
+        </select>
+      </div>
+      <div style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 680 }}>
+            <thead>
+              <tr>
+                <th style={th}>Query</th>
+                <th style={{ ...th, ...num }}>Impressions</th>
+                <th style={{ ...th, ...num }}>Clicks</th>
+                <th style={{ ...th, ...num }}>Position</th>
+                <th style={{ ...th, ...num }}>Last seen</th>
+                <th style={th} aria-label="actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {view.slice(0, shown).map(r => (
+                <tr key={r.query}>
+                  <td style={{ ...td, fontWeight: 600 }}>
+                    {r.query}
+                    {r.tracked && <span style={{ marginLeft: 8, fontSize: '0.625rem', fontWeight: 700, color: '#15803d', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 999, padding: '1px 7px', verticalAlign: 'middle' }}>tracked</span>}
+                    {r.branded && <span style={{ marginLeft: 8, fontSize: '0.625rem', fontWeight: 700, color: '#6b7280', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 999, padding: '1px 7px', verticalAlign: 'middle' }}>brand</span>}
+                  </td>
+                  <td style={{ ...td, ...num }}>{r.impressions.toLocaleString()}</td>
+                  <td style={{ ...td, ...num, fontWeight: r.clicks > 0 ? 700 : 400, color: r.clicks > 0 ? '#15803d' : '#111827' }}>{r.clicks.toLocaleString()}</td>
+                  <td style={{ ...td, ...num }}>{r.lastPosition != null ? r.lastPosition.toFixed(1) : '—'}</td>
+                  <td style={{ ...td, ...num, fontSize: '0.75rem', color: '#6b7280' }}>{r.lastSeen}</td>
+                  <td style={{ ...td, textAlign: 'right' }}>
+                    {!r.tracked && !r.branded && (
+                      <button
+                        type="button"
+                        onClick={() => onTrack(r.query)}
+                        disabled={pending}
+                        style={{ padding: '4px 12px', borderRadius: 6, border: '1px solid #be185d', background: '#fff', color: '#be185d', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}
+                      >
+                        Track
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {view.length === 0 && (
+                <tr><td style={{ ...td, color: '#6b7280' }} colSpan={6}>No queries match.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {view.length > shown && (
+          <button
+            type="button"
+            onClick={() => setShown(s => s + 100)}
+            style={{ display: 'block', width: '100%', padding: '10px 0', border: 'none', borderTop: '1px solid #f3f4f6', background: '#fff', color: '#be185d', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}
+          >
+            Show more ({view.length - shown} remaining)
+          </button>
+        )}
+      </div>
     </>
   );
 }

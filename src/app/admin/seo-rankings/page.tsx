@@ -17,12 +17,12 @@ import { can } from '@/lib/permissions';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { EmptyState } from '@/components/admin/EmptyState';
 import { fmtDatePK } from '@/lib/dates';
-import { SeoRankingsClient, type KeywordRow, type Opportunity } from '@/components/admin/SeoRankingsClient';
+import { SeoRankingsClient, type KeywordRow, type Opportunity, type AllQuery } from '@/components/admin/SeoRankingsClient';
 
 interface SnapRow { checked_at: string; keyword: string; position: number | null; volume: number | null; url: string | null }
 interface TrackedRow { keyword: string; volume: number | null; target_url: string | null }
 interface GscCacheQuery { query: string; clicks: number; impressions: number; ctr: number; position: number }
-interface GscDaily { day: string; query: string; position: number | null }
+interface GscDaily { day: string; query: string; position: number | null; clicks: number | null; impressions: number | null }
 
 // Queries about the store itself say nothing about content rankings.
 const BRANDED = /yellow\s*pink|yellowpink/i;
@@ -41,7 +41,7 @@ export default async function SeoRankingsPage() {
     admin.from('seo_tracked_keywords').select('keyword, volume, target_url').eq('active', true),
     admin.from('seo_ranking_snapshots').select('checked_at, keyword, position, volume, url').order('checked_at', { ascending: false }).limit(2000),
     admin.from('analytics_cache').select('data, updated_at').eq('key', 'gsc').maybeSingle(),
-    admin.from('gsc_query_snapshots').select('day, query, position').order('day', { ascending: false }).limit(15000),
+    admin.from('gsc_query_snapshots').select('day, query, position, clicks, impressions').order('day', { ascending: false }).limit(15000),
   ]);
 
   const tracked = (trackedRes.data ?? []) as TrackedRow[];
@@ -119,6 +119,26 @@ export default async function SeoRankingsPage() {
     .slice(0, 12)
     .map(q => ({ query: q.query, clicks: q.clicks, impressions: q.impressions, position: q.position ?? null }));
 
+  // All-queries explorer: every query Google has EVER shown the site for,
+  // aggregated from the daily snapshot history (the tracked table and the
+  // opportunities list are curated slices; this is the complete footprint,
+  // owner request 4 Aug). Rows arrive newest-first, so the first position
+  // seen per query is its most recent.
+  const agg = new Map<string, AllQuery>();
+  for (const d of gscDaily) {
+    const key = d.query.toLowerCase();
+    let a = agg.get(key);
+    if (!a) {
+      a = { query: d.query, impressions: 0, clicks: 0, lastPosition: null, lastSeen: d.day, firstSeen: d.day, tracked: trackedSet.has(key), branded: BRANDED.test(d.query) };
+      agg.set(key, a);
+    }
+    a.impressions += d.impressions ?? 0;
+    a.clicks += d.clicks ?? 0;
+    if (a.lastPosition == null && d.position != null) a.lastPosition = Number(d.position);
+    a.firstSeen = d.day; // newest-first iteration → last write is the earliest day
+  }
+  const allQueries = [...agg.values()].sort((a, b) => b.impressions - a.impressions);
+
   return (
     <div style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 6px', fontSize: '1.375rem', fontWeight: 700, color: '#111827' }}>SEO rankings</h1>
@@ -138,7 +158,7 @@ export default async function SeoRankingsPage() {
         ))}
       </div>
 
-      <SeoRankingsClient rows={rows} opportunities={opportunities} />
+      <SeoRankingsClient rows={rows} opportunities={opportunities} allQueries={allQueries} />
     </div>
   );
 }
