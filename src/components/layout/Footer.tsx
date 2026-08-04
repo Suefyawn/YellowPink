@@ -100,6 +100,14 @@ const BRAND_LINKS = [
 const COMPANY_LINKS = [
   { label: 'About Us',           href: '/page/about' },
   { label: 'Blog',               href: '/blog' },
+  // Free tools: sitewide links carry the calculators' target keywords
+  // ("pregnancy calculator" 74k/mo, "bmi calculator" 90k/mo in PK) onto
+  // every page, same play as BRAND_LINKS above.
+  { label: 'Free Tools',            href: '/tools' },
+  { label: 'Pregnancy Calculator',  href: '/pregnancy-calculator' },
+  { label: 'Ovulation Calculator',  href: '/ovulation-calculator' },
+  { label: 'BMI Calculator',        href: '/bmi-calculator' },
+  { label: 'Calorie Calculator',    href: '/calorie-calculator' },
   { label: 'Editorial Standards', href: '/page/editorial-standards' },
   { label: 'Medical Review Board', href: '/medical-review-board' },
   { label: 'Contact',            href: '/page/contact' },

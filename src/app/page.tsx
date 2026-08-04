@@ -62,6 +62,7 @@ import { CollectionsSection } from '@/sections/home/CollectionsSection';
 import { RealResults } from '@/sections/home/RealResults';
 import { JournalSection } from '@/sections/home/JournalSection';
 import { QuizBand } from '@/sections/home/QuizBand';
+import { ToolsBand } from '@/sections/home/ToolsBand';
 import { activeSeasonalTheme } from '@/lib/seasonal-theme';
 
 // Names must match products.brand / brands.name exactly (resolveBrandLogos
@@ -228,6 +229,7 @@ export default async function HomePage() {
       <KBeautySection products={kBeautyRail} />
       <EditorialDuo />
       <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
+      <ToolsBand />
       <CategoryTiles groups={categoryGroups} />
       <BrandStrip brands={popularBrands} />
       {/* Crawlable link to EVERY leaf category. The 8 image tiles above cover

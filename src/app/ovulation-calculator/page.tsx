@@ -20,6 +20,7 @@ export default function OvulationCalculatorPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: jsonLd(breadcrumbLd([
           { name: 'Home', path: '/' },
+          { name: 'Free Tools', path: '/tools' },
           { name: 'Ovulation Calculator', path: '/ovulation-calculator' },
         ])) }}
       />
@@ -62,6 +63,11 @@ export default function OvulationCalculatorPage() {
             <Link href="/blog/folic-acid-tablets-benefits-dosage-pakistan" className="text-link">folic acid guide</Link>), and the{' '}
             <Link href="/product/couples-conceive-pack" className="text-link">Trying-to-Conceive Couple&apos;s Pack</Link> covers
             both of you in one order, delivered anywhere in Pakistan with cash on delivery.
+          </p>
+          <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0 }}>
+            Already pregnant? The <Link href="/pregnancy-calculator" className="text-link">pregnancy calculator</Link> shows
+            your due date, your current week and your scan dates. More quick tools live on the{' '}
+            <Link href="/tools" className="text-link">free tools page</Link>.
           </p>
           <p className="small-text" style={{ color: 'var(--ink-500)', margin: 0 }}>
             This tool provides general estimates for education and does not replace medical advice. If you have
