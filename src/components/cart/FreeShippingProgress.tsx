@@ -9,7 +9,7 @@
 // for the actual charge (remote zones can differ, which is why the copy says
 // "free delivery" and not a hard promise of the zone rate).
 import { useCommerceSettings } from '@/context/CommerceSettings';
-import { vendorFreeShippingEligible, type ShippingItem } from '@/lib/vendor-shipping';
+import { vendorFreeShippingEligible, cheapestVendorRemaining, type ShippingItem } from '@/lib/vendor-shipping';
 
 export function FreeShippingProgress({ subtotal, items = [] }: { subtotal: number; items?: ShippingItem[] }) {
   const { freeShippingEnabled, freeShippingThreshold, vendorFreeShipThresholds } = useCommerceSettings();
@@ -20,11 +20,28 @@ export function FreeShippingProgress({ subtotal, items = [] }: { subtotal: numbe
   // PKR X more" while checkout showed FREE.
   const vendorUnlocked = vendorFreeShippingEligible(items, vendorFreeShipThresholds);
 
-  if (!vendorUnlocked && (!freeShippingEnabled || freeShippingThreshold <= 0)) return null;
+  // The nudge targets the CHEAPEST open unlock (owner report 2026-08-04: a
+  // Rs 1,490 NB Sons basket was told "add Rs 3,510" against the storewide
+  // threshold when Rs 509 more of NB Sons items already unlocks free
+  // delivery). Only shown when the whole cart is that vendor's — in a mixed
+  // cart "add X more" would be ambiguous about WHICH products count, so the
+  // storewide number stays.
+  const vendorPath = cheapestVendorRemaining(items, vendorFreeShipThresholds);
+  const genericRemaining = freeShippingEnabled && freeShippingThreshold > 0
+    ? Math.max(0, freeShippingThreshold - subtotal)
+    : null;
+  const useVendorPath = !vendorUnlocked && vendorPath !== null && vendorPath.wholeCart
+    && (genericRemaining === null || vendorPath.remaining < genericRemaining);
+
+  if (!vendorUnlocked && !useVendorPath && (!freeShippingEnabled || freeShippingThreshold <= 0)) return null;
   if (subtotal <= 0) return null;
 
-  const remaining = vendorUnlocked ? 0 : Math.max(0, freeShippingThreshold - subtotal);
-  const pct = vendorUnlocked ? 100 : Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
+  const remaining = vendorUnlocked ? 0
+    : useVendorPath ? vendorPath!.remaining
+    : Math.max(0, freeShippingThreshold - subtotal);
+  const pct = vendorUnlocked ? 100
+    : useVendorPath ? Math.min(100, Math.round((vendorPath!.vendorSum / vendorPath!.threshold) * 100))
+    : Math.min(100, Math.round((subtotal / freeShippingThreshold) * 100));
   const unlocked = remaining === 0;
 
   return (
@@ -58,7 +75,11 @@ export function FreeShippingProgress({ subtotal, items = [] }: { subtotal: numbe
           nationwide, so no caveat when it's what unlocked the bar. */}
       {!vendorUnlocked && (
         <div style={{ marginTop: 5, fontSize: '0.6875rem', color: 'var(--ink-500)' }}>
-          Standard threshold — farther regions unlock slightly higher. Exact figure at checkout.
+          {useVendorPath
+            // The vendor rule is nationwide and zone-independent, so the
+            // promise is exact — no "farther regions" caveat.
+            ? `This brand ships free on orders over PKR ${vendorPath!.threshold.toLocaleString()}, anywhere in Pakistan.`
+            : 'Standard threshold — farther regions unlock slightly higher. Exact figure at checkout.'}
         </div>
       )}
     </div>
