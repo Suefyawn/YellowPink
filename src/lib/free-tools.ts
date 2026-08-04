@@ -69,6 +69,7 @@ export const FREE_TOOLS: FreeTool[] = [
     categories: ['Skincare', 'Makeup', 'Hair'],
     tint: '#f3f0fa',
     accent: '#6d4fa1',
+    image: '/answers/routine.webp',
   },
 ];
 
