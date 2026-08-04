@@ -99,6 +99,14 @@ customers and spot where an order is.
   saved link and the welcome discount (which also adds them to the
   newsletter). Every step is tracked, and the **Dashboard** shows the quiz
   funnel (starts → completions → emails) and most-recommended products.
+- **Ovulation Calculator** (`/ovulation-calculator`) — a free fertility tool:
+  the shopper enters the first day of her last period and her average cycle
+  length, and gets her fertile window, most likely ovulation day, next
+  expected period and the earliest reliable pregnancy-test date. All the
+  maths runs in the browser (nothing personal is sent to the server). The
+  page links the ovulation, irregular-periods, trying-to-conceive and folic
+  acid guides plus the couple's conception pack, so it feeds the fertility
+  content cluster and the shop.
 - **Brand pages** (`/brand/<brand>`) — every brand has its own landing page
   with that brand's products, reachable from the **All Brands** directory
   (`/brands`, linked in the footer) or a K-Beauty spotlight card. Each page has
