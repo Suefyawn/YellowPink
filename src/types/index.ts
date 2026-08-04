@@ -102,6 +102,8 @@ export interface Product {
   popularity_score?: number | null;
   units_sold?: number | null;
   trend_score?: number | null;
+  /** Recency-decayed sales value (nightly cron); orders Best Sellers. */
+  sales_score?: number | null;
   is_popular?: boolean | null;
   // Migration 081, admin-controlled SEO + content fields.
   seo_title?: string | null;

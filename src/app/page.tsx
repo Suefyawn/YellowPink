@@ -4,6 +4,7 @@
 export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
 import {
+  getFeaturedBlogPost,
   getNewArrivals,
   getTopSellers,
   getTrending,
@@ -22,7 +23,7 @@ import { buildWellnessShowcase } from '@/lib/wellness-data';
 import { ALL_CATEGORIES, categoryHref } from '@/lib/category-taxonomy';
 import Link from 'next/link';
 import { resolveBrandLogos } from '@/lib/brands';
-import { dailyRotation } from '@/lib/rotation';
+import { composeHomepageRails, pickBlogHero } from '@/lib/merchandising';
 
 // Homepage "Shop by category" tiles, four makeup/skincare + four wellness,
 // equal billing for the "beauty, inside out" concept.
@@ -80,57 +81,64 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, collections, socialProof, newArrivals, popularBrands] = await Promise.all([
-    getFeatured(12),
+  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, featuredPost, collections, socialProof, newArrivals, popularBrands] = await Promise.all([
+    getFeatured(),
     getTopSellers(8),
     getTrending(12),
     getOnSale(8),
     getWellnessProducts(),
-    getProductsByBrands(K_BEAUTY_BRANDS, 10),
+    getProductsByBrands(K_BEAUTY_BRANDS, 24),
     getSiteSettings(),
-    getBlogPosts(),
+    getBlogPosts({ limit: 4 }),
+    getFeaturedBlogPost(),
     getPublishedCollectionsWithCovers(3),
     getHomeSocialProof(),
-    getNewArrivals(16),
+    getNewArrivals(24),
     // Shop-by-brand tiles: the brands Pakistanis search for by name (Semrush:
     // "saeed ghani products" 22k/mo, "rivaj uk" 18k/mo, "conatural" 15k/mo …)
     // plus the store's strongest international lines. Order = search volume.
     resolveBrandLogos(POPULAR_BRANDS),
   ]);
 
-  // Keep the two rails distinct: a product that's a top seller shouldn't also
-  // fill the Trending rail (most visible when both fall back to recency before
-  // the nightly trend refresh has run).
-  // Daily rotation (lib/rotation): each rail shows 4 of a wider candidate
-  // pool, reshuffled once per PKT day so returning visitors see fresh tiles
-  // without breaking each rail's honesty — Best Sellers rotates within the
-  // top 8 actual sellers, Trending within products with real momentum.
-  const featuredRail = dailyRotation(featured, 4, 'featured');
-  const topSellersRail = dailyRotation(topSellers, 4, 'bestsellers');
-  const topSellerIds = new Set(topSellersRail.map(p => p.id));
-  // Trending demands real momentum: getTrending falls back to recency when
-  // trend_score is flat, which at low order volume just duplicates New In
-  // under an overclaiming label. Empty rail self-hides.
-  const trendingRail = dailyRotation(
-    trending.filter(p => !topSellerIds.has(p.id)).filter(p => (p.trend_score ?? 0) > 0),
-    4,
-    'trending',
-  );
-  const kBeautyRail = dailyRotation(kBeautyProducts, 4, 'kbeauty');
-
-  // New In: pure recency, deduped against the tiles actually DISPLAYED above
-  // it so the page never shows the same product twice (recency also backs
-  // several rails' fallbacks). Products fetched but not rendered don't count.
-  const displayedFeatured = featuredRail.length ? featuredRail : topSellersRail;
-  const seenIds = new Set([...displayedFeatured, ...topSellersRail, ...trendingRail].map(p => p.id));
-  const newInRail = newArrivals.filter(p => !seenIds.has(p.id)).slice(0, 4);
-
-  // Shape the full wellness set into per-concern cards + a featured rail.
-  const wellness = buildWellnessShowcase(wellnessProducts);
-
   // The featured sale collection is shown only while a sale is switched on
   // in Admin → Settings → Sale (the central on/off switch).
-  const saleActive = settings.sale_active === 'true';
+  const saleActive = (settings.sale_active ?? '').toLowerCase() === 'true' || settings.sale_active === '1';
+
+  // ── Merchandising engine: every rail's eligibility, ordering, rotation and
+  // dedupe live in ONE composer (lib/merchandising), allocated in priority
+  // order (Featured → Best Sellers → Trending → Sale → New In → K-Beauty →
+  // Wellness) so demand rails never lose their products to recency/discount
+  // rails. Admin → Homepage preview runs this same function and shows each
+  // tile's one-sentence reason.
+  const rails = composeHomepageRails({
+    featuredPool: featured,
+    sellersPool: topSellers,
+    trendingPool: trending,
+    salePool: saleProducts,
+    newInPool: newArrivals,
+    kBeautyPool: kBeautyProducts,
+    wellnessPool: wellnessProducts,
+    saleActive,
+  });
+  const displayedFeatured = rails.featured.map(t => t.product);
+  const topSellersRail = rails.bestSellers.map(t => t.product);
+  const trendingRail = rails.trending.map(t => t.product);
+  const newInRail = rails.newIn.map(t => t.product);
+  const kBeautyRail = rails.kBeauty.map(t => t.product);
+  const saleRail = rails.sale.map(t => t.product);
+
+  // Concern cards derive from the full wellness set; only the rail is deduped.
+  const wellness = buildWellnessShowcase(wellnessProducts, rails.wellnessRail.map(t => t.product));
+
+  // Journal row: slot 1 is the SAME hero the blog page shows (featured post
+  // within 60 days, else newest) so the two surfaces can never disagree;
+  // slots 2-3 are the newest posts excluding it.
+  const journalPool = [...(featuredPost ? [featuredPost] : []), ...blogPosts]
+    .filter((p, i, a) => a.findIndex(x => x.id === p.id) === i);
+  const hero = pickBlogHero(journalPool, new Date().toISOString().slice(0, 10));
+  const journalPosts = hero
+    ? [hero, ...blogPosts.filter(p => p.id !== hero.id)].slice(0, 3)
+    : blogPosts.slice(0, 3);
 
   const tile = (label: string) => ({
     label,
@@ -198,7 +206,7 @@ export default async function HomePage() {
       />
       {saleActive && (
         <SaleCollection
-          products={saleProducts}
+          products={saleRail}
           title={settings.sale_title || 'On Sale Now'}
           subtitle={settings.sale_subtitle}
           ctaText={settings.sale_cta_text || 'Shop the Sale'}
@@ -264,7 +272,7 @@ export default async function HomePage() {
       </section>
       <CollectionsSection collections={collections} />
       <RealResults proof={socialProof} />
-      <JournalSection posts={blogPosts} />
+      <JournalSection posts={journalPosts} />
       <WhatsAppBand hasNumber={Boolean(settings.store_whatsapp || settings.store_phone)} />
     </main>
   );

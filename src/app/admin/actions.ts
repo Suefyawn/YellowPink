@@ -450,12 +450,23 @@ export async function createBlogPost(
   // blogPostInputSchema coerces it to a real boolean.
   const parsed = parseForm(blogPostInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { error } = await supabaseAdmin().from('blog_posts').insert(parsed.data);
+  const admin = supabaseAdmin();
+  // Featured is exclusive: the DB enforces it (unique partial index
+  // blog_posts_one_featured); unfeaturing the previous holder here is the
+  // UX for that constraint rather than the enforcement.
+  if ((parsed.data as { featured?: boolean }).featured) {
+    await admin.from('blog_posts').update({ featured: false }).eq('featured', true);
+  }
+  const { error } = await admin.from('blog_posts').insert(parsed.data);
   if (error) return { error: error.message };
   // Blog posts go live immediately, ping search engines (best-effort).
   const slug = (parsed.data as { slug?: string }).slug;
   if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   revalidatePath('/admin/blog');
+  // The storefront surfaces that show this post: without these, a featured
+  // toggle took up to the 1-hour ISR window to appear (audit fix).
+  revalidatePath('/blog');
+  revalidatePath('/');
   redirect('/admin/blog');
 }
 
@@ -468,11 +479,18 @@ export async function updateBlogPost(
   // See createBlogPost: `featured` is a checkbox coerced by the schema.
   const parsed = parseForm(blogPostInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
-  const { error } = await supabaseAdmin().from('blog_posts').update(parsed.data).eq('id', id);
+  const admin = supabaseAdmin();
+  // See createBlogPost: featuring this post unfeatures every other.
+  if ((parsed.data as { featured?: boolean }).featured) {
+    await admin.from('blog_posts').update({ featured: false }).eq('featured', true).neq('id', id);
+  }
+  const { error } = await admin.from('blog_posts').update(parsed.data).eq('id', id);
   if (error) return { error: error.message };
   const slug = (parsed.data as { slug?: string }).slug;
   if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   revalidatePath('/admin/blog');
+  revalidatePath('/blog');
+  revalidatePath('/');
   redirect('/admin/blog');
 }
 

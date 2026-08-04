@@ -92,7 +92,12 @@ async function safe<T>(
 // quoted the full delivery rate at checkout (a real Jul 31 order paid Rs 250
 // it shouldn't have).
 const PRODUCT_TILE_COLUMNS =
-  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, vendor_id, image_url, is_bestseller, is_featured, is_popular, popularity_score, packaging, status, created_at, rating, review_count, kind';
+  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, vendor_id, image_url, is_bestseller, is_featured, is_popular, popularity_score, trend_score, units_sold, sales_score, packaging, status, created_at, rating, review_count, kind';
+
+// Shared purchasability predicate — every storefront product surface must
+// apply it (the 2026-08-04 audit found four rails that forgot the stock
+// filter and could show sold-out tiles).
+const PURCHASABLE = 'stock.gt.0,track_inventory.is.false';
 
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;
@@ -243,7 +248,10 @@ export async function getTopSellers(limit = 4): Promise<Product[]> {
       .eq('status', 'published')
       .or('stock.gt.0,track_inventory.is.false')
       .order('is_bestseller', { ascending: false })
-      .order('units_sold', { ascending: false })
+      // Decayed sales (sales_score), not raw units: at a few orders/day raw
+      // counts are a coin flip below rank 3. Demand then freshness tiebreak.
+      .order('sales_score', { ascending: false })
+      .order('popularity_score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
     return (data ?? []) as Product[];
@@ -283,40 +291,33 @@ export async function getNewArrivals(limit = 8): Promise<Product[]> {
       .or('stock.gt.0,track_inventory.is.false')
       .gte('created_at', floor)
       .order('created_at', { ascending: false })
+      // Bulk imports share created_at to the second; id tiebreak keeps the
+      // order stable across renders.
+      .order('id')
       .limit(limit);
     return (data ?? []) as Product[];
   }, DEMO_PRODUCTS.slice(0, limit));
 }
 
-/** Featured picks for the homepage hero/editorial slots, flagged by
- *  `is_featured=true`. Same fallback as bestsellers. */
-export async function getFeatured(limit = 6): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+/** EVERY owner-flagged (`is_featured`), published, purchasable product,
+ *  demand-ordered. The catalog is small, so the full flagged set is cheap;
+ *  the merchandising composer picks the daily four and handles the fill-up
+ *  when fewer than four are flagged (it needs the sellers pool to exclude,
+ *  which this helper cannot see). */
+export async function getFeatured(): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, 6);
   return safe('getFeatured', async () => {
-    const { data: flagged } = await supabase
+    const { data } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('is_featured', true)
-      // Published only (same reasoning as getBestsellers).
       .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (flagged && flagged.length >= limit) return flagged as Product[];
-    const fill = limit - (flagged?.length ?? 0);
-    const { data: rest } = await supabase
-      .from('products')
-      .select(PRODUCT_TILE_COLUMNS)
-      .eq('status', 'published')
-      .or('stock.gt.0,track_inventory.is.false')
-      .order('created_at', { ascending: false })
-      .limit(fill + (flagged?.length ?? 0));
-    const flaggedIds = new Set((flagged ?? []).map(p => p.id));
-    const merged = [
-      ...(flagged ?? []),
-      ...(rest ?? []).filter(p => !flaggedIds.has(p.id)),
-    ];
-    return merged.slice(0, limit) as Product[];
-  }, DEMO_PRODUCTS.slice(0, limit));
+      // Sold-out products must not hold a Featured slot (audit fix).
+      .or(PURCHASABLE)
+      .order('popularity_score', { ascending: false })
+      .order('created_at', { ascending: false });
+    return (data ?? []) as Product[];
+  }, DEMO_PRODUCTS.slice(0, 6));
 }
 
 /** Products on sale = `original_price > price`. Sorted by discount % so the
@@ -324,19 +325,21 @@ export async function getFeatured(limit = 6): Promise<Product[]> {
 export async function getOnSale(limit = 8): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS.filter(p => p.original_price && p.original_price > p.price).slice(0, limit);
   return safe('getOnSale', async () => {
+    // discount_pct is a STORED generated column (migration 2026-08-04):
+    // round(100*(original_price-price)/original_price). Exact SQL predicate,
+    // deepest discounts first, 10% floor so token discounts don't headline,
+    // in-stock only. Replaces the old lossy overfetch that sorted by
+    // original_price and could miss discounted rows past limit*4.
     const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
-      .not('original_price', 'is', null)
-      // Published only, the sale rail must not link draft/archived PDPs.
       .eq('status', 'published')
-      .order('original_price', { ascending: false })
-      .limit(limit * 4);
+      .or(PURCHASABLE)
+      .gte('discount_pct', 10)
+      .order('discount_pct', { ascending: false })
+      .limit(limit);
     if (error) throw error;
-    return (data ?? [])
-      .filter((p: { price: number; original_price: number | null }) =>
-        p.original_price !== null && p.original_price > p.price)
-      .slice(0, limit) as Product[];
+    return (data ?? []) as Product[];
   }, DEMO_PRODUCTS.slice(0, limit));
 }
 
@@ -376,7 +379,10 @@ export async function getWellnessProducts(): Promise<Product[]> {
       .select(PRODUCT_TILE_COLUMNS)
       .in('category', cats)
       .eq('status', 'published')
-      .order('is_bestseller', { ascending: false })
+      // In stock only — a sold-out product made concern cards advertise a
+      // phantom "from" price (audit fix).
+      .or(PURCHASABLE)
+      .order('popularity_score', { ascending: false })
       .order('created_at', { ascending: false });
     if (error) throw error;
     return (data ?? []) as Product[];
@@ -415,6 +421,8 @@ export async function getProductsByBrands(brands: readonly string[], limit = 4):
       .select(PRODUCT_TILE_COLUMNS)
       .in('brand', brands as string[])
       .eq('status', 'published')
+      .or(PURCHASABLE)
+      .order('popularity_score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
     if (error) throw error;
@@ -430,21 +438,43 @@ export async function getProductsByBrands(brands: readonly string[], limit = 4):
 const BLOG_TILE_COLUMNS =
   'id, slug, title, excerpt, category, date, read_time, featured, image_url, updated_at';
 
-export async function getBlogPosts(): Promise<BlogPost[]> {
-  if (isDemo) return DEMO_BLOG_POSTS;
+export async function getBlogPosts(opts: { limit?: number } = {}): Promise<BlogPost[]> {
+  if (isDemo) return opts.limit ? DEMO_BLOG_POSTS.slice(0, opts.limit) : DEMO_BLOG_POSTS;
   return safe('getBlogPosts', async () => {
-    const { data, error } = await supabase
+    let q = supabase
       .from('blog_posts')
       .select(BLOG_TILE_COLUMNS)
+      // Future-dated rows are scheduled, not published — without this gate a
+      // future date pins slot 1 of every recency surface (audit fix).
+      .lte('date', new Date().toISOString().slice(0, 10))
       // Secondary tiebreak on created_at: several posts share the same
       // editorial date (e.g. a whole batch published the same day), and
       // `date` alone leaves Postgres to pick an arbitrary, unstable order
       // among them.
       .order('date', { ascending: false })
       .order('created_at', { ascending: false });
+    if (opts.limit) q = q.limit(opts.limit);
+    const { data, error } = await q;
     if (error) throw error;
     return (data ?? []) as unknown as BlogPost[];
   }, DEMO_BLOG_POSTS);
+}
+
+/** The current featured post, if any (the one-featured unique index makes
+ *  "any" mean "the"). Hero eligibility (60-day window) is applied by
+ *  pickBlogHero in lib/merchandising. */
+export async function getFeaturedBlogPost(): Promise<BlogPost | null> {
+  if (isDemo) return DEMO_BLOG_POSTS.find(p => p.featured) ?? null;
+  return safe('getFeaturedBlogPost', async () => {
+    const { data, error } = await supabase
+      .from('blog_posts')
+      .select(BLOG_TILE_COLUMNS)
+      .eq('featured', true)
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return (data ?? null) as unknown as BlogPost | null;
+  }, null);
 }
 
 /** Posts whose body links to a product's PDP — the reverse of the blog's
