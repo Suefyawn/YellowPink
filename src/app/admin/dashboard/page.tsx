@@ -11,6 +11,7 @@ import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { fmtPKR, fmtInt, pctDelta } from '@/components/admin/insights/format';
 import { SentryWidget } from '@/components/admin/SentryWidget';
 import { QuizStatsWidget } from '@/components/admin/QuizStatsWidget';
+import { AnswersStatsWidget } from '@/components/admin/AnswersStatsWidget';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
@@ -545,10 +546,11 @@ export default async function DashboardPage() {
             padding: '12px 16px', background: 'white', borderRadius: 10,
             boxShadow: '0 1px 3px rgba(0,0,0,0.08)', listStyle: 'none',
           }}>
-            More insights: product-finder quiz funnel ▾
+            More insights: quiz funnel &amp; Quick Answers ▾
           </summary>
-          <div style={{ marginTop: 12 }}>
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
             <QuizStatsWidget />
+            <AnswersStatsWidget />
           </div>
         </details>
       )}

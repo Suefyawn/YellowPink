@@ -43,7 +43,12 @@ export function BlogStickyBuyBar({ product }: { product: Product }) {
     const check = () => {
       raf = 0;
       const nudge = document.querySelector('.blog-product-nudge');
-      setShow(nudge ? nudge.getBoundingClientRect().bottom < 0 : window.scrollY > 900);
+      // Yield to the footer: once it's in view the reader is done with the
+      // article, and the bar + lifted floating buttons were stacking over the
+      // footer links (same rule as the PDP sticky bar).
+      const footer = document.querySelector('footer');
+      const footerInView = footer ? footer.getBoundingClientRect().top < window.innerHeight : false;
+      setShow(!footerInView && (nudge ? nudge.getBoundingClientRect().bottom < 0 : window.scrollY > 900));
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(check); };
     window.addEventListener('scroll', onScroll, { passive: true });

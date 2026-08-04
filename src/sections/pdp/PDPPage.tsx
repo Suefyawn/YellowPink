@@ -358,17 +358,34 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
 
   // Observe the in-page buy panel; surface the sticky bar only after it has
   // scrolled off the top of the viewport (not before the user reaches it).
+  // The bar also YIELDS once the site footer enters the viewport: by then the
+  // shopper has scrolled past every buy CTA, and without this the bar (plus
+  // the floating buttons it lifts) stacked over the footer links and made the
+  // bottom of the page unusable, especially on phones.
   useEffect(() => {
     const el = buyPanelRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
+    let pastBuyPanel = false;
+    let footerVisible = false;
+    const update = () => setShowStickyBar(pastBuyPanel && !footerVisible);
     const io = new IntersectionObserver(
       ([entry]) => {
-        setShowStickyBar(!entry.isIntersecting && entry.boundingClientRect.top < 0);
+        pastBuyPanel = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+        update();
       },
       { threshold: 0 },
     );
     io.observe(el);
-    return () => io.disconnect();
+    const footerEl = document.querySelector('footer');
+    let footerIo: IntersectionObserver | undefined;
+    if (footerEl) {
+      footerIo = new IntersectionObserver(
+        ([entry]) => { footerVisible = entry.isIntersecting; update(); },
+        { threshold: 0 },
+      );
+      footerIo.observe(footerEl);
+    }
+    return () => { io.disconnect(); footerIo?.disconnect(); };
   }, []);
 
   // While the sticky buy-bar is up, lift the global floating buttons (WhatsApp
