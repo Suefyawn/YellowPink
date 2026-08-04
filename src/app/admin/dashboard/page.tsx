@@ -12,6 +12,7 @@ import { fmtPKR, fmtInt, pctDelta } from '@/components/admin/insights/format';
 import { SentryWidget } from '@/components/admin/SentryWidget';
 import { QuizStatsWidget } from '@/components/admin/QuizStatsWidget';
 import { AnswersStatsWidget } from '@/components/admin/AnswersStatsWidget';
+import { MerchHealthWidget } from '@/components/admin/MerchHealthWidget';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
@@ -533,6 +534,15 @@ export default async function DashboardPage() {
       {canErrors && (
         <div style={{ marginBottom: 32 }}>
           <SentryWidget />
+        </div>
+      )}
+
+      {/* ── Merchandising health: pin guardrails + score-cron freshness.
+          Broken items are rare and always actionable; advisory items are
+          informational so the card never becomes permanent red noise. */}
+      {canOverview && (
+        <div style={{ marginBottom: 32 }}>
+          <MerchHealthWidget />
         </div>
       )}
 

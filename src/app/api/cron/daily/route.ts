@@ -107,11 +107,15 @@ export async function GET(req: NextRequest) {
     // reconcile → settle): cheap DB-only sweep, revenue-relevant, so it runs
     // ahead of the analytics tail.
     '/api/cron/order-actions',
+    // Popularity feeds the storefront rails (Best Sellers / Trending / every
+    // demand ordering) — it must not sit behind the analytics tail where a
+    // budget-exhausted run silently skips it and the homepage rides day-old
+    // scores. After the revenue jobs, ahead of everything skippable.
+    '/api/cron/popularity-refresh',
     '/api/cron/review-requests',
     '/api/cron/stuck-payments',
     '/api/cron/not-found-digest',
     '/api/cron/analytics-refresh',
-    '/api/cron/popularity-refresh',
     '/api/cron/indexing-check',
   ];
   const BUDGET_MS = (maxDuration - 12) * 1000;

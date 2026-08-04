@@ -68,13 +68,15 @@ export interface WellnessShowcase {
   totalCount: number;
 }
 
-/** Shape a full wellness product set into the homepage showcase. `railLimit`
- *  caps the featured rail (the source list is already bestseller-first). */
-export function buildWellnessShowcase(products: Product[], railLimit = 8): WellnessShowcase {
+/** Shape a full wellness product set into the homepage showcase. The rail
+ *  comes from the merchandising composer (demand-ordered, deduped against
+ *  the rails above, rotating daily); concern cards always derive from the
+ *  FULL set so counts and from-prices stay accurate. */
+export function buildWellnessShowcase(products: Product[], rail?: Product[]): WellnessShowcase {
   const concerns = buildWellnessConcerns(products);
   return {
     concerns,
-    rail: products.slice(0, railLimit),
+    rail: rail ?? products.slice(0, 8),
     totalCount: products.length,
   };
 }

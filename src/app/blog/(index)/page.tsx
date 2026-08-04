@@ -1,5 +1,6 @@
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 import { getBlogPosts } from '@/lib/supabase';
+import { pickBlogHero } from '@/lib/merchandising';
 import { BlogPage } from '@/sections/blog/BlogPage';
 
 // 1-hour ISR, blog posts publish at most a few times per week; edits bust explicitly.
@@ -14,6 +15,10 @@ export const metadata = pageMeta({
 
 export default async function BlogListPage() {
   const posts = await getBlogPosts();
+  // Hero rule shared with the homepage journal (lib/merchandising): the
+  // featured post while it's under 60 days old, else the newest post.
+  // Computed server-side so server and client HTML agree.
+  const heroId = pickBlogHero(posts, new Date().toISOString().slice(0, 10))?.id ?? null;
   // Top 24 posts for the ItemList, newest first matches the listing
   // order (getBlogPosts sorts by date desc).
   const itemListPosts = posts.slice(0, 24);
@@ -40,7 +45,7 @@ export default async function BlogListPage() {
           )),
         }}
       />
-      <BlogPage posts={posts} />
+      <BlogPage posts={posts} heroId={heroId} />
     </main>
   );
 }

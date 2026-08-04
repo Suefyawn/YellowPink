@@ -173,7 +173,7 @@ function SortMenu({ value, onChange }: { value: SortMode; onChange: (v: SortMode
   );
 }
 
-export function BlogPage({ posts }: { posts: BlogPost[] }) {
+export function BlogPage({ posts, heroId = null }: { posts: BlogPost[]; heroId?: string | null }) {
   // Filters are derived from the actual post categories, sorted by
   // frequency. The old hardcoded ['Skincare','Makeup','Wellness'] list
   // didn't match any real category (real values: "Bone Health",
@@ -198,7 +198,9 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
   // away from where they were reading.
   const listTopRef = useRef<HTMLElement>(null);
 
-  const featured = posts.find(p => p.featured);
+  // Hero is decided server-side (shared 60-day rule in lib/merchandising)
+  // and passed down; fall back to the old flag-scan for callers without it.
+  const featured = (heroId ? posts.find(p => p.id === heroId) : undefined) ?? posts.find(p => p.featured);
   // The sidebar's "Latest" widget skips the featured post (already shown big,
   // above) so it isn't repeated twice on the same screen.
   const latestForSidebar = useMemo(
@@ -209,6 +211,9 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matches = posts.filter(p => {
+      // The hero already fills the top of the page — repeating it as the
+      // first grid card wasted the best above-the-fold slot (audit fix).
+      if (featured && p.id === featured.id) return false;
       if (activeFilter !== 'All' && p.category !== activeFilter) return false;
       if (!q) return true;
       const hay = `${p.title} ${p.excerpt ?? ''} ${p.category ?? ''}`.toLowerCase();
@@ -220,7 +225,7 @@ export function BlogPage({ posts }: { posts: BlogPost[] }) {
     if (sortMode === 'long') return [...matches].sort((a, b) => compareReadTime(a, b, -1));
     if (sortMode === 'oldest') return [...matches].reverse();
     return matches;
-  }, [posts, activeFilter, query, sortMode]);
+  }, [posts, activeFilter, query, sortMode, featured]);
 
   const hasMore = visibleCount < filtered.length;
   // Every matching card is rendered into the DOM; cards beyond visibleCount
