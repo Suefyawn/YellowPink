@@ -91,7 +91,7 @@ export function FertilityQuiz() {
   if (!done) {
     const q = QUESTIONS[step];
     return (
-      <div style={card}>
+      <div key={step} className="qz-step" style={{ ...card, ['--qz-accent' as never]: '#8b2fa1' }}>
         <div style={{ display: 'flex', gap: 6, marginBottom: 18 }} aria-hidden="true">
           {QUESTIONS.map((_, i) => (
             <span key={i} style={{ flex: 1, height: 5, borderRadius: 99, background: i < step ? '#8b2fa1' : i === step ? '#d8b4e2' : 'var(--line)' }} />
@@ -101,7 +101,7 @@ export function FertilityQuiz() {
         <p style={{ margin: '0 0 16px', fontWeight: 700, fontSize: '1.0625rem' }}>{q.text}</p>
         <div style={{ display: 'grid', gap: 10 }}>
           {q.options.map((opt, i) => (
-            <button key={opt} type="button" onClick={() => pick(i)} style={{
+            <button key={opt} type="button" onClick={() => pick(i)} className="qz-option" style={{
               textAlign: 'left', padding: '13px 16px', borderRadius: 10, border: '1.5px solid var(--line)',
               background: 'var(--paper2, #faf6ee)', font: 'inherit', cursor: 'pointer',
             }}>
@@ -123,7 +123,7 @@ export function FertilityQuiz() {
   const copy = RESULT_COPY[c];
   const rec = recFor('quiz-fertility', c);
   return (
-    <div style={card}>
+    <div className="qz-step" style={card}>
       <p className="small-text" style={{ margin: '0 0 6px', fontWeight: 700, color: '#8b2fa1', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Your result</p>
       <p style={{ margin: '0 0 10px', fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 600 }}>{copy.heading}</p>
       <p className="body-text" style={{ margin: 0, color: 'var(--ink-700)' }}>{copy.body}</p>
