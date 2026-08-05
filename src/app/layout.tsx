@@ -113,6 +113,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: '#F7C948',
+  // Every theme is light; declaring it stops native controls (selects,
+  // suggestion popups, scrollbars) rendering dark on dark-mode devices —
+  // the checkout city dropdown was appearing as a detached dark overlay.
+  colorScheme: 'light',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

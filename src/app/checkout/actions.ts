@@ -109,7 +109,7 @@ export async function calculateShipping(opts: {
    *  predate the vendor_id column (old localStorage snapshots, tile adds
    *  from before the column shipped) still qualify. */
   items?: Array<{ id?: string; vendor_id?: string | null; price: number; qty: number }>;
-}): Promise<{ rate: number; free: boolean; label: string }> {
+}): Promise<{ rate: number; free: boolean; label: string; estimatedDays: { min: number; max: number } | null }> {
   // Re-derive the amounts server-side shape only (price×qty); place_order
   // recomputes everything from the products table at submit, so a tampered
   // quote can only mislead the tamperer's own order summary.
@@ -144,7 +144,7 @@ export async function calculateShipping(opts: {
     subtotal: opts.subtotal,
     items,
   });
-  return { rate: resolved.rate, free: resolved.free, label: resolved.label };
+  return { rate: resolved.rate, free: resolved.free, label: resolved.label, estimatedDays: resolved.estimatedDays ?? null };
 }
 
 // ─── Server-side rate-limit gate (called before place_order client RPC). ────
