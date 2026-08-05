@@ -7,6 +7,8 @@
 
 import { useState } from 'react';
 import posthog from 'posthog-js';
+import { recFor } from '@/lib/answer-recs';
+import { AnswerRecCard } from './AnswerRec';
 
 interface Result {
   bmi: number;
@@ -163,6 +165,12 @@ export function BmiCalculator() {
             about where fat sits, which matters more. Read it as a starting point and talk to a doctor about
             what it means for you.
           </p>
+          {(() => {
+            const c = result.asianCategory === 'Underweight' ? 'under'
+              : result.asianCategory === 'Overweight' || result.asianCategory === 'Obese' ? 'over' : null;
+            const rec = c ? recFor('bmi', c) : null;
+            return rec ? <AnswerRecCard rec={rec} tint="#edf6ee" accent="#2f7d43" /> : null;
+          })()}
         </div>
       )}
     </div>

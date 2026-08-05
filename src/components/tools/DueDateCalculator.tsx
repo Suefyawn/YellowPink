@@ -7,6 +7,8 @@
 
 import { useMemo, useState } from 'react';
 import posthog from 'posthog-js';
+import { recFor } from '@/lib/answer-recs';
+import { AnswerRecCard } from './AnswerRec';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -156,6 +158,10 @@ export function DueDateCalculator() {
             Only about one baby in twenty arrives on the exact due date; most arrive within two weeks either
             side. Your doctor may adjust this date after the first ultrasound, which is the more precise measure.
           </p>
+          {(() => {
+            const rec = recFor('due-date', result.trimester === 1 ? 't1' : 't23');
+            return rec ? <AnswerRecCard rec={rec} tint="#fdeee7" accent="#b05a2f" /> : null;
+          })()}
         </div>
       )}
     </div>

@@ -8,6 +8,8 @@
 
 import { useMemo, useState } from 'react';
 import posthog from 'posthog-js';
+import { recFor } from '@/lib/answer-recs';
+import { AnswerRecCard } from './AnswerRec';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -30,6 +32,8 @@ interface Result {
   fertileFromDay: number;
   fertileToDay: number;
   ovulationDay: number;
+  /** Which funnel case this result falls into (lib/answer-recs). */
+  recCase: 'default' | 'late' | 'irregular';
 }
 
 // The month at a glance: period days, the fertile window and ovulation as a
@@ -96,11 +100,21 @@ export function OvulationCalculator() {
     }
     // Roll forward so the window shown is the NEXT one, not one already past
     // (useful when the last period entered is several cycles old).
-    let nextPeriod = addDays(start, cycleLength);
+    const rawNext = addDays(start, cycleLength);
+    let nextPeriod = rawNext;
     while (nextPeriod.getTime() < Date.now()) nextPeriod = addDays(nextPeriod, cycleLength);
     const ovulation = addDays(nextPeriod, -14);
     captureUse('ovulation');
     const ovulationDay = cycleLength - 14 + 1;
+    // Funnel case: cycles outside 24-35 days make the calendar unreliable
+    // (irregular); a first expected period 4-14 days behind today reads as
+    // "period looks late" (older dates mean she entered an old cycle, not a
+    // late one — those get the default).
+    const daysLate = (Date.now() - rawNext.getTime()) / DAY_MS;
+    const recCase: Result['recCase'] =
+      cycleLength < 24 || cycleLength > 35 ? 'irregular'
+      : daysLate >= 4 && daysLate <= 14 ? 'late'
+      : 'default';
     setResult({
       ovulation,
       nextPeriod,
@@ -111,6 +125,7 @@ export function OvulationCalculator() {
       fertileFromDay: Math.max(1, ovulationDay - 5),
       fertileToDay: Math.min(cycleLength, ovulationDay + 1),
       ovulationDay,
+      recCase,
     });
   }
 
@@ -172,6 +187,10 @@ export function OvulationCalculator() {
             Estimates assume your cycles are regular. If they vary by more than a few days, track ovulation signs
             alongside the calendar, and do not use these dates as contraception.
           </p>
+          {(() => {
+            const rec = recFor('ovulation', result.recCase);
+            return rec ? <AnswerRecCard rec={rec} tint="#fdf2f8" accent="#be185d" /> : null;
+          })()}
         </div>
       )}
     </div>

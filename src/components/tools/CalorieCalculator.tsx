@@ -6,6 +6,8 @@
 
 import { useState } from 'react';
 import posthog from 'posthog-js';
+import { recFor } from '@/lib/answer-recs';
+import { AnswerRecCard } from './AnswerRec';
 
 const ACTIVITY = [
   { label: 'Mostly sitting (desk job, little exercise)', factor: 1.2 },
@@ -138,6 +140,10 @@ export function CalorieCalculator() {
             These are estimates for healthy adults; real needs vary with genetics and daily movement. Adjust
             after two weeks of real results, and do not eat below 1,200 kcal a day without medical supervision.
           </p>
+          {(() => {
+            const rec = recFor('calorie', 'gain');
+            return rec ? <AnswerRecCard rec={rec} tint="#fdf5e0" accent="#9a6a08" /> : null;
+          })()}
         </div>
       )}
     </div>

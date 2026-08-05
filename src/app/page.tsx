@@ -195,15 +195,6 @@ export default async function HomePage() {
       <HomeSearchPill />
       <CategoryChipStrip />
       <FeaturedProducts products={displayedFeatured} />
-      <ProductRail
-        overline="New In"
-        heading="Just landed."
-        blurb="The latest additions to the shelf, straight from this week's stock."
-        ctaHref="/shop?sort=newest"
-        ctaLabel="See all new arrivals"
-        products={newInRail}
-        tinted
-      />
       {saleActive && (
         <SaleCollection
           products={saleRail}
@@ -235,6 +226,17 @@ export default async function HomePage() {
       />
       <QuizBand />
       <KBeautySection products={kBeautyRail} />
+      {/* New arrivals are unproven by definition (no sales/engagement signal
+          yet), so they live below the demand-ranked rails: freshness for
+          returning shoppers, not premium viewport (owner call, 5 Aug). */}
+      <ProductRail
+        overline="New In"
+        heading="Just landed."
+        blurb="The latest additions to the shelf, straight from this week's stock."
+        ctaHref="/shop?sort=newest"
+        ctaLabel="See all new arrivals"
+        products={newInRail}
+      />
       <EditorialDuo />
       <WellnessSection concerns={wellness.concerns} rail={wellness.rail} totalCount={wellness.totalCount} />
       <ToolsBand />
