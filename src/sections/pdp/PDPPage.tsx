@@ -702,7 +702,13 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 background: '#fffbeb', border: '1px solid #fde68a',
                 display: 'flex', gap: 10, alignItems: 'flex-start',
               }}>
-                <span aria-hidden="true" style={{ fontSize: '1rem', lineHeight: 1.3 }}>📦</span>
+                <span aria-hidden="true" style={{ display: 'inline-flex', marginTop: 2, color: '#92400e' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" />
+                    <path d="M12 22V12" /><path d="m3.3 7 8.7 5 8.7-5" />
+                  </svg>
+                </span>
                 <p className="small-text" style={{ margin: 0, color: '#92400e', lineHeight: 1.5 }}>
                   {product.packaging === 'tester' ? (
                     <>

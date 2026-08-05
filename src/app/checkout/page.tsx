@@ -39,8 +39,8 @@ export default async function CheckoutRoute({ searchParams }: { searchParams: Pr
   ].filter(Boolean) as PayMethod[];
 
   // Active seasonal-sale coupon (e.g. AZADI14 while the Azadi window is
-  // open). Checkout auto-applies it so a storewide sale can't be missed by
-  // shoppers who never saw or retyped the bar's code.
+  // open). Checkout OFFERS it as a tap-to-apply chip — never auto-applied
+  // (owner decision, 4 Aug): the shopper chooses.
   const seasonalCoupon = activeSeasonalTheme(settings)?.coupon ?? null;
 
   return (

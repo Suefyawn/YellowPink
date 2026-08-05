@@ -14,6 +14,7 @@ import { checkReferralDiscount } from '@/app/checkout/rewards-actions';
 import { postOrderDestination } from '@/lib/checkout-routing';
 import { vendorFreeShippingEligible } from '@/lib/vendor-shipping';
 import { PK_CITIES, normalizeCity, provinceForCity } from '@/lib/pk-cities';
+import { CityCombobox } from '@/components/checkout/CityCombobox';
 import { brandPlusName } from '@/lib/product-display';
 import { hasWhatsApp, whatsappGoUrl } from '@/lib/whatsapp';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
@@ -79,6 +80,21 @@ const GATEWAY_SNAPSHOT_KEY = 'yp_gateway_cart';
 // don't resurrect last week's bag because an old ?error= URL was revisited.
 const GATEWAY_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000;
 
+
+// House icon rules (AGENTS.md): inline SVG, lucide-style, never emoji.
+const LockIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+const CheckIcon = ({ size = 13 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
 export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, paymentError = null, failedOrder = null, seasonalCoupon = null }: CheckoutPageProps = {}) {
   const { cartItems, clearCart, restoreCart, removeFromCart, updateQty, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
@@ -99,13 +115,19 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // 82%-mobile audience. handleSubmit splits it back into the first/last
   // columns place_order stores.
   const [formData, setFormData] = useState({ email: '', fullName: '', phone: '', address: '', city: '', province: '', zip: '' });
-  // Province/Postal live behind a "More details" toggle: both are optional,
-  // both submit as '' when untouched, and hiding them keeps the visible form
-  // at the COD minimum. Auto-opens if a validation pass ever needs it.
+  // Postal code lives behind a disclosure: optional, submits '' untouched.
+  // Province is a required, always-visible select (Aug 5 checkout audit):
+  // it is the one field that guarantees correct zone pricing — city
+  // inference only covers the 48 mapped cities and silently fell back to
+  // the first active zone for every other town.
   const [moreAddress, setMoreAddress] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  // One order number per checkout session + the set of numbers actually
+  // sent to the server (own-collision recovery, see handleSubmit).
+  const orderNumberRef = useRef('');
+  const sentOrderNumbers = useRef<Set<string>>(new Set());
   // The applied coupon lives in CartProvider (persisted to localStorage), so a
   // coupon added on /cart survives the trip to checkout, including a refresh
   // or full page load. `couponCode` is just the local text-input value.
@@ -117,7 +139,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // before calculateShipping resolves. The effect below corrects it against
   // the real zone/rate config (and the customer's province).
   const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate, loyaltyPkrPerPoint, vendorFreeShipThresholds } = useCommerceSettings();
-  const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string }>(() => {
+  const [shippingInfo, setShippingInfo] = useState<{ rate: number; free: boolean; label: string; estimatedDays?: { min: number; max: number } | null }>(() => {
     const sub = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
     const free =
       (freeShippingEnabled && sub >= freeShippingThreshold) ||
@@ -286,8 +308,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     return () => clearTimeout(t);
   }, [formData.phone, formData.email, user, cartCoupon]);
 
-  // Recompute shipping whenever subtotal or province changes.
+  // Recompute shipping whenever subtotal or province changes (requoteTick
+  // forces a re-quote after a server-side undercharge rejection).
   const [shippingLoading, setShippingLoading] = useState(false);
+  const [requoteTick, setRequoteTick] = useState(0);
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -297,20 +321,34 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       // a coupon never removes a free-shipping promise already shown. Items go
       // along for the vendor rule (NB Sons ≥ Rs 1,999 ships free); place_order
       // re-validates the final figure server-side at submit.
-      const res = await calculateShipping({
-        province: formData.province || undefined,
-        subtotal,
-        // `id` lets the server re-resolve vendor_id from the products table,
-        // so lines saved by older storefront code (no vendor_id) still count.
-        items: cartItems.map(i => ({ id: i.id, vendor_id: i.vendor_id ?? null, price: i.price, qty: i.qty })),
-      });
-      if (!cancelled) { setShippingInfo(res); setShippingLoading(false); }
+      try {
+        const res = await calculateShipping({
+          province: formData.province || undefined,
+          subtotal,
+          // `id` lets the server re-resolve vendor_id from the products table,
+          // so lines saved by older storefront code (no vendor_id) still count.
+          items: cartItems.map(i => ({ id: i.id, vendor_id: i.vendor_id ?? null, price: i.price, qty: i.qty })),
+        });
+        if (!cancelled) setShippingInfo(res);
+      } catch {
+        // Server quote unreachable: fall back to the optimistic default so
+        // the shopper is never stuck on a spinner. place_order re-validates;
+        // its undercharge rejection maps to a friendly re-quote message.
+        if (!cancelled) {
+          const free =
+            (freeShippingEnabled && subtotal >= freeShippingThreshold) ||
+            vendorFreeShippingEligible(cartItems, vendorFreeShipThresholds);
+          setShippingInfo({ rate: free ? 0 : defaultShippingRate, free, label: 'Standard' });
+        }
+      } finally {
+        if (!cancelled) setShippingLoading(false);
+      }
     })();
     return () => { cancelled = true; };
     // cartItems is intentionally keyed by subtotal: any change that affects the
     // vendor rule also changes the subtotal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subtotal, formData.province]);
+  }, [subtotal, formData.province, requoteTick]);
 
   // Capture abandoned-cart snapshot when the user supplies a phone OR an
   // email AND the cart is non-empty. Phone is the FIRST checkout field, so
@@ -360,11 +398,17 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     if (errors.city) setErrors(p => { const n = { ...p }; delete n.city; return n; });
   };
 
+  // City suggestions narrow to the picked province (all when none picked).
+  const cityOptions = formData.province
+    ? PK_CITIES.filter(c => provinceForCity(c) === formData.province)
+    : [...PK_CITIES];
+
   // Field key → the input's DOM id, in the form's visual order, so a failed
   // submit can take the shopper TO the first problem.
   const FIELD_IDS: [string, string][] = [
     ['phone', 'co-phone'], ['fullName', 'co-name'],
-    ['address', 'co-address'], ['city', 'co-city'], ['email', 'co-email'],
+    ['province', 'co-province'], ['city', 'co-city'],
+    ['address', 'co-address'], ['email', 'co-email'],
   ];
 
   // Split the single name field back into the first/last columns the orders
@@ -378,7 +422,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   const validate = () => {
     const e: Record<string, string> = {};
     if (!formData.fullName.trim()) e.fullName = 'Required';
-    const phone = formData.phone.trim().replace(/\s/g, '');
+    const phone = formData.phone.trim().replace(/[\s\-()]/g, '');
     if (!phone) {
       e.phone = 'Required';
     } else if (!/^(\+92|0092|0)?3\d{9}$/.test(phone)) {
@@ -388,6 +432,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       e.email = 'Enter a valid email address';
     }
     if (!formData.address.trim()) e.address = 'Required';
+    if (!formData.province) e.province = 'Required';
     if (!formData.city.trim()) e.city = 'Required';
     // Card/JazzCash/Easypaisa require an email so we can send payment confirmations.
     if ((payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') && !formData.email) {
@@ -475,7 +520,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     setSubmitting(true);
     setSubmitError('');
 
-    const rate = await checkoutRateGate();
+    // Fail OPEN: a dead rate limiter must never brick the button (the
+    // rejection used to leave submitting=true forever).
+    const rate = await checkoutRateGate().catch(() => ({ ok: true }));
     if (!rate.ok) {
       setSubmitError('Too many checkout attempts. Please wait a minute and try again.');
       setSubmitting(false);
@@ -485,16 +532,22 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     try {
       const sb = getBrowserClient();
       // Order numbers are client-generated; the DB UNIQUE constraint is the
-      // backstop. On the (rare) duplicate, retry with a fresh number instead
-      // of surfacing a raw constraint error to the customer.
-      let orderNumber = makeOrderNumber();
+      // backstop. One number per checkout (ref): if a retry after a network
+      // blip collides with OUR OWN already-sent number, the first attempt
+      // actually succeeded — recover to the success path instead of placing
+      // a duplicate order. Foreign collisions still mint fresh.
+      if (!orderNumberRef.current) orderNumberRef.current = makeOrderNumber();
+      let orderNumber = orderNumberRef.current;
       const name = splitName();
       // The RPC returns the stored order row; place_order may record LESS
       // shipping than quoted (it clamps to 0 when the order qualifies for
       // free delivery server-side — migration 780), so the emails must use
       // the server's figures, not the client quote.
       let placed: { shipping?: number; total?: number } | null = null;
+      let recoveredOwnOrder = false;
       for (let attempt = 1; ; attempt++) {
+        const sentBefore = sentOrderNumbers.current.has(orderNumber);
+        sentOrderNumbers.current.add(orderNumber);
         const { data, error } = await sb.rpc('place_order' as never, {
           order_data: {
             order_number: orderNumber,
@@ -531,9 +584,18 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
           placed = (row ?? null) as { shipping?: number; total?: number } | null;
           break;
         }
-        if (attempt < 3 && isDuplicateOrderNumber(error.message)) {
-          orderNumber = makeOrderNumber();
-          continue;
+        if (isDuplicateOrderNumber(error.message)) {
+          if (sentBefore) {
+            // Our own number, already sent in a prior invocation that we
+            // never saw succeed: the order exists. Proceed as success.
+            recoveredOwnOrder = true;
+            break;
+          }
+          if (attempt < 3) {
+            orderNumber = makeOrderNumber();
+            orderNumberRef.current = orderNumber;
+            continue;
+          }
         }
         throw new Error(error.message);
       }
@@ -571,8 +633,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
         return;
       }
 
-      // COD / bank / gift_card path, fire customer + owner emails, then thank-you.
-      void notifyNewOrder({
+      // COD / bank / gift_card path, fire customer + owner emails, then
+      // thank-you. Skipped on own-collision recovery: the first (successful)
+      // invocation may already have fired them — never send twice.
+      if (!recoveredOwnOrder) void notifyNewOrder({
         order_number: orderNumber,
         email: formData.email || undefined,
         first_name: name.first,
@@ -595,7 +659,18 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       clearCart();
       router.push(dest.url);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
+      const raw = err instanceof Error ? err.message : String(err);
+      console.error('checkout submit failed:', raw);
+      const lower = raw.toLowerCase();
+      let msg: string;
+      if (/fetch|network|connection|timeout|failed to load/.test(lower)) {
+        msg = "Couldn't reach the server. Check your connection and tap Place Order again — your details are still here.";
+      } else if (/shipping|undercharge|delivery/.test(lower)) {
+        msg = 'Delivery charge for your area was updated — please tap Place Order again.';
+        setRequoteTick(t => t + 1); // re-run the shipping quote effect
+      } else {
+        msg = 'Something went wrong placing your order. Please try again, or WhatsApp us and we will place it for you.';
+      }
       setSubmitError(msg);
       setSubmitting(false);
     }
@@ -607,13 +682,17 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // The bar shows whenever the summary panel is off-screen and reuses the
   // same handleSubmit — validate() already scrolls to the first error.
   const summaryRef = useRef<HTMLDivElement>(null);
+  const submitBtnRef = useRef<HTMLButtonElement>(null);
   const [showCommitBar, setShowCommitBar] = useState(false);
   useEffect(() => {
-    const el = summaryRef.current;
+    // Observe the Place Order button itself (not the whole panel): the bar
+    // should yield exactly when the real button is usable, with a little
+    // slack above the bar's own height.
+    const el = submitBtnRef.current ?? summaryRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
     const io = new IntersectionObserver(
       ([entry]) => setShowCommitBar(!entry.isIntersecting),
-      { threshold: 0.05 },
+      { threshold: 0.5, rootMargin: '0px 0px -70px 0px' },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -733,8 +812,34 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
           {/* minmax(0, …): a bare fr track's minimum is its content's min-content
               size, so a long unbreakable value (email, promo code) could push the
               form column past the container and scroll the page sideways. */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 360px', gap: 48 }} className="checkout-grid">
-            <div>
+          {/* ≤860px only: a collapsed order summary above the form, so the
+              items, live total and delivery line are visible without
+              scrolling past the whole form. The full panel (with submit,
+              coupon, loyalty, trust) still renders below, unchanged. */}
+          <details className="checkout-mobile-summary" style={{ marginBottom: 20, border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', background: 'var(--paper2)' }}>
+            <summary style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, padding: '14px 16px', cursor: 'pointer', listStyle: 'none', fontWeight: 600, fontSize: '0.875rem' }}>
+              <span>Order summary · {cartItems.reduce((n, i) => n + i.qty, 0)} {cartItems.reduce((n, i) => n + i.qty, 0) === 1 ? 'item' : 'items'}</span>
+              <span className="tabular-nums" style={{ fontWeight: 700 }}>PKR {total.toLocaleString()}</span>
+            </summary>
+            <div style={{ padding: '0 16px 14px' }}>
+              {cartItems.map((item, i) => (
+                <div key={i} style={{ display: 'flex', justifyContent: 'space-between', gap: 12, padding: '6px 0', fontSize: '0.8125rem' }}>
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.qty} × {item.name}</span>
+                  <span className="tabular-nums" style={{ flexShrink: 0 }}>PKR {(item.price * item.qty).toLocaleString()}</span>
+                </div>
+              ))}
+              <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--line)', fontSize: '0.8125rem' }}>
+                <span>Delivery</span>
+                <span className="tabular-nums">
+                  {formData.province
+                    ? (shipping === 0 ? 'FREE' : `PKR ${shipping.toLocaleString()}`)
+                    : `from PKR ${defaultShippingRate.toLocaleString()}`}
+                </span>
+              </div>
+            </div>
+          </details>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 640px) 360px', gap: 48 }} className="checkout-grid">
+            <form id="checkout-form" noValidate onSubmit={e => { e.preventDefault(); void handleSubmit(); }}>
               {/* COD-first field order: the four required facts (phone, name,
                   address, city) come first; optional email moved below the
                   address block so the form no longer OPENS with an optional
@@ -743,38 +848,67 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 24 }} className="checkout-name-grid">
                 <div>
                   <label htmlFor="co-phone" style={labelStyle}>Phone *</label>
-                  <input ref={phoneRef} id="co-phone" type="tel" autoComplete="tel" value={formData.phone} onChange={e => update('phone', e.target.value)} placeholder="+92 300 1234567" style={inputStyle('phone')} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'co-phone-error' : undefined} />
+                  <input ref={phoneRef} id="co-phone" name="phone" type="tel" inputMode="tel" autoComplete="tel" required aria-required="true" value={formData.phone} onChange={e => update('phone', e.target.value)} placeholder="+92 300 1234567" style={inputStyle('phone')} aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'co-phone-error' : undefined} />
                   {errors.phone && <span id="co-phone-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.phone}</span>}
                 </div>
                 <div>
                   <label htmlFor="co-name" style={labelStyle}>Full Name *</label>
-                  <input id="co-name" autoComplete="name" value={formData.fullName} onChange={e => update('fullName', e.target.value)} placeholder="e.g. Ayesha Khan" style={inputStyle('fullName')} aria-invalid={!!errors.fullName} aria-describedby={errors.fullName ? 'co-name-error' : undefined} />
+                  <input id="co-name" name="name" autoComplete="name" required aria-required="true" value={formData.fullName} onChange={e => update('fullName', e.target.value)} placeholder="e.g. Ayesha Khan" style={inputStyle('fullName')} aria-invalid={!!errors.fullName} aria-describedby={errors.fullName ? 'co-name-error' : undefined} />
                   {errors.fullName && <span id="co-name-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.fullName}</span>}
                 </div>
               </div>
 
               <hr className="hairline" style={{ margin: '32px 0' }} />
               <Overline style={{ display: 'block', marginBottom: 16 }}>Shipping Address</Overline>
+              {/* Province first (required): one native tap resolves the
+                  delivery zone, so the exact charge and ETA show below before
+                  the shopper has typed a single address character. City
+                  suggestions filter to the chosen province. */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="checkout-name-grid">
+                <div>
+                  <label htmlFor="co-province" style={labelStyle}>Province *</label>
+                  <select id="co-province" name="province" autoComplete="address-level1" required aria-required="true" value={formData.province} onChange={e => { provinceTouched.current = true; update('province', e.target.value); }} style={{ ...inputStyle('province'), cursor: 'pointer' }} aria-invalid={!!errors.province} aria-describedby={errors.province ? 'co-province-error' : undefined}>
+                    <option value="">Select province</option>
+                    {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                  </select>
+                  {errors.province && <span role="alert" id="co-province-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.province}</span>}
+                </div>
+                <div>
+                  <label htmlFor="co-city" style={labelStyle}>City *</label>
+                  <CityCombobox
+                    id="co-city"
+                    value={formData.city}
+                    cities={cityOptions}
+                    onChange={updateCity}
+                    onBlurNormalize={v => updateCity(normalizeCity(v))}
+                    inputStyle={inputStyle('city')}
+                    invalid={!!errors.city}
+                    describedBy={errors.city ? 'co-city-error' : undefined}
+                  />
+                  {errors.city && <span role="alert" id="co-city-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.city}</span>}
+                </div>
+              </div>
+              {/* The zone answer, at the moment it's decided — not two screens
+                  later in the totals. */}
+              {formData.province && (
+                <p className="small-text" aria-live="polite" style={{ margin: '0 0 16px', color: shipping === 0 ? 'var(--success, #15803d)' : 'var(--ink-700)', fontWeight: 600 }}>
+                  {shippingLoading
+                    ? 'Checking delivery for your area…'
+                    : shipping === 0
+                      ? `Delivery to ${formData.province}: FREE`
+                      : `Delivery to ${formData.province}: PKR ${shipping.toLocaleString()}${shippingInfo.estimatedDays ? ` · arrives in ${shippingInfo.estimatedDays.min}–${shippingInfo.estimatedDays.max} days` : ''}`}
+                </p>
+              )}
               <div style={{ marginBottom: 16 }}>
                 <label htmlFor="co-address" style={labelStyle}>Address *</label>
-                <input id="co-address" autoComplete="street-address" value={formData.address} onChange={e => update('address', e.target.value)} placeholder="House/flat, street, area" style={inputStyle('address')} aria-invalid={!!errors.address} aria-describedby={errors.address ? 'co-address-error' : undefined} />
-                {errors.address && <span id="co-address-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.address}</span>}
+                <textarea id="co-address" name="address" rows={2} autoComplete="street-address" value={formData.address} onChange={e => update('address', e.target.value)} placeholder="House/flat, street, area" style={{ ...inputStyle('address'), resize: 'vertical', minHeight: 56 }} aria-invalid={!!errors.address} aria-describedby={errors.address ? 'co-address-error' : undefined} />
+                {errors.address && <span role="alert" id="co-address-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.address}</span>}
               </div>
-              <div style={{ marginBottom: 12 }}>
-                <label htmlFor="co-city" style={labelStyle}>City *</label>
-                <input id="co-city" list="pk-cities" autoComplete="address-level2" value={formData.city} onChange={e => updateCity(e.target.value)} onBlur={e => updateCity(normalizeCity(e.target.value))} style={inputStyle('city')} aria-invalid={!!errors.city} aria-describedby={errors.city ? 'co-city-error' : undefined} />
-                <datalist id="pk-cities">
-                  {PK_CITIES.map(c => <option key={c} value={c} />)}
-                </datalist>
-                {errors.city && <span id="co-city-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.city}</span>}
-              </div>
-              {/* Province + postal code are optional (both submit as '' when
-                  untouched; the shipping resolver falls back to the standard
-                  zone), so they hide behind a toggle to keep the visible form
-                  at the COD minimum. */}
               {!moreAddress ? (
                 <button
                   type="button"
+                  aria-expanded={moreAddress}
+                  aria-controls="co-more-address"
                   onClick={() => setMoreAddress(true)}
                   style={{
                     background: 'none', border: 'none', padding: '4px 0', cursor: 'pointer',
@@ -782,26 +916,19 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                     color: 'var(--brand-pink-text)', marginBottom: 12,
                   }}
                 >
-                  + Add province / postal code (optional)
+                  + Add postal code (optional)
                 </button>
               ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="checkout-name-grid">
-                  <div>
-                    <label htmlFor="co-province" style={labelStyle}>Province</label>
-                    <select id="co-province" autoComplete="address-level1" value={formData.province} onChange={e => { provinceTouched.current = true; update('province', e.target.value); }} style={{ ...inputStyle('province'), cursor: 'pointer' }}>
-                      <option value="">Select</option>
-                      {PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
+                <div id="co-more-address" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }} className="checkout-name-grid">
                   <div>
                     <label htmlFor="co-zip" style={labelStyle}>Postal Code</label>
-                    <input id="co-zip" autoComplete="postal-code" inputMode="numeric" value={formData.zip} onChange={e => update('zip', e.target.value)} style={inputStyle('zip')} />
+                    <input id="co-zip" name="postal-code" autoComplete="postal-code" inputMode="numeric" value={formData.zip} onChange={e => update('zip', e.target.value)} style={inputStyle('zip')} />
                   </div>
                 </div>
               )}
               <div style={{ marginBottom: 16 }}>
                 <label htmlFor="co-email" style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
-                <input id="co-email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
+                <input id="co-email" name="email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
                 {errors.email && <span id="co-email-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
               </div>
 
@@ -811,6 +938,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               <div role="radiogroup" aria-label="Payment method">
                 {visiblePayMethods.map(([key, label, desc]) => (
                   <label key={key} className="co-pay" style={{
+                    position: 'relative',
                     display: 'flex', alignItems: 'flex-start', gap: 12, padding: '16px',
                     border: '1px solid ' + (payMethod === key ? 'var(--ink-900)' : 'var(--line)'),
                     borderRadius: 'var(--radius-card)', cursor: 'pointer',
@@ -836,10 +964,11 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                   <BankAccountsList accounts={bankAccounts} notes={bankNotes} />
                 </div>
               )}
-            </div>
+            </form>
 
-            <div ref={summaryRef} style={{ background: 'var(--paper2)', borderRadius: 'var(--radius-card)', padding: 28, border: '1px solid var(--line)', alignSelf: 'start', position: 'sticky', top: 100, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
+            <div ref={summaryRef} className="checkout-summary" style={{ background: 'var(--paper2)', borderRadius: 'var(--radius-card)', padding: 28, border: '1px solid var(--line)', alignSelf: 'start' }}>
               <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>Your Order</Overline>
+              <div className="checkout-summary-items">
               {/* Editable right up to Place order: qty steppers and remove
                   per line, so second thoughts never force a trip back to the
                   cart (owner request, 5 Aug). Totals, shipping and coupon
@@ -857,16 +986,16 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 8, background: '#fff' }}>
                         <button type="button" aria-label={`Reduce quantity of ${item.name}`} onClick={() => updateQty(i, -1)} disabled={item.qty <= 1}
-                          style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: item.qty <= 1 ? 'default' : 'pointer', color: item.qty <= 1 ? 'var(--ink-300, #c9c2b6)' : 'var(--ink-700)', fontSize: '0.9375rem', lineHeight: 1 }}>
+                          style={{ width: 32, height: 32, border: 'none', background: 'none', cursor: item.qty <= 1 ? 'default' : 'pointer', color: item.qty <= 1 ? 'var(--ink-300, #c9c2b6)' : 'var(--ink-700)', fontSize: '1rem', lineHeight: 1 }}>
                           &minus;
                         </button>
                         <span className="tabular-nums" style={{ minWidth: 20, textAlign: 'center', fontSize: '0.75rem', fontWeight: 600 }}>{item.qty}</span>
                         <button type="button" aria-label={`Increase quantity of ${item.name}`} onClick={() => updateQty(i, 1)}
-                          style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--ink-700)', fontSize: '0.9375rem', lineHeight: 1 }}>
+                          style={{ width: 32, height: 32, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--ink-700)', fontSize: '1rem', lineHeight: 1 }}>
                           +
                         </button>
                       </div>
-                      <button type="button" aria-label={`Remove ${item.name} from order`} onClick={() => removeFromCart(i)}
+                      <button type="button" aria-label={`Remove ${item.name} from order`} onClick={() => { if (cartItems.length > 1 || window.confirm('Remove the last item? Your checkout will be emptied.')) removeFromCart(i); }}
                         className="small-text" style={{ background: 'none', border: 'none', color: 'var(--ink-500)', cursor: 'pointer', padding: 0, fontSize: '0.6875rem', textDecoration: 'underline' }}>
                         Remove
                       </button>
@@ -875,6 +1004,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                   <span className="tabular-nums" style={{ fontSize: '0.8125rem', fontWeight: 500, flexShrink: 0 }}>PKR {(item.price * item.qty).toLocaleString()}</span>
                 </div>
               ))}
+              </div>
               <hr className="hairline" style={{ margin: '16px 0' }} />
 
               {!cartCoupon ? (
@@ -899,6 +1029,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                       aria-label="Coupon code"
                       value={couponCode}
                       onChange={e => { setCouponCode(e.target.value); setCouponError(''); }}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); void applyCoupon(); } }}
                       placeholder="Promo code (e.g. SAVE10)"
                       // minWidth 0: an input's intrinsic minimum (~20ch) stops flex
                       // shrinking it, pushing the Apply button off-screen on phones.
@@ -915,8 +1046,8 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
-                  <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
-                    ✓ {cartCoupon.code} {freeShipCoupon ? '(free shipping)' : cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
+                  <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <CheckIcon size={12} /> {cartCoupon.code} {freeShipCoupon ? '(free shipping)' : cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
                   </span>
                   <button type="button" aria-label="Remove coupon" onClick={() => { setCouponCode(''); setAppliedCoupon(null); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
                 </div>
@@ -939,7 +1070,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <input
                         aria-label="Points to redeem"
-                        type="number" min={0} max={maxPoints}
+                        type="text" inputMode="numeric" pattern="[0-9]*"
                         value={pointsRedeemInput}
                         onChange={e => {
                           const n = e.target.value === '' ? '' : Math.max(0, Math.min(maxPoints, Number(e.target.value)));
@@ -974,8 +1105,8 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span className="small-text">Shipping{shippingInfo.label ? ` (${shippingInfo.label})` : ''}</span>
-                <span className="small-text tabular-nums" aria-live="polite" style={{ fontWeight: 500, color: shippingLoading ? 'var(--ink-500)' : shipping === 0 ? 'var(--success)' : 'inherit' }}>{shippingLoading ? 'updating…' : shipping === 0 ? 'FREE' : `PKR ${shipping}`}</span>
+                <span className="small-text">Shipping{formData.province ? ` (${formData.province})` : shippingInfo.label ? ` (${shippingInfo.label})` : ''}</span>
+                <span className="small-text tabular-nums" aria-live="polite" style={{ fontWeight: 500, color: shippingLoading ? 'var(--ink-500)' : shipping === 0 ? 'var(--success)' : 'inherit' }}>{shippingLoading ? 'updating…' : shipping === 0 ? 'FREE' : formData.province ? `PKR ${shipping}` : `from PKR ${shipping}`}</span>
               </div>
               {pointsDiscount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -995,7 +1126,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                   {submitError}
                 </div>
               )}
-              <button className="btn-primary" style={{ width: '100%', ...(submitting || cartItems.length === 0 ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }} onClick={handleSubmit} disabled={submitting || cartItems.length === 0} aria-busy={submitting}>
+              <button ref={submitBtnRef} type="submit" form="checkout-form" className="btn-primary" style={{ width: '100%', ...(submitting || cartItems.length === 0 ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }} disabled={submitting || cartItems.length === 0} aria-busy={submitting}>
                 {submitting ? 'Placing Order…' : payMethod === 'jazzcash' || payMethod === 'easypaisa' ? `Continue to ${payMethod === 'jazzcash' ? 'JazzCash' : 'Easypaisa'} →` : 'Place Order'}
               </button>
               {payMethod === 'cod' && (
@@ -1004,7 +1135,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                 </p>
               )}
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)', display: 'inline-flex', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-                <span aria-hidden="true" style={{ lineHeight: 1 }}>🔒</span> Secure checkout · COD available
+                <span aria-hidden="true" style={{ display: 'inline-flex', lineHeight: 1 }}><LockIcon /></span> Secure checkout · COD available
               </p>
               {/* Reassurance strip at the decision point, checkout previously
                   carried no trust signals, a known driver of COD-market
@@ -1016,7 +1147,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               }}>
                 {['100% authentic products', 'Pay cash on delivery', `${RETURNS_WINDOW_DAYS}-day easy returns`].map(t => (
                   <li key={t} className="small-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--ink-700, var(--ink-500))' }}>
-                    <span aria-hidden="true" style={{ color: 'var(--success, #15803d)', fontWeight: 700 }}>✓</span>
+                    <span aria-hidden="true" style={{ color: 'var(--success, #15803d)', display: 'inline-flex' }}><CheckIcon /></span>
                     {t}
                   </li>
                 ))}
@@ -1051,7 +1182,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
         inert={!showCommitBar}
         style={{
           position: 'fixed', left: 0, right: 0, bottom: 0, zIndex: 90,
-          background: 'rgba(250,246,238,0.97)',
+          background: 'color-mix(in srgb, var(--paper, #faf6ee) 97%, transparent)',
           backdropFilter: 'saturate(140%) blur(8px)',
           WebkitBackdropFilter: 'saturate(140%) blur(8px)',
           borderTop: '1px solid var(--line)',
@@ -1066,15 +1197,21 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
       >
         <div style={{ minWidth: 0, flex: '1 1 auto' }}>
           <div style={{ fontSize: '0.6875rem', color: 'var(--ink-700)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {payMethod === 'cod' ? 'To pay on delivery · nothing now' : 'Due now'}
+            {payMethod === 'cod' ? `To pay on delivery · nothing now · ${RETURNS_WINDOW_DAYS}-day returns` : 'Due now'}
           </div>
           <div className="tabular-nums" style={{ fontSize: '1rem', fontWeight: 700 }}>
             PKR {total.toLocaleString()}
           </div>
+          {submitError && (
+            <div role="alert" style={{ fontSize: '0.6875rem', color: 'var(--error, #b4231f)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {submitError}
+            </div>
+          )}
         </div>
         <button
           className="btn-primary"
-          onClick={handleSubmit}
+          type="submit"
+          form="checkout-form"
           disabled={submitting || cartItems.length === 0}
           aria-busy={submitting}
           style={{

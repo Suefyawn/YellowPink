@@ -36,6 +36,7 @@ test('PDP → cart → checkout golden path', async ({ page }) => {
   await page.locator('#co-phone').fill('03001234567');
   await page.locator('#co-name').fill('Test Customer');
   await page.locator('#co-address').fill('House 1, Street 2, Test Town');
+  await page.locator('#co-province').selectOption('Punjab');
   await page.locator('#co-city').fill('Lahore');
 
   const placeOrder = page.getByRole('button', { name: /place order/i });
@@ -67,6 +68,7 @@ test('full COD order reaches the thank-you page', async ({ page }) => {
   await page.locator('#co-phone').fill('03001234567');
   await page.locator('#co-name').fill('E2E Test');
   await page.locator('#co-address').fill('House 1, Street 2, Test Town');
+  await page.locator('#co-province').selectOption('Punjab');
   await page.locator('#co-city').fill('Lahore');
   await page.getByRole('button', { name: /place order/i }).click();
 

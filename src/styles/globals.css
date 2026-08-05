@@ -6,6 +6,7 @@
    here was render-blocking and added a third-party origin. */
 
 :root {
+  color-scheme: light;
   --ink-900: #0A0A0A;
   --ink-700: #2A2A2A;
   /* --ink-500 hits ~5.6:1 on --paper (WCAG AA for normal body text). */
@@ -1061,10 +1062,26 @@ a.underline,
   .checkout-commit-bar { display: none !important; }
 }
 
-/* Checkout / Cart responsive */
+/* Checkout inputs: a visible focus state (the global :focus reset nulls
+ * outlines, so use border + shadow). */
+.checkout-grid input:focus, .checkout-grid select:focus, .checkout-grid textarea:focus {
+  border-color: var(--brand-pink-text, #C5286A) !important;
+  box-shadow: 0 0 0 3px rgba(197, 40, 106, 0.12);
+}
+
+/* Checkout / Cart responsive.
+ * The summary panel is sticky with its own internal item-list scroll ONLY on
+ * desktop; on phones it flows statically (a nested scroll area inside the
+ * page scroll was a documented trap). The compact mobile summary accordion
+ * shows only below 861px. */
+@media (min-width: 861px) {
+  .checkout-summary { position: sticky; top: 100px; }
+  .checkout-summary-items { max-height: min(38vh, 320px); overflow-y: auto; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+  .checkout-mobile-summary { display: none; }
+}
 @media (max-width: 860px) {
   .checkout-grid { grid-template-columns: minmax(0, 1fr) !important; }
-  .checkout-grid > div:last-child { position: static !important; }
+  .checkout-grid > div:last-child { position: static !important; max-height: none !important; overflow: visible !important; }
   .cart-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .cart-grid > div:last-child { position: static !important; }
   .addr-grid-3 { grid-template-columns: 1fr 1fr !important; }
