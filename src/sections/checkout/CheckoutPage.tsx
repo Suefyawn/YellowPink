@@ -80,7 +80,7 @@ const GATEWAY_SNAPSHOT_KEY = 'yp_gateway_cart';
 const GATEWAY_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000;
 
 export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, paymentError = null, failedOrder = null, seasonalCoupon = null }: CheckoutPageProps = {}) {
-  const { cartItems, clearCart, restoreCart, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
+  const { cartItems, clearCart, restoreCart, removeFromCart, updateQty, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
   const router = useRouter();
 
@@ -840,17 +840,37 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
 
             <div ref={summaryRef} style={{ background: 'var(--paper2)', borderRadius: 'var(--radius-card)', padding: 28, border: '1px solid var(--line)', alignSelf: 'start', position: 'sticky', top: 100, maxHeight: 'calc(100vh - 120px)', overflowY: 'auto' }}>
               <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>Your Order</Overline>
+              {/* Editable right up to Place order: qty steppers and remove
+                  per line, so second thoughts never force a trip back to the
+                  cart (owner request, 5 Aug). Totals, shipping and coupon
+                  maths all derive from cartItems, so they recompute live. */}
               {cartItems.map((item, i) => (
                 <div key={i} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)', position: 'relative' }}>
+                  <div style={{ width: 48, height: 48, borderRadius: 'var(--radius-card)', flexShrink: 0, overflow: 'hidden', background: 'var(--paper2)' }}>
                     <ProductImage src={item.image_url} alt={brandPlusName(item.brand, item.name)} width={48} height={48} />
-                    <span style={{ position: 'absolute', top: -6, right: -6, background: 'var(--ink-900)', color: 'var(--paper)', width: 18, height: 18, borderRadius: '50%', fontSize: '0.625rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{item.qty}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{item.name}</div>
                     {(item.variant_label ?? item.variant) && (
                       <div className="small-text" style={{ fontSize: '0.6875rem' }}>{item.variant_label ?? item.variant}</div>
                     )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', border: '1px solid var(--line)', borderRadius: 8, background: '#fff' }}>
+                        <button type="button" aria-label={`Reduce quantity of ${item.name}`} onClick={() => updateQty(i, -1)} disabled={item.qty <= 1}
+                          style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: item.qty <= 1 ? 'default' : 'pointer', color: item.qty <= 1 ? 'var(--ink-300, #c9c2b6)' : 'var(--ink-700)', fontSize: '0.9375rem', lineHeight: 1 }}>
+                          &minus;
+                        </button>
+                        <span className="tabular-nums" style={{ minWidth: 20, textAlign: 'center', fontSize: '0.75rem', fontWeight: 600 }}>{item.qty}</span>
+                        <button type="button" aria-label={`Increase quantity of ${item.name}`} onClick={() => updateQty(i, 1)}
+                          style={{ width: 26, height: 26, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--ink-700)', fontSize: '0.9375rem', lineHeight: 1 }}>
+                          +
+                        </button>
+                      </div>
+                      <button type="button" aria-label={`Remove ${item.name} from order`} onClick={() => removeFromCart(i)}
+                        className="small-text" style={{ background: 'none', border: 'none', color: 'var(--ink-500)', cursor: 'pointer', padding: 0, fontSize: '0.6875rem', textDecoration: 'underline' }}>
+                        Remove
+                      </button>
+                    </div>
                   </div>
                   <span className="tabular-nums" style={{ fontSize: '0.8125rem', fontWeight: 500, flexShrink: 0 }}>PKR {(item.price * item.qty).toLocaleString()}</span>
                 </div>
