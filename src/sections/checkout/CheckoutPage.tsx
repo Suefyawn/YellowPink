@@ -79,6 +79,21 @@ const GATEWAY_SNAPSHOT_KEY = 'yp_gateway_cart';
 // don't resurrect last week's bag because an old ?error= URL was revisited.
 const GATEWAY_SNAPSHOT_TTL_MS = 6 * 60 * 60 * 1000;
 
+
+// House icon rules (AGENTS.md): inline SVG, lucide-style, never emoji.
+const LockIcon = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+  </svg>
+);
+const CheckIcon = ({ size = 13 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M20 6 9 17l-5-5" />
+  </svg>
+);
+
 export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, paymentError = null, failedOrder = null, seasonalCoupon = null }: CheckoutPageProps = {}) {
   const { cartItems, clearCart, restoreCart, removeFromCart, updateQty, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
@@ -915,8 +930,8 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                 </div>
               ) : (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '8px 10px', background: '#f0fdf4', borderRadius: 6, border: '1px solid #bbf7d0' }}>
-                  <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
-                    ✓ {cartCoupon.code} {freeShipCoupon ? '(free shipping)' : cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
+                  <span style={{ fontSize: '0.8125rem', color: '#15803d', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                    <CheckIcon size={12} /> {cartCoupon.code} {freeShipCoupon ? '(free shipping)' : cartCoupon.type === 'percent' ? `(${cartCoupon.value}% off)` : `(PKR ${cartCoupon.value} off)`}
                   </span>
                   <button type="button" aria-label="Remove coupon" onClick={() => { setCouponCode(''); setAppliedCoupon(null); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '1rem', width: 36, height: 36, borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>✕</button>
                 </div>
@@ -1004,7 +1019,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                 </p>
               )}
               <p className="small-text" style={{ textAlign: 'center', marginTop: 12, color: 'var(--ink-500)', display: 'inline-flex', width: '100%', justifyContent: 'center', alignItems: 'center', gap: 6 }}>
-                <span aria-hidden="true" style={{ lineHeight: 1 }}>🔒</span> Secure checkout · COD available
+                <span aria-hidden="true" style={{ display: 'inline-flex', lineHeight: 1 }}><LockIcon /></span> Secure checkout · COD available
               </p>
               {/* Reassurance strip at the decision point, checkout previously
                   carried no trust signals, a known driver of COD-market
@@ -1016,7 +1031,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               }}>
                 {['100% authentic products', 'Pay cash on delivery', `${RETURNS_WINDOW_DAYS}-day easy returns`].map(t => (
                   <li key={t} className="small-text" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: 'var(--ink-700, var(--ink-500))' }}>
-                    <span aria-hidden="true" style={{ color: 'var(--success, #15803d)', fontWeight: 700 }}>✓</span>
+                    <span aria-hidden="true" style={{ color: 'var(--success, #15803d)', display: 'inline-flex' }}><CheckIcon /></span>
                     {t}
                   </li>
                 ))}
