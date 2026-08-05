@@ -167,26 +167,53 @@ export function QuizClient() {
     // Both flows are two steps end-to-end; the wellness follow-up only enters
     // `qs` after the goal is chosen, so display the known total, not qs.length.
     const total = 2;
+    // Segments: the branch pick counts as a completed first step, so the bar
+    // reads path -> question 1 -> question 2 (same language as the Fertility
+    // Quiz's progress bar).
+    const segTotal = total + 1;
+    const segDone = qIndex + 1;
+    const back = () => {
+      if (qIndex > 0) { setQIndex(qIndex - 1); return; }
+      setPhase('intro'); setBranch(null); setAnswers(null);
+    };
     return (
-      <div style={{ maxWidth: 520 }}>
+      <div key={`q-${branch}-${qIndex}`} className="qz-step" style={{ maxWidth: 520 }}>
+        <div style={{ display: 'flex', gap: 6, marginBottom: 14 }} aria-hidden="true">
+          {Array.from({ length: segTotal }, (_, i) => (
+            <span key={i} style={{ flex: 1, height: 5, borderRadius: 99, background: i < segDone ? 'var(--brand-pink-text, #C5286A)' : i === segDone ? '#f2b8cf' : 'var(--line)' }} />
+          ))}
+        </div>
         <div className="small-text" style={{ color: 'var(--ink-500)', marginBottom: 10 }}>
           Step {qIndex + 1} of {total}
         </div>
         <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.375rem', fontWeight: 500, margin: '0 0 18px' }}>{q.prompt}</h2>
         <div style={{ display: 'grid', gap: 10 }}>
           {q.options.map(o => (
-            <button key={o.value} type="button" onClick={() => choose(q.key, o.value)} style={card} className="quiz-card">
+            <button key={o.value} type="button" onClick={() => choose(q.key, o.value)} style={card} className="qz-option">
               {o.label}
             </button>
           ))}
         </div>
+        <button type="button" onClick={back} className="small-text"
+          style={{ marginTop: 14, background: 'none', border: 'none', color: 'var(--ink-500)', cursor: 'pointer', padding: 0 }}>
+          {'\u2190'} Back
+        </button>
       </div>
     );
   }
 
   // ── Loading ───────────────────────────────────────────────────────────────
   if (phase === 'loading') {
-    return <p className="body-text" style={{ color: 'var(--ink-500)' }}>Building your plan…</p>;
+    return (
+      <div className="qz-step" role="status" aria-live="polite" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span className="body-text" style={{ color: 'var(--ink-500)' }}>Building your plan</span>
+        <span aria-hidden="true" style={{ display: 'inline-flex', gap: 4 }}>
+          {[0, 1, 2].map(i => (
+            <span key={i} style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--brand-pink-text, #C5286A)', animation: `qz-step-in 700ms ease-in-out ${i * 160}ms infinite alternate` }} />
+          ))}
+        </span>
+      </div>
+    );
   }
 
   // ── Results ───────────────────────────────────────────────────────────────
@@ -207,5 +234,5 @@ export function QuizClient() {
     );
   }
 
-  return <RoutineView routine={routine} onRetake={retake} />;
+  return <div className="qz-step"><RoutineView routine={routine} onRetake={retake} /></div>;
 }

@@ -69,6 +69,7 @@ export const FREE_TOOLS: FreeTool[] = [
     categories: ['Fertility', "Women's Health"],
     tint: '#f6eefb',
     accent: '#8b2fa1',
+    image: '/answers/fertility-quiz.webp',
   },
   {
     href: '/quiz',

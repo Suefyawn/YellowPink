@@ -1300,3 +1300,29 @@ a.underline,
 section.band-tinted + section {
   padding-top: var(--section-gap);
 }
+
+/* ── Quiz interaction language (Fertility Quiz + Routine Finder) ──────────
+   One shared feel for every step-through quiz: each step slides in, option
+   cards lift and take the quiz's accent on hover (accent supplied per quiz
+   via --qz-accent), and results fade up. Inline resting borders lose to
+   these !important hover rules by design (same pattern as
+   .quiz-branch-panel). Respect reduced-motion. */
+@keyframes qz-step-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.qz-step { animation: qz-step-in 260ms ease-out both; }
+.qz-option {
+  transition: border-color 140ms ease-out, transform 140ms ease-out,
+    box-shadow 140ms ease-out, background 140ms ease-out;
+}
+.qz-option:hover, .qz-option:focus-visible {
+  border-color: var(--qz-accent, #C5286A) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.07);
+}
+.qz-option:active { transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .qz-step { animation: none; }
+  .qz-option, .qz-option:hover { transform: none; }
+}
