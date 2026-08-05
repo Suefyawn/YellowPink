@@ -62,6 +62,15 @@ export const FREE_TOOLS: FreeTool[] = [
     image: '/answers/calorie.webp',
   },
   {
+    href: '/fertility-quiz',
+    name: 'Fertility Quiz',
+    blurb: 'Four questions point to your most useful next step when a baby is taking its time.',
+    icon: 'heart',
+    categories: ['Fertility', "Women's Health"],
+    tint: '#f6eefb',
+    accent: '#8b2fa1',
+  },
+  {
     href: '/quiz',
     name: 'Routine Finder',
     blurb: 'Two questions, and you get a skincare routine or supplement plan built for you.',

@@ -1023,6 +1023,12 @@ store owner.
 
 A dated history of user-facing changes, newest first.
 
+### 5 August 2026
+
+- **Every Quick Answer now suggests the right next step for that exact result.** A calculation's outcome picks one gentle recommendation from the live catalogue: the Fertile Days Finder suggests the ovulation combo kit (or pregnancy strips when the dates say the period looks late, or the cycle guide when cycles are irregular); the Due Date Finder suggests folate in the first trimester and the prenatal combo after; the weight and calorie checks point to the calorie tool or protein where it genuinely fits. One suggestion per result, never a shelf. Clicks are tracked so the Dashboard's Quick Answers panel can show which results turn into orders.
+- **New Fertility Quiz at /fertility-quiz.** Four questions, no personal details, and the answer pattern points to the most useful next step: better timing, a hormonal (PCOS) check, the male side, or a full fertility workup after a year. Each result explains itself in plain language, links the right guides, and appears with the other Quick Answers across the site.
+- **Homepage: "Just landed" moved below the demand-ranked rails.** New arrivals have no sales history by definition, so the premium slot under Featured now goes to the sale and the demand-ranked rails (Best Sellers, Trending); new arrivals show further down as freshness for returning shoppers.
+
 ### 4 August 2026
 
 - **The cart's free-delivery bar now knows about brand thresholds.** When everything in the cart is from a brand with its own free-delivery deal (like NB Sons over Rs 1,999), the "Add PKR X more" nudge counts toward that brand's threshold instead of the storewide one — a Rs 1,490 NB Sons basket now correctly says "Add PKR 509 more", not "Add PKR 3,510 more", with a note that the brand ships free nationwide over its threshold. Mixed carts keep the storewide number so the promise stays unambiguous.
