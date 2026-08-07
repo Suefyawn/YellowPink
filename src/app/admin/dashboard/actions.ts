@@ -68,6 +68,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     geoCityRows, geoCountryRows,
     searchTermRows, productIntentRows,
     answersUsageRows, answersViewRows, answersConvRows,
+    answersRecRows, answersRecConvRows,
   ] = await Promise.all([
     // ── core stats
     phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
@@ -360,7 +361,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
              count(distinct distinct_id) as uniques
       FROM events
       WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
-        AND properties.\`$pathname\` IN ('/answers', '/ovulation-calculator', '/pregnancy-calculator', '/bmi-calculator', '/calorie-calculator')
+        AND properties.\`$pathname\` IN ('/answers', '/ovulation-calculator', '/pregnancy-calculator', '/bmi-calculator', '/calorie-calculator', '/fertility-quiz')
       GROUP BY path
     `),
     phQuery(apiKey, `
@@ -370,6 +371,31 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         AND ${W7} AND ${NOT_ADMIN}
         AND distinct_id IN (
           SELECT distinct distinct_id FROM events WHERE event = 'answer_used' AND ${W7}
+        )
+    `),
+
+    // ── Recommendation funnel: each answer's result page shows one product
+    // suggestion (answer_rec_clicked fires with answer + case + href). Per
+    // rec: clicks and unique clickers, then how many clickers purchased in
+    // the window — the number that says whether the funnel earns its spot.
+    phQuery(apiKey, `
+      SELECT toString(properties.answer) as answer,
+             toString(properties.\`case\`) as rec_case,
+             toString(properties.href) as href,
+             count() as clicks,
+             count(distinct distinct_id) as users
+      FROM events
+      WHERE event = 'answer_rec_clicked' AND ${W7} AND ${NOT_ADMIN}
+      GROUP BY answer, rec_case, href
+      ORDER BY clicks DESC
+    `),
+    phQuery(apiKey, `
+      SELECT count(distinct distinct_id)
+      FROM events
+      WHERE (event = 'purchase' OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you'))
+        AND ${W7} AND ${NOT_ADMIN}
+        AND distinct_id IN (
+          SELECT distinct distinct_id FROM events WHERE event = 'answer_rec_clicked' AND ${W7}
         )
     `),
   ]);
@@ -527,6 +553,11 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         path: String(path), views: Number(views) || 0, uniques: Number(uniques) || 0,
       })),
       converters: Number(answersConvRows[0]?.[0] ?? 0),
+      recClicks: answersRecRows.map(([answer, recCase, href, clicks, users]) => ({
+        answer: String(answer), case: String(recCase), href: String(href),
+        clicks: Number(clicks) || 0, users: Number(users) || 0,
+      })),
+      recConverters: Number(answersRecConvRows[0]?.[0] ?? 0),
     }),
   ]);
 }

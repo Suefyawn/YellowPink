@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 4 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 7 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1022,6 +1022,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 7 August 2026
+
+- **The Dashboard's Quick Answers panel now shows the recommendation funnel.** Each answer's row gained a "Product clicks" column (how many times its result-page suggestion was clicked in the last 7 days), a "Most-clicked recommendations" list names the exact products shoppers tapped and which answer sent them, and the footer adds two running totals: recommendation clicks, and visitors who clicked a recommendation and then purchased. The new Fertility Quiz is also counted in the panel's traffic numbers now. Same refresh cadence as the other analytics panels.
 
 ### 5 August 2026
 
