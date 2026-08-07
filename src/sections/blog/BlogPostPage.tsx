@@ -9,6 +9,7 @@ import { BlogProductNudge } from '@/components/blog/BlogProductNudge';
 import { BlogStickyBuyBar } from '@/components/blog/BlogStickyBuyBar';
 import { QuizCtaBand } from '@/components/quiz/QuizCtaBand';
 import { AnswersCtaBand } from '@/components/tools/AnswersCtaBand';
+import { answersForCategory } from '@/lib/free-tools';
 import { NewsletterSignup } from '@/components/marketing/NewsletterSignup';
 import { BlogShareStrip } from './BlogShareStrip';
 import { BlogToc, type TocHeading } from './BlogToc';
@@ -191,8 +192,12 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProdu
 
       {/* Quiz nudge at the "I finished reading, now what" moment. The quiz
           converts at 12x the site rate but almost nobody finds it; blog posts
-          are the store's biggest entry surface. */}
-      <QuizCtaBand source="blog" />
+          are the store's biggest entry surface. Suppressed when the answers
+          band above already leads with the Fertility Quiz — a skincare
+          routine pitch under a fertility article reads as tone-deaf. */}
+      {!answersForCategory(post.category).some(t => t.href === '/fertility-quiz') && (
+        <QuizCtaBand source="blog" />
+      )}
 
       {/* YMYL safeguard: health/wellness articles, and any post a doctor has
           been assigned to review, carry a medical disclaimer (educational, not
