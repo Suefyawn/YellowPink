@@ -83,6 +83,34 @@ export async function resolveBrandLogos(names: string[]): Promise<BrandLogoEntry
   return wanted.map(name => ({ name, logoUrl: logoByName.get(name) ?? null }));
 }
 
+/** Same resolution as resolveBrandLogos, but ordered by live shopper
+ *  momentum: each brand ranked by the summed trend_score of its published
+ *  products, popularity_score as the tiebreak, curated order last (owner
+ *  call, 7 Aug 2026). The curated list still decides WHICH brands show;
+ *  the nightly scores decide the ORDER, so the homepage carousel leads
+ *  with whatever is actually moving this week. */
+export async function resolveBrandLogosByTrend(names: string[]): Promise<BrandLogoEntry[]> {
+  const entries = await resolveBrandLogos(names);
+  if (entries.length < 2) return entries;
+  const { data } = await supabase
+    .from('products')
+    .select('brand, trend_score, popularity_score')
+    .eq('status', 'published')
+    .in('brand', entries.map(e => e.name));
+  const trend = new Map<string, number>();
+  const pop = new Map<string, number>();
+  for (const r of (data ?? []) as Array<{ brand: string | null; trend_score: number | null; popularity_score: number | null }>) {
+    if (!r.brand) continue;
+    trend.set(r.brand, (trend.get(r.brand) ?? 0) + Number(r.trend_score ?? 0));
+    pop.set(r.brand, (pop.get(r.brand) ?? 0) + Number(r.popularity_score ?? 0));
+  }
+  const curated = new Map(entries.map((e, i) => [e.name, i]));
+  return [...entries].sort((a, b) =>
+    (trend.get(b.name) ?? 0) - (trend.get(a.name) ?? 0) ||
+    (pop.get(b.name) ?? 0) - (pop.get(a.name) ?? 0) ||
+    (curated.get(a.name) ?? 0) - (curated.get(b.name) ?? 0));
+}
+
 /** Brands eligible for the homepage logo-row picker: published, with a real
  *  logo uploaded, ranked by how many published products carry that name (a
  *  simple "how prominent is this brand in our catalogue" proxy for "famous"),

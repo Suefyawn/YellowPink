@@ -22,7 +22,7 @@ import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
 import { buildWellnessShowcase } from '@/lib/wellness-data';
 import { ALL_CATEGORIES, categoryHref } from '@/lib/category-taxonomy';
 import Link from 'next/link';
-import { resolveBrandLogos } from '@/lib/brands';
+import { resolveBrandLogos, resolveBrandLogosByTrend } from '@/lib/brands';
 import { composeHomepageRails, pickBlogHero } from '@/lib/merchandising';
 
 // Homepage "Shop by category" tiles, four makeup/skincare + four wellness,
@@ -67,9 +67,11 @@ import { ToolsBand } from '@/sections/home/ToolsBand';
 import { activeSeasonalTheme } from '@/lib/seasonal-theme';
 
 // Names must match products.brand / brands.name exactly (resolveBrandLogos
-// matches on name). Ordered by Pakistani search volume so the tiles mirror
-// what shoppers actually look for; the /brand pages for the top three rank
-// on page 2-3 and sitewide links are what push archives like these to page 1.
+// matches on name). This list decides WHICH brands show (picked by Pakistani
+// search volume); display ORDER comes from live shopper momentum via
+// resolveBrandLogosByTrend, so the carousel leads with what's trending
+// (owner call, 7 Aug 2026). The /brand pages for the top three rank on
+// page 2-3 and sitewide links are what push archives like these to page 1.
 const POPULAR_BRANDS = [
   'Saeed Ghani', 'Rivaj UK', 'Conatural', 'Christine',
   'CeraVe', 'Beauty of Joseon', 'SHEGLAM', 'Nutrifactor',
@@ -94,10 +96,11 @@ export default async function HomePage() {
     getPublishedCollectionsWithCovers(3),
     getHomeSocialProof(),
     getNewArrivals(24),
-    // Shop-by-brand tiles: the brands Pakistanis search for by name (Semrush:
-    // "saeed ghani products" 22k/mo, "rivaj uk" 18k/mo, "conatural" 15k/mo …)
-    // plus the store's strongest international lines. Order = search volume.
-    resolveBrandLogos(POPULAR_BRANDS),
+    // Shop-by-brand carousel: the brands Pakistanis search for by name
+    // (Semrush: "saeed ghani products" 22k/mo, "rivaj uk" 18k/mo, "conatural"
+    // 15k/mo …) plus the store's strongest international lines, most trending
+    // first (nightly trend scores).
+    resolveBrandLogosByTrend(POPULAR_BRANDS),
   ]);
 
   // The featured sale collection is shown only while a sale is switched on

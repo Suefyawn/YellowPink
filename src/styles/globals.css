@@ -1343,3 +1343,65 @@ section.band-tinted + section {
   .qz-step { animation: none; }
   .qz-option, .qz-option:hover { transform: none; }
 }
+
+/* ── Homepage brand carousel ──────────────────────────────────────────────
+   Continuous logo marquee (owner call, 7 Aug 2026: trending brands lead,
+   grid → sleek carousel). The list renders twice; translating the track by
+   -50% loops seamlessly because each half is identical and spacing lives on
+   the tiles (margin-right), not the track (a flex gap would add one extra
+   gap at the seam and make the loop stutter). Hover/focus pauses so tiles
+   stay clickable; reduced-motion and the static variant (≤2 brands) fall
+   back to a plain swipeable row. */
+.brand-carousel {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+}
+.brand-carousel-track {
+  display: flex;
+  width: max-content;
+  animation: brand-marquee var(--brand-marquee-dur, 36s) linear infinite;
+}
+.brand-carousel:hover .brand-carousel-track,
+.brand-carousel:focus-within .brand-carousel-track {
+  animation-play-state: paused;
+}
+.brand-carousel-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 190px;
+  min-height: 96px;
+  padding: 18px 16px;
+  margin-right: 14px;
+  border-radius: 12px;
+  border: 1px solid var(--ink-100, #eee);
+  background: #fff;
+  text-decoration: none;
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
+}
+.brand-carousel-tile:hover,
+.brand-carousel-tile:focus-visible {
+  border-color: var(--brand-pink-cta, #C5286A);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+@keyframes brand-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .brand-carousel-track { animation: none; }
+  .brand-carousel {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+    padding: 0 var(--side);
+  }
+}
+.brand-carousel-static {
+  overflow-x: auto;
+  -webkit-mask-image: none;
+  mask-image: none;
+  padding: 0 var(--side);
+}
+.brand-carousel-static .brand-carousel-track { animation: none; }
