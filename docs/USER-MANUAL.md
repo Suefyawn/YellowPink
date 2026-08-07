@@ -1025,6 +1025,7 @@ A dated history of user-facing changes, newest first.
 
 ### 7 August 2026
 
+- **"Shop by brand" on the homepage is now a moving carousel, trending brands first.** The brand logos glide in a smooth continuous loop (it pauses the moment you hover or tap-hold, and every logo stays clickable). The order is no longer fixed: the brands with the most real shopper activity this week (from the same nightly scores that power Best Sellers and Trending) lead the row, so the carousel always opens with what's currently moving. You still choose which brands appear; visitors who prefer reduced motion get a plain swipeable row instead.
 - **The Dashboard's Quick Answers panel now shows the recommendation funnel.** Each answer's row gained a "Product clicks" column (how many times its result-page suggestion was clicked in the last 7 days), a "Most-clicked recommendations" list names the exact products shoppers tapped and which answer sent them, and the footer adds two running totals: recommendation clicks, and visitors who clicked a recommendation and then purchased. The new Fertility Quiz is also counted in the panel's traffic numbers now. Same refresh cadence as the other analytics panels.
 
 ### 5 August 2026
