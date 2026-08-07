@@ -83,8 +83,23 @@ export const FREE_TOOLS: FreeTool[] = [
   },
 ];
 
-/** The answers worth showing under a blog post of this category (max two). */
+// Fertility topics lead with the quiz: interactive quizzes out-convert the
+// calculators (see QuizCtaBand's numbers), and the quiz's result cases route
+// to the specific next step, which a date calculator can't. Without a lead
+// the registry-order slice buried the quiz behind the two finders.
+const CATEGORY_LEAD: Record<string, string> = {
+  Fertility: '/fertility-quiz',
+  "Women's Health": '/fertility-quiz',
+};
+
+/** The answers worth showing under a blog post of this category. */
 export function answersForCategory(category: string | null | undefined): FreeTool[] {
   if (!category) return [];
-  return FREE_TOOLS.filter(t => t.categories.includes(category)).slice(0, 2);
+  const matches = FREE_TOOLS.filter(t => t.categories.includes(category));
+  const lead = CATEGORY_LEAD[category];
+  if (!lead) return matches.slice(0, 2);
+  return [
+    ...matches.filter(t => t.href === lead),
+    ...matches.filter(t => t.href !== lead),
+  ].slice(0, 3);
 }
