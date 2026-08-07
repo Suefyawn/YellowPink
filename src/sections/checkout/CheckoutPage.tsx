@@ -836,6 +836,21 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                     : `from PKR ${defaultShippingRate.toLocaleString()}`}
                 </span>
               </div>
+              {seasonalCoupon && !cartCoupon && (
+                <button
+                  type="button"
+                  onClick={() => applyCode(seasonalCoupon)}
+                  disabled={couponLoading}
+                  style={{
+                    display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer',
+                    marginTop: 10, padding: '8px 10px',
+                    background: '#f0fdf4', border: '1px dashed #86efac', borderRadius: 6,
+                    fontSize: '0.8125rem', color: '#15803d', fontFamily: 'var(--font-ui)',
+                  }}
+                >
+                  Sale code <strong>{seasonalCoupon}</strong> is running — tap to apply it
+                </button>
+              )}
             </div>
           </details>
           <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 640px) 360px', gap: 48 }} className="checkout-grid">
