@@ -30,6 +30,13 @@ function initPostHog() {
         // Explicit: per-section click attribution on the storefront depends
         // on autocapture; don't rely on the SDK default staying true.
         autocapture: true,
+        // Client-side JS errors as $exception events with linked replays —
+        // Sentry only sees CSP/server reports, so before this the store had
+        // zero visibility into storefront JS errors (Aug 8 health sweep).
+        capture_exceptions: true,
+        // $dead_click marks taps that produce no response — the exact signal
+        // that would have surfaced the disabled-Add-to-Cart friction sooner.
+        capture_dead_clicks: true,
         person_profiles: 'identified_only',
         // Drop events that aren't real storefront customer behaviour, so the
         // funnel/top-pages numbers the owner reads aren't skewed:

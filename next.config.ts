@@ -98,6 +98,10 @@ const nextConfig: NextConfig = {
       { source: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan-2', destination: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan', permanent: true },
       { source: '/blog/vit-kd-vitamin-d3-k2-bone-heart-health-pakistan', destination: '/blog/vit-kd-vitamin-d3-10000-iu-k2-pakistan', permanent: true },
       { source: '/blog/how-to-increase-sperm-count-naturally-pakistan', destination: '/blog/increase-sperm-count-naturally-pakistan-guide', permanent: true },
+      // Two "Best Multivitamin in Pakistan" posts split one query's equity
+      // (GSC Aug 8: pos 33, 52 impressions, 0 clicks); the Jun 21 post was
+      // removed in favour of the richer Jul 31 one.
+      { source: '/blog/best-multivitamin-in-pakistan', destination: '/blog/best-multivitamin-pakistan', permanent: true },
       // Force apex → www as a PERMANENT (308) redirect. The platform default
       // can be a temporary 307 (SEO audit: "temporary redirects"); this pins
       // it at the app layer so link equity consolidates on the www host.
@@ -240,10 +244,15 @@ const nextConfig: NextConfig = {
       { key: 'Content-Security-Policy', value: CSP_POLICY },
     ];
 
-    // 5-minute edge freshness, 24-hour SWR — enough to absorb traffic bursts
-    // and survive a Supabase blip, short enough that stock changes on the PDP
-    // surface within ~5 min without an explicit revalidate.
-    const PUBLIC_CACHE = 'public, s-maxage=300, stale-while-revalidate=86400';
+    // 5-minute edge freshness, 7-day SWR. The SWR window is what long-tail
+    // PDPs actually live on: at ~20-25 pv/day most product slugs get less
+    // than one visit per day per edge region, so a 24 h window expired
+    // between visits and every load paid full SSR (Sentry Aug 8: /product
+    // TTFB p75 1.5 s, LCP p75 4.1 s vs 84 ms on cache-hit routes). A week
+    // keeps repeat visits instant-from-stale (revalidating in background)
+    // while the 5-min fresh window still surfaces price/stock edits fast —
+    // at most one visitor per slug sees a stale render before refresh.
+    const PUBLIC_CACHE = 'public, s-maxage=300, stale-while-revalidate=604800';
 
     // 1-hour edge freshness for crawler endpoints — they regenerate from DB
     // but the shape changes less often than the catalog itself.

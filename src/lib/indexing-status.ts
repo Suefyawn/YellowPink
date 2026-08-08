@@ -82,12 +82,20 @@ async function probePath(path: string): Promise<'live' | 'dead' | 'keep'> {
  *  (newest content, most useful to learn about), then already-checked but
  *  still-not-indexed rows ordered by staleness. Rows Google has confirmed
  *  indexed are left alone (their status won't flip back), keeping quota
- *  spent on the pages that still need attention. */
+ *  spent on the pages that still need attention.
+ *
+ *  Never-checked rows are ordered newest-first: without an explicit order the
+ *  DB returned them arbitrarily, and with a big unchecked backlog the newest
+ *  posts (the ones whose status is actually actionable) could sit uninspected
+ *  for weeks — observed Aug 8: all 27 posts from the Jul 31–Aug 7 content
+ *  push had never been picked while 161 rows sat unchecked. */
 async function pickBatch(limit: number): Promise<CandidateRow[]> {
   const admin = supabaseAdmin();
   const { data: unchecked } = await admin
     .from('gsc_url_index_status').select('path, last_checked_at, checks')
-    .is('last_checked_at', null).limit(limit);
+    .is('last_checked_at', null)
+    .order('first_seen_at', { ascending: false })
+    .limit(limit);
   const rows = [...((unchecked ?? []) as CandidateRow[])];
   if (rows.length < limit) {
     const { data: stale } = await admin
@@ -127,7 +135,7 @@ export async function getQuotaState(): Promise<GscQuotaState | null> {
  *  quota error instead of burning the rest of it on calls that will also
  *  fail. Returns how many it checked, how many dead paths it pruned, and
  *  whether quota was hit this run. */
-export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ checked: number; pruned: number; quotaExceeded: boolean }> {
+export async function refreshIndexingStatus(batch = DEFAULT_BATCH, budgetMs = 45_000): Promise<{ checked: number; pruned: number; quotaExceeded: boolean }> {
   const conn = await getGoogleConnection();
   if (!conn?.gsc_site_url) return { checked: 0, pruned: 0, quotaExceeded: false };
 
@@ -145,7 +153,7 @@ export async function refreshIndexingStatus(batch = DEFAULT_BATCH): Promise<{ ch
   // (observed: 300s timeout on "Check now"). Unchecked rows simply wait for
   // the next run. Also stop after repeated consecutive failures — if Google
   // is erroring, the rest of the batch will fail the same way.
-  const deadline = Date.now() + 45_000;
+  const deadline = Date.now() + budgetMs;
   let consecutiveFailures = 0;
   for (const row of rows) {
     if (Date.now() > deadline || consecutiveFailures >= 3) break;

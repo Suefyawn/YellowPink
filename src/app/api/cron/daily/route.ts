@@ -116,7 +116,9 @@ export async function GET(req: NextRequest) {
     '/api/cron/stuck-payments',
     '/api/cron/not-found-digest',
     '/api/cron/analytics-refresh',
-    '/api/cron/indexing-check',
+    // indexing-check moved to its own vercel.json cron (09:30 UTC): running
+    // last in this shared 60 s budget squeezed it to ~6 inspections/day and
+    // a 161-row backlog. Its removal also gives analytics-refresh headroom.
   ];
   const BUDGET_MS = (maxDuration - 12) * 1000;
   // No single job may eat the whole budget: cap each at 25 s or whatever
