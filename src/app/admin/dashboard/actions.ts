@@ -667,7 +667,7 @@ async function refreshSentry(supabase: PermissiveSupabase): Promise<void> {
 
 // ─── Admin-notification helper ──────────────────────────────────────────────
 interface NotifyInput {
-  kind: 'sentry_issue' | 'posthog_spike' | 'posthog_drop';
+  kind: 'sentry_issue' | 'posthog_spike' | 'posthog_drop' | 'google_refresh_stale';
   title: string;
   body: string;
   link: string;
@@ -762,7 +762,13 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
           await (supabase.from('gsc_query_snapshots') as any).upsert(snapRows, { onConflict: 'day,query' });
         }
       } catch { /* history is additive; never block the cache refresh */ }
-    } catch { /* best-effort: keep GA4 alive even if GSC errors */ }
+    } catch (err) {
+      // Best-effort (GA4 must stay alive even if GSC errors) but never
+      // silent: on Aug 8 both Google caches missed a day and nothing said
+      // why. The log makes the next miss diagnosable from Vercel runtime
+      // logs; the staleness alert in refreshAnalyticsCore covers repeats.
+      console.error('[refreshGoogle] GSC refresh failed:', err instanceof Error ? err.message : err);
+    }
   }
 
   if (conn.ga4_property_id) {
@@ -778,7 +784,10 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
         channels: byChannel.map(r => ({ name: r.dimensions[0] || '(other)', sessions: r.metrics[0] ?? 0 }))
           .sort((a, b) => b.sessions - a.sessions),
       });
-    } catch { /* best-effort */ }
+    } catch (err) {
+      // Same logging rationale as the GSC catch above.
+      console.error('[refreshGoogle] GA4 refresh failed:', err instanceof Error ? err.message : err);
+    }
   }
 }
 
@@ -935,6 +944,31 @@ export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: str
   const errors = results
     .filter((r): r is PromiseRejectedResult => r.status === 'rejected')
     .map(r => String(r.reason instanceof Error ? r.reason.message : r.reason));
+
+  // Staleness watchdog: refreshGoogle swallows its own API failures (by
+  // design — one source must not block the others), which means a broken
+  // Google connection only shows up as quietly ageing gsc/ga4 caches
+  // (observed Aug 8: both a full day behind, no trace anywhere). One missed
+  // day is transient noise; >48h stale while a connection exists means the
+  // OAuth token or API is genuinely broken and staff should reconnect.
+  try {
+    const conn = await getGoogleConnection();
+    if (conn?.gsc_site_url) {
+      const { data } = await supabase
+        .from('analytics_cache').select('updated_at').eq('key', 'gsc').maybeSingle();
+      const gscRow = data as { updated_at?: string } | null;
+      const age = gscRow?.updated_at ? Date.now() - new Date(gscRow.updated_at).getTime() : Infinity;
+      if (age > 48 * 3_600_000) {
+        await notifyAdmin(supabase, {
+          kind: 'google_refresh_stale',
+          title: 'Google Search Console data has stopped refreshing',
+          body: 'The GSC/GA4 caches are more than 2 days old even though a Google connection exists. Open Admin → Settings → Integrations and reconnect Google; dashboards are showing stale search data until then.',
+          link: '/admin/settings',
+          dedupKey: `google_refresh_stale:${new Date().toISOString().slice(0, 10)}`,
+        });
+      }
+    }
+  } catch { /* the watchdog itself must never fail the refresh */ }
 
   return { ok: errors.length === 0, errors };
 }
