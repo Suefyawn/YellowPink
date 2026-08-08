@@ -338,6 +338,9 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // up to choose options, so it's obvious *what* needs picking (otherwise the
   // "Select options" tap can feel like a dead scroll).
   const [flashPicker, setFlashPicker] = useState(false);
+  // True after a blocked Add/Buy tap: renders the "choose your …" line under
+  // the picker until the shopper completes the selection.
+  const [selectPrompt, setSelectPrompt] = useState(false);
   const [showStickyBar, setShowStickyBar] = useState(false);
   const { addToCart, cartItems } = useCart();
   const router = useRouter();
@@ -513,7 +516,20 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
     return from === to ? from : `${from} – ${to}`;
   }, [estimatedDays]);
 
+  // A tap on Add/Buy while a shade/size is still unpicked must never be a
+  // dead tap: the Aug 3 replay (session 019fc88d…) shows ~40 taps on the
+  // greyed button before the shopper found the picker. Same treatment the
+  // sticky bar already got — scroll to the picker, flash it, and say what's
+  // missing in words.
+  const promptForSelection = () => {
+    (variantPickerRef.current ?? buyPanelRef.current)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setFlashPicker(true);
+    setSelectPrompt(true);
+    setTimeout(() => setFlashPicker(false), 1400);
+  };
+
   const handleAdd = () => {
+    if (variants.length > 0 && !allAttrsSelected) { promptForSelection(); return; }
     if (variants.length > 0 && !activeVariant) return;
     tapHaptic();
     const added = addToCart({
@@ -555,6 +571,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   // still the right destination — the shopper's intent is "buy this now" and
   // the item is already in the cart.
   const handleBuyNow = () => {
+    if (needsSelection) { promptForSelection(); return; }
     if (ctaDisabled || buying) return;
     tapHaptic();
     const added = addToCart({
@@ -576,13 +593,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   };
 
   const handleStickyCta = () => {
-    if (needsSelection) {
-      // Scroll to the picker itself (not the buy row below it) and flash it.
-      (variantPickerRef.current ?? buyPanelRef.current)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      setFlashPicker(true);
-      setTimeout(() => setFlashPicker(false), 1400);
-      return;
-    }
+    if (needsSelection) { promptForSelection(); return; }
     handleAdd();
   };
 
@@ -737,8 +748,18 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                   attributes={attributes}
                   variants={variants}
                   selected={selected}
-                  onChange={setSelected}
+                  onChange={next => {
+                    setSelected(next);
+                    // The "choose your …" nudge has done its job once every
+                    // attribute has a pick (event-driven, not an effect).
+                    if (attributes.every(a => Boolean(next[a.id]))) setSelectPrompt(false);
+                  }}
                 />
+                {selectPrompt && needsSelection && (
+                  <p role="status" className="small-text" style={{ margin: '0 0 16px', color: '#b91c1c', fontWeight: 600 }}>
+                    Choose {attributes.filter(a => !selected[a.id]).map(a => a.name.toLowerCase()).join(' and ') || 'your options'} above to continue.
+                  </p>
+                )}
               </div>
             )}
 
@@ -750,11 +771,15 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 <span aria-live="polite" style={{ width: 32, textAlign: 'center', fontWeight: 500, fontVariantNumeric: 'tabular-nums' }}>{qty}</span>
                 <button type="button" aria-label="Increase quantity" onClick={() => setQty(qty + 1)} style={{ width: 40, height: 44, background: 'none', border: 'none', cursor: 'pointer', fontSize: '1rem', color: 'var(--ink-700)' }}>+</button>
               </div>
-              <button onClick={handleAdd} disabled={ctaDisabled || addedFlash} className="btn-primary" style={{
+              {/* Kept tappable while a shade/size is unpicked (only true
+                  sold-out disables it): the tap scrolls to the picker and
+                  names what's missing instead of silently eating the press —
+                  a disabled grey button was behind the Aug 3 40-tap replay. */}
+              <button onClick={handleAdd} disabled={outOfStock || addedFlash} className="btn-primary" style={{
                 flex: 1,
-                background: ctaDisabled ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink-cta)',
+                background: outOfStock ? '#d1d5db' : addedFlash ? 'var(--brand-yellow)' : 'var(--brand-pink-cta)',
                 transition: 'background 100ms ease-out',
-                cursor: ctaDisabled ? 'not-allowed' : 'pointer',
+                cursor: outOfStock ? 'not-allowed' : 'pointer',
               }}>
                 {outOfStock ? 'Out of Stock'
                   : variants.length > 0 && !allAttrsSelected ? 'Select options'
@@ -767,14 +792,14 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
                 this one thing" shopper — the funnel showed most PDP visitors
                 never even reach the cart. Hidden while sold out (a second
                 dead button under "Out of Stock" is noise); when a variant
-                still needs picking it stays disabled like Add to Cart, the
-                button above already reads "Select options". */}
+                still needs picking the tap routes to the picker like Add to
+                Cart does, instead of sitting disabled. */}
             {!outOfStock && (
               <div style={{ display: 'flex', marginBottom: 24 }}>
-                <button onClick={handleBuyNow} disabled={ctaDisabled || buying} className="btn-primary" style={{
+                <button onClick={handleBuyNow} disabled={buying} className="btn-primary" style={{
                   flex: 1,
-                  background: ctaDisabled ? '#d1d5db' : 'var(--ink-900)',
-                  cursor: ctaDisabled ? 'not-allowed' : 'pointer',
+                  background: 'var(--ink-900)',
+                  cursor: 'pointer',
                 }}>
                   {buying ? 'Taking you to checkout…' : 'Buy Now'}
                 </button>

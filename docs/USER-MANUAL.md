@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 7 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 8 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1022,6 +1022,14 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 8 August 2026
+
+- **Tapping "Add to Cart" before picking a shade now helps instead of ignoring you.** On products with shades or sizes, the Add to Cart and Buy Now buttons used to sit greyed-out until a choice was made, and on phones that meant taps that did nothing (one shopper tapped 40 times before finding the picker). Now any tap scrolls straight to the shade picker, highlights it, and says in words what still needs choosing.
+- **Search now forgives typos.** "la rouch" finds La Roche-Posay, "beuty" finds the beauty ranges, and "eye patches" shows the closest eye-care products we stock. Misspelled searches used to show an empty "No results" screen.
+- **Product pages load faster on repeat visits.** The server now serves a saved copy of product pages for up to a week while quietly refreshing in the background, so the slow first-load most shoppers were hitting (4+ seconds on phones) becomes a near-instant load for everyone after the day's first visitor. Price and stock edits still appear within about 5 minutes.
+- **Google indexing checks got their own daily slot.** The job that asks Google "is this page indexed yet?" was squeezed to ~6 pages a day behind other nightly jobs; it now runs on its own schedule and covers ~50 pages daily, newest posts first, so new articles' indexing problems surface in days instead of weeks.
+- **Duplicate multivitamin guide removed.** Two posts competed for the same Google search; the older one now permanently redirects to the newer, and the Centrum comparison post got a sharper title. One-time SEO cleanup, no action needed.
 
 ### 7 August 2026
 
