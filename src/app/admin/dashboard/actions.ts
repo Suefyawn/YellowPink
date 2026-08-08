@@ -736,6 +736,15 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
       // falling — analytics_cache only ever holds the latest aggregate.
       // Keyed on the freshest complete GSC day so re-runs the same day
       // overwrite instead of duplicating.
+      //
+      // SEMANTICS — read before joining or charting this table: a "day" row
+      // here is the TRAILING-28-DAY aggregate (top 200 queries) stamped on
+      // the window's end date, NOT that day's true totals. Use it for the
+      // relative movement of individual queries over time. Absolute daily
+      // clicks/impressions live in seo_daily_metrics (refreshSeoTrend),
+      // which is the source of truth for totals — the two tables will never
+      // agree on sums and that is expected, not a pipeline bug (this exact
+      // confusion derailed part of the Aug 8 health-sweep analysis).
       try {
         const snapDay = fmt(end);
         const snapRows = queries
@@ -778,6 +787,11 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
 // improving over time (refreshGoogle only caches an overwriting snapshot).
 // Upsert per day → idempotent, and late-arriving GSC data (it lags ~2-3 days)
 // backfills on the next run. Best-effort: never throws into the refresh.
+//
+// This table is the SOURCE OF TRUTH for absolute daily GSC totals (queried
+// with dimensions=['date'], all queries included). gsc_query_snapshots is
+// NOT comparable: its day rows are trailing-28-day per-query aggregates —
+// see the semantics note in refreshGoogle before summing anything there.
 async function refreshSeoTrend(supabase: PermissiveSupabase): Promise<void> {
   // Google powers the GSC/GA4 columns; PostHog powers the sessions column.
   // Either source alone is enough to produce a useful trend, so we don't bail
