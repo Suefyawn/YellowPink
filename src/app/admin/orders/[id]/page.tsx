@@ -344,8 +344,23 @@ export default async function OrderDetailPage({
   // delivery cost is counted as a sunk return cost).
   const NO_REVENUE_STATUSES = new Set(['cancelled', 'payment_failed', 'payment_pending', 'refunded', 'returned']);
   const revenueCollected = !NO_REVENUE_STATUSES.has(o.status ?? '');
+  // Which recorded costs are actually SUNK on a no-revenue order (owner
+  // correction, 9 Aug 2026 — the card previously counted everything):
+  //  - returned: the goods came back to sellable stock (the return flow
+  //    restocks them / voids the vendor payout), so COGS is not a loss;
+  //    the courier round trip and any payment fee are.
+  //  - cancelled / failed / pending: nothing was dispatched — the goods
+  //    never left the shelf and no courier billed us. Nothing is sunk
+  //    except a recorded payment fee (rare); a recorded delivery cost on
+  //    these orders is almost always a data slip, flagged below.
+  //  - refunded: the money went back but the goods are often with the
+  //    customer, so COGS stays counted; reduce it if the item came back.
+  const isReturned = o.status === 'returned';
+  const isNeverDispatched = ['cancelled', 'payment_failed', 'payment_pending'].includes(o.status ?? '');
+  const cogsSunk = revenueCollected || o.status === 'refunded' ? ordCogs : 0;
+  const deliverySunk = isNeverDispatched ? 0 : ordDelivery;
   const ordRevenue = revenueCollected ? Number(o.total ?? 0) : 0;
-  const ordNet = ordRevenue - ordCogs - ordDelivery - ordFee;
+  const ordNet = ordRevenue - cogsSunk - deliverySunk - ordFee;
   const ordMargin = ordRevenue > 0 ? (ordNet / ordRevenue) * 100 : 0;
   // Configured bank/wallet accounts (Settings → Payments) for the payment
   // reconciliation picker, plus the implicit cash option.
@@ -380,10 +395,10 @@ export default async function OrderDetailPage({
 
   const profitLines: { label: string; value: number; kind?: 'net' }[] = [
     { label: revenueCollected ? 'Gross amount' : 'Amount collected', value: ordRevenue },
-    { label: 'Cost of goods (COGS)', value: -ordCogs },
-    { label: 'Delivery cost', value: -ordDelivery },
+    { label: !revenueCollected && cogsSunk === 0 && ordCogs > 0 ? 'Cost of goods (back in stock)' : 'Cost of goods (COGS)', value: -cogsSunk },
+    { label: 'Delivery cost', value: -deliverySunk },
     { label: 'Payment fee', value: -ordFee },
-    { label: revenueCollected ? 'Net profit' : 'Net loss', value: ordNet, kind: 'net' },
+    { label: revenueCollected ? 'Net profit' : ordNet === 0 ? 'Net' : 'Net loss', value: ordNet, kind: 'net' },
   ];
 
   return (
@@ -1068,7 +1083,19 @@ export default async function OrderDetailPage({
               so the flat PKR rate's saving (or free-shipping loss) is explicit. */}
           <div style={{ marginTop: 14, padding: '10px 14px', background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 8, fontSize: '0.8125rem' }}>
             <span style={{ fontWeight: 600, color: '#374151' }}>Shipping margin</span>
-            {shippingMargin == null ? (
+            {isReturned ? (
+              // The customer paid nothing on a returned order — showing
+              // "charged X − delivery Y" implied the shipping fee was
+              // collected. The whole courier round trip is the loss.
+              <span style={{ marginLeft: 8, color: '#6b7280' }}>
+                courier billed <strong style={{ color: '#dc2626' }}>{deliveryEffective != null ? fmt(deliveryEffective) : '—'}</strong> for the failed round trip
+                {shippingMarginEstimated && <span style={{ color: '#9ca3af' }}> (est.)</span>}; the customer paid nothing. Counted in Net loss below.
+              </span>
+            ) : isNeverDispatched ? (
+              <span style={{ color: '#9ca3af', marginLeft: 8 }}>
+                not applicable: this order was never dispatched, so no delivery was charged or paid.
+              </span>
+            ) : shippingMargin == null ? (
               <span style={{ color: '#9ca3af', marginLeft: 8 }}>
                 — enter the delivery cost above (or set a typical cost in Settings → Shipping) to see it.
               </span>
@@ -1111,8 +1138,17 @@ export default async function OrderDetailPage({
           Based on the costs recorded for this order (vendor settlement, delivery, payment fee). Shared overheads like ads and salaries are accounted for in the Finance profit &amp; loss.
         </p>
         {!revenueCollected && (
-          <p style={{ margin: '0 0 14px', padding: '8px 12px', borderRadius: 8, fontSize: '0.8125rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}>
-            No revenue was collected on this {ORDER_STATUS_LABELS[o.status as OrderStatus]?.toLowerCase() ?? o.status} order, so the recorded costs are a sunk loss. If the goods went back into sellable stock or the vendor credited the return, reduce the COGS/acquisition cost above accordingly.
+          <p style={{ margin: '0 0 14px', padding: '8px 12px', borderRadius: 8, fontSize: '0.8125rem', background: isNeverDispatched && ordNet === 0 ? '#f9fafb' : '#fef2f2', color: isNeverDispatched && ordNet === 0 ? '#374151' : '#991b1b', border: `1px solid ${isNeverDispatched && ordNet === 0 ? '#e5e7eb' : '#fecaca'}` }}>
+            {isReturned
+              ? 'No revenue was collected on this returned order. The goods are back in sellable stock, so COGS is not lost; the loss is the courier round trip plus any payment fee.'
+              : isNeverDispatched
+                ? `This order was ${ORDER_STATUS_LABELS[o.status as OrderStatus]?.toLowerCase() ?? o.status} before dispatch: nothing was collected, the goods stayed in stock, and no courier billed us, so there is no loss on this order.`
+                : `No revenue was collected on this ${ORDER_STATUS_LABELS[o.status as OrderStatus]?.toLowerCase() ?? o.status} order, so the recorded costs are a sunk loss. If the goods went back into sellable stock or the vendor credited the return, reduce the COGS/acquisition cost above accordingly.`}
+          </p>
+        )}
+        {isNeverDispatched && ordDelivery > 0 && (
+          <p style={{ margin: '0 0 14px', padding: '8px 12px', borderRadius: 8, fontSize: '0.8125rem', background: '#fffbeb', color: '#92400e', border: '1px solid #fde68a' }}>
+            A courier charge of {fmt(ordDelivery)} is recorded on this order even though it was never dispatched. If the parcel never went out, clear the Delivery cost above; it is excluded from the loss figures either way.
           </p>
         )}
         <table style={{ width: '100%', maxWidth: 360, borderCollapse: 'collapse', fontSize: '0.875rem' }}>
