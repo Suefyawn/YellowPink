@@ -19,6 +19,17 @@ async function addDemoProductToCart(page: import('@playwright/test').Page) {
   // on slow CI runners an immediate goto can outrun the state update +
   // localStorage persistence and land on an empty cart (observed flake).
   await expect(page.getByText(/added to cart/i).first()).toBeVisible();
+  // The toast fires from React state, but persistence is a separate effect
+  // (CartContext writes 'yp_cart' in a useEffect) — under CPU starvation the
+  // full-page goto can still land between the two, so the next page hydrates
+  // an empty cart and checkout renders no Place Order button at all
+  // (observed once on CI 9 Aug). Wait for the write itself.
+  await page.waitForFunction(() => {
+    try {
+      const raw = localStorage.getItem('yp_cart');
+      return !!raw && Array.isArray(JSON.parse(raw)) && JSON.parse(raw).length > 0;
+    } catch { return false; }
+  });
 }
 
 test('PDP → cart → checkout golden path', async ({ page }) => {
