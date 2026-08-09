@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { bookShipment, createShipment, cancelShipment, syncShipmentNow } from '@/app/admin/shipment-actions';
+import { bookShipment, createShipment, cancelShipment, syncShipmentNow, replaceTracking } from '@/app/admin/shipment-actions';
 import { COURIER_LIST, courierTrackingUrl } from '@/lib/couriers/profiles';
 
 interface Props {
@@ -53,6 +53,8 @@ export function ShipmentBookingForm({ orderId, preferManual, apiAdapters, shipme
   const [manualState, manualAction, manualPending] = useActionState(createShipment, null);
   const [cancelState, cancelAction, cancelPending] = useActionState(cancelShipment, null);
   const [syncState, syncAction, syncPending] = useActionState(syncShipmentNow, null);
+  const [replaceState, replaceAction, replacePending] = useActionState(replaceTracking, null);
+  const [showReplace, setShowReplace] = useState(false);
 
   // ─── Already booked/shipped, show tracking + cancel options ─────────────
   if (shipment && shipment.status !== 'cancelled') {
@@ -92,14 +94,59 @@ export function ShipmentBookingForm({ orderId, preferManual, apiAdapters, shipme
                 Open on {shipment.courier} ↗
               </a>
             )}
-            {shipment.labelUrl && (
+            {/* Label: the proxy route fetches the PDF from the courier at
+                click time (TCS streams it with no URL, so a stored link was
+                never available for most bookings). Offered for any courier
+                with an API adapter; manual couriers have no label API. */}
+            {apiAdapters.includes(shipment.courier) ? (
+              <a href={`/api/admin/shipment-label?shipment_id=${shipment.id}`} target="_blank" rel="noreferrer noopener"
+                 style={{ fontSize: '0.75rem', color: '#111827', fontWeight: 600, textDecoration: 'underline' }}>
+                Print label (PDF) ↗
+              </a>
+            ) : shipment.labelUrl && (
               <a href={shipment.labelUrl} target="_blank" rel="noreferrer noopener"
                  style={{ fontSize: '0.75rem', color: '#111827', fontWeight: 600, textDecoration: 'underline' }}>
                 Print label (PDF) ↗
               </a>
             )}
+            <button
+              type="button"
+              onClick={() => setShowReplace(v => !v)}
+              style={{ fontSize: '0.75rem', color: '#6b7280', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}
+            >
+              Fix tracking number
+            </button>
           </div>
         </div>
+        {showReplace && (
+          <form action={replaceAction} style={{ marginBottom: 12, padding: '10px 12px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+            <input type="hidden" name="shipment_id" value={shipment.id} />
+            <label htmlFor="new-tracking" style={lbl}>
+              Correct tracking number (use this when the parcel actually travelled under a different CN)
+            </label>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <input id="new-tracking" name="new_tracking" required placeholder="e.g. 779412326902"
+                     style={{ ...inp, fontFamily: 'monospace', flex: 1 }} />
+              <button type="submit" disabled={replacePending}
+                      style={{ padding: '8px 14px', background: '#111827', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: replacePending ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap' }}>
+                {replacePending ? 'Saving…' : 'Replace'}
+              </button>
+            </div>
+            <p style={{ fontSize: '0.6875rem', color: '#6b7280', margin: '6px 0 0' }}>
+              Old scan history is cleared; the next sync rebuilds it from the new number. The change is audit-logged.
+            </p>
+            {replaceState?.error && (
+              <div role="alert" style={{ marginTop: 8, padding: '6px 10px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 6, color: '#dc2626', fontSize: '0.75rem' }}>
+                {replaceState.error}
+              </div>
+            )}
+            {replaceState?.success && (
+              <div role="status" style={{ marginTop: 8, padding: '6px 10px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 6, color: '#166534', fontSize: '0.75rem' }}>
+                Tracking number replaced.
+              </div>
+            )}
+          </form>
+        )}
         <div style={{ fontSize: '0.75rem', color: '#6b7280', marginBottom: 8 }}>
           {/* 'created' = consignment booked, parcel not yet collected — say so
               instead of leaking the raw enum. */}
@@ -306,14 +353,15 @@ export function ShipmentBookingForm({ orderId, preferManual, apiAdapters, shipme
               {bookState.courierCharge != null && (
                 <> · Courier charge PKR {bookState.courierCharge.toLocaleString()} saved.</>
               )}
-              {/* YP-A7VSBYRK8 (July 28): the API returned a CN that never
-                  appeared in TCS's Envio dashboard and the parcel had to be
-                  re-booked manually — so ask staff to verify while the parcel
-                  is still on the shelf. */}
+              {/* Root cause of the Jul 28 double-booking: staff had no label
+                  to hand over, so the rider used a manual CN slip and the
+                  parcel travelled under a different number. The label IS the
+                  fix — say so at the moment of booking. */}
               <div style={{ marginTop: 6, color: '#92400e' }}>
-                Please confirm this CN appears in your TCS Envio dashboard (Tracking CN). If it
-                doesn&rsquo;t show there within a few minutes, cancel this shipment and book manually
-                in Envio, then paste the CN here via manual entry.
+                Now <strong>print the label</strong> (button above once the panel refreshes) and hand the
+                parcel over with it — if the rider fills a manual CN slip instead, the parcel travels
+                under a different number and this booking never tracks. If that happens anyway, use
+                &ldquo;Fix tracking number&rdquo; to point this shipment at the CN on the slip.
               </div>
             </div>
           )}

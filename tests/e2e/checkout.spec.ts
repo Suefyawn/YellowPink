@@ -45,10 +45,21 @@ test('PDP → cart → checkout golden path', async ({ page }) => {
 });
 
 test('checkout blocks submission until required fields are valid', async ({ page }) => {
+  // Triple the timeout: on CI's 2-core runners the dev server compiles other
+  // routes in parallel and checkout hydration can churn past the default 30s
+  // (twice-observed Aug 9: the click burned its whole budget waiting for the
+  // button to stop re-rendering under CPU starvation; passes in 12s locally).
+  test.slow();
   await addDemoProductToCart(page);
   await page.goto('/checkout');
 
-  await page.getByRole('button', { name: /place order/i }).click();
+  // Wait for cart hydration + the page to settle before clicking: the button
+  // is disabled while cartItems hydrates from localStorage, and clicking into
+  // that window spends the whole click auto-wait on "element is not stable".
+  const placeOrder = page.getByRole('button', { name: /place order/i });
+  await expect(placeOrder).toBeEnabled({ timeout: 60_000 });
+
+  await placeOrder.click();
   // Inline field errors, not a navigation.
   await expect(page).toHaveURL(/\/checkout/);
   await expect(page.locator('#co-phone-error')).toBeVisible();

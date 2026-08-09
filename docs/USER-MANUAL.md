@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 8 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 9 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1022,6 +1022,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 9 August 2026
+
+- **TCS API bookings are now actually usable end to end.** The missing piece was the label: TCS sends it as a direct PDF download, which the system couldn't handle, so API bookings produced a consignment number with nothing to print — the rider would fill a manual CN slip, the parcel travelled under that different number, and the API booking never tracked (the 28 July double-booking). Three fixes: a **Print label (PDF)** button on every API-booked shipment that fetches the label fresh from TCS at click time; a **Fix tracking number** option on the shipment panel for when a parcel did go out under a different CN (old scan history clears, the change is audit-logged); and a **watchdog** that rings the admin bell if a booking still has no courier scan after 36 hours, so a stuck pickup can't sit unnoticed. The booking flow itself is unchanged: book via API, print the label, hand the parcel over with that label.
 
 ### 8 August 2026
 
