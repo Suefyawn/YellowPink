@@ -40,22 +40,44 @@ export const RETURNED_STATES = new Set(['returned']);
 /** Sum the courier cost sunk on returned/refused orders in the window — real
  *  loss (delivery charged by the courier for the failed round trip, zero
  *  revenue). Falls back to the owner's typical-delivery-cost estimate when an
- *  order has no exact recorded charge yet. Returns the count too so the UI can
- *  say "N orders". */
+ *  order has no exact recorded charge yet. Also totals the payment fees sunk
+ *  on those orders (a gateway fee on a returned order is a real cost that no
+ *  other line counts). `estimatedCount` says how many of the losses are the
+ *  estimate rather than a recorded charge; `vendorDeliveredCount` how many
+ *  are a genuine zero because a self-delivering vendor eats the courier
+ *  charge (their delivery_cost is pinned at dispatch, usually 0). */
 export async function loadReturnedDeliveryLoss(
   fromISO: string | null,
   defaultDeliveryCost: number,
-): Promise<{ count: number; loss: number }> {
+): Promise<{ count: number; loss: number; fees: number; estimatedCount: number; vendorDeliveredCount: number }> {
   const admin = supabaseAdmin();
-  let q = admin.from('orders').select('delivery_cost, status').in('status', [...RETURNED_STATES]).is('archived_at', null);
+  let q = admin.from('orders')
+    .select('delivery_cost, payment_fee, status, vendor_id, vendors(self_delivers)')
+    .in('status', [...RETURNED_STATES]).is('archived_at', null);
   if (fromISO) q = q.gte('created_at', fromISO);
-  const { data } = await fetchAll<{ delivery_cost: number | null; status: string | null }>(q);
+  type Row = {
+    delivery_cost: number | null; payment_fee: number | null; status: string | null;
+    vendor_id: string | null;
+    vendors: { self_delivers: boolean | null } | Array<{ self_delivers: boolean | null }> | null;
+  };
+  const { data } = await fetchAll<Row>(q);
   const rows = data ?? [];
-  const loss = rows.reduce(
-    (s, o) => s + (o.delivery_cost != null ? (Number(o.delivery_cost) || 0) : defaultDeliveryCost),
-    0,
-  );
-  return { count: rows.length, loss };
+  let loss = 0; let fees = 0; let estimatedCount = 0; let vendorDeliveredCount = 0;
+  for (const o of rows) {
+    const v = Array.isArray(o.vendors) ? o.vendors[0] : o.vendors;
+    if (o.delivery_cost != null) {
+      loss += Number(o.delivery_cost) || 0;
+      if ((Number(o.delivery_cost) || 0) === 0 && v?.self_delivers === true) vendorDeliveredCount++;
+    } else if (v?.self_delivers === true) {
+      // Vendor ships on its own courier — no store-side charge to estimate.
+      vendorDeliveredCount++;
+    } else {
+      loss += defaultDeliveryCost;
+      if (defaultDeliveryCost > 0) estimatedCount++;
+    }
+    fees += Number(o.payment_fee) || 0;
+  }
+  return { count: rows.length, loss, fees, estimatedCount, vendorDeliveredCount };
 }
 
 export const fnum = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
@@ -167,21 +189,29 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
 
 export interface OrderFinanceRow {
   id: string; order_number: string | null; created_at: string | null; method: string;
-  total: number; cogs: number; delivery: number; fee: number; costs: number;
-  gross: number; margin: number; payment_account: string | null; payment_received_at: string | null;
+  /** null = no cost recorded ANYWHERE for this order (no acquisition cost, no
+   *  settlement, no product cost_price) — distinct from a genuine 0. The UI
+   *  renders "—" instead of a fabricated 100% margin. */
+  cogs: number | null;
+  total: number; delivery: number; fee: number; costs: number;
+  gross: number;
+  /** null when cogs is unknown — a margin computed without COGS is fiction. */
+  margin: number | null;
+  payment_account: string | null; payment_received_at: string | null;
 }
 
 /** Per-order P&L row: total minus the costs recorded for that order. */
 export function toOrderFinanceRow(o: FinanceOrder, cogsByOrder: Map<string, number>): OrderFinanceRow {
-  const cogs = cogsByOrder.get(o.id) ?? 0;
+  const cogs = cogsByOrder.get(o.id) ?? null;
   const delivery = fnum(o.delivery_cost);
   const fee = fnum(o.payment_fee);
   const total = fnum(o.total);
-  const costs = cogs + delivery + fee;
+  const costs = (cogs ?? 0) + delivery + fee;
   const gross = total - costs;
   return {
     id: o.id, order_number: o.order_number, created_at: o.created_at, method: o.pay_method ?? 'unknown',
-    total, cogs, delivery, fee, costs, gross, margin: total > 0 ? (gross / total) * 100 : 0,
+    total, cogs, delivery, fee, costs, gross,
+    margin: cogs == null ? null : total > 0 ? (gross / total) * 100 : 0,
     payment_account: o.payment_account, payment_received_at: o.payment_received_at,
   };
 }

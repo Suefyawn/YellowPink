@@ -586,29 +586,50 @@ async function payment(fromDate: string, toDate: string): Promise<Result<Payment
   const { jwt, ecom } = tokensOrErr;
   const baseUrl = env('TCS_BASE_URL')!;
   const url = `${baseUrl.replace(/\/$/, '')}/ecom/api/Payment/detail`;
-  const payload = { accesstoken: ecom, customerno: env('TCS_CUSTOMER_NO'), fromdate: fromDate, todate: toDate };
+  type PaymentEnvelope = { detail?: Array<Record<string, unknown>> | null; message?: string };
   try {
-    let r = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
-      body: JSON.stringify(payload),
-    });
-    if (r.status === 404 || r.status === 405) {
-      const qs = new URLSearchParams({ customerno: String(env('TCS_CUSTOMER_NO')), fromdate: fromDate, todate: toDate, accesstoken: ecom });
-      r = await fetch(`${url}?${qs}`, { method: 'GET', headers: { Authorization: `Bearer ${jwt}` } });
-    }
-    const out = await r.json().catch(() => null) as null | {
-      detail?: Array<Record<string, unknown>>;
-      message?: string;
+    // The spec declares this endpoint as GET (its own example still shows a
+    // JSON body, and TCS's other transactional endpoints POST) — so try GET
+    // first, mirroring the live-verified labelPdf() pattern (accesstoken in
+    // the query string, Bearer header), and keep POST as the fallback.
+    const attempt = async (method: 'GET' | 'POST') => {
+      if (method === 'GET') {
+        const qs = new URLSearchParams({ customerno: String(env('TCS_CUSTOMER_NO')), fromdate: fromDate, todate: toDate, accesstoken: ecom });
+        return fetch(`${url}?${qs}`, { method: 'GET', headers: { Authorization: `Bearer ${jwt}` } });
+      }
+      return fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}` },
+        body: JSON.stringify({ accesstoken: ecom, customerno: env('TCS_CUSTOMER_NO'), fromdate: fromDate, todate: toDate }),
+      });
     };
-    if (!r.ok || !out || !Array.isArray(out.detail)) {
+    let r = await attempt('GET');
+    let out = await r.json().catch(() => null) as PaymentEnvelope | null;
+    // A clean data-shaped 200 whose ledger is simply empty ("No Data Found")
+    // is a final answer, not a method mismatch — don't retry those. Retry on
+    // any non-2xx AND on 200 error envelopes (TCS gateways return HTTP 200
+    // for "method not supported"-style failures).
+    const isData = (resp: Response, body: PaymentEnvelope | null) => resp.ok && !!body && Array.isArray(body.detail);
+    const isCleanEmpty = (resp: Response, body: PaymentEnvelope | null) =>
+      resp.ok && !!body && body.detail == null && typeof body.message === 'string' && /no data|invalid cn|no record/i.test(body.message);
+    if (!isData(r, out) && !isCleanEmpty(r, out)) {
+      log.warn('tcs.payment GET attempt failed, retrying as POST', { status: r.status, body: out });
+      r = await attempt('POST');
+      out = await r.json().catch(() => null) as PaymentEnvelope | null;
+    }
+    if (isCleanEmpty(r, out)) {
+      return { ok: true, records: [], raw: out };
+    }
+    const detail = out && Array.isArray(out.detail) ? out.detail : null;
+    if (!r.ok || !detail) {
+      log.warn('tcs.payment failed on both methods', { status: r.status, body: out });
       return { ok: false, message: out?.message || `TCS payment detail failed (HTTP ${r.status})`, code: r.status, raw: out };
     }
     const numOrNull = (v: unknown): number | null => {
       const n = Number(v);
       return Number.isFinite(n) ? n : null;
     };
-    const records: PaymentRecord[] = out.detail.map(d => ({
+    const records: PaymentRecord[] = detail.map(d => ({
       trackingNumber: String(d['cn by courier'] ?? d['cnsg_no'] ?? ''),
       deliveryCharges: numOrNull(d['delivery charges'] ?? d['courier_charges']),
       gst: numOrNull(d['gst']),
@@ -645,6 +666,7 @@ export const tcs: CourierAdapter = {
   id: 'TCS',
   capabilities: { book: true, cancel: true, track: true, label: true, payment: true },
   isConfigured,
+  paymentConfigured,
   book,
   cancel,
   track,

@@ -3,7 +3,8 @@ export const dynamic = 'force-dynamic';
 import { Suspense } from 'react';
 import { supabaseAdmin, getSiteSettings } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
-import { configuredAdapterIds } from '@/lib/couriers';
+import { configuredAdapterIds, getAdapter } from '@/lib/couriers';
+import { COST_SYNC_STAMP_KEY } from '@/lib/couriers/reconcile-costs';
 import { ReconcileTcsButton } from '@/components/admin/ReconcileTcsButton';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
@@ -46,6 +47,19 @@ export default async function FinancePage({
   const { orders, cogsByOrder } = await loadFinanceOrders(fromISO);
   const cogs = [...cogsByOrder.values()].reduce((s, v) => s + v, 0);
 
+  // Vendors whose orders settle vendor-side — resolved BEFORE the aggregates:
+  // a vendor that ships on its own courier must not pick up the store's
+  // typical-delivery estimate (the vendor pays that courier, not us), and the
+  // same orders bucket differently in the account view below.
+  const vendorIds = Array.from(new Set(orders.map(o => o.vendor_id).filter((v): v is string => Boolean(v))));
+  const { data: finVendors } = vendorIds.length
+    ? await admin.from('vendors').select('id, settlement_direction').in('id', vendorIds)
+    : { data: [] };
+  const vendorCollectsIds = new Set(
+    ((finVendors ?? []) as { id: string; settlement_direction: string | null }[])
+      .filter(v => v.settlement_direction === 'vendor_collects').map(v => v.id),
+  );
+
   // Operating expenses in range (ad spend + overheads).
   let eq = admin.from('expenses').select('id, incurred_on, category, channel, amount, note');
   if (fromDay) eq = eq.gte('incurred_on', fromDay);
@@ -54,29 +68,48 @@ export default async function FinancePage({
 
   // ── Aggregate ──
   const num = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
+  const siteSettings = await getSiteSettings();
+  const defaultDeliveryCost = parseCommerceConfig(siteSettings).defaultDeliveryCost;
   const revenue = orders.reduce((s, o) => s + num(o.total), 0);
-  const deliveryCost = orders.reduce((s, o) => s + num(o.delivery_cost), 0);
-  const paymentFees = orders.reduce((s, o) => s + num(o.payment_fee), 0);
-  const grossProfit = revenue - cogs - deliveryCost - paymentFees;
-
-  // ── Shipping recovery ── what we charged customers for delivery vs what the
-  // courier costs us. Uses each order's recorded delivery_cost, falling back to
-  // the owner's "typical delivery cost" baseline (Settings → Shipping) so orders
-  // without an exact figure still count. This makes the flat-rate saving (or the
-  // free-shipping subsidy) explicit rather than buried in the P&L.
-  const defaultDeliveryCost = parseCommerceConfig(await getSiteSettings()).defaultDeliveryCost;
-  const shippingCharged = orders.reduce((s, o) => s + num(o.shipping), 0);
-  const shippingDeliveryCost = orders.reduce(
-    (s, o) => s + (o.delivery_cost != null ? num(o.delivery_cost) : defaultDeliveryCost),
+  // Booked revenue from orders the customer hasn't confirmed yet ('pending'
+  // COD). Surfaced as a memo so a sale-time confirmation backlog doesn't read
+  // as done revenue.
+  const pendingRevenue = orders.reduce((s, o) => s + (o.status === 'pending' ? num(o.total) : 0), 0);
+  // Delivery cost on ONE shared basis for the whole page (the P&L used to
+  // count NULL delivery_cost as 0 while the shipping card 40 lines below
+  // estimated the same orders at the typical cost — two cards on one screen
+  // disagreeing about the same quantity, with net profit overstated). Basis:
+  // recorded charge when present; the typical-cost estimate only for
+  // store-shipped orders (vendor_collects orders ride the vendor's courier).
+  const isVendorCollected = (o: { vendor_id: string | null }) => o.vendor_id != null && vendorCollectsIds.has(o.vendor_id);
+  const deliveryCost = orders.reduce(
+    (s, o) => s + (o.delivery_cost != null ? num(o.delivery_cost) : isVendorCollected(o) ? 0 : defaultDeliveryCost),
     0,
   );
+  const estimatedDeliveryOrders = defaultDeliveryCost > 0
+    ? orders.filter(o => o.delivery_cost == null && !isVendorCollected(o)).length
+    : 0;
+  const paymentFees = orders.reduce((s, o) => s + num(o.payment_fee), 0);
+  const grossProfit = revenue - cogs - deliveryCost - paymentFees;
+  // Orders with no cost basis recorded anywhere — their margins are unknown,
+  // not 100%. Called out under the per-order table.
+  const missingCogsOrders = orders.filter(o => !cogsByOrder.has(o.id)).length;
+
+  // ── Shipping recovery ── what we charged customers for delivery vs what the
+  // courier costs us, on the same delivery-cost basis as the P&L (the two
+  // cards must agree). This makes the flat-rate saving (or the free-shipping
+  // subsidy) explicit rather than buried in the P&L.
+  const shippingCharged = orders.reduce((s, o) => s + num(o.shipping), 0);
+  const shippingDeliveryCost = deliveryCost;
   const shippingNet = shippingCharged - shippingDeliveryCost;
-  const estimatedDeliveryOrders = defaultDeliveryCost > 0 ? orders.filter(o => o.delivery_cost == null).length : 0;
   // Refused / returned-to-origin orders: no revenue was collected but the
   // courier still billed the failed round trip — a pure loss the revenue set
   // above (which now excludes 'returned') no longer sees. Total it separately.
   const returned = await loadReturnedDeliveryLoss(fromISO, defaultDeliveryCost);
   const shippingNetAfterReturns = shippingNet - returned.loss;
+  // Payment fees sunk on returned orders are equally real (a gateway fee on a
+  // refused parcel is money gone) — deducted with the courier loss below.
+  const returnedTotalLoss = returned.loss + returned.fees;
 
   const expByCat = new Map<string, number>();
   let adSpend = 0;
@@ -101,7 +134,10 @@ export default async function FinancePage({
     }
   }
   const totalOpex = [...expByCat.values()].reduce((s, v) => s + v, 0);
-  const netProfit = grossProfit - totalOpex;
+  // Net profit deducts the returned-delivery loss (courier round trip + sunk
+  // payment fees) — it used to be displayed on the shipping card but never
+  // actually subtracted, so every return silently flattered the bottom line.
+  const netProfit = grossProfit - returnedTotalLoss - totalOpex;
   const margin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
   // ROAS, revenue attributable to a paid source (orders carrying a utm_source).
@@ -146,15 +182,8 @@ export default async function FinancePage({
   // Vendor-collected COD is NOT store cash-in-flight: the vendor keeps it and
   // the store's share arrives via the Vendors-page settlement, so those
   // orders get their own account bucket instead of inflating "Unrecorded" /
-  // not-yet-received forever (2026-08-01 audit).
-  const vendorIds = Array.from(new Set(orders.map(o => o.vendor_id).filter((v): v is string => Boolean(v))));
-  const { data: finVendors } = vendorIds.length
-    ? await supabaseAdmin().from('vendors').select('id, settlement_direction').in('id', vendorIds)
-    : { data: [] };
-  const vendorCollectsIds = new Set(
-    ((finVendors ?? []) as { id: string; settlement_direction: string | null }[])
-      .filter(v => v.settlement_direction === 'vendor_collects').map(v => v.id),
-  );
+  // not-yet-received forever (2026-08-01 audit). vendorCollectsIds is
+  // resolved above, before the aggregates.
   const VENDOR_BUCKET = 'Vendor-collected (settles via Vendors)';
   let notReceivedRevenue = 0;
   for (const o of orders) {
@@ -211,6 +240,21 @@ export default async function FinancePage({
   const card: React.CSSProperties = { background: 'white', borderRadius: 12, padding: 24, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)' };
   const profitColor = netProfit >= 0 ? '#15803d' : '#dc2626';
 
+  // TCS cost-sync surface: booking config alone isn't enough — the payment
+  // ledger needs its own credential (TCS_CUSTOMER_NO), and the action writes
+  // orders, so it also needs the orders-manage permission (finance-only staff
+  // used to get an unhandled throw from the button).
+  const tcsConfigured = configuredAdapterIds().includes('TCS');
+  const tcsAdapter = getAdapter('TCS');
+  const tcsPaymentReady = tcsConfigured && (tcsAdapter?.paymentConfigured?.() ?? Boolean(tcsAdapter?.payment));
+  const canRunCostSync = session.isOwner || session.permissions.includes('orders.edit');
+  interface CostSyncStamp { at: string; scanned: number; matched: number; updated: number }
+  let costSyncLast: CostSyncStamp | null = null;
+  try {
+    const raw = siteSettings[COST_SYNC_STAMP_KEY];
+    if (raw) costSyncLast = JSON.parse(raw) as CostSyncStamp;
+  } catch { costSyncLast = null; }
+
   // "What stands out" strip, computed only from values already loaded above.
   const financeInsights: string[] = [];
   if (revenue > 0) {
@@ -229,18 +273,29 @@ export default async function FinancePage({
   }
 
   const pnlLines: { label: string; value: number; kind?: 'sub' | 'total' | 'net' | 'memo' }[] = [
-    // "Confirmed orders" not "paid": the figure is booked revenue from orders
-    // that count toward P&L; a chunk of it (COD not yet collected, gateway
-    // orders not yet confirmed) hasn't landed as cash — called out on the next
-    // line (a memo, not a deduction) so the number isn't mistaken for cash.
-    { label: 'Revenue (confirmed orders)', value: revenue },
+    // "Booked orders": revenue from orders that count toward P&L. Two memos
+    // qualify it (neither is a deduction): a chunk hasn't landed as cash yet,
+    // and 'pending' COD orders are booked before the customer confirms — a
+    // sale-time backlog shouldn't read as done revenue.
+    { label: 'Revenue (booked orders)', value: revenue },
     ...(notReceivedRevenue > 0
       ? [{ label: 'of which not yet received', value: notReceivedRevenue, kind: 'memo' as const }]
       : []),
+    ...(pendingRevenue > 0
+      ? [{ label: 'of which awaiting customer confirmation', value: pendingRevenue, kind: 'memo' as const }]
+      : []),
     { label: 'Cost of goods (COGS)', value: -cogs, kind: 'sub' },
     { label: 'Delivery cost', value: -deliveryCost, kind: 'sub' },
+    ...(estimatedDeliveryOrders > 0
+      ? [{ label: `of which estimated (${estimatedDeliveryOrders} order${estimatedDeliveryOrders === 1 ? '' : 's'} at PKR ${defaultDeliveryCost.toLocaleString()})`, value: estimatedDeliveryOrders * defaultDeliveryCost, kind: 'memo' as const }]
+      : []),
     { label: 'Payment fees', value: -paymentFees, kind: 'sub' },
     { label: 'Gross profit', value: grossProfit, kind: 'total' },
+    // Returned/refused deliveries: courier round-trip charge + sunk payment
+    // fees, zero revenue. Shown only when there are returns in the window.
+    ...(returned.count > 0 && returnedTotalLoss > 0
+      ? [{ label: `Returned deliveries (${returned.count} order${returned.count === 1 ? '' : 's'}${returned.estimatedCount > 0 ? ', partly estimated' : ''})`, value: -returnedTotalLoss, kind: 'sub' as const }]
+      : []),
     ...[...expByCat.entries()].map(([c, v]) => ({ label: `– ${c}`, value: -v, kind: 'sub' as const })),
     { label: 'Net profit', value: netProfit, kind: 'net' as const },
   ];
@@ -369,15 +424,38 @@ export default async function FinancePage({
               <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Returned / refused deliveries (loss)</div>
               <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
                 {returned.count} order{returned.count === 1 ? '' : 's'} came back — courier round-trip charge, zero revenue. Net margin after returns: <strong style={{ color: shippingNetAfterReturns >= 0 ? '#15803d' : '#dc2626' }}>{shippingNetAfterReturns >= 0 ? fmt(shippingNetAfterReturns) : `(${fmt(-shippingNetAfterReturns)})`}</strong>.
+                {returned.vendorDeliveredCount > 0 && ` ${returned.vendorDeliveredCount} of these ${returned.vendorDeliveredCount === 1 ? 'was' : 'were'} vendor-delivered (no store courier charge).`}
+                {returned.estimatedCount > 0 && ` ${returned.estimatedCount} estimated at PKR ${defaultDeliveryCost.toLocaleString()}.`}
+                {returned.fees > 0 && ` Plus ${fmt(returned.fees)} in sunk payment fees, deducted in the P&L.`}
               </div>
             </div>
             <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#dc2626', fontVariantNumeric: 'tabular-nums' }}>(&minus;{fmt(returned.loss)})</div>
           </div>
         )}
-        {/* When TCS is wired, pull the real per-consignment charge from its
+        {/* TCS cost sync: pull the real per-consignment charge from the
             Payment Detail ledger so these numbers run on actuals, not the
-            typical-cost estimate. */}
-        {configuredAdapterIds().includes('TCS') && <ReconcileTcsButton />}
+            typical-cost estimate. The button needs the payment credential
+            (TCS_CUSTOMER_NO) AND the orders-write permission — a visible hint
+            replaces it when either is missing, so a misconfigured sync is
+            never invisible again. */}
+        {tcsConfigured && (
+          <div style={{ marginTop: 12 }}>
+            <p style={{ margin: '0 0 8px', fontSize: '0.75rem', color: '#6b7280' }}>
+              Costs last synced from TCS:{' '}
+              {costSyncLast
+                ? <>{fmtDate(costSyncLast.at)} · {costSyncLast.updated} order{costSyncLast.updated === 1 ? '' : 's'} updated of {costSyncLast.matched} matched</>
+                : <strong style={{ color: '#b45309' }}>never</strong>}
+            </p>
+            {!tcsPaymentReady ? (
+              <p style={{ margin: 0, padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: '0.8125rem', color: '#92400e' }}>
+                Cost sync is not configured: set <code>TCS_CUSTOMER_NO</code> in the server environment (see docs/TCS-SETUP.md).
+                Until then, delivery costs stay estimated or hand-typed.
+              </p>
+            ) : canRunCostSync ? (
+              <ReconcileTcsButton />
+            ) : null}
+          </div>
+        )}
       </div>
 
       {/* Revenue & profit by payment method */}
@@ -523,11 +601,18 @@ export default async function FinancePage({
                   <td data-label="Total" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(r.total)}</td>
                   <td data-label="Costs" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c' }}>{r.costs > 0 ? `(${fmt(r.costs)})` : fmt(0)}</td>
                   <td data-label="Gross profit" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: r.gross >= 0 ? '#15803d' : '#dc2626' }}>{fmt(r.gross)}</td>
-                  <td data-label="Margin" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }}>{r.margin.toFixed(1)}%</td>
+                  <td data-label="Margin" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#6b7280' }} title={r.margin == null ? 'No product cost recorded — margin unknown' : undefined}>{r.margin == null ? '—' : `${r.margin.toFixed(1)}%`}</td>
                 </tr>
               ))}
             </tbody>
           </table>
+        )}
+        {missingCogsOrders > 0 && (
+          <p style={{ margin: '12px 0 0', padding: '10px 12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8, fontSize: '0.8125rem', color: '#92400e' }}>
+            {missingCogsOrders} order{missingCogsOrders === 1 ? ' has' : 's have'} no product cost recorded anywhere, so
+            {missingCogsOrders === 1 ? ' its margin shows' : ' their margins show'} as &ldquo;—&rdquo; and the P&amp;L&rsquo;s COGS line is understated.
+            Set the cost price on the product page (or an acquisition cost on the order) to fix this.
+          </p>
         )}
       </div>
 

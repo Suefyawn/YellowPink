@@ -157,6 +157,11 @@ export interface CourierAdapter {
   };
   /** Whether the necessary env vars are set in this deployment. */
   isConfigured(): boolean;
+  /** Whether the payment/ledger endpoint specifically is usable — some
+   *  couriers (TCS) need an extra credential (customer number) beyond the
+   *  booking config. UI uses this to show a "needs configuration" hint
+   *  instead of a button that can only ever fail. */
+  paymentConfigured?(): boolean;
   book(input: BookingInput): Promise<Result<BookingResult>>;
   cancel(trackingNumber: string): Promise<Result<CancelResult>>;
   track(trackingNumber: string): Promise<Result<TrackResult>>;

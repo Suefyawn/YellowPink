@@ -6,9 +6,9 @@
 // change to orders.status, which fires the order-status-change emails
 // (shipped / delivered).
 //
-// Scheduled hourly in vercel.json. Safe to run more often; the adapter
-// returns events with timestamps and we dedupe on (shipment_id, occurred_at)
-// before insert.
+// Runs once daily via the /api/cron/daily fan-out (09:00 UTC in vercel.json).
+// Safe to run more often; the adapter returns events with timestamps and we
+// dedupe on (shipment_id, occurred_at) before insert.
 //
 // Status filter: we only poll shipments that are NOT in a terminal state
 // ('delivered', 'returned', 'cancelled', 'failed'). Anything that's been
@@ -201,7 +201,29 @@ export async function GET(req: NextRequest) {
   try {
     costReconcile = await reconcileTcsCosts(sb, 45);
   } catch (e) {
-    costReconcile = { ok: false, message: (e as Error).message, scanned: 0, matched: 0, updated: 0 };
+    costReconcile = { ok: false, message: (e as Error).message, scanned: 0, matched: 0, updated: 0, changes: [] };
+  }
+  // A failed cost sync used to vanish into this route's JSON body, which the
+  // /api/cron/daily fan-out never reads — the sync was broken for its entire
+  // lifetime and nobody was told. Surface failures on the admin bell, deduped
+  // per day so a persistent misconfiguration nags once daily, and a NEW
+  // distinct failure tomorrow still gets its own notification.
+  if (costReconcile && !costReconcile.ok) {
+    try {
+      console.error('[courier-sync] TCS cost reconcile failed:', costReconcile.message);
+      const dedupKey = `cost_sync_fail:${new Date().toISOString().slice(0, 10)}`;
+      const { data: existing } = await sb
+        .from('admin_notifications').select('id').eq('entity_id', dedupKey).limit(1);
+      if (!existing || existing.length === 0) {
+        await sb.from('admin_notifications').insert({
+          kind: 'cost_sync_failed',
+          title: 'TCS delivery-cost sync failed',
+          body: `The nightly sync of actual courier charges from TCS did not run: ${costReconcile.message ?? 'unknown error'}. Until it works, Finance uses estimated/hand-typed delivery costs.`,
+          link: '/admin/finance',
+          entity_id: dedupKey,
+        });
+      }
+    } catch { /* notification must never fail the sync */ }
   }
 
   return NextResponse.json({
