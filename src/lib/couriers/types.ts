@@ -89,6 +89,16 @@ export interface LabelResult {
   raw?: unknown;
 }
 
+/** The label as raw PDF bytes — TCS's CN Print endpoint streams the PDF
+ *  directly on success (no URL envelope), so the admin needs a way to get
+ *  the bytes and serve them itself. */
+export interface LabelPdfResult {
+  ok: true;
+  contentType: string;
+  /** PDF body, base64-encoded (Result<T> must stay JSON-serialisable). */
+  base64: string;
+}
+
 /** One consignment's billing + COD line from the courier's payment ledger,
  *  used to reconcile the ACTUAL delivery cost + COD collection back to the
  *  order (vs. hand-keying it). All amounts PKR. */
@@ -152,6 +162,10 @@ export interface CourierAdapter {
   track(trackingNumber: string): Promise<Result<TrackResult>>;
   /** Fetch the printable label/AWB for a booked consignment. */
   label?(trackingNumber: string): Promise<Result<LabelResult>>;
+  /** Fetch the label as raw PDF bytes for couriers that stream the PDF
+   *  instead of returning a URL (TCS does on most deployments). The admin
+   *  label route proxies these bytes to the browser. */
+  labelPdf?(trackingNumber: string): Promise<Result<LabelPdfResult>>;
   /** Fetch the courier's payment ledger for a date range so we can reconcile
    *  the real delivery cost + COD collection back to orders. Requires the
    *  merchant's customer number. */

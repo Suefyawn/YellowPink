@@ -158,6 +158,40 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Stale-booking watchdog ────────────────────────────────────────────────
+  // An API booking whose consignment is never scanned sits in 'created'
+  // forever with the courier answering "No Data Found/Invalid CN" — exactly
+  // what happened on Jul 28 (parcel travelled under a manual CN slip while
+  // the API CN stayed unscanned, and nobody was told). Bookings still
+  // 'created' after 36 h get a deduped admin-bell notification so staff
+  // check pickup actually happened, print the label, or fix the tracking
+  // number — instead of discovering the limbo days later.
+  try {
+    const staleCutoff = new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString();
+    const { data: stale } = await sb
+      .from('shipments')
+      .select('id, tracking_number, courier, created_at, orders!inner(order_number, archived_at)')
+      .eq('status', 'created')
+      .is('orders.archived_at', null)
+      .lt('created_at', staleCutoff)
+      .limit(20);
+    // Supabase types an !inner join as an array even though it's one row.
+    for (const row of (stale ?? []) as unknown as Array<{ id: string; tracking_number: string; courier: string; orders: { order_number: string } | Array<{ order_number: string }> }>) {
+      const orderNumber = Array.isArray(row.orders) ? row.orders[0]?.order_number : row.orders?.order_number;
+      const dedupKey = `stale_booking:${row.id}`;
+      const { data: existing } = await sb
+        .from('admin_notifications').select('id').eq('entity_id', dedupKey).limit(1);
+      if (existing && existing.length > 0) continue;
+      await sb.from('admin_notifications').insert({
+        kind: 'stale_booking',
+        title: `${row.courier} hasn't scanned ${orderNumber ?? 'an order'} yet`,
+        body: `Consignment ${row.tracking_number} was booked over 36 hours ago and the courier still has no scan for it. Check the parcel was actually collected with THIS consignment's label. If it went out under a different CN, open the order and use "Fix tracking number"; if it was never collected, chase the pickup or cancel and re-book.`,
+        link: `/admin/orders`,
+        entity_id: dedupKey,
+      });
+    }
+  } catch { /* watchdog must never fail the sync */ }
+
   // After refreshing tracking, pull TCS's actual per-consignment billing so
   // each order's delivery_cost runs on real courier charges (incl. failed /
   // return legs) instead of the typical-cost estimate. Best-effort — a missing

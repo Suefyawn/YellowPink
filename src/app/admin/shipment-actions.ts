@@ -488,6 +488,57 @@ export async function reconcileTcsPayments(
   return { success: true, scanned: r.scanned, matched: r.matched, updated: r.updated };
 }
 
+// ─── Replace a shipment's tracking number ─────────────────────────────────
+// The "parcel travelled under a different CN" repair. Jul 28 (YP-A7VSBYRK8):
+// the API booking's consignment never got scanned (no printed label to hand
+// over), the rider took the parcel on a manual CN slip, and staff had no
+// sanctioned way to point the shipment at the real number. This action swaps
+// tracking_number in place (audited, old→new in the diff) and wipes stale
+// scan events from the old CN so the next sync starts clean.
+export async function replaceTracking(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertOrders();
+
+  const shipment_id = formData.get('shipment_id');
+  const new_tracking = formData.get('new_tracking');
+  if (typeof shipment_id !== 'string' || !shipment_id) return { error: 'shipment_id required' };
+  if (typeof new_tracking !== 'string' || !new_tracking.trim()) return { error: 'New tracking number required' };
+
+  const admin = supabaseAdmin();
+  const { data: s, error: lookupErr } = await admin
+    .from('shipments')
+    .select('id, order_id, courier, tracking_number')
+    .eq('id', shipment_id)
+    .single();
+  if (lookupErr || !s) return { error: lookupErr?.message ?? 'Shipment not found' };
+
+  const next = new_tracking.trim();
+  if (next === s.tracking_number) return { error: 'That is already the tracking number.' };
+
+  const { error: updErr } = await admin
+    .from('shipments')
+    .update({ tracking_number: next })
+    .eq('id', shipment_id);
+  if (updErr) return { error: updErr.message };
+
+  // Scan history from the abandoned CN would interleave nonsense into the
+  // timeline of the real one; drop it and let sync rebuild from the new CN.
+  await admin.from('shipment_events').delete().eq('shipment_id', shipment_id);
+
+  await logAudit(session, {
+    action: 'shipment.replace_tracking',
+    entity: 'shipment',
+    entity_id: shipment_id,
+    diff: { courier: s.courier, from: s.tracking_number, to: next },
+  });
+
+  revalidatePath(`/admin/orders/${s.order_id}`);
+  revalidatePath('/admin/orders');
+  return { success: true };
+}
+
 // ─── Cancel a shipment via courier API ────────────────────────────────────
 // Manual shipments (those entered with createShipment) can also be marked
 // cancelled; we just skip the API call and only update the DB.

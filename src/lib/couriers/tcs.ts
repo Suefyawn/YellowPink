@@ -61,6 +61,7 @@ import type {
   TrackEvent,
   TrackResult,
   LabelResult,
+  LabelPdfResult,
   PaymentRecord,
   PaymentResult,
   Result,
@@ -513,6 +514,60 @@ async function label(trackingNumber: string): Promise<Result<LabelResult>> {
   }
 }
 
+// ─── Label as raw PDF bytes ────────────────────────────────────────────────
+// The CN Print endpoint's SUCCESS response on production is the PDF itself
+// ("A PDF file will be available for downloading", per the spec) — the
+// JSON-with-url envelope only appears on failures. label() above therefore
+// never yielded a printable label, which is why every shipment row has a
+// NULL raw_label_url and why the Jul 28 booking ended in a manual re-book:
+// staff had no label to hand the rider, the parcel travelled under a manual
+// CN slip, and the API consignment sat unscanned ("Invalid CN") forever.
+// This method returns the streamed bytes so the admin label route can serve
+// them for printing.
+async function labelPdf(trackingNumber: string): Promise<Result<LabelPdfResult>> {
+  if (!isConfigured()) {
+    return { ok: false, message: 'TCS adapter is not configured.', code: 'not_configured' };
+  }
+  const tokensOrErr = await getTokens();
+  if (isErr(tokensOrErr)) return tokensOrErr;
+  const { jwt, ecom } = tokensOrErr;
+  const baseUrl = env('TCS_BASE_URL')!;
+  const url = `${baseUrl.replace(/\/$/, '')}/ecom/api/print/label`;
+  try {
+    const qs = `?consignmentno=${encodeURIComponent(trackingNumber)}&shipperdetail=true&accesstoken=${encodeURIComponent(ecom)}`;
+    const r = await fetch(`${url}${qs}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+    const ct = r.headers.get('content-type') ?? '';
+    const buf = Buffer.from(await r.arrayBuffer());
+    const isPdf = ct.includes('pdf') || buf.subarray(0, 5).toString('latin1').startsWith('%PDF');
+    if (r.ok && isPdf) {
+      return { ok: true, contentType: 'application/pdf', base64: buf.toString('base64') };
+    }
+    // Not a PDF: either the JSON envelope carrying a URL (fetch and re-serve
+    // those bytes so the caller has one uniform path) or an error body.
+    const text = buf.toString('utf8');
+    let out: { url?: string; message?: string } | null = null;
+    try { out = JSON.parse(text) as { url?: string; message?: string }; } catch { out = null; }
+    if (out?.url) {
+      const r2 = await fetch(out.url);
+      if (r2.ok) {
+        const buf2 = Buffer.from(await r2.arrayBuffer());
+        return { ok: true, contentType: r2.headers.get('content-type') ?? 'application/pdf', base64: buf2.toString('base64') };
+      }
+    }
+    return {
+      ok: false,
+      message: out?.message || `TCS label unavailable (HTTP ${r.status})`,
+      code: r.status,
+      raw: out ?? { contentType: ct },
+    };
+  } catch (err) {
+    return { ok: false, message: 'TCS label network error', code: 'network', raw: (err as Error).message };
+  }
+}
+
 // ─── Payment Detail (actual delivery cost + COD reconciliation) ─────────────
 // GET /ecom/api/Payment/detail → the courier's billing ledger for a date range:
 // the real delivery charge, GST, COD amount paid and payment status per CN.
@@ -594,5 +649,6 @@ export const tcs: CourierAdapter = {
   cancel,
   track,
   label,
+  labelPdf,
   payment,
 };
