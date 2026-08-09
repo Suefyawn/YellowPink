@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { Suspense } from 'react';
+import Link from 'next/link';
 import { supabaseAdmin, getSiteSettings } from '@/lib/supabase';
 import { parseCommerceConfig } from '@/lib/commerce';
 import { configuredAdapterIds, getAdapter } from '@/lib/couriers';
@@ -111,6 +112,29 @@ export default async function FinancePage({
   // above (which now excludes 'returned') no longer sees. Total it separately.
   const returned = await loadReturnedDeliveryLoss(fromISO, defaultDeliveryCost);
   const shippingNetAfterReturns = shippingNet - returned.loss;
+  // Returns impact beyond the courier cost: how much booked GMV came back,
+  // and what share of parcels that reached a customer bounced. Denominator =
+  // orders that reached the door (mirrors the Returns page's rate); this
+  // card counts courier RTO / COD refusal by ORDER DATE, the Returns page
+  // counts customer return requests — different questions.
+  interface ReturnedRow {
+    created_at: string | null; total: number | string | null;
+    delivery_cost: number | string | null; payment_fee: number | string | null;
+    vendor_id: string | null;
+    vendors: { self_delivers: boolean | null } | Array<{ self_delivers: boolean | null }> | null;
+  }
+  let rq = admin.from('orders')
+    .select('created_at, total, delivery_cost, payment_fee, vendor_id, vendors(self_delivers)')
+    .eq('status', 'returned').is('archived_at', null);
+  if (fromISO) rq = rq.gte('created_at', fromISO);
+  const { data: returnedRowsData } = await rq;
+  const returnedRows = (returnedRowsData ?? []) as ReturnedRow[];
+  const returnedGmv = returnedRows.reduce((s, o) => s + num(o.total), 0);
+  let cq = admin.from('orders').select('id', { count: 'exact', head: true })
+    .in('status', ['delivered', 'returned', 'refunded']).is('archived_at', null);
+  if (fromISO) cq = cq.gte('created_at', fromISO);
+  const { count: reachedCount } = await cq;
+  const returnRate = reachedCount && reachedCount > 0 ? (returnedRows.length / reachedCount) * 100 : null;
   // Payment fees sunk on returned orders are equally real (a gateway fee on a
   // refused parcel is money gone) — deducted with the courier loss below.
   const returnedTotalLoss = returned.loss + returned.fees;
@@ -271,6 +295,56 @@ export default async function FinancePage({
       return v?.settlement_direction !== 'vendor_collects';
     }).length;
 
+  // Vendor receivable: pending settlements owed TO the store. Real money
+  // (owed for weeks in the live data) that never appeared on Finance.
+  const { data: pendingSettleData } = await admin
+    .from('vendor_settlements')
+    .select('amount_due, due_to, created_at')
+    .eq('status', 'pending');
+  const owedToUs = ((pendingSettleData ?? []) as Array<{ amount_due: number | string | null; due_to: string | null; created_at: string | null }>)
+    .filter(s => s.due_to === 'us');
+  const vendorReceivable = owedToUs.reduce((s, r) => s + num(r.amount_due), 0);
+  const vendorReceivableOldestDays = owedToUs.length
+    ? Math.floor((new Date().getTime() - Math.min(...owedToUs.map(r => new Date(r.created_at ?? new Date().toISOString()).getTime()))) / 86_400_000)
+    : 0;
+
+  // Monthly P&L (All time view only): one pass over the already-loaded
+  // orders, bucketed by PKT month — answers "July vs August" without a
+  // per-month query. Net here is before overheads (expenses ledger is
+  // period-scoped, not month-bucketed).
+  const pktMonth = (iso: string | null) => iso ? new Date(new Date(iso).getTime() + PKT_OFFSET_MS).toISOString().slice(0, 7) : null;
+  interface MonthRow { month: string; orders: number; revenue: number; cogs: number; delivery: number; fees: number; returnsLoss: number; net: number }
+  let monthRows: MonthRow[] = [];
+  if (range.key === 'all') {
+    const byMonth = new Map<string, MonthRow>();
+    const monthRow = (m: string) => {
+      const cur = byMonth.get(m) ?? { month: m, orders: 0, revenue: 0, cogs: 0, delivery: 0, fees: 0, returnsLoss: 0, net: 0 };
+      byMonth.set(m, cur);
+      return cur;
+    };
+    for (const o of orders) {
+      const m = pktMonth(o.created_at);
+      if (!m) continue;
+      const row = monthRow(m);
+      row.orders += 1;
+      row.revenue += num(o.total);
+      row.cogs += cogsByOrder.get(o.id) ?? 0;
+      row.delivery += o.delivery_cost != null ? num(o.delivery_cost) : isVendorCollected(o) ? 0 : defaultDeliveryCost;
+      row.fees += num(o.payment_fee);
+    }
+    for (const o of returnedRows) {
+      const m = pktMonth(o.created_at);
+      if (!m) continue;
+      const row = monthRow(m);
+      const v = Array.isArray(o.vendors) ? o.vendors[0] : o.vendors;
+      const loss = o.delivery_cost != null ? num(o.delivery_cost) : v?.self_delivers === true ? 0 : defaultDeliveryCost;
+      row.returnsLoss += loss + num(o.payment_fee);
+    }
+    monthRows = [...byMonth.values()]
+      .map(r => ({ ...r, net: r.revenue - r.cogs - r.delivery - r.fees - r.returnsLoss }))
+      .sort((a, b) => b.month.localeCompare(a.month));
+  }
+
   // TCS cost-sync surface: booking config alone isn't enough — the payment
   // ledger needs its own credential (TCS_CUSTOMER_NO), and the action writes
   // orders, so it also needs the orders-manage permission (finance-only staff
@@ -354,6 +428,18 @@ export default async function FinancePage({
 
       <InsightCallouts items={financeInsights} />
 
+      {/* Money a vendor owes the store — pending settlements sat invisible on
+          Finance for weeks; the Vendors page has the detail. */}
+      {vendorReceivable > 0 && (
+        <div style={{ ...card, padding: '12px 16px', marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', flexWrap: 'wrap', gap: 8 }}>
+          <span style={{ fontSize: '0.875rem', color: '#374151' }}>
+            Vendors owe you <strong style={{ fontVariantNumeric: 'tabular-nums' }}>{fmt(vendorReceivable)}</strong> across {owedToUs.length} pending settlement{owedToUs.length === 1 ? '' : 's'}
+            {vendorReceivableOldestDays > 0 && <> (oldest {vendorReceivableOldestDays} day{vendorReceivableOldestDays === 1 ? '' : 's'})</>}.
+          </span>
+          <Link href="/admin/vendors" style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}>Settle on Vendors →</Link>
+        </div>
+      )}
+
       {/* KPIs */}
       <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 24 }}>
         <KpiCard label="Revenue" value={fmt(revenue)} accent="#0369a1" spark={revenueSpark} />
@@ -390,6 +476,11 @@ export default async function FinancePage({
               ))}
             </tbody>
           </table>
+          {revenue > 0 && totalOpex === 0 && (
+            <p style={{ margin: '12px 0 0', fontSize: '0.75rem', color: '#9ca3af', fontStyle: 'italic' }}>
+              No expenses logged for this period, so Net profit includes no overheads or ad spend. Log them in the Expenses table below.
+            </p>
+          )}
         </div>
 
         {/* ROAS */}
@@ -500,6 +591,72 @@ export default async function FinancePage({
           </div>
         )}
       </div>
+
+      {/* Returns impact — count, rate, GMV lost and cash cost. The shipping
+          card shows only the courier loss; July's real damage was 36-40% of
+          booked GMV coming back. Counted by order date; courier RTO / COD
+          refusal (orders.status = returned), distinct from the Returns
+          page's customer return requests. */}
+      {returnedRows.length > 0 && (
+        <div style={{ ...card, marginBottom: 24 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Returns impact</h2>
+          <p style={{ margin: '0 0 12px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            Parcels that came back (refused or returned to origin), by order date. The GMV was never collected; the cash cost below is deducted from Net profit.
+          </p>
+          <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+            <div style={{ padding: '12px 14px', background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 8 }}>
+              <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Returned orders</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111827', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{returnedRows.length}</div>
+            </div>
+            <div style={{ padding: '12px 14px', background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 8 }}>
+              <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Return rate</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: returnRate != null && returnRate > 20 ? '#dc2626' : '#111827', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{returnRate != null ? `${returnRate.toFixed(1)}%` : '—'}</div>
+              <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 2 }}>of parcels that reached a customer</div>
+            </div>
+            <div style={{ padding: '12px 14px', background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 8 }}>
+              <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>GMV lost</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#dc2626', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(returnedGmv)}</div>
+            </div>
+            <div style={{ padding: '12px 14px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8 }}>
+              <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Cash cost (courier + fees)</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: '#dc2626', fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(returnedTotalLoss)}</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Monthly P&L, All-time view only: July vs August at a glance. */}
+      {monthRows.length > 0 && (
+        <div style={{ ...card, marginBottom: 24 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>By month</h2>
+          <p style={{ margin: '0 0 12px', fontSize: '0.8125rem', color: '#6b7280' }}>
+            Calendar months in Pakistan time. Net here is before overheads (log expenses below to complete the picture); returns loss is booked to the month the order was placed.
+          </p>
+          <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
+            <thead><tr style={{ color: '#6b7280', textAlign: 'left', background: '#f9fafb' }}>
+              {['Month', 'Orders', 'Revenue', 'COGS', 'Delivery', 'Fees', 'Returns loss', 'Net'].map((h, i) => (
+                <th key={h} style={{ padding: '8px 10px', fontWeight: 600, textAlign: i >= 1 ? 'right' : 'left' }}>{h}</th>
+              ))}
+            </tr></thead>
+            <tbody>
+              {monthRows.map(m => (
+                <tr key={m.month} style={{ borderTop: '1px solid #f3f4f6' }}>
+                  <td data-label="Month" style={{ padding: '8px 10px', color: '#374151', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                    {new Date(`${m.month}-01T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })}
+                  </td>
+                  <td data-label="Orders" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{m.orders}</td>
+                  <td data-label="Revenue" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmt(m.revenue)}</td>
+                  <td data-label="COGS" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c' }}>{m.cogs > 0 ? `(${fmt(m.cogs)})` : fmt(0)}</td>
+                  <td data-label="Delivery" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c' }}>{m.delivery > 0 ? `(${fmt(m.delivery)})` : fmt(0)}</td>
+                  <td data-label="Fees" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c' }}>{m.fees > 0 ? `(${fmt(m.fees)})` : fmt(0)}</td>
+                  <td data-label="Returns loss" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: '#b91c1c' }}>{m.returnsLoss > 0 ? `(${fmt(m.returnsLoss)})` : fmt(0)}</td>
+                  <td data-label="Net" style={{ padding: '8px 10px', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: m.net >= 0 ? '#15803d' : '#dc2626' }}>{fmt(m.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Revenue & profit by payment method */}
       <div style={{ ...card, marginBottom: 24 }}>
@@ -664,6 +821,8 @@ export default async function FinancePage({
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Expenses</h2>
 
         <form action={addExpense} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 20 }}>
+          {/* Preserve the active range through the post-save redirect. */}
+          <input type="hidden" name="range" value={range.key} />
           <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Date<br />
             <input type="date" name="incurred_on" defaultValue={new Date().toISOString().slice(0, 10)} style={inp} />
           </label>
@@ -672,7 +831,7 @@ export default async function FinancePage({
               {EXPENSE_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
-          <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Channel (ads)<br />
+          <label style={{ fontSize: '0.75rem', color: '#6b7280' }}>Channel (ads/marketing)<br />
             <input list="ad-channels" name="channel" placeholder="Meta" style={inp} />
             <datalist id="ad-channels">{AD_CHANNELS.map(c => <option key={c} value={c} />)}</datalist>
           </label>

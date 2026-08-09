@@ -6,6 +6,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { recomputeSettlement, syncReturnChargeToVendor } from '@/lib/vendor-settlement';
+import { resolveRange, rangeStartISO, PKT_OFFSET_MS } from '@/lib/finance';
 
 // Finance is gated on the same permission as Analytics (owner always allowed;
 // a null session is the owner-password mode used elsewhere in admin).
@@ -29,8 +30,12 @@ export async function addExpense(formData: FormData): Promise<void> {
   if (!isFinite(amount) || amount < 0) {
     redirect('/admin/finance?err=' + encodeURIComponent('Enter a valid amount'));
   }
-  // Channel only meaningful for ad spend.
-  const channel = category === 'Ads' ? (channelRaw || 'Other') : null;
+  // Channel is meaningful for ad spend: 'Ads' always carries one, and a
+  // 'Marketing' expense WITH a channel counts as ad money in the ROAS maths
+  // (page.tsx) — nulling it here used to defeat the page's own rule.
+  const channel = category === 'Ads' ? (channelRaw || 'Other')
+    : category === 'Marketing' ? (channelRaw || null)
+    : null;
 
   const { error } = await supabaseAdmin().from('expenses').insert({
     incurred_on, category, channel, amount, note,
@@ -40,7 +45,15 @@ export async function addExpense(formData: FormData): Promise<void> {
   }
   await logAudit(session, { action: 'expense.create', entity: 'expense', diff: { category, channel, amount } });
   revalidatePath('/admin/finance');
-  redirect('/admin/finance?ok=1');
+  // Land back on the range the owner was viewing — the redirect used to
+  // reset to the 30d default, so a back-dated expense showed "Saved." and
+  // then no row, looking like a failed save. If the saved date falls outside
+  // the current window, widen to All time so the new row is visible.
+  const rangeKey = String(formData.get('range') || '').trim();
+  const win = rangeStartISO(resolveRange(rangeKey || undefined));
+  const winDay = win ? new Date(new Date(win).getTime() + PKT_OFFSET_MS).toISOString().slice(0, 10) : null;
+  const target = winDay && incurred_on < winDay ? 'all' : (rangeKey || null);
+  redirect(`/admin/finance?ok=1${target ? `&range=${encodeURIComponent(target)}` : ''}`);
 }
 
 // Takes FormData (id field) so it plugs into the shared DeleteButton, which

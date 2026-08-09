@@ -5,7 +5,6 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
-import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { fmtPKR as fmt } from '@/lib/money';
 import { fmtDatePK } from '@/lib/dates';
 
@@ -44,11 +43,13 @@ export default async function CodReconciliationPage({
   const { range: rangeParam, method: methodParam } = await searchParams;
 
   const admin = supabaseAdmin();
+  // pending/confirmed included so booked-but-not-dispatched COD money has a
+  // stage of its own — a pending order's cash was previously in NO bucket.
   const { data } = await admin
     .from('orders')
     .select('id, order_number, first_name, last_name, total, status, payment_received_at, payment_account, created_at, vendor_id')
     .eq('pay_method', 'cod')
-    .in('status', ['processing', 'shipped', 'delivered'])
+    .in('status', ['pending', 'confirmed', 'processing', 'shipped', 'delivered'])
     .is('archived_at', null)
     .order('created_at', { ascending: false });
   // Vendor-collected COD never reaches the store's courier statement — the
@@ -70,6 +71,10 @@ export default async function CodReconciliationPage({
   const outstanding = rows.filter(r => r.status === 'delivered' && !r.payment_received_at);
   const collected   = rows.filter(r => r.status === 'delivered' && r.payment_received_at);
   const inTransit   = rows.filter(r => r.status === 'processing' || r.status === 'shipped');
+  // Booked but not yet dispatched: nothing is with the courier, so there is
+  // no receivable yet — but the money is real pipeline and the owner should
+  // see it (esp. during a sale when the confirmation backlog grows).
+  const awaitingConfirm = rows.filter(r => r.status === 'pending' || r.status === 'confirmed');
   // Vendor-held cash: delivered vendor-collected COD the vendor is sitting
   // on. It used to be a footnote only — PKR 14k+ of real money rendering as
   // "All caught up" — so it gets its own card. NOT the whole excluded list:
@@ -124,15 +129,30 @@ export default async function CodReconciliationPage({
         )}
       </p>
 
-      <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28 }}>
-        <KpiCard label="Outstanding · to confirm" value={fmt(sum(outstanding))} accent="#b45309"
-          hint={`${outstanding.length} delivered order${outstanding.length === 1 ? '' : 's'}`} />
-        <KpiCard label="Collected · reconciled" value={fmt(sum(collected))} accent="#15803d"
-          hint={`${collected.length} delivered order${collected.length === 1 ? '' : 's'}`} />
-        <KpiCard label="In transit · expected" value={fmt(sum(inTransit))} accent="#2563eb"
-          hint={`${inTransit.length} order${inTransit.length === 1 ? '' : 's'} being prepared or out for delivery`} />
-        <KpiCard label="Held by vendor" value={fmt(sum(vendorHeld))} accent="#7c3aed"
-          hint={`${vendorHeld.length} delivered order${vendorHeld.length === 1 ? '' : 's'} · settles via Vendors`} />
+      {/* Cash pipeline: where every booked COD rupee currently sits, left to
+          right in the order it moves. Answers "where is my cash" at a glance
+          for a store that is 17-of-18 COD. */}
+      <div style={{ ...card, marginBottom: 16, padding: '18px 24px' }}>
+        <h2 style={{ margin: '0 0 12px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Where the COD cash is</h2>
+        <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+          {[
+            { label: 'Booked · awaiting confirmation', list: awaitingConfirm, color: '#6b7280', note: 'with the customer, not dispatched yet' },
+            { label: 'In transit · with the courier', list: inTransit, color: '#2563eb', note: 'being prepared or out for delivery' },
+            { label: 'Delivered · cash to confirm', list: outstanding, color: '#b45309', note: 'collected by the rider, not marked received' },
+            { label: 'In the bank · reconciled', list: collected, color: '#15803d', note: 'payment recorded on the order' },
+          ].map(stage => (
+            <div key={stage.label} style={{ padding: '12px 14px', background: '#f9fafb', border: '1px solid #eef0f2', borderRadius: 8 }}>
+              <div style={{ fontSize: '0.6875rem', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{stage.label}</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: stage.color, fontVariantNumeric: 'tabular-nums', marginTop: 2 }}>{fmt(sum(stage.list))}</div>
+              <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 2 }}>{stage.list.length} order{stage.list.length === 1 ? '' : 's'} · {stage.note}</div>
+            </div>
+          ))}
+        </div>
+        {vendorHeld.length > 0 && (
+          <p style={{ margin: '12px 0 0', fontSize: '0.8125rem', color: '#6b7280' }}>
+            Separately, <strong style={{ color: '#7c3aed' }}>{fmt(sum(vendorHeld))}</strong> across {vendorHeld.length} delivered order{vendorHeld.length === 1 ? '' : 's'} is held by the vendor and settles on the <Link href="/admin/vendors" style={{ color: '#C5286A', fontWeight: 600 }}>Vendors page</Link> — it never passes through the store&apos;s courier account.
+          </p>
+        )}
       </div>
 
       <div style={card}>
