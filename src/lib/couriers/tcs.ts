@@ -585,14 +585,21 @@ async function payment(fromDate: string, toDate: string): Promise<Result<Payment
   if (isErr(tokensOrErr)) return tokensOrErr;
   const { jwt, ecom } = tokensOrErr;
   const baseUrl = env('TCS_BASE_URL')!;
-  const url = `${baseUrl.replace(/\/$/, '')}/ecom/api/Payment/detail`;
   type PaymentEnvelope = { detail?: Array<Record<string, unknown>> | null; message?: string };
   try {
-    // The spec declares this endpoint as GET (its own example still shows a
-    // JSON body, and TCS's other transactional endpoints POST) — so try GET
-    // first, mirroring the live-verified labelPdf() pattern (accesstoken in
-    // the query string, Bearer header), and keep POST as the fallback.
-    const attempt = async (method: 'GET' | 'POST') => {
+    // The spec declares this endpoint GET at /ecom/api/Payment/detail (its
+    // own example still shows a JSON body, and TCS's other transactional
+    // endpoints POST). The first live run (2026-08-09) got HTTP 405 with the
+    // real cause hidden, so this walks the plausible shapes — both path
+    // casings TCS gateways use, GET (accesstoken in query, like the
+    // live-verified labelPdf) then POST (accesstoken in body) — stopping at
+    // the first data-shaped answer, and reports EVERY attempt's status +
+    // body when all fail so the next failure is diagnosable from the button.
+    const isData = (resp: { ok: boolean }, body: PaymentEnvelope | null) => resp.ok && !!body && Array.isArray(body.detail);
+    const isCleanEmpty = (resp: { ok: boolean }, body: PaymentEnvelope | null) =>
+      resp.ok && !!body && body.detail == null && typeof body.message === 'string' && /no data|invalid cn|no record/i.test(body.message);
+    const attempt = async (method: 'GET' | 'POST', path: string) => {
+      const url = `${baseUrl.replace(/\/$/, '')}${path}`;
       if (method === 'GET') {
         const qs = new URLSearchParams({ customerno: String(env('TCS_CUSTOMER_NO')), fromdate: fromDate, todate: toDate, accesstoken: ecom });
         return fetch(`${url}?${qs}`, { method: 'GET', headers: { Authorization: `Bearer ${jwt}` } });
@@ -603,27 +610,34 @@ async function payment(fromDate: string, toDate: string): Promise<Result<Payment
         body: JSON.stringify({ accesstoken: ecom, customerno: env('TCS_CUSTOMER_NO'), fromdate: fromDate, todate: toDate }),
       });
     };
-    let r = await attempt('GET');
-    let out = await r.json().catch(() => null) as PaymentEnvelope | null;
-    // A clean data-shaped 200 whose ledger is simply empty ("No Data Found")
-    // is a final answer, not a method mismatch — don't retry those. Retry on
-    // any non-2xx AND on 200 error envelopes (TCS gateways return HTTP 200
-    // for "method not supported"-style failures).
-    const isData = (resp: Response, body: PaymentEnvelope | null) => resp.ok && !!body && Array.isArray(body.detail);
-    const isCleanEmpty = (resp: Response, body: PaymentEnvelope | null) =>
-      resp.ok && !!body && body.detail == null && typeof body.message === 'string' && /no data|invalid cn|no record/i.test(body.message);
-    if (!isData(r, out) && !isCleanEmpty(r, out)) {
-      log.warn('tcs.payment GET attempt failed, retrying as POST', { status: r.status, body: out });
-      r = await attempt('POST');
-      out = await r.json().catch(() => null) as PaymentEnvelope | null;
+    const tries: Array<['GET' | 'POST', string]> = [
+      ['GET', '/ecom/api/Payment/detail'],
+      ['POST', '/ecom/api/Payment/detail'],
+      ['GET', '/ecom/api/payment/detail'],
+      ['POST', '/ecom/api/payment/detail'],
+    ];
+    const failures: Array<{ label: string; status: number; body: string }> = [];
+    let out: PaymentEnvelope | null = null;
+    let matched = false;
+    for (const [method, path] of tries) {
+      const resp = await attempt(method, path);
+      const text = await resp.text();
+      let parsed: PaymentEnvelope | null = null;
+      try { parsed = JSON.parse(text) as PaymentEnvelope; } catch { parsed = null; }
+      // A clean data-shaped answer whose ledger is simply empty ("No Data
+      // Found") is a final success, not a shape mismatch — don't keep trying.
+      if (isCleanEmpty(resp, parsed)) return { ok: true, records: [], raw: parsed };
+      if (isData(resp, parsed)) { out = parsed; matched = true; break; }
+      failures.push({ label: `${method} ${path.split('/').pop()}`, status: resp.status, body: text.replace(/\s+/g, ' ').slice(0, 120) });
     }
-    if (isCleanEmpty(r, out)) {
-      return { ok: true, records: [], raw: out };
+    if (!matched) {
+      log.warn('tcs.payment failed on all attempts', { failures });
+      const detailMsg = failures.map(f => `${f.label}: HTTP ${f.status}${f.body ? ` ${f.body}` : ''}`).join(' | ');
+      return { ok: false, message: `TCS payment detail failed — ${detailMsg}`.slice(0, 700), code: failures[failures.length - 1]?.status, raw: failures };
     }
     const detail = out && Array.isArray(out.detail) ? out.detail : null;
-    if (!r.ok || !detail) {
-      log.warn('tcs.payment failed on both methods', { status: r.status, body: out });
-      return { ok: false, message: out?.message || `TCS payment detail failed (HTTP ${r.status})`, code: r.status, raw: out };
+    if (!detail) {
+      return { ok: false, message: 'TCS payment detail returned no ledger.', code: 'no_detail', raw: out };
     }
     const numOrNull = (v: unknown): number | null => {
       const n = Number(v);
