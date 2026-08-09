@@ -12,8 +12,8 @@
 // ============================================================================
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { authorizeBlogApi } from '@/lib/blog-api';
+import { uploadMedia } from '@/lib/media-storage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,21 +57,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Max file size is 5 MB.' }, { status: 413 });
   }
 
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { persistSession: false } },
-  );
-
   // Name from the content type, never the client-supplied filename.
   const filename = `blog/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await supabase.storage
-    .from('images')
-    .upload(filename, await file.arrayBuffer(), { contentType: file.type, upsert: false });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const {
-    data: { publicUrl },
-  } = supabase.storage.from('images').getPublicUrl(filename);
-  return NextResponse.json({ url: publicUrl }, { status: 201 });
+  const res = await uploadMedia(filename, await file.arrayBuffer(), file.type);
+  if ('error' in res) return NextResponse.json({ error: res.error }, { status: 500 });
+  return NextResponse.json({ url: res.url }, { status: 201 });
 }

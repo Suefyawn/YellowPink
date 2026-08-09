@@ -31,7 +31,10 @@ const ALLOWED_HOSTS = new Set(
   [
     'www.yellowpink.pk',
     'yellowpink.pk',
+    // R2 image origin (post-migration home of all site media).
+    'images.yellowpink.pk',
     hostOf(SITE),
+    hostOf(process.env.R2_PUBLIC_BASE),
     hostOf(process.env.NEXT_PUBLIC_SUPABASE_URL),
   ].filter((h): h is string => Boolean(h)),
 );

@@ -66,6 +66,9 @@ const nextConfig: NextConfig = {
       // served from here and stored as absolute image_urls (they also feed
       // OG/JSON-LD), so next/image must be allowed to optimise this host.
       { protocol: 'https' as const, hostname: 'www.yellowpink.pk' },
+      // Cloudflare R2 image origin (free-egress home for all site media
+      // post-migration; see docs + src/lib/media-storage.ts).
+      { protocol: 'https' as const, hostname: 'images.yellowpink.pk' },
       // Common CDNs people host product imagery on.
       { protocol: 'https' as const, hostname: 'images.unsplash.com' },
       { protocol: 'https' as const, hostname: 'res.cloudinary.com' },
