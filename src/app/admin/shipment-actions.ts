@@ -468,21 +468,36 @@ export async function reconcileTcsPayments(
   _prev: { error?: string; success?: boolean; scanned?: number; matched?: number; updated?: number } | null,
   formData: FormData,
 ): Promise<{ error?: string; success?: boolean; scanned?: number; matched?: number; updated?: number }> {
-  const session = await assertOrders();
+  // Inline check, NOT assertOrders(): the Finance page renders for the
+  // 'finance' permission, so a finance-only staffer could reach this action —
+  // assertOrders()'s throw gave them Next's opaque digest error, the literal
+  // "button doesn't work" experience. Return the error into the button's
+  // state instead. (The page also hides the button for them; this is the
+  // server-side backstop.)
+  const session = await getStaffSession();
+  if (!session || (!session.isOwner && !session.permissions.includes('orders.edit'))) {
+    return { error: 'You need the Orders — Manage permission to run this sync (it writes order delivery costs).' };
+  }
 
   const daysRaw = formData.get('days');
   const days = typeof daysRaw === 'string' && daysRaw ? Math.min(180, Math.max(1, Number(daysRaw))) : 30;
 
   // Shared core (also used by the daily cron) — pulls TCS's billing ledger and
-  // writes the real courier charge onto each matching order.
-  const r = await reconcileTcsCosts(supabaseAdmin(), days);
-  if (!r.ok) return { error: r.message };
-
+  // writes the real courier charge onto each matching order (with a per-order
+  // audit row for every changed value).
+  const r = await reconcileTcsCosts(supabaseAdmin(), days, session);
+  // Log the outcome either way: 'shipment.reconcile_payments' rows used to
+  // exist only on success, which made "zero rows ever" the sole evidence the
+  // button had never worked. diff.ok keeps success distinguishable.
   await logAudit(session, {
     action: 'shipment.reconcile_payments',
     entity: 'orders',
-    diff: { courier: 'TCS', days, scanned: r.scanned, matched: r.matched, updated: r.updated },
+    diff: r.ok
+      ? { ok: true, courier: 'TCS', days, scanned: r.scanned, matched: r.matched, updated: r.updated }
+      : { ok: false, courier: 'TCS', days, error: r.message },
   });
+  if (!r.ok) return { error: r.message };
+
   revalidatePath('/admin/finance');
   revalidatePath('/admin/orders');
   return { success: true, scanned: r.scanned, matched: r.matched, updated: r.updated };

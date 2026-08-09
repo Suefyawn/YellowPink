@@ -40,12 +40,14 @@ export async function GET(req: NextRequest) {
       day(r.created_at),
       PAY_METHOD_LABELS[r.method] ?? r.method,
       Math.round(r.total),
-      Math.round(r.cogs),
+      // Blank, not 0: no cost is recorded anywhere for this order, so the
+      // margin column is unknowable rather than 100%.
+      r.cogs == null ? '' : Math.round(r.cogs),
       Math.round(r.delivery),
       Math.round(r.fee),
       Math.round(r.costs),
       Math.round(r.gross),
-      r.margin.toFixed(1),
+      r.margin == null ? '' : r.margin.toFixed(1),
       r.payment_account ?? '',
       day(r.payment_received_at),
     ].map(cell).join(','));

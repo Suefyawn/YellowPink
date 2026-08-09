@@ -72,7 +72,9 @@ Auth — set the header-token credential (**one** of):
 | `TCS_USERNAME` | TCS Envio API username |
 | `TCS_PASSWORD` | TCS Envio API password |
 
-Optional (unlocks payment/COD reconciliation):
+**Required for the Finance cost sync** (booking works without it, but the
+"Sync actual delivery costs" button and the nightly cost reconcile can never
+run until it is set — the Finance page shows a "not configured" hint):
 
 | Var | Notes |
 |-----|-------|
