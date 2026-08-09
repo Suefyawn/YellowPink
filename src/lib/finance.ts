@@ -3,12 +3,28 @@
 import { supabaseAdmin } from './supabase';
 import { fetchAll } from './fetch-all';
 
-export const FINANCE_RANGES: { key: string; label: string; days: number | null }[] = [
+export interface FinanceRange {
+  key: string;
+  label: string;
+  /** Rolling-window length; null for calendar/all ranges. */
+  days: number | null;
+  /** Calendar-aligned ranges start at a Pakistan-time boundary (store's
+   *  market runs on PKT): 'day' = since PKT midnight, 'month' = since the
+   *  1st of the current PKT month. */
+  calendar?: 'day' | 'month';
+}
+
+export const FINANCE_RANGES: FinanceRange[] = [
+  { key: 'today', label: 'Today', days: 1, calendar: 'day' },
   { key: '7d', label: '7 days', days: 7 },
   { key: '30d', label: '30 days', days: 30 },
   { key: '90d', label: '90 days', days: 90 },
+  { key: 'month', label: 'This month', days: null, calendar: 'month' },
   { key: 'all', label: 'All time', days: null },
 ];
+
+/** Asia/Karachi is a fixed UTC+5 (no DST) — same constant as order-range.ts. */
+export const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
 
 // Canonical pay-method labels moved to @/types (PAY_METHOD_LABELS) so client
 // components can share them; import from there.
@@ -83,13 +99,26 @@ export async function loadReturnedDeliveryLoss(
 export const fnum = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
 
 export function resolveRange(key?: string) {
-  return FINANCE_RANGES.find(r => r.key === key) ?? FINANCE_RANGES[1]; // default 30d
+  return FINANCE_RANGES.find(r => r.key === key)
+    ?? FINANCE_RANGES.find(r => r.key === '30d')!; // default 30d
 }
 
-/** ISO timestamp `days` ago, or null for "all time". Uses `new Date()` (not
+/** Window start for a range as an ISO timestamp, or null for "all time".
+ *  Rolling ranges are now-minus-N-days; calendar ranges snap to the PKT day/
+ *  month boundary. Shared by the Finance page AND its CSV export so the two
+ *  can never disagree on what a chip means. Uses `new Date()` (not
  *  Date.now()), the react-hooks purity lint rejects Date.now() in render. */
-export function rangeStartISO(days: number | null): string | null {
-  return days ? new Date(new Date().getTime() - days * 86_400_000).toISOString() : null;
+export function rangeStartISO(range: FinanceRange): string | null {
+  const now = new Date().getTime();
+  if (range.calendar === 'day') {
+    const startOfPktDayUtc = Math.floor((now + PKT_OFFSET_MS) / 86_400_000) * 86_400_000 - PKT_OFFSET_MS;
+    return new Date(startOfPktDayUtc).toISOString();
+  }
+  if (range.calendar === 'month') {
+    const pkt = new Date(now + PKT_OFFSET_MS);
+    return new Date(Date.UTC(pkt.getUTCFullYear(), pkt.getUTCMonth(), 1) - PKT_OFFSET_MS).toISOString();
+  }
+  return range.days ? new Date(now - range.days * 86_400_000).toISOString() : null;
 }
 
 export interface FinanceOrder {
