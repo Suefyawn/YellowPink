@@ -40,6 +40,7 @@ interface MatchedOrder {
   id: string;
   order_number: string | null;
   delivery_cost: number | null;
+  courier_paid_at: string | null;
   vendor_id: string | null;
   vendors: { self_delivers: boolean | null } | Array<{ self_delivers: boolean | null }> | null;
 }
@@ -72,6 +73,7 @@ export async function reconcileTcsCosts(
   // returns it, so overlap at the boundaries is harmless.
   const WINDOW_DAYS = 30;
   const costByCn = new Map<string, number>();
+  const paidByCn = new Map<string, { at: string | null; amount: number | null }>();
   let scanned = 0;
   for (let offset = 0; offset < d; offset += WINDOW_DAYS) {
     const winEndMs = now - offset * 86_400_000;
@@ -85,14 +87,24 @@ export async function reconcileTcsCosts(
     // by customer number + dates), so resolve all CNs in bulk instead of a
     // per-record round trip.
     for (const rec of res.records) {
-      if (!rec.trackingNumber || rec.deliveryCharges == null) continue;
-      costByCn.set(rec.trackingNumber, Math.round(rec.deliveryCharges + (rec.gst ?? 0)));
+      if (!rec.trackingNumber) continue;
+      if (rec.deliveryCharges != null) {
+        costByCn.set(rec.trackingNumber, Math.round(rec.deliveryCharges + (rec.gst ?? 0)));
+      }
+      // The same ledger row says whether TCS has remitted the COD cash.
+      // Recorded as the courier's CLAIM (orders.courier_paid_at/_amount) so
+      // the COD tab can show "TCS says paid out" — never as
+      // payment_received_at, which stays the owner's manual bank-statement
+      // confirmation.
+      if (rec.paid) {
+        paidByCn.set(rec.trackingNumber, { at: rec.paidAt ?? rec.deliveredAt, amount: rec.amountPaid });
+      }
     }
   }
 
-  const orderSelect = 'id, order_number, delivery_cost, vendor_id, vendors(self_delivers)';
+  const orderSelect = 'id, order_number, delivery_cost, courier_paid_at, vendor_id, vendors(self_delivers)';
   const byId = new Map<string, MatchedOrder>();
-  const cns = [...costByCn.keys()];
+  const cns = [...new Set([...costByCn.keys(), ...paidByCn.keys()])];
   const cnForOrder = new Map<string, string>();
   const CHUNK = 200;
   for (let i = 0; i < cns.length; i += CHUNK) {
@@ -111,7 +123,7 @@ export async function reconcileTcsCosts(
     // a "Fix tracking number" repair that the order row didn't mirror).
     const { data: viaShip } = await sb
       .from('shipments')
-      .select('tracking_number, orders!inner(id, order_number, delivery_cost, vendor_id, archived_at, vendors(self_delivers))')
+      .select('tracking_number, orders!inner(id, order_number, delivery_cost, courier_paid_at, vendor_id, archived_at, vendors(self_delivers))')
       .in('tracking_number', chunk)
       .is('orders.archived_at', null);
     for (const s of (viaShip ?? []) as Array<{ tracking_number: string; orders: MatchedOrder | MatchedOrder[] }>) {
@@ -134,13 +146,21 @@ export async function reconcileTcsCosts(
   const idsByCost = new Map<number, Array<MatchedOrder>>();
   for (const o of byId.values()) {
     const cn = cnForOrder.get(o.id);
-    const cost = cn != null ? costByCn.get(cn) : undefined;
-    if (cost == null) continue;
     // Self-delivering vendors ship on their own courier and eat the charge —
     // a ledger CN matching one of their orders must never write a cost the
     // store doesn't pay (their delivery_cost is deliberately pinned at
-    // dispatch, usually 0).
+    // dispatch, usually 0), and their COD never reaches TCS's payout either.
     if (selfDelivers(o)) continue;
+    // Record TCS's payout claim once (first sync that sees paid='Y' wins;
+    // the claim doesn't change afterwards).
+    const paid = cn != null ? paidByCn.get(cn) : undefined;
+    if (paid && o.courier_paid_at == null) {
+      await sb.from('orders')
+        .update({ courier_paid_at: paid.at ?? new Date().toISOString(), courier_paid_amount: paid.amount })
+        .eq('id', o.id);
+    }
+    const cost = cn != null ? costByCn.get(cn) : undefined;
+    if (cost == null) continue;
     matched++;
     const current = o.delivery_cost == null ? null : Number(o.delivery_cost);
     if (current === cost) continue;
