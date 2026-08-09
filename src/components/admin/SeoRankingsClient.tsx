@@ -6,7 +6,7 @@
 // from the server component; this file only filters/sorts/renders it.
 
 import { useMemo, useState, useTransition } from 'react';
-import { trackKeyword, untrackKeyword } from '@/app/admin/seo-rankings/actions';
+import { trackKeyword, untrackKeyword, refreshGoogleData } from '@/app/admin/seo-rankings/actions';
 
 export interface KeywordRow {
   keyword: string;
@@ -23,6 +23,10 @@ export interface KeywordRow {
   impressions: number | null;
   /** Daily GSC positions, oldest→newest, null-padded days omitted. */
   spark: { day: string; position: number }[];
+  /** Segment tag (womens-health, skincare, …) — drives the tag filter. */
+  tag: string;
+  /** Price/best buying-intent keyword — highlighted in the table. */
+  buyIntent: boolean;
 }
 
 export interface Opportunity {
@@ -69,6 +73,21 @@ function movementOf(r: KeywordRow): number | null {
   return Math.round(r.prevPosition - r.position); // positive = climbed
 }
 
+/** Positions 5-20 on either source: one push (title, links, content) from
+ *  page-1 traffic — worth flagging so effort goes where it pays fastest. */
+function strikingDistance(r: KeywordRow): boolean {
+  const p = r.gscPosition ?? r.position;
+  return p != null && p >= 5 && p <= 20;
+}
+
+function timeAgo(iso: string): string {
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 60) return `${mins}m ago`;
+  const h = Math.round(mins / 60);
+  if (h < 48) return `${h}h ago`;
+  return `${Math.round(h / 24)}d ago`;
+}
+
 // Inverted-y sparkline (position 1 sits at the top). Single series, so no
 // legend; a <title> carries the exact range for hover/screen readers.
 function Sparkline({ spark }: { spark: KeywordRow['spark'] }) {
@@ -104,13 +123,17 @@ const th: React.CSSProperties = { textAlign: 'left', padding: '8px 10px', fontSi
 const td: React.CSSProperties = { padding: '9px 10px', fontSize: '0.8125rem', color: '#111827', borderBottom: '1px solid #f3f4f6', verticalAlign: 'middle' };
 const num: React.CSSProperties = { textAlign: 'right', fontVariantNumeric: 'tabular-nums' };
 
-export function SeoRankingsClient({ rows, opportunities, allQueries = [] }: { rows: KeywordRow[]; opportunities: Opportunity[]; allQueries?: AllQuery[] }) {
+export function SeoRankingsClient({ rows, opportunities, allQueries = [], gscUpdatedAt = null }: { rows: KeywordRow[]; opportunities: Opportunity[]; allQueries?: AllQuery[]; gscUpdatedAt?: string | null }) {
   const [q, setQ] = useState('');
   const [bucket, setBucket] = useState<Bucket>('all');
+  const [tag, setTag] = useState<string>('all');
   const [sort, setSort] = useState<SortKey>('volume');
   const [newKeyword, setNewKeyword] = useState('');
   const [formError, setFormError] = useState('');
+  const [refreshError, setRefreshError] = useState('');
+  const [refreshed, setRefreshed] = useState(false);
   const [pending, startTransition] = useTransition();
+  const [refreshing, startRefresh] = useTransition();
 
   const counts = useMemo(() => {
     const c: Record<Bucket, number> = { all: rows.length, top3: 0, page1: 0, page2: 0, beyond: 0, unranked: 0 };
@@ -118,10 +141,17 @@ export function SeoRankingsClient({ rows, opportunities, allQueries = [] }: { ro
     return c;
   }, [rows]);
 
+  const tagCounts = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) m.set(r.tag, (m.get(r.tag) ?? 0) + 1);
+    return [...m.entries()].sort((a, b) => b[1] - a[1]);
+  }, [rows]);
+
   const view = useMemo(() => {
     const needle = q.toLowerCase().trim();
     const filtered = rows.filter(r =>
       (bucket === 'all' || bucketOf(r) === bucket) &&
+      (tag === 'all' || r.tag === tag) &&
       (!needle || r.keyword.includes(needle) || (r.url ?? '').toLowerCase().includes(needle)),
     );
     const nullLast = (v: number | null) => (v == null ? Number.POSITIVE_INFINITY : v);
@@ -134,7 +164,17 @@ export function SeoRankingsClient({ rows, opportunities, allQueries = [] }: { ro
         default: return (b.volume ?? 0) - (a.volume ?? 0);
       }
     });
-  }, [rows, q, bucket, sort]);
+  }, [rows, q, bucket, tag, sort]);
+
+  function runRefresh() {
+    setRefreshError('');
+    setRefreshed(false);
+    startRefresh(async () => {
+      const res = await refreshGoogleData();
+      if (!res.ok) setRefreshError(res.error ?? 'Refresh failed.');
+      else setRefreshed(true);
+    });
+  }
 
   function submitTrack(keyword: string) {
     setFormError('');
@@ -156,6 +196,36 @@ export function SeoRankingsClient({ rows, opportunities, allQueries = [] }: { ro
 
   return (
     <>
+      {/* Freshness + on-demand refresh: Google data is cached; the button
+          pulls it fresh right now instead of waiting for the nightly cron. */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 10, fontSize: '0.75rem', color: '#6b7280' }}>
+        <span>
+          Google data updated {gscUpdatedAt ? timeAgo(gscUpdatedAt) : 'unknown'}
+          {refreshed && <strong style={{ color: '#15803d' }}> — refreshed, data below is current</strong>}
+          {refreshError && <strong style={{ color: '#b91c1c' }}> — {refreshError}</strong>}
+        </span>
+        <button
+          type="button"
+          onClick={runRefresh}
+          disabled={refreshing}
+          style={{ padding: '5px 12px', borderRadius: 999, border: '1px solid #be185d', background: '#fff', color: '#be185d', fontSize: '0.75rem', fontWeight: 600, cursor: refreshing ? 'wait' : 'pointer', opacity: refreshing ? 0.6 : 1 }}
+        >
+          {refreshing ? 'Pulling from Google…' : 'Refresh now'}
+        </button>
+      </div>
+
+      {/* Segment tags: slice everything below by topic. */}
+      {tagCounts.length > 1 && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
+          <button type="button" style={chip(tag === 'all')} onClick={() => setTag('all')}>All segments</button>
+          {tagCounts.map(([t, n]) => (
+            <button key={t} type="button" style={chip(tag === t)} onClick={() => setTag(tag === t ? 'all' : t)}>
+              {t} ({n})
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Controls: one row above the table (search, buckets, sort, add). */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center', marginBottom: 14 }}>
         <input
@@ -211,6 +281,12 @@ export function SeoRankingsClient({ rows, opportunities, allQueries = [] }: { ro
                   <tr key={r.keyword}>
                     <td style={{ ...td, fontWeight: 600 }}>
                       {r.keyword}
+                      {strikingDistance(r) && (
+                        <span title="Positions 5-20: one push from page-1 traffic" style={{ marginLeft: 8, fontSize: '0.625rem', fontWeight: 700, color: '#92400e', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 999, padding: '1px 7px', verticalAlign: 'middle' }}>striking distance</span>
+                      )}
+                      {r.buyIntent && (
+                        <span title="Buying-intent keyword (price / best)" style={{ marginLeft: 6, fontSize: '0.625rem', fontWeight: 700, color: '#166534', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 999, padding: '1px 7px', verticalAlign: 'middle' }}>buy intent</span>
+                      )}
                       {r.url && (
                         <div style={{ fontWeight: 400, fontSize: '0.6875rem', color: '#6b7280', overflowWrap: 'anywhere' }}>{r.url}</div>
                       )}

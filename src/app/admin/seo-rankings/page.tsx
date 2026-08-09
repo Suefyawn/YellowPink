@@ -18,9 +18,11 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { EmptyState } from '@/components/admin/EmptyState';
 import { fmtDatePK } from '@/lib/dates';
 import { SeoRankingsClient, type KeywordRow, type Opportunity, type AllQuery } from '@/components/admin/SeoRankingsClient';
+import { TrendChart, PositionMeter, MoversPanel } from './charts';
+import { isBuyIntent } from '@/lib/seo-tags';
 
 interface SnapRow { checked_at: string; keyword: string; position: number | null; volume: number | null; url: string | null }
-interface TrackedRow { keyword: string; volume: number | null; target_url: string | null }
+interface TrackedRow { keyword: string; volume: number | null; target_url: string | null; tag: string | null }
 interface GscCacheQuery { query: string; clicks: number; impressions: number; ctr: number; position: number }
 interface GscDaily { day: string; query: string; position: number | null; clicks: number | null; impressions: number | null }
 
@@ -37,15 +39,20 @@ export default async function SeoRankingsPage() {
   // Daily GSC history: newest rows first, windowed per keyword below (last 28
   // points each). No Date.now() here — render must stay pure, and the data
   // carries its own dates.
-  const [trackedRes, snapRes, gscCacheRes, gscDailyRes] = await Promise.all([
-    admin.from('seo_tracked_keywords').select('keyword, volume, target_url').eq('active', true),
+  const [trackedRes, snapRes, gscCacheRes, gscDailyRes, dailyTotalsRes] = await Promise.all([
+    admin.from('seo_tracked_keywords').select('keyword, volume, target_url, tag').eq('active', true),
     admin.from('seo_ranking_snapshots').select('checked_at, keyword, position, volume, url').order('checked_at', { ascending: false }).limit(2000),
     admin.from('analytics_cache').select('data, updated_at').eq('key', 'gsc').maybeSingle(),
     admin.from('gsc_query_snapshots').select('day, query, position, clicks, impressions').order('day', { ascending: false }).limit(15000),
+    // Site-wide daily totals (true GSC totals, not the top-200 slice) for the
+    // hero trend charts.
+    admin.from('seo_daily_metrics').select('day, gsc_clicks, gsc_impressions').order('day', { ascending: false }).limit(28),
   ]);
 
   const tracked = (trackedRes.data ?? []) as TrackedRow[];
   const snaps = (snapRes.data ?? []) as SnapRow[];
+  const dailyTotals = ((dailyTotalsRes.data ?? []) as { day: string; gsc_clicks: number | null; gsc_impressions: number | null }[]).reverse();
+  const gscUpdatedAt = (gscCacheRes.data as { updated_at?: string } | null)?.updated_at ?? null;
   const gscQueries = ((gscCacheRes.data as { data?: { queries?: GscCacheQuery[]; range?: { start: string; end: string } } } | null)?.data?.queries ?? []);
   const gscRange = (gscCacheRes.data as { data?: { range?: { start: string; end: string } } } | null)?.data?.range ?? null;
   const gscDaily = (gscDailyRes.data ?? []) as GscDaily[];
@@ -98,8 +105,33 @@ export default async function SeoRankingsPage() {
       clicks: gsc?.clicks ?? null,
       impressions: gsc?.impressions ?? null,
       spark: dailyByQuery.get(k) ?? [],
+      tag: t.tag ?? 'other',
+      buyIntent: isBuyIntent(t.keyword),
     };
   });
+
+  // Biggest daily-Google movers across the sparkline window (first vs latest
+  // reported position; at least 3 data points so one-day blips don't rank).
+  const movers = rows
+    .filter(r => r.spark.length >= 3)
+    .map(r => {
+      const from = r.spark[0].position;
+      const to = r.spark[r.spark.length - 1].position;
+      return { keyword: r.keyword, from, to, delta: from - to }; // positive = climbed
+    })
+    .filter(m => Math.abs(m.delta) >= 1)
+    .sort((a, b) => b.delta - a.delta);
+
+  // Position-bucket distribution for the meter: ordered single-hue ramp
+  // (dark = best), neutral gray for not-ranked. Colors validated — see charts.tsx.
+  const bucketCount = (lo: number, hi: number) => rows.filter(r => r.position != null && r.position >= lo && r.position <= hi).length;
+  const meterBuckets = [
+    { label: 'Top 3', count: bucketCount(1, 3), color: '#6B1238' },
+    { label: 'Positions 4-10', count: bucketCount(4, 10), color: '#B02360' },
+    { label: 'Page 2 (11-20)', count: bucketCount(11, 20), color: '#E36CA4' },
+    { label: '21-100', count: bucketCount(21, 100), color: '#F5B9D2' },
+    { label: 'Not in top 100', count: rows.filter(r => r.position == null).length, color: '#E5E7EB' },
+  ];
 
   // Summary tiles.
   const ranked = rows.filter(r => r.position != null);
@@ -158,7 +190,28 @@ export default async function SeoRankingsPage() {
         ))}
       </div>
 
-      <SeoRankingsClient rows={rows} opportunities={opportunities} allQueries={allQueries} />
+      {/* Hero trend: site-wide daily Google totals, one measure per chart. */}
+      {dailyTotals.length >= 2 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+          <TrendChart
+            title="Google impressions / day"
+            color="#C5286A"
+            kind="area"
+            points={dailyTotals.map(d => ({ day: d.day, value: d.gsc_impressions ?? 0 }))}
+          />
+          <TrendChart
+            title="Google clicks / day"
+            color="#0369a1"
+            kind="bar"
+            points={dailyTotals.map(d => ({ day: d.day, value: d.gsc_clicks ?? 0 }))}
+          />
+        </div>
+      )}
+
+      <PositionMeter buckets={meterBuckets} />
+      <MoversPanel movers={movers} />
+
+      <SeoRankingsClient rows={rows} opportunities={opportunities} allQueries={allQueries} gscUpdatedAt={gscUpdatedAt} />
     </div>
   );
 }
