@@ -91,14 +91,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   // Load from localStorage after hydration to avoid SSR/client mismatch.
   // setState-in-effect is intentional: the cart is persisted in an external
   // store (localStorage) and we sync it into React state at mount.
-  useEffect(() => {
+  //
+  // LAYOUT effect, not a passive one: on a slow device a shopper could tap
+  // "Add to Cart" before the passive mount effect ran — the toast showed,
+  // then this load REPLACED the cart with the stored (empty) value, silently
+  // wiping the add (observed on CI's starved runners, 9 Aug). A layout
+  // effect commits before first paint, so no tap can beat it; the merge
+  // below is the backstop in case one ever does (selective hydration can
+  // dispatch a click mid-hydration): anything already in React state is a
+  // fresher user action than the stored snapshot, so keep it and merge in
+  // stored lines it doesn't have.
+  useIsomorphicLayoutEffect(() => {
     // The applied coupon is persisted alongside the cart so it survives a
     // refresh or a full page load on the way from /cart to /checkout, the
     // server still re-validates the code at order time.
-    /* eslint-disable react-hooks/set-state-in-effect */
-    setCartItems(loadCart());
-    setAppliedCoupon(loadCoupon());
-    /* eslint-enable react-hooks/set-state-in-effect */
+    setCartItems(prev => {
+      const stored = loadCart();
+      if (prev.length === 0) return stored;
+      const key = (i: CartItem) => `${i.id}:${i.variant_id ?? ''}`;
+      const have = new Set(prev.map(key));
+      return [...prev, ...stored.filter(s => !have.has(key(s)))];
+    });
+    setAppliedCoupon(prev => prev ?? loadCoupon());
     hydrated.current = true;
   }, []);
 

@@ -26,6 +26,11 @@ interface CodOrder {
   payment_received_at: string | null;
   payment_account: string | null;
   created_at: string;
+  /** TCS's claim (from its COD payout ledger, written by the cost sync)
+   *  that it has remitted this order's cash — distinct from the owner's
+   *  bank-confirmed payment_received_at. */
+  courier_paid_at: string | null;
+  courier_paid_amount: number | null;
 }
 
 export default async function CodReconciliationPage({
@@ -47,7 +52,7 @@ export default async function CodReconciliationPage({
   // stage of its own — a pending order's cash was previously in NO bucket.
   const { data } = await admin
     .from('orders')
-    .select('id, order_number, first_name, last_name, total, status, payment_received_at, payment_account, created_at, vendor_id')
+    .select('id, order_number, first_name, last_name, total, status, payment_received_at, payment_account, created_at, courier_paid_at, courier_paid_amount, vendor_id')
     .eq('pay_method', 'cod')
     .in('status', ['pending', 'confirmed', 'processing', 'shipped', 'delivered'])
     .is('archived_at', null)
@@ -158,7 +163,9 @@ export default async function CodReconciliationPage({
       <div style={card}>
         <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Outstanding, delivered, not yet confirmed</h2>
         <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
-          These parcels were delivered but the cash hasn&apos;t been marked received. Open each to record payment.
+          These parcels were delivered but the cash hasn&apos;t been marked received. The TCS payout column shows the courier&apos;s
+          own ledger: &quot;Paid out&quot; means the cash should be in your bank, so check the statement and hit Record; &quot;not yet&quot; means
+          TCS is still holding it.
         </p>
         {outstanding.length === 0 ? (
           <div style={{ padding: '28px 0', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
@@ -171,8 +178,8 @@ export default async function CodReconciliationPage({
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #f3f4f6' }}>
-                {['Order', 'Customer', 'Delivered', 'Amount', ''].map((h, i) => (
-                  <th scope="col" key={h || i} style={{ padding: '8px 12px', textAlign: i === 3 ? 'right' : 'left', fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
+                {['Order', 'Customer', 'Delivered', 'TCS payout', 'Amount', ''].map((h, i) => (
+                  <th scope="col" key={h || i} style={{ padding: '8px 12px', textAlign: i === 4 ? 'right' : 'left', fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -185,6 +192,19 @@ export default async function CodReconciliationPage({
                     {deliveredAt.has(r.id)
                       ? fmtDatePK(deliveredAt.get(r.id)!)
                       : <span title="No delivery date recorded; showing order-placed date">{fmtDatePK(r.created_at)}*</span>}
+                  </td>
+                  {/* TCS's own ledger says whether it has remitted this cash —
+                      "paid out" here means check the bank and hit Record;
+                      still blank after ~a week of delivery means chase TCS. */}
+                  <td data-label="TCS payout" style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>
+                    {r.courier_paid_at ? (
+                      <span style={{ padding: '2px 9px', borderRadius: 999, background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', fontSize: '0.75rem', fontWeight: 600 }}
+                        title={r.courier_paid_amount != null ? `TCS reports ${fmt(Number(r.courier_paid_amount))} remitted` : undefined}>
+                        Paid out {fmtDatePK(r.courier_paid_at)}
+                      </span>
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: '0.8125rem' }}>not yet</span>
+                    )}
                   </td>
                   <td data-label="Amount" style={{ padding: '10px 12px', textAlign: 'right', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>{fmt(r.total ?? 0)}</td>
                   <td style={{ padding: '10px 12px', textAlign: 'right' }}>

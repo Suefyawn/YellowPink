@@ -115,6 +115,9 @@ export interface PaymentRecord {
   amountPaid: number | null;
   /** Whether the courier has paid the COD out to us ('Y'/'N' → boolean). */
   paid: boolean;
+  /** When the courier says it remitted the COD ("payment date"), ISO if
+   *  parseable. */
+  paidAt: string | null;
   /** Courier's latest status string for this CN (already normalisable). */
   status: string | null;
   /** Delivery date the courier recorded, ISO if parseable. */

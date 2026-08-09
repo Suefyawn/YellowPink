@@ -650,6 +650,7 @@ async function payment(fromDate: string, toDate: string): Promise<Result<Payment
       codAmount: numOrNull(d['codamount']),
       amountPaid: numOrNull(d['amount paid']),
       paid: String(d['payment status'] ?? '').toUpperCase() === 'Y',
+      paidAt: parseTcsDate(String(d['payment date'] ?? '')),
       status: (d['cn status'] as string | undefined) ?? (d['status'] as string | undefined) ?? null,
       deliveredAt: parseTcsDate(String(d['delivery date'] ?? '')) ,
     })).filter(rec => rec.trackingNumber);
