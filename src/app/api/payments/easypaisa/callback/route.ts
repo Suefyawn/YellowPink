@@ -92,8 +92,16 @@ export async function POST(req: NextRequest) {
     // masquerade as a successful transition (previously the customer got
     // "confirmed" emails and Meta got a Purchase while the order stayed
     // stuck in payment_pending).
+    // Signed gateway success doubles as payment confirmation: stamp the
+    // reconciliation fields so the order shows Paid in admin (COD stays
+    // staff-set manual).
     const { data: flipped, error: flipErr } = await sb.from('orders')
-      .update({ status: 'pending' })
+      .update({
+        status: 'pending',
+        payment_received_at: new Date().toISOString(),
+        payment_received_by: 'Easypaisa gateway',
+        payment_account: 'Easypaisa',
+      })
       .eq('id', order.id)
       .eq('status', 'payment_pending')
       .select('id');

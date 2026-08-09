@@ -1,5 +1,5 @@
 // ============================================================================
-// JazzCash HTTP-Post v2.0 (DDM "Direct Debit Mobile" / card redirect). Phase 1.1.
+// JazzCash HTTP-Post v1.1 hosted redirect (card + mobile wallet). Phase 1.1.
 //
 // Hash recipe (per JazzCash merchant docs):
 //   1. Take all pp_ fields whose value is non-empty.
@@ -18,7 +18,7 @@
 // transaction end-to-end before flipping to production keys.
 // ============================================================================
 
-import { createHmac } from 'crypto';
+import { createHmac, randomInt } from 'crypto';
 
 interface InitiateInput {
   amountPkr: number;
@@ -44,15 +44,20 @@ function pad(n: number, len: number): string {
   return String(n).padStart(len, '0');
 }
 
-// JazzCash wants TxnDateTime as YYYYMMDDHHMMSS, ExpiryDateTime same format +1h.
+// JazzCash wants TxnDateTime as YYYYMMDDHHMMSS in Pakistan local time (the
+// gateway is PKT-anchored and validates freshness/expiry against its own
+// clock; Pakistan has no DST, so a fixed +5h offset is exact).
+const PKT_OFFSET_MS = 5 * 60 * 60 * 1000;
+
 function jzcDateTime(d: Date): string {
+  const p = new Date(d.getTime() + PKT_OFFSET_MS);
   return [
-    d.getUTCFullYear(),
-    pad(d.getUTCMonth() + 1, 2),
-    pad(d.getUTCDate(), 2),
-    pad(d.getUTCHours(), 2),
-    pad(d.getUTCMinutes(), 2),
-    pad(d.getUTCSeconds(), 2),
+    p.getUTCFullYear(),
+    pad(p.getUTCMonth() + 1, 2),
+    pad(p.getUTCDate(), 2),
+    pad(p.getUTCHours(), 2),
+    pad(p.getUTCMinutes(), 2),
+    pad(p.getUTCSeconds(), 2),
   ].join('');
 }
 
@@ -68,13 +73,17 @@ export function initiateJazzCashHostedRedirect(input: InitiateInput): InitiateRe
   const merchantId = env('JAZZCASH_MERCHANT_ID');
   const password = env('JAZZCASH_PASSWORD');
   const salt = env('JAZZCASH_INTEGRITY_SALT');
-  const returnUrl = env('JAZZCASH_RETURN_URL');
+  const returnUrl = process.env.JAZZCASH_RETURN_URL
+    ?? `${process.env.NEXT_PUBLIC_SITE_URL ?? 'https://yellowpink.pk'}/api/payments/jazzcash/callback`;
   const base = process.env.JAZZCASH_API_BASE ?? 'https://payments.jazzcash.com.pk';
   const endpoint = `${base}/CustomerPortal/transactionmanagement/merchantform/`;
 
   const now = new Date();
   const expiry = new Date(now.getTime() + 60 * 60_000); // +1h
-  const txnRef = `T${jzcDateTime(now)}`;
+  // TxnRefNo caps at 20 chars. Datetime alone collides for same-second
+  // checkouts (unique-indexed in the payments ledger) and is guessable, so
+  // append 5 random digits: "T" + 14 + 5 = 20.
+  const txnRef = `T${jzcDateTime(now)}${pad(randomInt(100000), 5)}`;
   const amountPaisa = Math.round(input.amountPkr * 100);
 
   // Amount must be in paisa (integer) per spec.
@@ -97,8 +106,13 @@ export function initiateJazzCashHostedRedirect(input: InitiateInput): InitiateRe
     pp_ReturnURL: returnUrl,
     pp_MobileNumber: input.customerPhone ?? '',
     pp_CNIC: '',
-    ppmpf_1: input.orderNumber,
-    ppmpf_2: input.customerEmail ?? '',
+    // ppmpf_* stay empty on purpose: JazzCash's sample kits disagree on
+    // whether merchant payload fields join the SecureHash (some hash pp_*
+    // only, some hash every non-empty field). Empty fields are excluded
+    // under both readings, so leaving them blank sidesteps the ambiguity.
+    // The order number already rides in pp_BillReference.
+    ppmpf_1: '',
+    ppmpf_2: '',
     ppmpf_3: '',
     ppmpf_4: '',
     ppmpf_5: '',

@@ -103,8 +103,17 @@ export async function POST(req: NextRequest) {
     // successful transition (previously the customer got "confirmed" emails
     // and Meta got a Purchase while the order stayed stuck in
     // payment_pending).
+    // The gateway's signed success IS the payment confirmation, so stamp the
+    // reconciliation fields too — otherwise a genuinely-paid order sits amber
+    // "Payment pending" in admin until someone manually marks it received.
+    // (COD stays manual: those fields are only ever staff-set there.)
     const { data: flipped, error: flipErr } = await sb.from('orders')
-      .update({ status: 'pending' })
+      .update({
+        status: 'pending',
+        payment_received_at: new Date().toISOString(),
+        payment_received_by: 'JazzCash gateway',
+        payment_account: 'JazzCash',
+      })
       .eq('id', order.id)
       .eq('status', 'payment_pending')
       .select('id');

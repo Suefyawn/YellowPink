@@ -224,7 +224,9 @@ const nextConfig: NextConfig = {
       "object-src 'none'",
       "base-uri 'self'",
       // Checkout hands off to the wallet gateways via auto-submitting form POST.
-      "form-action 'self' https://payments.jazzcash.com.pk https://easypay.easypaisa.com.pk",
+      // sandbox.jazzcash.com.pk allowed so a sandbox-credentialed deploy can
+      // run an end-to-end test payment; harmless in production.
+      "form-action 'self' https://payments.jazzcash.com.pk https://sandbox.jazzcash.com.pk https://easypay.easypaisa.com.pk",
       "frame-ancestors 'self'",
       // Kept even while enforcing: browsers still POST violations here, so a
       // source we missed shows up in Sentry as a report instead of only as a
