@@ -9,7 +9,7 @@ import { ReconcileTcsButton } from '@/components/admin/ReconcileTcsButton';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { fmtPKR as fmt } from '@/lib/money';
-import { FINANCE_RANGES as RANGES, resolveRange, rangeStartISO, loadFinanceOrders, loadReturnedDeliveryLoss, toOrderFinanceRow } from '@/lib/finance';
+import { FINANCE_RANGES as RANGES, PKT_OFFSET_MS, resolveRange, rangeStartISO, loadFinanceOrders, loadReturnedDeliveryLoss, toOrderFinanceRow } from '@/lib/finance';
 import { PAY_METHOD_LABELS } from '@/types';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
@@ -36,8 +36,12 @@ export default async function FinancePage({
 
   const { range: rangeParam, method: methodParam, err, ok } = await searchParams;
   const range = resolveRange(rangeParam);
-  const fromISO = rangeStartISO(range.days);
-  const fromDay = fromISO?.slice(0, 10) ?? null;
+  const fromISO = rangeStartISO(range);
+  // Expenses are date-only (incurred_on) and PKT-dated: convert the window
+  // boundary to its PKT calendar date. A naive UTC slice of a PKT-midnight
+  // boundary is 19:00Z of the PREVIOUS day, which leaked the prior day's
+  // expenses into "Today".
+  const fromDay = fromISO ? new Date(new Date(fromISO).getTime() + PKT_OFFSET_MS).toISOString().slice(0, 10) : null;
   // Optional payment-method filter for the per-order table + CSV export.
   const methodFilter = methodParam && PAY_METHOD_LABELS[methodParam] ? methodParam : null;
 
@@ -230,7 +234,10 @@ export default async function FinancePage({
     const day = o.created_at.slice(0, 10);
     revByDay.set(day, (revByDay.get(day) ?? 0) + num(o.total));
   }
-  const revenueSpark: number[] = range.days != null && fromISO
+  // Fixed rolling ranges keep empty days as zeroes; calendar ranges (Today /
+  // This month) and "all time" span only the days data is present for — their
+  // length isn't a constant day count.
+  const revenueSpark: number[] = range.days != null && !range.calendar && fromISO
     ? Array.from({ length: range.days }, (_, i) => {
         const day = new Date(new Date(fromISO).getTime() + i * 86_400_000).toISOString().slice(0, 10);
         return revByDay.get(day) ?? 0;
@@ -239,6 +246,30 @@ export default async function FinancePage({
 
   const card: React.CSSProperties = { background: 'white', borderRadius: 12, padding: 24, border: '1px solid #eef0f2', boxShadow: '0 1px 2px rgba(16,24,40,0.04)' };
   const profitColor = netProfit >= 0 ? '#15803d' : '#dc2626';
+
+  // Cash position for the KPI row: booked revenue not yet in hand, split by
+  // where it actually sits. Vendor-held COD is excluded from
+  // notReceivedRevenue by design (it settles via Vendors) — surfaced in the
+  // hint so that cash isn't invisible on the overview.
+  const gatewayAwaitingTotal = awaitingOrders.reduce((s, o) => s + num(o.total), 0);
+  const storeCodOutstanding = notReceivedRevenue - gatewayAwaitingTotal;
+  const vendorHeldTotal = orders.reduce(
+    (s, o) => s + (isVendorCollected(o) && o.status === 'delivered' && !o.payment_received_at ? num(o.total) : 0),
+    0,
+  );
+  // COD-tab badge: delivered store-COD orders awaiting confirmation. Queried
+  // all-time (not range-scoped) — the badge is an alert about uncollected
+  // cash, and old uncollected cash is MORE alarming, not less.
+  const { data: codOutRows } = await admin
+    .from('orders')
+    .select('id, vendor_id, vendors(settlement_direction)')
+    .eq('pay_method', 'cod').eq('status', 'delivered')
+    .is('payment_received_at', null).is('archived_at', null);
+  const codBadge = ((codOutRows ?? []) as Array<{ vendor_id: string | null; vendors: { settlement_direction: string | null } | Array<{ settlement_direction: string | null }> | null }>)
+    .filter(r => {
+      const v = Array.isArray(r.vendors) ? r.vendors[0] : r.vendors;
+      return v?.settlement_direction !== 'vendor_collects';
+    }).length;
 
   // TCS cost-sync surface: booking config alone isn't enough — the payment
   // ledger needs its own credential (TCS_CUSTOMER_NO), and the action writes
@@ -302,7 +333,11 @@ export default async function FinancePage({
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <FinanceTabs active="overview" />
+      <FinanceTabs
+        active="overview"
+        params={{ range: rangeParam ? range.key : undefined, method: methodFilter ?? undefined }}
+        codBadge={codBadge}
+      />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Finance</h1>
@@ -324,7 +359,15 @@ export default async function FinancePage({
         <KpiCard label="Revenue" value={fmt(revenue)} accent="#0369a1" spark={revenueSpark} />
         <KpiCard label="Net profit" value={fmt(netProfit)} accent={profitColor} />
         <KpiCard label="Net margin" value={`${margin.toFixed(1)}%`} accent={profitColor} />
-        <KpiCard label="Ad spend" value={fmt(adSpend)} accent="#b45309" hint="logged in Expenses below" />
+        {/* Replaced the forever-zero Ad spend tile (expenses ledger is empty;
+            ad spend still shows in the ROAS card + P&L) with the number a COD
+            business actually runs on: booked money not yet in the bank. */}
+        <KpiCard
+          label="Cash not in hand yet"
+          value={fmt(notReceivedRevenue)}
+          accent="#b45309"
+          hint={`${fmt(storeCodOutstanding)} COD to confirm · ${fmt(gatewayAwaitingTotal)} gateway${vendorHeldTotal > 0 ? ` · vendor holds ${fmt(vendorHeldTotal)}` : ''}`}
+        />
       </div>
 
       <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>

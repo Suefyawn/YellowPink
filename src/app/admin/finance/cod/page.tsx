@@ -29,11 +29,19 @@ interface CodOrder {
   created_at: string;
 }
 
-export default async function CodReconciliationPage() {
+export default async function CodReconciliationPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string; method?: string }>;
+}) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('finance'))) {
     return <NoAccess section="COD reconciliation" />;
   }
+  // This page has no range/method filters of its own, but the Overview tab
+  // does — carry its filter params through the tab links so switching to COD
+  // and back doesn't reset the owner's selection.
+  const { range: rangeParam, method: methodParam } = await searchParams;
 
   const admin = supabaseAdmin();
   const { data } = await admin
@@ -62,6 +70,11 @@ export default async function CodReconciliationPage() {
   const outstanding = rows.filter(r => r.status === 'delivered' && !r.payment_received_at);
   const collected   = rows.filter(r => r.status === 'delivered' && r.payment_received_at);
   const inTransit   = rows.filter(r => r.status === 'processing' || r.status === 'shipped');
+  // Vendor-held cash: delivered vendor-collected COD the vendor is sitting
+  // on. It used to be a footnote only — PKR 14k+ of real money rendering as
+  // "All caught up" — so it gets its own card. NOT the whole excluded list:
+  // processing/shipped vendor orders aren't held cash yet.
+  const vendorHeld = excludedVendorCollected.filter(r => r.status === 'delivered' && !r.payment_received_at);
   const sum = (list: CodOrder[]) => list.reduce((s, r) => s + Number(r.total ?? 0), 0);
 
   // The "Delivered" column needs the actual delivery date so aging is honest —
@@ -92,7 +105,7 @@ export default async function CodReconciliationPage() {
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
-      <FinanceTabs active="cod" />
+      <FinanceTabs active="cod" params={{ range: rangeParam, method: methodParam }} codBadge={outstanding.length} />
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 6, gap: 12, flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>COD reconciliation</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -111,13 +124,15 @@ export default async function CodReconciliationPage() {
         )}
       </p>
 
-      <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 28 }}>
+      <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 28 }}>
         <KpiCard label="Outstanding · to confirm" value={fmt(sum(outstanding))} accent="#b45309"
           hint={`${outstanding.length} delivered order${outstanding.length === 1 ? '' : 's'}`} />
         <KpiCard label="Collected · reconciled" value={fmt(sum(collected))} accent="#15803d"
           hint={`${collected.length} delivered order${collected.length === 1 ? '' : 's'}`} />
         <KpiCard label="In transit · expected" value={fmt(sum(inTransit))} accent="#2563eb"
           hint={`${inTransit.length} order${inTransit.length === 1 ? '' : 's'} being prepared or out for delivery`} />
+        <KpiCard label="Held by vendor" value={fmt(sum(vendorHeld))} accent="#7c3aed"
+          hint={`${vendorHeld.length} delivered order${vendorHeld.length === 1 ? '' : 's'} · settles via Vendors`} />
       </div>
 
       <div style={card}>
@@ -127,7 +142,10 @@ export default async function CodReconciliationPage() {
         </p>
         {outstanding.length === 0 ? (
           <div style={{ padding: '28px 0', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
-            All caught up, every delivered COD order is reconciled.
+            All caught up, every delivered store-collected COD order is reconciled.
+            {vendorHeld.length > 0 && (
+              <> Note: {fmt(sum(vendorHeld))} across {vendorHeld.length} order{vendorHeld.length === 1 ? '' : 's'} is still held by the vendor (card above), settling via the Vendors page.</>
+            )}
           </div>
         ) : (
           <table className="adm-table-cards" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>

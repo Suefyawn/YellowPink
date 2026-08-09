@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   const methodParam = sp.get('method');
   const methodFilter = methodParam && PAY_METHOD_LABELS[methodParam] ? methodParam : null;
 
-  const { orders, cogsByOrder } = await loadFinanceOrders(rangeStartISO(range.days));
+  const { orders, cogsByOrder } = await loadFinanceOrders(rangeStartISO(range));
   const filtered = methodFilter ? orders.filter(o => (o.pay_method ?? 'unknown') === methodFilter) : orders;
   const rows = [...filtered]
     .sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))
