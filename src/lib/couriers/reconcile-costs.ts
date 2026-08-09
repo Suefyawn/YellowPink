@@ -64,18 +64,30 @@ export async function reconcileTcsCosts(
   const d = Math.min(180, Math.max(1, days));
   const fmtDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
   const now = new Date().getTime();
-  const res = await adapter.payment(fmtDate(now - d * 86_400_000), fmtDate(now));
-  if (!('ok' in res) || !res.ok) {
-    return { ok: false, message: res.message, ...empty };
-  }
 
-  // Cost per CN from the ledger. The ledger is merchant-wide (keyed only by
-  // customer number + dates), so resolve all CNs in bulk instead of a
-  // per-record round trip.
+  // TCS caps Payment Detail at 31 days per request ("Date Range should be
+  // whithin 31 Days" — their spelling; verified live 2026-08-09, first
+  // successful sync). Slice the requested look-back into ≤30-day windows and
+  // merge the ledgers; a CN's billed charge is the same whichever window
+  // returns it, so overlap at the boundaries is harmless.
+  const WINDOW_DAYS = 30;
   const costByCn = new Map<string, number>();
-  for (const rec of res.records) {
-    if (!rec.trackingNumber || rec.deliveryCharges == null) continue;
-    costByCn.set(rec.trackingNumber, Math.round(rec.deliveryCharges + (rec.gst ?? 0)));
+  let scanned = 0;
+  for (let offset = 0; offset < d; offset += WINDOW_DAYS) {
+    const winEndMs = now - offset * 86_400_000;
+    const winStartMs = now - Math.min(d, offset + WINDOW_DAYS) * 86_400_000;
+    const res = await adapter.payment(fmtDate(winStartMs), fmtDate(winEndMs));
+    if (!('ok' in res) || !res.ok) {
+      return { ok: false, message: `${res.message} (window ${fmtDate(winStartMs)} to ${fmtDate(winEndMs)})`, ...empty };
+    }
+    scanned += res.records.length;
+    // Cost per CN from the ledger. The ledger is merchant-wide (keyed only
+    // by customer number + dates), so resolve all CNs in bulk instead of a
+    // per-record round trip.
+    for (const rec of res.records) {
+      if (!rec.trackingNumber || rec.deliveryCharges == null) continue;
+      costByCn.set(rec.trackingNumber, Math.round(rec.deliveryCharges + (rec.gst ?? 0)));
+    }
   }
 
   const orderSelect = 'id, order_number, delivery_cost, vendor_id, vendors(self_delivers)';
@@ -159,8 +171,8 @@ export async function reconcileTcsCosts(
   // covers both the button and cron paths.
   await sb.from('site_settings').upsert({
     key: COST_SYNC_STAMP_KEY,
-    value: JSON.stringify({ at: new Date().toISOString(), scanned: res.records.length, matched, updated, source: session ? 'button' : 'cron' }),
+    value: JSON.stringify({ at: new Date().toISOString(), scanned, matched, updated, source: session ? 'button' : 'cron' }),
   }, { onConflict: 'key' });
 
-  return { ok: true, scanned: res.records.length, matched, updated, changes };
+  return { ok: true, scanned, matched, updated, changes };
 }
