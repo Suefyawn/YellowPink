@@ -50,6 +50,30 @@ describe('matchCatalog', () => {
     expect(r.violations[0].theirPrice).toBe(950);
   });
 
+  it('never compares different pack sizes (the SimZee 60ml vs 120ml false alarm)', () => {
+    const theirs = [...THEIRS, T('SimZee Zinc Gluconate Syrup 120ml – Zinc Supplement for Kids', 'simzee', 350)];
+    const r = matchCatalog([O('simzee-zinc-syrup-60ml', 'SimZee Zinc Syrup 60ml', 180)], theirs);
+    expect(r.violations).toHaveLength(0);
+    expect(r.unmatched).toEqual(['simzee-zinc-syrup-60ml']);
+    // Same size still compares (and 1 l ≡ 1000 ml).
+    const same = matchCatalog([O('simzee-zinc-syrup-120ml', 'SimZee Zinc Syrup 120ml', 180)], theirs);
+    expect(same.violations).toHaveLength(1);
+    const litre = matchCatalog(
+      [O('hydra-tonic', 'Hydra Tonic 1l', 500)],
+      [T('Hydra Tonic Water 1000ml', 'hydra-tonic', 900)],
+    );
+    expect(litre.violations).toHaveLength(1);
+  });
+
+  it('a unit only one side states is inconclusive, not a size conflict', () => {
+    // Their title adds a 20mg strength; ours only says the brand. Still a match.
+    const r = matchCatalog(
+      [O('zincol', 'Zincol Syrup', 300)],
+      [T('Zincol 20mg Syrup', 'zincol', 450)],
+    );
+    expect(r.violations).toHaveLength(1);
+  });
+
   it('reports products it cannot match instead of guessing, and skips unpriced listings', () => {
     const r = matchCatalog([
       O('energy-boost', 'Energy Boost Multivitamin', 400),

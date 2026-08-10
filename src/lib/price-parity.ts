@@ -50,6 +50,33 @@ const HANDLE_ALIASES: Record<string, string> = {
 
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
+/** Pack-size / strength tokens ("60ml", "120 ml", "20mg", "1kg") keyed by
+ *  unit, normalized to base units. Two listings only describe the same
+ *  sellable item when every unit they BOTH state agrees — our 60ml bottle
+ *  must never be parity-checked against their 120ml one (the SimZee false
+ *  alarm, Aug 2026). A unit only one side states is inconclusive, not a
+ *  mismatch: their titles often add strength where ours only gives volume. */
+function sizeTokens(s: string): Map<string, number> {
+  const out = new Map<string, number>();
+  for (const m of s.matchAll(/(\d+(?:\.\d+)?)\s*(ml|l|mg|g|kg)\b/gi)) {
+    let value = Number(m[1]);
+    let unit = m[2].toLowerCase();
+    if (unit === 'l') { value *= 1000; unit = 'ml'; }
+    if (unit === 'kg') { value *= 1000; unit = 'g'; }
+    if (!out.has(unit)) out.set(unit, value); // first mention wins
+  }
+  return out;
+}
+
+function sizesConflict(a: string, b: string): boolean {
+  const sa = sizeTokens(a), sb = sizeTokens(b);
+  for (const [unit, va] of sa) {
+    const vb = sb.get(unit);
+    if (vb !== undefined && vb !== va) return true;
+  }
+  return false;
+}
+
 /** Their combo/pack listings — never a valid comparison target for a single. */
 function isTheirBundle(t: TheirProduct): boolean {
   const l = ` ${t.title.toLowerCase()} `;
@@ -76,6 +103,9 @@ export function matchCatalog(ours: OurProduct[], theirs: TheirProduct[]): Parity
         t = singles.find(s => norm(s.title).startsWith(key) || norm(s.handle).startsWith(key)) ?? null;
       }
     }
+    // A size/strength conflict means it's a different pack, whichever path
+    // matched it — surface as unmatched rather than compare apples to oranges.
+    if (t && sizesConflict(o.name, t.title)) t = null;
     if (!t) { unmatched.push(o.slug); continue; }
     compared++;
     if (o.price < t.price) {
