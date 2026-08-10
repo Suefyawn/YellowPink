@@ -34,3 +34,31 @@ export function buildConfirmAskMessage(opts: {
     'Agar address ya order mein kuch tabdeel karna ho to yahin bata dein. Shukriya!',
   ].join('\n');
 }
+
+/** Sent AFTER the customer confirms — thanks + the refusal-deterrent note.
+ *  Deliberately not part of the confirmation ask above: the owner's call
+ *  (10 Aug 2026) is that the note must never discourage a confirmation, so
+ *  it rides on the acknowledgment instead. Wording is soft on purpose —
+ *  "flagged", not "blacklisted": refused-once addresses have accepted
+ *  redelivery, so the door stays open (advance payment / re-confirmation),
+ *  and threat language screenshots badly for a beauty store. */
+export function buildConfirmedThanksMessage(opts: {
+  firstName?: string | null;
+  orderNumber: string;
+}): string {
+  const first = (opts.firstName ?? '').trim();
+  // The policy note is bilingual and deliberately impersonal ("if a confirmed
+  // order is not received", never "if you return it") — a rule reads fair,
+  // an accusation reads hostile to someone who just said yes. The Urdu-script
+  // line mirrors the English so it reaches customers who skip English, and
+  // script (vs the Roman Urdu house voice around it) signals official policy.
+  return [
+    `Shukriya${first ? ` ${first}` : ''}! Aap ka order (${opts.orderNumber}) confirm ho gaya hai — hum dispatch ki tayari shuru kar rahe hain.`,
+    '',
+    'Please note: if a confirmed order is not received at the doorstep, all future orders will require advance payment (cash on delivery will no longer be available).',
+    '',
+    'براہِ کرم نوٹ کریں: کنفرم شدہ آرڈر وصول نہ کرنے کی صورت میں آئندہ تمام آرڈرز کے لیے ایڈوانس پیمنٹ ضروری ہوگی۔',
+    '',
+    'Umeed hai aap ko apna order pasand aaye ga. Kisi bhi sawal ke liye yahin message kar dein!',
+  ].join('\n');
+}
