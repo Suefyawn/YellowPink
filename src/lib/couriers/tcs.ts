@@ -672,10 +672,25 @@ function sanitisePkMobile(raw: string): string {
 
 function parseTcsDate(s: string | undefined | null): string | null {
   if (!s) return null;
-  // TCS returns "Thursday Oct 17, 2024 12:58", Date can parse most variants.
+  // The payment ledger uses numeric slash dates in Pakistani day-first order
+  // ("04/08/2026 14:38" = 4 Aug). new Date() reads those month-first, which
+  // stamped payouts on impossible dates (a payout in April for a July order,
+  // another in the future). Parse day-first explicitly; if the second number
+  // can't be a month, the source was month-first after all — swap back.
+  const m = s.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+  if (m) {
+    let day = Number(m[1]), month = Number(m[2]);
+    if (month > 12 && day <= 12) [day, month] = [month, day];
+    const d = new Date(Date.UTC(Number(m[3]), month - 1, day, Number(m[4] ?? 0), Number(m[5] ?? 0), Number(m[6] ?? 0)));
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  // Long forms ("Thursday Oct 17, 2024 12:58") are unambiguous — Date handles them.
   const d = new Date(s);
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
+
+// Exported for tests only.
+export { parseTcsDate as _parseTcsDate };
 
 export const tcs: CourierAdapter = {
   id: 'TCS',

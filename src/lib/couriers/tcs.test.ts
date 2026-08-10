@@ -4,7 +4,27 @@
 // first facility scan is uploaded, and that must surface as noData — not as
 // an empty success that reads "already up to date" in the admin.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { tcs } from './tcs';
+import { tcs, _parseTcsDate } from './tcs';
+
+describe('parseTcsDate', () => {
+  it('reads numeric slash dates day-first (payment ledger format)', () => {
+    // "04/08/2026 14:38" is 4 Aug 2026, not April 8 (the payout-stamp bug).
+    expect(_parseTcsDate('04/08/2026 14:38')).toBe('2026-08-04T14:38:00.000Z');
+    expect(_parseTcsDate('09/07/2026')).toBe('2026-07-09T00:00:00.000Z');
+    expect(_parseTcsDate('31/12/2025')).toBe('2025-12-31T00:00:00.000Z');
+  });
+
+  it('swaps back when the source was month-first after all', () => {
+    // Second number can't be a month → the feed was MM/DD.
+    expect(_parseTcsDate('08/25/2026')).toBe('2026-08-25T00:00:00.000Z');
+  });
+
+  it('still parses long-form dates and rejects garbage', () => {
+    expect(_parseTcsDate('Thursday Oct 17, 2024 12:58')).toMatch(/^2024-10-17T/);
+    expect(_parseTcsDate('not a date')).toBeNull();
+    expect(_parseTcsDate('')).toBeNull();
+  });
+});
 
 const ENV = {
   TCS_BASE_URL: 'https://ociconnect.tcscourier.com',
