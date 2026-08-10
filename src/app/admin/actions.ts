@@ -17,6 +17,7 @@ import { assertPermission } from '@/lib/admin-auth';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
 import { applyReturnFinancialsForOrder } from '@/lib/return-financials';
+import { applyCodFlagTransition, flagCodIdentity, clearCodFlag } from '@/lib/cod-flags';
 import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { log } from '@/lib/logger';
@@ -739,11 +740,12 @@ export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus):
   // signed-in operator.
   const { data: beforeRows } = await admin
     .from('orders')
-    .select('id, status, order_number, items, email, first_name, tracking_number, courier, vendor_id, acquisition_cost_source')
+    .select('id, status, order_number, items, email, first_name, phone, pay_method, confirmed_at, tracking_number, courier, vendor_id, acquisition_cost_source')
     .in('id', ids);
   const before = (beforeRows ?? []) as Array<{
     id: string; status: OrderStatus | null; order_number: string | null; items: unknown;
-    email: string | null; first_name: string | null; tracking_number: string | null; courier: string | null;
+    email: string | null; first_name: string | null; phone: string | null; pay_method: string | null;
+    confirmed_at: string | null; tracking_number: string | null; courier: string | null;
     vendor_id: string | null; acquisition_cost_source: string | null;
   }>;
 
@@ -771,11 +773,15 @@ export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus):
   if (status === 'returned') {
     for (const o of changed) {
       await applyReturnFinancials(admin, session, o);
+      await applyCodFlagTransition(session, o, 'returned');
     }
     if (changed.length > 0) {
       revalidatePath('/admin/inventory');
       revalidatePath('/admin/vendors');
     }
+  }
+  if (status === 'delivered') {
+    for (const o of changed) await applyCodFlagTransition(session, o, 'delivered');
   }
 
   // Customer transition emails, same shipped/delivered/cancelled notifications
@@ -813,7 +819,7 @@ export async function updateOrderStatus(
   const admin = supabaseAdmin();
   const { data: before } = await admin
     .from('orders')
-    .select('status, email, first_name, order_number, items, tracking_number, courier, vendor_id, acquisition_cost_source')
+    .select('status, email, first_name, order_number, items, phone, pay_method, confirmed_at, tracking_number, courier, vendor_id, acquisition_cost_source')
     .eq('id', id)
     .single();
 
@@ -849,8 +855,14 @@ export async function updateOrderStatus(
       id, order_number: before.order_number, items: before.items,
       vendor_id: before.vendor_id, acquisition_cost_source: before.acquisition_cost_source,
     });
+    await applyCodFlagTransition(session, { id, order_number: before.order_number, phone: before.phone, pay_method: before.pay_method, confirmed_at: before.confirmed_at }, 'returned');
     revalidatePath('/admin/inventory');
     revalidatePath('/admin/vendors');
+  }
+
+  // Delivery redeems a flagged phone: they received a parcel, COD reopens.
+  if (before && before.status !== 'delivered' && status === 'delivered') {
+    await applyCodFlagTransition(session, { id, order_number: before.order_number, phone: before.phone, pay_method: before.pay_method, confirmed_at: before.confirmed_at }, 'delivered');
   }
 
   // Fire-and-forget transition emails. The status trigger logs the change to
@@ -863,6 +875,27 @@ export async function updateOrderStatus(
   revalidatePath(`/admin/orders/${id}`);
   revalidatePath('/admin/orders');
   return { success: true };
+}
+
+/** Set/clear the COD-refusal flag for an order's customer identity (phone +
+ *  email). Dispatch-side policy only — checkout is never gated. */
+export async function toggleCodFlag(orderId: string, flag: boolean): Promise<void> {
+  const session = await assertPermission('orders.edit');
+  const admin = supabaseAdmin();
+  const { data: o } = await admin.from('orders').select('order_number, phone, email').eq('id', orderId).single();
+  if (!o) return;
+  const row = o as { order_number: string | null; phone: string | null; email: string | null };
+  if (flag) {
+    await flagCodIdentity({
+      phone: row.phone, email: row.email, orderId,
+      reason: `manually flagged from order ${row.order_number ?? orderId}`,
+      by: session.email ?? 'staff',
+    });
+  } else {
+    await clearCodFlag({ phone: row.phone, email: row.email }, session.email ?? 'staff');
+  }
+  void logAudit(session, { action: flag ? 'cod.flagged' : 'cod.unflagged', entity: 'cod_flags', entity_id: row.order_number ?? orderId });
+  revalidatePath(`/admin/orders/${orderId}`);
 }
 
 // NOTE: this file must export ONLY async server actions. A previous sync
