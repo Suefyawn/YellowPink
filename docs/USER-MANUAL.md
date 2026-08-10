@@ -1027,6 +1027,9 @@ A dated history of user-facing changes, newest first.
 
 ### 10 August 2026
 
+- **NB Sons products now offer the same size, form and flavour choices as the brand's own store.** Eight products gained a picker on their product page, priced exactly at NB Sons list: SimZee Zinc Syrup (60ml Rs 180 / 120ml Rs 350), Simrid (Syrup Rs 250 / Drops Rs 225), CALIN-G (Syrup Rs 420 / Tablets Rs 690), Multiflux (Syrup Rs 530 / Tablets Rs 890), Ferosim (Syrup Rs 450 / Tablets Rs 495), Citowit (Syrup Rs 880 / Tablets Rs 1,550), Calosent (Orange / Lemon / Mango, Rs 350 each) and S-Lyte ORS (Lemon / Orange, Rs 299 each). Shoppers who wanted the other pack size or form no longer have to leave the store. The weekly parity check now compares each option against the brand's matching option, so these can never trigger a false "priced below vendor" alarm.
+- **Finance respects flat vendor margins.** Orders holding a flat-commission vendor's products (like Nazirs Group / NB Sons at 35%) now show their real cost and margin in Finance even before dispatch — the P&L derives the cost from the vendor's commission instead of showing an unknown margin when the product has no per-unit cost recorded.
+
 - **Price-parity alerts no longer compare different pack sizes.** The weekly NB Sons parity check emailed a false alarm: our SimZee Zinc Syrup **60ml** (PKR 180) flagged against their **120ml** listing (PKR 350), because the fallback matcher paired products by brand name alone. The checker now reads pack sizes and strengths out of both product names (60ml, 120ml, 20mg and so on) and refuses to compare listings whose stated sizes differ — those show up in the "unmatched" count instead. No price was changed; the 60ml at PKR 180 was never below NB Sons's price for the same product.
 
 ### 9 August 2026

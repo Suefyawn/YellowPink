@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { fetchNbSonsCatalog, matchCatalog, type OurProduct } from '@/lib/price-parity';
+import { fetchNbSonsCatalog, matchCatalog, stripFormWords, type OurProduct } from '@/lib/price-parity';
 import { sendPriceParityAlertEmail } from '@/lib/email';
 import { log } from '@/lib/logger';
 
@@ -61,9 +61,53 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const bundleIds = new Set(((bundleRows ?? []) as Array<{ bundle_product_id: string }>).map(r => r.bundle_product_id));
-  const singles: OurProduct[] = ((productRows ?? []) as Array<{ id: string; slug: string; name: string; price: number }>)
-    .filter(p => !bundleIds.has(p.id) && !PACK_NAME_RE.test(p.name))
-    .map(p => ({ slug: p.slug, name: p.name, price: p.price }));
+  const products = ((productRows ?? []) as Array<{ id: string; slug: string; name: string; price: number }>)
+    .filter(p => !bundleIds.has(p.id) && !PACK_NAME_RE.test(p.name));
+
+  // A product with size/form/flavour variants is several sellable listings —
+  // compare each variant's own price against the vendor's matching variant,
+  // never the base row (its price is just the cheapest variant's).
+  const variantsByProduct = new Map<string, Array<{ label: string; price: number }>>();
+  if (products.length) {
+    const { data: variantRows } = await sb
+      .from('product_variants')
+      .select('id, product_id, price')
+      .eq('enabled', true)
+      .in('product_id', products.map(p => p.id));
+    const vIds = ((variantRows ?? []) as Array<{ id: string }>).map(v => v.id);
+    const labelByVariant = new Map<string, string>();
+    if (vIds.length) {
+      const { data: vavRows } = await sb
+        .from('variant_attribute_values')
+        .select('variant_id, attribute_value_id')
+        .in('variant_id', vIds);
+      const valueIds = [...new Set(((vavRows ?? []) as Array<{ attribute_value_id: string }>).map(r => r.attribute_value_id))];
+      const { data: valueRows } = valueIds.length
+        ? await sb.from('attribute_values').select('id, value').in('id', valueIds)
+        : { data: [] };
+      const valueById = new Map(((valueRows ?? []) as Array<{ id: string; value: string }>).map(v => [v.id, v.value]));
+      for (const r of (vavRows ?? []) as Array<{ variant_id: string; attribute_value_id: string }>) {
+        const label = valueById.get(r.attribute_value_id);
+        if (!label) continue;
+        labelByVariant.set(r.variant_id, [labelByVariant.get(r.variant_id), label].filter(Boolean).join(' '));
+      }
+    }
+    for (const v of (variantRows ?? []) as Array<{ id: string; product_id: string; price: number }>) {
+      const list = variantsByProduct.get(v.product_id) ?? [];
+      list.push({ label: labelByVariant.get(v.id) ?? '', price: Number(v.price) });
+      variantsByProduct.set(v.product_id, list);
+    }
+  }
+
+  const singles: OurProduct[] = products.flatMap(p => {
+    const variants = variantsByProduct.get(p.id);
+    if (!variants?.length) return [{ slug: p.slug, name: p.name, price: p.price }];
+    return variants.map(v => ({
+      slug: `${p.slug}#${v.label || 'variant'}`,
+      name: `${stripFormWords(p.name)} ${v.label}`.trim(),
+      price: v.price,
+    }));
+  });
 
   let theirs;
   try {

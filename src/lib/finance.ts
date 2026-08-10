@@ -128,7 +128,7 @@ export interface FinanceOrder {
   payment_account: string | null; payment_received_at: string | null;
   acquisition_cost: number | null;
   vendor_id: string | null;
-  items?: Array<{ id?: string; qty?: number }> | null;
+  items?: Array<{ id?: string; qty?: number; price?: number }> | null;
 }
 
 /** Revenue-eligible orders in the window, plus per-order COGS.
@@ -186,6 +186,19 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
       const costMap = new Map(
         (prods ?? []).map(p => [p.id, { vendorId: p.vendor_id, cost: Number(p.cost_price ?? 0), vendorCost: Number(p.vendor_cost ?? 0) }]),
       );
+      // Flat vendor margins: a vendor product with no fixed per-unit cost
+      // still has a known cost when its vendor keeps a commission % — the
+      // same basis the shared cost engine (order-costs.ts) uses at dispatch.
+      // Without this, flat-margin vendors' undispatched orders read as
+      // unknown COGS (margin "—") despite the rate sitting on the vendor row.
+      const vendorIds = [...new Set([...costMap.values()].map(p => p.vendorId).filter((v): v is string => v != null))];
+      const commissionByVendor = new Map<string, number>();
+      if (vendorIds.length) {
+        const { data: vends } = await admin.from('vendors').select('id, commission_pct').in('id', vendorIds);
+        for (const v of (vends ?? []) as Array<{ id: string; commission_pct: number | null }>) {
+          if (v.commission_pct != null) commissionByVendor.set(v.id, Number(v.commission_pct));
+        }
+      }
       // Orders that already have a settlement snapshot: their vendor lines
       // are covered above and must not double-count here.
       const settled = new Set(cogsByOrder.keys());
@@ -198,8 +211,14 @@ export async function loadFinanceOrders(fromISO: string | null): Promise<{ order
           // Vendor-sourced item on an order that was never dispatched (no
           // settlement row): fall back to the product's fixed vendor price —
           // the same basis the COGS nudge accepts as "handled", which used
-          // to read as 100% margin here (2026-08-01 audit split-brain).
-          else if (p.vendorId != null && !settled.has(o.id) && p.vendorCost > 0) own += p.vendorCost * (Number(it.qty) || 0);
+          // to read as 100% margin here (2026-08-01 audit split-brain) —
+          // then to the vendor's commission % (cost = price × (1 − pct/100)).
+          else if (p.vendorId != null && !settled.has(o.id)) {
+            const commission = commissionByVendor.get(p.vendorId);
+            if (p.vendorCost > 0) own += p.vendorCost * (Number(it.qty) || 0);
+            else if (commission != null) own += (Number(it.price) || 0) * (1 - commission / 100) * (Number(it.qty) || 0);
+            else if (p.cost > 0) own += p.cost * (Number(it.qty) || 0);
+          }
         }
         if (own > 0) cogsByOrder.set(o.id, (cogsByOrder.get(o.id) ?? 0) + own);
       }
