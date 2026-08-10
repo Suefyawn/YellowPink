@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 9 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 10 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1024,6 +1024,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 10 August 2026
+
+- **Price-parity alerts no longer compare different pack sizes.** The weekly NB Sons parity check emailed a false alarm: our SimZee Zinc Syrup **60ml** (PKR 180) flagged against their **120ml** listing (PKR 350), because the fallback matcher paired products by brand name alone. The checker now reads pack sizes and strengths out of both product names (60ml, 120ml, 20mg and so on) and refuses to compare listings whose stated sizes differ — those show up in the "unmatched" count instead. No price was changed; the 60ml at PKR 180 was never below NB Sons's price for the same product.
 
 ### 9 August 2026
 
