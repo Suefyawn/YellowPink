@@ -263,6 +263,18 @@ function TrackForm() {
                 </div>
               )}
 
+              {/* Soft refusal-deterrent for in-flight COD parcels: the courier
+                  bills the full round trip on a refused confirmed order, so
+                  the address gets flagged for future COD. Shown only while
+                  receiving the parcel is still ahead of the customer. */}
+              {order.pay_method === 'cod' && (status === 'pending' || status === 'processing' || status === 'shipped') && (
+                <p style={{ margin: '0 0 24px', fontSize: '0.8125rem', color: 'var(--ink-500)' }}>
+                  Please receive your parcel when it arrives — refused confirmed orders cost us the courier&apos;s full
+                  round trip, and such addresses are flagged, so future cash-on-delivery orders from them may need
+                  advance payment or re-confirmation.
+                </p>
+              )}
+
               {order.tracking_number && (
                 <div style={{ padding: '14px 18px', background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 10, marginBottom: 24, fontSize: '0.9375rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>

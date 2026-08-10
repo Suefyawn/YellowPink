@@ -20,7 +20,7 @@ import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
 import { buildReviewAskMessage } from '@/lib/review-ask';
-import { buildConfirmAskMessage } from '@/lib/confirm-ask';
+import { buildConfirmAskMessage, buildConfirmedThanksMessage } from '@/lib/confirm-ask';
 import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
 import { configuredAdapterIds } from '@/lib/couriers';
@@ -734,7 +734,28 @@ export default async function OrderDetailPage({
                 }}>
                   ✓ Confirmed {fmtDate(o.confirmed_at)}
                 </span>
-                <form action={setOrderConfirmed.bind(null, o.id!, false)} style={{ marginTop: 8 }}>
+                {/* Post-confirmation acknowledgment carries the refusal-
+                    deterrent ("flagged" wording, owner decision 10 Aug 2026).
+                    It lives AFTER confirmation on purpose — the ask message
+                    above must never discourage a YES. COD only: prepaid
+                    can't be refused into a courier loss. */}
+                {(() => {
+                  if (o.pay_method !== 'cod') return null;
+                  const waThanks = waUrlForCustomer(o.phone, buildConfirmedThanksMessage({
+                    firstName: o.first_name,
+                    orderNumber: o.order_number ?? '',
+                  }));
+                  return waThanks ? (
+                    <a href={waThanks} target="_blank" rel="noopener noreferrer" style={{
+                      display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 8, marginRight: 8,
+                      padding: '6px 12px', background: '#16a34a', color: 'white',
+                      borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, textDecoration: 'none',
+                    }}>
+                      Send thanks + delivery note (WhatsApp)
+                    </a>
+                  ) : null;
+                })()}
+                <form action={setOrderConfirmed.bind(null, o.id!, false)} style={{ marginTop: 8, display: 'inline-block' }}>
                   <button type="submit" style={{
                     padding: '6px 12px', background: 'transparent', border: '1px solid #d1d5db',
                     borderRadius: 6, color: '#6b7280', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',

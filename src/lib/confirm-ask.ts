@@ -34,3 +34,24 @@ export function buildConfirmAskMessage(opts: {
     'Agar address ya order mein kuch tabdeel karna ho to yahin bata dein. Shukriya!',
   ].join('\n');
 }
+
+/** Sent AFTER the customer confirms — thanks + the refusal-deterrent note.
+ *  Deliberately not part of the confirmation ask above: the owner's call
+ *  (10 Aug 2026) is that the note must never discourage a confirmation, so
+ *  it rides on the acknowledgment instead. Wording is soft on purpose —
+ *  "flagged", not "blacklisted": refused-once addresses have accepted
+ *  redelivery, so the door stays open (advance payment / re-confirmation),
+ *  and threat language screenshots badly for a beauty store. */
+export function buildConfirmedThanksMessage(opts: {
+  firstName?: string | null;
+  orderNumber: string;
+}): string {
+  const first = (opts.firstName ?? '').trim();
+  return [
+    `Shukriya${first ? ` ${first}` : ''}! Aap ka order (${opts.orderNumber}) confirm ho gaya hai — hum dispatch ki tayari shuru kar rahe hain.`,
+    '',
+    'Aik choti si guzarish: parcel aane par receive zaroor kar lein. Confirm hone ke baad jo parcel receive nahi hota, us ka poora courier kharcha store ko bharna parta hai — is liye aise address system mein flag ho jate hain, aur wahan aainda COD order se pehle advance payment ya dobara confirmation ki zaroorat par sakti hai.',
+    '',
+    'Umeed hai aap ko apna order pasand aaye ga. Kisi bhi sawal ke liye yahin message kar dein!',
+  ].join('\n');
+}
