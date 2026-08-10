@@ -270,8 +270,8 @@ function TrackForm() {
               {order.pay_method === 'cod' && (status === 'pending' || status === 'processing' || status === 'shipped') && (
                 <p style={{ margin: '0 0 24px', fontSize: '0.8125rem', color: 'var(--ink-500)' }}>
                   Please receive your parcel when it arrives — refused confirmed orders cost us the courier&apos;s full
-                  round trip, and such addresses are flagged, so future cash-on-delivery orders from them may need
-                  advance payment or re-confirmation.
+                  round trip. Such addresses are flagged, and future orders from them require advance payment
+                  (cash on delivery is no longer offered).
                 </p>
               )}
 

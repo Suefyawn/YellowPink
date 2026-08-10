@@ -50,7 +50,7 @@ export function buildConfirmedThanksMessage(opts: {
   return [
     `Shukriya${first ? ` ${first}` : ''}! Aap ka order (${opts.orderNumber}) confirm ho gaya hai — hum dispatch ki tayari shuru kar rahe hain.`,
     '',
-    'Aik choti si guzarish: parcel aane par receive zaroor kar lein. Confirm hone ke baad jo parcel receive nahi hota, us ka poora courier kharcha store ko bharna parta hai — is liye aise address system mein flag ho jate hain, aur wahan aainda COD order se pehle advance payment ya dobara confirmation ki zaroorat par sakti hai.',
+    'Aik choti si guzarish: parcel aane par receive zaroor kar lein. Confirm hone ke baad jo parcel receive nahi hota, us ka poora courier kharcha store ko bharna parta hai — is liye aise address system mein flag ho jate hain, aur wahan aainda orders ke liye advance payment zaroori ho jati hai (cash on delivery band).',
     '',
     'Umeed hai aap ko apna order pasand aaye ga. Kisi bhi sawal ke liye yahin message kar dein!',
   ].join('\n');

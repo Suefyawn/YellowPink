@@ -42,7 +42,7 @@ const buildFaqs = (p: FaqPolicy): Record<string, FaqEntry[]> => ({
     {
       question: 'Do you offer cash on delivery (COD)?',
       answer:
-        'Yes, cash on delivery is available across Pakistan. You pay the courier at the doorstep when your order arrives. No advance payment required for COD orders. One note: when a confirmed COD order is refused at the door, the courier still charges us the full round trip, so addresses that refuse confirmed orders are flagged and future COD orders from them may need advance payment or re-confirmation before dispatch.',
+        'Yes, cash on delivery is available across Pakistan. You pay the courier at the doorstep when your order arrives. No advance payment required for COD orders. One note: when a confirmed COD order is refused at the door, the courier still charges us the full round trip, so addresses that refuse confirmed orders are flagged and future orders from them require advance payment (COD is no longer offered to a flagged address).',
     },
     {
       question: 'When does free shipping apply?',
