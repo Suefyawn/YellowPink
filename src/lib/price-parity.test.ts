@@ -65,6 +65,28 @@ describe('matchCatalog', () => {
     expect(litre.violations).toHaveLength(1);
   });
 
+  it('matches form/flavour variants to their true counterpart, not the first row', () => {
+    const theirs = [
+      T('Simrid Ivy Leaf Extract Syrup', 'simrid', 250),
+      T('Simrid Ivy Leaf Extract Drops', 'simrid', 225),
+    ];
+    // Our Drops variant at their Drops price is parity, even though it's
+    // below their Syrup price (the row a naive first-match would pick).
+    const drops = matchCatalog([O('simrid#Drops', 'Simrid Ivy Leaf Extract Drops', 225)], theirs);
+    expect(drops.violations).toHaveLength(0);
+    expect(drops.compared).toBe(1);
+    // But a Drops variant genuinely under their Drops price still flags.
+    const under = matchCatalog([O('simrid#Drops', 'Simrid Ivy Leaf Extract Drops', 199)], theirs);
+    expect(under.violations).toHaveLength(1);
+    expect(under.violations[0].theirPrice).toBe(225);
+  });
+
+  it('stripFormWords leaves sizes and brand words intact', async () => {
+    const { stripFormWords } = await import('./price-parity');
+    expect(stripFormWords('Simrid Ivy Leaf Extract Syrup & Drops')).toBe('Simrid Ivy Leaf Extract');
+    expect(stripFormWords('SimZee Zinc Gluconate Syrup 120ml')).toBe('SimZee Zinc Gluconate 120ml');
+  });
+
   it('a unit only one side states is inconclusive, not a size conflict', () => {
     // Their title adds a 20mg strength; ours only says the brand. Still a match.
     const r = matchCatalog(

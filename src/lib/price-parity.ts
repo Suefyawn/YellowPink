@@ -77,6 +77,46 @@ function sizesConflict(a: string, b: string): boolean {
   return false;
 }
 
+/** Form/flavour qualifiers that split one product into distinct sellable
+ *  listings (Syrup vs Tablet, Orange vs Lemon). Singular/plural collapsed. */
+const FORM_WORDS = new Set(['syrup', 'drop', 'tablet', 'capsule', 'sachet', 'powder', 'cream', 'orange', 'lemon', 'mango', 'strawberry']);
+
+function formTokens(s: string): Set<string> {
+  const out = new Set<string>();
+  for (const w of s.toLowerCase().split(/[^a-z]+/)) {
+    const singular = w.endsWith('s') ? w.slice(0, -1) : w;
+    if (FORM_WORDS.has(singular)) out.add(singular);
+  }
+  return out;
+}
+
+/** Remove form/flavour words from a base product name so a variant row's
+ *  qualifiers come only from its own label ("Simrid Syrup & Drops" + "Drops"
+ *  must read as a Drops listing, not a Syrup-and-Drops one). Sizes stay. */
+export function stripFormWords(s: string): string {
+  return s
+    .split(/\s+/)
+    .filter(w => {
+      const bare = w.toLowerCase().replace(/[^a-z]/g, '');
+      const singular = bare.endsWith('s') ? bare.slice(0, -1) : bare;
+      return !FORM_WORDS.has(singular);
+    })
+    .join(' ')
+    .replace(/\s*[&+/]\s*(?=[&+/]|$)/g, '')
+    .trim();
+}
+
+/** Two listings describe the same sellable item only when their stated sizes
+ *  agree AND, when both state a form/flavour, they share one. A qualifier
+ *  stated by only one side is inconclusive, not a conflict. */
+function qualifierConflict(a: string, b: string): boolean {
+  if (sizesConflict(a, b)) return true;
+  const fa = formTokens(a), fb = formTokens(b);
+  if (fa.size === 0 || fb.size === 0) return false;
+  for (const t of fa) if (fb.has(t)) return false;
+  return true;
+}
+
 /** Their combo/pack listings — never a valid comparison target for a single. */
 function isTheirBundle(t: TheirProduct): boolean {
   const l = ` ${t.title.toLowerCase()} `;
@@ -84,7 +124,10 @@ function isTheirBundle(t: TheirProduct): boolean {
 }
 
 export function matchCatalog(ours: OurProduct[], theirs: TheirProduct[]): ParityResult {
-  const byHandle = new Map(theirs.map(t => [t.handle, t]));
+  // First entry wins per handle: a multi-variant listing contributes several
+  // rows with one handle, and the fallback scan below covers the rest.
+  const byHandle = new Map<string, TheirProduct>();
+  for (const t of theirs) if (!byHandle.has(t.handle)) byHandle.set(t.handle, t);
   const singles = theirs.filter(t => !isTheirBundle(t) && t.price > 0);
 
   const unmatched: string[] = [];
@@ -92,20 +135,22 @@ export function matchCatalog(ours: OurProduct[], theirs: TheirProduct[]): Parity
   let compared = 0;
 
   for (const o of ours) {
-    const aliased = HANDLE_ALIASES[o.slug];
-    let t = (aliased && byHandle.get(aliased)) || byHandle.get(o.slug) || null;
-    if (t && (isTheirBundle(t) || t.price <= 0)) t = null;
-    if (!t) {
-      // First word of our product name ("Trimo-M Ashwagandha …" → "trimom")
-      // against the start of their title or handle, singles only.
-      const key = norm(o.name.split(/\s+/)[0]);
-      if (key.length >= 4) {
-        t = singles.find(s => norm(s.title).startsWith(key) || norm(s.handle).startsWith(key)) ?? null;
-      }
+    // Variant rows carry "slug#Label" — aliases and handles key on the base.
+    const baseSlug = o.slug.split('#')[0];
+    const aliased = HANDLE_ALIASES[baseSlug];
+    const direct = (aliased && byHandle.get(aliased)) || byHandle.get(baseSlug) || null;
+
+    // Candidates in preference order: the direct handle match, then every
+    // single whose title/handle starts with our name's first word. The match
+    // is the first candidate whose size AND form/flavour don't conflict —
+    // our Drops variant must skip their Syrup row and land on their Drops.
+    const candidates: TheirProduct[] = [];
+    if (direct && !isTheirBundle(direct) && direct.price > 0) candidates.push(direct);
+    const key = norm(o.name.split(/\s+/)[0]);
+    if (key.length >= 4) {
+      candidates.push(...singles.filter(s => norm(s.title).startsWith(key) || norm(s.handle).startsWith(key)));
     }
-    // A size/strength conflict means it's a different pack, whichever path
-    // matched it — surface as unmatched rather than compare apples to oranges.
-    if (t && sizesConflict(o.name, t.title)) t = null;
+    const t = candidates.find(c => !qualifierConflict(o.name, c.title)) ?? null;
     if (!t) { unmatched.push(o.slug); continue; }
     compared++;
     if (o.price < t.price) {
@@ -131,11 +176,22 @@ export async function fetchNbSonsCatalog(): Promise<TheirProduct[]> {
         headers: { 'user-agent': 'YellowPink price-parity check (yellowpink.pk)' },
       });
       if (!res.ok) throw new Error(`nbsons.com responded ${res.status}`);
-      const json = (await res.json()) as { products?: Array<{ title?: string; handle?: string; variants?: Array<{ price?: string }> }> };
+      const json = (await res.json()) as { products?: Array<{ title?: string; handle?: string; variants?: Array<{ title?: string; price?: string }> }> };
       const batch = json.products ?? [];
       for (const p of batch) {
         if (!p.title || !p.handle) continue;
-        out.push({ title: p.title, handle: p.handle, price: Number(p.variants?.[0]?.price ?? 0) });
+        const variants = (p.variants ?? []).filter(v => v.price != null);
+        if (variants.length <= 1) {
+          out.push({ title: p.title, handle: p.handle, price: Number(variants[0]?.price ?? 0) });
+        } else {
+          // One row per size/form/flavour variant, the variant label carrying
+          // the qualifier ("Ferosim … Syrup" / "… Tablet") so each of our
+          // variants compares against its true counterpart, not variants[0].
+          for (const v of variants) {
+            const label = v.title && v.title !== 'Default Title' ? v.title : '';
+            out.push({ title: `${label ? stripFormWords(p.title) : p.title} ${label}`.trim(), handle: p.handle, price: Number(v.price ?? 0) });
+          }
+        }
       }
       if (batch.length < 250) break;
     } finally {
