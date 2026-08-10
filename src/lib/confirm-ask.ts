@@ -47,10 +47,17 @@ export function buildConfirmedThanksMessage(opts: {
   orderNumber: string;
 }): string {
   const first = (opts.firstName ?? '').trim();
+  // The policy note is bilingual and deliberately impersonal ("if a confirmed
+  // order is not received", never "if you return it") — a rule reads fair,
+  // an accusation reads hostile to someone who just said yes. The Urdu-script
+  // line mirrors the English so it reaches customers who skip English, and
+  // script (vs the Roman Urdu house voice around it) signals official policy.
   return [
     `Shukriya${first ? ` ${first}` : ''}! Aap ka order (${opts.orderNumber}) confirm ho gaya hai — hum dispatch ki tayari shuru kar rahe hain.`,
     '',
-    'Aik choti si guzarish: parcel aane par receive zaroor kar lein. Confirm hone ke baad jo parcel receive nahi hota, us ka poora courier kharcha store ko bharna parta hai — is liye aise address system mein flag ho jate hain, aur wahan aainda orders ke liye advance payment zaroori ho jati hai (cash on delivery band).',
+    'Please note: if a confirmed order is not received at the doorstep, all future orders will require advance payment (cash on delivery will no longer be available).',
+    '',
+    'براہِ کرم نوٹ کریں: کنفرم شدہ آرڈر وصول نہ کرنے کی صورت میں آئندہ تمام آرڈرز کے لیے ایڈوانس پیمنٹ ضروری ہوگی۔',
     '',
     'Umeed hai aap ko apna order pasand aaye ga. Kisi bhi sawal ke liye yahin message kar dein!',
   ].join('\n');
