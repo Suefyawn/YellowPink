@@ -855,14 +855,14 @@ export async function updateOrderStatus(
       id, order_number: before.order_number, items: before.items,
       vendor_id: before.vendor_id, acquisition_cost_source: before.acquisition_cost_source,
     });
-    await applyCodFlagTransition(session, { id, order_number: before.order_number, phone: before.phone, pay_method: before.pay_method, confirmed_at: before.confirmed_at }, 'returned');
+    await applyCodFlagTransition(session, { id, order_number: before.order_number, phone: before.phone, email: before.email, pay_method: before.pay_method, confirmed_at: before.confirmed_at }, 'returned');
     revalidatePath('/admin/inventory');
     revalidatePath('/admin/vendors');
   }
 
   // Delivery redeems a flagged phone: they received a parcel, COD reopens.
   if (before && before.status !== 'delivered' && status === 'delivered') {
-    await applyCodFlagTransition(session, { id, order_number: before.order_number, phone: before.phone, pay_method: before.pay_method, confirmed_at: before.confirmed_at }, 'delivered');
+    await applyCodFlagTransition(session, { id, order_number: before.order_number, phone: before.phone, email: before.email, pay_method: before.pay_method, confirmed_at: before.confirmed_at }, 'delivered');
   }
 
   // Fire-and-forget transition emails. The status trigger logs the change to
