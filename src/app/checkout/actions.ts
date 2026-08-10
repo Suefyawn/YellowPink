@@ -8,7 +8,8 @@ import {
 } from '@/lib/email';
 import { checkoutLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { resolveShipping } from '@/lib/shipping';
-import { supabase, getSiteSettings } from '@/lib/supabase';
+import { supabase, supabaseAdmin, getSiteSettings } from '@/lib/supabase';
+import { isCodFlagged } from '@/lib/cod-flags';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
 import { SITE_URL } from '@/lib/seo';
@@ -38,6 +39,23 @@ export async function notifyNewOrder(order: {
   // revalidate explicitly) — see /product/[slug]/page.tsx.
   for (const slug of new Set(order.items.map(i => i.slug).filter(Boolean))) {
     revalidatePath(`/product/${slug}`);
+  }
+
+  // COD-refusal flag check — dispatch-side only, by owner instruction:
+  // checkout never resists an order, but staff get the bell so they collect
+  // advance payment BEFORE booking the courier. Best-effort like the emails.
+  if (order.pay_method === 'cod') {
+    try {
+      if (await isCodFlagged({ phone: order.phone, email: order.email })) {
+        await supabaseAdmin().from('admin_notifications').insert({
+          kind: 'cod_flagged_order',
+          title: `Order ${order.order_number}: flagged for refused delivery`,
+          body: 'This customer previously refused a confirmed COD parcel. Collect advance payment (bank / JazzCash) before dispatching — do not book the courier on COD.',
+          link: '/admin/orders',
+          entity_id: order.order_number,
+        });
+      }
+    } catch { /* the order itself is placed; the bell is best-effort */ }
   }
 
   // sendOrderConfirmationEmail resolves to a boolean (did the provider accept

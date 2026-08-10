@@ -11,7 +11,8 @@ import { VendorDispatch } from '@/components/admin/VendorDispatch';
 import { setOrderConfirmed } from '@/app/admin/vendor-actions';
 import { setOrderCosts, recalcAcquisitionCost, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
 import { resolveOrderCosts } from '@/lib/order-costs';
-import { deleteOrder, archiveOrder, unarchiveOrder } from '@/app/admin/actions';
+import { deleteOrder, archiveOrder, unarchiveOrder, toggleCodFlag } from '@/app/admin/actions';
+import { isCodFlagged } from '@/lib/cod-flags';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
 import { AdminFlash } from '@/components/admin/AdminFlash';
@@ -327,6 +328,11 @@ export default async function OrderDetailPage({
       vendorSelfDelivers = { name: (vRow.name as string) ?? 'the vendor', deliveryFee: Number((vRow as { delivery_fee?: number | null }).delivery_fee ?? 0) };
     }
   }
+  // COD-refusal flag (dispatch-side enforcement: checkout never resists, so
+  // this card is where the policy actually bites — staff collect advance
+  // payment before booking the courier for a flagged customer).
+  const codFlagged = await isCodFlagged({ phone: o.phone, email: o.email });
+
   const costEngine = resolveOrderCosts(orderItems, dispatchedVendor, engineProducts);
   const acqProvenance = ordAcq == null
     ? 'Unknown — select a vendor above or enter manually.'
@@ -714,6 +720,30 @@ export default async function OrderDetailPage({
         </table>
         </div>
       </div>
+
+      {/* Refused-delivery flag: advance payment before dispatch. */}
+      {canEdit && codFlagged && (
+        <div style={{ ...section, background: '#fffbeb', border: '1px solid #fde68a' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#92400e' }}>⚑ Refused-delivery flag on this customer</div>
+              <p style={{ margin: '6px 0 0', fontSize: '0.8125rem', color: '#92400e' }}>
+                A previous confirmed COD parcel of this phone/email was not received. Collect advance
+                payment (bank or JazzCash) before dispatching — do not book the courier on COD.
+                Delivering a prepaid order clears the flag automatically.
+              </p>
+            </div>
+            <form action={toggleCodFlag.bind(null, o.id!, false)}>
+              <button type="submit" style={{
+                padding: '8px 14px', background: 'transparent', border: '1px solid #d97706',
+                borderRadius: 7, color: '#92400e', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+              }}>
+                Remove flag
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation & vendor dispatch, edit-gated */}
       {canEdit && (
