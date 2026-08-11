@@ -19,6 +19,14 @@ interface BrandRow {
   sort_order: number;
   seo_title: string | null;
   seo_description: string | null;
+  content_html: string | null;
+  faqs: { q: string; a: string }[] | null;
+}
+
+// The form round-trips FAQs as alternating "Q:" / "A:" lines, friendlier to
+// type than JSON and parsed back by updateBrand.
+function faqsToText(faqs: { q: string; a: string }[] | null): string {
+  return (faqs ?? []).map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n');
 }
 
 const lbl: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 4 };
@@ -100,6 +108,18 @@ export default async function EditBrandPage({
             <ImageUpload name="hero_image_url" currentUrl={b.hero_image_url} label="Landing-page hero" aspect={16 / 9} />
             <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Wide image shown behind the brand title. Leave empty to auto-use a member product image.</p>
           </div>
+        </div>
+
+        {/* Long-form landing-page content */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>Page content (HTML)</label>
+          <textarea name="content_html" defaultValue={b.content_html ?? ''} rows={12} style={{ ...inp, resize: 'vertical', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem' }} placeholder={'<h2>About the brand</h2>\n<p>…</p>\n<h2>What we stock</h2>\n<p>…</p>'} />
+          <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Rendered under the product grid on the brand page. Use h2/h3/p/ul/a tags; link products with <code>/product/&lt;slug&gt;</code>. Makes the page rank for brand searches, treat it like a mini article.</p>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>FAQs</label>
+          <textarea name="faqs_text" defaultValue={faqsToText(b.faqs)} rows={8} style={{ ...inp, resize: 'vertical' }} placeholder={'Q: Are these products original?\nA: Yes, every item is sourced through authorised distribution.\n\nQ: Is cash on delivery available?\nA: Yes, nationwide.'} />
+          <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Alternating <code>Q:</code> and <code>A:</code> lines, blank line between pairs. Shown as an FAQ section and sent to Google as FAQ structured data.</p>
         </div>
 
         {/* Order + SEO */}
