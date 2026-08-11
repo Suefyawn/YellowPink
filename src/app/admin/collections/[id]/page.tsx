@@ -104,7 +104,7 @@ export default async function EditCollectionPage({
         <div style={{ marginBottom: 14 }}>
           <label style={lbl}>Page content (HTML)</label>
           <textarea name="content_html" defaultValue={c.content_html ?? ''} rows={12} style={{ ...inp, resize: 'vertical', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem' }} placeholder={'<h2>How to choose</h2>\n<p>…</p>'} />
-          <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Rendered under the product grid. Use h2/h3/p/ul/a tags; link products with <code>/product/&lt;slug&gt;</code> and guides with <code>/blog/&lt;slug&gt;</code>.</p>
+          <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Rendered under the product grid. Use h2/h3/p/ul/a tags; link products with <code>/product/&lt;slug&gt;</code> and guides with <code>/blog/&lt;slug&gt;</code>. Never type a price: write <code>[[price:product-slug]]</code> and the current catalogue price renders automatically (works in FAQs too).</p>
         </div>
         <div style={{ marginBottom: 14 }}>
           <label style={lbl}>FAQs</label>

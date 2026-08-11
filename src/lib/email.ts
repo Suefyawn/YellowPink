@@ -524,12 +524,25 @@ export async function sendOrderConfirmationEmail(
     ? `We've received your order <strong>${escapeHtml(args.order_number)}</strong>. It will be prepared as soon as your bank transfer is confirmed — the details are below.`
     : `We've received your order <strong>${escapeHtml(args.order_number)}</strong> and will start preparing it shortly.
       You'll get an email when it ships.`;
+  // COD sequence priming: the staff WhatsApp confirmation is the next thing
+  // that happens, so the email should predict it — a message from an unknown
+  // number lands very differently when you were told to expect it.
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+  const codWhatsAppBlock = (!isBank && args.pay_method === 'cod' && whatsappNumber)
+    ? `
+    <div style="margin:20px 0 0;padding:14px 16px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:8px">
+      <p style="margin:0 0 8px;font-weight:600;color:#166534">Next step: WhatsApp confirmation</p>
+      <p style="margin:0 0 10px;font-size:13px;color:${INK};line-height:1.5">Our team will message you on WhatsApp to confirm your order before dispatch. Want to skip the wait? Confirm right now, it takes two seconds:</p>
+      <a href="https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hi Yellow Pink! Confirming my order ${args.order_number}. Please process it.`)}" style="display:inline-block;padding:8px 16px;background:#25D366;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:13px">Confirm on WhatsApp</a>
+    </div>`
+    : '';
   const html = shell(`
     <h2 style="margin:0 0 12px;font-size:18px">Thanks for your order, ${escapeHtml(stripEmoji(args.first_name))}!</h2>
     <p style="margin:0 0 16px;color:${INK};line-height:1.5">${introLine}</p>
     ${renderItemsTable(args.items)}
     <p style="margin:8px 0 0;text-align:right;font-size:16px"><strong>Total: ${money(args.total)}</strong></p>
     ${bankBlock}
+    ${codWhatsAppBlock}
     <p style="margin:20px 0 0">
       <a href="${SITE_URL}/track?order=${encodeURIComponent(args.order_number)}${args.phone ? `&phone=${encodeURIComponent(args.phone)}` : ''}" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track your order</a>
     </p>

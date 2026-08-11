@@ -13,6 +13,7 @@ import { redirectIfMapped } from '@/lib/redirects';
 import { resolveCollectionProducts, type Collection } from '@/lib/collections';
 import { CollectionHeroImage } from './CollectionHeroImage';
 import { ContentAndFaqs } from '@/components/seo/ContentAndFaqs';
+import { renderPriceTokens, renderFaqPriceTokens } from '@/lib/price-tokens';
 import type { Product } from '@/types';
 
 // Published collection by slug. Anon RLS already restricts to published, but we
@@ -144,7 +145,11 @@ export default async function CollectionPageRoute({ params }: { params: Promise<
       {/* Long-form hub content + FAQs, for collections that have to rank for
           a category query rather than just merchandise one. Same component
           and trust model as the brand pages. */}
-      <ContentAndFaqs html={c.content_html} faqs={c.faqs} faqHeading={`${c.title} FAQs`} />
+      <ContentAndFaqs
+        html={renderPriceTokens(c.content_html, products)}
+        faqs={renderFaqPriceTokens(c.faqs, products)}
+        faqHeading={`${c.title} FAQs`}
+      />
     </main>
   );
 }

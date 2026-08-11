@@ -945,6 +945,15 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                 <label htmlFor="co-email" style={labelStyle}>Email {(payMethod === 'jazzcash' || payMethod === 'easypaisa' || payMethod === 'card') ? '*' : '(optional)'}</label>
                 <input id="co-email" name="email" type="email" autoComplete="email" value={formData.email} onChange={e => update('email', e.target.value)} placeholder="For order updates and payment receipts" style={inputStyle('email')} aria-invalid={!!errors.email} aria-describedby={errors.email ? 'co-email-error' : undefined} />
                 {errors.email && <span id="co-email-error" style={{ fontSize: '0.75rem', color: 'var(--error)' }}>{errors.email}</span>}
+                {/* Capture nudge, copy only — the field stays optional. Orders
+                    without an email get NO automated acknowledgment (WhatsApp
+                    confirmation is manual), so every address captured here is
+                    a customer who hears from us instantly, at any hour. */}
+                {!formData.email && payMethod === 'cod' && (
+                  <span className="small-text" style={{ display: 'block', marginTop: 4, color: 'var(--ink-500)' }}>
+                    Add your email to get an instant order confirmation, even outside business hours.
+                  </span>
+                )}
               </div>
 
               <hr className="hairline" style={{ margin: '32px 0' }} />
