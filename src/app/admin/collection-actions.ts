@@ -8,6 +8,7 @@ import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import { logActionError } from '@/lib/action-log';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
+import { parseFaqs } from '@/lib/faqs';
 import type { Permission } from '@/lib/permissions';
 import type { SmartRules } from '@/lib/collections';
 
@@ -77,6 +78,8 @@ export async function updateCollection(id: string, formData: FormData): Promise<
     rules,
     seo_title: str(formData, 'seo_title') || null,
     seo_description: str(formData, 'seo_description') || null,
+    content_html: str(formData, 'content_html') || null,
+    faqs: (() => { const f = parseFaqs(str(formData, 'faqs_text')); return f.length ? f : null; })(),
     sort_order: Number(str(formData, 'sort_order')) || 0,
     updated_at: new Date().toISOString(),
   };

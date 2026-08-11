@@ -7,6 +7,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { updateBrand } from '@/app/admin/brand-actions';
 import { ImageUpload } from '@/components/admin/ImageUpload';
+import { faqsToText, type Faq } from '@/lib/faqs';
 
 interface BrandRow {
   id: string;
@@ -20,13 +21,7 @@ interface BrandRow {
   seo_title: string | null;
   seo_description: string | null;
   content_html: string | null;
-  faqs: { q: string; a: string }[] | null;
-}
-
-// The form round-trips FAQs as alternating "Q:" / "A:" lines, friendlier to
-// type than JSON and parsed back by updateBrand.
-function faqsToText(faqs: { q: string; a: string }[] | null): string {
-  return (faqs ?? []).map(f => `Q: ${f.q}\nA: ${f.a}`).join('\n\n');
+  faqs: Faq[] | null;
 }
 
 const lbl: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 4 };

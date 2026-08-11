@@ -12,6 +12,7 @@ import { ImageUpload } from '@/components/admin/ImageUpload';
 import { ALL_CATEGORIES } from '@/lib/category-taxonomy';
 import { brandPlusName } from '@/lib/product-display';
 import type { Collection } from '@/lib/collections';
+import { faqsToText } from '@/lib/faqs';
 
 const lbl: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 4 };
 const inp: React.CSSProperties = { width: '100%', padding: '8px 10px', border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.8125rem', color: '#111827', background: 'white', outline: 'none', boxSizing: 'border-box' };
@@ -96,6 +97,19 @@ export default async function EditCollectionPage({
         <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
           <div><label style={lbl}>SEO title</label><input name="seo_title" defaultValue={c.seo_title ?? ''} style={inp} placeholder="defaults to “Title, Shop”" /></div>
           <div><label style={lbl}>SEO description</label><input name="seo_description" defaultValue={c.seo_description ?? ''} style={inp} /></div>
+        </div>
+
+        {/* Long-form hub content, for collections that need to rank for a
+            category search rather than only merchandise products. */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>Page content (HTML)</label>
+          <textarea name="content_html" defaultValue={c.content_html ?? ''} rows={12} style={{ ...inp, resize: 'vertical', fontFamily: 'ui-monospace, monospace', fontSize: '0.75rem' }} placeholder={'<h2>How to choose</h2>\n<p>…</p>'} />
+          <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Rendered under the product grid. Use h2/h3/p/ul/a tags; link products with <code>/product/&lt;slug&gt;</code> and guides with <code>/blog/&lt;slug&gt;</code>.</p>
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <label style={lbl}>FAQs</label>
+          <textarea name="faqs_text" defaultValue={faqsToText(c.faqs)} rows={8} style={{ ...inp, resize: 'vertical' }} placeholder={'Q: How accurate are they?\nA: …\n\nQ: Do you deliver nationwide?\nA: Yes.'} />
+          <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Alternating <code>Q:</code> and <code>A:</code> lines, blank line between pairs. Shown on the page and sent to Google as FAQ structured data.</p>
         </div>
 
         {/* Smart rules (only meaningful for smart collections; saved with the form) */}

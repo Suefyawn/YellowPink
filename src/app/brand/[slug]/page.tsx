@@ -7,7 +7,8 @@ import { notFound } from 'next/navigation';
 import { getProducts } from '@/lib/supabase';
 import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
-import { pageMeta, jsonLd, breadcrumbLd, itemListLd, faqLd, productInStock } from '@/lib/seo';
+import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
+import { ContentAndFaqs } from '@/components/seo/ContentAndFaqs';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { brandNameFromSlug, brandSlug, getBrandRecord } from '@/lib/brands';
 import { redirectIfMapped } from '@/lib/redirects';
@@ -147,36 +148,10 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
         </div>
       </section>
 
-      {/* Long-form brand content (admin-authored, same trust model as blog
-          bodies). Sits under the grid so shoppers see products first and
-          search engines still get a substantive page. */}
-      {record?.content_html && (
-        <section style={{ padding: '0 0 var(--section-gap)' }}>
-          <div className="container">
-            <div className="blog-body cms-prose" style={{ maxWidth: 720 }} dangerouslySetInnerHTML={{ __html: record.content_html }} />
-          </div>
-        </section>
-      )}
-
-      {Array.isArray(record?.faqs) && record.faqs.length > 0 && (
-        <section style={{ padding: '0 0 var(--section-gap)' }}>
-          <div className="container" style={{ maxWidth: 720 + 48 }}>
-            <script
-              type="application/ld+json"
-              dangerouslySetInnerHTML={{ __html: jsonLd(faqLd(record.faqs.map(f => ({ question: f.q, answer: f.a })))) }}
-            />
-            <h2 className="display-l" style={{ fontSize: '1.5rem', marginBottom: 16 }}>{brand} FAQs</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-              {record.faqs.map((f, i) => (
-                <details key={i} style={{ borderBottom: '1px solid var(--line)', padding: '12px 0' }}>
-                  <summary className="body-text" style={{ fontWeight: 600, cursor: 'pointer' }}>{f.q}</summary>
-                  <p className="body-text" style={{ color: 'var(--ink-700)', marginTop: 8 }}>{f.a}</p>
-                </details>
-              ))}
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Long-form brand content + FAQs (admin-authored). Sits under the grid
+          so shoppers see products first and search engines still get a
+          substantive page. Shared with the collection landing pages. */}
+      <ContentAndFaqs html={record?.content_html} faqs={record?.faqs} faqHeading={`${brand} FAQs`} />
     </main>
   );
 }

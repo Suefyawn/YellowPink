@@ -34,6 +34,10 @@ export interface Collection {
   sort_order: number;
   seo_title: string | null;
   seo_description: string | null;
+  /** Long-form HTML rendered under the product grid (staff-authored). */
+  content_html?: string | null;
+  /** FAQ entries rendered on the page and emitted as FAQPage JSON-LD. */
+  faqs?: { q: string; a: string }[] | null;
 }
 
 function matchCondition(p: Product, c: SmartCondition, productTags: string[]): boolean {

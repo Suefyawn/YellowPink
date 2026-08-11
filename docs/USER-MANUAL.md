@@ -1027,6 +1027,10 @@ A dated history of user-facing changes, newest first.
 
 ### 11 August 2026
 
+- **Collection pages can carry an article and FAQs too.** The same two fields added to brands are now on Admin → Collections → edit: **Page content (HTML)** and **FAQs** (`Q:` / `A:` lines). Use this to build a hub page for a category people search for, rather than only merchandising products. The first is **Pregnancy & Ovulation Tests** at `/collection/pregnancy-tests`, which groups every test we stock with a how-to-choose guide, when-to-test advice and FAQs.
+
+- **Prices quoted inside blog posts are kept in step with the catalogue.** After a bulk price change, any post quoting an old price is corrected so a shopper never reads one price and finds another at checkout. If you change prices yourself, search the journal for the old figure, or ask and it can be swept automatically.
+
 - **Brand pages can now carry a full article and FAQs.** Admin → Brands → edit a brand gains two new fields: **Page content (HTML)**, a long-form section rendered under the product grid on the public brand page, and **FAQs**, typed as alternating `Q:` / `A:` lines. FAQs appear as an expandable list on the page and are sent to Google as FAQ structured data, so they can show directly in search results. Use this to build out pages for brand names people search (the Saeed Ghani page shipped with the feature as the first example). Products link with `/product/<slug>`; keep claims factual, the page speaks for the store.
 
 ### 10 August 2026
