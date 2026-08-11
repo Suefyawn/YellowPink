@@ -7,6 +7,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
+import { parseFaqs } from '@/lib/faqs';
 import type { Permission } from '@/lib/permissions';
 
 // Brands are a merchandising facet of the catalogue, like collections; ride
@@ -25,27 +26,6 @@ function slugify(s: string): string {
 }
 
 const str = (fd: FormData, k: string) => ((fd.get(k) as string) ?? '').trim();
-
-// Inverse of the edit form's faqsToText: alternating "Q:" / "A:" lines back
-// into [{q, a}]. Tolerates multi-line answers (lines between an "A:" and the
-// next "Q:" belong to that answer) and skips incomplete pairs.
-function parseFaqs(text: string): { q: string; a: string }[] {
-  const faqs: { q: string; a: string }[] = [];
-  let q: string | null = null;
-  let a: string[] = [];
-  const flush = () => {
-    if (q && a.length) faqs.push({ q, a: a.join(' ').trim() });
-    q = null; a = [];
-  };
-  for (const raw of text.split('\n')) {
-    const line = raw.trim();
-    if (/^q:/i.test(line)) { flush(); q = line.slice(2).trim(); }
-    else if (/^a:/i.test(line)) { a = [line.slice(2).trim()]; }
-    else if (line && a.length) { a.push(line); }
-  }
-  flush();
-  return faqs;
-}
 
 export async function createBrand(formData: FormData): Promise<void> {
   const session = await assertProducts();
