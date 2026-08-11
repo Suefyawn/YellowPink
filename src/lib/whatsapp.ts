@@ -99,4 +99,10 @@ export const WA_TEMPLATES = {
   orderTrack:  (orderNumber: string) => `Hi Yellow Pink! Can you share an update on order ${orderNumber}?`,
   orderQuestion: (orderNumber: string) =>
     `Hi Yellow Pink! I just placed order ${orderNumber} and would like to confirm my details.`,
+  // The thank-you page's primary CTA. The customer sends the first message,
+  // so the confirmation thread exists even when the order lands at 3am —
+  // staff wake up to a warm chat instead of cold-messaging a stranger, and
+  // the customer has done something instead of hearing nothing.
+  orderConfirm: (orderNumber: string) =>
+    `Hi Yellow Pink! Confirming my order ${orderNumber}. Please process it.`,
 };

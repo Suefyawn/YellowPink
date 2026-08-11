@@ -103,7 +103,9 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             Your order <strong>{orderNumber}</strong> has been placed successfully.
           </p>
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 32 }}>
-            We&apos;ll send you a confirmation on WhatsApp with tracking details once your order ships. Delivery typically takes {deliveryEstimate}.
+            One quick step left: tap the green button below to confirm your order on WhatsApp.
+            It takes two seconds, works at any hour, and our team replies there with your dispatch
+            and tracking updates. Delivery typically takes {deliveryEstimate}.
           </p>
 
           {bankAccounts.length > 0 && (
@@ -159,8 +161,8 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
           <div style={{ background: 'var(--paper2)', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', padding: 24, marginBottom: 32, textAlign: 'left' }}>
             <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>What Happens Next</Overline>
             {[
-              { step: '1', label: 'Preparing', desc: "We're packing your items with care." },
-              { step: '2', label: 'Shipped', desc: "You'll receive tracking via WhatsApp." },
+              { step: '1', label: 'Confirm on WhatsApp', desc: 'Tap the green button below. Your message reaches us instantly, any time of day, and secures your order.' },
+              { step: '2', label: 'Preparing & shipped', desc: 'Our team replies on the same chat, packs your order and sends your tracking number there.' },
               { step: '3', label: 'Delivered', desc: 'Pay on delivery (COD) or already paid.' },
             ].map((s, i) => (
               <div key={i} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: i < 2 ? 16 : 0 }}>
@@ -173,10 +175,13 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             ))}
           </div>
 
-          {/* WhatsApp CTA, pre-types the order number so the merchant can
-              triage in one tap. Hides if NEXT_PUBLIC_WHATSAPP_NUMBER unset. */}
+          {/* Primary post-order CTA: the customer sends the confirmation
+              message themselves, so the thread exists even for orders placed
+              while staff are asleep and even when no email was given (the
+              only automated channel we have). Pre-types the order number.
+              Hides if NEXT_PUBLIC_WHATSAPP_NUMBER unset. */}
           <div style={{ marginBottom: 24 }}>
-            <WhatsAppButton message={WA_TEMPLATES.orderQuestion(orderNumber)} />
+            <WhatsAppButton message={WA_TEMPLATES.orderConfirm(orderNumber)} label="Confirm your order on WhatsApp" />
           </div>
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 40 }}>
