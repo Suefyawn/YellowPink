@@ -61,6 +61,15 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   }
   const summaryItems = Array.isArray(summary?.items) ? summary!.items! : [];
 
+  // The page's framing branches on whether we can reach the customer
+  // ourselves. With an email on the order, the confirmation email (sent
+  // instantly, and it predicts the staff WhatsApp message) is the primary
+  // acknowledgment and the WhatsApp button is an optional speed-up — asking
+  // them to message us too would be redundant (owner, 12 Aug). Without an
+  // email, the customer-initiated WhatsApp message is the ONLY instant
+  // channel, so it leads.
+  const hasEmail = Boolean(summary?.email);
+
   // Fire the canonical client `purchase` exactly once per completed order, but
   // only when we actually resolved a real order (never on a direct/naked visit
   // or a missing order). Works for both COD and gateway returns since both land
@@ -102,11 +111,19 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
           <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 8 }}>
             Your order <strong>{orderNumber}</strong> has been placed successfully.
           </p>
-          <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 32 }}>
-            One quick step left: tap the green button below to confirm your order on WhatsApp.
-            It takes two seconds, works at any hour, and our team replies there with your dispatch
-            and tracking updates. Delivery typically takes {deliveryEstimate}.
-          </p>
+          {hasEmail ? (
+            <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 32 }}>
+              We&apos;ve emailed your order confirmation. Our team will message you on WhatsApp to
+              confirm your order before dispatch, and you&apos;ll get tracking on the same chat.
+              Delivery typically takes {deliveryEstimate}.
+            </p>
+          ) : (
+            <p className="body-text" style={{ color: 'var(--ink-700)', marginBottom: 32 }}>
+              One quick step left: tap the green button below to confirm your order on WhatsApp.
+              It takes two seconds, works at any hour, and our team replies there with your dispatch
+              and tracking updates. Delivery typically takes {deliveryEstimate}.
+            </p>
+          )}
 
           {bankAccounts.length > 0 && (
             <div style={{ marginBottom: 24 }}>
@@ -160,11 +177,18 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
 
           <div style={{ background: 'var(--paper2)', border: '1px solid var(--line)', borderRadius: 'var(--radius-card)', padding: 24, marginBottom: 32, textAlign: 'left' }}>
             <Overline style={{ display: 'block', marginBottom: 16, color: 'var(--ink-500)' }}>What Happens Next</Overline>
-            {[
-              { step: '1', label: 'Confirm on WhatsApp', desc: 'Tap the green button below. Your message reaches us instantly, any time of day, and secures your order.' },
-              { step: '2', label: 'Preparing & shipped', desc: 'Our team replies on the same chat, packs your order and sends your tracking number there.' },
-              { step: '3', label: 'Delivered', desc: 'Pay on delivery (COD) or already paid.' },
-            ].map((s, i) => (
+            {(hasEmail
+              ? [
+                  { step: '1', label: 'Order received', desc: 'Your confirmation email is already in your inbox.' },
+                  { step: '2', label: 'WhatsApp confirmation', desc: 'Our team messages you on WhatsApp to confirm before dispatch, then sends tracking on the same chat.' },
+                  { step: '3', label: 'Delivered', desc: 'Pay on delivery (COD) or already paid.' },
+                ]
+              : [
+                  { step: '1', label: 'Confirm on WhatsApp', desc: 'Tap the green button below. Your message reaches us instantly, any time of day, and secures your order.' },
+                  { step: '2', label: 'Preparing & shipped', desc: 'Our team replies on the same chat, packs your order and sends your tracking number there.' },
+                  { step: '3', label: 'Delivered', desc: 'Pay on delivery (COD) or already paid.' },
+                ]
+            ).map((s, i) => (
               <div key={i} style={{ display: 'flex', gap: 16, alignItems: 'flex-start', marginBottom: i < 2 ? 16 : 0 }}>
                 <div style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0, background: 'var(--brand-yellow)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.75rem', fontWeight: 700 }}>{s.step}</div>
                 <div>
@@ -175,13 +199,21 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
             ))}
           </div>
 
-          {/* Primary post-order CTA: the customer sends the confirmation
-              message themselves, so the thread exists even for orders placed
-              while staff are asleep and even when no email was given (the
-              only automated channel we have). Pre-types the order number.
-              Hides if NEXT_PUBLIC_WHATSAPP_NUMBER unset. */}
+          {/* WhatsApp CTA. With an email on the order it's an optional
+              speed-up (the email is the acknowledgment); without one, the
+              customer's own message is the only instant channel, so it's
+              the headline action. Pre-types the order number. Hides if
+              NEXT_PUBLIC_WHATSAPP_NUMBER unset. */}
           <div style={{ marginBottom: 24 }}>
-            <WhatsAppButton message={WA_TEMPLATES.orderConfirm(orderNumber)} label="Confirm your order on WhatsApp" />
+            {hasEmail && (
+              <p className="small-text" style={{ color: 'var(--ink-500)', marginBottom: 8 }}>
+                In a hurry? You can also confirm right away, no need to wait for our message:
+              </p>
+            )}
+            <WhatsAppButton
+              message={WA_TEMPLATES.orderConfirm(orderNumber)}
+              label={hasEmail ? 'Confirm now on WhatsApp' : 'Confirm your order on WhatsApp'}
+            />
           </div>
 
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 40 }}>
