@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 10 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 11 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1024,6 +1024,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 11 August 2026
+
+- **Brand pages can now carry a full article and FAQs.** Admin → Brands → edit a brand gains two new fields: **Page content (HTML)**, a long-form section rendered under the product grid on the public brand page, and **FAQs**, typed as alternating `Q:` / `A:` lines. FAQs appear as an expandable list on the page and are sent to Google as FAQ structured data, so they can show directly in search results. Use this to build out pages for brand names people search (the Saeed Ghani page shipped with the feature as the first example). Products link with `/product/<slug>`; keep claims factual, the page speaks for the store.
 
 ### 10 August 2026
 
