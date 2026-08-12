@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 11 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 12 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1024,6 +1024,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 12 August 2026
+
+- **Automated WhatsApp order confirmations (needs Meta setup before it switches on).** Seconds after any order is placed, the customer receives a WhatsApp message with their order number and total and two buttons: **Confirm order** and **Cancel order**. Tapping Confirm marks the order confirmed automatically — the same tick staff apply by hand today, so dispatch readiness, the unconfirmed-order escalation and the COD refusal flag all keep working, they just no longer wait for someone to be awake. The customer immediately gets a "thank you, confirmed" reply. Tapping Cancel never cancels anything on its own: it rings the admin bell so a person decides, and reassures the customer that the team will follow up. Every message is logged with its delivery status and the customer's reply. This is the paid Meta channel and costs roughly PKR 4–12 per order; it stays completely dormant until the credentials are configured, and the existing free "chat on WhatsApp" buttons are unchanged. Setup walkthrough: `docs/WHATSAPP-SETUP.md`.
 
 ### 11 August 2026
 
