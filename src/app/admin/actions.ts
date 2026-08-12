@@ -14,6 +14,7 @@ import { authLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { fetchAll } from '@/lib/fetch-all';
 import { logActionError } from '@/lib/action-log';
 import { assertPermission } from '@/lib/admin-auth';
+import { reconcileStock, splitStock } from '@/lib/stock-writes';
 import { productInputSchema, blogPostInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
 import { applyReturnFinancialsForOrder } from '@/lib/return-financials';
@@ -243,7 +244,9 @@ export async function duplicateProduct(id: string): Promise<{ id?: string; error
     const slug = n === 0 ? `${baseSlug}-copy` : `${baseSlug}-copy-${n + 1}`;
     const { data, error } = await admin
       .from('products')
-      .insert({ ...rest, name, slug, status: 'draft' })
+      // stock: 0 — duplicating a listing does not duplicate the goods, and the
+      // copy inheriting a count would invent stock with no ledger row behind it.
+      .insert({ ...rest, name, slug, status: 'draft', stock: 0 })
       .select('id')
       .single();
     if (data) { created = data as { id: string }; break; }
@@ -320,8 +323,14 @@ export async function updateProduct(
   if (!parsed.success) return { error: firstError(parsed.error) };
   // Snapshot the prior state for the audit diff.
   const { data: before } = await supabaseAdmin().from('products').select('*').eq('id', id).maybeSingle();
-  const { error } = await supabaseAdmin().from('products').update(parsed.data).eq('id', id);
+  // Stock is written through the ledger, never as a bare column update, so
+  // Movement history can explain every number the operator sees.
+  const { rest, stock } = splitStock(parsed.data as Record<string, unknown>);
+  const { error } = await supabaseAdmin().from('products').update(rest).eq('id', id);
   if (error) return { error: error.message };
+  if (stock != null) {
+    await reconcileStock({ productId: id, nextStock: stock, actor: session, note: 'Set on the product form' });
+  }
   await logAudit(session, { action: 'product.update', entity: 'product', entity_id: id, diff: { before, after: parsed.data } });
   // Re-submit to search engines when the product is live (best-effort).
   const { data: after } = await supabaseAdmin().from('products').select('slug, status').eq('id', id).maybeSingle();

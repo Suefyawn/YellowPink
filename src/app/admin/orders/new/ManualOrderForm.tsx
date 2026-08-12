@@ -20,6 +20,8 @@ export interface PickerProduct {
   price: number;
   stock: number | null;
   track_inventory: boolean | null;
+  /** Enabled shades/sizes. Empty for a simple product. */
+  variants: Array<{ id: string; label: string; price: number; stock: number | null }>;
 }
 
 export interface PickerVendor {
@@ -37,7 +39,12 @@ export interface ShippingSuggestion {
   freeEnabled: boolean;
 }
 
-interface Line { id: string; qty: number; price: number }
+// A shade is its own line: two shades of one foundation are different goods at
+// (potentially) different prices and different counts, so the product id alone
+// cannot identify a row.
+interface Line { id: string; variantId: string | null; label: string; qty: number; price: number }
+
+const lineKey = (l: { id: string; variantId: string | null }) => `${l.id}::${l.variantId ?? ''}`;
 
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
 
@@ -109,13 +116,23 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
     return vendors.find(v => v.id === vid) ?? null;
   }, [vendorId, lines, productById, vendors]);
 
-  const addLine = (id: string) => {
+  const addLine = (id: string, variantId: string | null = null) => {
     const p = productById.get(id);
     if (!p) return;
+    const v = variantId ? p.variants.find(x => x.id === variantId) ?? null : null;
+    // The variant's own price is what place_order would charge, so the form has
+    // to start from that rather than the parent's.
+    const next: Line = {
+      id, variantId: v?.id ?? null,
+      label: [p.brand, p.name, v?.label].filter(Boolean).join(' — '),
+      qty: 1, price: v?.price ?? p.price,
+    };
     setLines(prev => {
-      const existing = prev.find(l => l.id === id);
-      if (existing) return prev.map(l => (l.id === id ? { ...l, qty: l.qty + 1 } : l));
-      return [...prev, { id, qty: 1, price: p.price }];
+      const k = lineKey(next);
+      if (prev.some(l => lineKey(l) === k)) {
+        return prev.map(l => (lineKey(l) === k ? { ...l, qty: l.qty + 1 } : l));
+      }
+      return [...prev, next];
     });
     setSearch('');
   };
@@ -157,25 +174,58 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
               listStyle: 'none', background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
               boxShadow: '0 8px 24px rgba(0,0,0,0.08)', maxHeight: 280, overflowY: 'auto',
             }}>
-              {matches.map(p => (
-                <li key={p.id}>
-                  <button
-                    type="button"
-                    onClick={() => addLine(p.id)}
-                    style={{
-                      display: 'flex', justifyContent: 'space-between', gap: 12, width: '100%',
-                      padding: '9px 10px', border: 'none', background: 'none', cursor: 'pointer',
-                      textAlign: 'left', fontSize: '0.8125rem', borderRadius: 6,
-                    }}
-                  >
-                    <span>{p.brand ? `${p.brand} — ` : ''}{p.name}</span>
-                    <span style={{ color: '#6b7280', flexShrink: 0 }}>
-                      PKR {p.price.toLocaleString()}
-                      {(p.track_inventory ?? true) ? ` · ${p.stock ?? 0} in stock` : ''}
-                    </span>
-                  </button>
-                </li>
-              ))}
+              {matches.map(p => {
+                const tracked = p.track_inventory ?? true;
+                // A product with shades can only be ordered AS a shade: the
+                // parent counter is an aggregate, and place_order charges and
+                // debits the shade. Offer each one instead of the parent.
+                if (p.variants.length > 0) {
+                  return (
+                    <li key={p.id}>
+                      <div style={{ padding: '7px 10px 3px', fontSize: '0.75rem', fontWeight: 600, color: '#6b7280' }}>
+                        {p.brand ? `${p.brand} — ` : ''}{p.name}
+                      </div>
+                      {p.variants.map(v => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => addLine(p.id, v.id)}
+                          style={{
+                            display: 'flex', justifyContent: 'space-between', gap: 12, width: '100%',
+                            padding: '7px 10px 7px 22px', border: 'none', background: 'none', cursor: 'pointer',
+                            textAlign: 'left', fontSize: '0.8125rem', borderRadius: 6,
+                          }}
+                        >
+                          <span>{v.label}</span>
+                          <span style={{ color: '#6b7280', flexShrink: 0 }}>
+                            PKR {v.price.toLocaleString()}
+                            {tracked ? ` · ${v.stock ?? 0} in stock` : ''}
+                          </span>
+                        </button>
+                      ))}
+                    </li>
+                  );
+                }
+                return (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => addLine(p.id)}
+                      style={{
+                        display: 'flex', justifyContent: 'space-between', gap: 12, width: '100%',
+                        padding: '9px 10px', border: 'none', background: 'none', cursor: 'pointer',
+                        textAlign: 'left', fontSize: '0.8125rem', borderRadius: 6,
+                      }}
+                    >
+                      <span>{p.brand ? `${p.brand} — ` : ''}{p.name}</span>
+                      <span style={{ color: '#6b7280', flexShrink: 0 }}>
+                        PKR {p.price.toLocaleString()}
+                        {tracked ? ` · ${p.stock ?? 0} in stock` : ''}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -200,14 +250,19 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
                 {lines.map(l => {
                   const p = productById.get(l.id);
                   if (!p) return null;
-                  const short = (p.track_inventory ?? true) && (p.stock ?? 0) < l.qty;
+                  // Check the shade's own count when the line names one; the
+                  // parent counter is an aggregate and says nothing about
+                  // whether THIS shade is on the shelf.
+                  const v = l.variantId ? p.variants.find(x => x.id === l.variantId) ?? null : null;
+                  const available = v ? (v.stock ?? 0) : (p.stock ?? 0);
+                  const short = (p.track_inventory ?? true) && available < l.qty;
                   return (
-                    <tr key={l.id} style={{ borderTop: '1px solid #f3f4f6' }}>
+                    <tr key={lineKey(l)} style={{ borderTop: '1px solid #f3f4f6' }}>
                       <td style={{ padding: '8px 8px 8px 0' }}>
-                        {p.brand ? `${p.brand} — ` : ''}{p.name}
+                        {l.label}
                         {short && (
                           <span style={{ display: 'block', color: '#b91c1c', fontSize: '0.75rem' }}>
-                            Only {p.stock ?? 0} in stock
+                            Only {available} in stock
                           </span>
                         )}
                       </td>
@@ -215,7 +270,7 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
                         <input
                           type="number" min={1} max={500} value={l.qty}
                           aria-label={`Quantity of ${p.name}`}
-                          onChange={e => setLines(prev => prev.map(x => x.id === l.id ? { ...x, qty: Math.max(1, Math.min(500, Number(e.target.value) || 1)) } : x))}
+                          onChange={e => setLines(prev => prev.map(x => lineKey(x) === lineKey(l) ? { ...x, qty: Math.max(1, Math.min(500, Number(e.target.value) || 1)) } : x))}
                           style={{ ...inp, width: 72, padding: '6px 8px' }}
                         />
                       </td>
@@ -223,7 +278,7 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
                         <input
                           type="number" min={0} step="1" value={l.price}
                           aria-label={`Unit price of ${p.name}`}
-                          onChange={e => setLines(prev => prev.map(x => x.id === l.id ? { ...x, price: Math.max(0, Number(e.target.value) || 0) } : x))}
+                          onChange={e => setLines(prev => prev.map(x => lineKey(x) === lineKey(l) ? { ...x, price: Math.max(0, Number(e.target.value) || 0) } : x))}
                           style={{ ...inp, width: 110, padding: '6px 8px' }}
                         />
                       </td>
@@ -234,7 +289,7 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
                         <button
                           type="button"
                           aria-label={`Remove ${p.name}`}
-                          onClick={() => setLines(prev => prev.filter(x => x.id !== l.id))}
+                          onClick={() => setLines(prev => prev.filter(x => lineKey(x) !== lineKey(l)))}
                           style={{ border: 'none', background: 'none', color: '#9ca3af', cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}
                         >
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>

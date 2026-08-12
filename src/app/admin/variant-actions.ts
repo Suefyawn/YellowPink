@@ -7,6 +7,7 @@ import { redirect } from 'next/navigation';
 import { variantInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
+import { reconcileStock } from '@/lib/stock-writes';
 
 async function assertProducts() {
   const session = await getStaffSession();
@@ -59,13 +60,23 @@ export async function updateVariant(
       sku:              parsed.data.sku || null,
       price:            parsed.data.price,
       compare_at_price: parsed.data.compare_at_price ?? null,
-      stock:            parsed.data.stock,
+      // stock is reconciled through the ledger below, not written here.
       image_url:        parsed.data.image_url || null,
       enabled:          parsed.data.enabled,
       sort_order:       parsed.data.sort_order,
     })
     .eq('id', variantId);
   if (error) return { error: error.message };
+
+  if (typeof parsed.data.stock === 'number') {
+    await reconcileStock({
+      productId: parsed.data.product_id as string,
+      variantId,
+      nextStock: parsed.data.stock,
+      actor: session,
+      note: 'Set on the variant form',
+    });
+  }
 
   const optionsError = await syncVariantOptions(variantId, formData);
   if (optionsError) return { error: optionsError };

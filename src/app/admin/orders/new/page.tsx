@@ -17,12 +17,20 @@ export default async function NewOrderPage() {
   if (lacksPermission(session, 'orders.edit')) return <NoAccess section="Orders" />;
 
   const admin = supabaseAdmin();
-  const [{ data: products }, { data: vendorRows }, { data: provinceZones }, { data: rates }, settings] = await Promise.all([
+  const [{ data: products }, { data: variantRows }, { data: vendorRows }, { data: provinceZones }, { data: rates }, settings] = await Promise.all([
     admin
       .from('products')
       .select('id, name, brand, price, stock, track_inventory, vendor_id')
       .eq('status', 'published')
       .order('name'),
+    // Shades/sizes. A phone order for "NARS foundation" has to name WHICH
+    // shade: place_order charges the variant's price and debits the variant's
+    // stock, and this form was doing neither.
+    admin
+      .from('product_variants')
+      .select('id, product_id, sku, price, stock, enabled, variant_attribute_values(attribute_values(value))')
+      .eq('enabled', true)
+      .order('sort_order'),
     // Active vendors for the optional "Fulfilled by vendor" picker; the
     // commission % powers the client-side cost/margin preview.
     admin.from('vendors').select('id, name, commission_pct').eq('active', true).order('name'),
@@ -50,6 +58,26 @@ export default async function NewOrderPage() {
     freeEnabled: cfg.freeShippingEnabled,
   };
 
+  // Attach each product's shades, with a readable label built from its
+  // attribute values ("Shade: Mont Blanc"), falling back to the SKU so a
+  // variant is never a nameless row in the picker.
+  type RawVariant = {
+    id: string; product_id: string; sku: string | null; price: number; stock: number | null;
+    variant_attribute_values?: Array<{ attribute_values?: { value?: string | null } | null }> | null;
+  };
+  const variantsByProduct = new Map<string, PickerProduct['variants']>();
+  for (const v of (variantRows ?? []) as RawVariant[]) {
+    const label = (v.variant_attribute_values ?? [])
+      .map(x => x.attribute_values?.value)
+      .filter((x): x is string => Boolean(x))
+      .join(' · ') || v.sku || 'Option';
+    const list = variantsByProduct.get(v.product_id) ?? [];
+    list.push({ id: v.id, label, price: v.price, stock: v.stock });
+    variantsByProduct.set(v.product_id, list);
+  }
+  const withVariants: PickerProduct[] = ((products ?? []) as Omit<PickerProduct, 'variants'>[])
+    .map(p => ({ ...p, variants: variantsByProduct.get(p.id) ?? [] }));
+
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <div className="adm-page-header" style={{ marginBottom: 20 }}>
@@ -63,7 +91,7 @@ export default async function NewOrderPage() {
         </div>
       </div>
       <ManualOrderForm
-        products={(products ?? []) as PickerProduct[]}
+        products={withVariants}
         vendors={(vendorRows ?? []) as PickerVendor[]}
         shipping={shipping}
       />

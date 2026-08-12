@@ -9,6 +9,7 @@ import { productInputSchema } from '@/lib/validators';
 // Pure CSV parsing + row mapping lives in @/lib/product-csv: a 'use server'
 // module can only export async actions, and those helpers need unit tests.
 import { parseCsv, normaliseRow } from '@/lib/product-csv';
+import { reconcileStock } from '@/lib/stock-writes';
 
 export interface ImportResult {
   parsed: number;
@@ -38,6 +39,17 @@ export async function importProductsFromCsv(csvText: string): Promise<ImportResu
     valid.push(parsed.data as Record<string, unknown>);
   }
 
+  // Stock rides in the ledger, not the upsert. Pull it out of every row first
+  // and remember what each slug asked for; the upsert then writes everything
+  // else, and the counts are reconciled afterwards so each one lands in
+  // Movement history with an author and a reason. A row whose sheet had no
+  // stock column keeps whatever the product already has (see product-csv.ts).
+  const wantedStock = new Map<string, number>();
+  for (const row of valid) {
+    if (typeof row.stock === 'number') wantedStock.set(row.slug as string, row.stock);
+    delete row.stock;
+  }
+
   let imported = 0;
   for (let i = 0; i < valid.length; i += 50) {
     const batch = valid.slice(i, i + 50);
@@ -49,6 +61,22 @@ export async function importProductsFromCsv(csvText: string): Promise<ImportResu
       errors.push(`batch ${Math.floor(i / 50)}: ${error.message}`);
     } else {
       imported += batch.length;
+    }
+  }
+
+  // One id lookup for the whole sheet rather than per row, then a ledger entry
+  // only where the count actually moved (reconcileStock no-ops on a match).
+  if (wantedStock.size > 0) {
+    const slugs = [...wantedStock.keys()];
+    const { data: idRows } = await supabaseAdmin()
+      .from('products').select('id, slug').in('slug', slugs);
+    for (const p of (idRows ?? []) as Array<{ id: string; slug: string }>) {
+      const next = wantedStock.get(p.slug);
+      if (next == null) continue;
+      await reconcileStock({
+        productId: p.id, nextStock: next, actor: session,
+        note: 'Set by CSV import',
+      });
     }
   }
 

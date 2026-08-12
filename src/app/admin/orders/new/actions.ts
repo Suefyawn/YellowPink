@@ -22,7 +22,7 @@ export interface ManualOrderState {
   error: string | null;
 }
 
-interface LineInput { id: string; qty: number; price: number }
+interface LineInput { id: string; variantId?: string | null; qty: number; price: number }
 
 function makeOrderNumber(): string {
   // Same scheme as the storefront checkout (timestamp base36 + 4 random
@@ -90,6 +90,26 @@ export async function createManualOrder(
   if (prodErr) return { error: `Could not load products: ${prodErr.message}` };
   const byId = new Map((productRows ?? []).map(p => [p.id as string, p]));
 
+  // Shade-level rows. place_order gates and debits the VARIANT, so a manual
+  // order has to do the same or it checks one number and moves another.
+  const variantIds = lines.map(l => l.variantId).filter((v): v is string => Boolean(v));
+  const variantById = new Map<string, { id: string; product_id: string; stock: number | null; price: number }>();
+  if (variantIds.length > 0) {
+    const { data: vRows, error: vErr } = await admin
+      .from('product_variants').select('id, product_id, stock, price, enabled').in('id', variantIds);
+    if (vErr) return { error: `Could not load product options: ${vErr.message}` };
+    for (const v of (vRows ?? []) as Array<{ id: string; product_id: string; stock: number | null; price: number; enabled: boolean }>) {
+      if (!v.enabled) return { error: 'One of the selected options is no longer available — remove it and try again.' };
+      variantById.set(v.id, v);
+    }
+    for (const l of lines) {
+      if (!l.variantId) continue;
+      const v = variantById.get(l.variantId);
+      if (!v) return { error: 'A selected option no longer exists — remove it and try again.' };
+      if (v.product_id !== l.id) return { error: 'A selected option does not belong to its product.' };
+    }
+  }
+
   // Optional fulfilment vendor: must still exist and be active. The vendor's
   // rate drives the auto acquisition cost + settlement written after insert.
   if (vendorId) {
@@ -105,8 +125,13 @@ export async function createManualOrder(
   for (const l of lines) {
     const p = byId.get(l.id);
     if (!p) return { error: 'A selected product no longer exists — remove it and try again.' };
-    if ((p.track_inventory ?? true) && (p.stock ?? 0) < l.qty) {
-      shortages.push(`${p.name} (need ${l.qty}, have ${p.stock ?? 0})`);
+    const v = l.variantId ? variantById.get(l.variantId) : null;
+    // The parent counter is an aggregate. Gating a shade line on it refused
+    // orders the warehouse could fill (NARS: parent 1, shades 328) and let
+    // through ones it could not.
+    const available = v ? (v.stock ?? 0) : (p.stock ?? 0);
+    if ((p.track_inventory ?? true) && available < l.qty) {
+      shortages.push(`${p.name} (need ${l.qty}, have ${available})`);
     }
   }
   if (shortages.length) return { error: `Not enough stock: ${shortages.join('; ')}` };
@@ -121,6 +146,9 @@ export async function createManualOrder(
       id: p.id, slug: p.slug, name: p.name, brand: p.brand,
       category: p.category, image_url: p.image_url,
       price: l.price, qty: l.qty,
+      // Without this a cancellation would credit the parent counter while the
+      // sale debited the shade — the two drift apart by one order every time.
+      ...(l.variantId ? { variant_id: l.variantId } : {}),
     };
   });
 
@@ -166,7 +194,7 @@ export async function createManualOrder(
     if (p.track_inventory ?? true) {
       const { error } = await admin.rpc('record_stock_change' as never, {
         p_product_id:  l.id,
-        p_variant_id:  null,
+        p_variant_id:  l.variantId ?? null,
         p_qty_delta:   -l.qty,
         p_reason:      'order',
         p_order_id:    order.id,
