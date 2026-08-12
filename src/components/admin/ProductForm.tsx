@@ -6,7 +6,8 @@ import { ImageUpload } from './ImageUpload';
 import { KeyBenefitsEditor, FaqEditor } from './ProductContentEditors';
 import { SubmitToIndexButton } from './IndexingButtons';
 import { TAXONS } from '@/lib/category-taxonomy';
-import type { Product, Vendor } from '@/types';
+import { STOCK_MODES } from '@/types';
+import type { Product, StockMode, Vendor } from '@/types';
 
 function toSlug(s: string) {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
@@ -79,7 +80,19 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
   // Tracks the status <select> so the unpublish warning can react to it.
   const [statusPick, setStatusPick] = useState(product?.status ?? 'draft');
   const [slug, setSlug] = useState(product?.slug ?? '');
-  const [trackInv, setTrackInv] = useState(product?.track_inventory !== false);
+  // stock_mode is the source of truth; track_inventory is derived from it by a
+  // DB trigger. Fall back to the boolean for rows saved before the column
+  // existed — an untracked row with a vendor is external, otherwise uncounted.
+  const [stockMode, setStockMode] = useState<StockMode>(
+    product?.stock_mode
+      ?? (product?.track_inventory === false
+            ? (product?.vendor_id ? 'external' : 'untracked')
+            : 'own'),
+  );
+  const trackInv = stockMode === 'own';
+  // Default true, matching the column: a live listing keeps selling past zero
+  // unless someone deliberately says otherwise.
+  const [keepSelling, setKeepSelling] = useState(product?.continue_selling_when_out !== false);
   // Tracked so the vendor margin readout updates as the owner edits.
   const [price, setPrice] = useState<number>(product?.price ?? 0);
   const [vendorId, setVendorId] = useState(product?.vendor_id ?? '');
@@ -302,35 +315,64 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
                   <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
                 ) : (
                   <>
-                    <input type="hidden" name="stock" value={product?.stock ?? 0} />
                     <div style={{ ...inp, color: '#6b7280', background: '#f9fafb', display: 'flex', alignItems: 'center' }}>
-                      Managed externally
+                      {stockMode === 'external' ? 'Held by the vendor' : 'Not counted'}
                     </div>
                   </>
                 )}
               </div>
             </div>
-            {/* Always submit track_inventory so an unchecked box reads as false. */}
-            <input type="hidden" name="track_inventory" value={trackInv ? 'true' : 'false'} />
-            <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', padding: '12px 14px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
-              <input
-                type="checkbox"
-                checked={!trackInv}
-                onChange={e => setTrackInv(!e.target.checked)}
-                style={{ marginTop: 2, accentColor: '#C5286A' }}
-              />
-              <span>
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Inventory managed externally</span>
-                <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
-                  For products fulfilled by a third-party vendor. Yellow Pink won&apos;t track stock, the product stays sellable and orders never decrement its count.
-                </span>
-              </span>
-            </label>
+            {/* stock_mode is what we submit; the DB trigger derives
+                track_inventory from it. */}
+            <input type="hidden" name="stock_mode" value={stockMode} />
+            <fieldset style={{ border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb', padding: '12px 14px', margin: 0 }}>
+              <legend style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', padding: '0 6px' }}>
+                Who holds this stock?
+              </legend>
+              {STOCK_MODES.map(m => (
+                <label
+                  key={m.value}
+                  style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', padding: '6px 0' }}
+                >
+                  <input
+                    type="radio"
+                    name="stock_mode_choice"
+                    value={m.value}
+                    checked={stockMode === m.value}
+                    onChange={() => setStockMode(m.value)}
+                    style={{ marginTop: 3, accentColor: '#C5286A' }}
+                  />
+                  <span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>{m.label}</span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{m.hint}</span>
+                  </span>
+                </label>
+              ))}
+            </fieldset>
+            {trackInv && (
+              <>
+                <input type="hidden" name="continue_selling_when_out" value={keepSelling ? 'true' : 'false'} />
+                <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', padding: '12px 14px', marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+                  <input
+                    type="checkbox"
+                    checked={!keepSelling}
+                    onChange={e => setKeepSelling(!e.target.checked)}
+                    style={{ marginTop: 2, accentColor: '#C5286A' }}
+                  />
+                  <span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Show as sold out when the count reaches zero</span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                      Off by default: the listing keeps selling past zero and shoppers never see it unavailable, on the basis that we can source more. Tick this only for something genuinely unrepeatable.
+                    </span>
+                  </span>
+                </label>
+              </>
+            )}
             {trackInv && (
               <div style={{ ...fieldWrap, marginTop: 16, maxWidth: 240 }}>
                 <label style={lbl}>Reorder point</label>
-                <input name="reorder_point" type="number" min={0} defaultValue={product?.reorder_point ?? 0} style={inp} placeholder="0" />
-                <span style={hint}>Flag this product for reorder when stock falls to this level. 0 = use the global low-stock alert.</span>
+                <input name="reorder_point" type="number" min={0} defaultValue={product?.reorder_point ?? 5} style={inp} placeholder="5" />
+                <span style={hint}>Flag this product for reorder when stock falls to this level. The default is 5; set 0 to leave this product out of the reorder list.</span>
               </div>
             )}
           </Section>

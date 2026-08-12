@@ -11,6 +11,7 @@ import { LogoMark } from '@/components/ui/LogoMark';
 import { Overline } from '@/components/ui/Overline';
 import { getProducts } from '@/lib/supabase';
 import { NotFoundBeacon } from '@/components/layout/NotFoundBeacon';
+import { NotFoundSuggestions } from '@/components/layout/NotFoundSuggestions';
 import { ProductTile } from '@/components/ui/ProductTile';
 
 // The explicit robots override here is LOAD-BEARING: the root layout sets a
@@ -100,6 +101,11 @@ export default async function NotFound() {
           </div>
         </div>
       </section>
+
+      {/* Path-aware recovery, resolved client-side because this page is static.
+          Renders nothing when the missed URL has no plausible match, leaving
+          the generic grid below as the floor. */}
+      <NotFoundSuggestions />
 
       {products.length > 0 && (
         <section style={{ padding: '0 0 var(--section-gap)' }}>

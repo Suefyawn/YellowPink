@@ -44,6 +44,14 @@ export const ORDER_TIMELINE_STEPS: OrderStatus[] = ['pending', 'processing', 'sh
 export type ProductKind = 'simple' | 'variable' | 'bundle' | 'external';
 export type ProductStatus = 'draft' | 'published' | 'archived';
 
+export type StockMode = 'own' | 'external' | 'untracked';
+
+export const STOCK_MODES: ReadonlyArray<{ value: StockMode; label: string; hint: string }> = [
+  { value: 'own',       label: 'We hold this stock',   hint: 'Counted here. Checkout refuses an order once it runs out, and it carries an inventory value in Finance.' },
+  { value: 'external',  label: 'A vendor holds it',    hint: 'Their shelf, their count. Always sellable, never decremented, and worth nothing on our balance sheet.' },
+  { value: 'untracked', label: "Don't count this one", hint: 'We sell it but keep no count at all. Always sellable. Use this only when no vendor is behind it.' },
+];
+
 export interface Product {
   id: string;
   /** Canonical brand name, e.g. "CeraVe" / "PIXI" / "NARS". NULL for own-label
@@ -65,7 +73,17 @@ export interface Product {
   reorder_point?: number;
   /** When false, inventory is managed externally (e.g. a third-party vendor):
    *  the product is always sellable and its stock count is not tracked. */
+  /** Derived from stock_mode by the products_sync_stock_mode trigger. Read it
+   *  freely (place_order and the whole storefront gate on it); write stock_mode
+   *  instead, which says WHY the stock is or is not counted. */
   track_inventory?: boolean;
+  /** Who holds the stock. 'own' = we do, counted and enforced at checkout.
+   *  'external' = a vendor does, never enforced and no inventory asset.
+   *  'untracked' = we sell it and deliberately do not count it. */
+  stock_mode?: StockMode;
+  /** true (default) = keep selling once the count hits zero, so a live listing
+   *  is never shown as sold out. Only consulted when stock_mode is 'own'. */
+  continue_selling_when_out?: boolean;
   /** Sourcing vendor (nullable, own-stock products have none). */
   vendor_id?: string | null;
   /** Per-unit cost paid to the vendor; overrides the vendor's commission %. */

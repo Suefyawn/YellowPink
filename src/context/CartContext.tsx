@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { track } from '@/lib/analytics';
+import { purchasableCap } from '@/lib/sellable';
 import type { CartItem, Coupon, Product } from '@/types';
 
 // useLayoutEffect that is safe to ship in a component that also renders on
@@ -144,10 +145,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     // demo items have no stock field). The RPC has authoritative truth
     // and will still reject overshoot, but stopping at the UI saves a
     // round-trip and a confusing toast.
-    // Untracked products (inventory managed externally) have no cap.
-    const stockCap = product.track_inventory === false || typeof product.stock !== 'number'
-      ? Infinity
-      : product.stock;
+    // No cap when the count is not enforced: externally held, or a product the
+    // owner keeps selling past zero. Capping a backorder at the last known
+    // figure would quietly block the sale the flag exists to allow.
+    const stockCap = purchasableCap(product, typeof product.stock === 'number' ? product.stock : null);
     const requested = product.qty ?? 1;
 
     // Decide the outcome AGAINST CURRENT STATE, before touching it, so the
@@ -224,9 +225,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // (use removeFromCart to clear the line). The cart item carries the
       // stock value snapshotted at add-time, fresh enough for the qty
       // stepper; the RPC re-validates at submit.
-      const stockCap = item.track_inventory === false || typeof item.stock !== 'number'
-        ? Infinity
-        : item.stock;
+      const stockCap = purchasableCap(item, typeof item.stock === 'number' ? item.stock : null);
       const next = Math.min(stockCap, Math.max(1, item.qty + delta));
       updated[idx] = { ...item, qty: next };
       return updated;

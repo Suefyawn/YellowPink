@@ -6,6 +6,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import type { Permission } from '@/lib/permissions';
+import { reconcileStock } from '@/lib/stock-writes';
 
 async function assertProducts(action: 'edit' | 'delete' = 'edit') {
   const session = await getStaffSession();
@@ -27,15 +28,23 @@ export async function quickUpdateProduct(
   const session = await assertProducts();
   const update: Record<string, unknown> = {};
   if (patch.price != null && Number.isFinite(patch.price) && patch.price >= 0) update.price = patch.price;
-  if (patch.stock != null && Number.isInteger(patch.stock) && patch.stock >= 0) update.stock = patch.stock;
   if (patch.status && ['published', 'draft', 'archived'].includes(patch.status)) update.status = patch.status;
-  if (Object.keys(update).length === 0) return { error: 'Nothing to update' };
-  const { error } = await supabaseAdmin().from('products').update(update).eq('id', id);
-  if (error) {
-    log.error('product.quick_update_failed', { id, error: error.message });
-    return { error: error.message };
+  // Stock is deliberately NOT in `update`: an inline cell edit is still a stock
+  // movement and belongs in the ledger like any other, so it goes through
+  // reconcileStock below rather than a bare column write.
+  const wantsStock = patch.stock != null && Number.isInteger(patch.stock) && patch.stock >= 0;
+  if (Object.keys(update).length === 0 && !wantsStock) return { error: 'Nothing to update' };
+  if (Object.keys(update).length > 0) {
+    const { error } = await supabaseAdmin().from('products').update(update).eq('id', id);
+    if (error) {
+      log.error('product.quick_update_failed', { id, error: error.message });
+      return { error: error.message };
+    }
   }
-  await logAudit(session, { action: 'product.quick_update', entity: 'product', entity_id: id, diff: update });
+  if (wantsStock) {
+    await reconcileStock({ productId: id, nextStock: patch.stock!, actor: session, note: 'Inline edit on the Products list' });
+  }
+  await logAudit(session, { action: 'product.quick_update', entity: 'product', entity_id: id, diff: { ...update, ...(wantsStock ? { stock: patch.stock } : {}) } });
   revalidatePath('/admin/products');
   return {};
 }

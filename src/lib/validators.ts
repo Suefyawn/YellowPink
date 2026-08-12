@@ -84,7 +84,25 @@ export const productInputSchema = z.object({
   // status keep the DB value untouched (undefined keys are dropped by
   // supabase-js, so an update without status leaves it as-is).
   status:         z.enum(['draft','published','archived']).optional(),
-  stock:          positiveInt,
+  // Optional for the same reason as `status` above: a caller that does not
+  // send stock must leave the live count alone, not reset it. The admin form
+  // always submits it; the CSV importer omits it when the cell is blank
+  // (supabase-js drops undefined keys, so the column keeps its value, and a
+  // brand-new row falls through to the DB default of 0).
+  stock:          positiveInt.optional(),
+  // Who holds the stock. The DB trigger derives track_inventory from this, so
+  // sending both is safe but redundant — prefer this one. Optional so a caller
+  // that omits it leaves the product's mode untouched.
+  stock_mode:     z.enum(['own', 'external', 'untracked']).optional(),
+  // Backorder switch. NOT plain checkboxBool: that coerces an ABSENT value to
+  // false, so a CSV import without the column would flip every product it
+  // touched into "go out of stock". Absent must stay absent (supabase-js drops
+  // undefined keys); the product form always submits 'true'/'false' via a
+  // hidden input, so an unticked box still reads as false there.
+  continue_selling_when_out: z.preprocess(
+                    v => (v == null ? undefined : v === 'true' || v === true || v === 'on'),
+                    z.boolean().optional(),
+                  ),
   // Per-product reorder point (0 = off → global low-stock threshold). The form
   // always submits it; '' / missing normalises to 0.
   reorder_point:  z.preprocess(v => (v === '' || v == null ? 0 : v), positiveInt),

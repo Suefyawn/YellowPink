@@ -6,6 +6,7 @@
 import type { Metadata } from 'next';
 import type { Product, BlogPost, ProductReview, ProductVariant } from '@/types';
 import { brandPlusName } from '@/lib/product-display';
+import { isSellable, availabilityState, SCHEMA_AVAILABILITY } from '@/lib/sellable';
 import { FREE_SHIPPING_THRESHOLD, DEFAULT_SHIPPING_RATE } from '@/lib/commerce';
 import type { MedicalReviewer } from '@/lib/eeat';
 import { authorForName } from '@/lib/authors';
@@ -297,9 +298,12 @@ export function productLd(
   const variantPrices = enabledVariants.map(v => v.price);
   const lowPrice = variantPrices.length ? Math.min(...variantPrices) : product.price;
   const highPrice = variantPrices.length ? Math.max(...variantPrices) : product.price;
-  // Untracked products (inventory managed externally) are always available.
-  const anyVariantInStock = product.track_inventory === false
-    || enabledVariants.some(v => v.stock > 0) || product.stock > 0;
+  // Externally-held and keep-selling products are always available; otherwise
+  // judge on the shades, falling back to the parent for a simple product.
+  const availability = SCHEMA_AVAILABILITY[availabilityState(
+    product,
+    enabledVariants.length ? enabledVariants.reduce((n, v) => n + (v.stock ?? 0), 0) : product.stock,
+  )];
 
   // Shipping cost for THIS offer, matching what the shopper actually pays:
   // free only once the item's price clears the free-shipping threshold,
@@ -364,9 +368,7 @@ export function productLd(
         validFrom,
         priceValidUntil,
         itemCondition: 'https://schema.org/NewCondition',
-        availability: anyVariantInStock
-          ? 'https://schema.org/InStock'
-          : 'https://schema.org/OutOfStock',
+        availability,
         seller: { '@type': 'Organization', name: SITE_NAME },
         shippingDetails,
         hasMerchantReturnPolicy: returnPolicy,
@@ -379,9 +381,7 @@ export function productLd(
         validFrom,
         priceValidUntil,
         itemCondition: 'https://schema.org/NewCondition',
-        availability: anyVariantInStock
-          ? 'https://schema.org/InStock'
-          : 'https://schema.org/OutOfStock',
+        availability,
         seller: { '@type': 'Organization', name: SITE_NAME },
         shippingDetails,
         hasMerchantReturnPolicy: returnPolicy,
@@ -574,8 +574,10 @@ export interface ListEntry {
 /** Whether a product should be advertised as available: untracked inventory is
  *  always available; tracked inventory needs stock > 0. Mirrors the storefront
  *  add-to-cart gate and the PDP Offer's availability. */
-export function productInStock(p: { stock?: number | null; track_inventory?: boolean | null }): boolean {
-  return p.track_inventory === false || (p.stock ?? 0) > 0;
+export function productInStock(p: {
+  stock?: number | null; track_inventory?: boolean | null; continue_selling_when_out?: boolean | null;
+}): boolean {
+  return isSellable(p);
 }
 
 /**

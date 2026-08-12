@@ -6,103 +6,10 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { productInputSchema } from '@/lib/validators';
-
-type CsvRow = Record<string, string>;
-
-function toSlug(s: string): string {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
-/** Best-effort CSV row parser. */
-function parseCsv(text: string): CsvRow[] {
-  const lines: string[][] = [];
-  let cur: string[] = [];
-  let field = '';
-  let inQuotes = false;
-  for (let i = 0; i < text.length; i++) {
-    const c = text[i];
-    if (inQuotes) {
-      if (c === '"' && text[i + 1] === '"') { field += '"'; i++; }
-      else if (c === '"') { inQuotes = false; }
-      else { field += c; }
-    } else {
-      if (c === '"') inQuotes = true;
-      else if (c === ',') { cur.push(field); field = ''; }
-      else if (c === '\n' || c === '\r') {
-        if (c === '\r' && text[i + 1] === '\n') i++;
-        cur.push(field); lines.push(cur); cur = []; field = '';
-      } else { field += c; }
-    }
-  }
-  if (field.length > 0 || cur.length > 0) { cur.push(field); lines.push(cur); }
-  if (lines.length < 2) return [];
-  const header = lines[0].map(h => h.trim());
-  return lines.slice(1).filter(r => r.some(c => c.trim() !== '')).map(r => {
-    const obj: CsvRow = {};
-    for (let j = 0; j < header.length; j++) obj[header[j]] = (r[j] ?? '').trim();
-    return obj;
-  });
-}
-
-/** First finite number among the given raw cells, treating empty/blank as
- *  absent. `Number('')` is 0, so a plain `?? Number(...)` chain turns an empty
- *  'Sale price' column into a free product — this skips blanks instead. */
-function num(...cells: (string | undefined)[]): number | null {
-  for (const c of cells) {
-    if (c == null) continue;
-    const t = c.trim();
-    if (t === '') continue;
-    const n = Number(t);
-    if (Number.isFinite(n)) return n;
-  }
-  return null;
-}
-
-function normaliseRow(r: CsvRow): Record<string, unknown> | null {
-  const brand   = r.brand || r.Brand || r['Brand Name'];
-  const name    = r.name  || r.Name  || r['Product Name'];
-  const slug    = r.slug || r.Slug || toSlug(`${brand ?? ''} ${name ?? ''}`);
-  const category = r.category || r.Category || r.Categories || 'Uncategorized';
-
-  // Price: an explicit `price`, else a genuine WooCommerce 'Sale price', else
-  // the 'Regular price'. An EMPTY 'Sale price' (the export shape for a product
-  // that is NOT on sale) must fall through to the regular price, never 0.
-  const salePrice = num(r['Sale price']);
-  const regularPrice = num(r['Regular price']);
-  const price = num(r.price, r.Price) ?? salePrice ?? regularPrice;
-  // When a real sale price sits below the regular price, keep the regular
-  // price as the struck-through original so the sale badge renders.
-  const original = num(r.original_price)
-    ?? (salePrice != null && regularPrice != null && regularPrice > salePrice ? regularPrice : null);
-
-  if (!brand || !name || price == null) return null;
-
-  return {
-    brand: brand.trim(),
-    name: name.trim(),
-    slug,
-    category: category.trim().split(',')[0].trim(),
-    subcategory: r.subcategory || null,
-    tag: r.tag || null,
-    price,
-    original_price: original,
-    stock: r.stock ? Number(r.stock) : 0,
-    image_url: r.image_url || r['Images']?.split(',')[0]?.trim() || null,
-    description: r.description || r.Description || null,
-    short_description: r.short_description || r['Short description'] || null,
-    how_to_use: r.how_to_use || null,
-    ingredients: r.ingredients || null,
-    kind: r.kind ?? 'simple',
-    // Round-trip columns emitted by the Export CSV endpoint. Absent or blank
-    // cells keep today's behaviour (status untouched on existing rows,
-    // inventory tracking defaulting on).
-    variant: r.variant || null,
-    ...(['draft', 'published', 'archived'].includes(r.status) ? { status: r.status } : {}),
-    ...(r.track_inventory === 'true' || r.track_inventory === 'false'
-      ? { track_inventory: r.track_inventory }
-      : {}),
-  };
-}
+// Pure CSV parsing + row mapping lives in @/lib/product-csv: a 'use server'
+// module can only export async actions, and those helpers need unit tests.
+import { parseCsv, normaliseRow } from '@/lib/product-csv';
+import { reconcileStock } from '@/lib/stock-writes';
 
 export interface ImportResult {
   parsed: number;
@@ -132,6 +39,17 @@ export async function importProductsFromCsv(csvText: string): Promise<ImportResu
     valid.push(parsed.data as Record<string, unknown>);
   }
 
+  // Stock rides in the ledger, not the upsert. Pull it out of every row first
+  // and remember what each slug asked for; the upsert then writes everything
+  // else, and the counts are reconciled afterwards so each one lands in
+  // Movement history with an author and a reason. A row whose sheet had no
+  // stock column keeps whatever the product already has (see product-csv.ts).
+  const wantedStock = new Map<string, number>();
+  for (const row of valid) {
+    if (typeof row.stock === 'number') wantedStock.set(row.slug as string, row.stock);
+    delete row.stock;
+  }
+
   let imported = 0;
   for (let i = 0; i < valid.length; i += 50) {
     const batch = valid.slice(i, i + 50);
@@ -143,6 +61,22 @@ export async function importProductsFromCsv(csvText: string): Promise<ImportResu
       errors.push(`batch ${Math.floor(i / 50)}: ${error.message}`);
     } else {
       imported += batch.length;
+    }
+  }
+
+  // One id lookup for the whole sheet rather than per row, then a ledger entry
+  // only where the count actually moved (reconcileStock no-ops on a match).
+  if (wantedStock.size > 0) {
+    const slugs = [...wantedStock.keys()];
+    const { data: idRows } = await supabaseAdmin()
+      .from('products').select('id, slug').in('slug', slugs);
+    for (const p of (idRows ?? []) as Array<{ id: string; slug: string }>) {
+      const next = wantedStock.get(p.slug);
+      if (next == null) continue;
+      await reconcileStock({
+        productId: p.id, nextStock: next, actor: session,
+        note: 'Set by CSV import',
+      });
     }
   }
 

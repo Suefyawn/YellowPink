@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { isSellable, stockIsEnforced } from '@/lib/sellable';
 import { Overline } from '@/components/ui/Overline';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { ProductTile } from '@/components/ui/ProductTile';
@@ -555,7 +556,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
   };
 
   // Untracked products (inventory managed externally) are always sellable,   // their stock count is meaningless, so a 0 must not disable the buy button.
-  const outOfStock = product.track_inventory !== false && displayStock === 0;
+  const outOfStock = !isSellable(product, displayStock);
   const ctaDisabled = outOfStock || (variants.length > 0 && !activeVariant);
   // True when the only thing blocking the add is an unmade variant choice.
   const needsSelection = !outOfStock && variants.length > 0 && !allAttrsSelected;
@@ -697,7 +698,7 @@ export function PDPPage({ product, relatedProducts = [], variants = [], attribut
             <div style={{ marginBottom: 20 }}>
               {outOfStock ? (
                 <span style={{ display: 'inline-block', padding: '3px 10px', background: '#fef2f2', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#dc2626' }}>Out of Stock</span>
-              ) : product.track_inventory !== false && displayStock <= 5 ? (
+              ) : stockIsEnforced(product) && displayStock <= 5 ? (
                 <span style={{ display: 'inline-block', padding: '3px 10px', background: '#fffbeb', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#d97706' }}>Only {displayStock} left</span>
               ) : (
                 <span style={{ display: 'inline-block', padding: '3px 10px', background: '#f0fdf4', borderRadius: 20, fontSize: '0.75rem', fontWeight: 600, color: '#15803d' }}>In Stock</span>

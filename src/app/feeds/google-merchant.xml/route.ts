@@ -16,6 +16,7 @@ import { supabase, isDemo } from '@/lib/supabase';
 import { SITE_NAME, SITE_URL, absoluteUrl } from '@/lib/seo';
 import { googleProductCategory } from '@/lib/google-product-category';
 import { loadFeedVariants, type FeedVariant } from '@/lib/product-feed';
+import { availabilityState, FEED_AVAILABILITY } from '@/lib/sellable';
 
 export const revalidate = 3600; // 1h, Merchant Center polls daily, this is plenty.
 // Read live rows on every regeneration — without this the route's Supabase
@@ -30,6 +31,7 @@ interface FeedProduct {
   brand: string | null;
   description: string | null;
   short_description: string | null;
+  continue_selling_when_out?: boolean | null;
   image_url: string | null;
   price: number;
   original_price: number | null;
@@ -69,7 +71,7 @@ function item(p: FeedProduct, variant?: FeedVariant): string {
   const imageLink = (variant?.image_url ?? p.image_url) ?? '';
   const stock = variant ? variant.stock : p.stock;
   const available =
-    p.track_inventory === false || stock > 0 ? 'in_stock' : 'out_of_stock';
+    FEED_AVAILABILITY[availabilityState(p, stock)];
   // Merchant Center convention: g:price is the regular/MSRP price, g:sale_price
   // is the discounted price. When the compare-at price is higher, the item is
   // on sale, show both so Shopping can render the strikethrough.
@@ -132,7 +134,7 @@ async function loadProducts(): Promise<FeedProduct[]> {
   }
   const { data } = await supabase
     .from('products')
-    .select('id, slug, name, brand, description, short_description, image_url, price, original_price, stock, track_inventory, category, status')
+    .select('id, slug, name, brand, description, short_description, image_url, price, original_price, stock, track_inventory, continue_selling_when_out, category, status')
     .eq('status', 'published');
   return (data ?? []) as FeedProduct[];
 }

@@ -39,8 +39,10 @@ export function ImportProductsClient() {
           Upload a WooCommerce or generic CSV. Headers we recognise: <code>brand</code>, <code>name</code>, <code>slug</code>,
           <code>category</code>, <code>subcategory</code>, <code>price</code>, <code>original_price</code>,
           <code>stock</code>, <code>image_url</code> / <code>Images</code>, <code>description</code>,
-          <code>short_description</code>, <code>tag</code>, <code>how_to_use</code>, <code>ingredients</code>, <code>kind</code>.
-          Rows are upserted by <code>slug</code>.
+          <code>short_description</code>, <code>tag</code>, <code>how_to_use</code>, <code>ingredients</code>, <code>kind</code>,
+          <code>cost_price</code>, <code>status</code>, <code>track_inventory</code>.
+          Rows are upserted by <code>slug</code>. Leave <code>cost_price</code>, <code>status</code> or{' '}
+          <code>track_inventory</code> blank to keep whatever the product already has.
         </p>
 
         <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16, flexWrap: 'wrap' }}>

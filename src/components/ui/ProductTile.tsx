@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Overline } from './Overline';
+import { isSellable, stockIsEnforced } from '@/lib/sellable';
 import { ProductImage } from './ProductImage';
 import { StarRating } from './StarRating';
 import { useCart } from '@/context/CartContext';
@@ -44,7 +45,7 @@ export function ProductTile({ product, list, priority = false }: ProductTileProp
   const router = useRouter();
   const { addToCart } = useCart();
   const { toggle, isWishlisted } = useWishlist();
-  const { id, slug, brand, name, variant, price, original_price, kind, stock, track_inventory, rating, review_count, is_bestseller, is_popular, packaging, created_at } = product;
+  const { id, slug, brand, name, variant, price, original_price, kind, stock, rating, review_count, is_bestseller, is_popular, packaging, created_at } = product;
   const wishlisted = isWishlisted(id);
   const isNew = !!created_at && new Date(created_at).getTime() > NEW_BADGE_CUTOFF;
 
@@ -62,13 +63,14 @@ export function ProductTile({ product, list, priority = false }: ProductTileProp
   //    covered the packshots and read as a wall of black bars in the 2-up grid.
   // addCounter on the existing AddToCartToast surfaces the post-add confirmation.
   const isVariable = kind === 'variable';
-  // Products with inventory managed externally (track_inventory === false) are
+  // Sellability is one shared rule (lib/sellable): externally held, or
+  // keep-selling, or a count above zero. Products managed externally are
   // always purchasable regardless of the stored stock count, so they must never
   // read as sold out. Only tracked products go sold-out at zero stock.
-  const soldOut = track_inventory !== false && typeof stock === 'number' && stock <= 0;
+  const soldOut = !isSellable(product);
   // Low-stock urgency: only for tracked items with a known count between 1 and
   // 5 (matches the PDP threshold). Externally-tracked items never show it.
-  const lowStock = track_inventory !== false && typeof stock === 'number' && stock > 0 && stock <= 5;
+  const lowStock = stockIsEnforced(product) && typeof stock === 'number' && stock > 0 && stock <= 5;
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();

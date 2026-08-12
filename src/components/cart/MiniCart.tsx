@@ -4,6 +4,7 @@ import { useRef, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
+import { isSellable } from '@/lib/sellable';
 import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
@@ -39,7 +40,7 @@ export function MiniCart({ crossSell = [] }: { crossSell?: Product[] }) {
   const crossSellPick = crossSell.find(p =>
     !cartItems.some(c => c.id === p.id)
     && p.kind !== 'variable'
-    && !(p.track_inventory !== false && typeof p.stock === 'number' && p.stock <= 0),
+    && isSellable(p),
   );
 
   // Close on any route change, including browser/gesture back navigation,

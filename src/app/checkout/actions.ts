@@ -8,6 +8,7 @@ import {
 } from '@/lib/email';
 import { checkoutLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { resolveShipping } from '@/lib/shipping';
+import { notifyStockRanOut } from '@/lib/stock-alerts';
 import { supabase, supabaseAdmin, getSiteSettings } from '@/lib/supabase';
 import { isCodFlagged } from '@/lib/cod-flags';
 import { parseBankAccounts } from '@/lib/bank-accounts';
@@ -32,7 +33,7 @@ export async function notifyNewOrder(order: {
   city: string;
   province?: string;
   total: number;
-  items: Array<{ name: string; qty: number; price: number; brand?: string; variant?: string; slug?: string }>;
+  items: Array<{ id?: string; name: string; qty: number; price: number; brand?: string; variant?: string; slug?: string }>;
   pay_method: string;
 }): Promise<void> {
   // The place_order RPC just decremented stock for these items; bust their
@@ -42,6 +43,10 @@ export async function notifyNewOrder(order: {
   for (const slug of new Set(order.items.map(i => i.slug).filter(Boolean))) {
     revalidatePath(`/product/${slug}`);
   }
+
+  // Running out is now invisible to the shopper (the listing keeps selling),
+  // so it has to be visible to us. Best-effort, never blocks the order.
+  void notifyStockRanOut(order.items.map(i => i.id).filter((v): v is string => Boolean(v)));
 
   // COD-refusal flag check — dispatch-side only, by owner instruction:
   // checkout never resists an order, but staff get the bell so they collect
