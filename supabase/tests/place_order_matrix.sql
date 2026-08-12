@@ -23,21 +23,27 @@ begin;
 -- ── Seed ─────────────────────────────────────────────────────────────────────
 -- Fixed UUIDs so payloads below stay readable.
 --   …00a  tracked product, plenty of stock  (price 1000)
---   …00b  tracked product, stock 3          (price 500)
+--   …00b  tracked product, stock 3, may NOT oversell  (price 500)
 --   …00c  untracked product, stock 0        (price 800)
 --   …00d  draft product                     (price 100)
-insert into public.products (id, name, slug, category, price, stock, track_inventory, status) values
-  ('00000000-0000-0000-0000-00000000000a', 'Matrix Tracked A',  'matrix-tracked-a',  'Test', 1000, 1000, true,  'published'),
-  ('00000000-0000-0000-0000-00000000000b', 'Matrix Tracked B',  'matrix-tracked-b',  'Test',  500,    3, true,  'published'),
-  ('00000000-0000-0000-0000-00000000000c', 'Matrix External C', 'matrix-external-c', 'Test',  800,    0, false, 'published'),
-  ('00000000-0000-0000-0000-00000000000d', 'Matrix Draft D',    'matrix-draft-d',    'Test',  100,  100, true,  'draft');
+--   …00f  tracked product, stock 2, KEEPS SELLING past zero (price 700)
+-- continue_selling_when_out (migration 1020) defaults to TRUE: a live listing
+-- keeps selling past zero unless someone deliberately opts out. B is the
+-- product that exercises the stock gate, so it opts out explicitly; F is its
+-- mirror image and proves the default really does keep selling.
+insert into public.products (id, name, slug, category, price, stock, track_inventory, continue_selling_when_out, status) values
+  ('00000000-0000-0000-0000-00000000000a', 'Matrix Tracked A',  'matrix-tracked-a',  'Test', 1000, 1000, true,  false, 'published'),
+  ('00000000-0000-0000-0000-00000000000b', 'Matrix Tracked B',  'matrix-tracked-b',  'Test',  500,    3, true,  false, 'published'),
+  ('00000000-0000-0000-0000-00000000000c', 'Matrix External C', 'matrix-external-c', 'Test',  800,    0, false, false, 'published'),
+  ('00000000-0000-0000-0000-00000000000d', 'Matrix Draft D',    'matrix-draft-d',    'Test',  100,  100, true,  false, 'draft'),
+  ('00000000-0000-0000-0000-00000000000f', 'Matrix Backorder F','matrix-backorder-f','Test',  700,    2, true,  true,  'published');
 
 -- Vendor free-shipping rule (migration 770): vendor V free-ships from 1999;
 -- product E belongs to it (price 1000, so 2 × E qualifies, 1 × E doesn't).
 insert into public.vendors (id, name, phone, free_shipping_threshold)
   values ('00000000-0000-0000-0000-0000000000f1', 'Matrix Vendor', '03000000001', 1999);
-insert into public.products (id, name, slug, category, price, stock, track_inventory, status, vendor_id) values
-  ('00000000-0000-0000-0000-00000000000e', 'Matrix Vendored E', 'matrix-vendored-e', 'Test', 1000, 1000, true, 'published',
+insert into public.products (id, name, slug, category, price, stock, track_inventory, continue_selling_when_out, status, vendor_id) values
+  ('00000000-0000-0000-0000-00000000000e', 'Matrix Vendored E', 'matrix-vendored-e', 'Test', 1000, 1000, true, false, 'published',
    '00000000-0000-0000-0000-0000000000f1');
 
 insert into public.coupons (id, code, type, value, active, expires_at, usage_limit_per_user, free_shipping) values
@@ -227,6 +233,20 @@ begin
   perform yp_tests.expect_reject('insufficient stock',
     yp_tests.payload('{"items": [{"id": "00000000-0000-0000-0000-00000000000b", "qty": 4}], "subtotal": 2000, "total": 2200}'),
     'insufficient stock');
+
+  -- 13a. The same shape on a KEEP-SELLING product (migration 1020) is accepted:
+  --      3 ordered against a stock of 2. This is the owner's rule — a live
+  --      listing never refuses a shopper because we happen to be empty.
+  o := yp_tests.expect_ok('keep-selling product oversells',
+    yp_tests.payload('{"items": [{"id": "00000000-0000-0000-0000-00000000000f", "qty": 3}], "subtotal": 2100, "total": 2300}'));
+  -- The stock still counts DOWN and record_stock_change clamps at zero, noting
+  -- the clamp, so the oversell is visible in Movement history rather than
+  -- silently swallowed.
+  perform yp_tests.assert('keep-selling product still debits and clamps',
+    (select stock from public.products where id = '00000000-0000-0000-0000-00000000000f') = 0
+    and exists (select 1 from public.inventory_ledger
+                where order_id = o.id and reason = 'order' and note like '%clamped at zero%'),
+    'expected stock 0 and a clamped ledger row');
 
   -- 14. Untracked product sells at stock 0 (migration 108 semantics) and
   --     must NOT be stock-gated or ledgered.
