@@ -273,7 +273,27 @@ export async function proxy(request: NextRequest) {
 
 // Map a known WP-style URL to the Next route, or null if no rule matches and
 // we should fall through to the per-slug `redirects` lookup. Pure function, // no DB hits, no async, runs at edge speed.
-function wpPatternRedirect(pathname: string, params: URLSearchParams): string | null {
+export function wpPatternRedirect(pathname: string, params: URLSearchParams): string | null {
+  // /product/product/<slug> → /product/<slug>. A relative href inside a
+  // section page renders as `/product//product/<slug>`; Next collapses the
+  // empty segment before we ever see it, leaving a doubled prefix that matches
+  // no route. `/product/…` is an owned path, so the redirects-table lookup
+  // below never runs on it and the request dies on the static 404 — which is
+  // what `/product//product/f-lium-drops`, the most-hit human 404 in the
+  // broken-link log, was doing while the product itself was live the whole
+  // time. Collapsing a repeat is structural, not a guess: the slug is
+  // untouched, so this either lands on the real page or 404s exactly as it
+  // does today, one hop later.
+  //
+  // Anchored on `\1` followed by `/` so a slug that merely starts with the
+  // kind name (`/product/product-tag-x`) can't be eaten, and a product
+  // genuinely slugged "product" (`/product/product`, nothing after) is left
+  // alone rather than redirected to itself.
+  const doubled = pathname.match(
+    /^\/(product|blog|brand|collection|tag|page|category|author)(?:\/\1)+\/(.+)$/,
+  );
+  if (doubled) return `/${doubled[1]}/${doubled[2]}`;
+
   // <any>/feed (or /feed/) → <any>. WordPress exposes an RSS feed at a /feed
   // suffix on every URL (the site root, every post, product, tag and category),
   // and crawlers still probe those dead endpoints, e.g. /feed,
