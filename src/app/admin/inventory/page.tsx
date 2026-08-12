@@ -92,14 +92,26 @@ export default async function InventoryPage({
 
   // Pull every product so the manual-adjustment form has a dropdown.
   // 109 SKUs today, well under any sane limit.
-  const [{ data: ledgerData }, { data: productData }] = await Promise.all([
+  const [{ data: ledgerData }, { data: productData }, { data: variantStockRows }] = await Promise.all([
     ledgerQuery,
     admin.from('products')
       .select('id, name, brand, stock, reorder_point, vendor_id, track_inventory, stock_mode, status')
       .neq('status', 'archived')
       .order('name'),
+    // Shade-level counts. For a product with variants the parent scalar is an
+    // aggregate that nothing maintains — NARS reads 1 at the parent against 328
+    // across 33 shades — so judging "needs reorder" by it would have the panel
+    // crying wolf the first time anyone opened it.
+    admin.from('product_variants').select('product_id, stock').eq('enabled', true),
   ]);
   const rows = (ledgerData ?? []) as LedgerRow[];
+  const variantTotals = new Map<string, number>();
+  for (const v of (variantStockRows ?? []) as Array<{ product_id: string; stock: number | null }>) {
+    variantTotals.set(v.product_id, (variantTotals.get(v.product_id) ?? 0) + (v.stock ?? 0));
+  }
+  /** What this product actually has on the shelf: the sum of its shades when it
+   *  has any, otherwise its own counter. */
+  const effectiveStock = (p: ProductLite) => variantTotals.get(p.id) ?? p.stock;
   const allProducts = (productData ?? []) as ProductLite[];
   const productMap = new Map<string, ProductLite>(allProducts.map(p => [p.id, p]));
   // Only stock we physically hold is countable. 'external' (a vendor holds it)
@@ -112,16 +124,16 @@ export default async function InventoryPage({
   const externalProducts = allProducts.filter(p => p.stock_mode === 'external');
 
   // Stock overview, buckets + the lowest-first sorted list.
-  const outOfStock = products.filter(p => p.stock <= 0);
-  const lowStock = products.filter(p => p.stock > 0 && p.stock <= LOW_STOCK_THRESHOLD);
+  const outOfStock = products.filter(p => effectiveStock(p) <= 0);
+  const lowStock = products.filter(p => effectiveStock(p) > 0 && effectiveStock(p) <= LOW_STOCK_THRESHOLD);
   const healthyCount = products.length - outOfStock.length - lowStock.length;
   // "Needs attention" is the default view; the owner can switch to the full list.
   // A search spans the whole catalogue (regardless of the attention/all toggle)
   // so a product is always findable by name or brand.
   const showAll = view === 'all';
   const showExternal = view === 'external';
-  const stockList = [...products].sort((a, b) => a.stock - b.stock);
-  const attentionList = stockList.filter(p => p.stock <= LOW_STOCK_THRESHOLD);
+  const stockList = [...products].sort((a, b) => effectiveStock(a) - effectiveStock(b));
+  const attentionList = stockList.filter(p => effectiveStock(p) <= LOW_STOCK_THRESHOLD);
   const searching = stockQuery.length > 0;
   const visibleStock = searching
     ? [...allProducts].filter(p => brandPlusName(p.brand, p.name).toLowerCase().includes(stockQuery))
@@ -140,9 +152,9 @@ export default async function InventoryPage({
   // vendor with a WhatsApp purchase-order link. Suggested qty tops the SKU
   // back up to ~2× its reorder point.
   const reorderList = products
-    .filter(p => (p.reorder_point ?? 0) > 0 && p.stock <= (p.reorder_point ?? 0))
-    .sort((a, b) => a.stock - b.stock);
-  const suggestQty = (p: ProductLite) => Math.max((p.reorder_point ?? 0) * 2 - p.stock, 1);
+    .filter(p => (p.reorder_point ?? 0) > 0 && effectiveStock(p) <= (p.reorder_point ?? 0))
+    .sort((a, b) => effectiveStock(a) - effectiveStock(b));
+  const suggestQty = (p: ProductLite) => Math.max((p.reorder_point ?? 0) * 2 - effectiveStock(p), 1);
   const reorderVendorIds = Array.from(new Set(reorderList.map(p => p.vendor_id).filter((v): v is string => Boolean(v))));
   const { data: vendorData } = reorderVendorIds.length
     ? await admin.from('vendors').select('id, name, phone').in('id', reorderVendorIds)
@@ -285,8 +297,10 @@ export default async function InventoryPage({
               <tbody>
                 {visibleStock.map(p => {
                   const mode: StockMode = p.stock_mode ?? (p.track_inventory === false ? 'untracked' : 'own');
+                  const shown = effectiveStock(p);
+                  const fromShades = variantTotals.has(p.id);
                   const badge = mode === 'own'
-                    ? stockBadge(p.stock)
+                    ? stockBadge(shown)
                     : mode === 'external'
                       ? { label: 'Vendor holds it', color: '#3730a3' }
                       : { label: 'Not counted', color: '#6b7280' };
@@ -300,8 +314,13 @@ export default async function InventoryPage({
                       {/* A count only means something for stock we hold. Printing
                           the stored number for a vendor-held product shows an
                           alarming red 0 for a product that is selling fine. */}
-                      <td data-label="Stock" style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: mode !== 'own' ? '#9ca3af' : p.stock <= 0 ? '#991b1b' : p.stock <= LOW_STOCK_THRESHOLD ? '#92400e' : '#111827' }}>
-                        {mode === 'own' ? p.stock : '–'}
+                      <td data-label="Stock" style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: mode !== 'own' ? '#9ca3af' : shown <= 0 ? '#991b1b' : shown <= LOW_STOCK_THRESHOLD ? '#92400e' : '#111827' }}>
+                        {mode === 'own' ? shown : '–'}
+                        {mode === 'own' && fromShades && (
+                          <span style={{ display: 'block', fontFamily: 'inherit', fontWeight: 400, fontSize: '0.6875rem', color: '#6b7280' }}>
+                            across shades
+                          </span>
+                        )}
                       </td>
                       <td data-label="Status" style={td}>
                         <DotChip label={badge.label} color={badge.color} />
