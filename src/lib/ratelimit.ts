@@ -70,6 +70,7 @@ export const reviewerApplyLimiter = makeLimiter('reviewer_apply', 3, 60 * 10); /
 export const quizEmailLimiter     = makeLimiter('quiz_email',     5, 60 * 10); // 5 per 10 minutes per IP (mirrors newsletter signup)
 export const quizEventLimiter     = makeLimiter('quiz_event',    60, 60 * 10); // 60 per 10 minutes per IP (~2 events per run; generous for shared IPs)
 export const notFoundLimiter      = makeLimiter('notfound',      30, 60);      // 30 per minute per IP (a human clicking dead links stays well under)
+export const suggestLimiter       = makeLimiter('suggest',       30, 60);      // 30 per minute per IP (one call per 404 render; matches notFoundLimiter, which fires alongside it)
 
 // ─── Identifier extraction ──────────────────────────────────────────────────
 // Use IP from Vercel-set x-forwarded-for, fall back to a stable header.

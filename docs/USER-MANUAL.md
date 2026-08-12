@@ -578,6 +578,10 @@ Every URL on the store that returned a **404**, captured automatically the momen
 
 You also get a **daily email digest** of any *new* broken links so nothing slips past.
 
+**Two things happen before a visitor ever sees the 404 page.** First, if the address is a mangled version of a real one — an old WordPress `-copy` suffix, odd capitals, a stray `%20` from a badly pasted link — the store sends them straight to the correct page, but only when that exact page is genuinely live. Second, if it can't be repaired, the 404 page reads the address and shows **what the visitor was probably after**: matching products from the catalogue, the brand page if the address names a brand you stock, a shop search already filled in, and a WhatsApp link. Someone landing on a dead product link sees the nearest real products instead of a dead end.
+
+Two deliberate limits worth knowing. The store will **not** guess its way between similar products — `beauty-cream` and `white-beauty-cream` are different tubs at different prices, so those are offered as suggestions for the shopper to pick from rather than jumped to automatically, which would quietly sell the wrong item. And the page still reports itself as a 404 to Google even though it now looks helpful: pretending a missing page exists is penalised by search engines, and it would also stop these URLs appearing in this report, which is how you find out about them at all.
+
 ### Email log in detail
 
 A record of **every email the system sends** — to customers and to you. Each row shows the recipient, the subject, a plain-English **Type** (Order confirmation, Shipped, Delivered, Abandoned cart, Newsletter, Review request, and so on), the delivery status, and when it was sent. Search by recipient or subject, filter by status (Sent / Failed / Skipped), and page back through history.
@@ -1026,6 +1030,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 12 August 2026
+
+- **A dead link now tries to become a sale.** Two changes. An address that is a mangled form of a real one (a WordPress `-copy` suffix, odd capitals, a stray `%20`) now sends the visitor straight to the right page, provided that page is genuinely live. And when the address can't be repaired, the 404 page reads it and shows what they were probably after: matching products, the brand page if the address names a brand we stock, a pre-filled shop search, and a WhatsApp link — instead of the same four bestsellers everyone got. Where the address matches nothing plausible (a bot probing `/wp-login.php`), the page is unchanged. The store deliberately does **not** guess between similar products, and the page still reports a 404 to Google — see [Broken links in detail](#broken-links-in-detail) for why both of those are on purpose.
 
 - **Hello Hair is now its own brand, and both brand pages have real content.** 59 Hello Hair products (56 drafts plus the 3 already live) were filed under *Golden Pearl*, which is wrong for shoppers: "hello hair shampoo" is searched 1,300 times a month in Pakistan on its own. They now sit under **Hello Hair** at `/brand/hello-hair`, with the four shampoo trade packs moved out of *Moisturizers* into *Hair Care*. Both `/brand/golden-pearl` and `/brand/hello-hair` gained written brand pages with FAQs (how to spot a counterfeit Golden Pearl tub, which face wash suits which skin, which shampoo for hair fall), the same treatment the other priority brands got.
 
