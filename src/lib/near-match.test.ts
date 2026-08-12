@@ -101,6 +101,28 @@ describe('rankCandidates, suggestions only', () => {
   });
 });
 
+// Real misses from the store's broken-links log, so the ranking is pinned to
+// cases that actually happened rather than invented ones.
+describe('real 404s from the log', () => {
+  it('surfaces the melatonin post for the "-guide" variant someone typed', () => {
+    const posts = [
+      { slug: 'melatonin-for-sleep-pakistan', haystack: 'Melatonin for Sleep in Pakistan: Benefits, Dosage & How to Use It (2026)' },
+      { slug: 'magnesium-for-sleep-pakistan', haystack: 'Magnesium for Sleep & Stress in Pakistan: Complete Guide 2026' },
+    ];
+    const [top] = rankCandidates('melatonin-for-sleep-pakistan-guide', posts);
+    expect(top.item.slug).toBe('melatonin-for-sleep-pakistan');
+  });
+
+  it('picks the real product out of a doubled relative-link path', () => {
+    const catalogue = [
+      { slug: 'f-lium-drops', haystack: 'F.lium Folic Acid Drops for Kids' },
+      { slug: 'psyllium-husk', haystack: 'Sunbeam Psyllium Husk (Ispaghol) 160g' },
+    ];
+    const [top] = rankCandidates('f-lium-drops', catalogue);
+    expect(top.item.slug).toBe('f-lium-drops');
+  });
+});
+
 describe('slugToQuery', () => {
   it('turns a path segment into a search phrase', () => {
     expect(slugToQuery('golden-pearl')).toBe('golden pearl');
