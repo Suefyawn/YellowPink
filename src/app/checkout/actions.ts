@@ -12,6 +12,8 @@ import { supabase, supabaseAdmin, getSiteSettings } from '@/lib/supabase';
 import { isCodFlagged } from '@/lib/cod-flags';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
+import { isWhatsAppCloudConfigured, sendOrderConfirmationTemplate } from '@/lib/whatsapp-cloud';
+import { log } from '@/lib/logger';
 import { SITE_URL } from '@/lib/seo';
 
 // ─── Order notifications fan-out (called after a successful place_order RPC) ─
@@ -57,6 +59,12 @@ export async function notifyNewOrder(order: {
       }
     } catch { /* the order itself is placed; the bell is best-effort */ }
   }
+
+  // Automated WhatsApp confirmation (Cloud API). This is the ONLY channel
+  // that reaches a customer who gave no email — the gap that left an order
+  // silent overnight on 11 Aug. No-ops entirely until the Meta credentials
+  // are set, so it is safe to ship before the account is approved.
+  void sendOrderWhatsApp(order);
 
   // sendOrderConfirmationEmail resolves to a boolean (did the provider accept
   // it?); it's fire-and-forget here, so the widened element type is fine.
@@ -115,6 +123,39 @@ export async function notifyNewOrder(order: {
     clientIp: ipFromHeaders(hdrs),
     userAgent: hdrs.get('user-agent') ?? undefined,
   });
+}
+
+/** Send the automated WhatsApp order confirmation and log the attempt.
+ *  Entirely best-effort: unconfigured (no Meta creds) is the normal state
+ *  until the owner finishes Meta setup, and any failure is logged without
+ *  touching the order. */
+async function sendOrderWhatsApp(order: {
+  order_number: string; first_name: string; phone: string; total: number;
+}): Promise<void> {
+  if (!isWhatsAppCloudConfigured()) return;
+  try {
+    const res = await sendOrderConfirmationTemplate({
+      phone: order.phone,
+      firstName: order.first_name,
+      orderNumber: order.order_number,
+      totalFormatted: `PKR ${Math.round(order.total).toLocaleString('en-US')}`,
+    });
+    const { data: row } = await supabaseAdmin()
+      .from('orders').select('id').eq('order_number', order.order_number).maybeSingle();
+    await supabaseAdmin().from('whatsapp_messages').insert({
+      order_id: (row as { id: string } | null)?.id ?? null,
+      order_number: order.order_number,
+      phone: order.phone,
+      template: process.env.WHATSAPP_TEMPLATE_ORDER_CONFIRM || 'order_confirmation',
+      message_id: res.messageId ?? null,
+      status: res.ok ? 'sent' : 'failed',
+      error: res.ok ? null : (res.error ?? 'unknown'),
+    });
+  } catch (err) {
+    log.error('whatsapp.order_send_failed', {
+      order: order.order_number, error: (err as Error).message,
+    });
+  }
 }
 
 // ─── Shipping calculator exposed to the client for the order summary. ──────
