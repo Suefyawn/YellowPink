@@ -22,9 +22,17 @@ describe('SEO JSON-LD helpers', () => {
     expect((ld.offers as { availability: string }).availability).toBe('https://schema.org/InStock');
   });
 
-  it('marks out-of-stock products as OutOfStock', () => {
-    const ld = productLd({ ...sampleProduct, stock: 0 });
+  // Zero stock is only OutOfStock when the owner has deliberately said this
+  // product may not oversell. The default is to keep selling, which is a
+  // BackOrder — purchasable, but not a claim that we hold it.
+  it('marks a deliberate sell-out as OutOfStock', () => {
+    const ld = productLd({ ...sampleProduct, stock: 0, continue_selling_when_out: false });
     expect((ld.offers as { availability: string }).availability).toBe('https://schema.org/OutOfStock');
+  });
+
+  it('marks a keep-selling product at zero as BackOrder, not InStock', () => {
+    const ld = productLd({ ...sampleProduct, stock: 0 });
+    expect((ld.offers as { availability: string }).availability).toBe('https://schema.org/BackOrder');
   });
 
   it('omits aggregateRating when there are no reviews', () => {
@@ -62,10 +70,16 @@ describe('SEO JSON-LD helpers', () => {
     expect((ld.offers as { '@type': string })['@type']).toBe('Offer');
   });
 
-  it('marks AggregateOffer OutOfStock when no variant has stock', () => {
+  it('marks AggregateOffer OutOfStock when no variant has stock and the owner opted out of overselling', () => {
+    const variants = [makeVariant(2000, 0), makeVariant(2500, 0)];
+    const ld = productLd({ ...sampleProduct, stock: 0, continue_selling_when_out: false }, [], variants);
+    expect((ld.offers as { availability: string }).availability).toBe('https://schema.org/OutOfStock');
+  });
+
+  it('marks AggregateOffer BackOrder when every shade is empty but the listing keeps selling', () => {
     const variants = [makeVariant(2000, 0), makeVariant(2500, 0)];
     const ld = productLd({ ...sampleProduct, stock: 0 }, [], variants);
-    expect((ld.offers as { availability: string }).availability).toBe('https://schema.org/OutOfStock');
+    expect((ld.offers as { availability: string }).availability).toBe('https://schema.org/BackOrder');
   });
 
   it('emits up to 5 review entries', () => {

@@ -92,12 +92,18 @@ async function safe<T>(
 // quoted the full delivery rate at checkout (a real Jul 31 order paid Rs 250
 // it shouldn't have).
 const PRODUCT_TILE_COLUMNS =
-  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, vendor_id, image_url, is_bestseller, is_featured, is_popular, popularity_score, trend_score, units_sold, sales_score, packaging, status, created_at, rating, review_count, kind';
+  'id, brand, name, variant, price, original_price, category, subcategory, tag, slug, stock, track_inventory, continue_selling_when_out, vendor_id, image_url, is_bestseller, is_featured, is_popular, popularity_score, trend_score, units_sold, sales_score, packaging, status, created_at, rating, review_count, kind';
 
 // Shared purchasability predicate — every storefront product surface must
 // apply it (the 2026-08-04 audit found four rails that forgot the stock
 // filter and could show sold-out tiles).
-const PURCHASABLE = 'stock.gt.0,track_inventory.is.false';
+//
+// The third clause is what keeps a live listing alive past zero: without it
+// this filter would delete keep-selling products from every rail the moment
+// their count ran out, which is exactly the disappearance the flag exists to
+// prevent. Keep it in lock-step with lib/sellable.isSellable — this is the
+// SQL half of the same rule.
+const PURCHASABLE = 'stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true';
 
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;
@@ -227,7 +233,7 @@ export async function getBestsellers(limit = 8): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
-      .or('stock.gt.0,track_inventory.is.false')
+      .or('stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true')
       .order('is_bestseller', { ascending: false })
       .order('popularity_score', { ascending: false })
       .order('created_at', { ascending: false })
@@ -246,7 +252,7 @@ export async function getTopSellers(limit = 4): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
-      .or('stock.gt.0,track_inventory.is.false')
+      .or('stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true')
       .order('is_bestseller', { ascending: false })
       // Decayed sales (sales_score), not raw units: at a few orders/day raw
       // counts are a coin flip below rank 3. Demand then freshness tiebreak.
@@ -268,7 +274,7 @@ export async function getTrending(limit = 4): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
-      .or('stock.gt.0,track_inventory.is.false')
+      .or('stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true')
       .order('trend_score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -288,7 +294,7 @@ export async function getNewArrivals(limit = 8): Promise<Product[]> {
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
-      .or('stock.gt.0,track_inventory.is.false')
+      .or('stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true')
       .gte('created_at', floor)
       .order('created_at', { ascending: false })
       // Bulk imports share created_at to the second; id tiebreak keeps the

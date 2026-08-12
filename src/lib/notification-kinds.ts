@@ -19,6 +19,10 @@ export const KIND_PERMISSION: Record<string, Permission | null> = {
   posthog_spike:  'analytics_traffic',
   posthog_drop:   'analytics_traffic',
   abandoned_cart: 'orders.view',
+  // Fires when an own-stock product's count reaches zero while its listing
+  // keeps selling — whoever manages the catalogue needs to know, a marketer
+  // does not.
+  stock_out:      'products.edit',
 };
 
 /** Kinds this session may see. `null` = unrestricted (owner). */

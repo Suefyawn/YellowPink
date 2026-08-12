@@ -15,7 +15,7 @@ export async function loadTrendingBrands(): Promise<string[]> {
       .from('products')
       .select('brand')
       .eq('status', 'published')
-      .or('stock.gt.0,track_inventory.is.false')
+      .or('stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true')
       .limit(1000);
     const counts = new Map<string, number>();
     for (const row of (data ?? []) as Array<{ brand: string | null }>) {
@@ -39,7 +39,7 @@ export async function loadPopularCategories(): Promise<string[]> {
       .from('products')
       .select('subcategory, category')
       .eq('status', 'published')
-      .or('stock.gt.0,track_inventory.is.false')
+      .or('stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true')
       .limit(1000);
     const counts = new Map<string, number>();
     for (const row of (data ?? []) as Array<{ subcategory: string | null; category: string | null }>) {

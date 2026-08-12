@@ -90,6 +90,9 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
             : 'own'),
   );
   const trackInv = stockMode === 'own';
+  // Default true, matching the column: a live listing keeps selling past zero
+  // unless someone deliberately says otherwise.
+  const [keepSelling, setKeepSelling] = useState(product?.continue_selling_when_out !== false);
   // Tracked so the vendor margin readout updates as the owner edits.
   const [price, setPrice] = useState<number>(product?.price ?? 0);
   const [vendorId, setVendorId] = useState(product?.vendor_id ?? '');
@@ -346,6 +349,25 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
                 </label>
               ))}
             </fieldset>
+            {trackInv && (
+              <>
+                <input type="hidden" name="continue_selling_when_out" value={keepSelling ? 'true' : 'false'} />
+                <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', padding: '12px 14px', marginTop: 12, border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb' }}>
+                  <input
+                    type="checkbox"
+                    checked={!keepSelling}
+                    onChange={e => setKeepSelling(!e.target.checked)}
+                    style={{ marginTop: 2, accentColor: '#C5286A' }}
+                  />
+                  <span>
+                    <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Show as sold out when the count reaches zero</span>
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                      Off by default: the listing keeps selling past zero and shoppers never see it unavailable, on the basis that we can source more. Tick this only for something genuinely unrepeatable.
+                    </span>
+                  </span>
+                </label>
+              </>
+            )}
             {trackInv && (
               <div style={{ ...fieldWrap, marginTop: 16, maxWidth: 240 }}>
                 <label style={lbl}>Reorder point</label>

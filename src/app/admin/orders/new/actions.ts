@@ -15,6 +15,7 @@ import { revalidatePath } from 'next/cache';
 import { supabaseAdmin } from '@/lib/supabase';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
+import { notifyStockRanOut } from '@/lib/stock-alerts';
 import { sendOrderConfirmationEmail } from '@/lib/email';
 import { recomputeSettlement, applyAutoAcquisitionCost } from '@/lib/vendor-settlement';
 
@@ -209,6 +210,10 @@ export async function createManualOrder(
       }
     }
   }
+
+  // Same sold-out alert as the storefront path: a manual order can take the
+  // last one just as easily.
+  void notifyStockRanOut(lines.map(l => l.id));
 
   // Vendor economics — same shared path as dispatchOrderToVendor: the
   // engine's total becomes the settlement's vendor_cost AND the order's

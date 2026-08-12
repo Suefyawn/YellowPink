@@ -20,7 +20,7 @@ async function loadHealthIssues(): Promise<{ broken: Issue[]; advisory: Issue[] 
     admin.from('products').select('id, name, stock, track_inventory, is_featured, is_bestseller, popularity_score')
       .eq('status', 'published').or('is_featured.eq.true,is_bestseller.eq.true'),
     admin.from('products').select('id', { count: 'exact', head: true })
-      .eq('status', 'published').gte('discount_pct', 10).or('stock.gt.0,track_inventory.is.false'),
+      .eq('status', 'published').gte('discount_pct', 10).or('stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true'),
     admin.from('site_settings').select('value').eq('key', 'sale_active').maybeSingle(),
     admin.from('blog_posts').select('slug, title').is('image_url', null),
     admin.from('blog_posts').select('slug, title, date').eq('featured', true).maybeSingle(),

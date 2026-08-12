@@ -94,6 +94,15 @@ export const productInputSchema = z.object({
   // sending both is safe but redundant — prefer this one. Optional so a caller
   // that omits it leaves the product's mode untouched.
   stock_mode:     z.enum(['own', 'external', 'untracked']).optional(),
+  // Backorder switch. NOT plain checkboxBool: that coerces an ABSENT value to
+  // false, so a CSV import without the column would flip every product it
+  // touched into "go out of stock". Absent must stay absent (supabase-js drops
+  // undefined keys); the product form always submits 'true'/'false' via a
+  // hidden input, so an unticked box still reads as false there.
+  continue_selling_when_out: z.preprocess(
+                    v => (v == null ? undefined : v === 'true' || v === true || v === 'on'),
+                    z.boolean().optional(),
+                  ),
   // Per-product reorder point (0 = off → global low-stock threshold). The form
   // always submits it; '' / missing normalises to 0.
   reorder_point:  z.preprocess(v => (v === '' || v == null ? 0 : v), positiveInt),

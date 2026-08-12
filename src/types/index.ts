@@ -81,6 +81,9 @@ export interface Product {
    *  'external' = a vendor does, never enforced and no inventory asset.
    *  'untracked' = we sell it and deliberately do not count it. */
   stock_mode?: StockMode;
+  /** true (default) = keep selling once the count hits zero, so a live listing
+   *  is never shown as sold out. Only consulted when stock_mode is 'own'. */
+  continue_selling_when_out?: boolean;
   /** Sourcing vendor (nullable, own-stock products have none). */
   vendor_id?: string | null;
   /** Per-unit cost paid to the vendor; overrides the vendor's commission %. */
