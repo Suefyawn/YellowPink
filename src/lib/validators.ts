@@ -90,6 +90,10 @@ export const productInputSchema = z.object({
   // (supabase-js drops undefined keys, so the column keeps its value, and a
   // brand-new row falls through to the DB default of 0).
   stock:          positiveInt.optional(),
+  // Who holds the stock. The DB trigger derives track_inventory from this, so
+  // sending both is safe but redundant — prefer this one. Optional so a caller
+  // that omits it leaves the product's mode untouched.
+  stock_mode:     z.enum(['own', 'external', 'untracked']).optional(),
   // Per-product reorder point (0 = off → global low-stock threshold). The form
   // always submits it; '' / missing normalises to 0.
   reorder_point:  z.preprocess(v => (v === '' || v == null ? 0 : v), positiveInt),

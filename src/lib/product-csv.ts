@@ -86,6 +86,11 @@ export function normaliseRow(r: CsvRow): Record<string, unknown> | null {
   // entry to reconstruct from. Setting a count to zero is a deliberate act and
   // has to be spelled "0" in the cell.
   const stock = num(r.stock, r.Stock, r['In stock?']);
+  // Who holds the stock. Same blank-means-leave-alone rule; an unrecognised
+  // value is ignored rather than failing the row, because the DB trigger would
+  // otherwise reject the whole batch on one typo.
+  const rawMode = (r.stock_mode || r['Stock mode'] || '').trim().toLowerCase();
+  const stockMode = ['own', 'external', 'untracked'].includes(rawMode) ? rawMode : null;
 
   return {
     brand: brand.trim(),
@@ -110,6 +115,7 @@ export function normaliseRow(r: CsvRow): Record<string, unknown> | null {
     // a blank cell would wipe costs the sheet's author never touched, and a
     // costing pass usually fills a subset of rows at a time.
     ...(stock != null ? { stock } : {}),
+    ...(stockMode ? { stock_mode: stockMode } : {}),
     ...(cost != null ? { cost_price: cost } : {}),
     ...(['draft', 'published', 'archived'].includes(r.status) ? { status: r.status } : {}),
     ...(r.track_inventory === 'true' || r.track_inventory === 'false'

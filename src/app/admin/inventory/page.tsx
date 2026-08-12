@@ -7,6 +7,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { brandPlusName } from '@/lib/product-display';
 import { adjustStock } from '@/app/admin/inventory-actions';
 import { InventoryStockSearch } from '@/components/admin/InventoryStockSearch';
+import type { StockMode } from '@/types';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { PK_TZ } from '@/lib/dates';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
@@ -26,7 +27,7 @@ interface LedgerRow {
   created_at: string;
 }
 
-interface ProductLite { id: string; name: string; brand: string | null; stock: number; reorder_point?: number; vendor_id?: string | null; track_inventory?: boolean }
+interface ProductLite { id: string; name: string; brand: string | null; stock: number; reorder_point?: number; vendor_id?: string | null; track_inventory?: boolean; stock_mode?: StockMode; status?: string }
 interface OrderLite { id: string; order_number: string }
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -80,21 +81,35 @@ export default async function InventoryPage({
     .order('created_at', { ascending: false })
     .limit(200);
   if (productFilter) ledgerQuery = ledgerQuery.eq('product_id', productFilter);
-  if (reasonFilter && reasonFilter !== 'all') ledgerQuery = ledgerQuery.eq('reason', reasonFilter);
+  if (reasonFilter && reasonFilter !== 'all') {
+    ledgerQuery = ledgerQuery.eq('reason', reasonFilter);
+  } else if (!reasonFilter) {
+    // The 2026-05-19 backfill is 285 of the ~330 ledger rows, so the default
+    // 200-row window was 155 rows of one day's import and only 45 rows of real
+    // movement. Hide it unless it is asked for — the Import chip still shows it.
+    ledgerQuery = ledgerQuery.neq('reason', 'import');
+  }
 
   // Pull every product so the manual-adjustment form has a dropdown.
   // 109 SKUs today, well under any sane limit.
   const [{ data: ledgerData }, { data: productData }] = await Promise.all([
     ledgerQuery,
-    admin.from('products').select('id, name, brand, stock, reorder_point, vendor_id, track_inventory').order('name'),
+    admin.from('products')
+      .select('id, name, brand, stock, reorder_point, vendor_id, track_inventory, stock_mode, status')
+      .neq('status', 'archived')
+      .order('name'),
   ]);
   const rows = (ledgerData ?? []) as LedgerRow[];
   const allProducts = (productData ?? []) as ProductLite[];
   const productMap = new Map<string, ProductLite>(allProducts.map(p => [p.id, p]));
-  // Only tracked products belong on the inventory screen, untracked products
-  // have their stock managed by an external vendor, so there is nothing here
-  // to count or adjust.
-  const products = allProducts.filter(p => p.track_inventory !== false);
+  // Only stock we physically hold is countable. 'external' (a vendor holds it)
+  // and 'untracked' (we deliberately keep no count) both have nothing to count
+  // or adjust here — but 'external' is worth showing as its own list, because
+  // "we stock 100 things we never see" is a fact the owner needs, and it used
+  // to be invisible on this screen.
+  const countable = (p: ProductLite) => (p.stock_mode ?? (p.track_inventory === false ? 'untracked' : 'own')) === 'own';
+  const products = allProducts.filter(countable);
+  const externalProducts = allProducts.filter(p => p.stock_mode === 'external');
 
   // Stock overview, buckets + the lowest-first sorted list.
   const outOfStock = products.filter(p => p.stock <= 0);
@@ -104,11 +119,13 @@ export default async function InventoryPage({
   // A search spans the whole catalogue (regardless of the attention/all toggle)
   // so a product is always findable by name or brand.
   const showAll = view === 'all';
+  const showExternal = view === 'external';
   const stockList = [...products].sort((a, b) => a.stock - b.stock);
   const attentionList = stockList.filter(p => p.stock <= LOW_STOCK_THRESHOLD);
   const searching = stockQuery.length > 0;
   const visibleStock = searching
-    ? stockList.filter(p => brandPlusName(p.brand, p.name).toLowerCase().includes(stockQuery))
+    ? [...allProducts].filter(p => brandPlusName(p.brand, p.name).toLowerCase().includes(stockQuery))
+    : showExternal ? externalProducts
     : showAll ? stockList : attentionList;
 
   // Resolve order ids to order numbers for the rows that link to an order.
@@ -233,17 +250,27 @@ export default async function InventoryPage({
       <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', overflow: 'hidden', marginBottom: 24 }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
           <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>
-            {searching ? `Search results (${visibleStock.length})` : showAll ? 'All products' : 'Needs attention'}
+            {searching
+              ? `Search results (${visibleStock.length})`
+              : showExternal ? `Externally managed (${externalProducts.length})`
+              : showAll ? 'All products' : 'Needs attention'}
           </h2>
           <div style={{ display: 'flex', gap: 8, fontSize: '0.8125rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <InventoryStockSearch />
-            <Link href="/admin/inventory" style={chipLink(!showAll && !searching)}>Needs attention</Link>
+            <Link href="/admin/inventory" style={chipLink(!showAll && !showExternal && !searching)}>Needs attention</Link>
             <Link href="/admin/inventory?view=all" style={chipLink(showAll && !searching)}>All products</Link>
+            <Link href="/admin/inventory?view=external" style={chipLink(showExternal && !searching)}>
+              Externally managed ({externalProducts.length})
+            </Link>
           </div>
         </div>
         {visibleStock.length === 0 ? (
           <div style={{ padding: 48, textAlign: 'center', color: searching ? '#9ca3af' : '#16a34a', fontSize: '0.875rem', fontWeight: 600 }}>
-            {searching ? `No products match “${q}”.` : 'Every product is in stock. Nothing needs restocking.'}
+            {searching
+              ? `No products match “${q}”.`
+              : showExternal
+                ? 'No products are marked as vendor-held. Set one on a product page under “Who holds this stock?”.'
+                : 'Every product is in stock. Nothing needs restocking.'}
           </div>
         ) : (
           <div style={{ maxHeight: 440, overflowY: 'auto' }}>
@@ -257,7 +284,12 @@ export default async function InventoryPage({
               </thead>
               <tbody>
                 {visibleStock.map(p => {
-                  const badge = stockBadge(p.stock);
+                  const mode: StockMode = p.stock_mode ?? (p.track_inventory === false ? 'untracked' : 'own');
+                  const badge = mode === 'own'
+                    ? stockBadge(p.stock)
+                    : mode === 'external'
+                      ? { label: 'Vendor holds it', color: '#3730a3' }
+                      : { label: 'Not counted', color: '#6b7280' };
                   return (
                     <tr key={p.id} style={{ borderTop: '1px solid #f3f4f6' }}>
                       <td data-label="Product" style={td}>
@@ -265,8 +297,11 @@ export default async function InventoryPage({
                           {brandPlusName(p.brand, p.name)}
                         </Link>
                       </td>
-                      <td data-label="Stock" style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: p.stock <= 0 ? '#991b1b' : p.stock <= LOW_STOCK_THRESHOLD ? '#92400e' : '#111827' }}>
-                        {p.stock}
+                      {/* A count only means something for stock we hold. Printing
+                          the stored number for a vendor-held product shows an
+                          alarming red 0 for a product that is selling fine. */}
+                      <td data-label="Stock" style={{ ...td, fontFamily: 'monospace', fontWeight: 700, color: mode !== 'own' ? '#9ca3af' : p.stock <= 0 ? '#991b1b' : p.stock <= LOW_STOCK_THRESHOLD ? '#92400e' : '#111827' }}>
+                        {mode === 'own' ? p.stock : '–'}
                       </td>
                       <td data-label="Status" style={td}>
                         <DotChip label={badge.label} color={badge.color} />

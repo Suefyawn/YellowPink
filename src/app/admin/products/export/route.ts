@@ -20,6 +20,7 @@ interface ExportRow {
   category: string | null; subcategory: string | null; tag: string | null;
   price: number; original_price: number | null; cost_price: number | null;
   stock: number;
+  stock_mode: string | null;
   track_inventory: boolean | null; status: string | null; kind: string | null;
   image_url: string | null; short_description: string | null;
   description: string | null; how_to_use: string | null; ingredients: string | null;
@@ -31,7 +32,7 @@ interface ExportRow {
 // margin — which is exactly the state the Golden Pearl import arrived in.
 const COLUMNS: Array<keyof ExportRow> = [
   'slug', 'brand', 'name', 'variant', 'category', 'subcategory', 'tag',
-  'price', 'original_price', 'cost_price', 'stock', 'track_inventory', 'status', 'kind',
+  'price', 'original_price', 'cost_price', 'stock', 'stock_mode', 'track_inventory', 'status', 'kind',
   'image_url', 'short_description', 'description', 'how_to_use', 'ingredients',
 ];
 
@@ -47,7 +48,7 @@ export async function GET() {
   const { data, error } = await fetchAll<ExportRow>(
     supabaseAdmin()
       .from('products')
-      .select('slug, brand, name, variant, category, subcategory, tag, price, original_price, cost_price, stock, track_inventory, status, kind, image_url, short_description, description, how_to_use, ingredients')
+      .select('slug, brand, name, variant, category, subcategory, tag, price, original_price, cost_price, stock, stock_mode, track_inventory, status, kind, image_url, short_description, description, how_to_use, ingredients')
       .order('slug'),
   );
   if (error) return new Response(`Export failed: ${error.message}`, { status: 500 });

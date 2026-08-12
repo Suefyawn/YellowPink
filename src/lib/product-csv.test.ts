@@ -58,6 +58,30 @@ describe('normaliseRow, blank stock must not wipe the live count', () => {
   });
 });
 
+describe('normaliseRow, stock_mode', () => {
+  it('carries a valid mode through', () => {
+    for (const m of ['own', 'external', 'untracked']) {
+      expect(normaliseRow({ ...base, stock_mode: m })).toMatchObject({ stock_mode: m });
+    }
+  });
+
+  it('is case- and whitespace-tolerant', () => {
+    expect(normaliseRow({ ...base, stock_mode: ' External ' })).toMatchObject({ stock_mode: 'external' });
+  });
+
+  // The DB has a CHECK constraint, so a single typo in one cell would abort
+  // the whole 50-row batch. Drop the bad value and leave the product's mode
+  // as it is instead.
+  it('ignores an unrecognised value rather than failing the batch', () => {
+    expect('stock_mode' in normaliseRow({ ...base, stock_mode: 'vendor' })!).toBe(false);
+  });
+
+  it('omits the key when blank or absent', () => {
+    expect('stock_mode' in normaliseRow({ ...base, stock_mode: '' })!).toBe(false);
+    expect('stock_mode' in normaliseRow(base)!).toBe(false);
+  });
+});
+
 describe('normaliseRow, existing behaviour still holds', () => {
   it('falls through an empty Sale price to the Regular price instead of charging 0', () => {
     const row = normaliseRow({
