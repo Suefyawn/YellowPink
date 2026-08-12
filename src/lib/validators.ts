@@ -84,7 +84,12 @@ export const productInputSchema = z.object({
   // status keep the DB value untouched (undefined keys are dropped by
   // supabase-js, so an update without status leaves it as-is).
   status:         z.enum(['draft','published','archived']).optional(),
-  stock:          positiveInt,
+  // Optional for the same reason as `status` above: a caller that does not
+  // send stock must leave the live count alone, not reset it. The admin form
+  // always submits it; the CSV importer omits it when the cell is blank
+  // (supabase-js drops undefined keys, so the column keeps its value, and a
+  // brand-new row falls through to the DB default of 0).
+  stock:          positiveInt.optional(),
   // Per-product reorder point (0 = off → global low-stock threshold). The form
   // always submits it; '' / missing normalises to 0.
   reorder_point:  z.preprocess(v => (v === '' || v == null ? 0 : v), positiveInt),

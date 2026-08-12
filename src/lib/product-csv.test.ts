@@ -31,6 +31,33 @@ describe('normaliseRow, cost_price round-trip', () => {
   });
 });
 
+// A blank stock column used to become a hard 0, so importing a WooCommerce
+// export or a hand-built price sheet zeroed the live count on every row it
+// touched — 37 in-stock SKUs at the time this was found — with no ledger entry
+// to reconstruct from. Same rule as cost_price now: blank means leave it alone.
+describe('normaliseRow, blank stock must not wipe the live count', () => {
+  it('omits stock when the cell is blank', () => {
+    const row = normaliseRow({ ...base, stock: '' });
+    expect('stock' in row!).toBe(false);
+  });
+
+  it('omits stock when the column is absent altogether', () => {
+    expect('stock' in normaliseRow(base)!).toBe(false);
+  });
+
+  it('carries a real stock figure through', () => {
+    expect(normaliseRow({ ...base, stock: '12' })).toMatchObject({ stock: 12 });
+  });
+
+  it('honours an explicit zero — that is a deliberate sell-out', () => {
+    expect(normaliseRow({ ...base, stock: '0' })).toMatchObject({ stock: 0 });
+  });
+
+  it('accepts the capitalised header from a spreadsheet export', () => {
+    expect(normaliseRow({ ...base, Stock: '7' })).toMatchObject({ stock: 7 });
+  });
+});
+
 describe('normaliseRow, existing behaviour still holds', () => {
   it('falls through an empty Sale price to the Regular price instead of charging 0', () => {
     const row = normaliseRow({

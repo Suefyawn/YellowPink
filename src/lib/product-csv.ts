@@ -78,7 +78,14 @@ export function normaliseRow(r: CsvRow): Record<string, unknown> | null {
 
   if (!brand || !name || price == null) return null;
 
-  const cost = num(r.cost_price, r['Cost price']);
+  const cost  = num(r.cost_price, r['Cost price']);
+  // Stock gets exactly the same blank-means-leave-alone rule as cost_price.
+  // It used to read `r.stock ? Number(r.stock) : 0`, so importing any sheet
+  // without a stock column — a WooCommerce export, a hand-built price sheet —
+  // silently zeroed the live count on every row it touched, with no ledger
+  // entry to reconstruct from. Setting a count to zero is a deliberate act and
+  // has to be spelled "0" in the cell.
+  const stock = num(r.stock, r.Stock, r['In stock?']);
 
   return {
     brand: brand.trim(),
@@ -89,7 +96,6 @@ export function normaliseRow(r: CsvRow): Record<string, unknown> | null {
     tag: r.tag || null,
     price,
     original_price: original,
-    stock: r.stock ? Number(r.stock) : 0,
     image_url: r.image_url || r['Images']?.split(',')[0]?.trim() || null,
     description: r.description || r.Description || null,
     short_description: r.short_description || r['Short description'] || null,
@@ -103,6 +109,7 @@ export function normaliseRow(r: CsvRow): Record<string, unknown> | null {
     // cost_price is spread in only when the cell has a value. Sending null for
     // a blank cell would wipe costs the sheet's author never touched, and a
     // costing pass usually fills a subset of rows at a time.
+    ...(stock != null ? { stock } : {}),
     ...(cost != null ? { cost_price: cost } : {}),
     ...(['draft', 'published', 'archived'].includes(r.status) ? { status: r.status } : {}),
     ...(r.track_inventory === 'true' || r.track_inventory === 'false'

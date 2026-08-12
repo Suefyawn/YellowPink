@@ -311,6 +311,14 @@ const nextConfig: NextConfig = {
       { source: '/reset-password',   headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
       { source: '/thank-you',        headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
       { source: '/api/:path*',       headers: [{ key: 'Cache-Control', value: PRIVATE_NO_STORE }] },
+
+      // …with one carve-out. /api/404/suggest answers a 404 page with public
+      // catalogue data keyed entirely by its `path` query string — no session,
+      // no personalisation. It MUST come after the wildcard above (later rules
+      // win for the same header key), and the Cache-Control the route handler
+      // sets is ignored without this entry, which quietly turned every 404
+      // render into a full catalogue read.
+      { source: '/api/404/suggest',  headers: [{ key: 'Cache-Control', value: CRAWLER_CACHE }] },
     ];
   },
   // Next 16 already sets `Cache-Control: public, max-age=…` on /_next/image

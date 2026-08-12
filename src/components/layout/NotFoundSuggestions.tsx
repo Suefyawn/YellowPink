@@ -28,7 +28,7 @@ export function NotFoundSuggestions() {
     fetch(`/api/404/suggest?path=${encodeURIComponent(path)}`, { signal: controller.signal })
       .then(r => (r.ok ? r.json() : null))
       .then((d: SuggestResponse | null) => {
-        if (d && (d.products.length > 0 || d.brand)) setData(d);
+        if (d && (d.products.length > 0 || d.brand || d.posts.length > 0)) setData(d);
       })
       .catch(() => { /* the generic fallback below is already on the page */ });
     return () => controller.abort();
@@ -36,7 +36,7 @@ export function NotFoundSuggestions() {
 
   if (!data) return null;
 
-  const { query, brand, products } = data;
+  const { query, brand, products, posts } = data;
 
   return (
     <section style={{ padding: '0 0 40px' }}>
@@ -97,6 +97,23 @@ export function NotFoundSuggestions() {
                   )}
                 </Link>
               ))}
+            </div>
+          )}
+
+          {posts.length > 0 && (
+            <div style={{ marginTop: products.length > 0 ? 20 : 0 }}>
+              <Overline style={{ display: 'block', marginBottom: 8, color: 'var(--ink-500)' }}>
+                From the journal
+              </Overline>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {posts.map(post => (
+                  <li key={post.slug} style={{ marginBottom: 4 }}>
+                    <Link href={`/blog/${post.slug}`} className="text-link" style={{ fontSize: '0.875rem' }}>
+                      {post.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

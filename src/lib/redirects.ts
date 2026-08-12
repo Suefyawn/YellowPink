@@ -1,6 +1,6 @@
 import { permanentRedirect } from 'next/navigation';
 import { supabase, isDemo } from '@/lib/supabase';
-import { canonicalSlug } from '@/lib/near-match';
+import { canonicalSlug, cleanSlug } from '@/lib/near-match';
 
 // ─── manual redirects at the 404 boundary ───────────────────────────────────
 // Middleware (src/proxy.ts) consults the `redirects` table for legacy WP URLs,
@@ -77,14 +77,23 @@ const SLUG_TABLES: Record<string, { table: string; gate: LiveGate }> = {
  * makes the call — see /api/404/suggest.
  */
 async function resolveCanonicalPath(pathname: string): Promise<string | null> {
-  const m = /^\/([a-z]+)\/([^/?#]+)\/?$/.exec(pathname);
+  // Anchored at the END, not the start, so a doubled path recovers too. A
+  // relative <a href="product/x"> on a PDP resolves to
+  // /product/<current>/product/x — the single most common real 404 from a
+  // human in this store's log. Taking the last /kind/slug pair rescues it.
+  // A path whose second-to-last segment is not a known kind (/product/a/b)
+  // still falls through, because "a" is not in SLUG_TABLES.
+  const m = /\/([a-z]+)\/([^/?#]+)\/?$/.exec(pathname);
   if (!m) return null;
   const [, kind, rawSlug] = m;
   const entry = SLUG_TABLES[kind];
   if (!entry) return null;
 
-  const candidate = canonicalSlug(rawSlug);
-  if (!candidate) return null;
+  // canonicalSlug returns null for an already-clean slug, but the path can
+  // still be wrong (the doubled case above), so fall back to the cleaned slug
+  // and let the path comparison decide whether there is anything to fix.
+  const candidate = canonicalSlug(rawSlug) ?? cleanSlug(rawSlug);
+  if (!candidate || `/${kind}/${candidate}` === pathname) return null;
 
   const base = supabase.from(entry.table).select('slug').eq('slug', candidate);
   const { data } = await (entry.gate === 'published'

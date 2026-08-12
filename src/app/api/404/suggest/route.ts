@@ -11,7 +11,7 @@
 // Broken-links report. We only make the BODY useful.
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getProducts } from '@/lib/supabase';
+import { getProducts, getBlogPosts } from '@/lib/supabase';
 import { brandSlug, brandsFromProducts } from '@/lib/brands';
 import { rankCandidates, slugToQuery, cleanSlug } from '@/lib/near-match';
 import { suggestLimiter, ipFromHeaders } from '@/lib/ratelimit';
@@ -31,9 +31,12 @@ export interface SuggestResponse {
   }>;
   /** A live brand page matching the missed path, when there is one. */
   brand: { name: string; slug: string; count: number } | null;
+  /** Journal posts matching the missed path. A dead /blog/ URL used to get
+   *  product tiles, which answers a question nobody asked. */
+  posts: Array<{ slug: string; title: string }>;
 }
 
-const EMPTY: SuggestResponse = { query: '', products: [], brand: null };
+const EMPTY: SuggestResponse = { query: '', products: [], brand: null, posts: [] };
 
 export async function GET(req: NextRequest) {
   const rl = await suggestLimiter.limit(ipFromHeaders(req.headers));
@@ -52,8 +55,16 @@ export async function GET(req: NextRequest) {
   const query = slugToQuery(slugPart);
   if (!query) return NextResponse.json(EMPTY);
 
-  const products = await getProducts().catch(() => []);
-  if (products.length === 0) return NextResponse.json({ ...EMPTY, query });
+  // A missed /blog/ URL wants posts first; everything else wants products
+  // first. Both lists are fetched either way so a mixed-intent path
+  // ("/product/melatonin-guide") can offer whichever actually matches.
+  const [products, posts] = await Promise.all([
+    getProducts().catch(() => []),
+    getBlogPosts().catch(() => []),
+  ]);
+  if (products.length === 0 && posts.length === 0) {
+    return NextResponse.json({ ...EMPTY, query });
+  }
 
   const ranked = rankCandidates(
     slugPart,
@@ -72,9 +83,16 @@ export async function GET(req: NextRequest) {
     return s === slugPart || slugPart.startsWith(`${s}-`) || slugPart.endsWith(`-${s}`);
   }) ?? null;
 
+  const rankedPosts = rankCandidates(
+    slugPart,
+    posts.map(p => ({ slug: p.slug, haystack: p.title ?? '', post: p })),
+    { limit: 3 },
+  );
+
   const body: SuggestResponse = {
     query,
     brand: brandHit ? { name: brandHit.name, slug: brandSlug(brandHit.name), count: brandHit.count } : null,
+    posts: rankedPosts.map(({ item }) => ({ slug: item.post.slug, title: item.post.title })),
     products: ranked.map(({ item }) => ({
       slug: item.product.slug,
       name: item.product.name,
