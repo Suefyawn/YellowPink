@@ -14,6 +14,10 @@ interface Props {
   /** Couriers we have a configured API adapter for, server passes this in
    *  via the page so the UI can show "Book pickup" vs "Enter manually". */
   apiAdapters: string[];
+  /** Set when a courier is credentialed but deliberately withheld from API
+   *  booking (e.g. pointed at its UAT host in production). Rendered as a
+   *  warning so staff know why only manual entry is offered. */
+  blockedReason?: string | null;
   /** Existing shipment (if any), render-cancellation + tracking link. */
   shipment?: {
     id: string;
@@ -46,7 +50,7 @@ const lbl: React.CSSProperties = {
   color: '#374151', marginBottom: 4,
 };
 
-export function ShipmentBookingForm({ orderId, preferManual, apiAdapters, shipment, deliveryCost, suggestedCharge, unconfirmed }: Props) {
+export function ShipmentBookingForm({ orderId, preferManual, apiAdapters, blockedReason, shipment, deliveryCost, suggestedCharge, unconfirmed }: Props) {
   const [courier, setCourier] = useState<string>(apiAdapters[0] ?? 'TCS');
   const [mode, setMode] = useState<'auto' | 'manual'>(preferManual || apiAdapters.length === 0 ? 'manual' : 'auto');
   const [bookState, bookAction, bookPending] = useActionState(bookShipment, null);
@@ -242,6 +246,16 @@ export function ShipmentBookingForm({ orderId, preferManual, apiAdapters, shipme
   );
   return (
     <div>
+      {/* Courier API disabled because it would book into the courier's test
+          environment — a consignment number that never reaches them and a
+          parcel nobody collects (see order YP-6WTC3EC7V, 11 Aug). Shown
+          before the staff member acts, not after. */}
+      {blockedReason && (
+        <div role="alert" style={{ marginBottom: 12, padding: '10px 14px', borderRadius: 8, fontSize: '0.8125rem', background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', lineHeight: 1.5 }}>
+          <strong style={{ display: 'block', marginBottom: 2 }}>Courier API booking is switched off</strong>
+          {blockedReason}
+        </div>
+      )}
       <div style={{ marginBottom: 12 }}>
         <label htmlFor="courier-picker" style={lbl}>Courier</label>
         <select

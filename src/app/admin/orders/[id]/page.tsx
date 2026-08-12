@@ -24,7 +24,7 @@ import { buildReviewAskMessage } from '@/lib/review-ask';
 import { buildConfirmAskMessage, buildConfirmedThanksMessage } from '@/lib/confirm-ask';
 import { brandPlusName } from '@/lib/product-display';
 import { stripEmoji } from '@/lib/text';
-import { configuredAdapterIds } from '@/lib/couriers';
+import { configuredAdapterIds, adapterBlockedReason } from '@/lib/couriers';
 import { ORDER_STATUS_LABELS, PAY_METHOD_LABELS } from '@/types';
 import { NON_REVENUE_ORDER_STATUSES, parseCommerceConfig } from '@/lib/commerce';
 import type { Order, CartItem, OrderStatus } from '@/types';
@@ -903,6 +903,7 @@ export default async function OrderDetailPage({
             orderId={o.id!}
             preferManual={!!vendorSelfDelivers}
             apiAdapters={apiAdapters}
+            blockedReason={adapterBlockedReason()}
             deliveryCost={o.delivery_cost ?? null}
             suggestedCharge={defaultDeliveryCost > 0 ? defaultDeliveryCost : undefined}
             unconfirmed={o.status === 'pending'}
