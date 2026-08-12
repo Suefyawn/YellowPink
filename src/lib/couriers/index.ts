@@ -17,7 +17,7 @@
 // ============================================================================
 
 import type { CourierAdapter } from './types';
-import { tcs } from './tcs';
+import { tcs, isMisconfiguredForProduction } from './tcs';
 
 // Client-safe display/tracking-URL profiles live in ./profiles so client
 // components can import them without bundling the API adapters. Re-exported
@@ -47,9 +47,25 @@ export function getAdapter(courierId: string | null | undefined): CourierAdapter
 }
 
 /** List of courier ids that have a configured + live adapter. UI uses this
- *  to decide whether to show "Book pickup" or "Enter tracking manually". */
+ *  to decide whether to show "Book pickup" or "Enter tracking manually".
+ *
+ *  A courier pointed at its TEST environment in production is deliberately
+ *  EXCLUDED: booking there returns a consignment number that never reaches
+ *  the courier, so the only safe path is manual entry (see tcs.ts's sandbox
+ *  guard and the banner in ShipmentBookingForm). */
 export function configuredAdapterIds(): string[] {
-  return Object.keys(ADAPTERS).filter(id => ADAPTERS[id].isConfigured());
+  return Object.keys(ADAPTERS).filter(
+    id => ADAPTERS[id].isConfigured() && !(id === 'TCS' && isMisconfiguredForProduction()),
+  );
+}
+
+/** Human-readable reason a configured courier is nonetheless unavailable for
+ *  API booking, for the admin UI. Null when everything is fine. */
+export function adapterBlockedReason(): string | null {
+  if (isMisconfiguredForProduction()) {
+    return 'TCS is pointed at its test environment (TCS_BASE_URL), so API booking is disabled to prevent consignment numbers that never reach TCS. Book on the TCS portal and enter the tracking number below. Fix: set TCS_BASE_URL to https://ociconnect.tcscourier.com with production credentials in Vercel, then redeploy.';
+  }
+  return null;
 }
 
 // Re-export the status mapper so the existing webhook route's

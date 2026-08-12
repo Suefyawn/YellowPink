@@ -105,6 +105,34 @@ function isConfigured(): boolean {
   return hasEcomCredentials();
 }
 
+// ─── Sandbox guard ──────────────────────────────────────────────────────────
+// TCS's UAT host happily ACCEPTS bookings and returns a consignment number
+// that exists nowhere in the merchant's real account. It looks exactly like
+// success: our shipment row says "booked", the order says Processing, staff
+// move on. Order YP-6WTC3EC7V sat unshipped for nine days that way (booked
+// 11 Aug against devconnect, CN 173016352192, never in the TCS dashboard,
+// never collected) until the customer's parcel was re-booked by hand.
+//
+// A silent sandbox booking is strictly worse than no booking at all, so in
+// production we refuse it and tell staff to use manual entry. Non-production
+// deployments may point at UAT freely.
+const UAT_HOSTS = ['devconnect', 'uat', 'sandbox', 'staging'];
+
+export function isSandboxBaseUrl(url: string | undefined = env('TCS_BASE_URL')): boolean {
+  const u = (url ?? '').toLowerCase();
+  return UAT_HOSTS.some(h => u.includes(h));
+}
+
+/** True when this deployment would book real customer parcels into TCS's
+ *  test environment. Exposed so the admin Shipment panel can warn before a
+ *  human clicks Book, not only after. */
+export function isMisconfiguredForProduction(): boolean {
+  return process.env.NODE_ENV === 'production' && isSandboxBaseUrl();
+}
+
+const SANDBOX_REFUSAL =
+  'TCS is pointed at its TEST environment (TCS_BASE_URL contains a UAT host), so a booking here would return a consignment number that never reaches TCS and the parcel would never be collected. Set TCS_BASE_URL to https://ociconnect.tcscourier.com with production credentials, or book on the TCS portal and enter the tracking number manually.';
+
 // ─── Step 1: gateway JWT (Authorization header) ─────────────────────────────
 // TCS auth tokens expire (the response includes an `expiry` timestamp). Cache
 // per process so we don't auth on every booking. Lambda cold-starts get a
@@ -223,6 +251,11 @@ async function getTokens(): Promise<Result<{ jwt: string; ecom: string }>> {
 async function book(input: BookingInput): Promise<Result<BookingResult>> {
   if (!isConfigured()) {
     return { ok: false, message: 'TCS adapter is not configured, set TCS_* env vars.', code: 'not_configured' };
+  }
+  // Refuse rather than create a phantom consignment (see SANDBOX_REFUSAL).
+  if (isMisconfiguredForProduction()) {
+    log.error('tcs.book_blocked_sandbox', { base_url: env('TCS_BASE_URL') });
+    return { ok: false, message: SANDBOX_REFUSAL, code: 'sandbox_in_production' };
   }
   const tokensOrErr = await getTokens();
   if (isErr(tokensOrErr)) return tokensOrErr;
