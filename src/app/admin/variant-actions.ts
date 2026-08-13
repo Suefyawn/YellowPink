@@ -25,9 +25,9 @@ async function assertProducts() {
 
 /** Add a value (a new shade, size, form…) to an existing attribute. */
 export async function createAttributeValue(
-  _prev: { error?: string; success?: boolean } | null,
+  _prev: { error?: string; success?: boolean; note?: string } | null,
   formData: FormData
-): Promise<{ error?: string; success?: boolean }> {
+): Promise<{ error?: string; success?: boolean; note?: string }> {
   const session = await assertProducts();
   const attributeId = String(formData.get('attribute_id') ?? '');
   const value = String(formData.get('value') ?? '').trim().slice(0, 120);
@@ -73,6 +73,35 @@ export async function createAttributeValue(
   // comes in that shade", so optionally create its variant in the same click —
   // at the product's own price, zero stock, ready to edit below.
   if (productId && formData.get('create_variant') === 'true') {
+    // A variant is only reachable on the storefront when it carries a value
+    // for EVERY option the product varies on (the picker intersects them all).
+    // So the one-click variant is only safe while this product varies on a
+    // single option — and it must be the one the value was just added to.
+    // Otherwise we'd mint a variant nobody can ever select.
+    const { data: existingVariants } = await admin
+      .from('product_variants')
+      .select('id')
+      .eq('product_id', productId);
+    const variantIds = ((existingVariants ?? []) as Array<{ id: string }>).map(v => v.id);
+    if (variantIds.length > 0) {
+      const { data: links } = await admin
+        .from('variant_attribute_values')
+        .select('attribute_value_id')
+        .in('variant_id', variantIds);
+      const valueIds = [...new Set(((links ?? []) as Array<{ attribute_value_id: string }>).map(l => l.attribute_value_id))];
+      const { data: valueRows } = valueIds.length
+        ? await admin.from('attribute_values').select('id, attribute_id').in('id', valueIds)
+        : { data: [] };
+      const usedAttrIds = new Set(((valueRows ?? []) as Array<{ id: string; attribute_id: string }>).map(r => r.attribute_id));
+      const multiOption = usedAttrIds.size > 1 || (usedAttrIds.size === 1 && !usedAttrIds.has(attributeId));
+      if (multiOption) {
+        if (productId) revalidatePath(`/admin/products/${productId}`);
+        return {
+          success: true,
+          note: 'Value added. No variant was created: this product varies on more than one option, and a variant needs all of them — create it with + Add variant and pick every option.',
+        };
+      }
+    }
     const { data: prod } = await admin
       .from('products')
       .select('price')

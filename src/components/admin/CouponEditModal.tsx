@@ -192,6 +192,13 @@ export function CouponEditModal({ coupon, products = [] }: { coupon: Coupon; pro
                   </div>
                 </>
               )}
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: '#374151', cursor: 'pointer' }}>
+                {/* Marker so the server can tell "unchecked" from "form never
+                    rendered the field" (the create form doesn't). */}
+                <input type="hidden" name="exclude_sale_items_present" value="1" />
+                <input type="checkbox" name="exclude_sale_items" value="true" defaultChecked={Boolean(coupon.exclude_sale_items)} />
+                Don&apos;t apply to sale items (items already below their compare-at price)
+              </label>
               <div>
                 <label style={lbl}>Internal note</label>
                 <input

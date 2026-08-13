@@ -70,10 +70,17 @@ function advancedColumns(formData: FormData): { error?: string; cols?: Record<st
   const product_ids = parseIds('product_ids');
   const excluded_product_ids = parseIds('excluded_product_ids');
 
+  // Checkbox with a rendered-marker: absent marker (create form) leaves the
+  // column untouched; present marker records the checkbox state as-is.
+  const exclude_sale_items = formData.get('exclude_sale_items_present') === '1'
+    ? formData.get('exclude_sale_items') === 'true'
+    : undefined;
+
   return { cols: {
     usage_limit_per_user, max_order, email_restrictions, description,
     ...(product_ids !== undefined ? { product_ids } : {}),
     ...(excluded_product_ids !== undefined ? { excluded_product_ids } : {}),
+    ...(exclude_sale_items !== undefined ? { exclude_sale_items } : {}),
   } };
 }
 

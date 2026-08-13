@@ -67,7 +67,12 @@ export function productMatchesRules(p: Product, rules: SmartRules, productTags: 
 
 /** Ordered product list for a collection.
  *  - manual: the products in `manualOrder` (by their stored position).
- *  - smart:  catalogue products matching the rules, in catalogue order. */
+ *  - smart:  catalogue products matching the rules, best sellers first.
+ *
+ * Smart membership used to keep the caller's order, which in practice was the
+ * catalogue query's `.order('id')` — i.e. random UUID order on the landing
+ * page. Sales signal first, then newest, is the Shopify default for automated
+ * collections and matches what the shop browser calls "Best selling". */
 export function resolveCollectionProducts(
   collection: Pick<Collection, 'type' | 'rules'>,
   products: Product[],
@@ -80,5 +85,11 @@ export function resolveCollectionProducts(
       .sort((a, b) => (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
   }
   const tagMap = opts.productTagMap ?? {};
-  return products.filter(p => productMatchesRules(p, collection.rules, tagMap[p.id] ?? []));
+  return products
+    .filter(p => productMatchesRules(p, collection.rules, tagMap[p.id] ?? []))
+    .sort((a, b) =>
+      (b.sales_score ?? 0) - (a.sales_score ?? 0)
+      || (b.units_sold ?? 0) - (a.units_sold ?? 0)
+      || (b.created_at ?? '').localeCompare(a.created_at ?? ''),
+    );
 }

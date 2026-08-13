@@ -157,7 +157,13 @@ function VariantForm({
 // ─── Add a new attribute value (a shade that isn't listed yet) ─────────────
 // Its own <form>, never nested inside a VariantForm: the new value lands in
 // every variant dropdown on save, so it lives at section level.
-function AddValueForm({ productId, attributes }: { productId: string; attributes: AttributeWithValues[] }) {
+function AddValueForm({ productId, attributes, multiOption }: {
+  productId: string;
+  attributes: AttributeWithValues[];
+  /** True when this product's variants span more than one option axis — the
+   *  one-click variant would be unreachable, so the shortcut is hidden. */
+  multiOption: boolean;
+}) {
   const [state, formAction, pending] = useActionState(createAttributeValue, null);
   const [attrState, deleteAttrAction, attrPending] = useActionState(deleteAttribute, null);
   return (
@@ -184,10 +190,12 @@ function AddValueForm({ productId, attributes }: { productId: string; attributes
       }}>
         {pending ? 'Adding…' : '+ Add value'}
       </button>
-      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#374151', cursor: 'pointer', paddingBottom: 8 }}>
-        <input type="checkbox" name="create_variant" value="true" defaultChecked />
-        also create its variant (product&apos;s price, 0 stock)
-      </label>
+      {!multiOption && (
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#374151', cursor: 'pointer', paddingBottom: 8 }}>
+          <input type="checkbox" name="create_variant" value="true" defaultChecked />
+          also create its variant (product&apos;s price, 0 stock)
+        </label>
+      )}
       {/* The undo for a mistaken attribute: deletes the SELECTED attribute,
           server-guarded to attributes no variant anywhere uses. */}
       <button
@@ -211,7 +219,7 @@ function AddValueForm({ productId, attributes }: { productId: string; attributes
       )}
       {state?.success && (
         <span style={{ fontSize: '0.75rem', color: '#065f46', flexBasis: '100%' }}>
-          Added — set its stock and price below.
+          {state.note ?? 'Added — set its stock and price below.'}
         </span>
       )}
     </form>
@@ -355,7 +363,14 @@ export function VariantsSection({
 
       {/* A shade/size that isn't listed yet gets added here and immediately
           appears in every variant dropdown below. */}
-      <AddValueForm productId={productId} attributes={attributes} />
+      <AddValueForm
+        productId={productId}
+        attributes={attributes}
+        multiOption={(() => {
+          const used = new Set(variants.flatMap(v => v.option_value_ids));
+          return attributes.filter(a => a.values.some(v => used.has(v.id))).length > 1;
+        })()}
+      />
 
       {adding && (
         <VariantForm

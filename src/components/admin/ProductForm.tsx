@@ -168,7 +168,10 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
             const formData = new FormData(e.currentTarget);
             startTransition(() => action(formData));
           }}
+          // onInput misses <select> edits in some browsers — a changed Status or
+          // Category never marked the form dirty and was lost without warning.
           onInput={() => { if (!dirty) setDirty(true); }}
+          onChange={() => { if (!dirty) setDirty(true); }}
         >
           {/* ── Basics ─────────────────────────────────────────────────── */}
           <Section title="Basics" first>
