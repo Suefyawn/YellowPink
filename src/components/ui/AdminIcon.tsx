@@ -36,6 +36,7 @@ export type AdminIconName =
   | 'ticket'
   | 'megaphone'
   | 'send'
+  | 'smartphone'
   | 'pen-line'
   | 'shield-check'
   | 'star'
@@ -226,6 +227,12 @@ const ICONS: Record<AdminIconName, ReactElement> = {
     <>
       <path d="m22 2-7 20-4-9-9-4Z" />
       <path d="M22 2 11 13" />
+    </>
+  ),
+  smartphone: (
+    <>
+      <rect x="5" y="2" width="14" height="20" rx="2" />
+      <path d="M12 18h.01" />
     </>
   ),
   'pen-line': (

@@ -335,6 +335,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
           boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
         }}>
           <span style={{ color: '#f9fafb', fontSize: '0.875rem', fontWeight: 600 }}>{selected.size} selected</span>
+          <a href={`/admin/products/bulk-edit?ids=${Array.from(selected).join(',')}`} style={{ ...btn('#C5286A'), textDecoration: 'none', display: 'inline-block' }}>Bulk edit</a>
           <button onClick={() => wrap(() => bulkPublishProducts(Array.from(selected)), 'Published')} disabled={pending} style={btn('#10b981')}>Publish</button>
           <button onClick={() => wrap(() => bulkDraftProducts(Array.from(selected)), 'Set to draft')} disabled={pending} style={btn('#f59e0b')}>Set draft</button>
           <button onClick={() => wrap(() => bulkArchiveProducts(Array.from(selected)), 'Archived')} disabled={pending} style={btn('#6b7280')}>Archive</button>
