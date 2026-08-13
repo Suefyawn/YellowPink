@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { createVariant, updateVariant, deleteVariant } from '@/app/admin/variant-actions';
+import { createVariant, updateVariant, deleteVariant, createAttribute, createAttributeValue } from '@/app/admin/variant-actions';
 import type { ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -154,6 +154,72 @@ function VariantForm({
   );
 }
 
+// ─── Add a new attribute value (a shade that isn't listed yet) ─────────────
+// Its own <form>, never nested inside a VariantForm: the new value lands in
+// every variant dropdown on save, so it lives at section level.
+function AddValueForm({ productId, attributes }: { productId: string; attributes: AttributeWithValues[] }) {
+  const [state, formAction, pending] = useActionState(createAttributeValue, null);
+  return (
+    <form action={formAction} style={{
+      display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap',
+      padding: '12px 14px', background: '#f9fafb', border: '1px dashed #d1d5db',
+      borderRadius: 8, marginBottom: 14,
+    }}>
+      <input type="hidden" name="product_id" value={productId} />
+      <div style={{ minWidth: 140 }}>
+        <label style={lbl}>New value for</label>
+        <select name="attribute_id" required defaultValue={attributes.length === 1 ? attributes[0].id : ''} style={inp}>
+          {attributes.length !== 1 && <option value="" disabled>Attribute…</option>}
+          {attributes.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </select>
+      </div>
+      <div style={{ flex: '1 1 180px' }}>
+        <label style={lbl}>Value</label>
+        <input name="value" required maxLength={120} placeholder="e.g. Barcelona, 50ml, Rose Gold" style={inp} />
+      </div>
+      <button type="submit" disabled={pending} style={{
+        padding: '8px 14px', background: pending ? '#9ca3af' : '#111827', color: 'white',
+        border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+      }}>
+        {pending ? 'Adding…' : '+ Add value'}
+      </button>
+      {state?.error && (
+        <span style={{ fontSize: '0.75rem', color: '#dc2626', flexBasis: '100%' }}>{state.error}</span>
+      )}
+      {state?.success && (
+        <span style={{ fontSize: '0.75rem', color: '#065f46', flexBasis: '100%' }}>
+          Added — it&apos;s now in every dropdown below.
+        </span>
+      )}
+    </form>
+  );
+}
+
+// ─── First attribute for a catalogue that has none ─────────────────────────
+function CreateAttributeForm({ productId }: { productId: string }) {
+  const [state, formAction, pending] = useActionState(createAttribute, null);
+  return (
+    <form action={formAction} style={{ display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap', marginTop: 12 }}>
+      <input type="hidden" name="product_id" value={productId} />
+      <div style={{ minWidth: 160 }}>
+        <label style={lbl}>Attribute name</label>
+        <input name="name" required maxLength={80} placeholder="e.g. Shade" style={inp} />
+      </div>
+      <div style={{ flex: '1 1 180px' }}>
+        <label style={lbl}>Its first value</label>
+        <input name="first_value" required maxLength={120} placeholder="e.g. Orgasm" style={inp} />
+      </div>
+      <button type="submit" disabled={pending} style={{
+        padding: '8px 14px', background: pending ? '#9ca3af' : '#C5286A', color: 'white',
+        border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+      }}>
+        {pending ? 'Creating…' : 'Create attribute'}
+      </button>
+      {state?.error && <span style={{ fontSize: '0.75rem', color: '#dc2626', flexBasis: '100%' }}>{state.error}</span>}
+    </form>
+  );
+}
+
 // ─── Main section ──────────────────────────────────────────────────────────
 export function VariantsSection({
   productId, productKind, attributes, variants, stockCounted = true,
@@ -183,12 +249,11 @@ export function VariantsSection({
     return (
       <div style={{ padding: '24px 28px', marginTop: 24, background: 'white', borderRadius: 10, border: '1px solid #e5e7eb' }}>
         <h2 style={{ margin: '0 0 8px', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Variants</h2>
-        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280', marginBottom: 8 }}>
-          No global attributes exist yet. Add them via the WooCommerce importer or directly via SQL in <code>product_attributes</code> + <code>attribute_values</code>.
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#6b7280' }}>
+          Variants need an attribute — the axis they vary on, like Shade or Size. Create the first one
+          and its first value, then add variants against it.
         </p>
-        <p style={{ margin: 0, fontSize: '0.75rem', color: '#9ca3af' }}>
-          A dedicated attributes admin UI is on the roadmap.
-        </p>
+        <CreateAttributeForm productId={productId} />
       </div>
     );
   }
@@ -206,6 +271,10 @@ export function VariantsSection({
           }}>+ Add variant</button>
         )}
       </div>
+
+      {/* A shade/size that isn't listed yet gets added here and immediately
+          appears in every variant dropdown below. */}
+      <AddValueForm productId={productId} attributes={attributes} />
 
       {adding && (
         <VariantForm
