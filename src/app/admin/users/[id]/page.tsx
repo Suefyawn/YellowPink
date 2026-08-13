@@ -12,6 +12,7 @@ import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge';
 import { deleteCustomer } from '@/app/admin/actions';
 import { adjustLoyaltyPoints } from '@/app/admin/users/loyalty-actions';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
+import { isCodFlagged } from '@/lib/cod-flags';
 import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
 import { fmtDatePK as fmtDate, fmtDateTimePK as fmtDateTime } from '@/lib/dates';
 
@@ -134,6 +135,28 @@ export default async function UserDetailPage({
     activityRows = (activity ?? []) as ActivityRow[];
     loyalty = (loyaltyRow as { points_balance: number; lifetime_points: number } | null) ?? null;
   }
+  // Who-are-they signals for the confirmation call, same sources the order
+  // page uses. COD flag: the shared helper (lib/cod-flags) that gates
+  // dispatch; newsletter: the subscribers table's unsubscribed_at flag
+  // (ilike = case-insensitive match, emails are stored as typed).
+  const codFlagged = await isCodFlagged({ phone: user.phone, email: user.email });
+  let newsletter: 'subscribed' | 'unsubscribed' | 'none' = 'none';
+  if (user.email) {
+    const { data: nlRows } = await admin
+      .from('newsletter_subscribers')
+      .select('unsubscribed_at')
+      .ilike('email', user.email)
+      .limit(1);
+    const nl = (nlRows ?? [])[0] as { unsubscribed_at: string | null } | undefined;
+    if (nl) newsletter = nl.unsubscribed_at ? 'unsubscribed' : 'subscribed';
+  }
+  // First order date ("Customer since"): orderList arrives newest-first in
+  // both the guest and registered branches, but reduce anyway so a future
+  // sort change can't silently flip this to the latest order.
+  const customerSince = orderList.length
+    ? orderList.reduce((min, o) => (o.created_at && o.created_at < min ? o.created_at : min), orderList[0].created_at ?? '')
+    : null;
+
   // Lifetime spend + AOV are revenue figures, so they count only realized
   // orders, a cancelled / refunded / returned / payment-failed order brought
   // in no money and would otherwise inflate both numbers (and AOV especially,
@@ -177,6 +200,18 @@ export default async function UserDetailPage({
         }}>
           {isGuest ? 'Guest' : 'Registered'}
         </span>
+        {codFlagged && (
+          <span
+            title="A confirmed COD parcel of this phone/email was refused. Collect advance payment before dispatching their next order."
+            style={{
+              display: 'inline-block', padding: '2px 10px', borderRadius: 20,
+              fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.03em',
+              background: '#fee2e2', color: '#b91c1c', border: '1px solid #fecaca',
+            }}
+          >
+            COD refusal flag
+          </span>
+        )}
       </div>
 
       {/* minWidth: 0 on both columns so the Order History table's intrinsic
@@ -210,6 +245,21 @@ export default async function UserDetailPage({
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
                 <span style={{ color: '#6b7280' }}>Joined</span>
                 <span style={{ color: '#374151' }}>{fmtDate(user.created_at)}</span>
+              </div>
+              {customerSince && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                  <span style={{ color: '#6b7280' }}>Customer since</span>
+                  <span style={{ color: '#374151' }}>{fmtDate(customerSince)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8125rem' }}>
+                <span style={{ color: '#6b7280' }}>Newsletter</span>
+                <span style={{
+                  fontWeight: 500,
+                  color: newsletter === 'subscribed' ? '#15803d' : newsletter === 'unsubscribed' ? '#b45309' : '#9ca3af',
+                }}>
+                  {newsletter === 'subscribed' ? 'Subscribed to newsletter' : newsletter === 'unsubscribed' ? 'Unsubscribed' : 'Not subscribed'}
+                </span>
               </div>
             </div>
             {waHref && (

@@ -472,7 +472,7 @@ Every order placed.
 
 Open an order to process it (see [section 4](#4-processing-a-sale--the-order-workflow)). With the *Orders — Delete* permission, an order page has a **Danger zone** to permanently delete that order (and its payment/shipment/settlement records) — useful for removing test orders; it can't be undone.
 
-**Manual order entry.** A **+ New order** button (also in the Cmd K palette as "New order") opens manual order entry for orders taken over WhatsApp, phone, or DMs: search-and-add products (quantities and unit prices are editable, so an agreed special price is fine), enter the customer's delivery details, and the shipping charge is suggested from your shipping zones (editable — set it to 0 for free delivery) along with an optional manual discount. If a supplier will fulfil the order, pick them in **Fulfilled by vendor** — the form previews the estimated vendor cost and your margin from the vendor's commission %, and the created order gets its acquisition cost and settlement recorded automatically (nothing is sent to the vendor yet — use the order page's WhatsApp dispatch for that). Stock is reserved through the inventory ledger exactly like a storefront order, the order appears in the list marked as a manual order for reporting, and if you enter the customer's email you can tick a box to send them the standard confirmation email.
+**Manual order entry.** A **+ New order** button (also in the Cmd K palette as "New order") opens manual order entry for orders taken over WhatsApp, phone, or DMs: search-and-add products (quantities and unit prices are editable, so an agreed special price is fine), enter the customer's delivery details (a search box above the customer fields finds a repeat customer by phone, name or email and fills their details from their most recent order), and the shipping charge is suggested from your shipping zones (editable — set it to 0 for free delivery) along with an optional manual discount. If a supplier will fulfil the order, pick them in **Fulfilled by vendor** — the form previews the estimated vendor cost and your margin from the vendor's commission %, and the created order gets its acquisition cost and settlement recorded automatically (nothing is sent to the vendor yet — use the order page's WhatsApp dispatch for that). Stock is reserved through the inventory ledger exactly like a storefront order, the order appears in the list marked as a manual order for reporting, and if you enter the customer's email you can tick a box to send them the standard confirmation email.
 
 ### Products in detail
 
@@ -513,7 +513,7 @@ The page opens with three headline cards — **Owed to you** (pending margin ven
 
 Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend.
 
-The customer page shows four stats — **Orders / Delivered / Total spend / Avg order** (total spend and average exclude cancelled, refunded, returned and payment-failed orders so they reflect realized revenue) — plus a tap-to-call phone link and a one-tap **WhatsApp** button that opens chat with a Yellow Pink greeting pre-filled.
+The customer page shows four stats — **Orders / Delivered / Total spend / Avg order** (total spend and average exclude cancelled, refunded, returned and payment-failed orders so they reflect realized revenue) — plus a tap-to-call phone link and a one-tap **WhatsApp** button that opens chat with a Yellow Pink greeting pre-filled. The profile card also shows a **Customer since** date (their first order), their **newsletter status** (Subscribed / Unsubscribed / Not subscribed), and, when a confirmed COD parcel of theirs was refused, a red **COD refusal flag** chip next to their name: collect advance payment before dispatching their next order.
 
 A registered customer's page also shows a **Reward points** card — their current balance and lifetime points — and, with the *Customers — Edit* permission, a small **Adjust points** form: enter a positive or negative amount and a short reason to credit or deduct points on the spot. This is how you award the **Google review bonus** (Google can't tell the site who reviewed, so you grant it by hand once you see the review land), and it also covers goodwill credits and corrections. The adjustment appears on the customer's own rewards page as *"Manual adjustment"* and is recorded in the activity log.
 
@@ -702,7 +702,14 @@ the items, the full status timeline, a payment summary, and a **Print Invoice**
 button. The customer's phone is a tap-to-call link, the email is a `mailto:`
 link, and the shipping address has an **Open in Maps ↗** link that opens
 Google Maps with the address pre-filled — handy when handing off to a courier
-or sanity-checking a delivery zone. If a customer reports they didn't get the
+or sanity-checking a delivery zone. The shipping-address card also has an
+**Edit** button (staff who can manage orders): fix a wrong phone digit, name
+or address right on the order during the confirmation call, and the change is
+recorded in the Activity log and flows straight into the invoice and the
+WhatsApp messages. If the customer has filed any return requests for this
+order, a read-only **Returns** block appears near the status card showing each
+request's status, date, reason and refund amount, with a link to the Returns
+page where the decisions are made. If a customer reports they didn't get the
 order confirmation email, the email field has a **Resend confirmation email**
 button right next to it (gated on Orders — Manage); the resend is recorded in
 the Activity log.
@@ -1038,6 +1045,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 13 August 2026
+
+- **The confirmation call got its missing tools.** When the customer says the address is wrong, fix it on the spot: the order page's shipping-address card now has an **Edit** button for the name, phone, email and address (the change is recorded in the Activity log, and the invoice and WhatsApp messages pick it up immediately). Return requests the customer has filed for that order now show right on the order page, near the status card, so nobody works an order blind to a return in flight. The customer page now tells you who you are talking to before you dial: a red **COD refusal flag** chip when their phone or email is flagged, their newsletter status, and a **Customer since** date from their first order. And the manual order screen can look up a repeat customer by phone, name or email and fill in their details from their last order instead of you retyping them.
 
 - **Every email now carries the brand, and campaigns got rich blocks.** All store email (order emails, newsletter campaigns, outreach) shares one branded layout: the yellow-to-pink gradient bar, the flower mark and wordmark, and the standard footer. Newsletter campaigns additionally support rich blocks typed as plain text: a `# headline` becomes a brand hero band, `[[code:…]]` renders a coupon-code box, `[[products:…]]` renders live product cards (image, name, price with the compare-at strike), and `[[button:…|…]]` renders a proper button. The composer gained a **Preview** button showing the exact email, and the saved **Azadi draft** was rebuilt with a hero, the AZADI14 code box, four bestseller cards and a Shop button.
 

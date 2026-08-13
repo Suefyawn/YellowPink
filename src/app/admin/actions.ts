@@ -894,6 +894,65 @@ export async function updateOrderStatus(
   return { success: true };
 }
 
+/** Edit an order's recipient details (Shopify: order → Edit contact
+ *  information / shipping address) — the wrong-phone-digit / moved-house fix
+ *  the confirmation call surfaces. Recipient fields only; items, totals and
+ *  status are untouched. Gated on orders.edit like the other order
+ *  mutations. No order_events row is written: that table's to_status is
+ *  NOT NULL (it records status transitions only), so the audit log carries
+ *  the before/after record instead. */
+export async function updateOrderContact(
+  orderId: string,
+  formData: FormData,
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertPermission('orders.edit');
+  const admin = supabaseAdmin();
+
+  const firstName = ((formData.get('first_name') as string) ?? '').trim();
+  const lastName  = ((formData.get('last_name') as string) ?? '').trim();
+  const phone     = ((formData.get('phone') as string) ?? '').trim();
+  const email     = ((formData.get('email') as string) ?? '').trim();
+  const address   = ((formData.get('address') as string) ?? '').trim();
+  const city      = ((formData.get('city') as string) ?? '').trim();
+  const province  = ((formData.get('province') as string) ?? '').trim();
+  const zip       = ((formData.get('zip') as string) ?? '').trim();
+
+  if (!phone) return { error: 'Phone is required: it is the delivery and WhatsApp contact.' };
+  if (!address) return { error: 'Address is required.' };
+  if (!city) return { error: 'City is required.' };
+
+  const { data: before } = await admin
+    .from('orders')
+    .select('first_name, last_name, phone, email, address, city, province, zip')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (!before) return { error: 'Order no longer exists.' };
+
+  const after = {
+    first_name: firstName,
+    last_name: lastName,
+    phone,
+    email: email || null,
+    address,
+    city,
+    province: province || null,
+    zip: zip || null,
+  };
+  const { error } = await admin.from('orders').update(after).eq('id', orderId);
+  if (error) return { error: error.message };
+
+  await logAudit(session, {
+    action: 'order.contact_update',
+    entity: 'order',
+    entity_id: orderId,
+    diff: { before, after },
+  });
+
+  revalidatePath(`/admin/orders/${orderId}`);
+  revalidatePath('/admin/orders');
+  return { success: true };
+}
+
 /** Set/clear the COD-refusal flag for an order's customer identity (phone +
  *  email). Dispatch-side policy only — checkout is never gated. */
 export async function toggleCodFlag(orderId: string, flag: boolean): Promise<void> {
