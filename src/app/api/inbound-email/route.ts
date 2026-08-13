@@ -115,6 +115,57 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
+  // ─── Outreach reply? ──────────────────────────────────────────────────────
+  // If the sender belongs to an outreach prospect, thread the mail onto that
+  // prospect in Admin → Outreach instead of the general Messages inbox — one
+  // email should demand attention in exactly one place. Matched by the exact
+  // pitched address first, then by the sender's domain, because editors
+  // routinely reply from a personal address on the same domain
+  // (pitch to editor@site.com, reply from firstname@site.com).
+  const senderDomain = email.split('@')[1] ?? '';
+  try {
+    const admin = supabaseAdmin();
+    const { data: prospect } = await admin
+      .from('outreach_prospects')
+      .select('id, domain, status')
+      .or(`contact_email.eq.${email},domain.eq.${senderDomain}`)
+      .limit(1)
+      .maybeSingle();
+    if (prospect) {
+      const p = prospect as { id: string; domain: string; status: string };
+      const { error: threadErr } = await admin.from('outreach_messages').insert({
+        prospect_id: p.id,
+        direction: 'in',
+        subject: clamp(subject, MAX.subject) || null,
+        body: message,
+        status: 'received',
+      });
+      if (threadErr) {
+        log.error('inbound_email.outreach_thread_failed', { error: threadErr.message });
+        return NextResponse.json({ error: 'insert failed' }, { status: 500 });
+      }
+      // A reply reopens the conversation, but never demotes a won link.
+      if (p.status !== 'link_live') {
+        await admin.from('outreach_prospects')
+          .update({ status: 'replied', updated_at: new Date().toISOString() })
+          .eq('id', p.id);
+      }
+      await admin.from('admin_notifications').insert({
+        kind: 'outreach_reply',
+        title: `Outreach reply from ${p.domain}`,
+        body: clamp(subject, MAX.subject) || 'They wrote back. Open the thread to read and answer.',
+        link: `/admin/outreach?prospect=${p.id}`,
+        entity_id: p.id,
+      });
+      log.info('inbound_email.outreach_reply', { email, prospect: p.domain });
+      return NextResponse.json({ ok: true });
+    }
+  } catch (err) {
+    // Matching is best-effort: a lookup failure falls through to Messages so
+    // the mail is never dropped.
+    log.warn('inbound_email.outreach_match_failed', { error: (err as Error).message });
+  }
+
   const { error } = await supabaseAdmin()
     .from('contact_messages')
     .insert({

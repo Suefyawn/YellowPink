@@ -59,6 +59,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     { href: '/admin/reviewers', label: 'Medical reviewers', icon: 'shield-check', permission: 'blog' },
     { href: '/admin/newsletter', label: 'Newsletter', icon: 'mail', permission: 'newsletter' },
     { href: '/admin/link-builder', label: 'Link builder', icon: 'megaphone', permissionsAny: ['analytics', 'newsletter', 'coupons'] },
+    { href: '/admin/outreach',  label: 'Outreach',  icon: 'send', permission: 'outreach' },
     { href: '/admin/search-demand', label: 'Search demand', icon: 'bar-chart', permissionsAny: ['analytics', 'products.view', 'blog'] },
     { href: '/admin/seo-rankings', label: 'SEO rankings', icon: 'trend-up', permission: 'analytics' },
   ]},

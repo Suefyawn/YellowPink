@@ -490,6 +490,32 @@ export async function sendCustomerReplyEmail(args: {
   return send({ to: args.to, subject: args.subject, html, from: args.from, replyTo: args.replyTo, category: 'Customer reply' });
 }
 
+// Outreach pitch / reply, sent from Admin → Outreach. Deliberately NOT the
+// branded shell(): a link pitch to an editor has to read like one person
+// writing to another, and a storefront template with a logo header reads as
+// marketing blast. Bare paragraphs only. From the owner's name on the store
+// support address; replies return through the inbound webhook and thread onto
+// the prospect in Admin → Outreach. kind:'batch' so outreach can never crowd
+// order confirmations out of the daily send budget.
+export const OUTREACH_FROM = 'Sufyan Zafar <hello@yellowpink.pk>';
+
+export async function sendOutreachEmail(args: {
+  to: string;
+  subject: string;
+  body: string;
+}): Promise<boolean> {
+  const html = `<div style="white-space:pre-wrap;line-height:1.6;font-size:14px;color:#1f2937;font-family:Arial,Helvetica,sans-serif">${escapeHtml(args.body)}</div>`;
+  return send({
+    to: args.to,
+    subject: args.subject,
+    html,
+    from: OUTREACH_FROM,
+    replyTo: 'hello@yellowpink.pk',
+    kind: 'batch',
+    category: 'Outreach',
+  });
+}
+
 // ─── 2. Customer: order confirmation ────────────────────────────────────────
 /** Returns true when Resend accepted the email; false when the send was
  *  skipped (no API key, daily cap) or rejected. Checkout callers fire and
