@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 12 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 13 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -362,7 +362,7 @@ Here's what each link is for:
 |---|---|
 | **Orders** | Every order placed — saved-view tabs, sortable columns, split Payment/Fulfilment status chips, filters, CSV export and manual order entry. Full breakdown in [Orders in detail](#orders-in-detail). |
 | **Products** | The catalogue — create, edit, publish, archive and delete products, with status tabs, column filters, bulk actions, per-row Duplicate and a CSV import/export round-trip. Full breakdown in [Products in detail](#products-in-detail). |
-| **Inventory** | Stock levels. See low-stock items and adjust stock counts. Stock can never go below zero: if you remove more than is on hand, the adjustment is capped at zero, the ledger records the amount actually applied, and the page shows an amber warning telling you what was applied versus what you asked for. |
+| **Inventory** | Stock levels. See low-stock items and adjust stock counts. Every row shows a **Listing** chip (Live or Draft) beside the stock state, and a product you hold at zero reads **"Sold out, still selling"** unless it has opted into genuine sell-outs. Stock can never go below zero: if you remove more than is on hand, the adjustment is capped at zero, the ledger records the amount actually applied, and the page shows an amber warning telling you what was applied versus what you asked for. |
 | **Returns** | Customer return requests and refund processing, with KPIs, status tabs and a three-step lifecycle (approve → receive & restock → refund). Full breakdown in [Returns in detail](#returns-in-detail). |
 | **Vendors** | Your suppliers/fulfilment partners — commission rates that price orders automatically, headline balance cards, and payout settlement. Full breakdown in [Vendors in detail](#vendors-in-detail). |
 
@@ -1028,6 +1028,14 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 13 August 2026
+
+- **The Inventory screen now says whether a product is actually on the storefront.** Every row in the stock table carries a **Listing** chip — **Live** for a published product, **Draft** otherwise — so a zero next to a draft (needs no action) can no longer be confused with a zero on a live listing (orders are being taken against goods not on the shelf). The Reorder needed panel flags drafts the same way. And because a live product now keeps selling past zero, the old red "Out of stock" badge was overstating: a product you hold at zero now reads **"Sold out, still selling"** unless you've ticked *Show as sold out when the count reaches zero*, in which case it still reads Out of stock, because for that product it truly is.
+
+- **Mangled addresses of a second shape now recover too.** A relative link inside a page could produce addresses like `/product//product/f-lium-drops` — the single most-hit broken address from real visitors, pointing at a product that was live the whole time. Those now land on the right page instead of the 404.
+
+- **In-browser translation no longer half-breaks.** Shoppers using Chrome's built-in page translation (typically English → Urdu) were having the translation requests blocked by the site's security policy — reported by live monitoring on 12 August. The translation endpoints are now allowed, so translated browsing works fully.
 
 ### 12 August 2026
 
