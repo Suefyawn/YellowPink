@@ -231,7 +231,10 @@ export default async function InventoryPage({
               const poMessage = [
                 'Yellow Pink, Reorder request',
                 '',
-                ...items.map(p => `• ${suggestQty(p)}× ${brandPlusName(p.brand, p.name)} (in stock: ${p.stock})`),
+                // effectiveStock, not p.stock: for a variant product the parent
+                // counter is stale (caught on a live screenshot — Rhode showed
+                // "in stock: 40" while its shades held 0).
+                ...items.map(p => `• ${suggestQty(p)}× ${brandPlusName(p.brand, p.name)} (in stock: ${effectiveStock(p)})`),
               ].join('\n');
               const waHref = vendor?.phone ? whatsappUrlForCustomer(vendor.phone, poMessage) : null;
               return (
@@ -266,7 +269,7 @@ export default async function InventoryPage({
                                 </span>
                               )}
                             </td>
-                            <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: p.stock <= 0 ? '#991b1b' : '#92400e' }}>{p.stock}</td>
+                            <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: effectiveStock(p) <= 0 ? '#991b1b' : '#92400e' }}>{effectiveStock(p)}</td>
                             <td style={{ padding: '8px 14px', textAlign: 'right', color: '#6b7280' }}>{p.reorder_point}</td>
                             <td style={{ padding: '8px 14px', textAlign: 'right', fontWeight: 600 }}>{suggestQty(p)}</td>
                           </tr>
