@@ -41,12 +41,19 @@ function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T
 // over the whole list would be killed mid-send, hanging the UI). Anything
 // beyond the cap is left unsent; the campaign row's recipient/sent counts
 // surface the shortfall.
+export type CampaignAudience = 'subscribers' | 'customers' | 'both';
+
 export async function sendNewsletterCampaign(
   subject: string,
   body: string,
   /** When sending a saved draft, its row is promoted to 'sent' instead of a
    *  new campaign row being inserted, so the edition doesn't double up. */
   draftId?: string,
+  /** Who receives it. 'customers' pulls every distinct order email;
+   *  'both' unions the lists. Anyone who unsubscribed from the newsletter is
+   *  excluded from every audience — an unsubscribe means all marketing mail,
+   *  not just the list they clicked it from. */
+  audience: CampaignAudience = 'subscribers',
 ): Promise<SendCampaignResult> {
   const session = await getStaffSession();
   if (!can(session, 'newsletter')) {
@@ -59,40 +66,96 @@ export async function sendNewsletterCampaign(
   }
 
   const admin = supabaseAdmin();
+  const emailSet = new Set<string>();
 
-  let subs: { email: string | null }[] | null = null;
+  // Opt-outs bar every audience.
+  let unsubscribed = new Set<string>();
   try {
-    // fetchAll pages past PostgREST's silent 1000-row cap; without it the
-    // campaign never reached subscriber #1001. Stable order keeps pages
-    // consistent while the walk runs.
     const res = await withTimeout(
       fetchAll<{ email: string | null }>(
         admin
           .from('newsletter_subscribers')
           .select('email')
-          .is('unsubscribed_at', null)
+          .not('unsubscribed_at', 'is', null)
           .order('id', { ascending: true }),
       ),
       DB_TIMEOUT_MS,
-      'newsletter.subscribers_load',
+      'newsletter.unsubscribed_load',
     );
-    if (res.error) {
-      log.error('newsletter.subscribers_load_failed', { error: res.error.message });
-      return { ok: false, error: 'Could not load the subscriber list. Please try again.' };
+    unsubscribed = new Set(
+      ((res.data ?? []) as Array<{ email: string | null }>)
+        .map(s => s.email?.trim().toLowerCase())
+        .filter((e): e is string => !!e),
+    );
+  } catch {
+    // Unavailable opt-out list must fail closed for customer sends (we could
+    // mail someone who opted out); subscribers-only is inherently safe since
+    // that list already excludes them.
+    if (audience !== 'subscribers') {
+      return { ok: false, error: 'Could not load the unsubscribe list, so a customer send would risk mailing someone who opted out. Please try again.' };
     }
-    subs = res.data;
-  } catch (err) {
-    log.error('newsletter.subscribers_load_timeout', { error: (err as Error).message });
-    return { ok: false, error: 'The subscriber list took too long to load. Please try again.' };
   }
 
-  const emails = Array.from(new Set(
-    (subs ?? [])
-      .map(s => (s.email as string | null)?.trim().toLowerCase())
-      .filter((e): e is string => !!e),
-  ));
+  if (audience !== 'customers') {
+    try {
+      // fetchAll pages past PostgREST's silent 1000-row cap; without it the
+      // campaign never reached subscriber #1001. Stable order keeps pages
+      // consistent while the walk runs.
+      const res = await withTimeout(
+        fetchAll<{ email: string | null }>(
+          admin
+            .from('newsletter_subscribers')
+            .select('email')
+            .is('unsubscribed_at', null)
+            .order('id', { ascending: true }),
+        ),
+        DB_TIMEOUT_MS,
+        'newsletter.subscribers_load',
+      );
+      if (res.error) {
+        log.error('newsletter.subscribers_load_failed', { error: res.error.message });
+        return { ok: false, error: 'Could not load the subscriber list. Please try again.' };
+      }
+      for (const s of (res.data ?? []) as Array<{ email: string | null }>) {
+        const e = s.email?.trim().toLowerCase();
+        if (e) emailSet.add(e);
+      }
+    } catch (err) {
+      log.error('newsletter.subscribers_load_timeout', { error: (err as Error).message });
+      return { ok: false, error: 'The subscriber list took too long to load. Please try again.' };
+    }
+  }
+
+  if (audience !== 'subscribers') {
+    try {
+      const res = await withTimeout(
+        fetchAll<{ email: string | null }>(
+          admin
+            .from('orders')
+            .select('email')
+            .not('email', 'is', null)
+            .order('id', { ascending: true }),
+        ),
+        DB_TIMEOUT_MS,
+        'newsletter.customers_load',
+      );
+      if (res.error) {
+        log.error('newsletter.customers_load_failed', { error: res.error.message });
+        return { ok: false, error: 'Could not load the customer list. Please try again.' };
+      }
+      for (const o of (res.data ?? []) as Array<{ email: string | null }>) {
+        const e = o.email?.trim().toLowerCase();
+        if (e && !unsubscribed.has(e)) emailSet.add(e);
+      }
+    } catch (err) {
+      log.error('newsletter.customers_load_timeout', { error: (err as Error).message });
+      return { ok: false, error: 'The customer list took too long to load. Please try again.' };
+    }
+  }
+
+  const emails = Array.from(emailSet);
   if (emails.length === 0) {
-    return { ok: false, error: 'There are no active subscribers to send to yet.' };
+    return { ok: false, error: 'There is nobody in that audience to send to yet.' };
   }
 
   // Record the campaign up front, so a send is never invisible, even if the
