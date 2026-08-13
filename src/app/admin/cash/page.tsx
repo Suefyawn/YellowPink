@@ -11,7 +11,8 @@ import {
   CASH_CATEGORIES, categoryMeta, monthlySummary, netCash, runningBalancesNewestFirst,
   type CashDirection,
 } from '@/lib/cash';
-import { addCashEntry, deleteCashEntry } from './actions';
+import { addCashEntry, deleteCashEntry, confirmCashSuggestion, skipCashSuggestion } from './actions';
+import { loadCashSuggestions } from '@/lib/cash-suggestions';
 
 // The cashbook. Finance says what was earned; this page says what is actually
 // in hand. Entries are real cash movements, recorded by a human, often in
@@ -44,11 +45,15 @@ export default async function CashPage({
   }
   const { ok: okMsg, error: errMsg } = await searchParams;
 
-  const { data } = await supabaseAdmin()
-    .from('cash_entries')
-    .select('id, direction, amount, category, note, entry_date, created_by, created_at')
-    .order('entry_date', { ascending: false })
-    .order('created_at', { ascending: false });
+  const admin = supabaseAdmin();
+  const [{ data }, suggestions] = await Promise.all([
+    admin
+      .from('cash_entries')
+      .select('id, direction, amount, category, note, entry_date, created_by, created_at')
+      .order('entry_date', { ascending: false })
+      .order('created_at', { ascending: false }),
+    loadCashSuggestions(admin),
+  ]);
   const entries = ((data ?? []) as CashRow[]).map(e => ({ ...e, amount: Number(e.amount) }));
 
   const inHand = netCash(entries);
@@ -77,6 +82,54 @@ export default async function CashPage({
         <KpiCard label="In this month" value={rs(thisMonth?.inflow ?? 0)} accent="#1d4ed8" />
         <KpiCard label="Out this month" value={rs(thisMonth?.outflow ?? 0)} accent="#d97706" />
       </div>
+
+      {/* ─── Suggested entries ───────────────────────────────────────────────
+          Movements already recorded elsewhere (vendor settlements, reconciled
+          online payments) proposed for one-tap confirmation. Nothing enters
+          the cashbook until confirmed; confirmed/skipped sources never come
+          back. */}
+      {suggestions.length > 0 && (
+        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: 16, marginBottom: 24 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#92400e' }}>
+            Suggested from the rest of the admin ({suggestions.length})
+          </h2>
+          <p style={{ margin: '0 0 12px', fontSize: '0.75rem', color: '#a16207' }}>
+            Vendor settlements and reconciled payments that look like real money moving. Confirm the
+            ones that were actually cash, skip the ones that weren&apos;t (e.g. netted off against stock).
+          </p>
+          <div style={{ display: 'grid', gap: 8 }}>
+            {suggestions.map(s => (
+              <div key={s.sourceKey} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: 'white', border: '1px solid #f3f4f6', borderRadius: 8, padding: '8px 12px' }}>
+                <span style={{ fontSize: '0.75rem', color: '#6b7280', whiteSpace: 'nowrap' }}>{fmtDate(s.date)}</span>
+                <span style={{ fontSize: '0.8125rem', color: '#111827', flex: '1 1 200px' }}>{s.label}</span>
+                <DotChip
+                  label={categoryMeta(s.category).label}
+                  color={categoryMeta(s.category).direction === 'in' ? '#15803d' : '#d97706'}
+                />
+                <strong style={{ fontSize: '0.8125rem', color: categoryMeta(s.category).direction === 'in' ? '#15803d' : '#d97706', fontVariantNumeric: 'tabular-nums' }}>
+                  {categoryMeta(s.category).direction === 'in' ? '+' : '−'}{rs(s.amount)}
+                </strong>
+                <form action={confirmCashSuggestion} style={{ display: 'inline' }}>
+                  <input type="hidden" name="source_key" value={s.sourceKey} />
+                  <input type="hidden" name="category" value={s.category} />
+                  <input type="hidden" name="amount" value={s.amount} />
+                  <input type="hidden" name="entry_date" value={s.date} />
+                  <input type="hidden" name="note" value={s.label} />
+                  <button type="submit" style={{ padding: '6px 14px', background: '#C5286A', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
+                    Add to cashbook
+                  </button>
+                </form>
+                <form action={skipCashSuggestion} style={{ display: 'inline' }}>
+                  <input type="hidden" name="source_key" value={s.sourceKey} />
+                  <button type="submit" style={{ padding: '6px 10px', background: 'transparent', color: '#9ca3af', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}>
+                    Skip
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ─── Record a movement ───────────────────────────────────────────── */}
       <h2 style={{ margin: '0 0 10px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Record a movement</h2>

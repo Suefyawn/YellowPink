@@ -354,7 +354,7 @@ Here's what each link is for:
 | **Dashboard** | Your command centre, laid out in the order a morning check actually happens — a **Today** row, a **Needs attention** queue, the Overview chart, quick stats and recent orders. Full breakdown in [Dashboard in detail](#dashboard-in-detail). |
 | **Analytics** | Deeper performance data, organised as four question tabs — **Sales**, **Customers**, **Traffic** and **Funnels** — each opening with a computed "what stands out" reading. Full breakdown in [Analytics in detail](#analytics-in-detail). |
 | **Finance** | Profit & loss for any period: revenue minus goods, delivery and payment-fee costs and your logged expenses, plus revenue breakdowns, ROAS and reconciliation tools. Full breakdown in [Finance in detail](#finance-in-detail). |
-| **Cash** | The cashbook: what the business actually holds, separate from profit. Record every real cash movement — stock bought from pocket, courier and platform fees, COD money the courier pays over, capital you put in or draw out — and the page keeps a running **Cash in hand** balance, a by-month in/out summary, and the full movement history with who recorded each entry. Deleting a mistaken entry is allowed and logged. |
+| **Cash** | The cashbook: what the business actually holds, separate from profit. Record every real cash movement — stock bought from pocket, courier and platform fees, COD money the courier pays over, capital you put in or draw out — and the page keeps a running **Cash in hand** balance, a by-month in/out summary, and the full movement history with who recorded each entry. Deleting a mistaken entry is allowed and logged. A **Suggested entries** strip proposes movements already recorded elsewhere in the admin — settled vendor balances (as *Vendor payout* / *From a vendor*) and reconciled online payments — for one-tap confirmation; skip any that weren't actually cash, and neither confirmed nor skipped ones are ever proposed twice. |
 | **COD reconciliation** (a tab inside Finance) | The cash side of the business — outstanding, collected and in-transit COD money, with courier-manifest CSV exports. Covered in [Finance in detail](#finance-in-detail). |
 
 **Sell** — day-to-day commerce operations
@@ -1038,6 +1038,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 13 August 2026
+
+- **The cashbook now suggests its own entries.** Vendor balances you settle in **Vendors** and online payments reconciled on orders are real money moving — and each used to need remembering to type into **Cash** as well. The Cash page now proposes them in a **Suggested entries** strip: one tap adds the movement to the cashbook with the right category, amount and date; **Skip** dismisses ones that weren't actually cash (e.g. netted off against stock). Nothing enters the book until you confirm it, and a confirmed or skipped suggestion never reappears.
 
 - **Coupons can be scheduled.** A new **Starts** date on the create form and the edit dialog: until that day the code simply doesn't exist as far as shoppers are concerned, and the Coupons list shows it as a blue **Scheduled** pill. Set up the next sale's code in advance instead of creating it the morning of.
 
