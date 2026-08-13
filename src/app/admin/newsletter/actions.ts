@@ -9,7 +9,7 @@ import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import { logActionError } from '@/lib/action-log';
 import { fetchAll } from '@/lib/fetch-all';
-import { sendNewsletterBroadcastEmail, RESEND_DAILY_BATCH_CAP } from '@/lib/email';
+import { sendNewsletterBroadcastEmail, renderCampaignBodyHtml, renderCampaignPreviewHtml, RESEND_DAILY_BATCH_CAP } from '@/lib/email';
 
 export type SendCampaignResult =
   | { ok: true; recipientCount: number; sentCount: number }
@@ -215,12 +215,17 @@ export async function sendNewsletterCampaign(
   // the exact remaining budget.
   const toSend = emails.slice(0, RESEND_DAILY_BATCH_CAP);
 
+  // Resolve the branded blocks (hero, coupon code, product cards, button)
+  // ONCE for the whole campaign; every recipient gets the same inner HTML
+  // with only the unsubscribe footer personalised.
+  const bodyHtml = await renderCampaignBodyHtml(parsed.data.body);
+
   let sentCount = 0;
   const CHUNK = 8;
   for (let i = 0; i < toSend.length; i += CHUNK) {
     const results = await Promise.all(
       toSend.slice(i, i + CHUNK).map(email =>
-        sendNewsletterBroadcastEmail({ email, subject: parsed.data.subject, body: parsed.data.body })
+        sendNewsletterBroadcastEmail({ email, subject: parsed.data.subject, body: parsed.data.body, bodyHtml })
           .catch(err => {
             // Swallowing kept the send loop alive but hid provider failures
             // entirely; log + Sentry-capture, still count the send as failed.
@@ -517,4 +522,16 @@ export async function setSubscriberUnsubscribed(
   });
   revalidatePath('/admin/newsletter');
   return { ok: true };
+}
+
+/** Branded preview of a campaign body for the composer, rendered with the
+ *  same code path the real send uses (tokens resolved against the live
+ *  catalogue). Read-only; permission-gated like everything else here. */
+export async function previewNewsletterCampaign(body: string): Promise<{ ok: boolean; html?: string; error?: string }> {
+  const session = await getStaffSession();
+  if (!session || (!session.isOwner && !can(session, 'newsletter'))) {
+    return { ok: false, error: 'No permission.' };
+  }
+  if (!body.trim()) return { ok: false, error: 'Nothing to preview yet.' };
+  return { ok: true, html: await renderCampaignPreviewHtml(body) };
 }

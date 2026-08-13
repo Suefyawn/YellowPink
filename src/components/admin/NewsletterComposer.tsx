@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/admin/Toast';
-import { sendNewsletterCampaign, saveNewsletterDraft, deleteNewsletterDraft } from '@/app/admin/newsletter/actions';
+import { sendNewsletterCampaign, saveNewsletterDraft, deleteNewsletterDraft, previewNewsletterCampaign } from '@/app/admin/newsletter/actions';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 export interface NewsletterDraft {
@@ -32,6 +32,8 @@ export function NewsletterComposer({ activeCount, customerCount = 0, bothCount =
   const audienceLabel = audience === 'subscribers' ? 'subscribers' : audience === 'customers' ? 'customers' : 'people (subscribers + customers)';
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState(false);
   // Which saved draft the composer currently holds. Sending or saving keeps
   // targeting this row; "start fresh" is just clearing the form.
   const [draftId, setDraftId] = useState<string | null>(null);
@@ -173,7 +175,22 @@ export function NewsletterComposer({ activeCount, customerCount = 0, bothCount =
           placeholder={'Hi there,\n\nHere’s what’s new this fortnight…\n\nShop the latest: https://yellow-pink.vercel.app/shop'}
           style={{ ...inputStyle, resize: 'vertical', lineHeight: 1.6 }}
         />
+        <span style={{ display: 'block', marginTop: 6, fontSize: '0.6875rem', color: '#9ca3af', lineHeight: 1.6 }}>
+          Branded blocks (each on its own paragraph): <code># Big headline</code> · <code>[[code:AZADI14]]</code> ·{' '}
+          <code>[[products:slug-one,slug-two]]</code> (live product cards with image and price) ·{' '}
+          <code>[[button:Shop the sale|/shop]]</code>. Everything else sends as styled paragraphs. Use Preview to see the real email.
+        </span>
       </label>
+
+      {previewHtml && (
+        <div style={{ marginBottom: 16, border: '1px solid #e5e7eb', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ padding: '8px 14px', background: '#f9fafb', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Preview — exactly what recipients get</span>
+            <button onClick={() => setPreviewHtml(null)} style={{ background: 'transparent', border: 'none', color: '#9ca3af', fontSize: '0.75rem', cursor: 'pointer', textDecoration: 'underline' }}>close</button>
+          </div>
+          <iframe title="Email preview" srcDoc={previewHtml} style={{ width: '100%', height: 560, border: 'none', display: 'block', background: '#FAF6EE' }} />
+        </div>
+      )}
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: '#374151' }}>
@@ -199,6 +216,25 @@ export function NewsletterComposer({ activeCount, customerCount = 0, bothCount =
           }}
         >
           {pending ? 'Working…' : `Send to ${audienceCount} ${audience === 'both' ? 'people' : audience}`}
+        </button>
+        <button
+          onClick={async () => {
+            if (!body.trim()) { toast('Type a body first.', 'error'); return; }
+            setPreviewing(true);
+            const res = await previewNewsletterCampaign(body.trim()).catch(() => ({ ok: false as const, error: 'Preview failed.' }));
+            setPreviewing(false);
+            if (res.ok && 'html' in res && res.html) setPreviewHtml(res.html);
+            else toast(('error' in res && res.error) || 'Preview failed.', 'error');
+          }}
+          disabled={pending || previewing}
+          style={{
+            padding: '10px 20px', borderRadius: 8,
+            border: '1px solid #d1d5db', background: 'white',
+            color: '#374151', fontSize: '0.875rem', fontWeight: 600,
+            cursor: pending || previewing ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {previewing ? 'Rendering…' : 'Preview'}
         </button>
         <button
           onClick={handleSaveDraft}

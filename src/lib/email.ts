@@ -17,6 +17,7 @@ import * as Sentry from '@sentry/nextjs';
 import { log } from './logger';
 import { stripEmoji } from './text';
 import { supabaseAdmin } from './supabase';
+import { brandPlusName } from '@/lib/product-display';
 import { SITE_URL } from './seo';
 import { getRecipientsForEvent } from './notification-recipients';
 import { getWelcomeOffer } from './offers';
@@ -106,9 +107,10 @@ function shell(inner: string, opts: ShellOpts = {}): string {
 <div style="background:${PAPER};padding:24px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
   <div style="max-width:560px;margin:0 auto;color:${INK};background:#fff;border-radius:8px;overflow:hidden;border:1px solid ${LINE}">
     <!-- Branded header: cream band with the live-site flower mark + wordmark.
-         The yellow stripe along the top is a subtle nod to the brand palette
-         that survives even when an email client strips background images. -->
-    <div style="height:4px;background:${BRAND_YELLOW}"></div>
+         The top stripe is the brand gradient (same as the outreach letter and
+         the storefront chrome); the solid yellow is the fallback for clients
+         that strip background-image. -->
+    <div style="height:5px;background:${BRAND_YELLOW};background-image:linear-gradient(90deg,${BRAND_YELLOW},${BRAND_PINK})"></div>
     <div style="padding:20px 28px;background:${PAPER};display:flex;align-items:center;gap:12px;border-bottom:1px solid ${LINE}">
       <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
         <td style="vertical-align:middle;padding-right:12px">
@@ -878,29 +880,153 @@ export async function sendQuizResultsEmail(args: {
 // lines split paragraphs, bare URLs become links. One call per recipient so
 // the daily-cap guard in send() applies and addresses aren't leaked to each
 // other.
-function newsletterBodyToHtml(body: string): string {
-  return body
-    .trim()
-    .split(/\n\s*\n/)
-    .map(p => p.trim())
-    .filter(Boolean)
-    .map(p => {
-      const linked = escapeHtml(p).replace(
-        /(https?:\/\/[^\s<]+)/g,
-        url => `<a href="${url}" style="color:${BRAND_PINK};font-weight:600">${url}</a>`,
+function paragraphHtml(p: string): string {
+  const linked = escapeHtml(p).replace(
+    /(https?:\/\/[^\s<]+)/g,
+    url => `<a href="${url}" style="color:${BRAND_PINK};font-weight:600">${url}</a>`,
+  );
+  return `<p style="margin:0 0 14px;color:${INK_700};line-height:1.6">${linked.replace(/\n/g, '<br/>')}</p>`;
+}
+
+// Rich campaign blocks. The merchant types plain text; each paragraph can
+// instead be one of these tokens, rendered into email-safe branded HTML
+// (tables and inline styles only — no flex/grid, webp or background tricks):
+//   # Big headline            → brand hero band
+//   [[code:AZADI14]]          → dashed coupon-code box
+//   [[button:Shop now|/url]]  → bulletproof CTA button (site-relative or full URL)
+//   [[products:slug-a,slug-b]]→ product cards from the live catalogue (image,
+//                               name, price with compare-at strike, link)
+// Tokens resolve ONCE per campaign in renderCampaignBodyHtml — the send loop
+// must never fetch per recipient.
+interface CampaignCard {
+  slug: string; brand: string | null; name: string;
+  image_url: string | null; price: number; original_price: number | null;
+}
+
+function productCardsHtml(cards: CampaignCard[]): string {
+  if (cards.length === 0) return '';
+  const cells = cards.map(p => `
+    <td width="50%" style="padding:6px;vertical-align:top">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border:1px solid ${LINE};border-radius:10px;overflow:hidden">
+        <tr><td>
+          <a href="${SITE_URL}/product/${encodeURIComponent(p.slug)}" style="text-decoration:none">
+            ${p.image_url
+              ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}" width="100%" style="display:block;width:100%;height:auto;border:0;background:${PAPER}"/>`
+              : `<div style="height:120px;background:${PAPER}"></div>`}
+          </a>
+        </td></tr>
+        <tr><td style="padding:10px 12px 12px">
+          <a href="${SITE_URL}/product/${encodeURIComponent(p.slug)}" style="text-decoration:none">
+            <div style="font-size:13px;color:${INK};font-weight:600;line-height:1.4">${escapeHtml(brandPlusName(p.brand, p.name))}</div>
+            <div style="margin-top:6px;font-size:14px;color:${BRAND_PINK};font-weight:700">
+              Rs ${Math.round(p.price).toLocaleString()}
+              ${p.original_price && p.original_price > p.price
+                ? `<span style="margin-left:6px;color:${MUTED};font-weight:400;text-decoration:line-through;font-size:12px">Rs ${Math.round(p.original_price).toLocaleString()}</span>`
+                : ''}
+            </div>
+          </a>
+        </td></tr>
+      </table>
+    </td>`);
+  const rows: string[] = [];
+  for (let i = 0; i < cells.length; i += 2) {
+    rows.push(`<tr>${cells[i]}${cells[i + 1] ?? '<td width="50%" style="padding:6px"></td>'}</tr>`);
+  }
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin:4px 0 14px">${rows.join('')}</table>`;
+}
+
+function heroHtml(text: string): string {
+  return `
+  <div style="background:${BRAND_PINK};background-image:linear-gradient(135deg,${BRAND_PINK},#c22a63);border-radius:10px;padding:26px 24px;margin:0 0 16px;text-align:center">
+    <div style="font-family:Georgia,serif;font-size:26px;line-height:1.25;color:#ffffff">${escapeHtml(text)}</div>
+  </div>`;
+}
+
+function codeBoxHtml(code: string): string {
+  return `
+  <div style="text-align:center;margin:0 0 16px">
+    <div style="display:inline-block;border:2px dashed ${BRAND_PINK};background:#fff7f9;border-radius:10px;padding:12px 26px">
+      <div style="font-size:11px;letter-spacing:1px;color:${MUTED};text-transform:uppercase;margin-bottom:2px">Use code</div>
+      <div style="font-size:24px;font-weight:800;letter-spacing:3px;color:${BRAND_PINK}">${escapeHtml(code)}</div>
+    </div>
+  </div>`;
+}
+
+function buttonHtml(label: string, url: string): string {
+  const href = url.startsWith('http') ? url : `${SITE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+  return `
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" align="center" style="margin:4px auto 18px">
+    <tr><td style="background:${BRAND_PINK};border-radius:999px">
+      <a href="${escapeHtml(href)}" style="display:inline-block;padding:13px 34px;color:#ffffff;font-weight:700;font-size:15px;text-decoration:none">${escapeHtml(label)}</a>
+    </td></tr>
+  </table>`;
+}
+
+/** Resolve the campaign body's tokens against the live catalogue and return
+ *  the inner HTML. Called ONCE per campaign (send + preview), never per
+ *  recipient. Unknown/unpublished slugs are dropped silently. */
+export async function renderCampaignBodyHtml(body: string): Promise<string> {
+  const blocks = body.trim().split(/\n\s*\n/).map(p => p.trim()).filter(Boolean);
+
+  // Prefetch every referenced product in one query.
+  const slugs = blocks.flatMap(b => {
+    const m = b.match(/^\[\[products:([^\]]+)\]\]$/i);
+    return m ? m[1].split(',').map(s => s.trim()).filter(Boolean) : [];
+  });
+  const cardBySlug = new Map<string, CampaignCard>();
+  if (slugs.length) {
+    try {
+      const { data } = await withTimeout(
+        supabaseAdmin()
+          .from('products')
+          .select('slug, brand, name, image_url, price, original_price')
+          .in('slug', slugs)
+          .eq('status', 'published'),
+        DB_TIMEOUT_MS,
+        'campaign product cards',
       );
-      return `<p style="margin:0 0 14px;color:${INK_700};line-height:1.6">${linked.replace(/\n/g, '<br/>')}</p>`;
-    })
-    .join('');
+      for (const p of (data ?? []) as CampaignCard[]) cardBySlug.set(p.slug, { ...p, price: Number(p.price) });
+    } catch {
+      /* cards degrade to nothing; the text still sends */
+    }
+  }
+
+  return blocks.map(b => {
+    const heading = b.match(/^#\s+(.+)$/);
+    if (heading) return heroHtml(heading[1]);
+    const code = b.match(/^\[\[code:([^\]]+)\]\]$/i);
+    if (code) return codeBoxHtml(code[1].trim());
+    const button = b.match(/^\[\[button:([^|\]]+)\|([^\]]+)\]\]$/i);
+    if (button) return buttonHtml(button[1].trim(), button[2].trim());
+    const products = b.match(/^\[\[products:([^\]]+)\]\]$/i);
+    if (products) {
+      const cards = products[1].split(',').map(s => cardBySlug.get(s.trim())).filter((c): c is CampaignCard => Boolean(c));
+      return productCardsHtml(cards);
+    }
+    return paragraphHtml(b);
+  }).join('');
+}
+
+/** Full shelled preview of a campaign, for the composer's preview pane. */
+export async function renderCampaignPreviewHtml(body: string): Promise<string> {
+  return shell(await renderCampaignBodyHtml(body), { marketingRecipient: 'preview@example.com' });
 }
 
 export async function sendNewsletterBroadcastEmail(args: {
   email: string;
   subject: string;
   body: string;
+  /** Pre-rendered inner HTML (renderCampaignBodyHtml, resolved once for the
+   *  whole campaign). When absent the body renders as plain paragraphs. */
+  bodyHtml?: string;
 }): Promise<boolean> {
-  const html = shell(newsletterBodyToHtml(args.body), { marketingRecipient: args.email });
+  const inner = args.bodyHtml ?? body_fallback(args.body);
+  const html = shell(inner, { marketingRecipient: args.email });
   return send({ to: args.email, subject: args.subject, html, kind: 'batch', category: 'Newsletter' });
+}
+
+function body_fallback(body: string): string {
+  return body.trim().split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(paragraphHtml).join('');
 }
 
 // ─── 11.7. Customer: post-delivery review request ──────────────────────────
