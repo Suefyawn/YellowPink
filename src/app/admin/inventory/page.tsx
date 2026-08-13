@@ -27,7 +27,7 @@ interface LedgerRow {
   created_at: string;
 }
 
-interface ProductLite { id: string; name: string; brand: string | null; stock: number; reorder_point?: number; vendor_id?: string | null; track_inventory?: boolean; stock_mode?: StockMode; status?: string }
+interface ProductLite { id: string; name: string; brand: string | null; stock: number; reorder_point?: number; vendor_id?: string | null; track_inventory?: boolean; stock_mode?: StockMode; status?: string; continue_selling_when_out?: boolean | null }
 interface OrderLite { id: string; order_number: string }
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -57,10 +57,28 @@ function reasonHref(product: string | undefined, reason?: string): string {
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('en-PK', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: PK_TZ });
 
-function stockBadge(stock: number): { label: string; color: string } {
-  if (stock <= 0) return { label: 'Out of stock', color: '#991b1b' };
+/** Stock state for stock we hold. At zero the label depends on the selling
+ *  gate: since the never-out-of-stock change, most listings keep selling past
+ *  zero (orders get sourced), and calling that "Out of stock" here made the
+ *  owner think shoppers were seeing a dead listing. Only a product that has
+ *  opted into genuine sell-outs actually refuses orders at zero. */
+function stockBadge(stock: number, keepsSelling: boolean): { label: string; color: string } {
+  if (stock <= 0) {
+    return keepsSelling
+      ? { label: 'Sold out, still selling', color: '#5b21b6' }
+      : { label: 'Out of stock', color: '#991b1b' };
+  }
   if (stock <= LOW_STOCK_THRESHOLD) return { label: 'Low', color: '#92400e' };
   return { label: 'In stock', color: '#065f46' };
+}
+
+/** Is the listing on the storefront at all? Everything else on this screen is
+ *  moot for a draft — a count of 0 on a draft needs no attention, while the
+ *  same 0 on a live listing means orders are being taken against goods we
+ *  don't hold. */
+function listingBadge(status: string | undefined): { label: string; color: string } {
+  if (status === 'published') return { label: 'Live', color: '#065f46' };
+  return { label: titleCase(status ?? 'draft'), color: '#6b7280' };
 }
 
 export default async function InventoryPage({
@@ -95,7 +113,7 @@ export default async function InventoryPage({
   const [{ data: ledgerData }, { data: productData }, { data: variantStockRows }] = await Promise.all([
     ledgerQuery,
     admin.from('products')
-      .select('id, name, brand, stock, reorder_point, vendor_id, track_inventory, stock_mode, status')
+      .select('id, name, brand, stock, reorder_point, vendor_id, track_inventory, stock_mode, status, continue_selling_when_out')
       .neq('status', 'archived')
       .order('name'),
     // Shade-level counts. For a product with variants the parent scalar is an
@@ -242,6 +260,11 @@ export default async function InventoryPage({
                           <tr key={p.id} style={{ borderTop: '1px solid #f9fafb' }}>
                             <td style={{ padding: '8px 14px' }}>
                               <Link href={`/admin/products/${p.id}`} style={{ color: '#111827', textDecoration: 'none', fontWeight: 500 }}>{brandPlusName(p.brand, p.name)}</Link>
+                              {p.status !== 'published' && (
+                                <span style={{ marginLeft: 8, display: 'inline-block' }}>
+                                  <DotChip label={titleCase(p.status ?? 'draft')} color="#6b7280" />
+                                </span>
+                              )}
                             </td>
                             <td style={{ padding: '8px 14px', textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: p.stock <= 0 ? '#991b1b' : '#92400e' }}>{p.stock}</td>
                             <td style={{ padding: '8px 14px', textAlign: 'right', color: '#6b7280' }}>{p.reorder_point}</td>
@@ -289,7 +312,7 @@ export default async function InventoryPage({
             <table className="adm-table-cards adm-cards-dense" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem' }}>
               <thead>
                 <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                  {['Product', 'Stock', 'Status', ''].map(h => (
+                  {['Product', 'Stock', 'Status', 'Listing', ''].map(h => (
                     <th scope="col" key={h} style={th}>{h}</th>
                   ))}
                 </tr>
@@ -299,11 +322,13 @@ export default async function InventoryPage({
                   const mode: StockMode = p.stock_mode ?? (p.track_inventory === false ? 'untracked' : 'own');
                   const shown = effectiveStock(p);
                   const fromShades = variantTotals.has(p.id);
+                  // Absent flag = the column default = keeps selling.
                   const badge = mode === 'own'
-                    ? stockBadge(shown)
+                    ? stockBadge(shown, p.continue_selling_when_out !== false)
                     : mode === 'external'
                       ? { label: 'Vendor holds it', color: '#3730a3' }
                       : { label: 'Not counted', color: '#6b7280' };
+                  const listing = listingBadge(p.status);
                   return (
                     <tr key={p.id} style={{ borderTop: '1px solid #f3f4f6' }}>
                       <td data-label="Product" style={td}>
@@ -324,6 +349,9 @@ export default async function InventoryPage({
                       </td>
                       <td data-label="Status" style={td}>
                         <DotChip label={badge.label} color={badge.color} />
+                      </td>
+                      <td data-label="Listing" style={td}>
+                        <DotChip label={listing.label} color={listing.color} />
                       </td>
                       <td style={{ ...td, textAlign: 'right' }}>
                         <Link href={`/admin/products/${p.id}`} style={{ color: '#C5286A', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600 }}>

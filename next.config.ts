@@ -181,6 +181,13 @@ const nextConfig: NextConfig = {
       'https://*.ingest.us.sentry.io',
       'https://vitals.vercel-insights.com',
       'https://va.vercel-scripts.com',
+      // Chrome's built-in page translation (English → Urdu for a chunk of this
+      // store's shoppers) fetches translations from page context, so it IS
+      // governed by our CSP — live Sentry CSP report, 2026-08-12, blocked
+      // connect to translate.googleapis.com. translate-pa.googleapis.com is
+      // the same feature's other endpoint (mobile / newer Chrome builds).
+      'https://translate.googleapis.com',
+      'https://translate-pa.googleapis.com',
     ];
     // Vercel's toolbar (vercel.live) isn't preview-only: with the Comments
     // feature it also injects its feedback script for signed-in team members
