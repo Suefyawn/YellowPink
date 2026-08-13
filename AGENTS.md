@@ -15,6 +15,19 @@ section, the order/fulfilment workflow, settings, roles, or payment options —
 update `docs/USER-MANUAL.md` in the same change so the manual never drifts from
 the product. Refresh its "Last updated" date when you do.
 
+# Admin follows Shopify
+
+Owner directive, 13 Aug 2026: wherever this store has an equivalent in
+Shopify — products, variants/options, inventory, orders and fulfilment,
+collections, discounts, customers — model the workflow, layout and
+vocabulary on how Shopify does it. Shopify is the proven pattern; staff
+and the owner already think in it. Before building or reworking any admin
+surface with a Shopify counterpart, check how Shopify's admin handles it
+and copy that shape, diverging only with a stated reason. Custom systems
+with no Shopify equivalent (the outreach desk, quick answers, health
+tools, vendor settlements, the cashbook…) are separate parts and free to
+be their own thing.
+
 # Customer-facing copy
 
 Write product descriptions, marketing messages, SEO text and any other
