@@ -28,6 +28,29 @@ with no Shopify equivalent (the outreach desk, quick answers, health
 tools, vendor settlements, the cashbook…) are separate parts and free to
 be their own thing.
 
+# One brand image everywhere
+
+Owner directive, 13 Aug 2026: the whole online presence carries one
+consistent brand image — storefront, every email (transactional,
+newsletter campaigns, outreach), invoices, social/share imagery, admin
+chrome. The system:
+
+- **Gradient signature**: `linear-gradient(90deg, #F7C948, #E8487F)`
+  (brand yellow → brand pink), used as the thin top bar on emails and
+  branded surfaces. Solid `#F7C948` is the fallback where gradients
+  don't render.
+- **Palette**: pink `#E8487F` (deep variant `#C5286A` for admin
+  buttons), yellow `#F7C948`, cream paper `#FAF6EE`, ink `#111827`
+  (body `#374151`, muted `#6b7280`).
+- **Wordmark**: "Yellow Pink" in Georgia/serif next to the flower mark
+  (`/icon-192.png`); UI text in the system sans stack.
+- **Email**: everything goes through the branded shell in
+  `src/lib/email.ts` (gradient bar, cream logo band, footer). Never
+  send a bare-text email from any new path; marketing sends include
+  the unsubscribe footer.
+
+New surfaces reuse these tokens rather than inventing near-misses.
+
 # Customer-facing copy
 
 Write product descriptions, marketing messages, SEO text and any other
