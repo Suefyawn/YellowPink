@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { createVariant, updateVariant, deleteVariant, createAttribute, createAttributeValue, removeValueFromProduct } from '@/app/admin/variant-actions';
+import { createVariant, updateVariant, deleteVariant, createAttribute, createAttributeValue, removeValueFromProduct, bulkUpdateVariants, deleteAttribute } from '@/app/admin/variant-actions';
 import type { ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -159,6 +159,7 @@ function VariantForm({
 // every variant dropdown on save, so it lives at section level.
 function AddValueForm({ productId, attributes }: { productId: string; attributes: AttributeWithValues[] }) {
   const [state, formAction, pending] = useActionState(createAttributeValue, null);
+  const [attrState, deleteAttrAction, attrPending] = useActionState(deleteAttribute, null);
   return (
     <form action={formAction} style={{
       display: 'flex', gap: 8, alignItems: 'end', flexWrap: 'wrap',
@@ -187,6 +188,24 @@ function AddValueForm({ productId, attributes }: { productId: string; attributes
         <input type="checkbox" name="create_variant" value="true" defaultChecked />
         also create its variant (product&apos;s price, 0 stock)
       </label>
+      {/* The undo for a mistaken attribute: deletes the SELECTED attribute,
+          server-guarded to attributes no variant anywhere uses. */}
+      <button
+        type="submit"
+        formAction={deleteAttrAction}
+        formNoValidate
+        disabled={attrPending}
+        title="Delete the selected attribute (only possible while nothing uses it)"
+        style={{ padding: '8px 12px', background: 'transparent', color: '#9ca3af', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer' }}
+      >
+        {attrPending ? 'Deleting…' : 'Delete attribute'}
+      </button>
+      {attrState?.error && (
+        <span style={{ fontSize: '0.75rem', color: '#dc2626', flexBasis: '100%' }}>{attrState.error}</span>
+      )}
+      {attrState?.success && (
+        <span style={{ fontSize: '0.75rem', color: '#065f46', flexBasis: '100%' }}>Attribute deleted.</span>
+      )}
       {state?.error && (
         <span style={{ fontSize: '0.75rem', color: '#dc2626', flexBasis: '100%' }}>{state.error}</span>
       )}
@@ -353,69 +372,142 @@ export function VariantsSection({
         </div>
       )}
 
-      {variants.map(v => (
-        <div key={v.id}>
-          {editingId === v.id ? (
-            <VariantForm
-              productId={productId}
-              attributes={attributes}
-              variant={v}
-              onDone={() => setEditingId(null)}
-              stockCounted={stockCounted}
-            />
-          ) : (
-            <div
-              className="adm-variant-row"
-              style={{
-                display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr auto auto',
-                alignItems: 'center', gap: 12,
-                padding: '12px 14px', border: '1px solid #e5e7eb',
-                borderRadius: 8, marginBottom: 8,
-                opacity: v.enabled ? 1 : 0.55,
-              }}
-            >
-              <div>
-                <div style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{describeOptions(v, attributes)}</div>
-                {v.sku && <div style={{ fontSize: '0.6875rem', color: '#9ca3af', fontFamily: 'monospace' }}>{v.sku}</div>}
-              </div>
-              <div style={{ fontSize: '0.8125rem', fontVariantNumeric: 'tabular-nums' }}>
-                PKR {v.price.toLocaleString()}
-                {(v.compare_at_price ?? 0) > v.price && (
-                  <span style={{ marginLeft: 6, color: '#9ca3af', textDecoration: 'line-through', fontSize: '0.6875rem' }}>
-                    {(v.compare_at_price ?? 0).toLocaleString()}
-                  </span>
-                )}
-              </div>
-              <div style={{ fontSize: '0.8125rem' }}>
-                {stockCounted
-                  ? <>Stock: <strong>{v.stock}</strong></>
-                  : <span style={{ color: '#9ca3af' }}>Stock: not counted</span>}
-              </div>
-              <div style={{ fontSize: '0.6875rem', color: v.enabled ? '#16a34a' : '#9ca3af' }}>
-                {v.enabled ? '● enabled' : '○ disabled'}
-              </div>
-              <button onClick={() => setEditingId(v.id)} style={{
-                padding: '6px 12px', background: 'transparent', color: '#374151',
-                border: '1px solid #d1d5db', borderRadius: 6,
-                fontSize: '0.75rem', cursor: 'pointer',
-              }}>
-                Edit
-              </button>
-              <form action={deleteVariant}>
-                <input type="hidden" name="id" value={v.id} />
-                <input type="hidden" name="product_id" value={productId} />
-                <button type="submit" style={{
-                  padding: '6px 10px', background: 'transparent', color: '#dc2626',
-                  border: '1px solid #fecaca', borderRadius: 6,
-                  fontSize: '0.75rem', cursor: 'pointer',
-                }}>
-                  Delete
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
-      ))}
+      {/* Details editor for one variant (image, options, sort order). Rendered
+          here because a form cannot nest inside the grid form below. */}
+      {editingId && variants.some(v => v.id === editingId) && (
+        <VariantForm
+          productId={productId}
+          attributes={attributes}
+          variant={variants.find(v => v.id === editingId)!}
+          onDone={() => setEditingId(null)}
+          stockCounted={stockCounted}
+        />
+      )}
+
+      {variants.length > 0 && (
+        <VariantGrid
+          productId={productId}
+          attributes={attributes}
+          variants={variants}
+          stockCounted={stockCounted}
+          onDetails={setEditingId}
+        />
+      )}
+
     </div>
+  );
+}
+
+// ─── The grid: every variant editable on one screen, one Save ──────────────
+// The Shopify variant table. sku / price / compare-at / stock / status are
+// inline inputs; a single submit saves only the rows that changed (the server
+// diffs against the database). Stock writes go through the ledger, and the
+// stock column collapses to "not counted" for vendor-held products. Details
+// (image, options, sort) live behind the per-row Details button, and Delete
+// posts the same form to the delete action via the button's own name/value.
+function VariantGrid({ productId, attributes, variants, stockCounted, onDetails }: {
+  productId: string;
+  attributes: AttributeWithValues[];
+  variants: VariantWithOptions[];
+  stockCounted: boolean;
+  onDetails: (id: string) => void;
+}) {
+  const [state, formAction, pending] = useActionState(bulkUpdateVariants, null);
+  const gth: React.CSSProperties = { padding: '8px 10px', textAlign: 'left', fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' };
+  const gtd: React.CSSProperties = { padding: '6px 10px', verticalAlign: 'middle' };
+  const gin: React.CSSProperties = { ...inp, padding: '6px 8px', fontSize: '0.8125rem' };
+
+  return (
+    <form action={formAction}>
+      <input type="hidden" name="product_id" value={productId} />
+      <div className="adm-table-scroll" style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
+          <thead>
+            <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <th style={gth}>Variant</th>
+              <th style={gth}>SKU</th>
+              <th style={{ ...gth, width: 110 }}>Price</th>
+              <th style={{ ...gth, width: 110 }}>Compare-at</th>
+              <th style={{ ...gth, width: 90 }}>{stockCounted ? 'Stock' : 'Stock'}</th>
+              <th style={{ ...gth, width: 96 }}>Status</th>
+              <th style={gth}></th>
+            </tr>
+          </thead>
+          <tbody>
+            {variants.map(v => (
+              <tr key={v.id} style={{ borderTop: '1px solid #f3f4f6', opacity: v.enabled ? 1 : 0.6 }}>
+                <td style={{ ...gtd, fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                  <input type="hidden" name={`v__${v.id}__present`} value="1" />
+                  {describeOptions(v, attributes)}
+                </td>
+                <td style={gtd}>
+                  <input name={`v__${v.id}__sku`} defaultValue={v.sku ?? ''} placeholder="—" style={{ ...gin, width: 110, fontFamily: 'monospace' }} />
+                </td>
+                <td style={gtd}>
+                  <input name={`v__${v.id}__price`} type="number" min={0} step="0.01" required defaultValue={v.price} style={{ ...gin, width: 96 }} />
+                </td>
+                <td style={gtd}>
+                  <input name={`v__${v.id}__compare`} type="number" min={0} step="0.01" defaultValue={v.compare_at_price ?? ''} placeholder="—" style={{ ...gin, width: 96 }} />
+                </td>
+                <td style={gtd}>
+                  {stockCounted ? (
+                    <input name={`v__${v.id}__stock`} type="number" min={0} step="1" defaultValue={v.stock} style={{ ...gin, width: 72 }} />
+                  ) : (
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>not counted</span>
+                  )}
+                </td>
+                <td style={gtd}>
+                  <select name={`v__${v.id}__enabled`} defaultValue={v.enabled ? 'true' : 'false'} style={{ ...gin, width: 88 }}>
+                    <option value="true">Active</option>
+                    <option value="false">Hidden</option>
+                  </select>
+                </td>
+                <td style={{ ...gtd, whiteSpace: 'nowrap', textAlign: 'right' }}>
+                  <button type="button" onClick={() => onDetails(v.id)} style={{
+                    padding: '5px 10px', background: 'transparent', color: '#374151',
+                    border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer', marginRight: 6,
+                  }}>
+                    Details
+                  </button>
+                  <button
+                    type="submit"
+                    formAction={deleteVariant}
+                    name="id"
+                    value={v.id}
+                    formNoValidate
+                    title="Delete this variant"
+                    style={{
+                      padding: '5px 10px', background: 'transparent', color: '#dc2626',
+                      border: '1px solid #fecaca', borderRadius: 6, fontSize: '0.75rem', cursor: 'pointer',
+                    }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+        <button type="submit" disabled={pending} style={{
+          padding: '8px 18px', background: pending ? '#9ca3af' : '#C5286A', color: 'white',
+          border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer',
+        }}>
+          {pending ? 'Saving…' : 'Save all changes'}
+        </button>
+        {state?.error && <span style={{ fontSize: '0.75rem', color: '#dc2626' }}>{state.error}</span>}
+        {state?.success && (
+          <span style={{ fontSize: '0.75rem', color: state.changed ? '#065f46' : '#6b7280' }}>
+            {state.changed ? `Saved ${state.changed} variant${state.changed === 1 ? '' : 's'}.` : 'Nothing changed.'}
+          </span>
+        )}
+        {stockCounted && (
+          <span style={{ fontSize: '0.6875rem', color: '#9ca3af', marginLeft: 'auto' }}>
+            Stock edits are recorded in Movement history.
+          </span>
+        )}
+      </div>
+    </form>
   );
 }
