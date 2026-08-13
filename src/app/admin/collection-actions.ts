@@ -8,6 +8,7 @@ import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import { logActionError } from '@/lib/action-log';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
+import { recordSlugRedirect } from '@/lib/slug-redirects';
 import { parseFaqs } from '@/lib/faqs';
 import type { Permission } from '@/lib/permissions';
 import type { SmartRules } from '@/lib/collections';
@@ -83,8 +84,12 @@ export async function updateCollection(id: string, formData: FormData): Promise<
     sort_order: Number(str(formData, 'sort_order')) || 0,
     updated_at: new Date().toISOString(),
   };
+  // Old slug first: a rename of a live collection leaves the old URL in the
+  // wild (search results, shared links), so it gets a 301 to the new one.
+  const { data: prevRow } = await supabaseAdmin().from('collections').select('slug').eq('id', id).maybeSingle();
   const { error } = await supabaseAdmin().from('collections').update(patch).eq('id', id);
   if (error) redirect(`/admin/collections/${id}?error=` + encodeURIComponent(error.message));
+  await recordSlugRedirect('collection', (prevRow as { slug: string } | null)?.slug, slug);
   await logAudit(session, { action: 'collection.update', entity: 'collection', entity_id: id, diff: patch });
   revalidatePath('/admin/collections');
   revalidatePath(`/admin/collections/${id}`);

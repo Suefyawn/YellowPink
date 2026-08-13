@@ -21,6 +21,7 @@ import { applyReturnFinancialsForOrder } from '@/lib/return-financials';
 import { applyCodFlagTransition, flagCodIdentity, clearCodFlag } from '@/lib/cod-flags';
 import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
+import { recordSlugRedirect } from '@/lib/slug-redirects';
 import { log } from '@/lib/logger';
 import { verifyTotp } from '@/lib/totp';
 import { adminHomeFor } from '@/lib/admin-nav';
@@ -335,6 +336,13 @@ export async function updateProduct(
   // Re-submit to search engines when the product is live (best-effort).
   const { data: after } = await supabaseAdmin().from('products').select('slug, status').eq('id', id).maybeSingle();
   const live = after as { slug?: string; status?: string } | null;
+  // A slug change on a product that was live leaves its old URL in search
+  // results and shared links: 301 it to the new address (Shopify keeps old
+  // handles working; so do we).
+  const prevSlug = (before as { slug?: string; status?: string } | null)?.slug;
+  if (live?.slug && prevSlug && prevSlug !== live.slug) {
+    await recordSlugRedirect('product', prevSlug, live.slug);
+  }
   if (live?.slug && live.status === 'published') {
     await submitToSearchEnginesQuietly([`/product/${live.slug}`]);
   }

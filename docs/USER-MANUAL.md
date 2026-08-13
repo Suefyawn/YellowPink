@@ -565,7 +565,9 @@ Discount codes — create, edit, set limits and expiry, and turn them on/off. Th
 - **Fixed PKR** — a set amount off.
 - **Free shipping** — waives the delivery charge instead of discounting the items (no value needed).
 
-If a create is rejected (missing value, duplicate code, …) the form keeps what you typed and shows the reason inline. Each coupon's status pill shows its one effective state — *Active*, *Inactive*, *Expired* or *Maxed out* — and clicking it toggles the coupon on/off.
+If a create is rejected (missing value, duplicate code, …) the form keeps what you typed and shows the reason inline. Each coupon's status pill shows its one effective state — *Active*, *Scheduled*, *Inactive*, *Expired* or *Maxed out* — and clicking it toggles the coupon on/off.
+
+**Scheduling.** A coupon can carry a **Starts** date as well as an expiry: until that day the code is completely inert — the storefront treats it as unknown, checkout refuses it, and the list shows a blue **Scheduled** pill with the start date. Set up the next sale's code days ahead and it switches itself on.
 
 **Targeting.** The edit dialog can limit a coupon to specific emails or `*@domain` wildcards, cap uses per customer, and — the important part — scope it to products: an **"Only applies to these products"** allowlist, a **"Never applies to these products"** denylist, and a **"Don't apply to sale items"** tickbox (a sale item is anything already priced below its compare-at price). A scoped coupon discounts **only the lines it applies to**: "10% off these serums" takes 10% off the serums in the basket, not the whole order, and a fixed-amount coupon never takes off more than those lines are worth. If nothing in the basket qualifies, the coupon is refused with a clear message. The storefront preview and the order-placing check use the same arithmetic, so what the shopper sees is exactly what the order records.
 
@@ -1036,6 +1038,14 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 13 August 2026
+
+- **Coupons can be scheduled.** A new **Starts** date on the create form and the edit dialog: until that day the code simply doesn't exist as far as shoppers are concerned, and the Coupons list shows it as a blue **Scheduled** pill. Set up the next sale's code in advance instead of creating it the morning of.
+
+- **Smart collections show what they catch.** The Collections list now shows a live product count for rule-based collections (with a warning when the rules match nothing), and the collection's edit page gained a **"Currently matching"** panel listing the exact products the rules catch, in storefront order — so you see the result before publishing instead of checking the live page.
+
+- **Renaming a page keeps the old link working.** Changing a product's or collection's web address (slug) now writes an automatic redirect from the old address to the new one — shared WhatsApp links, search results and blog mentions keep landing on the page instead of a 404. A rename back removes the rule so nothing loops.
+
+- **Small product-page conveniences.** Every product now has a **View on store** link (on the edit page header and as a View button on each list row); and entering a **cost price** on an own-stock product shows the margin readout immediately — it no longer required a vendor to be selected.
 
 - **A product-scoped coupon now discounts only its own products.** Before, a coupon limited to certain products checked that one of them was in the basket — and then discounted the **entire cart**. Now the discount applies to the qualifying lines only, a fixed amount can never exceed what those lines are worth, and the coupon dialog gained a **"Don't apply to sale items"** tickbox that keeps a code off anything already marked down. The basket preview and the final order use the same arithmetic, enforced when the order is placed. (No live coupon used product scoping, so nothing changed for AZADI14, WELCOME10 or the others.)
 

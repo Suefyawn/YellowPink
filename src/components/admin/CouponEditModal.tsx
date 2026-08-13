@@ -133,13 +133,24 @@ export function CouponEditModal({ coupon, products = [] }: { coupon: Coupon; pro
                   />
                 </div>
               </div>
-              <div>
-                <label style={lbl}>Expires</label>
-                <input
-                  name="expires_at" type="date"
-                  defaultValue={coupon.expires_at ? coupon.expires_at.slice(0, 10) : ''}
-                  style={inp}
-                />
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={lbl}>Starts</label>
+                  <input
+                    name="starts_at" type="date"
+                    defaultValue={coupon.starts_at ? coupon.starts_at.slice(0, 10) : ''}
+                    style={inp}
+                  />
+                  <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>Blank = works right away. A future day shows as Scheduled.</p>
+                </div>
+                <div>
+                  <label style={lbl}>Expires</label>
+                  <input
+                    name="expires_at" type="date"
+                    defaultValue={coupon.expires_at ? coupon.expires_at.slice(0, 10) : ''}
+                    style={inp}
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>

@@ -27,9 +27,13 @@ export function validateCoupon({
   email,
   perUserUsedCount,
 }: ValidateCouponInput): ValidateCouponResult {
-  // Time gate.
+  // Time gates. (lookup_coupon already hides not-yet-started codes; this
+  // covers a coupon restored from localStorage across its start boundary.)
   if (c.expires_at && new Date(c.expires_at) < new Date()) {
     return { ok: false, error: 'This coupon has expired.' };
+  }
+  if (c.starts_at && new Date(c.starts_at) > new Date()) {
+    return { ok: false, error: 'This coupon is not active yet.' };
   }
   // Global usage cap.
   if (c.max_uses !== null && c.used_count >= c.max_uses) {

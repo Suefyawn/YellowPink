@@ -280,6 +280,7 @@ export function ProductsTable({ products }: { products: Product[] }) {
                       <td style={{ padding: '12px 16px' }}>
                         <div className="adm-row-actions" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
                           <Link href={`/admin/products/${p.id}`} className="adm-btn adm-btn-secondary">Edit</Link>
+                          <a href={`/product/${p.slug}`} target="_blank" rel="noreferrer" title={p.status === 'published' ? 'View on store' : 'Preview (not live yet)'} className="adm-btn adm-btn-secondary">View</a>
                           <button type="button" onClick={() => duplicate(p.id)} disabled={pending} title="Create a draft copy with variants, tags and images" className="adm-btn adm-btn-secondary">Duplicate</button>
                           <DeleteButton id={p.id} action={deleteProduct} confirmMsg={`Delete "${p.name}"?`} />
                         </div>

@@ -11,7 +11,9 @@ import { CollectionRulesEditor } from '@/components/admin/CollectionRulesEditor'
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import { ALL_CATEGORIES } from '@/lib/category-taxonomy';
 import { brandPlusName } from '@/lib/product-display';
-import type { Collection } from '@/lib/collections';
+import { resolveCollectionProducts, type Collection } from '@/lib/collections';
+import { getProducts } from '@/lib/supabase';
+import { loadTagData } from '@/lib/shop-facets';
 import { faqsToText } from '@/lib/faqs';
 
 const lbl: React.CSSProperties = { display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 4 };
@@ -127,6 +129,50 @@ export default async function EditCollectionPage({
       {/* Manual product picker */}
       {c.type === 'manual' && (
         <CollectionProductPicker collectionId={id} allProducts={allProducts} initialSelectedIds={selectedIds} />
+      )}
+
+      {/* Smart membership preview — the storefront's own resolution, so what
+          the rules catch is visible before (and after) publishing. */}
+      {c.type === 'smart' && <SmartPreview collection={c} />}
+    </div>
+  );
+}
+
+async function SmartPreview({ collection }: { collection: Collection }) {
+  const [products, tagData] = await Promise.all([getProducts(), loadTagData()]);
+  const members = resolveCollectionProducts(collection, products, { productTagMap: tagData.productTagMap });
+  const shown = members.slice(0, 30);
+  return (
+    <div style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: '24px 28px', maxWidth: 1000, marginTop: 24 }}>
+      <h2 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
+        Currently matching ({members.length})
+      </h2>
+      <p style={{ margin: '0 0 14px', fontSize: '0.75rem', color: '#9ca3af' }}>
+        Live products the rules catch right now, in the order the collection page shows them.
+        Membership updates itself as products change.
+      </p>
+      {members.length === 0 ? (
+        <p style={{ margin: 0, fontSize: '0.8125rem', color: '#dc2626' }}>
+          The rules match nothing — the collection page will be empty. Loosen a condition or
+          check the values above, then save and re-check here.
+        </p>
+      ) : (
+        <>
+          <ol style={{ margin: 0, paddingLeft: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '4px 24px' }}>
+            {shown.map(p => (
+              <li key={p.id} style={{ fontSize: '0.8125rem', color: '#374151' }}>
+                <Link href={`/admin/products/${p.id}`} style={{ color: '#374151', textDecoration: 'none' }}>
+                  {brandPlusName(p.brand, p.name)}
+                </Link>
+              </li>
+            ))}
+          </ol>
+          {members.length > shown.length && (
+            <p style={{ margin: '10px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
+              …and {members.length - shown.length} more.
+            </p>
+          )}
+        </>
       )}
     </div>
   );

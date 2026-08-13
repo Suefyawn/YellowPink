@@ -427,6 +427,8 @@ export interface Coupon {
   used_count: number;
   active: boolean;
   expires_at: string | null;
+  /** Unusable (and invisible to the storefront) before this moment. */
+  starts_at?: string | null;
   individual_use?: boolean;
   exclude_sale_items?: boolean;
   free_shipping?: boolean;
