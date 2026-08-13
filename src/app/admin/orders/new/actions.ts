@@ -23,6 +23,48 @@ export interface ManualOrderState {
   error: string | null;
 }
 
+export interface CustomerMatch {
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  province: string | null;
+  zip: string | null;
+}
+
+/** Repeat-customer lookup for the manual order form: a phone/name/email
+ *  fragment against past orders, newest first, deduped to one entry per
+ *  customer (phone-digits key, email fallback). Same gate as creating the
+ *  manual order itself. */
+export async function searchCustomersForOrder(q: string): Promise<CustomerMatch[]> {
+  await assertPermission('orders.edit');
+  // Strip the characters that break PostgREST .or() filters (same
+  // scrubbing as the orders-list search).
+  const term = (q ?? '').replace(/[(),*]/g, ' ').trim();
+  if (term.length < 3) return [];
+  const filter = `first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`;
+  const { data } = await supabaseAdmin()
+    .from('orders')
+    .select('first_name, last_name, email, phone, address, city, province, zip, created_at')
+    .or(filter)
+    .order('created_at', { ascending: false })
+    .limit(40);
+  const seen = new Set<string>();
+  const out: CustomerMatch[] = [];
+  for (const row of (data ?? []) as Array<CustomerMatch & { created_at: string }>) {
+    const key = (row.phone ?? '').replace(/\D/g, '') || (row.email ?? '').trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    const { created_at: _ca, ...match } = row;
+    void _ca;
+    out.push(match);
+    if (out.length >= 8) break;
+  }
+  return out;
+}
+
 interface LineInput { id: string; variantId?: string | null; qty: number; price: number }
 
 function makeOrderNumber(): string {

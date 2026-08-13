@@ -5,9 +5,9 @@
 // banner WITHOUT React resetting the uncontrolled inputs — the operator's
 // half-typed order survives validation round trips.
 
-import { useActionState, useMemo, useRef, useState, startTransition } from 'react';
+import { useActionState, useEffect, useMemo, useRef, useState, startTransition } from 'react';
 import Link from 'next/link';
-import { createManualOrder, type ManualOrderState } from './actions';
+import { createManualOrder, searchCustomersForOrder, type CustomerMatch, type ManualOrderState } from './actions';
 import { EmptyState } from '@/components/admin/EmptyState';
 
 export interface PickerProduct {
@@ -68,6 +68,49 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
   const [discount, setDiscount] = useState(0);
   const [email, setEmail] = useState('');
   const [vendorId, setVendorId] = useState('');
+
+  // Customer-detail fields are controlled (unlike the rest of the form) so
+  // the repeat-customer picker below can fill them programmatically.
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
+
+  // Repeat-customer lookup: min 3 chars, debounced, server action returns up
+  // to 8 past-order customers (deduped by phone). Picking one fills the
+  // customer fields; everything typed after that still wins.
+  const [custSearch, setCustSearch] = useState('');
+  const [custMatches, setCustMatches] = useState<CustomerMatch[]>([]);
+  useEffect(() => {
+    // Too-short queries are cleared in the input's onChange (not here):
+    // a synchronous setState in an effect body trips the lint rule and
+    // causes a cascading render for no benefit.
+    const q = custSearch.trim();
+    if (q.length < 3) return;
+    let cancelled = false;
+    const t = setTimeout(() => {
+      searchCustomersForOrder(q)
+        .then(rows => { if (!cancelled) setCustMatches(rows); })
+        .catch(() => { if (!cancelled) setCustMatches([]); });
+    }, 300);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [custSearch]);
+
+  const pickCustomer = (c: CustomerMatch) => {
+    setFirstName(c.first_name ?? '');
+    setLastName(c.last_name ?? '');
+    setPhone(c.phone ?? '');
+    setEmail(c.email ?? '');
+    setAddress(c.address ?? '');
+    setCity(c.city ?? '');
+    if (c.province && PROVINCES.includes(c.province)) {
+      setProvince(c.province);
+      setShipOverridden(false);
+    }
+    setCustSearch('');
+    setCustMatches([]);
+  };
 
   const productById = useMemo(() => new Map(products.map(p => [p.id, p])), [products]);
 
@@ -307,18 +350,63 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
       {/* ── Customer ── */}
       <section style={{ background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 16 }}>
         <h2 style={{ margin: '0 0 12px', fontSize: '0.9375rem', fontWeight: 700 }}>Customer & delivery</h2>
+        {/* Repeat-customer lookup: fills the fields below from a past order. */}
+        <div style={{ position: 'relative', marginBottom: 12 }}>
+          <input
+            value={custSearch}
+            onChange={e => {
+              setCustSearch(e.target.value);
+              if (e.target.value.trim().length < 3) setCustMatches([]);
+            }}
+            placeholder="Repeat customer? Search past orders by phone, name or email…"
+            aria-label="Search past customers"
+            style={inp}
+          />
+          {custMatches.length > 0 && (
+            <ul style={{
+              position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0, margin: '4px 0 0', padding: 4,
+              listStyle: 'none', background: 'white', border: '1px solid #e5e7eb', borderRadius: 8,
+              boxShadow: '0 8px 24px rgba(0,0,0,0.08)', maxHeight: 280, overflowY: 'auto',
+            }}>
+              {custMatches.map((c, i) => (
+                <li key={i}>
+                  <button
+                    type="button"
+                    onClick={() => pickCustomer(c)}
+                    style={{
+                      display: 'flex', justifyContent: 'space-between', gap: 12, width: '100%',
+                      padding: '8px 10px', border: 'none', background: 'none', cursor: 'pointer',
+                      textAlign: 'left', fontSize: '0.8125rem', borderRadius: 6,
+                    }}
+                  >
+                    <span style={{ minWidth: 0 }}>
+                      <span style={{ fontWeight: 600 }}>{[c.first_name, c.last_name].filter(Boolean).join(' ') || '(no name)'}</span>
+                      {c.phone && <span style={{ color: '#6b7280' }}> · {c.phone}</span>}
+                      {c.email && (
+                        <span style={{ display: 'block', color: '#9ca3af', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {c.email}
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ color: '#6b7280', flexShrink: 0 }}>{c.city ?? ''}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
         <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
           <div>
             <label style={lbl} htmlFor="mo-first">First name *</label>
-            <input id="mo-first" name="first_name" required style={inp} />
+            <input id="mo-first" name="first_name" required value={firstName} onChange={e => setFirstName(e.target.value)} style={inp} />
           </div>
           <div>
             <label style={lbl} htmlFor="mo-last">Last name</label>
-            <input id="mo-last" name="last_name" style={inp} />
+            <input id="mo-last" name="last_name" value={lastName} onChange={e => setLastName(e.target.value)} style={inp} />
           </div>
           <div>
             <label style={lbl} htmlFor="mo-phone">Phone *</label>
-            <input id="mo-phone" name="phone" required inputMode="tel" placeholder="03XXXXXXXXX" style={inp} />
+            <input id="mo-phone" name="phone" required inputMode="tel" placeholder="03XXXXXXXXX" value={phone} onChange={e => setPhone(e.target.value)} style={inp} />
           </div>
           <div>
             <label style={lbl} htmlFor="mo-email">Email (optional)</label>
@@ -326,11 +414,11 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
           </div>
           <div style={{ gridColumn: '1 / -1' }}>
             <label style={lbl} htmlFor="mo-address">Address *</label>
-            <input id="mo-address" name="address" required style={inp} />
+            <input id="mo-address" name="address" required value={address} onChange={e => setAddress(e.target.value)} style={inp} />
           </div>
           <div>
             <label style={lbl} htmlFor="mo-city">City *</label>
-            <input id="mo-city" name="city" required style={inp} />
+            <input id="mo-city" name="city" required value={city} onChange={e => setCity(e.target.value)} style={inp} />
           </div>
           <div>
             <label style={lbl} htmlFor="mo-province">Province</label>

@@ -17,6 +17,7 @@ import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { OrderStatusBadge, orderStatusColor } from '@/components/admin/OrderStatusBadge';
+import { OrderContactEdit } from '@/components/admin/OrderContactEdit';
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
@@ -166,6 +167,23 @@ export default async function OrderDetailPage({
     .select('gross_amount, vendor_cost, our_margin, amount_due, due_to, status')
     .eq('order_id', id)
     .maybeSingle();
+
+  // Return requests filed against this order — a read-only heads-up next to
+  // the status card (Shopify shows returns on the order). The decision
+  // workflow (approve / receive / refund) stays on /admin/returns.
+  const { data: returnRows } = await supabaseAdmin()
+    .from('return_requests')
+    .select('id, status, reason, refund_amount, created_at')
+    .eq('order_id', id)
+    .order('created_at', { ascending: false });
+  const orderReturns = (returnRows ?? []) as Array<{
+    id: string; status: string; reason: string; refund_amount: number | null; created_at: string;
+  }>;
+  // Same palette as the Returns queue so the chips agree across pages.
+  const returnStatusColor: Record<string, string> = {
+    pending: '#b45309', approved: '#15803d', rejected: '#b91c1c',
+    received: '#2563eb', refunded: '#15803d', cancelled: '#6b7280',
+  };
 
   // Customer history block, lifetime orders + total spend for the same
   // (user_id OR phone OR email). Cheap query, admin-only view, no caching
@@ -647,28 +665,25 @@ export default async function OrderDetailPage({
           </dl>
         </div>
 
-        {/* Shipping */}
+        {/* Shipping — editable in place (Shopify: Edit shipping address).
+            The client component owns the read-mode <dl> and the edit form;
+            saving refreshes the route so the Customer card, invoice and
+            WhatsApp messages pick up the corrected details. */}
         <div style={section}>
-          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 16 }}>
-            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Shipping address</h2>
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                `${o.address}, ${o.city}${o.province ? `, ${o.province}` : ''}${o.zip ? ` ${o.zip}` : ''}, Pakistan`
-              )}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ fontSize: '0.75rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}
-            >
-              Open in Maps ↗
-            </a>
-          </div>
-          <dl style={dl}>
-            <dt style={dt}>Address</dt>
-            <dd style={dd}>{o.address}</dd>
-            <dt style={dt}>City</dt>
-            <dd style={dd}>{o.city}{o.province ? `, ${o.province}` : ''}</dd>
-            {o.zip && <><dt style={dt}>ZIP</dt><dd style={dd}>{o.zip}</dd></>}
-          </dl>
+          <OrderContactEdit
+            orderId={o.id!}
+            canEdit={canEdit}
+            contact={{
+              first_name: o.first_name ?? '',
+              last_name: o.last_name ?? '',
+              phone: o.phone ?? '',
+              email: o.email ?? null,
+              address: o.address ?? '',
+              city: o.city ?? '',
+              province: o.province ?? null,
+              zip: o.zip ?? null,
+            }}
+          />
         </div>
       </div>
 
@@ -976,6 +991,45 @@ export default async function OrderDetailPage({
           currentStatus={currentStatus}
         />
       </div>
+      )}
+
+      {/* Return requests on this order, read-only. Decisions happen on the
+          Returns page; this block just makes sure nobody works an order
+          without seeing that a return is in flight. */}
+      {orderReturns.length > 0 && (
+        <div style={section}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Returns</h2>
+            <Link href="/admin/returns" style={{ fontSize: '0.75rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}>
+              Open Returns →
+            </Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {orderReturns.map((r, i) => (
+              <div key={r.id} style={{ padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    fontSize: '0.6875rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em',
+                    color: returnStatusColor[r.status] ?? '#6b7280',
+                  }}>
+                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: returnStatusColor[r.status] ?? '#6b7280', flexShrink: 0 }} />
+                    {r.status}
+                  </span>
+                  <span style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{fmtDatePK(r.created_at)}</span>
+                </div>
+                <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#374151' }}>
+                  {r.reason.length > 90 ? `${r.reason.slice(0, 90)}…` : r.reason}
+                </div>
+                {r.refund_amount != null && (
+                  <div style={{ marginTop: 2, fontSize: '0.75rem', color: '#6b7280' }}>
+                    Refund: <strong style={{ color: '#111827' }}>{fmt(Number(r.refund_amount))}</strong>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Payment Summary */}
