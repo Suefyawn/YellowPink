@@ -163,7 +163,17 @@ export default async function EditProductPage({
           {feedbackError}
         </div>
       )}
-      <ProductForm product={product} vendors={(vendorData ?? []) as Vendor[]} linkedPosts={linkedPosts} />
+      <ProductForm
+        product={product}
+        vendors={(vendorData ?? []) as Vendor[]}
+        linkedPosts={linkedPosts}
+        variantStock={(() => {
+          const enabled = variants.filter(v => v.enabled);
+          return enabled.length > 0
+            ? { count: enabled.length, total: enabled.reduce((n, v) => n + (v.stock ?? 0), 0) }
+            : null;
+        })()}
+      />
       <div style={{ padding: '0 36px 32px' }}>
         <ProductTagsEditor productId={product.id} initialTags={productTags} suggestions={allTags} />
         <ProductGallerySection productId={product.id} initialImages={galleryImages} />
@@ -180,6 +190,7 @@ export default async function EditProductPage({
           productKind={product.kind ?? 'simple'}
           attributes={attributes}
           variants={variants}
+          stockCounted={(product.stock_mode ?? (product.track_inventory === false ? 'untracked' : 'own')) === 'own'}
         />
         <ProductInventoryHistory productId={product.id} />
       </div>

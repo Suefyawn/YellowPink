@@ -52,12 +52,18 @@ function Section({ title, desc, first, children }: {
   );
 }
 
-export function ProductForm({ product, vendors = [], initialName, linkedPosts = [] }: {
+export function ProductForm({ product, vendors = [], initialName, linkedPosts = [], variantStock }: {
   product?: Product;
   vendors?: Vendor[];
   initialName?: string;
   /** Journal posts whose body links to this product (dead links if unpublished). */
   linkedPosts?: Array<{ id: string; title: string }>;
+  /** Enabled-variant stock summary when the product has variants. The parent
+   *  counter is an aggregate nothing maintains — storefront, checkout and the
+   *  Inventory screen all judge a variant product by its shades — so when this
+   *  is set the form shows the shades' sum read-only and submits no `stock`,
+   *  which leaves the parent number untouched on save. */
+  variantStock?: { count: number; total: number } | null;
 }) {
   const isEdit = Boolean(product);
   const boundAction = isEdit ? updateProduct.bind(null, product!.id) : createProduct;
@@ -90,6 +96,7 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
             : 'own'),
   );
   const trackInv = stockMode === 'own';
+  const hasVariants = (variantStock?.count ?? 0) > 0;
   // Default true, matching the column: a live listing keeps selling past zero
   // unless someone deliberately says otherwise.
   const [keepSelling, setKeepSelling] = useState(product?.continue_selling_when_out !== false);
@@ -310,15 +317,27 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
                 <span style={hint}>Set higher than price to show a strikethrough sale.</span>
               </div>
               <div style={fieldWrap}>
-                <label style={lbl}>Stock Quantity{trackInv ? ' *' : ''}</label>
-                {trackInv ? (
-                  <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
-                ) : (
+                <label style={lbl}>Stock Quantity{trackInv && !hasVariants ? ' *' : ''}</label>
+                {!trackInv ? (
+                  <div style={{ ...inp, color: '#6b7280', background: '#f9fafb', display: 'flex', alignItems: 'center' }}>
+                    {stockMode === 'external' ? 'Held by the vendor' : 'Not counted'}
+                  </div>
+                ) : hasVariants ? (
+                  /* No input on purpose: nothing is submitted, so saving the
+                     form can never overwrite the shades' truth with the stale
+                     parent number. */
                   <>
-                    <div style={{ ...inp, color: '#6b7280', background: '#f9fafb', display: 'flex', alignItems: 'center' }}>
-                      {stockMode === 'external' ? 'Held by the vendor' : 'Not counted'}
+                    <div style={{ ...inp, color: '#374151', background: '#f9fafb', display: 'flex', alignItems: 'center', fontWeight: 600 }}>
+                      {variantStock!.total} across {variantStock!.count} variant{variantStock!.count === 1 ? '' : 's'}
                     </div>
+                    <span style={hint}>
+                      This product&apos;s stock lives on its variants — set each count in the
+                      Variants section below. The storefront, checkout and Inventory all use
+                      the variants, never this parent number.
+                    </span>
                   </>
+                ) : (
+                  <input name="stock" type="number" required min={0} defaultValue={product?.stock ?? 0} style={inp} placeholder="0" />
                 )}
               </div>
             </div>
@@ -329,6 +348,12 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
               <legend style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', padding: '0 6px' }}>
                 Who holds this stock?
               </legend>
+              {hasVariants && (
+                <p style={{ margin: '2px 0 8px', fontSize: '0.75rem', color: '#6b7280' }}>
+                  This choice covers the whole product, variants included: pick a vendor-held or
+                  uncounted mode and the per-variant counts below stop being asked for or enforced.
+                </p>
+              )}
               {STOCK_MODES.map(m => (
                 <label
                   key={m.value}

@@ -208,7 +208,10 @@ export const variantInputSchema = z.object({
   sku:        z.string().trim().max(80).optional().or(z.literal('')).nullable(),
   price:      positiveNumber,
   compare_at_price: positiveNumber.optional().nullable(),
-  stock:      positiveInt,
+  // Optional because the variant form omits the field entirely for vendor-held
+  // and uncounted products (their shades have nothing to count). Absent means
+  // "leave the count alone", exactly like the product form and CSV import.
+  stock:      positiveInt.optional(),
   image_url:  httpsUrlSchema.optional().or(z.literal('')).nullable(),
   // Native checkbox paired with a hidden 'false' input, so an unticked box
   // submits 'false' and actually disables the variant. A missing value (older

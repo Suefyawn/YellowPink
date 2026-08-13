@@ -30,6 +30,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     { href: '/admin/dashboard', label: 'Dashboard', icon: 'layout-dashboard', permissionsAny: ['analytics', 'analytics_traffic', 'analytics_errors'] },
     { href: '/admin/analytics', label: 'Analytics', icon: 'pie-chart', permission: 'analytics' },
     { href: '/admin/finance',   label: 'Finance',   icon: 'banknote', permission: 'finance' },
+    { href: '/admin/cash',      label: 'Cash',      icon: 'coins', permission: 'finance' },
   ]},
   { label: 'Sell', items: [
     { href: '/admin/orders',    label: 'Orders',    icon: 'shopping-bag', permission: 'orders.view' },
