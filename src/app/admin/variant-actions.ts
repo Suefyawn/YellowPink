@@ -108,6 +108,58 @@ export async function createAttributeValue(
 }
 
 /**
+ * Delete an attribute outright — the undo for creating one by mistake. Only
+ * allowed while no variant anywhere uses any of its values, so it can never
+ * strip a live product's options; anything in use is removed value-by-value
+ * from the products first (the chips), after which this succeeds.
+ */
+export async function deleteAttribute(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertProducts();
+  const attributeId = String(formData.get('attribute_id') ?? '');
+  const productId = String(formData.get('product_id') ?? '');
+  if (!attributeId) return { error: 'Pick the attribute first.' };
+
+  const admin = supabaseAdmin();
+  const { data: attr } = await admin
+    .from('product_attributes')
+    .select('id, name')
+    .eq('id', attributeId)
+    .maybeSingle();
+  if (!attr) return { error: 'Attribute not found.' };
+
+  const { data: values } = await admin
+    .from('attribute_values')
+    .select('id')
+    .eq('attribute_id', attributeId);
+  const valueIds = ((values ?? []) as Array<{ id: string }>).map(v => v.id);
+
+  if (valueIds.length) {
+    const { data: used } = await admin
+      .from('variant_attribute_values')
+      .select('variant_id')
+      .in('attribute_value_id', valueIds)
+      .limit(1);
+    if (used && used.length) {
+      return { error: `"${(attr as { name: string }).name}" is in use by product variants. Remove its values from those products first (the × on the chips), then delete it.` };
+    }
+    const { error: valErr } = await admin.from('attribute_values').delete().eq('attribute_id', attributeId);
+    if (valErr) return { error: valErr.message };
+  }
+  const { error } = await admin.from('product_attributes').delete().eq('id', attributeId);
+  if (error) return { error: error.message };
+
+  void logAudit(session, {
+    action: 'attribute.delete', entity: 'product_attributes', entity_id: attributeId,
+    diff: { name: (attr as { name: string }).name, values_deleted: valueIds.length },
+  });
+  if (productId) revalidatePath(`/admin/products/${productId}`);
+  return { success: true };
+}
+
+/**
  * Remove a value from THIS product, Shopify-style: delete the product's
  * variants carrying it. Refuses while any of those variants still holds
  * stock, so goods can't disappear from the books via a chip's ×. If the value
@@ -318,6 +370,88 @@ export async function updateVariant(
   });
   revalidatePath(`/admin/products/${parsed.data.product_id}`);
   return { success: true };
+}
+
+/**
+ * Shopify-style grid save: every variant's sku/price/compare-at/stock/enabled
+ * arrives in one submit; only rows that actually changed are written. Stock
+ * goes through the ledger like every other stock write, and is skipped
+ * entirely for products whose stock isn't counted.
+ */
+export async function bulkUpdateVariants(
+  _prev: { error?: string; success?: boolean; changed?: number } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean; changed?: number }> {
+  const session = await assertProducts();
+  const productId = String(formData.get('product_id') ?? '');
+  if (!productId) return { error: 'Missing product.' };
+
+  const admin = supabaseAdmin();
+  const { data: currentRows, error: loadErr } = await admin
+    .from('product_variants')
+    .select('id, sku, price, compare_at_price, stock, enabled')
+    .eq('product_id', productId);
+  if (loadErr) return { error: loadErr.message };
+  const current = (currentRows ?? []) as Array<{
+    id: string; sku: string | null; price: number; compare_at_price: number | null; stock: number; enabled: boolean;
+  }>;
+  const counted = await productStockCounted(productId);
+
+  let changed = 0;
+  for (const v of current) {
+    // A row not present in the submit (stale tab) is left untouched.
+    if (formData.get(`v__${v.id}__present`) !== '1') continue;
+
+    const sku = String(formData.get(`v__${v.id}__sku`) ?? '').trim().slice(0, 80) || null;
+    const priceRaw = Number(formData.get(`v__${v.id}__price`));
+    const compareRaw = String(formData.get(`v__${v.id}__compare`) ?? '').trim();
+    const compare = compareRaw === '' ? null : Number(compareRaw);
+    const enabled = formData.get(`v__${v.id}__enabled`) === 'true';
+
+    if (!Number.isFinite(priceRaw) || priceRaw < 0) return { error: 'Every price has to be a number of at least 0.' };
+    if (compare !== null && (!Number.isFinite(compare) || compare < 0)) return { error: 'Compare-at prices have to be numbers.' };
+
+    const rowChanges: Record<string, unknown> = {};
+    if (sku !== (v.sku || null)) rowChanges.sku = sku;
+    if (priceRaw !== v.price) rowChanges.price = priceRaw;
+    if (compare !== (v.compare_at_price ?? null)) rowChanges.compare_at_price = compare;
+    if (enabled !== v.enabled) rowChanges.enabled = enabled;
+
+    let stockChanged = false;
+    let nextStock = v.stock;
+    if (counted) {
+      const stockRaw = String(formData.get(`v__${v.id}__stock`) ?? '').trim();
+      if (stockRaw !== '') {
+        nextStock = Number(stockRaw);
+        if (!Number.isInteger(nextStock) || nextStock < 0) return { error: 'Stock has to be a whole number of at least 0.' };
+        stockChanged = nextStock !== v.stock;
+      }
+    }
+
+    if (Object.keys(rowChanges).length) {
+      const { error } = await admin.from('product_variants').update(rowChanges).eq('id', v.id);
+      if (error) return { error: `A row failed to save: ${error.message}` };
+    }
+    if (stockChanged) {
+      await reconcileStock({
+        productId,
+        variantId: v.id,
+        nextStock,
+        actor: session,
+        note: 'Set on the variant grid',
+      });
+    }
+    if (Object.keys(rowChanges).length || stockChanged) changed++;
+  }
+
+  if (changed > 0) {
+    void logAudit(session, {
+      action: 'variant.bulk_update', entity: 'product_variants', entity_id: productId,
+      diff: { product_id: productId, rows_changed: changed },
+    });
+    revalidatePath(`/admin/products/${productId}`);
+  }
+  return { success: true, changed };
 }
 
 export async function deleteVariant(formData: FormData): Promise<void> {
