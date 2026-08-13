@@ -504,7 +504,36 @@ export async function sendOutreachEmail(args: {
   subject: string;
   body: string;
 }): Promise<boolean> {
-  const html = `<div style="white-space:pre-wrap;line-height:1.6;font-size:14px;color:#1f2937;font-family:Arial,Helvetica,sans-serif">${escapeHtml(args.body)}</div>`;
+  // A letter, not a newsletter: the body reads as one person writing, but the
+  // page is typeset and the signature is a proper branded card, so a trade
+  // desk or an editor sees a real business behind the name. The message body
+  // usually ends with its own "Thanks, Sufyan Zafar / Yellow Pink" sign-off;
+  // the card below adds the visual identity (logo, title, links) rather than
+  // repeating the farewell.
+  const html = `
+<div style="background:#f6f6f6;padding:28px 12px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif">
+  <div style="max-width:600px;margin:0 auto;background:#ffffff;border:1px solid ${LINE};border-radius:10px;overflow:hidden">
+    <div style="height:4px;background:linear-gradient(90deg,${BRAND_YELLOW},${BRAND_PINK})"></div>
+    <div style="padding:30px 34px 24px">
+      <div style="white-space:pre-wrap;line-height:1.65;font-size:15px;color:${INK}">${escapeHtml(args.body)}</div>
+    </div>
+    <div style="padding:18px 34px 22px;border-top:1px solid ${LINE};background:${PAPER}">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+        <td style="vertical-align:middle;padding-right:14px">
+          <img src="${LOGO_URL}" width="44" height="44" alt="Yellow Pink" style="display:block;border:0;border-radius:10px" />
+        </td>
+        <td style="vertical-align:middle">
+          <div style="font-size:14px;font-weight:700;color:${INK}">Sufyan Zafar</div>
+          <div style="font-size:12px;color:${INK_700};margin-top:1px">Founder, Yellow Pink</div>
+          <div style="font-size:12px;margin-top:4px">
+            <a href="${SITE_URL}" style="color:${BRAND_PINK};text-decoration:none;font-weight:600">www.yellowpink.pk</a>
+            <span style="color:${MUTED}"> · skincare, beauty &amp; wellness, delivered across Pakistan</span>
+          </div>
+        </td>
+      </tr></table>
+    </div>
+  </div>
+</div>`;
   return send({
     to: args.to,
     subject: args.subject,

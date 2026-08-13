@@ -17,6 +17,20 @@ async function assertProducts() {
   return session;
 }
 
+/** Does this product's stock get counted at all? Vendor-held ('external') and
+ *  deliberately uncounted ('untracked') products answer no — their variants
+ *  carry no meaningful count either, so variant stock writes are skipped. */
+async function productStockCounted(productId: string): Promise<boolean> {
+  const { data } = await supabaseAdmin()
+    .from('products')
+    .select('stock_mode, track_inventory')
+    .eq('id', productId)
+    .maybeSingle();
+  const p = data as { stock_mode?: string | null; track_inventory?: boolean | null } | null;
+  if (!p) return true; // unknown product: let the FK insert fail with its own error
+  return (p.stock_mode ?? (p.track_inventory === false ? 'untracked' : 'own')) === 'own';
+}
+
 // ─── Create / update / delete ──────────────────────────────────────────────
 export async function createVariant(
   _prev: { error?: string; success?: boolean } | null,
@@ -25,6 +39,13 @@ export async function createVariant(
   const session = await assertProducts();
   const parsed = parseForm(variantInputSchema, formData);
   if (!parsed.success) return { error: firstError(parsed.error) };
+
+  // A vendor-held or uncounted product's shades have nothing to count: start
+  // them at zero regardless of what a stale or hand-built form submitted. The
+  // form hides the input for these products; this is the server's own line.
+  if (!(await productStockCounted(parsed.data.product_id as string))) {
+    parsed.data.stock = 0;
+  }
 
   // Insert the variant row first, then the option links.
   const { data, error } = await supabaseAdmin()
@@ -68,7 +89,10 @@ export async function updateVariant(
     .eq('id', variantId);
   if (error) return { error: error.message };
 
-  if (typeof parsed.data.stock === 'number') {
+  // Only stock we hold is reconcilable. For a vendor-held or uncounted
+  // product the shades carry no count either, so a submitted number (stale
+  // tab, hand-built request) must not mint ledger rows.
+  if (typeof parsed.data.stock === 'number' && await productStockCounted(parsed.data.product_id as string)) {
     await reconcileStock({
       productId: parsed.data.product_id as string,
       variantId,

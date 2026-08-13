@@ -33,12 +33,15 @@ function describeOptions(v: VariantWithOptions, attrs: AttributeWithValues[]): s
 
 // ─── Single variant row form (create + edit share this) ────────────────────
 function VariantForm({
-  productId, attributes, variant, onDone,
+  productId, attributes, variant, onDone, stockCounted = true,
 }: {
   productId: string;
   attributes: AttributeWithValues[];
   variant?: VariantWithOptions;
   onDone?: () => void;
+  /** false when the product's stock_mode is external/untracked: the shades
+   *  then have nothing to count either, so no stock input is shown or sent. */
+  stockCounted?: boolean;
 }) {
   const action = variant ? updateVariant.bind(null, variant.id) : createVariant;
   const [state, formAction, pending] = useActionState(action, null);
@@ -94,8 +97,17 @@ function VariantForm({
           <input name="compare_at_price" type="number" min={0} defaultValue={variant?.compare_at_price ?? ''} style={inp} placeholder="3000" />
         </div>
         <div>
-          <label style={lbl}>Stock *</label>
-          <input name="stock" type="number" min={0} required defaultValue={variant?.stock ?? 0} style={inp} placeholder="0" />
+          <label style={lbl}>Stock{stockCounted ? ' *' : ''}</label>
+          {stockCounted ? (
+            <input name="stock" type="number" min={0} required defaultValue={variant?.stock ?? 0} style={inp} placeholder="0" />
+          ) : (
+            /* Vendor-held / uncounted product: the shades have nothing to
+               count either. No input, nothing submitted, and the server
+               ignores stock for these products regardless. */
+            <div style={{ ...inp, color: '#6b7280', background: '#f3f4f6', display: 'flex', alignItems: 'center' }}>
+              Not counted
+            </div>
+          )}
         </div>
       </div>
 
@@ -144,12 +156,14 @@ function VariantForm({
 
 // ─── Main section ──────────────────────────────────────────────────────────
 export function VariantsSection({
-  productId, productKind, attributes, variants,
+  productId, productKind, attributes, variants, stockCounted = true,
 }: {
   productId: string;
   productKind: string;
   attributes: AttributeWithValues[];
   variants: VariantWithOptions[];
+  /** false for vendor-held / uncounted products (stock_mode !== 'own'). */
+  stockCounted?: boolean;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -198,6 +212,7 @@ export function VariantsSection({
           productId={productId}
           attributes={attributes}
           onDone={() => setAdding(false)}
+          stockCounted={stockCounted}
         />
       )}
 
@@ -215,6 +230,7 @@ export function VariantsSection({
               attributes={attributes}
               variant={v}
               onDone={() => setEditingId(null)}
+              stockCounted={stockCounted}
             />
           ) : (
             <div
@@ -240,7 +256,9 @@ export function VariantsSection({
                 )}
               </div>
               <div style={{ fontSize: '0.8125rem' }}>
-                Stock: <strong>{v.stock}</strong>
+                {stockCounted
+                  ? <>Stock: <strong>{v.stock}</strong></>
+                  : <span style={{ color: '#9ca3af' }}>Stock: not counted</span>}
               </div>
               <div style={{ fontSize: '0.6875rem', color: v.enabled ? '#16a34a' : '#9ca3af' }}>
                 {v.enabled ? '● enabled' : '○ disabled'}
