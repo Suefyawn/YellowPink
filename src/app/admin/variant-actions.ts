@@ -68,7 +68,107 @@ export async function createAttributeValue(
     action: 'attribute_value.create', entity: 'attribute_values', entity_id: (data as { id: string }).id,
     diff: { attribute_id: attributeId, value, slug },
   });
+
+  // Shopify-style shortcut: adding a shade usually means "this product now
+  // comes in that shade", so optionally create its variant in the same click —
+  // at the product's own price, zero stock, ready to edit below.
+  if (productId && formData.get('create_variant') === 'true') {
+    const { data: prod } = await admin
+      .from('products')
+      .select('price')
+      .eq('id', productId)
+      .maybeSingle();
+    const { data: lastVar } = await admin
+      .from('product_variants')
+      .select('sort_order')
+      .eq('product_id', productId)
+      .order('sort_order', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const { data: variant, error: varErr } = await admin
+      .from('product_variants')
+      .insert({
+        product_id: productId,
+        price: (prod as { price: number } | null)?.price ?? 0,
+        stock: 0,
+        enabled: true,
+        sort_order: ((lastVar as { sort_order: number } | null)?.sort_order ?? 0) + 1,
+      })
+      .select('id')
+      .single();
+    if (varErr) return { error: `Value added, but its variant failed: ${varErr.message}` };
+    const { error: linkErr } = await admin
+      .from('variant_attribute_values')
+      .insert({ variant_id: (variant as { id: string }).id, attribute_value_id: (data as { id: string }).id });
+    if (linkErr) return { error: `Value and variant added, but linking failed: ${linkErr.message}` };
+  }
+
   if (productId) revalidatePath(`/admin/products/${productId}`);
+  return { success: true };
+}
+
+/**
+ * Remove a value from THIS product, Shopify-style: delete the product's
+ * variants carrying it. Refuses while any of those variants still holds
+ * stock, so goods can't disappear from the books via a chip's ×. If the value
+ * is used by nothing anywhere afterwards, the registry entry is tidied away
+ * too; if another product still uses it, the value itself survives.
+ */
+export async function removeValueFromProduct(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertProducts();
+  const valueId = String(formData.get('value_id') ?? '');
+  const productId = String(formData.get('product_id') ?? '');
+  if (!valueId || !productId) return { error: 'Missing value or product.' };
+
+  const admin = supabaseAdmin();
+  const { data: links } = await admin
+    .from('variant_attribute_values')
+    .select('variant_id')
+    .eq('attribute_value_id', valueId);
+  const linkedIds = ((links ?? []) as Array<{ variant_id: string }>).map(l => l.variant_id);
+
+  let doomed: Array<{ id: string; stock: number | null }> = [];
+  if (linkedIds.length) {
+    const { data: variants } = await admin
+      .from('product_variants')
+      .select('id, stock')
+      .eq('product_id', productId)
+      .in('id', linkedIds);
+    doomed = (variants ?? []) as Array<{ id: string; stock: number | null }>;
+  }
+
+  const stocked = doomed.filter(v => (v.stock ?? 0) > 0);
+  if (stocked.length) {
+    return { error: `That value's variant still holds ${stocked.reduce((n, v) => n + (v.stock ?? 0), 0)} unit(s). Zero the stock first (edit the variant or log it in Inventory), then remove it.` };
+  }
+
+  if (doomed.length) {
+    const { error } = await admin
+      .from('product_variants')
+      .delete()
+      .in('id', doomed.map(v => v.id));
+    if (error) return { error: `Could not remove: ${error.message}` };
+  }
+
+  // Registry hygiene: a value no variant anywhere uses any more disappears
+  // from the dropdowns too, so the list stays what's real.
+  const { data: remaining } = await admin
+    .from('variant_attribute_values')
+    .select('variant_id')
+    .eq('attribute_value_id', valueId)
+    .limit(1);
+  if (!remaining || remaining.length === 0) {
+    await admin.from('attribute_values').delete().eq('id', valueId);
+  }
+
+  void logAudit(session, {
+    action: 'attribute_value.remove_from_product', entity: 'attribute_values', entity_id: valueId,
+    diff: { product_id: productId, variants_deleted: doomed.length, registry_deleted: !remaining || remaining.length === 0 },
+  });
+  revalidatePath(`/admin/products/${productId}`);
   return { success: true };
 }
 
