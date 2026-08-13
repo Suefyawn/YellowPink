@@ -52,6 +52,15 @@ insert into public.coupons (id, code, type, value, active, expires_at, usage_lim
   ('00000000-0000-0000-0000-0000000000c3', 'MATRIXONCE', 'fixed',  100, true,  null,                 1,    false),
   ('00000000-0000-0000-0000-0000000000c4', 'MATRIXSHIP', 'fixed',    0, true,  null,                 null, true);
 
+-- Scoped coupons (migration 1050): the discount base narrows to the eligible
+-- lines. G is a sale product (compare-at 1200, charged 900).
+insert into public.products (id, name, slug, category, price, original_price, stock, track_inventory, continue_selling_when_out, status) values
+  ('00000000-0000-0000-0000-000000000010', 'Matrix Sale G', 'matrix-sale-g', 'Test', 900, 1200, 100, true, false, 'published');
+insert into public.coupons (id, code, type, value, active, product_ids, exclude_sale_items) values
+  ('00000000-0000-0000-0000-0000000000c5', 'MATRIXSCOPED', 'percent', 10, true,
+   array['00000000-0000-0000-0000-00000000000a']::uuid[], false),
+  ('00000000-0000-0000-0000-0000000000c6', 'MATRIXNOSALE', 'percent', 10, true, '{}', true);
+
 -- Referral programme: a referrer profile whose code a first-time buyer can
 -- use for the no-coupon referral discount (migration 650, restored by 790).
 insert into auth.users (id, email)
@@ -347,6 +356,39 @@ begin
             where l.user_id = '00000000-0000-0000-0000-0000000000f2'
               and l.order_id = o.id and l.delta = -200 and l.reason = 'redemption'),
     'loyalty_ledger redemption row delta=-200 for the order');
+
+  -- 14h. Product-scoped percent coupon (migration 1050): 10% off product A
+  --      ONLY. Basket = 2 × A (2000) + 1 × G (900); the discount base is the
+  --      A lines, so 200 — the pre-1050 maths took 10% of the whole 2900 (290)
+  --      and is now a drift rejection.
+  o := yp_tests.expect_ok('product-scoped coupon discounts its lines only',
+    yp_tests.payload('{"coupon_code": "MATRIXSCOPED",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 2},
+                {"id": "00000000-0000-0000-0000-000000000010", "qty": 1}],
+      "subtotal": 2900, "discount_amount": 200, "total": 2900}'));
+  perform yp_tests.assert('product-scoped coupon discounts its lines only',
+    o.discount_amount = 200, 'expected discount 200, got ' || o.discount_amount);
+  perform yp_tests.expect_reject('product-scoped coupon, whole-cart discount forged',
+    yp_tests.payload('{"coupon_code": "MATRIXSCOPED",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 2},
+                {"id": "00000000-0000-0000-0000-000000000010", "qty": 1}],
+      "subtotal": 2900, "discount_amount": 290, "total": 2810, "order_number": "MTX-SCOPE-2"}'),
+    'discount mismatch');
+
+  -- 14i. exclude_sale_items: G is on sale (1200 → 900), so the base is only
+  --      the A lines; and a basket of ONLY sale items is not applicable.
+  o := yp_tests.expect_ok('exclude-sale-items coupon skips sale lines',
+    yp_tests.payload('{"coupon_code": "MATRIXNOSALE",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 2},
+                {"id": "00000000-0000-0000-0000-000000000010", "qty": 1}],
+      "subtotal": 2900, "discount_amount": 200, "total": 2900, "order_number": "MTX-NOSALE-1"}'));
+  perform yp_tests.assert('exclude-sale-items coupon skips sale lines',
+    o.discount_amount = 200, 'expected discount 200, got ' || o.discount_amount);
+  perform yp_tests.expect_reject('exclude-sale-items coupon on an all-sale basket',
+    yp_tests.payload('{"coupon_code": "MATRIXNOSALE",
+      "items": [{"id": "00000000-0000-0000-0000-000000000010", "qty": 1}],
+      "subtotal": 900, "discount_amount": 90, "total": 1010, "order_number": "MTX-NOSALE-2"}'),
+    'coupon_not_applicable');
 
   -- 15. Client subtotal that disagrees with server-recomputed prices.
   perform yp_tests.expect_reject('subtotal mismatch',

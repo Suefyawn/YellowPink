@@ -20,6 +20,7 @@ import { hasWhatsApp, whatsappGoUrl } from '@/lib/whatsapp';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { track } from '@/lib/analytics';
+import { computeCouponDiscount } from '@/lib/coupon-validation';
 import { successHaptic } from '@/lib/haptics';
 import { readAttribution } from '@/lib/attribution';
 import { readReferral } from '@/lib/referral';
@@ -254,11 +255,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // the line total (place_order validates exactly this: discount 0, shipping
   // 0 accepted because the server only rejects undercharges vs its floor).
   const freeShipCoupon = Boolean(cartCoupon && (cartCoupon.discount_type === 'free_shipping' || cartCoupon.free_shipping));
-  const couponDiscount = cartCoupon && !freeShipCoupon
-    ? cartCoupon.type === 'percent'
-      ? Math.round(subtotal * cartCoupon.value / 100)
-      : cartCoupon.value
-    : 0;
+  // Shared maths with the cart and place_order (which re-derives the same
+  // number and rejects drift): scoped coupons discount only their own lines.
+  const couponDiscount = cartCoupon ? computeCouponDiscount(cartCoupon, cartItems) : 0;
   // Referral first-order discount: a coupon always wins (they don't stack —
   // place_order validates exactly one discount source), so the referral line
   // only applies when no coupon is in play.

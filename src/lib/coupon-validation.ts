@@ -66,24 +66,64 @@ export function validateCoupon({
     });
     if (!ok) return { ok: false, error: 'This coupon is not valid for your account.' };
   }
-  // Per-product allowlist / denylist. Coupon is invalid if every cart item
-  // is excluded, OR if none of the items hit the allowlist.
-  if (c.product_ids && c.product_ids.length > 0) {
-    const matched = cartItems.some(it => c.product_ids!.includes(it.id));
-    if (!matched) return { ok: false, error: 'This coupon does not apply to items in your cart.' };
+  // Scoping: a coupon limited to certain products (or barring sale items)
+  // must have at least one line it can act on.
+  if (couponIsScoped(c) && couponEligibleSubtotal(c, cartItems) <= 0) {
+    return { ok: false, error: 'This coupon does not apply to items in your cart.' };
   }
-  if (c.excluded_product_ids && c.excluded_product_ids.length > 0) {
-    const allExcluded = cartItems.every(it => c.excluded_product_ids!.includes(it.id));
-    if (allExcluded) return { ok: false, error: 'This coupon does not apply to items in your cart.' };
-  }
-  // Per-category allowlist / denylist. We don't have a categories[] on
-  // CartItem (storefront uses `category` string), so match by single category.
-  if (c.category_ids && c.category_ids.length > 0) {
-    // category_ids contains category UUIDs, not slugs, until we surface the
-    // category id on CartItem we can only enforce this server-side. Skip.
-  }
-  if (c.excluded_category_ids && c.excluded_category_ids.length > 0) {
-    // Same caveat, server enforces.
-  }
+  // Per-category allowlist / denylist: category_ids are UUIDs and CartItem
+  // only carries the category name, so the server enforces those (eligibility
+  // only — they never change the discount amount, so client and server maths
+  // can't drift).
   return { ok: true };
+}
+
+// ─── Discount amount ────────────────────────────────────────────────────────
+// The single source of the coupon maths for the cart, the checkout AND the
+// place_order RPC (its SQL mirrors these rules line for line — keep them in
+// lock-step or the RPC's drift check will reject honest orders).
+//
+// A coupon "scoped" to products or non-sale items discounts ONLY the lines it
+// applies to, the Shopify "amount off products" semantics. Before 13 Aug 2026
+// the lists were an eligibility gate only: one qualifying item in the basket
+// discounted the entire cart.
+
+/** True when the coupon's discount base is narrower than the whole cart. */
+export function couponIsScoped(c: Coupon): boolean {
+  return Boolean(
+    (c.product_ids && c.product_ids.length > 0) ||
+    (c.excluded_product_ids && c.excluded_product_ids.length > 0) ||
+    c.exclude_sale_items,
+  );
+}
+
+/** A line is "on sale" when it's charged below the product's compare-at price.
+ *  `price` on a cart line is the charged unit price (variant price for shade
+ *  lines) — the same number place_order recomputes as v_unit_price. */
+function lineOnSale(it: CartItem): boolean {
+  return it.original_price != null && it.original_price > it.price;
+}
+
+function lineEligible(c: Coupon, it: CartItem): boolean {
+  if (c.product_ids && c.product_ids.length > 0 && !c.product_ids.includes(it.id)) return false;
+  if (c.excluded_product_ids && c.excluded_product_ids.length > 0 && c.excluded_product_ids.includes(it.id)) return false;
+  if (c.exclude_sale_items && lineOnSale(it)) return false;
+  return true;
+}
+
+/** Subtotal of the lines the coupon may discount. */
+export function couponEligibleSubtotal(c: Coupon, cartItems: CartItem[]): number {
+  return cartItems.reduce((s, it) => s + (lineEligible(c, it) ? it.price * it.qty : 0), 0);
+}
+
+/** The PKR discount this coupon takes off this cart. Free-shipping-only
+ *  coupons (value 0) discount nothing — they zero the delivery charge instead. */
+export function computeCouponDiscount(c: Coupon, cartItems: CartItem[]): number {
+  const freeShipOnly = (c.discount_type === 'free_shipping' || c.free_shipping) && !(c.value > 0);
+  if (freeShipOnly) return 0;
+  const subtotal = cartItems.reduce((s, it) => s + it.price * it.qty, 0);
+  const base = couponIsScoped(c) ? couponEligibleSubtotal(c, cartItems) : subtotal;
+  if (c.type === 'percent') return Math.round(base * c.value / 100);
+  // Fixed amount: never more than the lines it's allowed to touch.
+  return Math.min(c.value, base);
 }

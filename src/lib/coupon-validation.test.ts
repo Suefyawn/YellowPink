@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateCoupon } from './coupon-validation';
+import { validateCoupon, computeCouponDiscount, couponEligibleSubtotal } from './coupon-validation';
 import type { Coupon, CartItem } from '@/types';
 
 // Money-adjacent logic shared by CartPage and CheckoutPage. The place_order
@@ -119,5 +119,62 @@ describe('validateCoupon', () => {
         subtotal: 2000,
       }).ok).toBe(true);
     });
+
+    it('rejects when the only allowlisted line is a sale item and sale items are excluded', () => {
+      const c = coupon({ product_ids: ['p-1'], exclude_sale_items: true });
+      const saleLine = item({ id: 'p-1', price: 800, original_price: 1000 });
+      expect(validateCoupon({ coupon: c, cartItems: [saleLine], subtotal: 800 }).ok).toBe(false);
+    });
+  });
+});
+
+// The discount maths mirrored line-for-line by place_order's SQL — a change
+// here without the matching migration (or vice versa) makes the RPC's drift
+// check reject honest checkouts.
+describe('computeCouponDiscount', () => {
+  it('unscoped percent discounts the whole subtotal', () => {
+    const items = [item({ price: 1000 }), item({ id: 'p-2', price: 500 })];
+    expect(computeCouponDiscount(coupon({ value: 10 }), items)).toBe(150);
+  });
+
+  it('product-scoped percent discounts only the qualifying lines', () => {
+    // The pre-13-Aug bug: this coupon discounted the whole 3,000 cart (300)
+    // instead of the single 1,000 qualifying line (100).
+    const c = coupon({ value: 10, product_ids: ['p-1'] });
+    const items = [item({ id: 'p-1', price: 1000 }), item({ id: 'p-2', price: 2000 })];
+    expect(computeCouponDiscount(c, items)).toBe(100);
+  });
+
+  it('excluded products drop out of the discount base', () => {
+    const c = coupon({ value: 50, excluded_product_ids: ['p-2'] });
+    const items = [item({ id: 'p-1', price: 1000 }), item({ id: 'p-2', price: 2000 })];
+    expect(computeCouponDiscount(c, items)).toBe(500);
+  });
+
+  it('exclude_sale_items removes discounted lines from the base', () => {
+    const c = coupon({ value: 10, exclude_sale_items: true });
+    const items = [
+      item({ id: 'p-1', price: 800, original_price: 1000 }), // on sale
+      item({ id: 'p-2', price: 1000 }),                      // full price
+    ];
+    expect(computeCouponDiscount(c, items)).toBe(100);
+    expect(couponEligibleSubtotal(c, items)).toBe(1000);
+  });
+
+  it('fixed amount is capped at the eligible lines', () => {
+    const c = coupon({ type: 'fixed', value: 500, product_ids: ['p-1'] });
+    const items = [item({ id: 'p-1', price: 300 }), item({ id: 'p-2', price: 5000 })];
+    expect(computeCouponDiscount(c, items)).toBe(300);
+  });
+
+  it('quantities multiply into the eligible base', () => {
+    const c = coupon({ value: 10, product_ids: ['p-1'] });
+    const items = [item({ id: 'p-1', price: 250, qty: 4 }), item({ id: 'p-2', price: 9999 })];
+    expect(computeCouponDiscount(c, items)).toBe(100);
+  });
+
+  it('free-shipping-only coupons discount nothing', () => {
+    const c = coupon({ type: 'fixed', value: 0, free_shipping: true, discount_type: 'free_shipping' });
+    expect(computeCouponDiscount(c, [item()])).toBe(0);
   });
 });

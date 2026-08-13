@@ -14,6 +14,7 @@ import { whatsappUrl as waUrl, whatsappGoUrl, WA_TEMPLATES as WA_T } from '@/lib
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { FreeShippingProgress } from '@/components/cart/FreeShippingProgress';
 import { vendorFreeShippingEligible } from '@/lib/vendor-shipping';
+import { computeCouponDiscount } from '@/lib/coupon-validation';
 import type { CartItem, Coupon, Product } from '@/types';
 
 export function CartPage({ restoreToken = null, recommended = [], estimatedDays = null }: { restoreToken?: string | null; recommended?: Product[]; estimatedDays?: { min: number; max: number } | null }) {
@@ -80,11 +81,9 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
   // Free-shipping coupons waive the delivery charge instead of discounting
   // the line total, mirroring the checkout's maths so both previews agree.
   const freeShipCoupon = Boolean(appliedCoupon && (appliedCoupon.discount_type === 'free_shipping' || appliedCoupon.free_shipping));
-  const discount = appliedCoupon && !freeShipCoupon
-    ? appliedCoupon.type === 'percent'
-      ? Math.round(subtotal * appliedCoupon.value / 100)
-      : appliedCoupon.value
-    : 0;
+  // Shared maths with checkout and place_order: a coupon scoped to certain
+  // products (or barring sale items) discounts only the lines it applies to.
+  const discount = appliedCoupon ? computeCouponDiscount(appliedCoupon, cartItems) : 0;
   const total = Math.max(0, subtotal - discount);
   // The cart can't know the shopper's delivery zone yet, and the free-delivery
   // threshold varies by zone, so we never pre-promise free here from a default

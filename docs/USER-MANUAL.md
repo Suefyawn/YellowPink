@@ -567,6 +567,8 @@ Discount codes — create, edit, set limits and expiry, and turn them on/off. Th
 
 If a create is rejected (missing value, duplicate code, …) the form keeps what you typed and shows the reason inline. Each coupon's status pill shows its one effective state — *Active*, *Inactive*, *Expired* or *Maxed out* — and clicking it toggles the coupon on/off.
 
+**Targeting.** The edit dialog can limit a coupon to specific emails or `*@domain` wildcards, cap uses per customer, and — the important part — scope it to products: an **"Only applies to these products"** allowlist, a **"Never applies to these products"** denylist, and a **"Don't apply to sale items"** tickbox (a sale item is anything already priced below its compare-at price). A scoped coupon discounts **only the lines it applies to**: "10% off these serums" takes 10% off the serums in the basket, not the whole order, and a fixed-amount coupon never takes off more than those lines are worth. If nothing in the basket qualifies, the coupon is refused with a clear message. The storefront preview and the order-placing check use the same arithmetic, so what the shopper sees is exactly what the order records.
+
 ### Medical reviewers in detail
 
 Found at `/admin/reviewers`: the panel of real, qualified doctors who medically review your health/supplement content (the strongest E-E-A-T trust signal). Doctors **apply themselves** via the public form at `/medical-review-board/apply`; their applications appear here under **Pending applications** with the credentials and PMDC number they entered. **Verify the credentials, then Approve & invite** — that publishes their profile on the public [review board](/medical-review-board), provisions a passwordless (magic-link) sign-in, and emails them a link to their own **reviewer dashboard** (`/reviewer`), where they manage their profile and see the articles credited to them.
@@ -1034,6 +1036,12 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 13 August 2026
+
+- **A product-scoped coupon now discounts only its own products.** Before, a coupon limited to certain products checked that one of them was in the basket — and then discounted the **entire cart**. Now the discount applies to the qualifying lines only, a fixed amount can never exceed what those lines are worth, and the coupon dialog gained a **"Don't apply to sale items"** tickbox that keeps a code off anything already marked down. The basket preview and the final order use the same arithmetic, enforced when the order is placed. (No live coupon used product scoping, so nothing changed for AZADI14, WELCOME10 or the others.)
+
+- **Smart collections stopped shuffling.** A rule-based collection's landing page used to show its products in database order — effectively random. It now leads with best sellers (the same signal as the shop's "Best selling" sort), newest products breaking ties, so the page's first row earns its position.
+
+- **Adding a shade to a multi-option product no longer creates a broken variant.** The "+ Add value" shortcut's *also create its variant* tickbox made a variant carrying only the new value — on a product that varies by, say, Shade **and** Size, such a variant can never be selected on the storefront (a shopper has to pick both). The shortcut now only offers itself on single-option products; on multi-option ones the value is added to the dropdowns and the message points you to **+ Add variant** to build the full combination. The product form also stopped losing dropdown edits: changing Status, Category or another select now counts as an unsaved change and warns before you leave.
 
 - **Selected products open as one editable spreadsheet.** The Products list's bulk bar gained a **Bulk edit** button, the Shopify pattern: tick any products, press it, and they open as a grid where status, price, compare-at, cost and stock are edited inline and saved in one go. The server writes only the rows that changed, stock edits go through Movement history with a note, and products whose stock isn't a single number (variants, vendor-held, uncounted) say so in the stock cell instead of offering a box that would lie.
 
