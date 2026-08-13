@@ -7,6 +7,7 @@ import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import type { Permission } from '@/lib/permissions';
 import { reconcileStock } from '@/lib/stock-writes';
+import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 
 async function assertProducts(action: 'edit' | 'delete' = 'edit') {
   const session = await getStaffSession();
@@ -47,6 +48,90 @@ export async function quickUpdateProduct(
   await logAudit(session, { action: 'product.quick_update', entity: 'product', entity_id: id, diff: { ...update, ...(wantsStock ? { stock: patch.stock } : {}) } });
   revalidatePath('/admin/products');
   return {};
+}
+
+// ─── The bulk edit grid (Shopify's spreadsheet view) ───────────────────────
+// One submit carries every selected product's status/price/compare-at/cost/
+// stock; only rows that actually changed are written. Stock goes through the
+// ledger and is only accepted for own-stock products without variants — a
+// variant product's parent counter stays untouchable here just like on the
+// product form.
+export async function bulkEditProducts(
+  _prev: { error?: string; success?: boolean; changed?: number } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean; changed?: number }> {
+  const session = await assertProducts();
+  const ids = String(formData.get('ids') ?? '').split(',').filter(Boolean);
+  if (ids.length === 0 || ids.length > 200) return { error: 'Pick between 1 and 200 products.' };
+
+  const admin = supabaseAdmin();
+  const [{ data: rows, error: loadErr }, { data: variantRows }] = await Promise.all([
+    admin
+      .from('products')
+      .select('id, status, price, original_price, cost_price, stock, stock_mode, track_inventory')
+      .in('id', ids),
+    admin.from('product_variants').select('product_id').in('product_id', ids),
+  ]);
+  if (loadErr) return { error: loadErr.message };
+  const hasVariants = new Set(((variantRows ?? []) as Array<{ product_id: string }>).map(v => v.product_id));
+
+  let changed = 0;
+  let priceChanged = false;
+  for (const p of (rows ?? []) as Array<{
+    id: string; status: string; price: number; original_price: number | null;
+    cost_price: number | null; stock: number; stock_mode: string | null; track_inventory: boolean | null;
+  }>) {
+    if (formData.get(`p__${p.id}__present`) !== '1') continue;
+
+    const status = String(formData.get(`p__${p.id}__status`) ?? p.status);
+    if (!['published', 'draft'].includes(status)) return { error: 'Bad status value.' };
+    const price = Number(formData.get(`p__${p.id}__price`));
+    if (!Number.isFinite(price) || price < 0) return { error: 'Every price has to be a number of at least 0.' };
+    const compareRaw = String(formData.get(`p__${p.id}__compare`) ?? '').trim();
+    const compare = compareRaw === '' ? null : Number(compareRaw);
+    if (compare !== null && (!Number.isFinite(compare) || compare < 0)) return { error: 'Compare-at prices have to be numbers.' };
+    const costRaw = String(formData.get(`p__${p.id}__cost`) ?? '').trim();
+    const cost = costRaw === '' ? null : Number(costRaw);
+    if (cost !== null && (!Number.isFinite(cost) || cost < 0)) return { error: 'Cost prices have to be numbers.' };
+
+    const patch: Record<string, unknown> = {};
+    if (status !== p.status) patch.status = status;
+    if (price !== p.price) { patch.price = price; priceChanged = true; }
+    if (compare !== (p.original_price ?? null)) patch.original_price = compare;
+    if (cost !== (p.cost_price ?? null)) patch.cost_price = cost;
+
+    const mode = p.stock_mode ?? (p.track_inventory === false ? 'untracked' : 'own');
+    let stockChanged = false;
+    let nextStock = p.stock;
+    if (mode === 'own' && !hasVariants.has(p.id)) {
+      const stockRaw = String(formData.get(`p__${p.id}__stock`) ?? '').trim();
+      if (stockRaw !== '') {
+        nextStock = Number(stockRaw);
+        if (!Number.isInteger(nextStock) || nextStock < 0) return { error: 'Stock has to be a whole number of at least 0.' };
+        stockChanged = nextStock !== p.stock;
+      }
+    }
+
+    if (Object.keys(patch).length) {
+      const { error } = await admin.from('products').update(patch).eq('id', p.id);
+      if (error) return { error: `A row failed to save: ${error.message}` };
+    }
+    if (stockChanged) {
+      await reconcileStock({ productId: p.id, nextStock, actor: session, note: 'Set on the bulk edit grid' });
+    }
+    if (Object.keys(patch).length || stockChanged) changed++;
+  }
+
+  if (changed > 0) {
+    void logAudit(session, {
+      action: 'product.bulk_edit', entity: 'product', entity_id: ids[0],
+      diff: { ids: ids.length, rows_changed: changed },
+    });
+    revalidatePath('/admin/products');
+    revalidateStorefrontCatalog();
+    if (priceChanged) revalidatePath('/', 'layout');
+  }
+  return { success: true, changed };
 }
 
 // ─── Bulk status / tag / price ─────────────────────────────────────────────
