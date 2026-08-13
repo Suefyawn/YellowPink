@@ -19,7 +19,17 @@ const inputStyle: React.CSSProperties = {
   color: '#111827', outline: 'none', boxSizing: 'border-box',
 };
 
-export function NewsletterComposer({ activeCount, drafts = [] }: { activeCount: number; drafts?: NewsletterDraft[] }) {
+export function NewsletterComposer({ activeCount, customerCount = 0, bothCount = 0, drafts = [] }: {
+  activeCount: number;
+  /** Distinct order emails that have not unsubscribed. */
+  customerCount?: number;
+  /** Union of subscribers + customers, deduped. */
+  bothCount?: number;
+  drafts?: NewsletterDraft[];
+}) {
+  const [audience, setAudience] = useState<'subscribers' | 'customers' | 'both'>('subscribers');
+  const audienceCount = audience === 'subscribers' ? activeCount : audience === 'customers' ? customerCount : bothCount;
+  const audienceLabel = audience === 'subscribers' ? 'subscribers' : audience === 'customers' ? 'customers' : 'people (subscribers + customers)';
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   // Which saved draft the composer currently holds. Sending or saving keeps
@@ -76,24 +86,24 @@ export function NewsletterComposer({ activeCount, drafts = [] }: { activeCount: 
       toast('Add a subject and a body first.', 'error');
       return;
     }
-    if (activeCount === 0) {
-      toast('There are no active subscribers to send to.', 'error');
+    if (audienceCount === 0) {
+      toast('There is nobody in that audience to send to.', 'error');
       return;
     }
     if (!window.confirm(
-      `Send "${subject.trim()}" to ${activeCount} subscriber${activeCount === 1 ? '' : 's'}?\n\nThis sends real emails and can't be undone.`,
+      `Send "${subject.trim()}" to ${audienceCount} ${audienceLabel}?\n\nThis sends real emails and can't be undone.`,
     )) return;
 
     startTransition(async () => {
-      const res = await sendNewsletterCampaign(subject.trim(), body.trim(), draftId ?? undefined);
+      const res = await sendNewsletterCampaign(subject.trim(), body.trim(), draftId ?? undefined, audience);
       if (!res.ok) {
         toast(res.error, 'error');
         return;
       }
       if (res.sentCount === 0) {
-        toast('Sent to 0 subscribers, check the email (Resend) setup.', 'error');
+        toast('Sent to 0 recipients, check the email (Resend) setup.', 'error');
       } else {
-        toast(`Newsletter sent to ${res.sentCount} of ${res.recipientCount} subscriber${res.recipientCount === 1 ? '' : 's'}.`, 'success');
+        toast(`Sent to ${res.sentCount} of ${res.recipientCount} recipient${res.recipientCount === 1 ? '' : 's'}.`, 'success');
         clearForm();
       }
       router.refresh();
@@ -104,9 +114,9 @@ export function NewsletterComposer({ activeCount, drafts = [] }: { activeCount: 
     <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', padding: '20px 24px', marginBottom: 28 }}>
       <h2 style={{ margin: '0 0 4px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Compose newsletter</h2>
       <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
-        Goes to all {activeCount} active subscriber{activeCount === 1 ? '' : 's'}. Leave a blank line
-        between paragraphs; web links (https://…) become clickable automatically. Yellow Pink branding
-        and an unsubscribe link are added for you. Save a draft to come back to it later.
+        Pick who receives it below. Leave a blank line between paragraphs; web links (https://…)
+        become clickable automatically. Yellow Pink branding and an unsubscribe link are added for
+        you. Save a draft to come back to it later. Nothing sends until you press Send.
       </p>
 
       {drafts.length > 0 && (
@@ -166,17 +176,29 @@ export function NewsletterComposer({ activeCount, drafts = [] }: { activeCount: 
       </label>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, fontSize: '0.8125rem', color: '#374151' }}>
+          Send to
+          <select
+            value={audience}
+            onChange={e => setAudience(e.target.value as typeof audience)}
+            style={{ padding: '9px 10px', border: '1px solid #d1d5db', borderRadius: 8, fontSize: '0.8125rem', background: 'white' }}
+          >
+            <option value="subscribers">Subscribers ({activeCount})</option>
+            <option value="customers">Customers ({customerCount})</option>
+            <option value="both">Both, deduped ({bothCount})</option>
+          </select>
+        </label>
         <button
           onClick={handleSend}
-          disabled={pending || activeCount === 0}
+          disabled={pending || audienceCount === 0}
           style={{
             padding: '10px 20px', borderRadius: 8, border: 'none',
-            background: pending || activeCount === 0 ? '#9ca3af' : '#C5286A',
+            background: pending || audienceCount === 0 ? '#9ca3af' : '#C5286A',
             color: 'white', fontSize: '0.875rem', fontWeight: 600,
-            cursor: pending || activeCount === 0 ? 'not-allowed' : 'pointer',
+            cursor: pending || audienceCount === 0 ? 'not-allowed' : 'pointer',
           }}
         >
-          {pending ? 'Working…' : `Send to ${activeCount} subscriber${activeCount === 1 ? '' : 's'}`}
+          {pending ? 'Working…' : `Send to ${audienceCount} ${audience === 'both' ? 'people' : audience}`}
         </button>
         <button
           onClick={handleSaveDraft}

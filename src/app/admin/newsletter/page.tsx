@@ -57,6 +57,26 @@ export default async function NewsletterPage() {
   const drafts = (draftRows ?? []) as NewsletterDraft[];
   const subscribers = (subscriberRows ?? []) as Subscriber[];
 
+  // Customer audience size for the composer's audience picker: every distinct
+  // order email that has not unsubscribed from the newsletter. Order volume is
+  // small; if it ever isn't, this becomes an RPC.
+  const { data: orderEmailRows } = await admin
+    .from('orders')
+    .select('email')
+    .not('email', 'is', null);
+  const unsubscribedSet = new Set(
+    subscribers.filter(s => s.unsubscribed_at).map(s => s.email.trim().toLowerCase()),
+  );
+  const customerEmailSet = new Set(
+    ((orderEmailRows ?? []) as Array<{ email: string | null }>)
+      .map(o => o.email?.trim().toLowerCase())
+      .filter((e): e is string => !!e && !unsubscribedSet.has(e)),
+  );
+  const subscriberEmailSet = new Set(
+    subscribers.filter(s => !s.unsubscribed_at).map(s => s.email.trim().toLowerCase()),
+  );
+  const bothCount = new Set([...customerEmailSet, ...subscriberEmailSet]).size;
+
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Newsletter</h1>
@@ -65,7 +85,12 @@ export default async function NewsletterPage() {
         <strong style={{ color: '#111827' }}>{activeSubscribers}</strong> active subscriber{activeSubscribers === 1 ? '' : 's'}.
       </p>
 
-      <NewsletterComposer activeCount={activeSubscribers} drafts={drafts} />
+      <NewsletterComposer
+        activeCount={activeSubscribers}
+        customerCount={customerEmailSet.size}
+        bothCount={bothCount}
+        drafts={drafts}
+      />
 
       <SubscriberList subscribers={subscribers} />
 
