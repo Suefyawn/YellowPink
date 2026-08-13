@@ -8,6 +8,7 @@ import { variantInputSchema, parseForm, firstError } from '@/lib/validators';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import { reconcileStock } from '@/lib/stock-writes';
+import { toSlug } from '@/lib/product-csv';
 
 async function assertProducts() {
   const session = await getStaffSession();
@@ -15,6 +16,112 @@ async function assertProducts() {
     throw new Error('Unauthorized');
   }
   return session;
+}
+
+// ─── Attributes & values ────────────────────────────────────────────────────
+// A new shade used to be unreachable from the admin: the variant form only
+// offered EXISTING attribute values, and the empty state told the owner to
+// insert rows by SQL. These two actions close that gap from the product page.
+
+/** Add a value (a new shade, size, form…) to an existing attribute. */
+export async function createAttributeValue(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertProducts();
+  const attributeId = String(formData.get('attribute_id') ?? '');
+  const value = String(formData.get('value') ?? '').trim().slice(0, 120);
+  const productId = String(formData.get('product_id') ?? '');
+  if (!attributeId || !value) return { error: 'Type the new value first.' };
+
+  const slug = toSlug(value);
+  if (!slug) return { error: 'That value has no usable characters.' };
+
+  const admin = supabaseAdmin();
+  // Same value twice under one attribute would create two indistinguishable
+  // dropdown entries; surface the existing one instead.
+  const { data: dupe } = await admin
+    .from('attribute_values')
+    .select('id')
+    .eq('attribute_id', attributeId)
+    .eq('slug', slug)
+    .maybeSingle();
+  if (dupe) return { error: `"${value}" already exists for this attribute — pick it from the dropdown.` };
+
+  const { data: last } = await admin
+    .from('attribute_values')
+    .select('sort_order')
+    .eq('attribute_id', attributeId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const sortOrder = ((last as { sort_order: number } | null)?.sort_order ?? 0) + 1;
+
+  const { data, error } = await admin
+    .from('attribute_values')
+    .insert({ attribute_id: attributeId, slug, value, sort_order: sortOrder })
+    .select('id')
+    .single();
+  if (error) return { error: error.message };
+
+  void logAudit(session, {
+    action: 'attribute_value.create', entity: 'attribute_values', entity_id: (data as { id: string }).id,
+    diff: { attribute_id: attributeId, value, slug },
+  });
+  if (productId) revalidatePath(`/admin/products/${productId}`);
+  return { success: true };
+}
+
+/** Create a new attribute (Shade, Size, Form…) with its first value, for
+ *  products whose variants need an axis that doesn't exist yet. */
+export async function createAttribute(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertProducts();
+  const name = String(formData.get('name') ?? '').trim().slice(0, 80);
+  const firstValue = String(formData.get('first_value') ?? '').trim().slice(0, 120);
+  const productId = String(formData.get('product_id') ?? '');
+  if (!name || !firstValue) return { error: 'Give the attribute a name and its first value.' };
+
+  const slug = toSlug(name);
+  if (!slug) return { error: 'That name has no usable characters.' };
+
+  const admin = supabaseAdmin();
+  const { data: dupe } = await admin
+    .from('product_attributes')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (dupe) return { error: `An attribute called "${name}" already exists.` };
+
+  const { data: last } = await admin
+    .from('product_attributes')
+    .select('sort_order')
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const sortOrder = ((last as { sort_order: number } | null)?.sort_order ?? 0) + 1;
+
+  const { data: attr, error } = await admin
+    .from('product_attributes')
+    .insert({ slug, name, visible_on_pdp: true, usable_in_filter: false, sort_order: sortOrder })
+    .select('id')
+    .single();
+  if (error) return { error: error.message };
+  const attributeId = (attr as { id: string }).id;
+
+  const { error: valErr } = await admin
+    .from('attribute_values')
+    .insert({ attribute_id: attributeId, slug: toSlug(firstValue), value: firstValue, sort_order: 1 });
+  if (valErr) return { error: `Attribute created, but its first value failed: ${valErr.message}` };
+
+  void logAudit(session, {
+    action: 'attribute.create', entity: 'product_attributes', entity_id: attributeId,
+    diff: { name, slug, first_value: firstValue },
+  });
+  if (productId) revalidatePath(`/admin/products/${productId}`);
+  return { success: true };
 }
 
 /** Does this product's stock get counted at all? Vendor-held ('external') and
