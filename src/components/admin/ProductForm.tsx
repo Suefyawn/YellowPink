@@ -107,16 +107,21 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
   const [costPrice, setCostPrice] = useState(product?.cost_price != null ? String(product.cost_price) : '');
 
   // Margin preview: explicit per-product cost wins; otherwise derive the cost
-  // from the selected vendor's commission %.
+  // from the selected vendor's commission %; otherwise (own stock, no vendor)
+  // the plain cost price — entering a cost should always show the margin,
+  // Shopify-style, not only when a vendor is picked.
   const selectedVendor = vendors.find(v => v.id === vendorId) ?? null;
   const costNum = vendorCost.trim() !== '' ? Number(vendorCost) : null;
+  const ownCostNum = costPrice.trim() !== '' ? Number(costPrice) : null;
   let marginInfo: { cost: number; margin: number; basis: string } | null = null;
-  if (vendorId && price > 0) {
-    if (costNum != null && Number.isFinite(costNum)) {
+  if (price > 0) {
+    if (vendorId && costNum != null && Number.isFinite(costNum)) {
       marginInfo = { cost: costNum, margin: price - costNum, basis: 'per-product cost' };
-    } else if (selectedVendor?.commission_pct != null) {
+    } else if (vendorId && selectedVendor?.commission_pct != null) {
       const margin = price * (selectedVendor.commission_pct / 100);
       marginInfo = { cost: price - margin, margin, basis: `${selectedVendor.commission_pct}% commission` };
+    } else if (!vendorId && ownCostNum != null && Number.isFinite(ownCostNum) && ownCostNum > 0) {
+      marginInfo = { cost: ownCostNum, margin: price - ownCostNum, basis: 'cost price' };
     }
   }
 
@@ -130,6 +135,16 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
         <h1 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700, color: '#111827' }}>
           {isEdit ? 'Edit Product' : 'New Product'}
         </h1>
+        {isEdit && product?.slug && (
+          <a
+            href={`/product/${product.slug}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ marginLeft: 'auto', fontSize: '0.8125rem', fontWeight: 600, color: '#C5286A', textDecoration: 'none' }}
+          >
+            {product.status === 'published' ? 'View on store →' : 'Preview page (draft) →'}
+          </a>
+        )}
       </div>
 
       <div style={{ background: 'white', borderRadius: 10, padding: '28px', boxShadow: '0 1px 3px rgba(0,0,0,0.08)', maxWidth: 820 }}>
@@ -446,7 +461,7 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
               />
               <span style={hint}>Your acquisition cost per unit for own-stock items. Powers the profit / COGS figures in Finance. Vendor items use the vendor cost above instead.</span>
             </div>
-            {vendorId && (
+            {(vendorId || marginInfo) && (
               <div style={{
                 marginTop: 4, padding: '12px 14px', borderRadius: 8,
                 background: marginInfo ? '#f0fdf4' : '#fffbeb',

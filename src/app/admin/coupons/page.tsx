@@ -12,18 +12,20 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import type { Coupon } from '@/types';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
 
-function getCouponState(c: Coupon): 'expired' | 'maxed' | 'active' | 'inactive' {
+function getCouponState(c: Coupon): 'expired' | 'maxed' | 'scheduled' | 'active' | 'inactive' {
   if (c.expires_at && new Date(c.expires_at) < new Date()) return 'expired';
   if (c.max_uses && c.used_count >= c.max_uses) return 'maxed';
   if (!c.active) return 'inactive';
+  if (c.starts_at && new Date(c.starts_at) > new Date()) return 'scheduled';
   return 'active';
 }
 
 const stateStyle: Record<string, React.CSSProperties> = {
-  expired:  { background: '#fef2f2' },
-  maxed:    { background: '#fff7ed' },
-  active:   {},
-  inactive: { background: '#f9fafb' },
+  expired:   { background: '#fef2f2' },
+  maxed:     { background: '#fff7ed' },
+  scheduled: { background: '#eff6ff' },
+  active:    {},
+  inactive:  { background: '#f9fafb' },
 };
 
 export default async function CouponsPage({
@@ -166,6 +168,9 @@ export default async function CouponsPage({
                       })()}
                     </td>
                     <td data-label="Expires" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: isExpired ? '#dc2626' : '#6b7280', fontWeight: isExpired ? 600 : 400 }}>
+                      {state === 'scheduled' && c.starts_at && (
+                        <span style={{ display: 'block', color: '#2563eb', fontWeight: 600 }}>from {fmtDate(c.starts_at)}</span>
+                      )}
                       {c.expires_at ? fmtDate(c.expires_at) : '—'}
                     </td>
                     <td data-label="Status" style={{ padding: '12px 16px' }}>
@@ -179,12 +184,12 @@ export default async function CouponsPage({
                           title={c.active ? 'Click to deactivate' : 'Click to activate'}
                           style={{
                             padding: '5px 12px', borderRadius: 20, border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600,
-                            background: isExpired ? '#fef2f2' : isMaxed ? '#fff7ed' : c.active ? '#f0fdf4' : '#f3f4f6',
-                            color: isExpired ? '#dc2626' : isMaxed ? '#ea580c' : c.active ? '#15803d' : '#9ca3af',
+                            background: isExpired ? '#fef2f2' : isMaxed ? '#fff7ed' : state === 'scheduled' ? '#eff6ff' : c.active ? '#f0fdf4' : '#f3f4f6',
+                            color: isExpired ? '#dc2626' : isMaxed ? '#ea580c' : state === 'scheduled' ? '#2563eb' : c.active ? '#15803d' : '#9ca3af',
                             minHeight: 30,
                           }}
                         >
-                          {isExpired ? 'Expired' : isMaxed ? 'Maxed out' : c.active ? 'Active' : 'Inactive'}
+                          {isExpired ? 'Expired' : isMaxed ? 'Maxed out' : state === 'scheduled' ? 'Scheduled' : c.active ? 'Active' : 'Inactive'}
                         </button>
                       </form>
                     </td>

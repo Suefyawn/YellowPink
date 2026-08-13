@@ -7,9 +7,13 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { createCollection, deleteCollection } from '@/app/admin/collection-actions';
 import { DotChip } from '@/components/admin/OrderChips';
+import { getProducts } from '@/lib/supabase';
+import { loadTagData } from '@/lib/shop-facets';
+import { productMatchesRules, type SmartRules } from '@/lib/collections';
 
 interface CollectionRow {
   id: string; slug: string; title: string; type: 'manual' | 'smart'; status: 'published' | 'draft'; sort_order: number;
+  rules: SmartRules | null;
 }
 
 export default async function CollectionsPage({ searchParams }: { searchParams?: Promise<{ error?: string; deleted?: string }> }) {
@@ -20,12 +24,23 @@ export default async function CollectionsPage({ searchParams }: { searchParams?:
   const sp = (await searchParams) ?? {};
   const admin = supabaseAdmin();
   const [{ data: colData }, { data: mapData }] = await Promise.all([
-    admin.from('collections').select('id, slug, title, type, status, sort_order').order('sort_order').order('title'),
+    admin.from('collections').select('id, slug, title, type, status, sort_order, rules').order('sort_order').order('title'),
     admin.from('collection_products').select('collection_id'),
   ]);
   const collections = (colData ?? []) as CollectionRow[];
   const counts = new Map<string, number>();
   for (const r of (mapData ?? []) as Array<{ collection_id: string }>) counts.set(r.collection_id, (counts.get(r.collection_id) ?? 0) + 1);
+  // Smart collections get a live count too — the same resolution the
+  // storefront runs, so the number here is the number shoppers will see.
+  if (collections.some(c => c.type === 'smart')) {
+    const [products, tagData] = await Promise.all([getProducts(), loadTagData()]);
+    for (const c of collections) {
+      if (c.type !== 'smart') continue;
+      counts.set(c.id, products.filter(p =>
+        productMatchesRules(p, c.rules ?? {}, tagData.productTagMap[p.id] ?? []),
+      ).length);
+    }
+  }
   const canEdit = !session || session.isOwner || session.permissions.includes('products.edit');
 
   const inp: React.CSSProperties = {
@@ -87,7 +102,10 @@ export default async function CollectionsPage({ searchParams }: { searchParams?:
                     <DotChip label={c.type === 'smart' ? 'Smart' : 'Manual'} color={c.type === 'smart' ? '#7c3aed' : '#6b7280'} />
                   </td>
                   <td data-label="Products" style={{ padding: '12px 16px', fontSize: '0.8125rem', color: '#374151' }}>
-                    {c.type === 'manual' ? (counts.get(c.id) ?? 0) : <span style={{ color: '#9ca3af' }}>rules</span>}
+                    {counts.get(c.id) ?? 0}
+                    {c.type === 'smart' && (counts.get(c.id) ?? 0) === 0 && (
+                      <span style={{ marginLeft: 6, fontSize: '0.6875rem', color: '#dc2626' }}>rules match nothing</span>
+                    )}
                   </td>
                   <td data-label="Status" style={{ padding: '12px 16px' }}>
                     <DotChip label={c.status === 'published' ? 'Published' : 'Draft'} color={c.status === 'published' ? '#15803d' : '#6b7280'} />

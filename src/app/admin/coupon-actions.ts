@@ -101,6 +101,7 @@ export async function createCoupon(
   const min_order = Number(formData.get('min_order') ?? 0);
   const max_uses = formData.get('max_uses') ? Number(formData.get('max_uses')) : null;
   const expires_at = (formData.get('expires_at') as string) || null;
+  const starts_at = (formData.get('starts_at') as string) || null;
   const isFreeShipping = type === 'free_shipping';
 
   if (!code) return { error: 'Code is required.' };
@@ -124,7 +125,7 @@ export async function createCoupon(
   // mutations must go through the service role.
   const { data: created, error } = await supabaseAdmin()
     .from('coupons')
-    .insert({ code, ...couponColumns(type, value), min_order, max_uses, expires_at, ...adv.cols })
+    .insert({ code, ...couponColumns(type, value), min_order, max_uses, expires_at, starts_at, ...adv.cols })
     .select('id')
     .single();
 
@@ -157,6 +158,7 @@ export async function updateCoupon(
   const min_order = Number(formData.get('min_order') ?? 0);
   const max_uses = formData.get('max_uses') ? Number(formData.get('max_uses')) : null;
   const expires_at = (formData.get('expires_at') as string) || null;
+  const starts_at = (formData.get('starts_at') as string) || null;
   const isFreeShipping = type === 'free_shipping';
 
   if (!id) return { error: 'Missing coupon id.' };
@@ -181,7 +183,7 @@ export async function updateCoupon(
 
   const { error } = await supabaseAdmin()
     .from('coupons')
-    .update({ code, ...couponColumns(type, value), min_order, max_uses, expires_at, ...adv.cols })
+    .update({ code, ...couponColumns(type, value), min_order, max_uses, expires_at, starts_at, ...adv.cols })
     .eq('id', id);
   if (error) return { error: error.message };
 

@@ -61,6 +61,10 @@ insert into public.coupons (id, code, type, value, active, product_ids, exclude_
    array['00000000-0000-0000-0000-00000000000a']::uuid[], false),
   ('00000000-0000-0000-0000-0000000000c6', 'MATRIXNOSALE', 'percent', 10, true, '{}', true);
 
+-- Scheduled coupon (migration 1060): active flag on, but starts tomorrow.
+insert into public.coupons (id, code, type, value, active, starts_at) values
+  ('00000000-0000-0000-0000-0000000000c7', 'MATRIXSOON', 'percent', 10, true, now() + interval '1 day');
+
 -- Referral programme: a referrer profile whose code a first-time buyer can
 -- use for the no-coupon referral discount (migration 650, restored by 790).
 insert into auth.users (id, email)
@@ -210,6 +214,13 @@ begin
   perform yp_tests.expect_reject('expired coupon',
     yp_tests.payload('{"coupon_code": "MATRIXOLD", "discount_amount": 200, "total": 2000}'),
     'coupon_expired');
+  -- Scheduled coupon (migration 1060): unusable before its start moment.
+  perform yp_tests.expect_reject('scheduled coupon not yet started',
+    yp_tests.payload('{"coupon_code": "MATRIXSOON", "discount_amount": 200, "total": 2000}'),
+    'coupon_not_started');
+  perform yp_tests.assert('scheduled coupon hidden from lookup',
+    not exists (select 1 from public.lookup_coupon('MATRIXSOON')),
+    'lookup_coupon returns nothing before starts_at');
 
   -- 8. Per-user cap (fixed 100 off, limit 1 per user): first use passes,
   --    second use by the same email is refused.
