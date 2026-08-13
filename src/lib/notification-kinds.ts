@@ -23,6 +23,9 @@ export const KIND_PERMISSION: Record<string, Permission | null> = {
   // keeps selling — whoever manages the catalogue needs to know, a marketer
   // does not.
   stock_out:      'products.edit',
+  // An outreach prospect wrote back. Whoever runs outreach answers from the
+  // thread in Admin → Outreach; nobody else needs the ping.
+  outreach_reply: 'outreach',
 };
 
 /** Kinds this session may see. `null` = unrestricted (owner). */

@@ -44,6 +44,7 @@ export type Permission =
   | 'coupons'
   | 'blog'
   | 'newsletter'
+  | 'outreach'              // press/backlink outreach desk: pitches, sends, replies
 
   // ── System ──
   | 'settings'              // store settings (shipping, payments, notifications…)
@@ -54,7 +55,7 @@ export const ALL_PERMISSIONS: Permission[] = [
   'orders.view', 'orders.edit', 'orders.delete', 'returns', 'vendors',
   'products.view', 'products.edit', 'products.delete',
   'customers.view', 'customers.edit', 'customers.delete', 'messages', 'reviews',
-  'coupons', 'blog', 'newsletter',
+  'coupons', 'blog', 'newsletter', 'outreach',
   'settings', 'system_tools',
 ];
 
@@ -97,6 +98,7 @@ export const PERMISSION_META: Record<Permission, {
   coupons:    { label: 'Coupons',    desc: 'Issue and manage discount codes.', group: 'marketing' },
   blog:       { label: 'Blog',       desc: 'Write and publish editorial posts; manage medical reviewers.', group: 'marketing' },
   newsletter: { label: 'Newsletter', desc: 'Compose and send the email newsletter to subscribers.', group: 'marketing' },
+  outreach:   { label: 'Outreach',   desc: 'Press and backlink outreach: edit pitch drafts, send from the store address, read and answer replies.', group: 'marketing' },
 
   // System
   settings:     { label: 'Store settings', desc: 'Edit store profile, payments, shipping zones, notifications, integrations.', group: 'system' },
