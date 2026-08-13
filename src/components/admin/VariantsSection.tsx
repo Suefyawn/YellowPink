@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { createVariant, updateVariant, deleteVariant, createAttribute, createAttributeValue } from '@/app/admin/variant-actions';
+import { createVariant, updateVariant, deleteVariant, createAttribute, createAttributeValue, removeValueFromProduct } from '@/app/admin/variant-actions';
 import type { ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -183,15 +183,74 @@ function AddValueForm({ productId, attributes }: { productId: string; attributes
       }}>
         {pending ? 'Adding…' : '+ Add value'}
       </button>
+      <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.75rem', color: '#374151', cursor: 'pointer', paddingBottom: 8 }}>
+        <input type="checkbox" name="create_variant" value="true" defaultChecked />
+        also create its variant (product&apos;s price, 0 stock)
+      </label>
       {state?.error && (
         <span style={{ fontSize: '0.75rem', color: '#dc2626', flexBasis: '100%' }}>{state.error}</span>
       )}
       {state?.success && (
         <span style={{ fontSize: '0.75rem', color: '#065f46', flexBasis: '100%' }}>
-          Added — it&apos;s now in every dropdown below.
+          Added — set its stock and price below.
         </span>
       )}
     </form>
+  );
+}
+
+// ─── Product options overview: what this product varies on, chip per value ──
+// The Shopify view of the same data: each value this product's variants use,
+// removable with ×. Removal deletes this product's empty variants carrying the
+// value (refused while stock remains) and never touches other products.
+function ValueChip({ productId, valueId, label }: { productId: string; valueId: string; label: string }) {
+  const [state, formAction, pending] = useActionState(removeValueFromProduct, null);
+  return (
+    <>
+      <form action={formAction} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: 'white', border: '1px solid #d1d5db', borderRadius: 14, padding: '3px 6px 3px 12px', fontSize: '0.75rem', color: '#374151' }}>
+        <input type="hidden" name="product_id" value={productId} />
+        <input type="hidden" name="value_id" value={valueId} />
+        {label}
+        <button
+          type="submit"
+          disabled={pending}
+          title={`Remove ${label} from this product`}
+          style={{ background: '#f3f4f6', border: 'none', borderRadius: '50%', width: 18, height: 18, lineHeight: 1, fontSize: '0.75rem', color: '#6b7280', cursor: 'pointer' }}
+        >
+          {pending ? '…' : '×'}
+        </button>
+      </form>
+      {state?.error && (
+        <span style={{ flexBasis: '100%', fontSize: '0.75rem', color: '#dc2626' }}>{state.error}</span>
+      )}
+    </>
+  );
+}
+
+function OptionsCard({ productId, attributes, variants }: {
+  productId: string;
+  attributes: AttributeWithValues[];
+  variants: VariantWithOptions[];
+}) {
+  const usedValueIds = new Set(variants.flatMap(v => v.option_value_ids));
+  const rows = attributes
+    .map(a => ({ attr: a, used: a.values.filter(v => usedValueIds.has(v.id)) }))
+    .filter(r => r.used.length > 0);
+  if (rows.length === 0) return null;
+  return (
+    <div style={{ marginBottom: 14, padding: '12px 14px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 8 }}>
+      {rows.map(({ attr, used }) => (
+        <div key={attr.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '4px 0' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: 70 }}>{attr.name}</span>
+          {used.map(v => (
+            <ValueChip key={v.id} productId={productId} valueId={v.id} label={v.value} />
+          ))}
+        </div>
+      ))}
+      <p style={{ margin: '6px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+        × removes that value&apos;s variant from this product (only when its stock is zero). Other products keep the value.
+      </p>
+    </div>
   );
 }
 
@@ -271,6 +330,9 @@ export function VariantsSection({
           }}>+ Add variant</button>
         )}
       </div>
+
+      {/* What this product varies on, at a glance — with per-value removal. */}
+      <OptionsCard productId={productId} attributes={attributes} variants={variants} />
 
       {/* A shade/size that isn't listed yet gets added here and immediately
           appears in every variant dropdown below. */}
