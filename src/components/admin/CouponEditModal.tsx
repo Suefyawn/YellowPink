@@ -20,6 +20,9 @@ export function CouponEditModal({ coupon, products = [] }: { coupon: Coupon; pro
   // The welcome code is advertised by name in the popup + welcome email, so
   // renaming it is blocked server-side; grey the field out to say so upfront.
   const isWelcome = coupon.code.toUpperCase() === WELCOME_CODE;
+  // Method is fixed at creation (the server never updates trigger_kind);
+  // automatics edit their customer-facing Title instead of the code.
+  const isAutomatic = coupon.trigger_kind === 'automatic';
   // Controlled so the Value field can switch off for free-shipping coupons
   // (they carry no monetary value; the action stores value = 0).
   const [type, setType] = useState<'percent' | 'fixed' | 'free_shipping'>(
@@ -80,22 +83,47 @@ export function CouponEditModal({ coupon, products = [] }: { coupon: Coupon; pro
             <form action={action} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <input type="hidden" name="id" value={coupon.id} />
               <div>
-                <label style={lbl}>Code</label>
-                <input
-                  name="code" required defaultValue={coupon.code}
-                  readOnly={isWelcome}
-                  title={isWelcome ? 'Advertised by the newsletter popup and welcome email — the code itself can’t change.' : undefined}
-                  style={{
-                    ...inp, textTransform: 'uppercase', fontFamily: 'monospace',
-                    ...(isWelcome ? { background: '#f9fafb', color: '#6b7280' } : {}),
-                  }}
-                />
-                {isWelcome && (
-                  <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
-                    Advertised by the newsletter popup + welcome email; values are editable, the code isn&apos;t.
-                  </p>
-                )}
+                <label style={lbl}>Method</label>
+                {/* Read-only: switching a discount between code and automatic
+                    after creation is out of scope (the server ignores any
+                    attempt to change trigger_kind). */}
+                <p style={{ margin: 0, fontSize: '0.875rem', color: '#374151' }}>
+                  {isAutomatic ? 'Automatic — applies by itself to qualifying carts' : 'Discount code — the shopper types it'}
+                </p>
               </div>
+              {isAutomatic ? (
+                <div>
+                  <label style={lbl}>Title</label>
+                  <input
+                    name="title" required maxLength={120}
+                    defaultValue={coupon.title ?? ''}
+                    placeholder="e.g. Azadi Sale: 14% off everything"
+                    style={inp}
+                  />
+                  <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+                    Shown on the cart and checkout discount line. Code{' '}
+                    <span style={{ fontFamily: 'monospace' }}>{coupon.code}</span> is internal, never shown to shoppers.
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <label style={lbl}>Code</label>
+                  <input
+                    name="code" required defaultValue={coupon.code}
+                    readOnly={isWelcome}
+                    title={isWelcome ? 'Advertised by the newsletter popup and welcome email — the code itself can’t change.' : undefined}
+                    style={{
+                      ...inp, textTransform: 'uppercase', fontFamily: 'monospace',
+                      ...(isWelcome ? { background: '#f9fafb', color: '#6b7280' } : {}),
+                    }}
+                  />
+                  {isWelcome && (
+                    <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+                      Advertised by the newsletter popup + welcome email; values are editable, the code isn&apos;t.
+                    </p>
+                  )}
+                </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={lbl}>Type</label>

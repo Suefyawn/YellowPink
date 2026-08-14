@@ -439,6 +439,11 @@ export interface Coupon {
   excluded_category_ids?: string[];
   email_restrictions?: string[];
   description?: string | null;
+  /** 'code' = shopper types it; 'automatic' = the cart applies it by itself
+   *  (migration 1120). The generated code of an automatic is internal. */
+  trigger_kind?: 'code' | 'automatic';
+  /** Customer-facing label for automatic discounts (cart/checkout discount line). */
+  title?: string | null;
 }
 
 export interface Profile {

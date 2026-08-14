@@ -1,6 +1,6 @@
 'use client';
 
-import { startTransition, useActionState, useEffect, useRef } from 'react';
+import { startTransition, useActionState, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { createCoupon } from '@/app/admin/coupon-actions';
 
@@ -22,13 +22,22 @@ export function CouponCreateForm() {
   const formRef = useRef<HTMLFormElement>(null);
   const searchParams = useSearchParams();
   const created = searchParams.get('created');
+  // Method (Shopify's discount-method choice): a discount code the shopper
+  // types, or an automatic discount that applies itself — the latter needs a
+  // customer-facing Title instead of a code (the action generates an internal
+  // AUTO-… code). Controlled, so form.reset() below also needs the setState.
+  const [method, setMethod] = useState<'code' | 'automatic'>('code');
 
   // Manual dispatch keeps the uncontrolled fields intact when the action
   // settles with an error (React 19 resets them on `action`-prop submits).
   // That also means nothing clears the form after a SUCCESSFUL create, so
   // reset it ourselves when the ?created= flash lands.
   useEffect(() => {
-    if (created) formRef.current?.reset();
+    if (created) {
+      formRef.current?.reset();
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setMethod('code');
+    }
   }, [created]);
 
   return (
@@ -52,9 +61,29 @@ export function CouponCreateForm() {
         style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'flex-end' }}
       >
         <div>
-          <label style={lbl}>Code</label>
-          <input name="code" required placeholder="SAVE10" style={{ ...inp, textTransform: 'uppercase', fontFamily: 'monospace', width: 120 }} />
+          <label style={lbl}>Method</label>
+          <select
+            name="trigger_kind" value={method}
+            onChange={e => setMethod(e.target.value as 'code' | 'automatic')}
+            style={inp}
+          >
+            <option value="code">Discount code</option>
+            <option value="automatic">Automatic</option>
+          </select>
         </div>
+        {method === 'code' ? (
+          <div>
+            <label style={lbl}>Code</label>
+            <input name="code" required placeholder="SAVE10" style={{ ...inp, textTransform: 'uppercase', fontFamily: 'monospace', width: 120 }} />
+          </div>
+        ) : (
+          <div style={{ flex: '1 1 260px' }}>
+            <label style={lbl}>Title</label>
+            {/* What the shopper sees on the discount line — there's no code
+                to share; an internal AUTO-… code is generated. */}
+            <input name="title" required maxLength={120} placeholder="e.g. Azadi Sale: 14% off everything" style={{ ...inp, width: '100%', boxSizing: 'border-box' }} />
+          </div>
+        )}
         <div>
           <label style={lbl}>Type</label>
           <select name="type" style={inp}>

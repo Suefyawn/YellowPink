@@ -84,6 +84,20 @@ function advancedColumns(formData: FormData): { error?: string; cols?: Record<st
   } };
 }
 
+// Automatic discounts (migration 1120): the shopper never types a code, so the
+// action mints an internal one. The title is required — it's the discount line
+// label the shopper sees on the cart and checkout.
+function automaticTitle(formData: FormData): { error?: string; title?: string } {
+  const title = ((formData.get('title') as string) ?? '').trim();
+  if (!title) return { error: 'Title is required for an automatic discount.' };
+  if (title.length > 120) return { error: 'Title must be 120 characters or fewer.' };
+  return { title };
+}
+
+function generateAutomaticCode(): string {
+  return 'AUTO-' + crypto.randomUUID().replace(/-/g, '').slice(0, 8).toUpperCase();
+}
+
 // useActionState shape: errors come back as state (the create form is a
 // client component that keeps its fields), success still redirects with
 // ?created=<code> for the page banner. The previous version bounced errors
@@ -94,7 +108,19 @@ export async function createCoupon(
   formData: FormData,
 ): Promise<{ error: string } | null> {
   const session = await assertPermission('coupons');
-  const code = ((formData.get('code') as string) ?? '').trim().toUpperCase();
+  // Method: 'code' (shopper types it, the default) or 'automatic' (the cart
+  // applies it by itself; the code is generated and never shown to shoppers).
+  const trigger_kind = formData.get('trigger_kind') === 'automatic' ? 'automatic' : 'code';
+  let title: string | null = null;
+  let code: string;
+  if (trigger_kind === 'automatic') {
+    const t = automaticTitle(formData);
+    if (t.error) return { error: t.error };
+    title = t.title!;
+    code = generateAutomaticCode();
+  } else {
+    code = ((formData.get('code') as string) ?? '').trim().toUpperCase();
+  }
   const type = formData.get('type') as CouponFormType;
   const valueRaw = formData.get('value');
   const value = Number(valueRaw);
@@ -104,11 +130,13 @@ export async function createCoupon(
   const starts_at = (formData.get('starts_at') as string) || null;
   const isFreeShipping = type === 'free_shipping';
 
-  if (!code) return { error: 'Code is required.' };
-  if (!type) return { error: 'Type is required.' };
-  if (!/^[A-Z0-9_-]+$/.test(code)) {
-    return { error: 'Code may only contain letters, numbers, - and _.' };
+  if (trigger_kind === 'code') {
+    if (!code) return { error: 'Code is required.' };
+    if (!/^[A-Z0-9_-]+$/.test(code)) {
+      return { error: 'Code may only contain letters, numbers, - and _.' };
+    }
   }
+  if (!type) return { error: 'Type is required.' };
   // Free-shipping coupons have no monetary value; skip the value checks.
   if (!isFreeShipping) {
     if (!valueRaw || !Number.isFinite(value)) return { error: 'Value is required.' };
@@ -125,7 +153,7 @@ export async function createCoupon(
   // mutations must go through the service role.
   const { data: created, error } = await supabaseAdmin()
     .from('coupons')
-    .insert({ code, ...couponColumns(type, value), min_order, max_uses, expires_at, starts_at, ...adv.cols })
+    .insert({ code, trigger_kind, title, ...couponColumns(type, value), min_order, max_uses, expires_at, starts_at, ...adv.cols })
     .select('id')
     .single();
 
@@ -140,10 +168,12 @@ export async function createCoupon(
 
   void logAudit(session, {
     action: 'coupon.create', entity: 'coupons', entity_id: created.id,
-    diff: { code, type, value, min_order, max_uses, expires_at },
+    diff: { code, trigger_kind, title, type, value, min_order, max_uses, expires_at },
   });
   revalidatePath('/admin/coupons');
-  redirect(`/admin/coupons?created=${encodeURIComponent(code)}`);
+  // The banner names the thing the admin recognises: the title for an
+  // automatic (its code is internal), the code otherwise.
+  redirect(`/admin/coupons?created=${encodeURIComponent(trigger_kind === 'automatic' ? title! : code)}`);
 }
 
 export async function updateCoupon(
@@ -152,7 +182,6 @@ export async function updateCoupon(
 ): Promise<{ error?: string; ok?: boolean }> {
   const session = await assertPermission('coupons');
   const id = formData.get('id') as string;
-  const code = (formData.get('code') as string).trim().toUpperCase();
   const type = formData.get('type') as CouponFormType;
   const value = Number(formData.get('value'));
   const min_order = Number(formData.get('min_order') ?? 0);
@@ -162,6 +191,22 @@ export async function updateCoupon(
   const isFreeShipping = type === 'free_shipping';
 
   if (!id) return { error: 'Missing coupon id.' };
+
+  // trigger_kind is fixed at creation (switching method is out of scope) —
+  // the update NEVER writes it, and an automatic keeps its internal code no
+  // matter what the form submits.
+  const { data: existing } = await supabaseAdmin().from('coupons').select('code, trigger_kind').eq('id', id).single();
+  const isAutomatic = existing?.trigger_kind === 'automatic';
+  const code = isAutomatic
+    ? existing!.code
+    : ((formData.get('code') as string) ?? '').trim().toUpperCase();
+  let title: string | null = null;
+  if (isAutomatic) {
+    const t = automaticTitle(formData);
+    if (t.error) return { error: t.error };
+    title = t.title!;
+  }
+
   if (!code || !type || (!isFreeShipping && !value)) return { error: 'Code, type and value are required.' };
   if (!/^[A-Z0-9_-]+$/.test(code)) return { error: 'Code may only contain letters, numbers, - and _.' };
   if (!isFreeShipping) {
@@ -176,20 +221,19 @@ export async function updateCoupon(
   // (lib/offers.ts). Renaming it would break every promise already sent, so
   // the code itself is locked; values (percent, min order, limits) stay
   // editable and the storefront copy follows them automatically.
-  const { data: existing } = await supabaseAdmin().from('coupons').select('code').eq('id', id).single();
   if (existing && existing.code.toUpperCase() === WELCOME_CODE && code !== WELCOME_CODE) {
     return { error: `${WELCOME_CODE} is advertised by the newsletter popup and welcome email — its code can't be renamed. Edit its values instead, or deactivate it to stop offering the discount.` };
   }
 
   const { error } = await supabaseAdmin()
     .from('coupons')
-    .update({ code, ...couponColumns(type, value), min_order, max_uses, expires_at, starts_at, ...adv.cols })
+    .update({ code, ...(isAutomatic ? { title } : {}), ...couponColumns(type, value), min_order, max_uses, expires_at, starts_at, ...adv.cols })
     .eq('id', id);
   if (error) return { error: error.message };
 
   void logAudit(session, {
     action: 'coupon.update', entity: 'coupons', entity_id: id,
-    diff: { code, type, value: isFreeShipping ? 0 : value, min_order, max_uses, expires_at },
+    diff: { code, ...(isAutomatic ? { title } : {}), type, value: isFreeShipping ? 0 : value, min_order, max_uses, expires_at },
   });
   revalidatePath('/admin/coupons');
   return { ok: true };
