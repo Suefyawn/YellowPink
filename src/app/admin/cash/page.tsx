@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic';
 
+import Link from 'next/link';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { can } from '@/lib/permissions';
@@ -28,6 +29,8 @@ interface CashRow {
   entry_date: string;
   created_by: string | null;
   created_at: string;
+  order_id: string | null;
+  vendor_id: string | null;
 }
 
 const rs = (n: number) => `Rs ${Math.round(n).toLocaleString('en-PK')}`;
@@ -46,15 +49,30 @@ export default async function CashPage({
   const { ok: okMsg, error: errMsg } = await searchParams;
 
   const admin = supabaseAdmin();
-  const [{ data }, suggestions] = await Promise.all([
+  const [{ data }, suggestions, { data: vendorRows }] = await Promise.all([
     admin
       .from('cash_entries')
-      .select('id, direction, amount, category, note, entry_date, created_by, created_at')
+      .select('id, direction, amount, category, note, entry_date, created_by, created_at, order_id, vendor_id')
       .order('entry_date', { ascending: false })
       .order('created_at', { ascending: false }),
     loadCashSuggestions(admin),
+    // All vendors (not just active): the form's vendor picker and the ledger's
+    // vendor chips — money can still move to a vendor who has since been
+    // deactivated.
+    admin.from('vendors').select('id, name').order('name'),
   ]);
   const entries = ((data ?? []) as CashRow[]).map(e => ({ ...e, amount: Number(e.amount) }));
+  const vendors = (vendorRows ?? []) as Array<{ id: string; name: string }>;
+  const vendorNameById = new Map(vendors.map(v => [v.id, v.name]));
+
+  // Order numbers for the linked-order chips, one query for all linked ids.
+  const linkedOrderIds = [...new Set(entries.map(e => e.order_id).filter((v): v is string => Boolean(v)))];
+  const { data: orderRows } = linkedOrderIds.length
+    ? await admin.from('orders').select('id, order_number').in('id', linkedOrderIds)
+    : { data: [] };
+  const orderNoById = new Map(
+    ((orderRows ?? []) as Array<{ id: string; order_number: string }>).map(o => [o.id, o.order_number]),
+  );
 
   const inHand = netCash(entries);
   const balances = runningBalancesNewestFirst(entries);
@@ -115,6 +133,8 @@ export default async function CashPage({
                   <input type="hidden" name="amount" value={s.amount} />
                   <input type="hidden" name="entry_date" value={s.date} />
                   <input type="hidden" name="note" value={s.label} />
+                  {s.orderId && <input type="hidden" name="order_id" value={s.orderId} />}
+                  {s.vendorId && <input type="hidden" name="vendor_id" value={s.vendorId} />}
                   <button type="submit" style={{ padding: '6px 14px', background: '#C5286A', color: 'white', border: 'none', borderRadius: 6, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer' }}>
                     Add to cashbook
                   </button>
@@ -136,7 +156,7 @@ export default async function CashPage({
       <form
         action={addCashEntry}
         className="adm-stock-form"
-        style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 16, marginBottom: 24, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr auto', gap: 12, alignItems: 'end' }}
+        style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 16, marginBottom: 24, display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 2fr 1fr 1fr auto', gap: 12, alignItems: 'end' }}
       >
         <div>
           <label htmlFor="category" style={lbl}>What happened?</label>
@@ -165,6 +185,19 @@ export default async function CashPage({
         <div>
           <label htmlFor="note" style={lbl}>Note (optional)</label>
           <input id="note" name="note" type="text" maxLength={500} placeholder="e.g. CeraVe restock from Saddar, 40 units" style={inp} />
+        </div>
+        <div>
+          <label htmlFor="order_no" style={lbl}>For order (optional)</label>
+          <input id="order_no" name="order_no" type="text" maxLength={40} placeholder="YP-XXXX" style={inp} />
+        </div>
+        <div>
+          <label htmlFor="vendor_id" style={lbl}>Vendor (optional)</label>
+          <select id="vendor_id" name="vendor_id" defaultValue="" style={inp}>
+            <option value="">—</option>
+            {vendors.map(v => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
         </div>
         <button type="submit" style={btn}>Record</button>
       </form>
@@ -225,7 +258,25 @@ export default async function CashPage({
                     <td data-label="What" style={td}>
                       <DotChip label={meta.label} color={e.direction === 'in' ? '#065f46' : '#92400e'} />
                     </td>
-                    <td data-label="Note" style={{ ...td, color: '#374151', maxWidth: 320 }}>{e.note ?? '—'}</td>
+                    <td data-label="Note" style={{ ...td, color: '#374151', maxWidth: 320 }}>
+                      {e.note ?? '—'}
+                      {e.order_id && orderNoById.has(e.order_id) && (
+                        <Link
+                          href={`/admin/orders/${e.order_id}`}
+                          style={{ marginLeft: 8, color: '#C5286A', fontWeight: 600, textDecoration: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                        >
+                          {orderNoById.get(e.order_id)}
+                        </Link>
+                      )}
+                      {e.vendor_id && vendorNameById.has(e.vendor_id) && (
+                        <Link
+                          href="/admin/vendors"
+                          style={{ marginLeft: 8, color: '#6b7280', fontWeight: 600, textDecoration: 'none', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                        >
+                          {vendorNameById.get(e.vendor_id)}
+                        </Link>
+                      )}
+                    </td>
                     <td data-label="Amount" style={{ ...td, textAlign: 'right', fontFamily: 'monospace', fontWeight: 700, color: e.direction === 'in' ? '#065f46' : '#991b1b' }}>
                       {e.direction === 'in' ? '+' : '−'}{rs(e.amount)}
                     </td>

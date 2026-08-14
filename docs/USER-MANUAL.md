@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 13 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 14 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -354,7 +354,7 @@ Here's what each link is for:
 | **Dashboard** | Your command centre, laid out in the order a morning check actually happens — a **Today** row, a **Needs attention** queue, the Overview chart, quick stats and recent orders. Full breakdown in [Dashboard in detail](#dashboard-in-detail). |
 | **Analytics** | Deeper performance data, organised as four question tabs — **Sales**, **Customers**, **Traffic** and **Funnels** — each opening with a computed "what stands out" reading. Full breakdown in [Analytics in detail](#analytics-in-detail). |
 | **Finance** | Profit & loss for any period: revenue minus goods, delivery and payment-fee costs and your logged expenses, plus revenue breakdowns, ROAS and reconciliation tools. Full breakdown in [Finance in detail](#finance-in-detail). |
-| **Cash** | The cashbook: what the business actually holds, separate from profit. Record every real cash movement — stock bought from pocket, courier and platform fees, COD money the courier pays over, capital you put in or draw out — and the page keeps a running **Cash in hand** balance, a by-month in/out summary, and the full movement history with who recorded each entry. Deleting a mistaken entry is allowed and logged. A **Suggested entries** strip proposes movements already recorded elsewhere in the admin — settled vendor balances (as *Vendor payout* / *From a vendor*) and reconciled online payments — for one-tap confirmation; skip any that weren't actually cash, and neither confirmed nor skipped ones are ever proposed twice. |
+| **Cash** | The cashbook: what the business actually holds, separate from profit. Record every real cash movement — stock bought from pocket, courier and platform fees, COD money the courier pays over, capital you put in or draw out — and the page keeps a running **Cash in hand** balance, a by-month in/out summary, and the full movement history with who recorded each entry. Deleting a mistaken entry is allowed and logged. A **Suggested entries** strip proposes movements already recorded elsewhere in the admin — settled vendor balances (as *Vendor payout* / *From a vendor*) and reconciled online payments — for one-tap confirmation; skip any that weren't actually cash, and neither confirmed nor skipped ones are ever proposed twice. A movement can also name the order or vendor it was for (enter the order number or pick the vendor when recording; suggested entries link themselves automatically), and the ledger shows each link as a jump to that order or to the Vendors page. |
 | **COD reconciliation** (a tab inside Finance) | The cash side of the business — outstanding, collected and in-transit COD money, with courier-manifest CSV exports. Covered in [Finance in detail](#finance-in-detail). |
 
 **Sell** — day-to-day commerce operations
@@ -513,7 +513,7 @@ The page opens with three headline cards — **Owed to you** (pending margin ven
 
 Everyone who has bought from you. Each row carries a **Registered** badge (the shopper created an account) or a **Guest** badge (they checked out without one). Search by name, email or phone, and open any customer to see their orders and lifetime spend.
 
-The customer page shows four stats — **Orders / Delivered / Total spend / Avg order** (total spend and average exclude cancelled, refunded, returned and payment-failed orders so they reflect realized revenue) — plus a tap-to-call phone link and a one-tap **WhatsApp** button that opens chat with a Yellow Pink greeting pre-filled. The profile card also shows a **Customer since** date (their first order), their **newsletter status** (Subscribed / Unsubscribed / Not subscribed), and, when a confirmed COD parcel of theirs was refused, a red **COD refusal flag** chip next to their name: collect advance payment before dispatching their next order.
+The customer page shows four stats — **Orders / Delivered / Total spend / Avg order** (total spend and average exclude cancelled, refunded, returned and payment-failed orders so they reflect realized revenue) — plus a tap-to-call phone link and a one-tap **WhatsApp** button that opens chat with a Yellow Pink greeting pre-filled. A **Notes** card in the profile column keeps internal notes about the customer, guests included ("always call before 6pm", "prefers bank transfer"): staff with the *Customers, Edit* permission can add and delete them, each shows its author and date, and the customer never sees them. The profile card also shows a **Customer since** date (their first order), their **newsletter status** (Subscribed / Unsubscribed / Not subscribed), and, when a confirmed COD parcel of theirs was refused, a red **COD refusal flag** chip next to their name: collect advance payment before dispatching their next order.
 
 A registered customer's page also shows a **Reward points** card — their current balance and lifetime points — and, with the *Customers — Edit* permission, a small **Adjust points** form: enter a positive or negative amount and a short reason to credit or deduct points on the spot. This is how you award the **Google review bonus** (Google can't tell the site who reviewed, so you grant it by hand once you see the review land), and it also covers goodwill credits and corrections. The adjustment appears on the customer's own rewards page as *"Manual adjustment"* and is recorded in the activity log.
 
@@ -709,7 +709,10 @@ recorded in the Activity log and flows straight into the invoice and the
 WhatsApp messages. If the customer has filed any return requests for this
 order, a read-only **Returns** block appears near the status card showing each
 request's status, date, reason and refund amount, with a link to the Returns
-page where the decisions are made. If a customer reports they didn't get the
+page where the decisions are made. The **Order timeline** card also takes
+internal notes (staff who can manage orders): call attempts, delivery
+instructions and the like appear interleaved with the status history, signed
+and timed, and the customer never sees them. If a customer reports they didn't get the
 order confirmation email, the email field has a **Resend confirmation email**
 button right next to it (gated on Orders — Manage); the resend is recorded in
 the Activity log.
@@ -1043,6 +1046,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 14 August 2026
+
+- **Money, orders and customers can now carry their context.** A cashbook movement can be linked to the order or vendor it was for: type the order number or pick the vendor when recording it (suggested entries link themselves automatically), and the Cash ledger shows each link as a jump to that order or the Vendors page. The order page's timeline now takes internal notes, so call attempts and delivery instructions sit interleaved with the status history, signed and timed, invisible to the customer. And every customer page (guests included) gains a **Notes** card for facts worth keeping, such as "always call before 6pm" or "prefers bank transfer".
 
 ### 13 August 2026
 

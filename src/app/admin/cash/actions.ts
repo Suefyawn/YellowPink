@@ -9,6 +9,7 @@ import { logAudit } from '@/lib/audit';
 import { CASH_CATEGORY_VALUES, categoryMeta } from '@/lib/cash';
 
 const PAGE = '/admin/cash';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function requireFinance() {
   const session = await getStaffSession();
@@ -28,10 +29,27 @@ export async function addCashEntry(formData: FormData): Promise<void> {
   const amount = Number(formData.get('amount'));
   const note = String(formData.get('note') ?? '').trim().slice(0, 500);
   const entryDate = String(formData.get('entry_date') ?? '').trim();
+  const orderNo = String(formData.get('order_no') ?? '').trim().slice(0, 40);
+  const vendorIdRaw = String(formData.get('vendor_id') ?? '').trim();
+  const vendorId = UUID_RE.test(vendorIdRaw) ? vendorIdRaw : null;
 
   if (!CASH_CATEGORY_VALUES.includes(category)) back('error', 'Pick a category.');
   if (!Number.isFinite(amount) || amount <= 0) back('error', 'The amount has to be a positive number.');
   if (entryDate && !/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) back('error', 'That date does not look right.');
+
+  // Optional order link: an order NUMBER (YP-XXXX, what humans know) resolved
+  // to the order id server-side. A number that matches nothing is an error,
+  // not a silently unlinked entry.
+  let orderId: string | null = null;
+  if (orderNo) {
+    const { data: orderRow } = await supabaseAdmin()
+      .from('orders')
+      .select('id')
+      .ilike('order_number', orderNo)
+      .maybeSingle();
+    if (!orderRow) back('error', `No order ${orderNo} found — check the order number.`);
+    orderId = (orderRow as { id: string }).id;
+  }
 
   // Direction comes from the category, never from the client separately —
   // a "stock purchase" can only ever be money out.
@@ -44,6 +62,8 @@ export async function addCashEntry(formData: FormData): Promise<void> {
       amount,
       category,
       note: note || null,
+      order_id: orderId,
+      vendor_id: vendorId,
       ...(entryDate ? { entry_date: entryDate } : {}),
       created_by: session.email,
     })
@@ -53,7 +73,7 @@ export async function addCashEntry(formData: FormData): Promise<void> {
 
   void logAudit(session, {
     action: 'cash.add', entity: 'cash_entries', entity_id: (data as { id: string }).id,
-    diff: { direction, amount, category, note, entry_date: entryDate || 'today' },
+    diff: { direction, amount, category, note, entry_date: entryDate || 'today', order_id: orderId, vendor_id: vendorId },
   });
   revalidatePath(PAGE);
   back('ok', `Recorded: ${direction === 'in' ? '+' : '−'}Rs ${amount.toLocaleString()} (${categoryMeta(category).label}).`);
@@ -69,6 +89,13 @@ export async function confirmCashSuggestion(formData: FormData): Promise<void> {
   const amount = Number(formData.get('amount'));
   const note = String(formData.get('note') ?? '').trim().slice(0, 500);
   const entryDate = String(formData.get('entry_date') ?? '').trim();
+  // Link hints the suggestion carries (a settled balance knows its vendor, a
+  // reconciled payment knows its order). Anything that isn't a UUID is
+  // ignored rather than failing the confirm.
+  const orderIdRaw = String(formData.get('order_id') ?? '').trim();
+  const vendorIdRaw = String(formData.get('vendor_id') ?? '').trim();
+  const orderId = UUID_RE.test(orderIdRaw) ? orderIdRaw : null;
+  const vendorId = UUID_RE.test(vendorIdRaw) ? vendorIdRaw : null;
 
   if (!sourceKey.startsWith('settle:') && !sourceKey.startsWith('payment:')) back('error', 'Bad suggestion.');
   if (!CASH_CATEGORY_VALUES.includes(category)) back('error', 'Pick a category.');
@@ -82,6 +109,8 @@ export async function confirmCashSuggestion(formData: FormData): Promise<void> {
       direction, amount, category,
       note: note || null,
       source_key: sourceKey,
+      order_id: orderId,
+      vendor_id: vendorId,
       ...(entryDate ? { entry_date: entryDate } : {}),
       created_by: session.email,
     })
@@ -91,7 +120,7 @@ export async function confirmCashSuggestion(formData: FormData): Promise<void> {
 
   void logAudit(session, {
     action: 'cash.confirm_suggestion', entity: 'cash_entries', entity_id: (data as { id: string }).id,
-    diff: { direction, amount, category, source_key: sourceKey },
+    diff: { direction, amount, category, source_key: sourceKey, order_id: orderId, vendor_id: vendorId },
   });
   revalidatePath(PAGE);
   back('ok', `Recorded: ${direction === 'in' ? '+' : '−'}Rs ${amount.toLocaleString()} (${categoryMeta(category).label}).`);
@@ -122,7 +151,7 @@ export async function deleteCashEntry(formData: FormData): Promise<void> {
 
   const { data: existing } = await supabaseAdmin()
     .from('cash_entries')
-    .select('id, direction, amount, category, note, entry_date')
+    .select('id, direction, amount, category, note, entry_date, order_id, vendor_id')
     .eq('id', id)
     .maybeSingle();
   if (!existing) back('error', 'Entry not found.');

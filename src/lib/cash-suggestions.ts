@@ -25,6 +25,10 @@ export interface CashSuggestion {
   /** YYYY-MM-DD the money moved. */
   date: string;
   label: string;
+  /** Order the money moved for (payment suggestions), persisted on confirm. */
+  orderId?: string;
+  /** Vendor the money moved to/from (settlement groups), persisted on confirm. */
+  vendorId?: string;
 }
 
 const WINDOW_DAYS = 90;
@@ -41,7 +45,7 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
       .gte('settled_at', since),
     admin
       .from('payments')
-      .select('id, amount, gateway, created_at, orders(order_number)')
+      .select('id, amount, gateway, order_id, created_at, orders(order_number)')
       .eq('status', 'succeeded')
       .in('gateway', ['bank', 'manual', 'jazzcash', 'easypaisa'])
       .gte('created_at', since),
@@ -58,7 +62,7 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
 
   // Settlements: one suggestion per vendor per settle-day per direction —
   // "Settle all" is one bank transfer, so one cash movement.
-  const groups = new Map<string, { amount: number; count: number; vendor: string; date: string; dueTo: 'us' | 'vendor' }>();
+  const groups = new Map<string, { amount: number; count: number; vendor: string; vendorId: string; date: string; dueTo: 'us' | 'vendor' }>();
   for (const r of (settleRows ?? []) as Array<{
     vendor_id: string; amount_due: number; due_to: 'us' | 'vendor'; settled_at: string | null;
     vendors: { name: string } | { name: string }[] | null;
@@ -67,7 +71,7 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
     const date = r.settled_at.slice(0, 10);
     const key = `settle:${r.vendor_id}:${date}:${r.due_to}`;
     const vendorName = (Array.isArray(r.vendors) ? r.vendors[0]?.name : r.vendors?.name) ?? 'vendor';
-    const g = groups.get(key) ?? { amount: 0, count: 0, vendor: vendorName, date, dueTo: r.due_to };
+    const g = groups.get(key) ?? { amount: 0, count: 0, vendor: vendorName, vendorId: r.vendor_id, date, dueTo: r.due_to };
     g.amount += Number(r.amount_due);
     g.count += 1;
     groups.set(key, g);
@@ -82,11 +86,12 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
       label: g.dueTo === 'vendor'
         ? `Paid ${g.vendor} (${g.count} settled order${g.count === 1 ? '' : 's'})`
         : `${g.vendor} paid us (${g.count} settled order${g.count === 1 ? '' : 's'})`,
+      vendorId: g.vendorId,
     });
   }
 
   for (const p of (paymentRows ?? []) as Array<{
-    id: string; amount: number; gateway: string; created_at: string;
+    id: string; amount: number; gateway: string; order_id: string | null; created_at: string;
     orders: { order_number: string } | { order_number: string }[] | null;
   }>) {
     const key = `payment:${p.id}`;
@@ -98,6 +103,7 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
       amount: Math.round(Number(p.amount)),
       date: p.created_at.slice(0, 10),
       label: `${p.gateway === 'bank' ? 'Bank transfer' : p.gateway === 'manual' ? 'Payment' : p.gateway} for ${orderNo}`,
+      orderId: p.order_id ?? undefined,
     });
   }
 

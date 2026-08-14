@@ -11,6 +11,7 @@ import { AdminFlash } from '@/components/admin/AdminFlash';
 import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge';
 import { deleteCustomer } from '@/app/admin/actions';
 import { adjustLoyaltyPoints } from '@/app/admin/users/loyalty-actions';
+import { CustomerNotes, type CustomerNote } from '@/components/admin/CustomerNotes';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { isCodFlagged } from '@/lib/cod-flags';
 import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
@@ -135,6 +136,15 @@ export default async function UserDetailPage({
     activityRows = (activity ?? []) as ActivityRow[];
     loyalty = (loyaltyRow as { points_balance: number; lifetime_points: number } | null) ?? null;
   }
+  // Staff notes about this customer, keyed by the same identifier this page's
+  // URL uses (registered auth uuid, or the guest-<base64url> id), newest first.
+  const { data: noteRows } = await admin
+    .from('customer_notes')
+    .select('id, author, body, created_at')
+    .eq('cust_key', id)
+    .order('created_at', { ascending: false });
+  const customerNotes = (noteRows ?? []) as CustomerNote[];
+
   // Who-are-they signals for the confirmation call, same sources the order
   // page uses. COD flag: the shared helper (lib/cod-flags) that gates
   // dispatch; newsletter: the subscribers table's unsubscribed_at flag
@@ -353,6 +363,10 @@ export default async function UserDetailPage({
               )}
             </div>
           )}
+
+          {/* Staff notes about this customer — internal-only, append-only,
+              works for guests too (keyed by the page's customer id). */}
+          <CustomerNotes custKey={id} notes={customerNotes} canEdit={canAdjustPoints} />
         </div>
 
         {/* Order history */}
