@@ -10,6 +10,7 @@ import { log } from '@/lib/logger';
 import { logActionError } from '@/lib/action-log';
 import { fetchAll } from '@/lib/fetch-all';
 import { sendNewsletterBroadcastEmail, renderCampaignBodyHtml, renderCampaignPreviewHtml, RESEND_DAILY_BATCH_CAP } from '@/lib/email';
+import { parseCriteria, type SegmentMember } from '@/lib/segments';
 
 export type SendCampaignResult =
   | { ok: true; recipientCount: number; sentCount: number }
@@ -41,7 +42,9 @@ function withTimeout<T>(p: PromiseLike<T>, ms: number, label: string): Promise<T
 // over the whole list would be killed mid-send, hanging the UI). Anything
 // beyond the cap is left unsent; the campaign row's recipient/sent counts
 // surface the shortfall.
-export type CampaignAudience = 'subscribers' | 'customers' | 'both';
+// 'segment:<uuid>' targets a custom customer segment (customer_segments row);
+// the recipient list is resolved live through the segment_customers RPC.
+export type CampaignAudience = 'subscribers' | 'customers' | 'both' | `segment:${string}`;
 
 export async function sendNewsletterCampaign(
   subject: string,
@@ -50,9 +53,10 @@ export async function sendNewsletterCampaign(
    *  new campaign row being inserted, so the edition doesn't double up. */
   draftId?: string,
   /** Who receives it. 'customers' pulls every distinct order email;
-   *  'both' unions the lists. Anyone who unsubscribed from the newsletter is
-   *  excluded from every audience — an unsubscribe means all marketing mail,
-   *  not just the list they clicked it from. */
+   *  'both' unions the lists; 'segment:<id>' pulls a custom segment's members
+   *  (rows without an email are skipped). Anyone who unsubscribed from the
+   *  newsletter is excluded from every audience — an unsubscribe means all
+   *  marketing mail, not just the list they clicked it from. */
   audience: CampaignAudience = 'subscribers',
 ): Promise<SendCampaignResult> {
   const session = await getStaffSession();
@@ -96,7 +100,7 @@ export async function sendNewsletterCampaign(
     }
   }
 
-  if (audience !== 'customers') {
+  if (audience === 'subscribers' || audience === 'both') {
     try {
       // fetchAll pages past PostgREST's silent 1000-row cap; without it the
       // campaign never reached subscriber #1001. Stable order keeps pages
@@ -126,7 +130,7 @@ export async function sendNewsletterCampaign(
     }
   }
 
-  if (audience !== 'subscribers') {
+  if (audience === 'customers' || audience === 'both') {
     try {
       const res = await withTimeout(
         fetchAll<{ email: string | null }>(
@@ -150,6 +154,46 @@ export async function sendNewsletterCampaign(
     } catch (err) {
       log.error('newsletter.customers_load_timeout', { error: (err as Error).message });
       return { ok: false, error: 'The customer list took too long to load. Please try again.' };
+    }
+  }
+
+  // Custom segment audience: resolve the stored criteria through the
+  // segment_customers RPC and mail every member that has an email address.
+  // The unsubscribe exclusion above still bars anyone who opted out (and the
+  // fail-closed guard already covered this branch: audience !== 'subscribers').
+  if (audience.startsWith('segment:')) {
+    const segmentId = audience.slice('segment:'.length);
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(segmentId)) {
+      return { ok: false, error: 'That segment reference is invalid. Refresh and pick the audience again.' };
+    }
+    try {
+      const segRes = await withTimeout(
+        admin.from('customer_segments').select('name, criteria').eq('id', segmentId).maybeSingle(),
+        DB_TIMEOUT_MS,
+        'newsletter.segment_load',
+      );
+      if (segRes.error || !segRes.data) {
+        log.error('newsletter.segment_load_failed', { segment_id: segmentId, error: segRes.error?.message });
+        return { ok: false, error: 'That segment no longer exists. Refresh and pick the audience again.' };
+      }
+      const criteria = parseCriteria((segRes.data as { criteria: unknown }).criteria);
+      const memberRes = await withTimeout(
+        admin.rpc('segment_customers' as never, { p_criteria: criteria } as never),
+        DB_TIMEOUT_MS,
+        'newsletter.segment_members_load',
+      );
+      if (memberRes.error) {
+        log.error('newsletter.segment_members_failed', { segment_id: segmentId, error: memberRes.error.message });
+        return { ok: false, error: 'Could not load the segment members. Please try again.' };
+      }
+      for (const m of ((memberRes.data ?? []) as unknown as SegmentMember[])) {
+        const e = m.email?.trim().toLowerCase();
+        // Members without an email can't receive a campaign; skip them.
+        if (e && !unsubscribed.has(e)) emailSet.add(e);
+      }
+    } catch (err) {
+      log.error('newsletter.segment_load_timeout', { segment_id: segmentId, error: (err as Error).message });
+      return { ok: false, error: 'The segment took too long to load. Please try again.' };
     }
   }
 
