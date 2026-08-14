@@ -39,9 +39,9 @@ const SORT_COLUMNS: Record<string, string> = {
 async function OrdersPageInner({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string; deleted?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string; tag?: string; deleted?: string; sort?: string; dir?: string }>;
 }) {
-  const { status, q, page: pageParam, range, deleted, sort, dir } = await searchParams;
+  const { status, q, page: pageParam, range, tag, deleted, sort, dir } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -58,6 +58,23 @@ async function OrdersPageInner({
   // doesn't go through Supabase Auth, so admin reads MUST use the
   // service-role client. The anon path returned 0 rows silently.
   const admin = supabaseAdmin();
+
+  // Order tag registry for the filter select (Shopify: "Tagged with"), and
+  // ?tag=<slug> resolved to its order id set up front so both queries can
+  // constrain on it in SQL. A slug with no orders yields an impossible id.
+  const { data: tagRegistryRows } = await admin.from('order_tags').select('id, slug, name').order('name');
+  const tagRegistry = (tagRegistryRows ?? []) as Array<{ id: string; slug: string; name: string }>;
+  let tagOrderIds: string[] | null = null;
+  if (tag) {
+    const tagRow = tagRegistry.find(t => t.slug === tag);
+    if (tagRow) {
+      const { data: mapRows } = await admin.from('order_tag_map').select('order_id').eq('tag_id', tagRow.id);
+      tagOrderIds = ((mapRows ?? []) as Array<{ order_id: string }>).map(r => r.order_id);
+    } else {
+      tagOrderIds = [];
+    }
+  }
+
   let countQuery = admin.from('orders').select('*', { count: 'exact', head: true });
   // Header-driven sort; created_at desc as tie-breaker so equal values keep
   // a stable, recency-first order.
@@ -91,6 +108,11 @@ async function OrdersPageInner({
   if (rangeSinceIso) {
     countQuery = countQuery.gte('created_at', rangeSinceIso);
     dataQuery = dataQuery.gte('created_at', rangeSinceIso);
+  }
+  if (tagOrderIds) {
+    const ids = tagOrderIds.length > 0 ? tagOrderIds : ['00000000-0000-0000-0000-000000000000'];
+    countQuery = countQuery.in('id', ids);
+    dataQuery = dataQuery.in('id', ids);
   }
   if (q) {
     // Strip characters that would break the PostgREST `.or()` grammar (commas
@@ -146,7 +168,7 @@ async function OrdersPageInner({
       </div>
 
       <Suspense fallback={null}>
-        <OrdersFilter total={total} />
+        <OrdersFilter total={total} tags={tagRegistry.map(({ slug, name }) => ({ slug, name }))} />
       </Suspense>
 
       {/* overflowX auto (not hidden): on narrow screens the table is wider than

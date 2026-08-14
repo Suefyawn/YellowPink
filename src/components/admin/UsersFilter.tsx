@@ -19,7 +19,7 @@ const ACTIVITY_OPTIONS: { value: string; label: string }[] = [
   { value: 'none',   label: 'No orders yet' },
 ];
 
-export function UsersFilter({ total }: { total: number }) {
+export function UsersFilter({ total, tags = [] }: { total: number; tags?: { slug: string; name: string }[] }) {
   const router = useRouter();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -27,6 +27,7 @@ export function UsersFilter({ total }: { total: number }) {
   const sort = params.get('sort') ?? 'recent';
   const type = params.get('type') ?? 'all';
   const activity = params.get('activity') ?? 'all';
+  const tag = params.get('tag') ?? '';
 
   const push = useCallback((next: URLSearchParams) => {
     startTransition(() => router.push(`/admin/users?${next.toString()}`));
@@ -47,7 +48,7 @@ export function UsersFilter({ total }: { total: number }) {
   };
 
   const clearAll = () => push(new URLSearchParams());
-  const hasFilters = !!q || sort !== 'recent' || type !== 'all' || activity !== 'all';
+  const hasFilters = !!q || sort !== 'recent' || type !== 'all' || activity !== 'all' || !!tag;
 
   const controlStyle: React.CSSProperties = {
     padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: 8,
@@ -85,6 +86,19 @@ export function UsersFilter({ total }: { total: number }) {
       >
         {ACTIVITY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
+
+      {/* Tag filter (Shopify: "Tagged with"); only offered once tags exist. */}
+      {tags.length > 0 && (
+        <select
+          value={tag}
+          onChange={e => setParam('tag', e.target.value, '')}
+          aria-label="Filter by tag"
+          style={{ ...controlStyle, cursor: 'pointer' }}
+        >
+          <option value="">All tags</option>
+          {tags.map(t => <option key={t.slug} value={t.slug}>{t.name}</option>)}
+        </select>
+      )}
 
       {/* Sort */}
       <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: '#6b7280' }}>

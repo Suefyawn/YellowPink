@@ -31,13 +31,14 @@ const RANGES: { value: string; label: string }[] = [
   { value: '90d',  label: 'Last 90d' },
 ];
 
-export function OrdersFilter({ total }: { total: number }) {
+export function OrdersFilter({ total, tags = [] }: { total: number; tags?: { slug: string; name: string }[] }) {
   const router = useRouter();
   const params = useSearchParams();
   const [, startTransition] = useTransition();
   const status = params.get('status') ?? 'all';
   const q = params.get('q') ?? '';
   const range = params.get('range') ?? 'all';
+  const tag = params.get('tag') ?? '';
 
   // Remember the active list query so the order-detail "← Orders" link can
   // return the staffer to the exact filtered/searched view they came from.
@@ -64,6 +65,13 @@ export function OrdersFilter({ total }: { total: number }) {
     push(next);
   };
 
+  const setTag = (t: string) => {
+    const next = new URLSearchParams(params.toString());
+    if (!t) { next.delete('tag'); } else { next.set('tag', t); }
+    next.delete('page');
+    push(next);
+  };
+
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
   const setSearch = (v: string) => {
     if (debounce.current) clearTimeout(debounce.current);
@@ -76,7 +84,7 @@ export function OrdersFilter({ total }: { total: number }) {
   };
 
   const clearAll = () => push(new URLSearchParams());
-  const hasFilters = status !== 'all' || !!q || range !== 'all';
+  const hasFilters = status !== 'all' || !!q || range !== 'all' || !!tag;
 
   return (
     <div style={{ marginBottom: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -126,6 +134,25 @@ export function OrdersFilter({ total }: { total: number }) {
           minWidth: 220,
         }}
       />
+      {/* Tag filter (Shopify: "Tagged with"); only offered once tags exist. */}
+      {tags.length > 0 && (
+        <select
+          aria-label="Filter by tag"
+          value={tag}
+          onChange={e => setTag(e.target.value)}
+          style={{
+            padding: '7px 10px', border: '1px solid #d1d5db', borderRadius: 8,
+            fontSize: '0.8125rem', background: 'white',
+            color: tag ? '#111827' : '#6b7280',
+            fontWeight: tag ? 600 : 400,
+          }}
+        >
+          <option value="">All tags</option>
+          {tags.map(t => (
+            <option key={t.slug} value={t.slug}>{t.name}</option>
+          ))}
+        </select>
+      )}
       {hasFilters && (
         <button onClick={clearAll} style={{
           padding: '6px 12px', border: '1px solid #e5e7eb', borderRadius: 8,
