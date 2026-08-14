@@ -21,6 +21,7 @@ import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { track } from '@/lib/analytics';
 import { computeCouponDiscount } from '@/lib/coupon-validation';
+import { useAutomaticDiscount } from '@/lib/use-automatic-discount';
 import { successHaptic } from '@/lib/haptics';
 import { readAttribution } from '@/lib/attribution';
 import { readReferral } from '@/lib/referral';
@@ -251,17 +252,25 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   }, [cartItems]);
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+  // Automatic discounts: the best eligible one applies by itself when no code
+  // has been typed (a manual code always wins — the hook returns null then).
+  // The order is placed with the automatic's internal code, so place_order's
+  // hardened path (drift check, caps, ledger) works unchanged.
+  const autoDiscount = useAutomaticDiscount(cartItems, subtotal, cartCoupon);
+  const effectiveCoupon = cartCoupon ?? autoDiscount?.coupon ?? null;
   // Free-shipping coupons waive the delivery charge instead of discounting
   // the line total (place_order validates exactly this: discount 0, shipping
   // 0 accepted because the server only rejects undercharges vs its floor).
-  const freeShipCoupon = Boolean(cartCoupon && (cartCoupon.discount_type === 'free_shipping' || cartCoupon.free_shipping));
+  const freeShipCoupon = Boolean(effectiveCoupon && (effectiveCoupon.discount_type === 'free_shipping' || effectiveCoupon.free_shipping));
   // Shared maths with the cart and place_order (which re-derives the same
   // number and rejects drift): scoped coupons discount only their own lines.
-  const couponDiscount = cartCoupon ? computeCouponDiscount(cartCoupon, cartItems) : 0;
+  const couponDiscount = cartCoupon
+    ? computeCouponDiscount(cartCoupon, cartItems)
+    : (autoDiscount?.discount ?? 0);
   // Referral first-order discount: a coupon always wins (they don't stack —
   // place_order validates exactly one discount source), so the referral line
-  // only applies when no coupon is in play.
-  const referralDiscount = !cartCoupon && referralOffer
+  // only applies when no coupon — typed OR automatic — is in play.
+  const referralDiscount = !effectiveCoupon && referralOffer
     ? Math.round(subtotal * referralOffer.pct / 100)
     : 0;
   const discount = couponDiscount > 0 ? couponDiscount : referralDiscount;
@@ -287,7 +296,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
   // number identifies them. Coupons win over referrals (they don't stack).
   useEffect(() => {
     const code = readReferral();
-    if (!code || cartCoupon) {
+    if (!code || effectiveCoupon) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setReferralOffer(null);
       return;
@@ -305,7 +314,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
         .catch(() => setReferralOffer(null));
     }, 800);
     return () => clearTimeout(t);
-  }, [formData.phone, formData.email, user, cartCoupon]);
+  }, [formData.phone, formData.email, user, effectiveCoupon]);
 
   // Recompute shipping whenever subtotal or province changes (requoteTick
   // forces a re-quote after a server-side undercharge rejection).
@@ -565,7 +574,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
             items: cartItems,
             status: 'pending',
             user_id: user?.id || '',
-            coupon_code: cartCoupon?.code || '',
+            // Typed code, or the applied automatic's internal code — either
+            // way place_order re-validates and re-prices it server-side.
+            coupon_code: effectiveCoupon?.code || '',
             discount_amount: discount,
             // Marketing attribution (UTM + first-touch landing/referrer) so the
             // order can be credited to the ad channel that drove it (ROAS).
@@ -1122,7 +1133,9 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
                   <span className="small-text" style={{ color: '#15803d' }}>
                     {referralDiscount > 0 && couponDiscount === 0
                       ? `Referral discount (${referralOffer?.pct}% off your first order)`
-                      : 'Discount'}
+                      : !cartCoupon && autoDiscount
+                        ? <>{autoDiscount.coupon.title || 'Discount'}<span style={{ display: 'block', fontSize: '0.6875rem', opacity: 0.75 }}>applied automatically</span></>
+                        : 'Discount'}
                   </span>
                   <span className="small-text tabular-nums" style={{ fontWeight: 500, color: '#15803d' }}>− PKR {discount.toLocaleString()}</span>
                 </div>

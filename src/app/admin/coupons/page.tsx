@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { supabaseAdmin } from '@/lib/supabase';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
+import { DotChip } from '@/components/admin/OrderChips';
 import { CouponEditModal } from '@/components/admin/CouponEditModal';
 import { CouponCreateForm } from '@/components/admin/CouponCreateForm';
 import { deleteCoupon, toggleCoupon } from '@/app/admin/coupon-actions';
@@ -129,10 +130,23 @@ export default async function CouponsPage({
                 return (
                   <tr key={c.id} style={{ borderTop: i > 0 ? '1px solid #f3f4f6' : 'none', ...stateStyle[state] }}>
                     <td data-label="Code" style={{ padding: '12px 16px' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</span>
-                        <CopyButton value={c.code} iconOnly title={`Copy coupon code ${c.code}`} />
-                      </span>
+                      {c.trigger_kind === 'automatic' ? (
+                        // Automatic: the customer-facing title leads; the
+                        // generated code is internal (no copy button — there's
+                        // nothing to hand to a shopper).
+                        <>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.title || c.code}</span>
+                            <DotChip label="Automatic" color="#7c3aed" title="Applies by itself to every qualifying basket — no code to share" />
+                          </span>
+                          <div style={{ fontFamily: 'monospace', fontSize: '0.6875rem', color: '#9ca3af', marginTop: 2 }}>{c.code}</div>
+                        </>
+                      ) : (
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: '0.875rem', color: '#111827' }}>{c.code}</span>
+                          <CopyButton value={c.code} iconOnly title={`Copy coupon code ${c.code}`} />
+                        </span>
+                      )}
                       {c.description && (
                         <div style={{ fontSize: '0.6875rem', color: '#9ca3af', marginTop: 2, maxWidth: 220 }}>{c.description}</div>
                       )}

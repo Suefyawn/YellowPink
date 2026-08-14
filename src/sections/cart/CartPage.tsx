@@ -15,6 +15,7 @@ import { useCommerceSettings } from '@/context/CommerceSettings';
 import { FreeShippingProgress } from '@/components/cart/FreeShippingProgress';
 import { vendorFreeShippingEligible } from '@/lib/vendor-shipping';
 import { computeCouponDiscount } from '@/lib/coupon-validation';
+import { useAutomaticDiscount } from '@/lib/use-automatic-discount';
 import type { CartItem, Coupon, Product } from '@/types';
 
 export function CartPage({ restoreToken = null, recommended = [], estimatedDays = null }: { restoreToken?: string | null; recommended?: Product[]; estimatedDays?: { min: number; max: number } | null }) {
@@ -78,12 +79,16 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
   }, [cartItems]);
 
   const subtotal = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+  // Automatic discounts: the best eligible one applies by itself when no code
+  // has been typed (a manual code always wins — the hook returns null then).
+  const autoDiscount = useAutomaticDiscount(cartItems, subtotal, appliedCoupon);
+  const effectiveCoupon = appliedCoupon ?? autoDiscount?.coupon ?? null;
   // Free-shipping coupons waive the delivery charge instead of discounting
   // the line total, mirroring the checkout's maths so both previews agree.
-  const freeShipCoupon = Boolean(appliedCoupon && (appliedCoupon.discount_type === 'free_shipping' || appliedCoupon.free_shipping));
+  const freeShipCoupon = Boolean(effectiveCoupon && (effectiveCoupon.discount_type === 'free_shipping' || effectiveCoupon.free_shipping));
   // Shared maths with checkout and place_order: a coupon scoped to certain
   // products (or barring sale items) discounts only the lines it applies to.
-  const discount = appliedCoupon ? computeCouponDiscount(appliedCoupon, cartItems) : 0;
+  const discount = appliedCoupon ? computeCouponDiscount(appliedCoupon, cartItems) : (autoDiscount?.discount ?? 0);
   const total = Math.max(0, subtotal - discount);
   // The cart can't know the shopper's delivery zone yet, and the free-delivery
   // threshold varies by zone, so we never pre-promise free here from a default
@@ -302,7 +307,11 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
               </div>
               {discount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <span className="body-text" style={{ color: '#15803d' }}>Discount</span>
+                  <span className="body-text" style={{ color: '#15803d' }}>
+                    {!appliedCoupon && autoDiscount
+                      ? <>{autoDiscount.coupon.title || 'Discount'}<span className="small-text" style={{ display: 'block', color: '#15803d', opacity: 0.75 }}>applied automatically</span></>
+                      : 'Discount'}
+                  </span>
                   <span className="body-text tabular-nums" style={{ fontWeight: 500, color: '#15803d' }}>− PKR {discount.toLocaleString()}</span>
                 </div>
               )}

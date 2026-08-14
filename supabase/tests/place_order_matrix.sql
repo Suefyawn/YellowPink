@@ -65,6 +65,12 @@ insert into public.coupons (id, code, type, value, active, product_ids, exclude_
 insert into public.coupons (id, code, type, value, active, starts_at) values
   ('00000000-0000-0000-0000-0000000000c7', 'MATRIXSOON', 'percent', 10, true, now() + interval '1 day');
 
+-- Automatic discount (migration 1120): the cart applies it by itself and the
+-- order arrives carrying the row's hidden code; place_order treats it like
+-- any coupon. lookup_coupon must NOT resolve it by typed code.
+insert into public.coupons (id, code, type, value, active, trigger_kind, title) values
+  ('00000000-0000-0000-0000-0000000000c8', 'AUTO-MATRIX1', 'percent', 10, true, 'automatic', 'Matrix Auto Sale');
+
 -- Referral programme: a referrer profile whose code a first-time buyer can
 -- use for the no-coupon referral discount (migration 650, restored by 790).
 insert into auth.users (id, email)
@@ -221,6 +227,20 @@ begin
   perform yp_tests.assert('scheduled coupon hidden from lookup',
     not exists (select 1 from public.lookup_coupon('MATRIXSOON')),
     'lookup_coupon returns nothing before starts_at');
+
+  -- Automatic discount (migration 1120): the order carries the hidden code
+  -- and the standard coupon path honours it, redemption ledger included.
+  o := yp_tests.expect_ok('automatic discount via hidden code',
+    yp_tests.payload('{"coupon_code": "AUTO-MATRIX1", "discount_amount": 200, "total": 2000, "order_number": "MTX-AUTO-1"}'));
+  perform yp_tests.assert('automatic discount via hidden code',
+    o.discount_amount = 200 and o.coupon_code = 'AUTO-MATRIX1',
+    'expected discount 200 recorded against the automatic row');
+  perform yp_tests.assert('automatic hidden from typed lookup',
+    not exists (select 1 from public.lookup_coupon('AUTO-MATRIX1')),
+    'lookup_coupon must not resolve an automatic''s internal code');
+  perform yp_tests.assert('automatic listed for the cart',
+    exists (select 1 from public.active_automatic_discounts() a where a.code = 'AUTO-MATRIX1'),
+    'active_automatic_discounts returns the active automatic');
 
   -- 8. Per-user cap (fixed 100 off, limit 1 per user): first use passes,
   --    second use by the same email is refused.
