@@ -7,6 +7,12 @@ interface Props {
   status?: string;
   q?: string;
   range?: string;
+  pay?: string;
+  city?: string;
+  confirmed?: string;
+  min?: string;
+  max?: string;
+  coupon?: string;
 }
 
 // The CSV itself is built server-side by exportOrdersCsv: the browser's
@@ -15,7 +21,7 @@ interface Props {
 // action queries with the service role behind a staff-permission check and
 // returns the CSV text; this component only triggers the download and shows
 // the outcome.
-export function ExportCSVButton({ status, q, range }: Props) {
+export function ExportCSVButton({ status, q, range, pay, city, confirmed, min, max, coupon }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,7 +29,7 @@ export function ExportCSVButton({ status, q, range }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const result = await exportOrdersCsv({ status, q, range });
+      const result = await exportOrdersCsv({ status, q, range, pay, city, confirmed, min, max, coupon });
       if (result.error) {
         setError(result.error);
         return;

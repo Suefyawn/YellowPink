@@ -641,7 +641,7 @@ async function applyReturnFinancials(
  *  a staff-permission check and hands the CSV text back for a client-side
  *  download. Filters mirror the Orders page exactly. */
 export async function exportOrdersCsv(
-  filters: { status?: string; q?: string; range?: string },
+  filters: { status?: string; q?: string; range?: string; pay?: string; city?: string; confirmed?: string; min?: string; max?: string; coupon?: string },
 ): Promise<{ csv?: string; count?: number; error?: string }> {
   try {
     await assertPermission('orders.view');
@@ -649,7 +649,7 @@ export async function exportOrdersCsv(
     logActionError('admin.orders.export_csv', err, { stage: 'permission' });
     return { error: 'You don’t have permission to export orders.' };
   }
-  const { status, q, range } = filters;
+  const { status, q, range, pay, city, confirmed, min, max, coupon } = filters;
   let query = supabaseAdmin().from('orders').select('*').order('created_at', { ascending: false });
   // Mirror the orders list's composite saved views (see admin/orders/page.tsx)
   // so "Export CSV" downloads exactly the rows the filtered list shows.
@@ -669,6 +669,16 @@ export async function exportOrdersCsv(
     const filter = `order_number.ilike.%${term}%,first_name.ilike.%${term}%,last_name.ilike.%${term}%,email.ilike.%${term}%,phone.ilike.%${term}%`;
     query = query.or(filter);
   }
+  // "More filters" row — mirror the orders page exactly (see its query).
+  if (pay) query = query.eq('pay_method', pay);
+  if (city) query = query.ilike('city', `%${city}%`);
+  if (confirmed === 'yes') query = query.not('confirmed_at', 'is', null);
+  else if (confirmed === 'no') query = query.is('confirmed_at', null);
+  const minTotal = min ? Number(min) : NaN;
+  const maxTotal = max ? Number(max) : NaN;
+  if (Number.isFinite(minTotal)) query = query.gte('total', minTotal);
+  if (Number.isFinite(maxTotal)) query = query.lte('total', maxTotal);
+  if (coupon) query = query.ilike('coupon_code', `%${coupon}%`);
   // fetchAll pages past PostgREST's silent 1000-row cap, without it the
   // export quietly dropped every order past #1000 in the filtered window.
   const { data, error } = await fetchAll<Order>(query);
