@@ -467,6 +467,7 @@ Every order placed.
 - **Sort by any column** — click the *Order # / Date / Customer / Total* headers to sort (click again to flip direction, a third time to reset to newest-first; the arrows show the active direction), and on phones a **sort dropdown** sits above the order cards.
 - **Two separate status chips** on each row, Shopify-style: **Payment** (Paid / COD — on delivery / Payment pending / Awaiting gateway / Failed / Refunded) and **Fulfilment** (Unfulfilled / Shipped / Delivered / Cancelled), plus the item count and the customer's city.
 - **Filters** — by **date range** (Today / Last 7d / Last 30d / Last 90d / All time — "Today" is the calendar day in Pakistan time) and by search across order number, name, email or phone.
+- **More filters and saved views:** a **More filters** button beside the search box opens a second row of filters: payment method, city, confirmed or unconfirmed (whether the customer has confirmed the order), an amount range in PKR on the order total, and coupon code. Set up any combination, press **Save view** in the tab strip and name it, and it becomes its own bookmark-marked tab after the built-in ones, shared with the whole team. Click the tab to re-apply the filters; when it is the active tab, a small ✕ removes it. **Export CSV** follows whatever filters are active, saved views included.
 - **Tags:** every order page has a **Tags** card (right column) where you add free-form labels like *rush*, *exchange* or *wholesale* (type to create, pick an existing one to reuse, × to remove), and a tag dropdown beside the list's search box filters the orders to any tag.
 - **Age pills** — unfulfilled rows (pending / processing / payment_pending) get a coloured pill next to their date — amber when they've sat too long, red when they're at risk — so a stale order jumps out without reading every date.
 - **Export CSV** — downloads the currently filtered list (needs the *Orders — View* permission; it tells you if there's nothing to export or the export fails).
@@ -1049,6 +1050,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 14 August 2026
+
+- **The orders list filters like Shopify's.** A **More filters** button on the Orders list opens a second row of filters: payment method, city, confirmed or unconfirmed, an amount range in PKR on the order total, and coupon code. Any filter combination can be pinned with **Save view**: give it a name and it becomes its own bookmark-marked tab after the built-in ones, shared across all staff, with a small ✕ on the active tab to remove it. **Export CSV** follows whatever filters are active, saved views included.
 
 - **Orders and customers take tags.** Every order page and customer page now has a **Tags** card, the same free-form labels Shopify uses: type to add a tag (think *rush*, *exchange*, *wholesale* on orders; *vip*, *prepay-only*, *influencer* on customers, guests included), reuse an existing one from the suggestions, remove with the ×. Each change saves instantly, and both the Orders and Customers lists gain a tag dropdown so you can filter straight to everything tagged, say, *wholesale* or *vip*.
 

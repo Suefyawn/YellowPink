@@ -39,9 +39,9 @@ const SORT_COLUMNS: Record<string, string> = {
 async function OrdersPageInner({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string; tag?: string; deleted?: string; sort?: string; dir?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string; range?: string; tag?: string; pay?: string; city?: string; confirmed?: string; min?: string; max?: string; coupon?: string; deleted?: string; sort?: string; dir?: string }>;
 }) {
-  const { status, q, page: pageParam, range, tag, deleted, sort, dir } = await searchParams;
+  const { status, q, page: pageParam, range, tag, pay, city, confirmed, min, max, coupon, deleted, sort, dir } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const from = (page - 1) * PAGE_SIZE;
   const to = from + PAGE_SIZE - 1;
@@ -64,6 +64,15 @@ async function OrdersPageInner({
   // constrain on it in SQL. A slug with no orders yields an impossible id.
   const { data: tagRegistryRows } = await admin.from('order_tags').select('id, slug, name').order('name');
   const tagRegistry = (tagRegistryRows ?? []) as Array<{ id: string; slug: string; name: string }>;
+
+  // Saved views (migration 1110): staff-pinned filter combinations rendered
+  // as extra tabs after the hardcoded ones. Shared across the team.
+  const { data: savedViewRows } = await admin
+    .from('admin_saved_views')
+    .select('id, name, query')
+    .eq('surface', 'orders')
+    .order('created_at');
+  const savedViews = (savedViewRows ?? []) as Array<{ id: string; name: string; query: string }>;
   let tagOrderIds: string[] | null = null;
   if (tag) {
     const tagRow = tagRegistry.find(t => t.slug === tag);
@@ -124,6 +133,38 @@ async function OrdersPageInner({
     countQuery = countQuery.or(filter);
     dataQuery = dataQuery.or(filter);
   }
+  // "More filters" row (payment method, city, confirmed state, amount range,
+  // coupon). Keep exportOrdersCsv (admin/actions.ts) in lock-step.
+  if (pay) {
+    countQuery = countQuery.eq('pay_method', pay);
+    dataQuery = dataQuery.eq('pay_method', pay);
+  }
+  if (city) {
+    countQuery = countQuery.ilike('city', `%${city}%`);
+    dataQuery = dataQuery.ilike('city', `%${city}%`);
+  }
+  // confirmed_at (migration 101): set when the customer confirms the order.
+  if (confirmed === 'yes') {
+    countQuery = countQuery.not('confirmed_at', 'is', null);
+    dataQuery = dataQuery.not('confirmed_at', 'is', null);
+  } else if (confirmed === 'no') {
+    countQuery = countQuery.is('confirmed_at', null);
+    dataQuery = dataQuery.is('confirmed_at', null);
+  }
+  const minTotal = min ? Number(min) : NaN;
+  const maxTotal = max ? Number(max) : NaN;
+  if (Number.isFinite(minTotal)) {
+    countQuery = countQuery.gte('total', minTotal);
+    dataQuery = dataQuery.gte('total', minTotal);
+  }
+  if (Number.isFinite(maxTotal)) {
+    countQuery = countQuery.lte('total', maxTotal);
+    dataQuery = dataQuery.lte('total', maxTotal);
+  }
+  if (coupon) {
+    countQuery = countQuery.ilike('coupon_code', `%${coupon}%`);
+    dataQuery = dataQuery.ilike('coupon_code', `%${coupon}%`);
+  }
 
   const [{ count: totalCount }, { data: orders }] = await Promise.all([countQuery, dataQuery]);
   const total = totalCount ?? 0;
@@ -163,12 +204,12 @@ async function OrdersPageInner({
           >
             + New order
           </Link>
-          <ExportCSVButton status={status} q={q} range={range} />
+          <ExportCSVButton status={status} q={q} range={range} pay={pay} city={city} confirmed={confirmed} min={min} max={max} coupon={coupon} />
         </div>
       </div>
 
       <Suspense fallback={null}>
-        <OrdersFilter total={total} tags={tagRegistry.map(({ slug, name }) => ({ slug, name }))} />
+        <OrdersFilter total={total} tags={tagRegistry.map(({ slug, name }) => ({ slug, name }))} savedViews={savedViews} />
       </Suspense>
 
       {/* overflowX auto (not hidden): on narrow screens the table is wider than
