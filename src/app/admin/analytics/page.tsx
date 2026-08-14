@@ -29,6 +29,8 @@ import { InsightCallouts } from '@/components/admin/insights/InsightCallouts';
 import { pctDelta } from '@/components/admin/insights/format';
 import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
 import { brandPlusName } from '@/lib/product-display';
+import { channelOf, UNTAGGED } from '@/lib/channels';
+import { NewReturningChart, type NewReturningBucket } from '@/components/admin/NewReturningChart';
 import { can } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
 import type { OrderStatus } from '@/types';
@@ -43,6 +45,11 @@ interface StatusRow { status: string; count: number }
 interface TopRow { product_id: string; units: number; revenue: number }
 interface RfmRow { segment: string; customers: number; total_revenue: number }
 interface CohortRow { cohort_month: string; month_offset: number; customers: number }
+// New-vs-returning split per day ("returning" = the customer had an earlier
+// order before this one; platform revenue rules).
+interface ReturningRow { day: string; new_orders: number; new_revenue: number; returning_orders: number; returning_revenue: number }
+interface UnitsRow { avg_units: number; avg_lines: number }
+interface RegionRow { city: string; province: string | null; orders: number; revenue: number }
 
 async function rpc<T>(name: string, args: Record<string, unknown> = {}): Promise<T[]> {
   // Service-role client: every analytics_* RPC is revoked from anon/authenticated
@@ -70,41 +77,10 @@ const TABS: { key: Tab; label: string; traffic?: boolean }[] = [
   { key: 'funnels', label: 'Funnels', traffic: true },
 ];
 
-// Derive a sales channel from an order's captured attribution. utm_source wins
-// (a tagged link), else the referrer's host, else it's untagged — which for a
-// storefront overwhelmingly means an Instagram/WhatsApp/typed link that never
-// carried a source. Kept deliberately simple; the point is to make the untagged
-// share visible so tagging links (Link builder) actually gets done.
+// Sales-channel attribution (utm_source wins, else referrer host, else
+// UNTAGGED) lives in the shared module so Finance → Ad performance groups by
+// the exact same channel names. See src/lib/channels.ts.
 interface AttrOrder { utm_source: string | null; utm_medium: string | null; utm_campaign: string | null; referrer: string | null; landing_page: string | null; total: number | null; status: string | null }
-const UNTAGGED = 'Direct / untagged';
-// Friendly names for the sources that actually reach this store. ChatGPT
-// (and the other assistants) append ?utm_source=<their domain> to links they
-// cite, which is how AI-referred orders identify themselves; search and
-// social arrive as referrer hostnames. Anything unrecognised shows raw so
-// new sources are visible instead of lumped into an "other" bucket.
-const CHANNEL_NAMES: Record<string, string> = {
-  'chatgpt.com': 'ChatGPT', 'chat.openai.com': 'ChatGPT',
-  'perplexity.ai': 'Perplexity', 'copilot.microsoft.com': 'Microsoft Copilot',
-  'gemini.google.com': 'Google Gemini', 'claude.ai': 'Claude',
-  'google.com': 'Google search', 'google': 'Google search',
-  'bing.com': 'Bing', 'bing': 'Bing', 'duckduckgo.com': 'DuckDuckGo',
-  'facebook': 'Facebook', 'facebook.com': 'Facebook', 'm.facebook.com': 'Facebook', 'fb': 'Facebook',
-  'instagram': 'Instagram', 'instagram.com': 'Instagram', 'l.instagram.com': 'Instagram', 'ig': 'Instagram',
-  'tiktok': 'TikTok', 'tiktok.com': 'TikTok',
-  'whatsapp': 'WhatsApp', 'wa': 'WhatsApp',
-};
-function channelOf(o: AttrOrder): string {
-  const s = (o.utm_source ?? '').trim().toLowerCase();
-  if (s) return CHANNEL_NAMES[s] ?? s;
-  const ref = (o.referrer ?? '').trim();
-  if (ref) {
-    try {
-      const host = new URL(ref).hostname.replace(/^www\./, '');
-      return CHANNEL_NAMES[host] ?? host;
-    } catch { return ref.slice(0, 40); }
-  }
-  return UNTAGGED;
-}
 
 // Time-series granularity: staff pick Day / Week / Month and the daily revenue
 // series is rolled up to matching buckets. Weeks start Monday; months on the
@@ -170,13 +146,18 @@ export default async function AnalyticsPage({
   // Double-window daily series: the last `window` days are the charts/KPIs,
   // the `window` days before them are the delta baseline — one source for
   // headline, sparkline and trend pill, so they can never disagree.
-  const [daily2x, kpis, byStatus, top, rfm, cohort] = await Promise.all([
+  const [daily2x, kpis, byStatus, top, rfm, cohort, returning2x, unitsRow, byRegion] = await Promise.all([
     rpc<DailyRow>('analytics_daily', { p_days: window * 2 }),
     rpc<KpiRow>('analytics_kpis', { p_days: window }).then(rows => rows[0]),
     rpc<StatusRow>('analytics_orders_by_status'),
     rpc<TopRow>('analytics_top_products', { p_days: window, p_limit: 10 }),
     rpc<RfmRow>('analytics_rfm_segments'),
     rpc<CohortRow>('analytics_cohort_retention', { p_months: 6 }),
+    // Double window (same pattern as analytics_daily above): the last
+    // `window` days are the chart/KPIs, the days before are the delta base.
+    rpc<ReturningRow>('analytics_returning_split', { p_days: window * 2 }),
+    rpc<UnitsRow>('analytics_units_per_order', { p_days: window }).then(rows => rows[0]),
+    rpc<RegionRow>('analytics_sales_by_region', { p_days: window }),
   ]);
   const daily = daily2x.slice(-window);
   const prevDaily = daily2x.slice(-(window * 2), -window);
@@ -209,6 +190,57 @@ export default async function AnalyticsPage({
   // the chosen Day / Week / Month granularity.
   const chartData = rollUp(daily, gran);
 
+  // ── New vs returning customers ── split the double-window rows by DATE
+  // (the RPC may skip empty days, so slicing by index could misalign the two
+  // windows; the zero-filled daily series gives the boundary day).
+  const windowStart = daily[0]?.day ? String(daily[0].day).slice(0, 10) : '';
+  const retRows = returning2x.map(r => ({ ...r, day: String(r.day).slice(0, 10) }));
+  const retCur = windowStart ? retRows.filter(r => r.day >= windowStart) : retRows;
+  const retPrev = windowStart ? retRows.filter(r => r.day < windowStart) : [];
+  const aggSplit = (rows: { new_orders: number; new_revenue: number; returning_orders: number; returning_revenue: number }[]) =>
+    rows.reduce((a, r) => ({
+      newOrders: a.newOrders + Number(r.new_orders), newRev: a.newRev + Number(r.new_revenue),
+      retOrders: a.retOrders + Number(r.returning_orders), retRev: a.retRev + Number(r.returning_revenue),
+    }), { newOrders: 0, newRev: 0, retOrders: 0, retRev: 0 });
+  const curSplit = aggSplit(retCur);
+  const prevSplit = aggSplit(retPrev);
+  const curSplitOrders = curSplit.newOrders + curSplit.retOrders;
+  const prevSplitOrders = prevSplit.newOrders + prevSplit.retOrders;
+  const returningRate = curSplitOrders > 0 ? curSplit.retOrders / curSplitOrders : 0;
+  const prevReturningRate = prevSplitOrders > 0 ? prevSplit.retOrders / prevSplitOrders : 0;
+  const returningRateDelta = prevReturningRate > 0 ? pctDelta(returningRate * 100, prevReturningRate * 100) : null;
+  const curSplitRev = curSplit.newRev + curSplit.retRev;
+  const prevSplitRev = prevSplit.newRev + prevSplit.retRev;
+  const retShare = curSplitRev > 0 ? Math.round((curSplit.retRev / curSplitRev) * 100) : 0;
+  const prevRetShare = prevSplitRev > 0 ? Math.round((prevSplit.retRev / prevSplitRev) * 100) : 0;
+  // Stacked-chart buckets on the same Day/Week/Month grouping as the revenue
+  // chart, seeded from the zero-filled daily series so no-sale buckets render.
+  const nrBuckets: NewReturningBucket[] = (() => {
+    const map = new Map<string, { newRev: number; retRev: number }>();
+    for (const d of daily) {
+      const k = bucketKey(String(d.day).slice(0, 10), gran);
+      if (!map.has(k)) map.set(k, { newRev: 0, retRev: 0 });
+    }
+    for (const r of retCur) {
+      const k = bucketKey(r.day, gran);
+      const cur = map.get(k) ?? { newRev: 0, retRev: 0 };
+      cur.newRev += Number(r.new_revenue) || 0;
+      cur.retRev += Number(r.returning_revenue) || 0;
+      map.set(k, cur);
+    }
+    return [...map.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, v]) => ({ date, ...v }));
+  })();
+
+  // Items per order (window-scoped): avg units per order, avg distinct lines.
+  const avgUnits = Number(unitsRow?.avg_units) || 0;
+  const avgLines = Number(unitsRow?.avg_lines) || 0;
+
+  // Sales by city: top 10 by revenue; shares are of the WHOLE window's
+  // regional revenue so the bars read as true shares, not shares-of-top-10.
+  const topRegions = byRegion.slice(0, 10);
+  const regionTotalRev = byRegion.reduce((s, r) => s + (Number(r.revenue) || 0), 0);
+  const maxRegionRev = Math.max(1, ...topRegions.map(r => Number(r.revenue) || 0));
+
   // ── "What stands out" callouts, computed from the same window data the
   // charts show. Only sentences the data actually supports.
   const salesInsights: string[] = [];
@@ -229,6 +261,11 @@ export default async function AnalyticsPage({
   const aovDelta = pctDelta(curAov, prevAov);
   if (prevAov > 0 && aovDelta != null && Math.abs(aovDelta) >= 10) {
     salesInsights.push(`Average order value ${aovDelta >= 0 ? 'rose' : 'fell'} ${Math.abs(aovDelta)}% — ${aovDelta >= 0 ? 'baskets are getting bigger' : 'more small orders in the mix'}.`);
+  }
+  // Returning-share shift: only worth a sentence when both windows have
+  // revenue and the share actually moved (3+ points).
+  if (curSplitRev > 0 && prevSplitRev > 0 && Math.abs(retShare - prevRetShare) >= 3) {
+    salesInsights.push(`Returning customers drove ${retShare}% of revenue, ${retShare > prevRetShare ? 'up' : 'down'} from ${prevRetShare}% in the prior ${window} days.`);
   }
 
   const customerInsights: string[] = [];
@@ -392,8 +429,11 @@ export default async function AnalyticsPage({
           <InsightCallouts items={salesInsights} />
 
           {/* Sales KPIs — headline, sparkline and delta all from the same
-              double-window daily series, so they can't disagree. */}
-          <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 28 }}>
+              double-window daily series, so they can't disagree. The two
+              customer-mix cards (returning rate, items per order) come from
+              the analytics_returning_split / analytics_units_per_order RPCs
+              on the same window. */}
+          <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 28 }}>
             <KpiCard label={`Revenue · last ${window} days`} value={fmt(curRev)} accent="#10b981"
               spark={daily.map(d => Number(d.revenue))}
               delta={prevRev > 0 && revDelta != null ? { pct: revDelta, goodWhenUp: true, vs: vsLabel } : null}
@@ -405,12 +445,32 @@ export default async function AnalyticsPage({
             <KpiCard label="AOV (avg order value)" value={fmt(curAov)} accent="#6366f1"
               spark={daily.map(d => Number(d.aov))}
               delta={prevAov > 0 && aovDelta != null ? { pct: aovDelta, goodWhenUp: true, vs: vsLabel } : null} />
+            <KpiCard label="Returning customer rate" value={pct(returningRate)} accent="#0ea5e9"
+              delta={returningRateDelta != null ? { pct: returningRateDelta, goodWhenUp: true, vs: vsLabel } : null}
+              hint={`${curSplit.retOrders} of ${curSplitOrders} order${curSplitOrders === 1 ? '' : 's'} from repeat customers`} />
+            <KpiCard label="Items per order" value={avgUnits > 0 ? avgUnits.toFixed(1) : '—'} accent="#f59e0b"
+              hint={avgLines > 0 ? `${avgLines.toFixed(1)} distinct product${avgLines >= 1.05 ? 's' : ''} per order` : undefined} />
           </div>
 
           {/* Revenue chart — grouped by the chosen Day/Week/Month bucket */}
           <div style={{ ...cardStyle, marginBottom: 28 }}>
             <h2 style={headingStyle}>Revenue · {gran === 'day' ? 'daily' : gran === 'week' ? 'weekly' : 'monthly'} · last {window} days</h2>
             <RevenueChart days={chartData} granularity={gran} />
+          </div>
+
+          {/* New vs returning — who the revenue comes from, stacked on the
+              same Day/Week/Month grouping as the revenue chart above. */}
+          <div style={{ ...cardStyle, marginBottom: 28 }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+              <h2 style={{ ...headingStyle, margin: 0 }}>New vs returning customers · last {window} days</h2>
+              {curSplitRev > 0 && (
+                <span style={{ fontSize: '0.8125rem', color: '#6b7280', fontVariantNumeric: 'tabular-nums' }}>
+                  New <b style={{ color: '#111827' }}>{fmt(curSplit.newRev)}</b> · Returning <b style={{ color: '#111827' }}>{fmt(curSplit.retRev)}</b>
+                  {' '}<span style={{ color: '#9ca3af' }}>({retShare}% of revenue from returning)</span>
+                </span>
+              )}
+            </div>
+            <NewReturningChart buckets={nrBuckets} granularity={gran} />
           </div>
 
           <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>
@@ -471,6 +531,40 @@ export default async function AnalyticsPage({
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* Sales by city — top 10 by revenue, same share-bar language as
+              Revenue by source on the Sources tab. 'Unknown' is the bucket
+              for orders whose address never captured a city. */}
+          <div style={{ ...cardStyle, marginBottom: 28 }}>
+            <h2 style={headingStyle}>Sales by city · last {window} days</h2>
+            {topRegions.length === 0 ? (
+              <p style={{ color: '#9ca3af', fontSize: '0.8125rem', margin: 0 }}>No orders in this window yet.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {topRegions.map(r => {
+                  const rev = Number(r.revenue) || 0;
+                  const w = (rev / maxRegionRev) * 100;
+                  const share = regionTotalRev > 0 ? Math.round((rev / regionTotalRev) * 100) : 0;
+                  const unknown = r.city === 'Unknown';
+                  return (
+                    <div key={`${r.city}|${r.province ?? ''}`} style={{ display: 'grid', gridTemplateColumns: '160px 1fr auto', alignItems: 'center', gap: 12 }}>
+                      <span style={{ fontSize: '0.8125rem', color: unknown ? '#b45309' : '#374151', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'right' }} title={r.province ? `${r.city}, ${r.province}` : r.city}>
+                        {r.city}{r.province && <span style={{ color: '#9ca3af', fontWeight: 500 }}> · {r.province}</span>}
+                      </span>
+                      <div style={{ height: 16, background: '#f3f4f6', borderRadius: 5, overflow: 'hidden' }}>
+                        <div style={{ width: `${Math.max(3, w)}%`, height: '100%', background: unknown ? '#f59e0b' : '#C5286A', borderRadius: 5 }} />
+                      </div>
+                      <span style={{ fontSize: '0.8125rem', fontWeight: 700, color: '#111827', minWidth: 120, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+                        {fmt(rev)} <span style={{ color: '#9ca3af', fontWeight: 500 }}>
+                          · {r.orders} order{Number(r.orders) === 1 ? '' : 's'} · {share}%
+                        </span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </>
       )}
@@ -592,8 +686,10 @@ export default async function AnalyticsPage({
           <div className="adm-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 28, maxWidth: 560 }}>
             <KpiCard label="Unique customers" value={kpis ? String(kpis.unique_customers) : '—'} accent="#0ea5e9"
               href="/admin/users" hint={`Last ${window} days`} />
-            <KpiCard label="Repeat-purchase rate" value={kpis ? pct(Number(kpis.repeat_purchase_rate)) : '—'} accent="#6366f1"
-              hint="Lifetime customers with 2+ orders" />
+            {/* Explicitly lifetime — this KPI ignores the range picker, and
+                the label must say so instead of implying it is windowed. */}
+            <KpiCard label="Repeat purchase rate · lifetime" value={kpis ? pct(Number(kpis.repeat_purchase_rate)) : '—'} accent="#6366f1"
+              hint="Lifetime customers with 2+ orders, all time" />
           </div>
 
           <div className="adm-analytics-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 28 }}>

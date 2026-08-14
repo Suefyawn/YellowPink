@@ -15,6 +15,7 @@ import { PAY_METHOD_LABELS } from '@/types';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
 import { KpiCard } from '@/components/admin/insights/KpiCard';
+import { channelOf } from '@/lib/channels';
 import { RangePicker } from '@/components/admin/insights/RangePicker';
 import { InsightCallouts } from '@/components/admin/insights/InsightCallouts';
 import { addExpense, deleteExpense } from './actions';
@@ -169,12 +170,16 @@ export default async function FinancePage({
   const margin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
   // ROAS, revenue attributable to a paid source (orders carrying a utm_source).
+  // Grouped by the shared channel mapping (src/lib/channels.ts) instead of the
+  // raw utm_source string, so "fb", "facebook" and "facebook.com" roll up to
+  // one "Facebook" row and this table agrees with Analytics → Sources.
   const bySource = new Map<string, { revenue: number; orders: number }>();
   for (const o of orders) {
     if (!o.utm_source) continue;
-    const cur = bySource.get(o.utm_source) ?? { revenue: 0, orders: 0 };
+    const ch = channelOf({ utm_source: o.utm_source });
+    const cur = bySource.get(ch) ?? { revenue: 0, orders: 0 };
     cur.revenue += num(o.total); cur.orders += 1;
-    bySource.set(o.utm_source, cur);
+    bySource.set(ch, cur);
   }
   const attributedRevenue = [...bySource.values()].reduce((s, v) => s + v.revenue, 0);
   const blendedRoas = adSpend > 0 ? attributedRevenue / adSpend : null;
