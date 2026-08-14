@@ -12,6 +12,7 @@ import { setOrderConfirmed } from '@/app/admin/vendor-actions';
 import { setOrderCosts, recalcAcquisitionCost, recordPayment, clearPayment, updateOrderNotes } from '@/app/admin/finance/actions';
 import { resolveOrderCosts } from '@/lib/order-costs';
 import { deleteOrder, archiveOrder, unarchiveOrder, toggleCodFlag } from '@/app/admin/actions';
+import { OrderCommentComposer, DeleteCommentButton } from '@/components/admin/OrderComments';
 import { isCodFlagged } from '@/lib/cod-flags';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { CopyButton } from '@/components/admin/CopyButton';
@@ -151,6 +152,22 @@ export default async function OrderDetailPage({
     .eq('order_id', id)
     .order('created_at', { ascending: true });
   const events = (eventRows ?? []) as OrderEventRow[];
+
+  // Staff comments on the timeline (Shopify-style): freeform notes that
+  // interleave with the status events by timestamp in the timeline card.
+  const { data: commentRows } = await supabaseAdmin()
+    .from('order_comments')
+    .select('id, author, body, created_at')
+    .eq('order_id', id)
+    .order('created_at', { ascending: true });
+  const comments = (commentRows ?? []) as Array<{ id: string; author: string; body: string; created_at: string }>;
+  const timeline: Array<
+    | { kind: 'event'; at: string; event: OrderEventRow }
+    | { kind: 'comment'; at: string; comment: { id: string; author: string; body: string; created_at: string } }
+  > = [
+    ...events.map(e => ({ kind: 'event' as const, at: e.created_at, event: e })),
+    ...comments.map(c => ({ kind: 'comment' as const, at: c.created_at, comment: c })),
+  ].sort((a, b) => a.at.localeCompare(b.at));
 
   // Active vendors for the dispatch picker.
   const { data: vendorRows } = await supabaseAdmin()
@@ -1302,38 +1319,58 @@ export default async function OrderDetailPage({
         </div>
       )}
 
-      {/* Order timeline, full status history from order_events */}
+      {/* Order timeline, status history from order_events interleaved with
+          staff comments (order_comments) by timestamp — Shopify's timeline
+          shape. Comments are internal-only; the composer is edit-gated. */}
       <div style={{ ...section, marginBottom: 20 }}>
         <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order timeline</h2>
-        {events.length === 0 ? (
+        {canEdit && <OrderCommentComposer orderId={o.id!} />}
+        {timeline.length === 0 ? (
           <div style={{ padding: '20px 0', textAlign: 'center', color: '#9ca3af', fontSize: '0.875rem' }}>
             No status history recorded yet.
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {events.map((e, i) => (
-              <div key={e.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: orderStatusColor(e.to_status), marginTop: 6, flexShrink: 0 }} />
+            {timeline.map((t, i) => t.kind === 'event' ? (
+              <div key={t.event.id} style={{ display: 'flex', gap: 12, padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: orderStatusColor(t.event.to_status), marginTop: 6, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: '0.875rem', color: '#111827', fontWeight: 500 }}>
-                    {e.from_status
-                      ? `${statusLabel(e.from_status)} → ${statusLabel(e.to_status)}`
-                      : `Order created, ${statusLabel(e.to_status)}`}
+                    {t.event.from_status
+                      ? `${statusLabel(t.event.from_status)} → ${statusLabel(t.event.to_status)}`
+                      : `Order created, ${statusLabel(t.event.to_status)}`}
                   </div>
-                  {e.note && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{e.note}</div>}
+                  {t.event.note && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{t.event.note}</div>}
                 </div>
                 {/* Prefer the operator identity the admin actions record
                     (owner / staff email) over the trigger's generic kind. */}
-                {(e.actor_id || e.actor_kind) && (
+                {(t.event.actor_id || t.event.actor_kind) && (
                   <span style={{
                     fontSize: '0.6875rem', fontWeight: 700, color: '#9ca3af',
-                    textTransform: e.actor_id?.includes('@') ? 'none' : 'uppercase',
+                    textTransform: t.event.actor_id?.includes('@') ? 'none' : 'uppercase',
                     alignSelf: 'flex-start', marginTop: 2,
                   }}>
-                    {e.actor_id ?? e.actor_kind}
+                    {t.event.actor_id ?? t.event.actor_kind}
                   </span>
                 )}
-                <div style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{fmtDate(e.created_at)}</div>
+                <div style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{fmtDate(t.event.created_at)}</div>
+              </div>
+            ) : (
+              <div key={t.comment.id} style={{ padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                <div style={{ background: '#FAF6EE', border: '1px solid #f0e8d8', borderRadius: 8, padding: '10px 12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#92400e' }}>{t.comment.author}</span>
+                    <span style={{ fontSize: '0.6875rem', color: '#9ca3af' }}>{fmtDate(t.comment.created_at)}</span>
+                    {canEdit && (
+                      <span style={{ marginLeft: 'auto' }}>
+                        <DeleteCommentButton commentId={t.comment.id} orderId={o.id!} />
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#374151', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+                    {t.comment.body}
+                  </div>
+                </div>
               </div>
             ))}
           </div>
