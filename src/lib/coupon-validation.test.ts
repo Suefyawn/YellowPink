@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateCoupon, computeCouponDiscount, couponEligibleSubtotal } from './coupon-validation';
+import { validateCoupon, computeCouponDiscount, computeBxgyDiscount, couponEligibleSubtotal } from './coupon-validation';
 import type { Coupon, CartItem } from '@/types';
 
 // Money-adjacent logic shared by CartPage and CheckoutPage. The place_order
@@ -176,5 +176,73 @@ describe('computeCouponDiscount', () => {
   it('free-shipping-only coupons discount nothing', () => {
     const c = coupon({ type: 'fixed', value: 0, free_shipping: true, discount_type: 'free_shipping' });
     expect(computeCouponDiscount(c, [item()])).toBe(0);
+  });
+});
+
+// Buy X get Y (migration 1130) — mirrors the SQL in
+// supabase/migrations/20260814_1130_bxgy_discounts.sql; any drift here makes
+// place_order's recomputation reject honest orders.
+describe('computeBxgyDiscount', () => {
+  const bxgy = (overrides: Partial<NonNullable<Coupon['bxgy']>> = {}): Coupon =>
+    coupon({
+      type: 'percent', value: 0,
+      bxgy: {
+        buy_product_ids: ['p-1'], buy_qty: 2,
+        get_product_ids: ['p-1'], get_qty: 1,
+        pct_off: 100, max_per_order: 1,
+        ...overrides,
+      },
+    });
+
+  it('overlapping pools: buy 2 get 1 free needs 3 units (every 3rd free)', () => {
+    const c = bxgy();
+    expect(computeBxgyDiscount(c, [item({ qty: 2 })])).toBe(0);
+    expect(computeBxgyDiscount(c, [item({ qty: 3 })])).toBe(1000);
+    // Second application blocked by max_per_order = 1.
+    expect(computeBxgyDiscount(c, [item({ qty: 6 })])).toBe(1000);
+    expect(computeBxgyDiscount(bxgy({ max_per_order: 2 }), [item({ qty: 6 })])).toBe(2000);
+  });
+
+  it('disjoint pools: buy units alone trigger, cheapest get units discounted', () => {
+    const c = bxgy({ buy_product_ids: ['p-1'], get_product_ids: ['p-2'], buy_qty: 2 });
+    const items = [item({ qty: 2 }), item({ id: 'p-2', price: 400, qty: 2 })];
+    // One application, cheapest single p-2 unit free.
+    expect(computeBxgyDiscount(c, items)).toBe(400);
+    // No get-pool line in the cart: not applicable.
+    expect(computeBxgyDiscount(c, [item({ qty: 2 })])).toBe(0);
+  });
+
+  it('discounts the CHEAPEST qualifying units across lines', () => {
+    const c = bxgy({
+      buy_product_ids: ['p-1'], get_product_ids: ['p-2', 'p-3'],
+      buy_qty: 1, get_qty: 2, max_per_order: 1,
+    });
+    const items = [
+      item({ qty: 1 }),
+      item({ id: 'p-2', price: 900 }),
+      item({ id: 'p-3', price: 300, qty: 2 }),
+    ];
+    // Two cheapest units are the 300s, not the 900.
+    expect(computeBxgyDiscount(c, items)).toBe(600);
+  });
+
+  it('pct_off takes a percentage off the get units and rounds like Postgres', () => {
+    const c = bxgy({ pct_off: 50 });
+    expect(computeBxgyDiscount(c, [item({ qty: 3, price: 999 })])).toBe(Math.round(999 * 50 / 100));
+  });
+
+  it('computeCouponDiscount routes a bxgy coupon through the bxgy maths', () => {
+    // value/type say "0%", the config says buy-2-get-1-free: config wins.
+    expect(computeCouponDiscount(bxgy(), [item({ qty: 3 })])).toBe(1000);
+  });
+
+  it('validateCoupon explains a short buy pool and a missing get pool', () => {
+    const c = bxgy();
+    const short = validateCoupon({ coupon: c, cartItems: [item({ qty: 2 })], subtotal: 2000 });
+    expect(short).toEqual({ ok: false, error: 'Add 1 more qualifying item to use this offer.' });
+    const disjoint = bxgy({ buy_product_ids: ['p-1'], get_product_ids: ['p-2'] });
+    const missingGet = validateCoupon({ coupon: disjoint, cartItems: [item({ qty: 2 })], subtotal: 2000 });
+    expect(missingGet).toEqual({ ok: false, error: "This offer's discounted items are not in your cart." });
+    expect(validateCoupon({ coupon: c, cartItems: [item({ qty: 3 })], subtotal: 3000 }).ok).toBe(true);
   });
 });

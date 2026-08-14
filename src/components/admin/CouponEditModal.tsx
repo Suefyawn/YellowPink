@@ -23,12 +23,19 @@ export function CouponEditModal({ coupon, products = [] }: { coupon: Coupon; pro
   // Method is fixed at creation (the server never updates trigger_kind);
   // automatics edit their customer-facing Title instead of the code.
   const isAutomatic = coupon.trigger_kind === 'automatic';
+  // Buy X get Y: the config is editable, the kind isn't (a coupon never
+  // switches between BXGY and the value maths after creation — like Method).
+  const isBxgy = coupon.bxgy != null;
   // Controlled so the Value field can switch off for free-shipping coupons
   // (they carry no monetary value; the action stores value = 0).
   const [type, setType] = useState<'percent' | 'fixed' | 'free_shipping'>(
     coupon.discount_type === 'free_shipping' || coupon.free_shipping ? 'free_shipping' : coupon.type,
   );
   const isFreeShipping = type === 'free_shipping';
+  // BXGY "Customer gets" value: Free (pct_off 100) or a percentage.
+  const [bxgyValueKind, setBxgyValueKind] = useState<'free' | 'percent'>(
+    (coupon.bxgy?.pct_off ?? 100) >= 100 ? 'free' : 'percent',
+  );
 
   // Close the modal once the server action reports a successful save.
   // setState-in-effect is intentional: the trigger is the action result.
@@ -91,6 +98,16 @@ export function CouponEditModal({ coupon, products = [] }: { coupon: Coupon; pro
                   {isAutomatic ? 'Automatic — applies by itself to qualifying carts' : 'Discount code — the shopper types it'}
                 </p>
               </div>
+              {isBxgy && (
+                <div>
+                  <label style={lbl}>Discount type</label>
+                  {/* Read-only, like Method: a coupon never switches between
+                      Buy X get Y and the amount-off maths after creation. */}
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: '#374151' }}>
+                    Buy X get Y — the quantities, products and value below are editable; the type itself is fixed.
+                  </p>
+                </div>
+              )}
               {isAutomatic ? (
                 <div>
                   <label style={lbl}>Title</label>
@@ -124,30 +141,107 @@ export function CouponEditModal({ coupon, products = [] }: { coupon: Coupon; pro
                   )}
                 </div>
               )}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={lbl}>Type</label>
-                  <select
-                    name="type" value={type}
-                    onChange={e => setType(e.target.value as 'percent' | 'fixed' | 'free_shipping')}
-                    style={inp}
-                  >
-                    <option value="percent">Percent %</option>
-                    <option value="fixed">Fixed PKR</option>
-                    <option value="free_shipping">Free shipping</option>
-                  </select>
+              {isBxgy ? (
+                <>
+                  {/* Buy X get Y editor: the config is editable, the kind is
+                      fixed at creation (like Method — the server keeps a BXGY
+                      coupon BXGY no matter what the form submits). */}
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 14px' }}>
+                    <h4 style={{ margin: '0 0 10px', fontSize: '0.8125rem', fontWeight: 700, color: '#111827' }}>Customer buys</h4>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={lbl}>Quantity</label>
+                      <input name="bxgy_buy_qty" type="number" min={1} required defaultValue={coupon.bxgy!.buy_qty} style={{ ...inp, width: 90 }} />
+                    </div>
+                    <label style={lbl}>Any items from</label>
+                    <ProductMultiSelect
+                      name="bxgy_buy_product_ids"
+                      products={products}
+                      initialIds={coupon.bxgy!.buy_product_ids}
+                      placeholder="Search products the customer must buy…"
+                    />
+                  </div>
+                  <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, padding: '12px 14px' }}>
+                    <h4 style={{ margin: '0 0 10px', fontSize: '0.8125rem', fontWeight: 700, color: '#111827' }}>Customer gets</h4>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={lbl}>Quantity</label>
+                      <input name="bxgy_get_qty" type="number" min={1} required defaultValue={coupon.bxgy!.get_qty} style={{ ...inp, width: 90 }} />
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={lbl}>Any items from</label>
+                      <ProductMultiSelect
+                        name="bxgy_get_product_ids"
+                        products={products}
+                        initialIds={coupon.bxgy!.get_product_ids}
+                        placeholder="Search products the discount applies to…"
+                      />
+                      <p style={{ margin: '4px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+                        The cheapest qualifying items in the cart get the discount.
+                      </p>
+                    </div>
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={lbl}>Discount value</label>
+                      <div style={{ display: 'flex', gap: 14, alignItems: 'center', flexWrap: 'wrap' }}>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: '#374151', cursor: 'pointer' }}>
+                          <input
+                            type="radio" name="bxgy_value_kind" value="free"
+                            checked={bxgyValueKind === 'free'}
+                            onChange={() => setBxgyValueKind('free')}
+                          />
+                          Free
+                        </label>
+                        <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', color: '#374151', cursor: 'pointer' }}>
+                          <input
+                            type="radio" name="bxgy_value_kind" value="percent"
+                            checked={bxgyValueKind === 'percent'}
+                            onChange={() => setBxgyValueKind('percent')}
+                          />
+                          Percentage
+                        </label>
+                        {bxgyValueKind === 'percent' && (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <input
+                              name="bxgy_pct_off" type="number" min={1} max={100} required
+                              defaultValue={coupon.bxgy!.pct_off < 100 ? coupon.bxgy!.pct_off : ''}
+                              placeholder="50"
+                              style={{ ...inp, width: 80 }}
+                            />
+                            <span style={{ fontSize: '0.8125rem', color: '#6b7280' }}>% off</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label style={lbl}>Maximum uses per order</label>
+                      <input name="bxgy_max_per_order" type="number" min={1} required defaultValue={coupon.bxgy!.max_per_order} style={{ ...inp, width: 90 }} />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label style={lbl}>Type</label>
+                    <select
+                      name="type" value={type}
+                      onChange={e => setType(e.target.value as 'percent' | 'fixed' | 'free_shipping')}
+                      style={inp}
+                    >
+                      <option value="percent">Percent %</option>
+                      <option value="fixed">Fixed PKR</option>
+                      <option value="free_shipping">Free shipping</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={lbl}>Value</label>
+                    <input
+                      name="value" type="number" min={1}
+                      required={!isFreeShipping} disabled={isFreeShipping}
+                      defaultValue={coupon.value || ''}
+                      placeholder={isFreeShipping ? '—' : undefined}
+                      style={{ ...inp, ...(isFreeShipping ? { background: '#f9fafb', color: '#9ca3af' } : {}) }}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label style={lbl}>Value</label>
-                  <input
-                    name="value" type="number" min={1}
-                    required={!isFreeShipping} disabled={isFreeShipping}
-                    defaultValue={coupon.value || ''}
-                    placeholder={isFreeShipping ? '—' : undefined}
-                    style={{ ...inp, ...(isFreeShipping ? { background: '#f9fafb', color: '#9ca3af' } : {}) }}
-                  />
-                </div>
-              </div>
+              )}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                 <div>
                   <label style={lbl}>Min order (PKR)</label>

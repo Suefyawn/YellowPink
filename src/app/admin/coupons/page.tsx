@@ -106,7 +106,7 @@ export default async function CouponsPage({
           of round-tripping through a redirect that wiped the form. Suspense
           because it reads useSearchParams for the post-create reset. */}
       <Suspense fallback={null}>
-        <CouponCreateForm />
+        <CouponCreateForm products={pickerProducts} />
       </Suspense>
 
       {/* Coupons table */}
@@ -161,9 +161,12 @@ export default async function CouponsPage({
                       ) : null}
                     </td>
                     <td data-label="Discount" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
-                      {c.discount_type === 'free_shipping' || c.free_shipping
-                        ? 'Free shipping'
-                        : c.type === 'percent' ? `${c.value}%` : `PKR ${c.value.toLocaleString()}`}
+                      {c.bxgy
+                        // Shopify's Buy X get Y summary, e.g. "Buy 2, get 1 free".
+                        ? `Buy ${c.bxgy.buy_qty}, get ${c.bxgy.get_qty} ${c.bxgy.pct_off >= 100 ? 'free' : `at ${c.bxgy.pct_off}% off`}`
+                        : c.discount_type === 'free_shipping' || c.free_shipping
+                          ? 'Free shipping'
+                          : c.type === 'percent' ? `${c.value}%` : `PKR ${c.value.toLocaleString()}`}
                     </td>
                     <td data-label="Min order" style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#374151' }}>
                       {c.min_order ? `PKR ${c.min_order.toLocaleString()}` : '—'}
