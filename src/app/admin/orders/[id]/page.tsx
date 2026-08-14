@@ -19,6 +19,7 @@ import { CopyButton } from '@/components/admin/CopyButton';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { OrderStatusBadge, orderStatusColor } from '@/components/admin/OrderStatusBadge';
 import { OrderContactEdit } from '@/components/admin/OrderContactEdit';
+import { OrderCreateReturn } from '@/components/admin/OrderCreateReturn';
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
@@ -61,7 +62,7 @@ export default async function OrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ costs?: string; costs_note?: string; pay?: string; notes?: string; err?: string }>;
+  searchParams: Promise<{ costs?: string; costs_note?: string; pay?: string; notes?: string; err?: string; ret?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('orders.view'))) {
@@ -72,6 +73,7 @@ export default async function OrderDetailPage({
   // sees the full read-only order detail.
   const canEdit = !session || session.isOwner || session.permissions.includes('orders.edit');
   const canDelete = !session || session.isOwner || session.permissions.includes('orders.delete');
+  const canFileReturn = !session || session.isOwner || session.permissions.includes('returns');
   const { id } = await params;
 
   // Widget-action feedback: the costs / payment / notes / confirmation forms
@@ -85,6 +87,7 @@ export default async function OrderDetailPage({
   else if (sp.pay === 'recorded') flash = { message: 'Payment recorded.', type: 'success' };
   else if (sp.pay === 'cleared') flash = { message: 'Payment record cleared.', type: 'success' };
   else if (sp.notes === 'saved') flash = { message: 'Note saved.', type: 'success' };
+  else if (sp.ret === 'filed') flash = { message: 'Return filed. Decide it on the Returns page.', type: 'success' };
 
   const { data: order } = await supabaseAdmin().from('orders').select('*').eq('id', id).single();
   if (!order) notFound();
@@ -1010,10 +1013,12 @@ export default async function OrderDetailPage({
       </div>
       )}
 
-      {/* Return requests on this order, read-only. Decisions happen on the
-          Returns page; this block just makes sure nobody works an order
-          without seeing that a return is in flight. */}
-      {orderReturns.length > 0 && (
+      {/* Return requests on this order (decisions happen on the Returns
+          page), plus staff-filed returns: a phoned-in return from a guest
+          buyer has no self-service path, so the card renders on any
+          shipped/delivered order and staff with the returns permission can
+          file the request from here. */}
+      {(orderReturns.length > 0 || (['shipped', 'delivered'].includes(currentStatus) && canFileReturn)) && (
         <div style={section}>
           <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
             <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Returns</h2>
@@ -1021,6 +1026,14 @@ export default async function OrderDetailPage({
               Open Returns →
             </Link>
           </div>
+          {['shipped', 'delivered'].includes(currentStatus) && canFileReturn && (
+            <div style={{ marginBottom: orderReturns.length > 0 ? 12 : 0 }}>
+              <OrderCreateReturn
+                orderId={o.id!}
+                lines={items.map((it, index) => ({ index, name: it.variant_label ? `${it.name} (${it.variant_label})` : it.name, qty: it.qty }))}
+              />
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             {orderReturns.map((r, i) => (
               <div key={r.id} style={{ padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
