@@ -80,14 +80,14 @@ function avatarColor(id: string): string {
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; page?: string; sort?: string; type?: string; activity?: string; deleted?: string; err?: string }>;
+  searchParams: Promise<{ q?: string; page?: string; sort?: string; type?: string; activity?: string; tag?: string; deleted?: string; err?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('customers.view'))) {
     return <NoAccess section="Customers" />;
   }
 
-  const { q, page: pageParam, sort: sortParam, type: typeParam, activity: activityParam, deleted, err } = await searchParams;
+  const { q, page: pageParam, sort: sortParam, type: typeParam, activity: activityParam, tag, deleted, err } = await searchParams;
   const page = Math.max(1, parseInt(pageParam ?? '1', 10));
   const sort: SortKey = SORT_KEYS.includes(sortParam as SortKey) ? (sortParam as SortKey) : 'recent';
   const type: TypeKey = TYPE_KEYS.includes(typeParam as TypeKey) ? (typeParam as TypeKey) : 'all';
@@ -99,11 +99,14 @@ export default async function UsersPage({
   // derived from unclaimed orders (get_guest_customers). All are revoked from
   // anon/authenticated by the security_revoke_anon_rpc migration.
   const admin = supabaseAdmin();
-  const [{ data: users }, { data: stats }, { data: guests }] = await Promise.all([
+  const [{ data: users }, { data: stats }, { data: guests }, { data: custTagRows }] = await Promise.all([
     admin.rpc('get_admin_users' as never),
     admin.rpc('get_customer_order_stats' as never),
     admin.rpc('get_guest_customers' as never),
+    // Customer tag registry for the filter select (Shopify: "Tagged with").
+    admin.from('customer_tags').select('id, slug, name').order('name'),
   ]);
+  const tagRegistry = (custTagRows ?? []) as Array<{ id: string; slug: string; name: string }>;
 
   const statById = new Map<string, OrderStat>();
   for (const st of (stats ?? []) as OrderStat[]) statById.set(st.user_id, st);
@@ -154,6 +157,20 @@ export default async function UsersPage({
 
   if (type !== 'all') list = list.filter(u => u.kind === type);
 
+  // ?tag=<slug> filters by customer tag. This page filters in JS over the
+  // assembled list, so resolve the tagged cust_keys (the same identifier the
+  // customer page's URL uses) and filter the array the same way.
+  if (tag) {
+    const tagRow = tagRegistry.find(t => t.slug === tag);
+    if (tagRow) {
+      const { data: mapRows } = await admin.from('customer_tag_map').select('cust_key').eq('tag_id', tagRow.id);
+      const keys = new Set(((mapRows ?? []) as Array<{ cust_key: string }>).map(r => r.cust_key));
+      list = list.filter(u => keys.has(u.id));
+    } else {
+      list = [];
+    }
+  }
+
   if (activity !== 'all') {
     list = list.filter(u =>
       activity === 'repeat' ? u.orderCount >= 2 :
@@ -192,7 +209,7 @@ export default async function UsersPage({
 
   const total = list.length;
   const paginated = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  const hasFilters = !!q || type !== 'all' || activity !== 'all' || sort !== 'recent';
+  const hasFilters = !!q || type !== 'all' || activity !== 'all' || sort !== 'recent' || !!tag;
 
   // Build a href that preserves search + sort while setting type/activity,   // used by the clickable summary cards.
   const cardHref = (next: { type?: TypeKey; activity?: ActivityKey }) => {
@@ -281,7 +298,7 @@ export default async function UsersPage({
       />
 
       <Suspense fallback={null}>
-        <UsersFilter total={total} />
+        <UsersFilter total={total} tags={tagRegistry.map(({ slug, name }) => ({ slug, name }))} />
       </Suspense>
 
       <div style={{ background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' }}>

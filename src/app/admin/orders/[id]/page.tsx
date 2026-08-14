@@ -19,6 +19,7 @@ import { CopyButton } from '@/components/admin/CopyButton';
 import { AdminFlash } from '@/components/admin/AdminFlash';
 import { OrderStatusBadge, orderStatusColor } from '@/components/admin/OrderStatusBadge';
 import { OrderContactEdit } from '@/components/admin/OrderContactEdit';
+import { OrderTagsEditor } from '@/components/admin/OrderTagsEditor';
 import { OrderCreateReturn } from '@/components/admin/OrderCreateReturn';
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
@@ -204,6 +205,19 @@ export default async function OrderDetailPage({
     pending: '#b45309', approved: '#15803d', rejected: '#b91c1c',
     received: '#2563eb', refunded: '#15803d', cancelled: '#6b7280',
   };
+
+  // Order tags (Shopify-style labels: rush, exchange, wholesale…), this
+  // order's set plus the full registry for the editor's suggestions.
+  const [{ data: orderTagMapRows }, { data: orderTagRegistryRows }] = await Promise.all([
+    supabaseAdmin().from('order_tag_map').select('tag_id, order_tags(name)').eq('order_id', id),
+    supabaseAdmin().from('order_tags').select('name').order('name'),
+  ]);
+  const orderTags = ((orderTagMapRows ?? []) as Array<{ tag_id: string; order_tags: { name: string } | { name: string }[] | null }>)
+    .flatMap(r => {
+      const t = Array.isArray(r.order_tags) ? r.order_tags[0] : r.order_tags;
+      return t ? [{ id: r.tag_id, name: t.name }] : [];
+    });
+  const orderTagSuggestions = ((orderTagRegistryRows ?? []) as Array<{ name: string }>).map(t => t.name);
 
   // Customer history block, lifetime orders + total spend for the same
   // (user_id OR phone OR email). Cheap query, admin-only view, no caching
@@ -1012,6 +1026,14 @@ export default async function OrderDetailPage({
         />
       </div>
       )}
+
+      {/* Tags — Shopify-style order labels; the orders list filters by them. */}
+      <OrderTagsEditor
+        orderId={o.id!}
+        initialTags={orderTags}
+        suggestions={orderTagSuggestions}
+        canEdit={canEdit}
+      />
 
       {/* Return requests on this order (decisions happen on the Returns
           page), plus staff-filed returns: a phoned-in return from a guest

@@ -12,6 +12,7 @@ import { OrderStatusBadge } from '@/components/admin/OrderStatusBadge';
 import { deleteCustomer } from '@/app/admin/actions';
 import { adjustLoyaltyPoints } from '@/app/admin/users/loyalty-actions';
 import { CustomerNotes, type CustomerNote } from '@/components/admin/CustomerNotes';
+import { CustomerTagsEditor } from '@/components/admin/CustomerTagsEditor';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
 import { isCodFlagged } from '@/lib/cod-flags';
 import { NON_REVENUE_ORDER_STATUSES } from '@/lib/commerce';
@@ -144,6 +145,20 @@ export default async function UserDetailPage({
     .eq('cust_key', id)
     .order('created_at', { ascending: false });
   const customerNotes = (noteRows ?? []) as CustomerNote[];
+
+  // Customer tags (Shopify-style labels: vip, prepay-only, influencer…),
+  // keyed by the same cust_key the Notes card uses, plus the full registry
+  // for the editor's suggestions.
+  const [{ data: custTagMapRows }, { data: custTagRegistryRows }] = await Promise.all([
+    admin.from('customer_tag_map').select('tag_id, customer_tags(name)').eq('cust_key', id),
+    admin.from('customer_tags').select('name').order('name'),
+  ]);
+  const customerTags = ((custTagMapRows ?? []) as Array<{ tag_id: string; customer_tags: { name: string } | { name: string }[] | null }>)
+    .flatMap(r => {
+      const t = Array.isArray(r.customer_tags) ? r.customer_tags[0] : r.customer_tags;
+      return t ? [{ id: r.tag_id, name: t.name }] : [];
+    });
+  const customerTagSuggestions = ((custTagRegistryRows ?? []) as Array<{ name: string }>).map(t => t.name);
 
   // Who-are-they signals for the confirmation call, same sources the order
   // page uses. COD flag: the shared helper (lib/cod-flags) that gates
@@ -367,6 +382,15 @@ export default async function UserDetailPage({
           {/* Staff notes about this customer — internal-only, append-only,
               works for guests too (keyed by the page's customer id). */}
           <CustomerNotes custKey={id} notes={customerNotes} canEdit={canAdjustPoints} />
+
+          {/* Tags — Shopify-style customer labels; the customers list filters
+              by them. Keyed by the same cust_key as the Notes card. */}
+          <CustomerTagsEditor
+            custKey={id}
+            initialTags={customerTags}
+            suggestions={customerTagSuggestions}
+            canEdit={canAdjustPoints}
+          />
         </div>
 
         {/* Order history */}
