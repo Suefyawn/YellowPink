@@ -21,6 +21,7 @@ import { OrderStatusBadge, orderStatusColor } from '@/components/admin/OrderStat
 import { OrderContactEdit } from '@/components/admin/OrderContactEdit';
 import { OrderTagsEditor } from '@/components/admin/OrderTagsEditor';
 import { OrderCreateReturn } from '@/components/admin/OrderCreateReturn';
+import { OrderEditItems } from '@/components/admin/OrderEditItems';
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
 import { whatsappUrlForCustomer as waUrlForCustomer } from '@/lib/whatsapp';
@@ -63,7 +64,7 @@ export default async function OrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ costs?: string; costs_note?: string; pay?: string; notes?: string; err?: string; ret?: string }>;
+  searchParams: Promise<{ costs?: string; costs_note?: string; pay?: string; notes?: string; err?: string; ret?: string; items?: string }>;
 }) {
   const session = await getStaffSession();
   if (!session || (!session.isOwner && !session.permissions.includes('orders.view'))) {
@@ -89,6 +90,7 @@ export default async function OrderDetailPage({
   else if (sp.pay === 'cleared') flash = { message: 'Payment record cleared.', type: 'success' };
   else if (sp.notes === 'saved') flash = { message: 'Note saved.', type: 'success' };
   else if (sp.ret === 'filed') flash = { message: 'Return filed. Decide it on the Returns page.', type: 'success' };
+  else if (sp.items === 'saved') flash = { message: 'Items updated. Stock, totals and vendor settlement follow.', type: 'success' };
 
   const { data: order } = await supabaseAdmin().from('orders').select('*').eq('id', id).single();
   if (!order) notFound();
@@ -721,9 +723,22 @@ export default async function OrderDetailPage({
         </div>
       </div>
 
-      {/* Order Items */}
+      {/* Order Items — the read-only table below; on unshipped orders,
+          staff with orders.edit can swap it for the in-place item editor
+          (Shopify's "Edit order"): quantities, removals, added lines. */}
       <div style={section}>
-        <h2 style={{ margin: '0 0 16px', fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Order items</h2>
+        <OrderEditItems
+          orderId={o.id!}
+          editable={canEdit && ['pending', 'processing'].includes(currentStatus)}
+          lines={items.map((item, index) => ({
+            index,
+            name: item.name,
+            brand: item.brand ?? null,
+            variantLabel: item.variant_label ?? item.variant ?? null,
+            price: item.price,
+            qty: item.qty,
+          }))}
+        >
         <div className="adm-table-scroll">
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -768,6 +783,7 @@ export default async function OrderDetailPage({
           </tbody>
         </table>
         </div>
+        </OrderEditItems>
       </div>
 
       {/* Refused-delivery flag: advance payment before dispatch. */}

@@ -633,6 +633,19 @@ an amber **"No email — this customer receives no automatic updates"** note.
 That order gets no confirmation or shipping emails at all; the WhatsApp button
 above is their only update channel, so don't skip it for these orders.
 
+**Changed their mind on the call?** On an unshipped order (Order received or
+Preparing), the **Order items** card has an **Edit items** button (staff who
+can manage orders). Change a quantity, set it to 0 to remove a line, or search
+to add another product, shade by shade, with the same picker as the manual
+order screen. Stock follows through the inventory ledger in both directions:
+removed units go back on the shelf, and added units are stock-checked and
+reserved. The subtotal and total recompute from the new items, while shipping
+and any discount stay exactly as recorded. If a vendor is assigned, the
+settlement and the auto-filled goods cost are recomputed from the new items
+too, and the edit lands on the order timeline, signed and itemised. An order
+cannot be edited down to nothing: at least one item must remain, so if the
+whole order is off, cancel it instead.
+
 **Step 2 — Assign a vendor (if you fulfil through one).**
 In the *Confirmation & vendor* section, pick the vendor in **Fulfilled by
 vendor**. **The selection itself does the money work, immediately**: the
@@ -1052,6 +1065,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 14 August 2026
+
+- **Unshipped orders can be edited.** When a customer changes a shade or a quantity on the confirmation call, the order no longer has to be cancelled and re-entered. On orders still in *Order received* or *Preparing*, the order page's **Order items** card has an **Edit items** button (staff who can manage orders): change quantities, remove a line, or add another product with a shade-aware search. Stock moves through the inventory ledger both ways, the subtotal and total recompute from the new items (shipping and any discount stay as recorded), any vendor settlement follows the new items, and the edit is written to the order timeline and the Activity log. Details in [section 4](#4-processing-a-sale--the-order-workflow).
 
 - **Discounts can now apply themselves.** The coupon create form gained a **Method** choice, the same one Shopify offers: *Discount code* (the shopper types it, as before) or *Automatic*. An automatic discount has no code to share: you give it a customer-facing title such as "Azadi Sale: 14% off everything", and it applies by itself to every qualifying basket, with the title and an "applied automatically" note on the cart and checkout discount line. One discount per order still holds (a typed code always wins), and scheduling, targeting and product scoping work exactly as they do for codes. Details in [Coupons in detail](#coupons-in-detail).
 
