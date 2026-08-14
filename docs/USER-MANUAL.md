@@ -365,7 +365,7 @@ Here's what each link is for:
 | **Products** | The catalogue — create, edit, publish, archive and delete products, with status tabs, column filters, bulk actions, per-row Duplicate and a CSV import/export round-trip. Full breakdown in [Products in detail](#products-in-detail). |
 | **Inventory** | Stock levels. See low-stock items and adjust stock counts. Every row shows a **Listing** chip (Live or Draft) beside the stock state, and a product you hold at zero reads **"Sold out, still selling"** unless it has opted into genuine sell-outs. Stock can never go below zero: if you remove more than is on hand, the adjustment is capped at zero, the ledger records the amount actually applied, and the page shows an amber warning telling you what was applied versus what you asked for. |
 | **Returns** | Customer return requests and refund processing, with KPIs, status tabs and a three-step lifecycle (approve → receive & restock → refund). Full breakdown in [Returns in detail](#returns-in-detail). |
-| **Vendors** | Your suppliers/fulfilment partners — commission rates that price orders automatically, headline balance cards, and payout settlement. Full breakdown in [Vendors in detail](#vendors-in-detail). |
+| **Vendors** | Your suppliers/fulfilment partners — commission rates that price orders automatically, headline balance cards, and payout settlement. Full breakdown in [Vendors in detail](#vendors-in-detail). | Staff can also **file a return on the customer's behalf** from the order page (Returns card on any shipped or delivered order): pick the items and quantities, give the reason from the call, and the request lands in this queue with the normal lifecycle. This is how phoned-in returns from guest buyers get recorded; the request is marked as filed by staff.
 
 **Catalogue** — how products are organised and presented
 
@@ -1048,6 +1048,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 14 August 2026
+
+- **Phoned-in returns can now be recorded.** The self-service return flow needs a signed-in account that owns the order, which most buyers do not have, so a guest calling to send something back had no way into the Returns queue. The order page's Returns card now has a **Create return** button on shipped and delivered orders: tick the items, set quantities, note the reason from the call, and the request joins the queue with the normal approve, receive and restock, refund lifecycle.
 
 - **Money, orders and customers can now carry their context.** A cashbook movement can be linked to the order or vendor it was for: type the order number or pick the vendor when recording it (suggested entries link themselves automatically), and the Cash ledger shows each link as a jump to that order or the Vendors page. The order page's timeline now takes internal notes, so call attempts and delivery instructions sit interleaved with the status history, signed and timed, invisible to the customer. And every customer page (guests included) gains a **Notes** card for facts worth keeping, such as "always call before 6pm" or "prefers bank transfer".
 
