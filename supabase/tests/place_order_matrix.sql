@@ -71,6 +71,14 @@ insert into public.coupons (id, code, type, value, active, starts_at) values
 insert into public.coupons (id, code, type, value, active, trigger_kind, title) values
   ('00000000-0000-0000-0000-0000000000c8', 'AUTO-MATRIX1', 'percent', 10, true, 'automatic', 'Matrix Auto Sale');
 
+-- Buy X get Y (migration 1130): overlap pool = buy 2 of A, 3rd A free
+-- (every 3rd unit); cross pool = buy 2 of A, get sale product G at half.
+insert into public.coupons (id, code, type, value, active, bxgy) values
+  ('00000000-0000-0000-0000-0000000000c9', 'MATRIXB2G1', 'percent', 0, true,
+   '{"buy_product_ids":["00000000-0000-0000-0000-00000000000a"],"buy_qty":2,"get_product_ids":["00000000-0000-0000-0000-00000000000a"],"get_qty":1,"pct_off":100,"max_per_order":2}'),
+  ('00000000-0000-0000-0000-0000000000ca', 'MATRIXBXGY2', 'percent', 0, true,
+   '{"buy_product_ids":["00000000-0000-0000-0000-00000000000a"],"buy_qty":2,"get_product_ids":["00000000-0000-0000-0000-000000000010"],"get_qty":1,"pct_off":50,"max_per_order":1}');
+
 -- Referral programme: a referrer profile whose code a first-time buyer can
 -- use for the no-coupon referral discount (migration 650, restored by 790).
 insert into auth.users (id, email)
@@ -420,6 +428,36 @@ begin
       "items": [{"id": "00000000-0000-0000-0000-000000000010", "qty": 1}],
       "subtotal": 900, "discount_amount": 90, "total": 1010, "order_number": "MTX-NOSALE-2"}'),
     'coupon_not_applicable');
+
+  -- 14j. Buy X get Y, overlapping pool (migration 1130): 3 x A @1000 with
+  --      buy-2-get-1 = one unit free (1000 off). 2 x A qualifies for nothing.
+  o := yp_tests.expect_ok('bxgy overlap: every 3rd unit free',
+    yp_tests.payload('{"coupon_code": "MATRIXB2G1",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 3}],
+      "subtotal": 3000, "discount_amount": 1000, "total": 2200, "order_number": "MTX-BXGY-1"}'));
+  perform yp_tests.assert('bxgy overlap: every 3rd unit free',
+    o.discount_amount = 1000, 'expected 1000 off, got ' || o.discount_amount);
+  perform yp_tests.expect_reject('bxgy overlap: 2 units do not qualify',
+    yp_tests.payload('{"coupon_code": "MATRIXB2G1",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 2}],
+      "subtotal": 2000, "discount_amount": 1000, "total": 1200, "order_number": "MTX-BXGY-2"}'),
+    'coupon_not_applicable');
+
+  -- 14k. Cross-pool BXGY: buy 2 x A, get G (900) at 50% = 450 off. A forged
+  --      full-price-unit discount is a drift rejection.
+  o := yp_tests.expect_ok('bxgy cross pool at 50 percent',
+    yp_tests.payload('{"coupon_code": "MATRIXBXGY2",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 2},
+                {"id": "00000000-0000-0000-0000-000000000010", "qty": 1}],
+      "subtotal": 2900, "discount_amount": 450, "total": 2650, "order_number": "MTX-BXGY-3"}'));
+  perform yp_tests.assert('bxgy cross pool at 50 percent',
+    o.discount_amount = 450, 'expected 450 off, got ' || o.discount_amount);
+  perform yp_tests.expect_reject('bxgy cross pool: inflated discount rejected',
+    yp_tests.payload('{"coupon_code": "MATRIXBXGY2",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 2},
+                {"id": "00000000-0000-0000-0000-000000000010", "qty": 1}],
+      "subtotal": 2900, "discount_amount": 900, "total": 2200, "order_number": "MTX-BXGY-4"}'),
+    'discount mismatch');
 
   -- 15. Client subtotal that disagrees with server-recomputed prices.
   perform yp_tests.expect_reject('subtotal mismatch',
