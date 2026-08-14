@@ -213,7 +213,32 @@ export async function sendNewsletterCampaign(
   // and looping the whole list is what made the request slow enough to be
   // killed by the serverless timeout. The per-send quota RPC still enforces
   // the exact remaining budget.
-  const toSend = emails.slice(0, RESEND_DAILY_BATCH_CAP);
+  let toSend = emails.slice(0, RESEND_DAILY_BATCH_CAP);
+
+  // Resume safety: skip anyone this exact edition already reached, so
+  // re-pressing Send after a partial failure (e.g. the 14 Aug rate-limit
+  // incident: 20 of 32 delivered) mails only the people who were missed,
+  // never a second copy. Keyed on subject + a 48h window via email_log.
+  try {
+    const { data: already } = await withTimeout(
+      admin
+        .from('email_log')
+        .select('recipient')
+        .eq('category', 'Newsletter')
+        .eq('status', 'sent')
+        .eq('subject', parsed.data.subject)
+        .gte('created_at', new Date(Date.now() - 48 * 3600 * 1000).toISOString()),
+      DB_TIMEOUT_MS,
+      'newsletter dedupe lookup',
+    );
+    const got = new Set(((already ?? []) as Array<{ recipient: string }>).map(r => r.recipient.trim().toLowerCase()));
+    if (got.size > 0) toSend = toSend.filter(e => !got.has(e.trim().toLowerCase()));
+  } catch {
+    // Dedupe is an optimisation; an unavailable lookup must not block a send.
+  }
+  if (toSend.length === 0) {
+    return { ok: false, error: 'Everyone in that audience already received this edition in the last 48 hours. Change the subject line if you mean to send it again.' };
+  }
 
   // Resolve the branded blocks (hero, coupon code, product cards, button)
   // ONCE for the whole campaign; every recipient gets the same inner HTML
@@ -221,20 +246,32 @@ export async function sendNewsletterCampaign(
   const bodyHtml = await renderCampaignBodyHtml(parsed.data.body);
 
   let sentCount = 0;
-  const CHUNK = 8;
+  // Resend rejects more than 10 requests/second. 5 concurrent sends per
+  // chunk with a pause between chunks stays well under it; a chunk that
+  // still comes back with failures gets one retry after a longer pause
+  // (a send() false = nothing was sent, so retrying can never double-send).
+  const CHUNK = 5;
+  const CHUNK_PAUSE_MS = 700;
+  const pause = (ms: number) => new Promise(res => setTimeout(res, ms));
+  const attempt = (email: string) =>
+    sendNewsletterBroadcastEmail({ email, subject: parsed.data.subject, body: parsed.data.body, bodyHtml })
+      .catch(err => {
+        // Swallowing kept the send loop alive but hid provider failures
+        // entirely; log + Sentry-capture, still count the send as failed.
+        logActionError('newsletter.broadcast_send', err, { campaign_id: campaignId });
+        return false;
+      });
   for (let i = 0; i < toSend.length; i += CHUNK) {
-    const results = await Promise.all(
-      toSend.slice(i, i + CHUNK).map(email =>
-        sendNewsletterBroadcastEmail({ email, subject: parsed.data.subject, body: parsed.data.body, bodyHtml })
-          .catch(err => {
-            // Swallowing kept the send loop alive but hid provider failures
-            // entirely; log + Sentry-capture, still count the send as failed.
-            logActionError('newsletter.broadcast_send', err, { campaign_id: campaignId });
-            return false;
-          }),
-      ),
-    );
-    sentCount += results.filter(Boolean).length;
+    const batch = toSend.slice(i, i + CHUNK);
+    const results = await Promise.all(batch.map(attempt));
+    let failed = batch.filter((_, idx) => !results[idx]);
+    if (failed.length > 0) {
+      await pause(1500);
+      const retried = await Promise.all(failed.map(attempt));
+      failed = failed.filter((_, idx) => !retried[idx]);
+    }
+    sentCount += batch.length - failed.length;
+    if (i + CHUNK < toSend.length) await pause(CHUNK_PAUSE_MS);
   }
 
   // Best-effort: a failure here doesn't lose the campaign row (still visible),
