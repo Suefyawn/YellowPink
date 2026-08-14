@@ -75,6 +75,26 @@ export function validateCoupon({
   if (couponIsScoped(c) && couponEligibleSubtotal(c, cartItems) <= 0) {
     return { ok: false, error: 'This coupon does not apply to items in your cart.' };
   }
+  // Buy X get Y gate: the offer only stands when the cart carries enough
+  // "buy" units AND at least one discountable "get" unit. Tell the shopper
+  // which half is missing so the message is actionable.
+  if (c.bxgy && computeBxgyDiscount(c, cartItems) <= 0) {
+    const b = c.bxgy;
+    const buyQty = Math.max(b.buy_qty ?? 1, 1);
+    const getQty = Math.max(b.get_qty ?? 1, 1);
+    const buyIds = new Set(b.buy_product_ids ?? []);
+    const getIds = new Set(b.get_product_ids ?? []);
+    const overlap = (b.buy_product_ids ?? []).some(id => getIds.has(id));
+    // Units needed for one application: when the pools overlap a unit can't
+    // count as both buy and get, so the threshold is buyQty + getQty.
+    const threshold = overlap ? buyQty + getQty : buyQty;
+    const buyUnits = cartItems.reduce((s, it) => s + (buyIds.has(it.id) ? it.qty : 0), 0);
+    if (buyUnits < threshold) {
+      const n = threshold - buyUnits;
+      return { ok: false, error: `Add ${n} more qualifying item${n === 1 ? '' : 's'} to use this offer.` };
+    }
+    return { ok: false, error: "This offer's discounted items are not in your cart." };
+  }
   // Per-category allowlist / denylist: category_ids are UUIDs and CartItem
   // only carries the category name, so the server enforces those (eligibility
   // only — they never change the discount amount, so client and server maths
@@ -120,9 +140,51 @@ export function couponEligibleSubtotal(c: Coupon, cartItems: CartItem[]): number
   return cartItems.reduce((s, it) => s + (lineEligible(c, it) ? it.price * it.qty : 0), 0);
 }
 
+/** Buy X Get Y (migration 1130). Mirrors the SQL in
+ *  supabase/migrations/20260814_1130_bxgy_discounts.sql LINE FOR LINE — the
+ *  place_order RPC recomputes this number and rejects the order when the
+ *  client-sent discount differs, so any drift here rejects honest orders.
+ *  Returns 0 when the offer doesn't apply to this cart. */
+export function computeBxgyDiscount(c: Coupon, cartItems: CartItem[]): number {
+  const b = c.bxgy;
+  if (!b) return 0;
+  const buyQty = Math.max(b.buy_qty ?? 1, 1);
+  const getQty = Math.max(b.get_qty ?? 1, 1);
+  const pct = Math.min(Math.max(b.pct_off ?? 100, 1), 100);
+  const maxApps = Math.max(b.max_per_order ?? 1, 1);
+  const buyIds = new Set(b.buy_product_ids ?? []);
+  const getIds = new Set(b.get_product_ids ?? []);
+  if (buyIds.size === 0 || getIds.size === 0) return 0;
+  // Cart lines key on the PRODUCT id (variant lines share it) — sum them all.
+  const buyUnits = cartItems.reduce((s, it) => s + (buyIds.has(it.id) ? it.qty : 0), 0);
+  // Overlapping pools: one unit can't count as both buy and get, so a full
+  // application consumes buyQty + getQty units (the classic "every 3rd free").
+  const overlap = (b.buy_product_ids ?? []).some(id => getIds.has(id));
+  const apps = Math.min(
+    Math.floor(buyUnits / (overlap ? buyQty + getQty : buyQty)),
+    maxApps,
+  );
+  if (apps < 1) return 0;
+  // Expand get-pool lines into per-UNIT charged prices and discount the
+  // CHEAPEST apps*getQty units (same as the SQL's order-by-price limit).
+  const unitPrices: number[] = [];
+  for (const it of cartItems) {
+    if (!getIds.has(it.id)) continue;
+    for (let i = 0; i < it.qty; i++) unitPrices.push(it.price);
+  }
+  unitPrices.sort((a, z) => a - z);
+  const getSum = unitPrices.slice(0, apps * getQty).reduce((s, p) => s + p, 0);
+  if (getSum <= 0) return 0;
+  // Postgres round() (half away from zero) === Math.round for positives.
+  return Math.round(getSum * pct / 100);
+}
+
 /** The PKR discount this coupon takes off this cart. Free-shipping-only
  *  coupons (value 0) discount nothing — they zero the delivery charge instead. */
 export function computeCouponDiscount(c: Coupon, cartItems: CartItem[]): number {
+  // Buy X get Y overrides the value/type maths entirely (the free-shipping
+  // flag is still honoured by the checkout's own shipping logic).
+  if (c.bxgy) return computeBxgyDiscount(c, cartItems);
   const freeShipOnly = (c.discount_type === 'free_shipping' || c.free_shipping) && !(c.value > 0);
   if (freeShipOnly) return 0;
   const subtotal = cartItems.reduce((s, it) => s + it.price * it.qty, 0);

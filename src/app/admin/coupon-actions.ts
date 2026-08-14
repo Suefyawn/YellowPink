@@ -84,6 +84,50 @@ function advancedColumns(formData: FormData): { error?: string; cols?: Record<st
   } };
 }
 
+// Buy X get Y (migration 1130): the config lives in coupons.bxgy (jsonb) and
+// overrides the value/type maths — the row is stored with type='percent',
+// value=0. Works with both trigger kinds (code and automatic). Field names
+// follow Shopify's editor: "Customer buys" (quantity + products), "Customer
+// gets" (quantity + products + free or a percentage), max uses per order.
+type BxgyConfig = {
+  buy_product_ids: string[];
+  buy_qty: number;
+  get_product_ids: string[];
+  get_qty: number;
+  pct_off: number;
+  max_per_order: number;
+};
+
+function bxgyColumns(formData: FormData): { error?: string; bxgy?: BxgyConfig } {
+  const parseIds = (field: string): string[] =>
+    String(formData.get(field) ?? '').split(',').map(s => s.trim()).filter(Boolean);
+  const buy_product_ids = parseIds('bxgy_buy_product_ids');
+  const get_product_ids = parseIds('bxgy_get_product_ids');
+  if (buy_product_ids.length === 0) {
+    return { error: 'Pick at least one product the customer buys.' };
+  }
+  if (get_product_ids.length === 0) {
+    return { error: 'Pick at least one product the customer gets.' };
+  }
+  const buy_qty = Number(formData.get('bxgy_buy_qty'));
+  const get_qty = Number(formData.get('bxgy_get_qty'));
+  if (!Number.isInteger(buy_qty) || buy_qty < 1 || !Number.isInteger(get_qty) || get_qty < 1) {
+    return { error: 'Buy and get quantities must be whole numbers of at least 1.' };
+  }
+  // Discount value: Free stores 100; Percentage stores the entered 1–100.
+  const pct_off = formData.get('bxgy_value_kind') === 'free'
+    ? 100
+    : Number(formData.get('bxgy_pct_off'));
+  if (!Number.isFinite(pct_off) || pct_off < 1 || pct_off > 100) {
+    return { error: 'The percentage off must be between 1 and 100.' };
+  }
+  const max_per_order = Number(formData.get('bxgy_max_per_order') || 1);
+  if (!Number.isInteger(max_per_order) || max_per_order < 1) {
+    return { error: 'Maximum uses per order must be a whole number of at least 1.' };
+  }
+  return { bxgy: { buy_product_ids, buy_qty, get_product_ids, get_qty, pct_off, max_per_order } };
+}
+
 // Automatic discounts (migration 1120): the shopper never types a code, so the
 // action mints an internal one. The title is required — it's the discount line
 // label the shopper sees on the cart and checkout.
@@ -121,6 +165,9 @@ export async function createCoupon(
   } else {
     code = ((formData.get('code') as string) ?? '').trim().toUpperCase();
   }
+  // Discount kind: 'amount' (the percent/fixed/free-shipping maths) or
+  // 'bxgy' (Buy X get Y, config in the bxgy jsonb, value/type unused).
+  const isBxgy = formData.get('discount_kind') === 'bxgy';
   const type = formData.get('type') as CouponFormType;
   const valueRaw = formData.get('value');
   const value = Number(valueRaw);
@@ -136,24 +183,37 @@ export async function createCoupon(
       return { error: 'Code may only contain letters, numbers, - and _.' };
     }
   }
-  if (!type) return { error: 'Type is required.' };
-  // Free-shipping coupons have no monetary value; skip the value checks.
-  if (!isFreeShipping) {
-    if (!valueRaw || !Number.isFinite(value)) return { error: 'Value is required.' };
-    if (value <= 0) return { error: 'Value must be greater than zero.' };
-    if (type === 'percent' && value > 100) {
-      return { error: 'A percentage discount cannot exceed 100%.' };
+  let bxgy: BxgyConfig | null = null;
+  if (isBxgy) {
+    const parsed = bxgyColumns(formData);
+    if (parsed.error) return { error: parsed.error };
+    bxgy = parsed.bxgy!;
+  } else {
+    if (!type) return { error: 'Type is required.' };
+    // Free-shipping coupons have no monetary value; skip the value checks.
+    if (!isFreeShipping) {
+      if (!valueRaw || !Number.isFinite(value)) return { error: 'Value is required.' };
+      if (value <= 0) return { error: 'Value must be greater than zero.' };
+      if (type === 'percent' && value > 100) {
+        return { error: 'A percentage discount cannot exceed 100%.' };
+      }
     }
   }
 
   const adv = advancedColumns(formData);
   if (adv.error) return { error: adv.error };
 
+  // A BXGY row stores value=0 / type='percent' (the coupons_value_check
+  // carve-out from migration 1130) — the discount comes from the config.
+  const valueCols = isBxgy
+    ? { type: 'percent' as const, value: 0, discount_type: 'percent', free_shipping: false, bxgy }
+    : couponColumns(type, value);
+
   // coupons RLS bars anon write/read after migration 070; admin
   // mutations must go through the service role.
   const { data: created, error } = await supabaseAdmin()
     .from('coupons')
-    .insert({ code, trigger_kind, title, ...couponColumns(type, value), min_order, max_uses, expires_at, starts_at, ...adv.cols })
+    .insert({ code, trigger_kind, title, ...valueCols, min_order, max_uses, expires_at, starts_at, ...adv.cols })
     .select('id')
     .single();
 
@@ -168,7 +228,7 @@ export async function createCoupon(
 
   void logAudit(session, {
     action: 'coupon.create', entity: 'coupons', entity_id: created.id,
-    diff: { code, trigger_kind, title, type, value, min_order, max_uses, expires_at },
+    diff: { code, trigger_kind, title, type, value, min_order, max_uses, expires_at, ...(bxgy ? { bxgy } : {}) },
   });
   revalidatePath('/admin/coupons');
   // The banner names the thing the admin recognises: the title for an
@@ -194,9 +254,11 @@ export async function updateCoupon(
 
   // trigger_kind is fixed at creation (switching method is out of scope) —
   // the update NEVER writes it, and an automatic keeps its internal code no
-  // matter what the form submits.
-  const { data: existing } = await supabaseAdmin().from('coupons').select('code, trigger_kind').eq('id', id).single();
+  // matter what the form submits. The same goes for the discount kind: a
+  // Buy X get Y coupon stays BXGY (its config is editable, its kind isn't).
+  const { data: existing } = await supabaseAdmin().from('coupons').select('code, trigger_kind, bxgy').eq('id', id).single();
   const isAutomatic = existing?.trigger_kind === 'automatic';
+  const isBxgy = existing?.bxgy != null;
   const code = isAutomatic
     ? existing!.code
     : ((formData.get('code') as string) ?? '').trim().toUpperCase();
@@ -207,11 +269,21 @@ export async function updateCoupon(
     title = t.title!;
   }
 
-  if (!code || !type || (!isFreeShipping && !value)) return { error: 'Code, type and value are required.' };
+  if (!code) return { error: 'Code is required.' };
   if (!/^[A-Z0-9_-]+$/.test(code)) return { error: 'Code may only contain letters, numbers, - and _.' };
-  if (!isFreeShipping) {
-    if (value <= 0) return { error: 'Value must be greater than zero.' };
-    if (type === 'percent' && value > 100) return { error: 'A percentage discount cannot exceed 100%.' };
+  // A BXGY coupon's form carries no Type/Value fields — its maths lives in
+  // the bxgy config, re-validated below.
+  let bxgy: BxgyConfig | null = null;
+  if (isBxgy) {
+    const parsed = bxgyColumns(formData);
+    if (parsed.error) return { error: parsed.error };
+    bxgy = parsed.bxgy!;
+  } else {
+    if (!type || (!isFreeShipping && !value)) return { error: 'Type and value are required.' };
+    if (!isFreeShipping) {
+      if (value <= 0) return { error: 'Value must be greater than zero.' };
+      if (type === 'percent' && value > 100) return { error: 'A percentage discount cannot exceed 100%.' };
+    }
   }
 
   const adv = advancedColumns(formData);
@@ -225,15 +297,22 @@ export async function updateCoupon(
     return { error: `${WELCOME_CODE} is advertised by the newsletter popup and welcome email — its code can't be renamed. Edit its values instead, or deactivate it to stop offering the discount.` };
   }
 
+  // BXGY keeps its stored value=0 / type='percent' columns and only the
+  // config changes; amount coupons write the type/value columns as before.
+  const valueCols = isBxgy ? { bxgy } : couponColumns(type, value);
+
   const { error } = await supabaseAdmin()
     .from('coupons')
-    .update({ code, ...(isAutomatic ? { title } : {}), ...couponColumns(type, value), min_order, max_uses, expires_at, starts_at, ...adv.cols })
+    .update({ code, ...(isAutomatic ? { title } : {}), ...valueCols, min_order, max_uses, expires_at, starts_at, ...adv.cols })
     .eq('id', id);
   if (error) return { error: error.message };
 
   void logAudit(session, {
     action: 'coupon.update', entity: 'coupons', entity_id: id,
-    diff: { code, ...(isAutomatic ? { title } : {}), type, value: isFreeShipping ? 0 : value, min_order, max_uses, expires_at },
+    diff: {
+      code, ...(isAutomatic ? { title } : {}), min_order, max_uses, expires_at,
+      ...(isBxgy ? { bxgy } : { type, value: isFreeShipping ? 0 : value }),
+    },
   });
   revalidatePath('/admin/coupons');
   return { ok: true };

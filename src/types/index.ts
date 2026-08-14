@@ -442,6 +442,16 @@ export interface Coupon {
   /** 'code' = shopper types it; 'automatic' = the cart applies it by itself
    *  (migration 1120). The generated code of an automatic is internal. */
   trigger_kind?: 'code' | 'automatic';
+  /** Buy X Get Y config (migration 1130). When set it overrides the
+   *  value/type maths entirely — see computeBxgyDiscount. */
+  bxgy?: {
+    buy_product_ids: string[];
+    buy_qty: number;
+    get_product_ids: string[];
+    get_qty: number;
+    pct_off: number;
+    max_per_order: number;
+  } | null;
   /** Customer-facing label for automatic discounts (cart/checkout discount line). */
   title?: string | null;
 }
