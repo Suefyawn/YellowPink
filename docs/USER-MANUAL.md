@@ -862,7 +862,12 @@ required to set their own password on first login.
 
 **Settings** (`/admin/settings`) splits into eight focused sub-pages, each
 reachable from the left rail. Open Settings and the rail shows where to go for
-what — pick a page, edit, hit **Save changes** at the bottom.
+what — pick a page and edit. On **Store profile** and the **Branding** seasonal
+theme form, the moment you change anything a dark **Unsaved changes** bar
+slides down from the top of the screen: **Save** applies your edits, **Discard**
+puts every field back the way it was loaded, and the browser warns you before
+leaving with unsaved edits. The other sub-pages keep their **Save changes**
+button at the bottom.
 
 | Sub-page | What it controls |
 |---|---|
@@ -979,7 +984,7 @@ product descriptions clear and factual since that's what these tools read.
 | Delivered | Received by the customer. |
 | Cancelled | Will not be fulfilled; stock is returned. |
 | Returned | Customer returned the order after delivery. |
-| Refunded | Money has been returned to the customer (typically follows Returned or Cancelled). |
+| Refunded | The full order amount has been returned to the customer. Set automatically when refunds on the order reach its total, or by hand (typically after Returned or Cancelled). Partial refunds do not change the status. |
 
 These are the labels shown throughout the admin (the order list, filters, the order page, the quick-action buttons on a mobile order card, and the customer's order history) — all driven from one shared set so they never disagree.
 
@@ -1148,6 +1153,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 15 August 2026
+
+- **A Shopify-style save bar on the big forms.** The product edit page, Store profile and the Branding seasonal-theme form now show a slim dark bar pinned to the top of the screen the moment you have unsaved changes: **Save** on the right saves the form (it reads *Saving…* while it works), **Discard** reverts everything to the loaded values, and leaving the page with unsaved edits still triggers a browser warning. The familiar bottom Save row is still there too.
 
 - **Orders can now be refunded properly, and bulk cancel asks the same questions as single cancel.** A **Refund** button on the order page (orders in Preparing, Shipped, Delivered or Returned) opens a Shopify-style dialog: pick the refunded items with quantity steppers, or type a flat amount; choose whether to **restock** and whether to **email the customer** a branded refund notice. Partial refunds keep the order's status and show up as a **Refunds issued** deduction in Finance's profit and loss; refunding the full total flips the order to *Refunded* automatically. Every refund lands in a Refunds card on the order, on the timeline, in the Activity log, and as a suggested money-out entry on the Cash page. Bulk cancellation from the Orders list now opens a confirm dialog with the same **Restock items** and **Notify customers** choices plus one reason applied to all, and routes every order through the same cancellation as the single-order dialog. Details in [section 4](#4-processing-a-sale--the-order-workflow).
 

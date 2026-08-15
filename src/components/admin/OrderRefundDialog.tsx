@@ -71,9 +71,11 @@ function RefundDialog({ orderId, orderNumber, hasEmail, maxRefundable, lines, on
     [selected, lines],
   );
 
-  useEffect(() => {
-    if (!amountTouched) setAmount(subtotal > 0 ? String(Math.min(subtotal, maxRefundable)) : '');
-  }, [subtotal, amountTouched, maxRefundable]);
+  // Until the operator types their own figure, the amount field is DERIVED
+  // from the selection subtotal (no state syncing in an effect).
+  const effectiveAmount = amountTouched
+    ? amount
+    : subtotal > 0 ? String(Math.min(subtotal, maxRefundable)) : '';
 
   useEffect(() => {
     if (state?.success) {
@@ -92,8 +94,8 @@ function RefundDialog({ orderId, orderNumber, hasEmail, maxRefundable, lines, on
     });
   };
 
-  const amountNum = Number(amount);
-  const amountValid = Number.isFinite(amountNum) && amountNum > 0 && amountNum <= maxRefundable + 0.005;
+  const amountNum = Number(effectiveAmount);
+  const amountValid = effectiveAmount !== '' && Number.isFinite(amountNum) && amountNum > 0 && amountNum <= maxRefundable + 0.005;
 
   return (
     <div
@@ -179,12 +181,12 @@ function RefundDialog({ orderId, orderNumber, hasEmail, maxRefundable, lines, on
               max={maxRefundable}
               step="any"
               required
-              value={amount}
+              value={effectiveAmount}
               onChange={e => { setAmountTouched(true); setAmount(e.target.value); }}
               style={inp}
             />
-            <span style={{ display: 'block', marginTop: 4, fontSize: '0.75rem', color: amount !== '' && !amountValid ? '#b91c1c' : '#6b7280' }}>
-              {amount !== '' && !amountValid
+            <span style={{ display: 'block', marginTop: 4, fontSize: '0.75rem', color: effectiveAmount !== '' && !amountValid ? '#b91c1c' : '#6b7280' }}>
+              {effectiveAmount !== '' && !amountValid
                 ? `Enter an amount between PKR 1 and ${fmt(maxRefundable)}.`
                 : 'Prefilled from the selected items. Change it for a flat or goodwill refund.'}
             </span>
