@@ -1,8 +1,9 @@
 'use client';
-import { startTransition, useActionState, useEffect, useState } from 'react';
+import { startTransition, useActionState, useState } from 'react';
 import Link from 'next/link';
 import { createProduct, updateProduct } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
+import { SaveBar } from './SaveBar';
 import { KeyBenefitsEditor, FaqEditor } from './ProductContentEditors';
 import { SubmitToIndexButton } from './IndexingButtons';
 import { TAXONS } from '@/lib/category-taxonomy';
@@ -69,15 +70,10 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
   const boundAction = isEdit ? updateProduct.bind(null, product!.id) : createProduct;
   const [state, action, pending] = useActionState(boundAction, null);
 
-  // Warn before leaving with unsaved edits (tab close / refresh / external
-  // nav). Suppressed while submitting, a successful save redirects away.
+  // First edit flips this and the contextual SaveBar slides in; it also owns
+  // the beforeunload warning (suppressed while submitting — a successful save
+  // redirects away, a rejected one leaves the form dirty and the bar up).
   const [dirty, setDirty] = useState(false);
-  useEffect(() => {
-    if (!dirty || pending) return;
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty, pending]);
 
   // `initialName` pre-fills a brand-new product from an external prompt (e.g.
   // the Search-demand report's "Create product" action seeds the searched term
@@ -179,7 +175,8 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
         <form
           onSubmit={e => {
             e.preventDefault();
-            setDirty(false);
+            // Deliberately stays dirty: a successful save redirects away, and
+            // a rejected one (e.g. duplicate slug) still has unsaved edits.
             const formData = new FormData(e.currentTarget);
             startTransition(() => action(formData));
           }}
@@ -188,6 +185,11 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
           onInput={() => { if (!dirty) setDirty(true); }}
           onChange={() => { if (!dirty) setDirty(true); }}
         >
+          {/* Contextual save bar: slides down from the viewport top on the
+              first edit. Its Save is type="submit" (same manual-dispatch path
+              as the bottom button); Discard reloads the route, restoring the
+              loaded values in every field, upload and nested editor. */}
+          <SaveBar dirty={dirty} saving={pending} />
           {/* ── Basics ─────────────────────────────────────────────────── */}
           <Section title="Basics" first>
             <div className="adm-form-2col" style={row2}>

@@ -434,7 +434,7 @@ The Sales and Customers tabs open with a short **"what stands out"** strip — p
 
 ### Finance in detail
 
-Profit & loss for any period (7/30/90 days or all time): revenue from booked orders, minus **cost of goods** (COGS), delivery and payment-fee costs → gross profit, minus the **returned-deliveries loss** (courier round trips + sunk payment fees on refused parcels) and your logged expenses (ad spend + overheads) → **net profit and margin**. Memo lines under Revenue call out money not yet in hand and orders still awaiting customer confirmation; a memo under Delivery cost says how much of it is your typical-cost estimate rather than a recorded charge.
+Profit & loss for any period (7/30/90 days or all time): revenue from booked orders, minus **cost of goods** (COGS), delivery and payment-fee costs → gross profit, minus the **returned-deliveries loss** (courier round trips + sunk payment fees on refused parcels), minus **refunds issued** (money given back on orders still counted in revenue; fully refunded and returned orders are excluded because their revenue is already zero) and your logged expenses (ad spend + overheads) → **net profit and margin**. Memo lines under Revenue call out money not yet in hand and orders still awaiting customer confirmation; a memo under Delivery cost says how much of it is your typical-cost estimate rather than a recorded charge.
 
 **Actual courier costs.** The Shipping recovery card shows **"Costs last synced from TCS"** and (for owners/order managers) the **Sync actual delivery costs** button with a 30/90/180-day look-back — it pulls TCS's billing ledger and replaces estimates with real charges, one audit entry per changed order. It needs `TCS_CUSTOMER_NO` in the server settings; if that's missing the page says so instead of showing a button that can't work, and a failing nightly sync rings the admin bell.
 
@@ -778,9 +778,48 @@ checkboxes decide what happens next:
   email get no automatic notice, so tell those customers on WhatsApp.
 
 The reason and both choices are recorded on the order timeline and in the
-Activity log, so "why was this cancelled?" always has an answer. Bulk
-cancellation from the Orders list bulk bar keeps the old behaviour: it
-restocks and emails automatically, with a confirm prompt first.
+Activity log, so "why was this cancelled?" always has an answer. **Bulk
+cancellation** from the Orders list bulk bar opens the same kind of dialog:
+one reason applied to all selected orders, plus the same **Restock items**
+and **Notify customers** checkboxes (orders without an email address are
+skipped automatically). Each selected order then runs through exactly the
+same cancellation as the single-order dialog, so the restock, the timeline
+comment, the Activity log entry and the customer email are identical either
+way.
+
+**Refunds.** The order page has a **Refund** button in the top bar on orders
+in *Preparing*, *Shipped*, *Delivered* or *Returned* (it is hidden on
+cancelled and unpaid orders, and once an order is fully refunded). It opens
+a refund dialog in Shopify's shape:
+
+- **Pick the items** being refunded with a quantity stepper per line (up to
+  the ordered quantity). The dialog totals the selected units at the prices
+  the customer was actually charged.
+- **Refund amount** is prefilled from that selection but stays editable, so
+  a flat or goodwill refund (say, refunding the shipping fee) needs no items
+  at all. The amount is capped at the order total minus anything already
+  refunded.
+- **Restock items** (shown only when items are selected) returns the
+  refunded quantities to stock through the inventory ledger. Untick it when
+  the goods stay with the customer.
+- **Reason** is a free-text note, staff-only, never shown to the customer.
+- **Notify customer** (on by default when the order has an email) sends a
+  branded refund email with the order number, the amount and the refunded
+  items. The reason is never included.
+
+Each refund is recorded in a **Refunds** card on the order page (date,
+amount, items, reason, who did it, and a running *Total refunded* line), on
+the order timeline, and in the Activity log. **Partial refunds do not change
+the order's status**: the order keeps earning its place in revenue, and
+Finance shows the money given back as a **Refunds issued** deduction line in
+the profit and loss, right under the returned-deliveries loss. When
+cumulative refunds reach the order's full total, the order flips to
+**Refunded** automatically through the normal status path, and from then on
+the usual revenue rules apply (the order drops out of revenue entirely, so
+it no longer appears in the Refunds issued line either; that line only
+counts money returned on orders still live in revenue). The Cash page also
+suggests a matching money-out entry for each refund, ready to confirm into
+the cashbook.
 
 ---
 
@@ -1109,6 +1148,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 15 August 2026
+
+- **Orders can now be refunded properly, and bulk cancel asks the same questions as single cancel.** A **Refund** button on the order page (orders in Preparing, Shipped, Delivered or Returned) opens a Shopify-style dialog: pick the refunded items with quantity steppers, or type a flat amount; choose whether to **restock** and whether to **email the customer** a branded refund notice. Partial refunds keep the order's status and show up as a **Refunds issued** deduction in Finance's profit and loss; refunding the full total flips the order to *Refunded* automatically. Every refund lands in a Refunds card on the order, on the timeline, in the Activity log, and as a suggested money-out entry on the Cash page. Bulk cancellation from the Orders list now opens a confirm dialog with the same **Restock items** and **Notify customers** choices plus one reason applied to all, and routes every order through the same cancellation as the single-order dialog. Details in [section 4](#4-processing-a-sale--the-order-workflow).
 
 - **Manual orders can be saved as drafts.** A phone order interrupted mid-entry can be parked with **Save as draft** on the New order screen and resumed later exactly where it stopped, items, customer details, shipping and discount included. Drafts list above the form with who saved them and when; completing the order clears its draft. Details in the Manual order entry part of [Orders in detail](#orders-in-detail).
 

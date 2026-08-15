@@ -665,6 +665,28 @@ export async function sendCancelledEmail(args: { email: string; first_name: stri
   await send({ to: args.email, subject: `Cancelled, ${args.order_number}`, html, replyTo: OWNER_EMAIL, category: 'Cancelled' });
 }
 
+// ─── 6b. Customer: refund issued ────────────────────────────────────────────
+/** Refund notice from the admin refund dialog. Plain and factual: order
+ *  number, the amount, and the refunded items when specific lines were
+ *  chosen (a flat/goodwill refund has none). Never states an internal
+ *  reason and never blames the customer. */
+export async function sendRefundEmail(args: {
+  email: string;
+  first_name: string;
+  order_number: string;
+  amount: number;
+  /** Refunded lines for the summary table; empty for a flat-amount refund. */
+  items?: OrderItemLine[];
+}) {
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">Refund issued</h2>
+    <p>Hi ${escapeHtml(stripEmoji(args.first_name))}, we have refunded <strong>${money(args.amount)}</strong> on your order <strong>${escapeHtml(args.order_number)}</strong>.</p>
+    ${args.items && args.items.length > 0 ? `<p style="margin:16px 0 0">Refunded items:</p>${renderItemsTable(args.items)}` : ''}
+    <p>Depending on how you paid, the money can take a few days to reach you. If anything looks off, reply to this email and we will sort it out.</p>
+  `);
+  await send({ to: args.email, subject: `Refund issued, ${args.order_number}`, html, replyTo: OWNER_EMAIL, category: 'Refund' });
+}
+
 // ─── 7. Customer: welcome (post-signup) ─────────────────────────────────────
 export async function sendWelcomeEmail(args: { email: string; first_name?: string }) {
   const html = shell(`

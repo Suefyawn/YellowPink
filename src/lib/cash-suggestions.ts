@@ -12,6 +12,11 @@
 //     manual reconciliation) → online_payment (in). COD stays manual: the
 //     courier remits in lumps on their own schedule, which only the owner
 //     sees, so proposing per-order rows would be wrong.
+//   • order_refunds (the order page's Refund dialog) → money paid back to a
+//     customer. The fixed category list has no customer-refund bucket
+//     (refund_received is the inbound, supplier-side one), so these go out
+//     as other_out — the list's designed escape hatch — with the order
+//     number in the label/note.
 //
 // A suggestion disappears once its source_key exists on a cash entry
 // (confirmed) or in cash_suggestion_skips (dismissed).
@@ -20,7 +25,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface CashSuggestion {
   sourceKey: string;
-  category: 'vendor_payout' | 'vendor_receipt' | 'online_payment';
+  category: 'vendor_payout' | 'vendor_receipt' | 'online_payment' | 'other_out';
   amount: number;
   /** YYYY-MM-DD the money moved. */
   date: string;
@@ -37,7 +42,7 @@ const MAX_SUGGESTIONS = 20;
 export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSuggestion[]> {
   const since = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
 
-  const [{ data: settleRows }, { data: paymentRows }, { data: usedRows }, { data: skipRows }] = await Promise.all([
+  const [{ data: settleRows }, { data: paymentRows }, { data: refundRows }, { data: usedRows }, { data: skipRows }] = await Promise.all([
     admin
       .from('vendor_settlements')
       .select('vendor_id, amount_due, due_to, settled_at, vendors(name)')
@@ -48,6 +53,10 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
       .select('id, amount, gateway, order_id, created_at, orders(order_number)')
       .eq('status', 'succeeded')
       .in('gateway', ['bank', 'manual', 'jazzcash', 'easypaisa'])
+      .gte('created_at', since),
+    admin
+      .from('order_refunds')
+      .select('id, amount, order_id, created_at, orders(order_number)')
       .gte('created_at', since),
     admin.from('cash_entries').select('source_key').not('source_key', 'is', null),
     admin.from('cash_suggestion_skips').select('source_key'),
@@ -104,6 +113,26 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
       date: p.created_at.slice(0, 10),
       label: `${p.gateway === 'bank' ? 'Bank transfer' : p.gateway === 'manual' ? 'Payment' : p.gateway} for ${orderNo}`,
       orderId: p.order_id ?? undefined,
+    });
+  }
+
+  // Refunds: each order_refunds row is real money leaving for a customer.
+  // No dedicated outbound refund category exists, so they propose as
+  // other_out with the order number carried in the label (and note).
+  for (const r of (refundRows ?? []) as Array<{
+    id: string; amount: number; order_id: string | null; created_at: string;
+    orders: { order_number: string } | { order_number: string }[] | null;
+  }>) {
+    const key = `refund:${r.id}`;
+    if (seen.has(key) || !(Number(r.amount) > 0)) continue;
+    const orderNo = (Array.isArray(r.orders) ? r.orders[0]?.order_number : r.orders?.order_number) ?? 'order';
+    suggestions.push({
+      sourceKey: key,
+      category: 'other_out',
+      amount: Math.round(Number(r.amount)),
+      date: r.created_at.slice(0, 10),
+      label: `Refund paid to customer for ${orderNo}`,
+      orderId: r.order_id ?? undefined,
     });
   }
 

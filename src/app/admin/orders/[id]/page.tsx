@@ -21,6 +21,7 @@ import { OrderStatusBadge, orderStatusColor } from '@/components/admin/OrderStat
 import { OrderContactEdit } from '@/components/admin/OrderContactEdit';
 import { OrderTagsEditor } from '@/components/admin/OrderTagsEditor';
 import { OrderCreateReturn } from '@/components/admin/OrderCreateReturn';
+import { OrderRefundButton } from '@/components/admin/OrderRefundDialog';
 import { OrderEditItems } from '@/components/admin/OrderEditItems';
 import { BackToOrdersLink } from '@/components/admin/BackToOrdersLink';
 import { ResendConfirmationButton } from '@/components/admin/ResendConfirmationButton';
@@ -206,6 +207,36 @@ export default async function OrderDetailPage({
   const returnStatusColor: Record<string, string> = {
     pending: '#b45309', approved: '#15803d', rejected: '#b91c1c',
     received: '#2563eb', refunded: '#15803d', cancelled: '#6b7280',
+  };
+
+  // Refunds issued on this order (order_refunds ledger, newest first). A
+  // partial refund keeps the order's status; the ledger holds the money
+  // trail, and cumulative refunds cap the Refund dialog's amount.
+  const { data: refundRows } = await supabaseAdmin()
+    .from('order_refunds')
+    .select('id, amount, items, restocked, reason, created_by, created_at')
+    .eq('order_id', id)
+    .order('created_at', { ascending: false });
+  const orderRefunds = (refundRows ?? []) as Array<{
+    id: string; amount: number | string;
+    items: Array<{ id: string; variant_id: string | null; qty: number; price: number }> | null;
+    restocked: boolean; reason: string | null; created_by: string | null; created_at: string;
+  }>;
+  const totalRefunded = orderRefunds.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  const maxRefundable = Math.max(0, Number(o.total ?? 0) - totalRefunded);
+  const REFUNDABLE_STATUSES = ['processing', 'shipped', 'delivered', 'returned'];
+  const canRefund = canEdit && REFUNDABLE_STATUSES.includes(currentStatus) && maxRefundable > 0;
+  // Names for a refund's items summary come from the order's own snapshot
+  // (the ledger stores only id/variant_id/qty/price).
+  const refundItemsSummary = (its: Array<{ id: string; variant_id: string | null; qty: number }> | null): string | null => {
+    if (!its || its.length === 0) return null;
+    return its.map(ri => {
+      const line = items.find(it => it.id === ri.id && ((it as { variant_id?: string | null }).variant_id ?? null) === (ri.variant_id ?? null));
+      const label = line
+        ? `${brandPlusName(line.brand, line.name)}${line.variant_label ?? line.variant ? ` (${line.variant_label ?? line.variant})` : ''}`
+        : 'item';
+      return `${ri.qty}× ${label}`;
+    }).join(', ');
   };
 
   // Order tags (Shopify-style labels: rush, exchange, wholesale…), this
@@ -537,6 +568,24 @@ export default async function OrderDetailPage({
               </a>
             );
           })()}
+          {/* Refund (Shopify-style dialog): only on fulfil-path orders with
+              money left to give back — hidden on cancelled / unpaid states. */}
+          {canRefund && (
+            <OrderRefundButton
+              orderId={o.id!}
+              orderNumber={o.order_number}
+              hasEmail={Boolean(o.email)}
+              maxRefundable={maxRefundable}
+              lines={items.map((item, index) => ({
+                index,
+                name: item.name,
+                brand: item.brand ?? null,
+                variantLabel: item.variant_label ?? item.variant ?? null,
+                price: item.price,
+                qty: item.qty,
+              }))}
+            />
+          )}
           <PrintInvoiceButton />
         </div>
       </div>
@@ -1098,6 +1147,58 @@ export default async function OrderDetailPage({
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Refunds issued on this order (order_refunds ledger). Partial refunds
+          keep the order's status; a full refund flips it to Refunded. */}
+      {orderRefunds.length > 0 && (
+        <div style={section}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#111827' }}>Refunds</h2>
+            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{orderRefunds.length} refund{orderRefunds.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {orderRefunds.map((r, i) => {
+              const summary = refundItemsSummary(r.items);
+              return (
+                <div key={r.id} style={{ padding: '10px 0', borderTop: i > 0 ? '1px solid #f3f4f6' : 'none' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.875rem', fontWeight: 700, color: '#b91c1c', fontVariantNumeric: 'tabular-nums' }}>
+                      − {fmt(Number(r.amount))}
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#9ca3af', whiteSpace: 'nowrap' }}>{fmtDate(r.created_at)}</span>
+                  </div>
+                  <div style={{ marginTop: 4, fontSize: '0.8125rem', color: '#374151' }}>
+                    {summary
+                      ? <>{summary} {r.restocked ? <span style={{ color: '#15803d', fontWeight: 600 }}>· restocked</span> : <span style={{ color: '#9ca3af' }}>· not restocked</span>}</>
+                      : <span style={{ color: '#6b7280' }}>Flat amount, no items</span>}
+                  </div>
+                  {r.reason && (
+                    <div style={{ marginTop: 2, fontSize: '0.75rem', color: '#6b7280' }}>
+                      {r.reason.length > 120 ? `${r.reason.slice(0, 120)}…` : r.reason}
+                    </div>
+                  )}
+                  {r.created_by && (
+                    <div style={{ marginTop: 2, fontSize: '0.6875rem', color: '#9ca3af' }}>by {r.created_by}</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.875rem', fontWeight: 700, borderTop: '1px solid #e5e7eb', paddingTop: 10, marginTop: 4 }}>
+            <span>Total refunded</span>
+            <span style={{ color: '#b91c1c', fontVariantNumeric: 'tabular-nums' }}>{fmt(totalRefunded)}</span>
+          </div>
+          {maxRefundable > 0 ? (
+            <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+              {fmt(maxRefundable)} of the {fmt(o.total)} total can still be refunded.
+            </p>
+          ) : (
+            <p style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#6b7280' }}>
+              Fully refunded.
+            </p>
+          )}
         </div>
       )}
 

@@ -4,8 +4,9 @@ import { getSiteSettings } from '@/lib/supabase';
 import { saveSettings } from '../actions';
 import { SOCIAL_PLATFORMS } from '@/lib/socials';
 import {
-  inp, lbl, Section, Card, Divider, SaveBar, StatusBanner, SettingsPageHeader,
+  inp, lbl, Section, Card, Divider, StatusBanner, SettingsPageHeader,
 } from '@/components/admin/settings-controls';
+import { SaveBarForm } from '@/components/admin/SaveBar';
 
 const PATH = '/admin/settings/profile';
 
@@ -21,7 +22,9 @@ export default async function SettingsProfilePage({ searchParams }: { searchPara
       />
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
 
-      <form action={saveSettings}>
+      {/* SaveBarForm shows the contextual "Unsaved changes" bar (with the
+          Save button) the moment any field is edited, Shopify-style. */}
+      <SaveBarForm action={saveSettings}>
         <input type="hidden" name="_redirect" value={PATH} />
 
         <Card>
@@ -79,8 +82,7 @@ export default async function SettingsProfilePage({ searchParams }: { searchPara
           </p>
         </Card>
 
-        <SaveBar />
-      </form>
+      </SaveBarForm>
     </>
   );
 }

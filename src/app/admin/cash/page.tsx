@@ -112,8 +112,8 @@ export default async function CashPage({
             Suggested from the rest of the admin ({suggestions.length})
           </h2>
           <p style={{ margin: '0 0 12px', fontSize: '0.75rem', color: '#a16207' }}>
-            Vendor settlements and reconciled payments that look like real money moving. Confirm the
-            ones that were actually cash, skip the ones that weren&apos;t (e.g. netted off against stock).
+            Vendor settlements, reconciled payments and customer refunds that look like real money moving.
+            Confirm the ones that were actually cash, skip the ones that weren&apos;t (e.g. netted off against stock).
           </p>
           <div style={{ display: 'grid', gap: 8 }}>
             {suggestions.map(s => (

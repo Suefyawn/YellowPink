@@ -10,7 +10,7 @@ import { ReconcileTcsButton } from '@/components/admin/ReconcileTcsButton';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { fmtPKR as fmt } from '@/lib/money';
-import { FINANCE_RANGES as RANGES, PKT_OFFSET_MS, resolveRange, rangeStartISO, loadFinanceOrders, loadReturnedDeliveryLoss, toOrderFinanceRow } from '@/lib/finance';
+import { FINANCE_RANGES as RANGES, PKT_OFFSET_MS, resolveRange, rangeStartISO, loadFinanceOrders, loadReturnedDeliveryLoss, loadRefundsIssued, toOrderFinanceRow } from '@/lib/finance';
 import { PAY_METHOD_LABELS } from '@/types';
 import { DeleteButton } from '@/components/admin/DeleteButton';
 import { FinanceTabs } from '@/components/admin/FinanceTabs';
@@ -139,6 +139,11 @@ export default async function FinancePage({
   // Payment fees sunk on returned orders are equally real (a gateway fee on a
   // refused parcel is money gone) — deducted with the courier loss below.
   const returnedTotalLoss = returned.loss + returned.fees;
+  // Refunds issued (order_refunds ledger) on orders that still count at full
+  // value in Revenue — partial/goodwill refunds. Fully refunded and returned
+  // orders are excluded: their revenue is already zeroed by the status rules,
+  // so deducting their refund rows too would double-count.
+  const refundsIssued = await loadRefundsIssued(fromISO);
 
   const expByCat = new Map<string, number>();
   let adSpend = 0;
@@ -166,7 +171,9 @@ export default async function FinancePage({
   // Net profit deducts the returned-delivery loss (courier round trip + sunk
   // payment fees) — it used to be displayed on the shipping card but never
   // actually subtracted, so every return silently flattered the bottom line.
-  const netProfit = grossProfit - returnedTotalLoss - totalOpex;
+  // Refunds issued on live orders (partial/goodwill) come off for the same
+  // reason: the revenue line still carries those orders at full value.
+  const netProfit = grossProfit - returnedTotalLoss - refundsIssued.total - totalOpex;
   const margin = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
   // ROAS, revenue attributable to a paid source (orders carrying a utm_source).
@@ -405,6 +412,12 @@ export default async function FinancePage({
     // fees, zero revenue. Shown only when there are returns in the window.
     ...(returned.count > 0 && returnedTotalLoss > 0
       ? [{ label: `Returned deliveries (${returned.count} order${returned.count === 1 ? '' : 's'}${returned.estimatedCount > 0 ? ', partly estimated' : ''})`, value: -returnedTotalLoss, kind: 'sub' as const }]
+      : []),
+    // Refunds issued on orders still counted at full value in Revenue —
+    // partial and goodwill refunds from the order page's Refund dialog.
+    // Fully refunded / returned orders are excluded (already zeroed above).
+    ...(refundsIssued.total > 0
+      ? [{ label: `Refunds issued (${refundsIssued.count} refund${refundsIssued.count === 1 ? '' : 's'} on live orders)`, value: -refundsIssued.total, kind: 'sub' as const }]
       : []),
     ...[...expByCat.entries()].map(([c, v]) => ({ label: `– ${c}`, value: -v, kind: 'sub' as const })),
     { label: 'Net profit', value: netProfit, kind: 'net' as const },

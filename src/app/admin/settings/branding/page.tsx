@@ -8,8 +8,9 @@ import { STORE_THEMES, normalizeTheme } from '@/lib/themes';
 import { activeSeasonalTheme, parsePktDate } from '@/lib/seasonal-theme';
 import {
   inp, lbl, Section, Card, Divider, ColorPicker,
-  SaveBar, StatusBanner, SettingsPageHeader,
+  StatusBanner, SettingsPageHeader,
 } from '@/components/admin/settings-controls';
+import { SaveBarForm } from '@/components/admin/SaveBar';
 
 const PATH = '/admin/settings/branding';
 
@@ -84,8 +85,10 @@ export default async function SettingsBrandingPage({ searchParams }: { searchPar
 
       {/* Seasonal theme card — its own form + action: the form speaks in one
           mental model (a theme + when it runs) and saveSeasonalTheme maps it
-          to the backing keys, so the switches can't contradict each other. */}
-      <form action={saveSeasonalTheme}>
+          to the backing keys, so the switches can't contradict each other.
+          SaveBarForm shows the contextual "Unsaved changes" bar (with the
+          Save button) the moment any field is edited, Shopify-style. */}
+      <SaveBarForm action={saveSeasonalTheme}>
         <Card>
           <Section
             title="Seasonal theme"
@@ -196,11 +199,11 @@ export default async function SettingsBrandingPage({ searchParams }: { searchPar
             </div>
           </div>
         </Card>
-        <SaveBar />
-      </form>
+      </SaveBarForm>
 
       {/* Brand colours keep the generic settings action — unrelated to the
-          seasonal mapping above, so they save independently. */}
+          seasonal mapping above, so they save independently, via their own
+          inline button (a second contextual bar on one page would overlap). */}
       <form action={saveSettings}>
         <input type="hidden" name="_redirect" value={PATH} />
         <Card>
