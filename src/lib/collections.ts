@@ -44,15 +44,42 @@ export interface Collection {
   faqs?: { q: string; a: string }[] | null;
 }
 
+/** Case-insensitive substring test for the contains / does-not-contain ops.
+ *  An empty needle matches nothing (a half-typed rule shouldn't catch the
+ *  whole shop); a null field counts as the empty string, so "does not
+ *  contain" is satisfied by products with no value at all. */
+function containsMatch(haystack: string | null | undefined, c: SmartCondition): boolean {
+  const needle = typeof c.value === 'string' ? c.value.trim().toLowerCase() : '';
+  if (!needle) return false;
+  const hit = (haystack ?? '').toLowerCase().includes(needle);
+  return c.op === 'not_contains' ? !hit : hit;
+}
+
 function matchCondition(p: Product, c: SmartCondition, productTags: string[]): boolean {
+  const isContainsOp = c.op === 'contains' || c.op === 'not_contains';
   switch (c.field) {
-    case 'tag':      return Array.isArray(c.value) && c.value.some(v => productTags.includes(String(v)));
-    case 'brand':    return Array.isArray(c.value) && !!p.brand && c.value.map(String).includes(p.brand);
-    case 'category': return Array.isArray(c.value) && !!p.category && c.value.map(String).includes(p.category);
+    case 'title':    return containsMatch(p.name, c);
+    case 'tag':
+      if (isContainsOp) {
+        const needle = typeof c.value === 'string' ? c.value.trim().toLowerCase() : '';
+        if (!needle) return false;
+        const hit = productTags.some(t => t.toLowerCase().includes(needle));
+        return c.op === 'not_contains' ? !hit : hit;
+      }
+      return Array.isArray(c.value) && c.value.some(v => productTags.includes(String(v)));
+    case 'brand':
+      if (isContainsOp) return containsMatch(p.brand, c);
+      return Array.isArray(c.value) && !!p.brand && c.value.map(String).includes(p.brand);
+    case 'category':
+      if (isContainsOp) return containsMatch(p.category, c);
+      return Array.isArray(c.value) && !!p.category && c.value.map(String).includes(p.category);
     case 'packaging': return Array.isArray(c.value) && !!p.packaging && c.value.map(String).includes(p.packaging);
     case 'price':
       if (typeof c.value !== 'number') return false;
       return c.op === 'gte' ? p.price >= c.value : p.price <= c.value;
+    case 'stock':
+      if (typeof c.value !== 'number') return false;
+      return c.op === 'gte' ? (p.stock ?? 0) >= c.value : (p.stock ?? 0) <= c.value;
     case 'on_sale':    return !!(p.original_price && p.original_price > p.price);
     case 'featured':   return !!p.is_featured;
     case 'bestseller': return !!p.is_bestseller;
