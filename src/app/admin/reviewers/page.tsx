@@ -9,7 +9,7 @@ import { DotChip } from '@/components/admin/OrderChips';
 import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 import { AdminCollapsible } from '@/components/admin/AdminCollapsible';
 import { AdminFlash } from '@/components/admin/AdminFlash';
-import { saveReviewer, setDefaultReviewer, deleteReviewer, sendReviewerInvite, approveReviewerApplication, rejectReviewerApplication } from './actions';
+import { saveReviewer, setDefaultReviewer, deleteReviewer, sendReviewerInvite, approveReviewerApplication, rejectReviewerApplication, reassignPostReviewer } from './actions';
 import { REVIEW_TOPICS, canonicalTopics } from '@/lib/review-topics';
 
 interface ReviewerRow {
