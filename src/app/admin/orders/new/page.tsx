@@ -72,8 +72,30 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
     admin.from('vendors').select('id, name, commission_pct').eq('active', true).order('name'),
     admin.from('province_zones').select('province, zone_id'),
     admin.from('shipping_rates').select('zone_id, rate, free_shipping_threshold').order('rate'),
+    // Saved drafts for the card above the form, newest activity first.
+    admin
+      .from('draft_orders')
+      .select('id, payload, customer_name, note, created_by, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(25),
     getSiteSettings(),
   ]);
+
+  const drafts = (draftRows ?? []) as DraftRow[];
+  // ?draft=<id> → resume: that row's payload becomes the form's initial state.
+  // Usually already in the card's page of rows; fetched directly otherwise.
+  let activeDraft = draftParam ? drafts.find(dr => dr.id === draftParam) ?? null : null;
+  if (!activeDraft && draftParam && /^[0-9a-f-]{36}$/i.test(draftParam)) {
+    const { data } = await admin
+      .from('draft_orders')
+      .select('id, payload, customer_name, note, created_by, updated_at')
+      .eq('id', draftParam)
+      .maybeSingle();
+    activeDraft = (data as DraftRow | null) ?? null;
+  }
+  const initialDraft: InitialDraft | null = activeDraft && activeDraft.payload && typeof activeDraft.payload === 'object'
+    ? { id: activeDraft.id, payload: activeDraft.payload as DraftPayload, note: activeDraft.note }
+    : null;
 
   // Cheapest rate per zone → suggestion per province (mirrors place_order's
   // floor logic; the form only *suggests*, staff can type anything ≥ 0).
@@ -126,10 +148,67 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
           </p>
         </div>
       </div>
+      {drafts.length > 0 && (
+        <section style={{ maxWidth: 860, background: 'white', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, marginBottom: 16 }}>
+          <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 7 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+            </svg>
+            Drafts
+          </h2>
+          <p style={{ margin: '4px 0 6px', color: '#6b7280', fontSize: '0.75rem' }}>
+            Saved manual orders waiting to be completed. Resume one to load it into the form below.
+          </p>
+          <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+            {drafts.map(dr => {
+              const sum = summarizeDraft(dr.payload);
+              const resumed = dr.id === activeDraft?.id;
+              return (
+                <li key={dr.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 0', borderTop: '1px solid #f3f4f6' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: '0.875rem', fontWeight: 600 }}>
+                      {dr.customer_name || 'Unnamed draft'}
+                      {resumed && (
+                        <span style={{
+                          marginLeft: 8, fontSize: '0.6875rem', fontWeight: 600, color: '#92400e',
+                          background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 999, padding: '1px 8px',
+                        }}>
+                          In the form below
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ color: '#6b7280', fontSize: '0.75rem' }}>
+                      {sum.items} item{sum.items === 1 ? '' : 's'} · PKR {sum.subtotal.toLocaleString()} · saved {ago(dr.updated_at)}
+                      {dr.created_by ? ` · by ${dr.created_by}` : ''}
+                    </div>
+                    {dr.note && (
+                      <div style={{ color: '#9ca3af', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {dr.note}
+                      </div>
+                    )}
+                  </div>
+                  {!resumed && (
+                    <Link href={`/admin/orders/new?draft=${dr.id}`} className="adm-btn adm-btn-secondary">
+                      Resume
+                    </Link>
+                  )}
+                  <form action={deleteOrderDraft.bind(null, dr.id)}>
+                    <button type="submit" className="adm-btn adm-btn-danger" aria-label={`Delete draft ${dr.customer_name || dr.id}`}>
+                      Delete
+                    </button>
+                  </form>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
       <ManualOrderForm
+        key={initialDraft?.id ?? 'blank'}
         products={withVariants}
         vendors={(vendorRows ?? []) as PickerVendor[]}
         shipping={shipping}
+        initialDraft={initialDraft}
       />
     </div>
   );
