@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSignedInReviewer, getReviewedPosts } from '@/lib/reviewer-portal';
-import { updateReviewerProfile, signOutReviewer, approveReviewAssignment, requestChangesOnAssignment } from './actions';
+import { updateReviewerProfile, signOutReviewer, flagArticleConcern } from './actions';
 import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 import { REVIEW_TOPICS, canonicalTopics } from '@/lib/review-topics';
 import { PK_TZ } from '@/lib/dates';
@@ -32,12 +32,9 @@ export default async function ReviewerDashboard({ searchParams }: { searchParams
   if (!reviewer) redirect('/reviewer/login');
 
   const posts = await getReviewedPosts(reviewer.id);
-  // Sign-off split: a post is either waiting for this doctor's review
-  // (pending; the public byline stays hidden) or reviewed (approved; the
-  // byline + schema are live). Assigned rows without a status are legacy
-  // oddities, treat them as pending so nothing slips past the doctor.
-  const pendingPosts = posts.filter(p => p.review_status !== 'approved');
-  const approvedPosts = posts.filter(p => p.review_status === 'approved');
+  // Every assigned post is live (blog_posts has no draft/published state), so
+  // the reviewer's assigned count is their published count.
+  const publishedCount = posts.length;
   // Profile completeness encourages a rich, trustworthy public profile.
   const checks = [
     !!reviewer.credentials, !!reviewer.specialty, !!reviewer.bio, !!reviewer.photo_url,
@@ -68,6 +65,13 @@ export default async function ReviewerDashboard({ searchParams }: { searchParams
               </button>
             </form>
           </div>
+
+          {sp.sent && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '12px 0 0', padding: '10px 14px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 10, fontSize: '0.875rem', color: '#15803d' }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+              Thank you, your note has been sent to the editorial team. They will follow up on it.
+            </div>
+          )}
 
           {reviewer.active && (
             <p className="small-text" style={{ color: 'var(--ink-500)', margin: '0 0 32px' }}>
@@ -165,23 +169,53 @@ export default async function ReviewerDashboard({ searchParams }: { searchParams
           </h2>
           {posts.length === 0 ? (
             <p className="body-text" style={{ color: 'var(--ink-500)' }}>
-              Nothing yet. When we assign an article to you, it appears here with your byline once published.
+              Nothing yet. When an article is assigned to you, we email you and it appears here with your byline.
             </p>
           ) : (
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
-              {posts.map(p => (
-                <li key={p.slug} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--paper)' }}>
-                  <div style={{ minWidth: 0 }}>
-                    <Link href={`/blog/${p.slug}`} style={{ fontWeight: 600, color: 'var(--ink-900)', textDecoration: 'none' }}>{p.title}</Link>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 2 }}>Added {ago(p.created_at)}</div>
-                  </div>
-                  <span style={{ flexShrink: 0, padding: '2px 10px', borderRadius: 20, fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
-                    background: '#f0fdf4', color: '#15803d' }}>
-                    Published
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <p style={{ fontSize: '0.8125rem', color: 'var(--ink-500)', margin: '-8px 0 14px', lineHeight: 1.6 }}>
+                These live articles carry your &ldquo;Medically reviewed by&rdquo; byline. Please read anything new
+                soon after our email; if something needs correcting, use <strong>Flag a concern</strong> below and
+                the editorial team will fix or reassign it.
+              </p>
+              <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 8 }}>
+                {posts.map(p => (
+                  <li key={p.slug} style={{ padding: '12px 14px', border: '1px solid var(--line)', borderRadius: 10, background: 'var(--paper)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16 }}>
+                      <div style={{ minWidth: 0 }}>
+                        <Link href={`/blog/${p.slug}`} style={{ fontWeight: 600, color: 'var(--ink-900)', textDecoration: 'none' }}>{p.title}</Link>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--ink-500)', marginTop: 2 }}>Added {ago(p.created_at)}</div>
+                      </div>
+                      <span style={{ flexShrink: 0, padding: '2px 10px', borderRadius: 20, fontSize: '0.6875rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.03em',
+                        background: '#f0fdf4', color: '#15803d' }}>
+                        Published
+                      </span>
+                    </div>
+                    {/* Flag a concern: a <details> keeps the note form tucked away
+                        with no client JS; submitting notifies the admin team. */}
+                    <details style={{ marginTop: 8 }}>
+                      <summary style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, color: 'var(--ink-500)', listStyle: 'none' }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z" /><line x1="4" x2="4" y1="22" y2="15" /></svg>
+                        Flag a concern
+                      </summary>
+                      <form action={flagArticleConcern} style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                        <input type="hidden" name="post_id" value={p.id} />
+                        <textarea
+                          name="note" required rows={3} maxLength={2000}
+                          placeholder="What should we correct or change in this article?"
+                          style={{ ...field, resize: 'vertical', fontSize: '0.875rem' }}
+                        />
+                        <div>
+                          <button type="submit" className="btn-primary" style={{ padding: '8px 16px', fontSize: '0.8125rem' }}>
+                            Send to the editorial team
+                          </button>
+                        </div>
+                      </form>
+                    </details>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
 
           {/* Account */}

@@ -64,18 +64,17 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   // Unpublished/renamed post? Honour a manual redirect before 404ing.
   if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
 
-  // E-E-A-T: resolve the medical reviewer. The byline and the Article
-  // reviewedBy schema are a truth claim about who read the article, so they
-  // render ONLY once the assigned doctor has signed off: reviewer_id set AND
-  // review_status = 'approved'. A pending assignment (the DB trigger
-  // auto-assigns new health posts as 'pending') shows nothing public until the
-  // doctor approves it in their portal (or an admin records an offline
-  // approval). The old "default board reviewer" render-time fallback is gone,
-  // it credited a doctor who never saw the post; the default reviewer is now
-  // only the assignment fallback inside the DB trigger, and still goes
-  // through the same pending → approved sign-off.
+  // E-E-A-T: resolve the medical reviewer. The byline + Article reviewedBy
+  // schema render whenever the post carries a Review Board credit
+  // (reviewer_id). Assignment happens at insert time — a DB trigger matches
+  // the post's health topic to a board doctor (default reviewer as fallback;
+  // makeup posts get none) and the credited doctor is emailed — or via the
+  // admin's manual assignment/reassignment, which also emails. The old
+  // render-time "default board reviewer" fallback for unassigned health posts
+  // is gone: a credit must be recorded on the row so it is countable,
+  // reassignable, and always accompanied by the notification to the doctor.
   let reviewer: MedicalReviewer | null = null;
-  if (post.reviewer_id && post.review_status === 'approved') {
+  if (post.reviewer_id) {
     const r = await getReviewerById(post.reviewer_id);
     reviewer = r
       ? { name: r.name, credentials: r.credentials ?? undefined, specialty: r.specialty ?? undefined, url: r.profile_url ?? undefined, profileSlug: r.slug }

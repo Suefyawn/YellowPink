@@ -24,47 +24,12 @@ async function signedInReviewerRow(): Promise<{ id: string; name: string; slug: 
   return (data as { id: string; name: string; slug: string } | null) ?? null;
 }
 
-/** "I have reviewed this article": the doctor signs off on a pending
- *  assignment. Sets review_status='approved' + reviewed_at=now(), which is
- *  what makes the public byline and the Article reviewedBy schema render. */
-export async function approveReviewAssignment(formData: FormData): Promise<void> {
-  const me = await signedInReviewerRow();
-  if (!me) redirect('/reviewer/login');
-  const postId = str(formData, 'post_id');
-  if (!postId) return;
-
-  const admin = supabaseAdmin();
-  const { data: post } = await admin
-    .from('blog_posts')
-    .select('id, slug, title, reviewer_id, review_status')
-    .eq('id', postId)
-    .maybeSingle();
-  // Only the doctor's OWN assignment can be approved; anything else is a
-  // stale/forged form post.
-  if (!post || post.reviewer_id !== me.id) {
-    log.warn('reviewer.approve_not_own_assignment', { postId, reviewerId: me.id });
-    return;
-  }
-  if (post.review_status === 'approved') { revalidatePath('/reviewer'); return; }
-
-  const { error } = await admin
-    .from('blog_posts')
-    .update({ review_status: 'approved', reviewed_at: new Date().toISOString() })
-    .eq('id', postId)
-    .eq('reviewer_id', me.id);
-  if (error) { log.error('reviewer.approve_failed', { postId, error: error.message }); return; }
-
-  log.info('reviewer.approved_article', { postId, reviewerId: me.id });
-  // The approval is what turns the public byline + schema on.
-  revalidatePath(`/blog/${post.slug}`);
-  revalidatePath(`/medical-review-board/${me.slug}`);
-  revalidatePath('/reviewer');
-}
-
-/** "Request changes": the doctor flags a pending article with a note. The
- *  post's status is NOT changed (it stays pending, byline stays hidden); the
- *  note lands in admin notifications for the editorial team to act on. */
-export async function requestChangesOnAssignment(formData: FormData): Promise<void> {
+/** "Flag a concern": the credited doctor sends the editorial team a note
+ *  about one of their articles (a correction, an objection to the credit,
+ *  anything). The note lands in admin notifications; the post itself is not
+ *  changed here — staff act on the note (edit, reassign or remove the
+ *  credit) from the admin side. */
+export async function flagArticleConcern(formData: FormData): Promise<void> {
   const me = await signedInReviewerRow();
   if (!me) redirect('/reviewer/login');
   const postId = str(formData, 'post_id');
@@ -77,21 +42,23 @@ export async function requestChangesOnAssignment(formData: FormData): Promise<vo
     .select('id, title, reviewer_id')
     .eq('id', postId)
     .maybeSingle();
+  // Only articles credited to the signed-in doctor; anything else is a
+  // stale/forged form post.
   if (!post || post.reviewer_id !== me.id) {
-    log.warn('reviewer.changes_not_own_assignment', { postId, reviewerId: me.id });
+    log.warn('reviewer.concern_not_own_article', { postId, reviewerId: me.id });
     return;
   }
 
   const { error } = await admin.from('admin_notifications').insert({
-    kind: 'review_changes_requested',
-    title: `${me.name} requests changes on "${post.title}"`,
+    kind: 'review_concern',
+    title: `${me.name} flagged "${post.title}"`,
     body: note,
     link: `/admin/blog/${post.id}`,
     entity_id: post.id,
   });
-  if (error) { log.error('reviewer.changes_insert_failed', { postId, error: error.message }); return; }
+  if (error) { log.error('reviewer.concern_insert_failed', { postId, error: error.message }); return; }
 
-  log.info('reviewer.changes_requested', { postId, reviewerId: me.id });
+  log.info('reviewer.concern_flagged', { postId, reviewerId: me.id });
   redirect('/reviewer?sent=1');
 }
 

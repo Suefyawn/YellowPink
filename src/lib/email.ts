@@ -759,6 +759,31 @@ export async function sendReviewerProfileInviteEmail(args: { name: string; email
   await send({ to: args.email, subject: 'Complete your Yellow Pink reviewer profile', html, category: 'Reviewer profile' });
 }
 
+/** Tell a board doctor they have been credited as the medical reviewer on an
+ *  article. Sent from every crediting path (new post auto-assignment, the
+ *  admin's manual assignment, and reassignment) so a doctor always knows the
+ *  moment their name appears on a piece and can ask for corrections. */
+export async function sendReviewAssignmentEmail(args: {
+  name: string; email: string; postTitle: string; postSlug: string;
+}): Promise<void> {
+  const articleUrl = `${SITE_URL}/blog/${args.postSlug}`;
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">You have been credited as the medical reviewer on a new article</h2>
+    <p>Hi ${escapeHtml(args.name)}, a new article now carries your name as its medical reviewer:</p>
+    <p style="margin:16px 0;padding:12px 16px;background:#f3f4f6;border-radius:6px;font-size:15px"><strong>${escapeHtml(args.postTitle)}</strong></p>
+    <p>Please give it a read when you can. If anything in it needs correcting, or you would rather not be credited on this piece, reply to this email (it reaches hello@yellowpink.pk) and we will fix or reassign it right away.</p>
+    <p style="margin:20px 0 0"><a href="${articleUrl}" style="display:inline-block;padding:12px 24px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Read the article &rarr;</a></p>
+    <p style="margin:16px 0 0;color:${MUTED};font-size:12px">All articles credited to you are listed in your reviewer dashboard. Sign in at <a href="${SITE_URL}/reviewer/login" style="color:${MUTED}">${SITE_URL}/reviewer/login</a> with this email address (${escapeHtml(args.email)}); we send a one-time link, so there is no password to remember.</p>
+  `);
+  await send({
+    to: args.email,
+    subject: `You are credited on a new article: ${args.postTitle}`,
+    html,
+    replyTo: 'hello@yellowpink.pk',
+    category: 'Review assignment',
+  });
+}
+
 // ─── 9. Customer: abandoned cart reminder ──────────────────────────────────
 export async function sendAbandonedCartEmail(args: {
   email: string;

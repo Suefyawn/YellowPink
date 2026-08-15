@@ -7,6 +7,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import { sendReviewerApprovedEmail, sendReviewerProfileInviteEmail } from '@/lib/email';
+import { notifyReviewerCredited } from '@/lib/review-assignment';
 import { canonicalTopics } from '@/lib/review-topics';
 import type { SupabaseClient } from '@supabase/supabase-js';
 

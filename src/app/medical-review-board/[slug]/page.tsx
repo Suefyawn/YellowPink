@@ -26,13 +26,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 async function reviewedPosts(reviewerId: string): Promise<{ slug: string; title: string }[]> {
   if (isDemo) return [];
-  // Only sign-offs the doctor has actually confirmed: a pending assignment is
-  // not a reviewed article, so it must not appear (or be counted) here.
   const { data } = await supabase
     .from('blog_posts')
     .select('slug, title')
     .eq('reviewer_id', reviewerId)
-    .eq('review_status', 'approved')
     .order('date', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(50);

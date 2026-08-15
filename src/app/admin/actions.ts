@@ -29,6 +29,7 @@ import { sanitizePermissions, canAny } from '@/lib/permissions';
 import { orderRangeSinceIso } from '@/lib/order-range';
 import { attributeOrderEvents } from '@/lib/order-events';
 import { sendStatusTransitionEmail, sendStatusTransitionEmails } from '@/lib/order-status-emails';
+import { notifyReviewerCredited } from '@/lib/review-assignment';
 import type { StaffSession } from '@/lib/permissions';
 import type { Order, OrderStatus } from '@/types';
 
@@ -475,8 +476,24 @@ export async function createBlogPost(
   if ((parsed.data as { featured?: boolean }).featured) {
     await admin.from('blog_posts').update({ featured: false }).eq('featured', true);
   }
-  const { error } = await admin.from('blog_posts').insert(parsed.data);
+  // A manual reviewer pick in the form carries the same bookkeeping the DB
+  // trigger writes for auto-assignment (the trigger skips rows that arrive
+  // with a reviewer already set).
+  const row: Record<string, unknown> = { ...parsed.data };
+  if (parsed.data.reviewer_id) {
+    row.review_status = 'approved';
+    row.reviewed_at = new Date().toISOString();
+  }
+  // Read the row back: when no reviewer was picked, the BEFORE INSERT trigger
+  // may have auto-assigned one (topic match, board fallback), and the doctor
+  // must be told either way.
+  const { data: created, error } = await admin
+    .from('blog_posts')
+    .insert(row)
+    .select('id, reviewer_id')
+    .single();
   if (error) return { error: error.message };
+  if (created?.reviewer_id) await notifyReviewerCredited(created.id as string);
   // Blog posts go live immediately, ping search engines (best-effort).
   const slug = (parsed.data as { slug?: string }).slug;
   if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
@@ -502,8 +519,19 @@ export async function updateBlogPost(
   if ((parsed.data as { featured?: boolean }).featured) {
     await admin.from('blog_posts').update({ featured: false }).eq('featured', true).neq('id', id);
   }
-  const { error } = await admin.from('blog_posts').update(parsed.data).eq('id', id);
+  // Reviewer credit housekeeping: when the form hands the credit to a
+  // different doctor, stamp the crediting bookkeeping and email them (same
+  // contract as auto-assignment); clearing the reviewer clears it.
+  const { data: prev } = await admin.from('blog_posts').select('reviewer_id').eq('id', id).maybeSingle();
+  const reviewerChanged = (prev?.reviewer_id ?? null) !== parsed.data.reviewer_id;
+  const row: Record<string, unknown> = { ...parsed.data };
+  if (reviewerChanged) {
+    row.review_status = parsed.data.reviewer_id ? 'approved' : null;
+    row.reviewed_at = parsed.data.reviewer_id ? new Date().toISOString() : null;
+  }
+  const { error } = await admin.from('blog_posts').update(row).eq('id', id);
   if (error) return { error: error.message };
+  if (reviewerChanged && parsed.data.reviewer_id) await notifyReviewerCredited(id);
   const slug = (parsed.data as { slug?: string }).slug;
   if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   revalidatePath('/admin/blog');
