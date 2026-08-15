@@ -651,6 +651,7 @@ function VariantGrid({ productId, attributes, variants, stockCounted, onDetails,
               <th style={{ ...gth, width: 48 }}>Image</th>
               <th style={gth}>Variant</th>
               <th style={gth}>SKU</th>
+              <th style={gth}>Barcode</th>
               <th style={{ ...gth, width: 110 }}>Price</th>
               <th style={{ ...gth, width: 110 }}>Compare-at</th>
               <th style={{ ...gth, width: 90 }}>{stockCounted ? 'Stock' : 'Stock'}</th>
@@ -676,6 +677,9 @@ function VariantGrid({ productId, attributes, variants, stockCounted, onDetails,
                 </td>
                 <td style={gtd}>
                   <input name={`v__${v.id}__sku`} defaultValue={v.sku ?? ''} placeholder="—" style={{ ...gin, width: 110, fontFamily: 'monospace' }} />
+                </td>
+                <td style={gtd}>
+                  <input name={`v__${v.id}__barcode`} defaultValue={v.barcode ?? ''} placeholder="—" style={{ ...gin, width: 120, fontFamily: 'monospace' }} />
                 </td>
                 <td style={gtd}>
                   <input name={`v__${v.id}__price`} type="number" min={0} step="0.01" required defaultValue={v.price} style={{ ...gin, width: 96 }} />

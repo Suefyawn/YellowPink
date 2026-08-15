@@ -28,6 +28,7 @@ export const CASH_CATEGORIES: CashCategory[] = [
   { value: 'vendor_payout',  label: 'Vendor payout',         direction: 'out', hint: 'Settling a vendor balance (also shown in Vendors).' },
   { value: 'marketing',      label: 'Marketing & ads',       direction: 'out', hint: 'Ads, gifted boxes, sponsored posts, promo material.' },
   { value: 'owner_draw',     label: 'Owner draw',            direction: 'out', hint: 'Cash taken out of the business for personal use.' },
+  { value: 'customer_refund', label: 'Customer refund',      direction: 'out', hint: 'Money returned to a customer on a refunded order.' },
   { value: 'other_out',      label: 'Other (money out)',     direction: 'out', hint: 'Anything paid that fits nowhere above. Say what in the note.' },
   // Money in
   { value: 'cod_remittance', label: 'COD remittance',        direction: 'in',  hint: 'Cash-on-delivery money paid over by the courier.' },
