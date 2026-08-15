@@ -589,11 +589,11 @@ export async function bulkUpdateVariants(
   const admin = supabaseAdmin();
   const { data: currentRows, error: loadErr } = await admin
     .from('product_variants')
-    .select('id, sku, price, compare_at_price, stock, enabled')
+    .select('id, sku, barcode, price, compare_at_price, stock, enabled')
     .eq('product_id', productId);
   if (loadErr) return { error: loadErr.message };
   const current = (currentRows ?? []) as Array<{
-    id: string; sku: string | null; price: number; compare_at_price: number | null; stock: number; enabled: boolean;
+    id: string; sku: string | null; barcode: string | null; price: number; compare_at_price: number | null; stock: number; enabled: boolean;
   }>;
   const counted = await productStockCounted(productId);
 
@@ -603,6 +603,9 @@ export async function bulkUpdateVariants(
     if (formData.get(`v__${v.id}__present`) !== '1') continue;
 
     const sku = String(formData.get(`v__${v.id}__sku`) ?? '').trim().slice(0, 80) || null;
+    const barcodeField = formData.get(`v__${v.id}__barcode`);
+    const barcode = barcodeField === null ? undefined
+      : String(barcodeField).trim().slice(0, 80) || null;
     const priceRaw = Number(formData.get(`v__${v.id}__price`));
     const compareRaw = String(formData.get(`v__${v.id}__compare`) ?? '').trim();
     const compare = compareRaw === '' ? null : Number(compareRaw);
@@ -613,6 +616,7 @@ export async function bulkUpdateVariants(
 
     const rowChanges: Record<string, unknown> = {};
     if (sku !== (v.sku || null)) rowChanges.sku = sku;
+    if (barcode !== undefined && barcode !== (v.barcode || null)) rowChanges.barcode = barcode;
     if (priceRaw !== v.price) rowChanges.price = priceRaw;
     if (compare !== (v.compare_at_price ?? null)) rowChanges.compare_at_price = compare;
     if (enabled !== v.enabled) rowChanges.enabled = enabled;

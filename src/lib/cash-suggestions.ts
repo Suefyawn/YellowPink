@@ -13,9 +13,7 @@
 //     courier remits in lumps on their own schedule, which only the owner
 //     sees, so proposing per-order rows would be wrong.
 //   • order_refunds (the order page's Refund dialog) → money paid back to a
-//     customer. The fixed category list has no customer-refund bucket
-//     (refund_received is the inbound, supplier-side one), so these go out
-//     as other_out — the list's designed escape hatch — with the order
+//     customer, proposed under the customer_refund category with the order
 //     number in the label/note.
 //
 // A suggestion disappears once its source_key exists on a cash entry
@@ -25,7 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface CashSuggestion {
   sourceKey: string;
-  category: 'vendor_payout' | 'vendor_receipt' | 'online_payment' | 'other_out';
+  category: 'vendor_payout' | 'vendor_receipt' | 'online_payment' | 'customer_refund';
   amount: number;
   /** YYYY-MM-DD the money moved. */
   date: string;
@@ -116,9 +114,8 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
     });
   }
 
-  // Refunds: each order_refunds row is real money leaving for a customer.
-  // No dedicated outbound refund category exists, so they propose as
-  // other_out with the order number carried in the label (and note).
+  // Refunds: each order_refunds row is real money leaving for a customer,
+  // proposed under the dedicated customer_refund category (migration 1210).
   for (const r of (refundRows ?? []) as Array<{
     id: string; amount: number; order_id: string | null; created_at: string;
     orders: { order_number: string } | { order_number: string }[] | null;
@@ -128,7 +125,7 @@ export async function loadCashSuggestions(admin: SupabaseClient): Promise<CashSu
     const orderNo = (Array.isArray(r.orders) ? r.orders[0]?.order_number : r.orders?.order_number) ?? 'order';
     suggestions.push({
       sourceKey: key,
-      category: 'other_out',
+      category: 'customer_refund',
       amount: Math.round(Number(r.amount)),
       date: r.created_at.slice(0, 10),
       label: `Refund paid to customer for ${orderNo}`,
