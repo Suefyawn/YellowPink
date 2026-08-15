@@ -36,6 +36,7 @@ const STATIC_ROUTES: { path: string; priority: number; freq: MetadataRoute.Sitem
   { path: '/pregnancy-calculator', priority: 0.7, freq: 'monthly' },
   { path: '/bmi-calculator',       priority: 0.7, freq: 'monthly' },
   { path: '/calorie-calculator',   priority: 0.7, freq: 'monthly' },
+  { path: '/tdee-calculator',      priority: 0.7, freq: 'monthly' },
   { path: '/blog',       priority: 0.7, freq: 'weekly' },
   { path: '/deals',      priority: 0.7, freq: 'daily' },
   { path: '/medical-review-board', priority: 0.5, freq: 'monthly' },

@@ -1039,6 +1039,7 @@ export default async function OrderDetailPage({
         <OrderStatusForm
           orderId={o.id!}
           currentStatus={currentStatus}
+          hasEmail={Boolean(o.email)}
         />
       </div>
       )}

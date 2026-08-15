@@ -32,7 +32,7 @@ const row3: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1
 // long product edit reads as grouped steps, not one undifferentiated wall.
 // Section titles in render order, also drives the "jump to" nav. Keep in
 // sync with the <Section> blocks below.
-const FORM_SECTIONS = ['Basics', 'Merchandising', 'Pricing & stock', 'Vendor & sourcing', 'Page link', 'Product image', 'Product-page content', 'Search & social'];
+const FORM_SECTIONS = ['Basics', 'Merchandising', 'Pricing & stock', 'Shipping', 'Vendor & sourcing', 'Page link', 'Product image', 'Product-page content', 'Search & social'];
 
 function Section({ title, desc, first, children }: {
   title: string; desc?: string; first?: boolean; children: React.ReactNode;
@@ -359,6 +359,28 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
                 )}
               </div>
             </div>
+            {/* Inventory identifiers, Shopify's Inventory card vocabulary.
+                Only for simple products: variable products carry per-variant
+                SKUs in the Variants section, so nothing is submitted here and
+                the parent fields stay untouched. */}
+            {!hasVariants ? (
+              <div className="adm-form-2col" style={row2}>
+                <div style={fieldWrap}>
+                  <label style={lbl}>SKU (Stock Keeping Unit)</label>
+                  <input name="sku" defaultValue={product?.sku ?? ''} style={inp} placeholder="e.g. YP-CRV-CRM-473" />
+                  <span style={hint}>Your internal product code. Optional; shown in the products list.</span>
+                </div>
+                <div style={fieldWrap}>
+                  <label style={lbl}>Barcode (ISBN, UPC, GTIN, etc.)</label>
+                  <input name="barcode" defaultValue={product?.barcode ?? ''} style={inp} placeholder="e.g. 3606000537514" />
+                  <span style={hint}>The number under the barcode on the retail box.</span>
+                </div>
+              </div>
+            ) : (
+              <p style={{ margin: '0 0 16px', fontSize: '0.75rem', color: '#6b7280' }}>
+                SKU and barcode live on each variant for this product (Variants section below).
+              </p>
+            )}
             {/* stock_mode is what we submit; the DB trigger derives
                 track_inventory from it. */}
             <input type="hidden" name="stock_mode" value={stockMode} />
@@ -418,6 +440,18 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
                 <span style={hint}>Flag this product for reorder when stock falls to this level. The default is 5; set 0 to leave this product out of the reorder list.</span>
               </div>
             )}
+          </Section>
+
+          {/* ── Shipping ───────────────────────────────────────────────── */}
+          <Section title="Shipping" desc="Used when booking the courier. Nothing here is shown to shoppers.">
+            <div style={{ ...fieldWrap, maxWidth: 240 }}>
+              <label style={lbl}>Weight (grams)</label>
+              <input name="weight_grams" type="number" min={0} step={1} defaultValue={product?.weight_grams ?? ''} style={inp} placeholder="e.g. 250" />
+              <span style={hint}>
+                Optional. The courier booking sums the weights of the items in a parcel;
+                items without a weight are assumed at 500 g each.
+              </span>
+            </div>
           </Section>
 
           {/* ── Vendor & sourcing ──────────────────────────────────────── */}

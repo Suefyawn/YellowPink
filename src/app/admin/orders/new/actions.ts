@@ -99,6 +99,10 @@ export async function createManualOrder(
   const shipping  = Number(formData.get('shipping') ?? 0);
   const discount  = Number(formData.get('discount_amount') ?? 0);
   const vendorId  = ((formData.get('vendor_id') as string) ?? '').trim() || null;
+  // Set when the form was opened from (or saved as) a draft — the row is
+  // deleted once the real order exists, so completed drafts never linger.
+  const rawDraftId = ((formData.get('draft_id') as string) ?? '').trim();
+  const draftId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawDraftId) ? rawDraftId : null;
 
   if (!firstName) return { error: 'Customer first name is required.' };
   if (!phone) return { error: 'Phone number is required (delivery + WhatsApp updates).' };
@@ -269,8 +273,15 @@ export async function createManualOrder(
     action: 'order.create_manual',
     entity: 'orders',
     entity_id: order.id,
-    diff: { order_number: order.order_number, total, items: lines.length, channel: 'admin-manual', vendor_id: vendorId },
+    diff: { order_number: order.order_number, total, items: lines.length, channel: 'admin-manual', vendor_id: vendorId, ...(draftId ? { draft_id: draftId } : {}) },
   });
+
+  // The order exists — the draft it came from is done. Best-effort: a failed
+  // delete just leaves a stale draft row staff can remove from the card.
+  if (draftId) {
+    await admin.from('draft_orders').delete().eq('id', draftId);
+    revalidatePath('/admin/orders/new');
+  }
 
   // Emails: customer confirmation only when asked; internal new-order email
   // is skipped (the operator IS the one creating it).

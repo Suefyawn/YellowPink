@@ -79,7 +79,9 @@ export default function CalorieCalculatorPage() {
           <p className="body-text" style={{ color: 'var(--ink-700)', margin: 0 }}>
             Wondering where your weight stands in the first place? The{' '}
             <Link href="/bmi-calculator" className="text-link">BMI calculator</Link> takes ten seconds and uses the South Asian
-            ranges that apply here.
+            ranges that apply here. And if you want the burn side of the equation on its own, the{' '}
+            <Link href="/tdee-calculator" className="text-link">TDEE calculator</Link> breaks down the maintenance number this
+            page starts from, with targets at every pace.
           </p>
           <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 500, margin: '8px 0 0' }}>Common questions</h2>
           {FAQS.map(f => (

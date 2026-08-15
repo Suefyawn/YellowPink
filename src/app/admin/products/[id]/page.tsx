@@ -191,6 +191,9 @@ export default async function EditProductPage({
           attributes={attributes}
           variants={variants}
           stockCounted={(product.stock_mode ?? (product.track_inventory === false ? 'untracked' : 'own')) === 'own'}
+          // Cover image first, then the gallery, deduped — the per-variant
+          // image picker assigns from these (no separate upload path).
+          productImages={[...new Set([product.image_url, ...galleryImages.map(g => g.url)].filter((u): u is string => Boolean(u)))]}
         />
         <ProductInventoryHistory productId={product.id} />
       </div>

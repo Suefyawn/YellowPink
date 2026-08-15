@@ -79,6 +79,12 @@ export const productInputSchema = z.object({
                     z.enum(['standard','tester','no_box']).optional(),
                   ),
   slug:           slugSchema,
+  // Inventory identifiers (Shopify's Inventory card, migration 1170). The
+  // product form submits them for simple products; optional so callers that
+  // omit them (CSV import, variable products) leave the stored values alone.
+  // Empty string normalises to null.
+  sku:            z.string().trim().max(120).transform(s => s || null).nullable().optional(),
+  barcode:        z.string().trim().max(120).transform(s => s || null).nullable().optional(),
   // Publication status. The admin form always submits it (new products
   // default to 'draft' there); optional so older callers that never sent a
   // status keep the DB value untouched (undefined keys are dropped by
@@ -136,6 +142,14 @@ export const productInputSchema = z.object({
   cost_price:     z.preprocess(
                     v => (v === '' || v == null ? null : v),
                     positiveNumber.nullable(),
+                  ),
+  // Package weight in grams (Shopify's Shipping card). Feeds courier booking
+  // (the parcel weight is the sum of item weights); never shown to shoppers.
+  // Absent leaves the stored value alone (CSV import without the column);
+  // an empty string from the form clears it to null.
+  weight_grams:   z.preprocess(
+                    v => (v == null ? undefined : v === '' ? null : v),
+                    positiveInt.nullable().optional(),
                   ),
   image_url:      httpsUrlSchema.optional().or(z.literal('')).nullable(),
   // Optional short product video (PDP gallery slide). Empty string from the

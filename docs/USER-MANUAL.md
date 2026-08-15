@@ -371,7 +371,7 @@ Here's what each link is for:
 
 | Section | What it's for |
 |---|---|
-| **Collections** | Curated product groups, each with its own landing page (`/collection/<slug>`). **Manual** collections are a hand-picked, drag-ordered product list; **Smart** collections fill themselves from rules (e.g. *tag is viral* **and** *price ≤ 3000*) and stay current as products change. Set a title, description, hero image, SEO, and Draft/Published status. Draft collections are hidden from the storefront. |
+| **Collections** | Curated product groups, each with its own landing page (`/collection/<slug>`). **Manual** collections are a hand-picked, drag-ordered product list; **Smart** collections fill themselves from rules (e.g. *tag is viral* **and** *price ≤ 3000*) and stay current as products change. Rules can match by product title, tag, brand, category, packaging, price, stock and the on-sale/featured/bestseller flags; text fields take *is*, *contains* and *does not contain* (Shopify's operators), and price and stock take at-most / at-least comparisons. The edit page's "Currently matching" preview uses the exact same matching as the live collection page, so the count you see is the count shoppers get. Set a title, description, hero image, SEO, and Draft/Published status. Draft collections are hidden from the storefront. |
 | **Brands** | The brand pages (`/brand/<slug>`) — logo, description and SEO text for each brand you stock. **Search** by name or slug above the list, and the summary cards flag brands still needing a description, logo or hero image. |
 | **Tags** | The tag vocabulary. Free-form labels (e.g. *viral*, *vegan*, *gift*) you attach to products for storefront filtering and curated edits. Create, rename (the storefront link stays stable), or delete a tag; deleting removes it from every product. The "N products" link jumps to the tagged products. |
 
@@ -476,6 +476,8 @@ Open an order to process it (see [section 4](#4-processing-a-sale--the-order-wor
 
 **Manual order entry.** A **+ New order** button (also in the Cmd K palette as "New order") opens manual order entry for orders taken over WhatsApp, phone, or DMs: search-and-add products (quantities and unit prices are editable, so an agreed special price is fine), enter the customer's delivery details (a search box above the customer fields finds a repeat customer by phone, name or email and fills their details from their most recent order), and the shipping charge is suggested from your shipping zones (editable — set it to 0 for free delivery) along with an optional manual discount. If a supplier will fulfil the order, pick them in **Fulfilled by vendor** — the form previews the estimated vendor cost and your margin from the vendor's commission %, and the created order gets its acquisition cost and settlement recorded automatically (nothing is sent to the vendor yet — use the order page's WhatsApp dispatch for that). Stock is reserved through the inventory ledger exactly like a storefront order, the order appears in the list marked as a manual order for reporting, and if you enter the customer's email you can tick a box to send them the standard confirmation email.
 
+**Drafts.** A half-taken order does not have to be finished in one sitting: **Save as draft** (next to Create order, with an optional note) stores the whole form, items, customer details, shipping, discount and all. Saved drafts appear in a card above the form with the customer's name, item count, subtotal and who saved it; **Resume** reopens one exactly where you left off (if a product in it has since become unavailable, the form says so and drops that line), further saves update the same draft, and completing the order removes it. Delete clears one you no longer need.
+
 ### Products in detail
 
 The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, an optional **short product video** (drag-drop or browse — MP4/WebM, max 30 MB; shown as a tap-to-play gallery slide), pricing, and descriptions. Saving a **new** product now lands you straight on its edit page (variants, tags and extra images are only editable there), with a note confirming it was created. Each product page also has a **Tags** box — type to add a free-form tag (creating it if new) or reuse an existing one.
@@ -486,6 +488,14 @@ The catalogue. Create, edit, publish, archive, and delete products; manage varia
 - **Bulk edit** — the Shopify-style spreadsheet: tick products, press **Bulk edit**, and the selection opens as one editable grid — status, price, compare-at, cost and (for products whose stock you hold and count) stock, all inline. One **Save all changes** writes only the rows you actually changed; stock edits land in Movement history like any other stock change, and the stock cell reads "N via variants", "vendor-held" or "not counted" where a single number would lie.
 - **Duplicate** — every row has a Duplicate button that deep-copies the product (variants, tags, gallery images and related-product links included) into a new **draft** named "… (copy)" and opens it for editing — the fastest way to add a product that's similar to an existing one.
 - **Export CSV / Import CSV** — the spreadsheet round-trip: Export downloads the whole catalogue (all statuses) as one file whose columns match the importer, so you can mass-edit prices, stock or statuses in Excel and re-import the same file — rows are matched by their `slug` column, so don't edit that column. The file includes a **`cost_price`** column, which makes costing a whole brand a single spreadsheet pass instead of hundreds of form saves — and Finance can only show real margin on own-stock items once it's filled. Leaving `cost_price`, `status` or `track_inventory` **blank keeps whatever the product already has**, so a sheet where you've only filled some rows never wipes the rest.
+
+The *Pricing & stock* section of the product form also takes a **SKU (Stock Keeping Unit)** and a **Barcode (ISBN, UPC, GTIN, etc.)** on simple (no-variant) products, the same two fields as Shopify's Inventory card. Both are optional: the SKU is your internal product code and shows in the products list under the product name, the barcode is the number printed under the barcode on the retail box. Products with variants keep their SKUs on each variant instead, so the form points you to the Variants section for those.
+
+**Reordering options and values.** On a variable product's page, the Variants card lists what the product varies on (for example Shade or Size) with a chip for each value. Use the up and down arrows next to an option row to change which option appears first on the product page, and the arrows next to each value chip to set the order shades or sizes are shown in. The storefront follows this order exactly. Options and values are shared across the catalogue, so a new order also applies to other products that use them.
+
+**Variant images.** Each row in the variant table has an image button on the left. Click it to assign one of the product's existing photos (the cover image or any gallery image) to that variant. When a shopper picks that variant on the product page, the photo swaps to the assigned image. Choose "No image" to go back to the shared gallery. Upload photos in the Product image or gallery sections first; the picker only assigns, it does not upload.
+
+**Weight.** The product form has a Shipping section with an optional Weight (grams) field. It is never shown to shoppers. When booking a courier, the parcel weight is calculated as the sum of the item weights in the order; items without a weight are assumed at 500 g each, and you can still override the weight on the booking form.
 
 The product form has a **Status** field (Basics section): new products start as **Draft**, so nothing goes live — or gets submitted to search engines — until you switch it to *Published*. Deleting a product that has ever been ordered archives it instead of removing it, so order history and analytics keep the product's name.
 
@@ -750,9 +760,27 @@ order confirmation email, the email field has a **Resend confirmation email**
 button right next to it (gated on Orders — Manage); the resend is recorded in
 the Activity log.
 
-> **Tip:** cancelling an order — from the order page or via the bulk bar on the
-> Orders list — automatically returns its items to stock. Because of that (and
-> because the customer is emailed), both cancel paths ask you to confirm first.
+**Cancelling an order.** Choosing *Cancelled* in the Update Order control does
+not fire straight away: it opens a small **cancel dialog**, the same shape
+Shopify uses. In it you pick a **reason** (Customer changed their mind, Payment
+declined, Fraudulent order, Items unavailable, Staff error, Other) and two
+checkboxes decide what happens next:
+
+- **Restock items** (ticked by default) returns the cancelled quantities to
+  stock through the inventory ledger, exactly like the old automatic restock.
+  Untick it when there is nothing to put back on the shelf, for example a
+  parcel lost in transit.
+- **Send a notification to the customer** (ticked by default when the order
+  has an email address) sends a branded cancellation email with the order
+  number. The email states the reason only when it means something to the
+  customer (changed their mind, items unavailable); internal reasons such as
+  Fraudulent order or Staff error are never shown to them. Orders without an
+  email get no automatic notice, so tell those customers on WhatsApp.
+
+The reason and both choices are recorded on the order timeline and in the
+Activity log, so "why was this cancelled?" always has an answer. Bulk
+cancellation from the Orders list bulk bar keeps the old behaviour: it
+restocks and emails automatically, with a confirm prompt first.
 
 ---
 
@@ -1081,6 +1109,18 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 15 August 2026
+
+- **Manual orders can be saved as drafts.** A phone order interrupted mid-entry can be parked with **Save as draft** on the New order screen and resumed later exactly where it stopped, items, customer details, shipping and discount included. Drafts list above the form with who saved them and when; completing the order clears its draft. Details in the Manual order entry part of [Orders in detail](#orders-in-detail).
+
+- **New free tool: Daily Burn Check.** A TDEE calculator at /tdee-calculator joins the calculators family: it estimates the calories a person burns in a full day from age, sex, height, weight and activity level, and shows targets for losing or gaining from that number. It appears on the Answers hub, the homepage tools band and the site footer like the other calculators.
+
+- **Cancelling an order now asks the right questions.** Choosing *Cancelled* on an order opens a small dialog, Shopify-style: pick a reason (Customer changed their mind, Payment declined, Fraudulent order, Items unavailable, Staff error, Other), choose whether to **restock the items** (on by default), and whether to **email the customer** a branded cancellation notice (on by default when the order has an email; internal reasons like Fraudulent order or Staff error are never shown to the customer). The reason and choices land on the order timeline and in the Activity log. Details in [section 4](#4-processing-a-sale--the-order-workflow).
+
+- **SKU and barcode on products.** Simple (no-variant) products now take a **SKU (Stock Keeping Unit)** and a **Barcode (ISBN, UPC, GTIN, etc.)** in the product form's *Pricing & stock* section, the same fields as Shopify's Inventory card. The SKU shows under the product name in the products list. Products with variants keep per-variant SKUs as before.
+
+- **Variants got Shopify's finishing touches.** Options and their values can be reordered with arrows on the Variants card and the product page follows that order, each variant can point at one of the product's photos so picking a shade swaps the picture, and the product form gained a Shipping section with an optional weight in grams that courier bookings use automatically. Details in [Products in detail](#products-in-detail).
+
+- **Smart collections learned more operators.** Rule-based collections can now match by **product title**, and text rules (title, tag, brand, category) take **contains** and **does not contain** alongside the exact pick. A **stock** rule joins price with the same at-most / at-least comparisons. The preview count and the live collection page use the same matching, so they always agree.
 
 - **Dashboard and Analytics sharpened.** The dashboard's Today cards now compare against yesterday (the same-weekday comparison moved into the caption), the Needs-attention feed also flags abandoned checkouts, delivered COD cash awaiting confirmation, pending vendor payouts and unanswered product questions, and the low-stock strip respects per-product reorder points. Analytics' Sales tab gained a returning customer rate, items per order, a new-vs-returning revenue chart and a sales-by-city table, and Finance's ad performance table now groups by the same channel names as Analytics → Sources, so "fb", "facebook" and "facebook.com" finally count as one channel on both pages.
 
