@@ -1102,6 +1102,8 @@ A dated history of user-facing changes, newest first.
 
 ### 15 August 2026
 
+- **New free tool: Daily Burn Check.** A TDEE calculator at /tdee-calculator joins the calculators family: it estimates the calories a person burns in a full day from age, sex, height, weight and activity level, and shows targets for losing or gaining from that number. It appears on the Answers hub, the homepage tools band and the site footer like the other calculators.
+
 - **Cancelling an order now asks the right questions.** Choosing *Cancelled* on an order opens a small dialog, Shopify-style: pick a reason (Customer changed their mind, Payment declined, Fraudulent order, Items unavailable, Staff error, Other), choose whether to **restock the items** (on by default), and whether to **email the customer** a branded cancellation notice (on by default when the order has an email; internal reasons like Fraudulent order or Staff error are never shown to the customer). The reason and choices land on the order timeline and in the Activity log. Details in [section 4](#4-processing-a-sale--the-order-workflow).
 
 - **SKU and barcode on products.** Simple (no-variant) products now take a **SKU (Stock Keeping Unit)** and a **Barcode (ISBN, UPC, GTIN, etc.)** in the product form's *Pricing & stock* section, the same fields as Shopify's Inventory card. The SKU shows under the product name in the products list. Products with variants keep per-variant SKUs as before.
