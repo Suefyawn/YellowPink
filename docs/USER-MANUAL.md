@@ -476,6 +476,8 @@ Open an order to process it (see [section 4](#4-processing-a-sale--the-order-wor
 
 **Manual order entry.** A **+ New order** button (also in the Cmd K palette as "New order") opens manual order entry for orders taken over WhatsApp, phone, or DMs: search-and-add products (quantities and unit prices are editable, so an agreed special price is fine), enter the customer's delivery details (a search box above the customer fields finds a repeat customer by phone, name or email and fills their details from their most recent order), and the shipping charge is suggested from your shipping zones (editable — set it to 0 for free delivery) along with an optional manual discount. If a supplier will fulfil the order, pick them in **Fulfilled by vendor** — the form previews the estimated vendor cost and your margin from the vendor's commission %, and the created order gets its acquisition cost and settlement recorded automatically (nothing is sent to the vendor yet — use the order page's WhatsApp dispatch for that). Stock is reserved through the inventory ledger exactly like a storefront order, the order appears in the list marked as a manual order for reporting, and if you enter the customer's email you can tick a box to send them the standard confirmation email.
 
+**Drafts.** A half-taken order does not have to be finished in one sitting: **Save as draft** (next to Create order, with an optional note) stores the whole form, items, customer details, shipping, discount and all. Saved drafts appear in a card above the form with the customer's name, item count, subtotal and who saved it; **Resume** reopens one exactly where you left off (if a product in it has since become unavailable, the form says so and drops that line), further saves update the same draft, and completing the order removes it. Delete clears one you no longer need.
+
 ### Products in detail
 
 The catalogue. Create, edit, publish, archive, and delete products; manage variants, images, an optional **short product video** (drag-drop or browse — MP4/WebM, max 30 MB; shown as a tap-to-play gallery slide), pricing, and descriptions. Saving a **new** product now lands you straight on its edit page (variants, tags and extra images are only editable there), with a note confirming it was created. Each product page also has a **Tags** box — type to add a free-form tag (creating it if new) or reuse an existing one.
@@ -1101,6 +1103,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 15 August 2026
+
+- **Manual orders can be saved as drafts.** A phone order interrupted mid-entry can be parked with **Save as draft** on the New order screen and resumed later exactly where it stopped, items, customer details, shipping and discount included. Drafts list above the form with who saved them and when; completing the order clears its draft. Details in the Manual order entry part of [Orders in detail](#orders-in-detail).
 
 - **New free tool: Daily Burn Check.** A TDEE calculator at /tdee-calculator joins the calculators family: it estimates the calories a person burns in a full day from age, sex, height, weight and activity level, and shows targets for losing or gaining from that number. It appears on the Answers hub, the homepage tools band and the site footer like the other calculators.
 
