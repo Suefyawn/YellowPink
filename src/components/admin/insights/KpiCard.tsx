@@ -54,13 +54,16 @@ export function KpiCard({
           </span>
         )}
       </span>
+      {/* Footer line: the delta's comparison basis AND the hint both render
+          (joined with a dot) — a card can carry two reads, e.g. a "vs
+          yesterday" pill plus a "vs last Thursday: …" baseline. */}
       {(spark && spark.length > 1) ? (
         <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Sparkline values={spark} color={accent} />
-          {(delta?.vs || hint) && <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{delta?.vs ?? hint}</span>}
+          {(delta?.vs || hint) && <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{[delta?.vs, hint].filter(Boolean).join(' · ')}</span>}
         </span>
       ) : (
-        (delta?.vs || hint) && <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{delta?.vs ?? hint}</span>
+        (delta?.vs || hint) && <span style={{ fontSize: '0.72rem', color: '#9ca3af' }}>{[delta?.vs, hint].filter(Boolean).join(' · ')}</span>
       )}
     </>
   );

@@ -16,7 +16,7 @@ import { MerchHealthWidget } from '@/components/admin/MerchHealthWidget';
 import { brandPlusName } from '@/lib/product-display';
 import { can, canAny } from '@/lib/permissions';
 import { ORDER_STATUS_LABELS } from '@/types';
-import type { Order, OrderStatus, Product } from '@/types';
+import type { Order, OrderStatus } from '@/types';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 interface DashboardKpis {
@@ -58,6 +58,11 @@ export default async function DashboardPage() {
   // in the Needs-attention card so they don't drift past the operator's eye.
   const oneDayAgo = new Date(nowMs - 24 * 60 * 60 * 1000).toISOString();
   const threeDaysAgo = new Date(nowMs - 3 * 24 * 60 * 60 * 1000).toISOString();
+  // Abandoned-checkout window: shoppers get an hour to finish on their own
+  // (same grace as the Abandoned page), and only the last 48h count as
+  // "recover me now" — older carts are win-back territory, not triage.
+  const oneHourAgo = new Date(nowMs - 60 * 60 * 1000).toISOString();
+  const twoDaysAgo = new Date(nowMs - 48 * 60 * 60 * 1000).toISOString();
 
   // orders RLS (migration 070) drops anon SELECT, use the service role
   // for every orders read on this page. products / blog_posts still
@@ -66,8 +71,7 @@ export default async function DashboardPage() {
   const [
     { data: recentOrders },
     { data: kpisData },
-    { data: lowStockProducts },
-    { count: lowStockCount },
+    { data: trackedProductRows },
     { count: newCustomerCount },
     { count: prevCustomerCount },
     { count: stuckPaymentCount },
@@ -76,6 +80,10 @@ export default async function DashboardPage() {
     { count: unreadMessageCount },
     { count: pendingReviewCount },
     { data: codTransitRows },
+    { count: abandonedCount },
+    { data: codConfirmRows },
+    { data: vendorPayoutRows },
+    { count: openQuestionCount },
   ] = await Promise.all([
     admin.from('orders').select('*').is('archived_at', null).order('created_at', { ascending: false }).limit(5),
     // P1 audit fix: aggregated KPIs (revenue, order count, status histogram,
@@ -83,11 +91,10 @@ export default async function DashboardPage() {
     // pulled every orders row + its JSONB items into Node and aggregated in
     // JS, would degrade linearly with order count.
     admin.rpc('dashboard_kpis' as never) as unknown as Promise<{ data: DashboardKpis | null }>,
-    // Cap the low-stock list to 50 so a long-tail catalog with many
-    // out-of-stock rows doesn't blow up the dashboard; the card next to it
-    // shows the exact count.
-    supabase.from('products').select('*').eq('track_inventory', true).lte('stock', 5).order('stock', { ascending: true }).limit(50),
-    supabase.from('products').select('*', { count: 'exact', head: true }).eq('track_inventory', true).lte('stock', 5),
+    // All tracked products; the low-stock filter runs in JS because each
+    // product has its own threshold (reorder_point when set, else 5) and
+    // PostgREST can't compare two columns. ~100 SKUs, one cheap read.
+    supabase.from('products').select('id, name, brand, stock, reorder_point').eq('track_inventory', true),
     admin.from('customer_profiles').select('*', { count: 'exact', head: true }).gte('created_at', thirtyDaysAgo),
     // Prior-period customer comparison for the trend pill (revenue/orders/
     // sessions trends are computed in the Overview chart from its own series).
@@ -116,7 +123,41 @@ export default async function DashboardPage() {
     // (vendor delivers and keeps the cash; settles on the Vendors page) is
     // excluded via the vendors join below.
     admin.from('orders').select('total, vendor_id, vendors(settlement_direction)').eq('status', 'shipped').eq('pay_method', 'cod').is('archived_at', null),
+    // Abandoned checkouts worth recovering right now: not recovered, has a
+    // phone (the Abandoned page's queue is WhatsApp-driven and only lists
+    // those rows, so the count must agree with what the link opens), idle
+    // for at least an hour, active within the last 48h.
+    admin.from('abandoned_carts').select('*', { count: 'exact', head: true })
+      .eq('recovered', false).not('phone', 'is', null)
+      .lt('last_activity_at', oneHourAgo).gte('last_activity_at', twoDaysAgo),
+    // Delivered COD cash not yet marked received — the same store-collected
+    // set as Finance → COD's "cash to confirm" column (vendor-collected COD
+    // is excluded below via the vendors join; that cash settles on the
+    // Vendors page, not through the store's courier account).
+    admin.from('orders').select('vendor_id, vendors(settlement_direction)')
+      .eq('pay_method', 'cod').eq('status', 'delivered')
+      .is('payment_received_at', null).is('archived_at', null),
+    // Vendor payouts the store still owes (pending settlements due TO the
+    // vendor) — count + PKR for the triage row.
+    admin.from('vendor_settlements').select('amount_due')
+      .eq('status', 'pending').eq('due_to', 'vendor'),
+    // Product questions awaiting an answer (same filter as the sidebar badge).
+    admin.from('product_questions').select('id', { count: 'exact', head: true })
+      .eq('status', 'pending'),
   ]);
+
+  // Per-product low-stock threshold: reorder_point when the owner has set one
+  // (>0), else the legacy fallback of 5 — so the strip matches the Inventory
+  // page's "Reorder needed" thinking instead of a hard-coded 5 for everyone.
+  interface LowStockLite { id: string; name: string; brand: string; stock: number; reorder_point?: number | null }
+  const lowStockAll = ((trackedProductRows ?? []) as LowStockLite[])
+    .filter(p => Number(p.stock) <= ((Number(p.reorder_point) || 0) > 0 ? Number(p.reorder_point) : 5))
+    .sort((a, b) => Number(a.stock) - Number(b.stock));
+  const lowStockCount = lowStockAll.length;
+  // Cap the rendered chips to 50 so a long-tail catalog with many
+  // out-of-stock rows doesn't blow up the dashboard; the heading shows the
+  // exact count.
+  const lowStockProducts = lowStockAll.slice(0, 50);
 
   // 180-day daily series for the interactive Overview chart (it shows up to a
   // 90-day window plus the prior 90-day comparison). Pulls orders/revenue from
@@ -147,14 +188,14 @@ export default async function DashboardPage() {
 
   // ── Today row ── sourced from the same analytics_daily series that powers
   // the Overview chart, so the headline numbers and the chart can never
-  // disagree. The delta compares today-so-far against the SAME WEEKDAY last
-  // week (a full day), the fairest daily baseline for a store whose sales
-  // swing by weekday — an early-morning dip is expected and the pill's label
-  // says what it's comparing.
+  // disagree. Two comparisons per card (the Shopify pattern): the delta pill
+  // is today-so-far vs YESTERDAY (the freshest read), and the hint line keeps
+  // the SAME-WEEKDAY-LAST-WEEK baseline — the fairest full-day comparison for
+  // a store whose sales swing by weekday.
   const today = overviewSeries[overviewSeries.length - 1];
   const lastSameWeekday = overviewSeries[overviewSeries.length - 8];
   const todayWeekday = WEEKDAYS[new Date(`${today.date}T00:00:00Z`).getUTCDay()];
-  const vsLabel = `vs last ${todayWeekday}`;
+  const vsLabel = 'vs yesterday';
   const spark14 = (at: (d: OverviewDay) => number) => overviewSeries.slice(-14).map(at);
   const todayAov = today.orders > 0 ? today.revenue / today.orders : 0;
   const lastAov = lastSameWeekday.orders > 0 ? lastSameWeekday.revenue / lastSameWeekday.orders : 0;
@@ -194,9 +235,9 @@ export default async function DashboardPage() {
   });
   const codInTransit = codTransitStore.reduce((t, o) => t + Number(o.total ?? 0), 0);
   const codTransitCount = codTransitStore.length;
-  // Yesterday's full-day numbers give the always-zero early morning some
-  // context (the delta pill compares same-weekday-last-week; this line is
-  // simply "what did we do yesterday").
+  // Yesterday's full-day numbers are the delta pill's baseline (index -2 of
+  // the zero-filled series); the same-weekday-last-week read lives in each
+  // card's hint line.
   const yesterday = overviewSeries[overviewSeries.length - 2];
   const yesterdayAov = yesterday.orders > 0 ? yesterday.revenue / yesterday.orders : 0;
 
@@ -230,6 +271,35 @@ export default async function DashboardPage() {
     count: pendingReviewCount ?? 0, tone: 'amber',
     label: `review${(pendingReviewCount ?? 0) === 1 ? '' : 's'} awaiting moderation`,
     href: '/admin/reviews',
+  });
+  if ((abandonedCount ?? 0) > 0) attention.push({
+    count: abandonedCount ?? 0, tone: 'amber',
+    label: `abandoned checkout${(abandonedCount ?? 0) === 1 ? '' : 's'} in the last 48h to recover`,
+    href: '/admin/abandoned',
+  });
+  // Store-collected delivered COD cash awaiting confirmation — same
+  // vendor-collected exclusion as Finance → COD, so the two counts agree.
+  const codConfirmCount = ((codConfirmRows ?? []) as { vendor_id: string | null; vendors: { settlement_direction: string | null } | { settlement_direction: string | null }[] | null }[])
+    .filter(o => {
+      const v = Array.isArray(o.vendors) ? o.vendors[0] : o.vendors;
+      return v?.settlement_direction !== 'vendor_collects';
+    }).length;
+  if (codConfirmCount > 0) attention.push({
+    count: codConfirmCount, tone: 'amber',
+    label: `delivered COD order${codConfirmCount === 1 ? '' : 's'} with cash to confirm`,
+    href: '/admin/finance/cod',
+  });
+  const vendorPayouts = (vendorPayoutRows ?? []) as { amount_due: number | string | null }[];
+  const vendorPayoutTotal = vendorPayouts.reduce((s, r) => s + (Number(r.amount_due) || 0), 0);
+  if (vendorPayouts.length > 0) attention.push({
+    count: vendorPayouts.length, tone: 'amber',
+    label: `vendor payout${vendorPayouts.length === 1 ? '' : 's'} pending (${fmtPKR(vendorPayoutTotal)})`,
+    href: '/admin/vendors',
+  });
+  if ((openQuestionCount ?? 0) > 0) attention.push({
+    count: openQuestionCount ?? 0, tone: 'amber',
+    label: `unanswered product question${(openQuestionCount ?? 0) === 1 ? '' : 's'}`,
+    href: '/admin/questions',
   });
   const hasRed = attention.some(a => a.tone === 'red');
 
@@ -275,26 +345,26 @@ export default async function DashboardPage() {
           label="Sales today"
           value={fmtPKR(today.revenue)}
           accent="#10b981"
-          delta={pctDelta(today.revenue, lastSameWeekday.revenue) != null ? { pct: pctDelta(today.revenue, lastSameWeekday.revenue)!, goodWhenUp: true, vs: vsLabel } : null}
+          delta={pctDelta(today.revenue, yesterday.revenue) != null ? { pct: pctDelta(today.revenue, yesterday.revenue)!, goodWhenUp: true, vs: vsLabel } : null}
           spark={spark14(d => d.revenue)}
-          hint={`Yesterday ${fmtPKR(yesterday.revenue)}`}
+          hint={`vs last ${todayWeekday}: ${fmtPKR(lastSameWeekday.revenue)}`}
         />
         <KpiCard
           label="Orders today"
           value={fmtInt(today.orders)}
           accent="#C5286A"
           href="/admin/orders?range=1d"
-          delta={pctDelta(today.orders, lastSameWeekday.orders) != null ? { pct: pctDelta(today.orders, lastSameWeekday.orders)!, goodWhenUp: true, vs: vsLabel } : null}
+          delta={pctDelta(today.orders, yesterday.orders) != null ? { pct: pctDelta(today.orders, yesterday.orders)!, goodWhenUp: true, vs: vsLabel } : null}
           spark={spark14(d => d.orders)}
-          hint={`Yesterday ${fmtInt(yesterday.orders)}`}
+          hint={`vs last ${todayWeekday}: ${fmtInt(lastSameWeekday.orders)}`}
         />
         <KpiCard
           label="Avg order value"
           value={fmtPKR(todayAov)}
           accent="#6366f1"
-          delta={pctDelta(todayAov, lastAov) != null ? { pct: pctDelta(todayAov, lastAov)!, goodWhenUp: true, vs: vsLabel } : null}
+          delta={pctDelta(todayAov, yesterdayAov) != null ? { pct: pctDelta(todayAov, yesterdayAov)!, goodWhenUp: true, vs: vsLabel } : null}
           spark={spark14(d => (d.orders > 0 ? d.revenue / d.orders : 0))}
-          hint={`Yesterday ${fmtPKR(yesterdayAov)}`}
+          hint={`vs last ${todayWeekday}: ${fmtPKR(lastAov)}`}
         />
         {sessionDay && (
           <KpiCard
@@ -424,22 +494,27 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* Low Stock Alert */}
-      {lowStockProducts && lowStockProducts.length > 0 && (
+      {/* Low stock — each product judged against its own reorder point
+          (fallback 5), mirroring the Inventory page's reorder logic. */}
+      {lowStockProducts.length > 0 && (
         <div style={{
           background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10,
           padding: '20px 24px', marginBottom: 32,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#92400e' }}>
-              ⚠ Low Stock Alert ({lowStockCount ?? lowStockProducts.length} item{(lowStockCount ?? lowStockProducts.length) > 1 ? 's' : ''})
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16, gap: 12, flexWrap: 'wrap' }}>
+            <h2 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 600, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" />
+                <path d="M12 9v4" /><path d="M12 17h.01" />
+              </svg>
+              At or below reorder point ({lowStockCount} item{lowStockCount === 1 ? '' : 's'})
             </h2>
-            <Link href="/admin/products" style={{ fontSize: '0.8125rem', color: '#d97706', textDecoration: 'none' }}>
-              Manage products →
+            <Link href="/admin/inventory" style={{ fontSize: '0.8125rem', color: '#d97706', textDecoration: 'none' }}>
+              Open inventory →
             </Link>
           </div>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-            {(lowStockProducts as Product[]).map(p => (
+            {lowStockProducts.map(p => (
               <Link key={p.id} href={`/admin/products/${p.id}`} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '6px 12px', background: 'white', borderRadius: 8,

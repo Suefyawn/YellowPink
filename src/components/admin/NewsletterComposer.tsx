@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/admin/Toast';
-import { sendNewsletterCampaign, saveNewsletterDraft, deleteNewsletterDraft, previewNewsletterCampaign } from '@/app/admin/newsletter/actions';
+import { sendNewsletterCampaign, saveNewsletterDraft, deleteNewsletterDraft, previewNewsletterCampaign, type CampaignAudience } from '@/app/admin/newsletter/actions';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
 
 export interface NewsletterDraft {
@@ -19,17 +19,37 @@ const inputStyle: React.CSSProperties = {
   color: '#111827', outline: 'none', boxSizing: 'border-box',
 };
 
-export function NewsletterComposer({ activeCount, customerCount = 0, bothCount = 0, drafts = [] }: {
+export interface SegmentAudience {
+  id: string;
+  name: string;
+  /** Members with an email who have not unsubscribed. */
+  count: number;
+}
+
+export function NewsletterComposer({ activeCount, customerCount = 0, bothCount = 0, segments = [], drafts = [] }: {
   activeCount: number;
   /** Distinct order emails that have not unsubscribed. */
   customerCount?: number;
   /** Union of subscribers + customers, deduped. */
   bothCount?: number;
+  /** Custom customer segments, selectable as an audience. */
+  segments?: SegmentAudience[];
   drafts?: NewsletterDraft[];
 }) {
-  const [audience, setAudience] = useState<'subscribers' | 'customers' | 'both'>('subscribers');
-  const audienceCount = audience === 'subscribers' ? activeCount : audience === 'customers' ? customerCount : bothCount;
-  const audienceLabel = audience === 'subscribers' ? 'subscribers' : audience === 'customers' ? 'customers' : 'people (subscribers + customers)';
+  const [audience, setAudience] = useState<CampaignAudience>('subscribers');
+  const selectedSegment = audience.startsWith('segment:')
+    ? segments.find(s => `segment:${s.id}` === audience) ?? null
+    : null;
+  const audienceCount =
+    audience === 'subscribers' ? activeCount :
+    audience === 'customers' ? customerCount :
+    audience === 'both' ? bothCount :
+    selectedSegment?.count ?? 0;
+  const audienceLabel =
+    audience === 'subscribers' ? 'subscribers' :
+    audience === 'customers' ? 'customers' :
+    audience === 'both' ? 'people (subscribers + customers)' :
+    `people in the "${selectedSegment?.name ?? 'segment'}" segment`;
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
@@ -203,6 +223,9 @@ export function NewsletterComposer({ activeCount, customerCount = 0, bothCount =
             <option value="subscribers">Subscribers ({activeCount})</option>
             <option value="customers">Customers ({customerCount})</option>
             <option value="both">Both, deduped ({bothCount})</option>
+            {segments.map(s => (
+              <option key={s.id} value={`segment:${s.id}`}>Segment: {s.name} ({s.count})</option>
+            ))}
           </select>
         </label>
         <button
@@ -215,7 +238,7 @@ export function NewsletterComposer({ activeCount, customerCount = 0, bothCount =
             cursor: pending || audienceCount === 0 ? 'not-allowed' : 'pointer',
           }}
         >
-          {pending ? 'Working…' : `Send to ${audienceCount} ${audience === 'both' ? 'people' : audience}`}
+          {pending ? 'Working…' : `Send to ${audienceCount} ${audience === 'subscribers' || audience === 'customers' ? audience : 'people'}`}
         </button>
         <button
           onClick={async () => {

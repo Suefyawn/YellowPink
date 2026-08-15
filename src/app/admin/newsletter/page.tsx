@@ -9,6 +9,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { NewsletterComposer, type NewsletterDraft } from '@/components/admin/NewsletterComposer';
 import { SubscriberList, type Subscriber } from '@/components/admin/SubscriberList';
 import { fmtDatePK as fmtDate } from '@/lib/dates';
+import { parseCriteria, type SegmentMember } from '@/lib/segments';
 
 interface CampaignRow {
   id: string;
@@ -77,6 +78,25 @@ export default async function NewsletterPage() {
   );
   const bothCount = new Set([...customerEmailSet, ...subscriberEmailSet]).size;
 
+  // Custom segments for the audience picker, each with its live count of
+  // mailable members (has an email, hasn't unsubscribed). One RPC per
+  // segment — fine at this scale, same as the Segments page.
+  const { data: segRows } = await admin
+    .from('customer_segments')
+    .select('id, name, criteria')
+    .order('created_at', { ascending: true });
+  const segments = await Promise.all(
+    ((segRows ?? []) as Array<{ id: string; name: string; criteria: unknown }>).map(async s => {
+      const { data: members } = await admin.rpc('segment_customers' as never, { p_criteria: parseCriteria(s.criteria) } as never);
+      const mailable = new Set(
+        ((members ?? []) as unknown as SegmentMember[])
+          .map(m => m.email?.trim().toLowerCase())
+          .filter((e): e is string => !!e && !unsubscribedSet.has(e)),
+      );
+      return { id: s.id, name: s.name, count: mailable.size };
+    }),
+  );
+
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Newsletter</h1>
@@ -89,6 +109,7 @@ export default async function NewsletterPage() {
         activeCount={activeSubscribers}
         customerCount={customerEmailSet.size}
         bothCount={bothCount}
+        segments={segments}
         drafts={drafts}
       />
 
