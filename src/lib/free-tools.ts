@@ -69,6 +69,7 @@ export const FREE_TOOLS: FreeTool[] = [
     categories: ['Wellness', "Men's Health", 'Heart Health'],
     tint: '#e8f4f2',
     accent: '#0f766e',
+    image: '/answers/tdee.webp',
   },
   {
     href: '/fertility-quiz',
