@@ -2,6 +2,7 @@ export const revalidate = 3600;
 
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { getActiveReviewers, reviewerFullLabel } from '@/lib/reviewers';
 import { pageMeta, jsonLd, breadcrumbLd } from '@/lib/seo';
 import { Overline } from '@/components/ui/Overline';
@@ -23,8 +24,10 @@ export async function generateMetadata(): Promise<Metadata> {
 function Avatar({ name, photo, size = 64 }: { name: string; photo: string | null; size?: number }) {
   const initials = name.replace(/^(dr|prof|mr|ms|mrs)\.?\s+/i, '').split(/\s+/).slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') || 'YP';
   if (photo) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={photo} alt={name} width={size} height={size} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
+    // next/image (not a raw <img>): reviewer photos are stored full-size
+    // (some are multi-MB), and the /img resizer the loader points at turns
+    // that into a few-KB derivative for this small circle.
+    return <Image src={photo} alt={name} width={size} height={size} style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />;
   }
   return (
     <div style={{ width: size, height: size, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

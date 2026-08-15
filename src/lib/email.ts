@@ -22,6 +22,7 @@ import { SITE_URL } from './seo';
 import { getRecipientsForEvent } from './notification-recipients';
 import { getWelcomeOffer } from './offers';
 import { courierTrackingUrl } from '@/lib/couriers/profiles';
+import { sizedImageUrl } from './image-url';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 // OWNER_EMAIL stays as the fallback recipient and as a reply-to address on
@@ -933,7 +934,7 @@ function productCardsHtml(cards: CampaignCard[]): string {
         <tr><td>
           <a href="${SITE_URL}/product/${encodeURIComponent(p.slug)}" style="text-decoration:none">
             ${p.image_url
-              ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}" width="100%" style="display:block;width:100%;height:auto;border:0;background:${PAPER}"/>`
+              ? `<img src="${escapeHtml(sizedImageUrl(p.image_url, 560))}" alt="${escapeHtml(p.name)}" width="100%" style="display:block;width:100%;height:auto;border:0;background:${PAPER}"/>`
               : `<div style="height:120px;background:${PAPER}"></div>`}
           </a>
         </td></tr>
@@ -1072,7 +1073,7 @@ export async function sendReviewRequestEmail(args: {
     <tr>
       <td style="padding:8px 12px 8px 0;width:56px">
         ${p.image_url
-          ? `<img src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.name)}" width="56" height="56" style="border-radius:8px;border:1px solid #e5e7eb;object-fit:cover"/>`
+          ? `<img src="${escapeHtml(sizedImageUrl(p.image_url, 112))}" alt="${escapeHtml(p.name)}" width="56" height="56" style="border-radius:8px;border:1px solid #e5e7eb;object-fit:cover"/>`
           : ''}
       </td>
       <td style="padding:8px 0;font-size:14px;color:${INK}">${escapeHtml(p.name)}</td>

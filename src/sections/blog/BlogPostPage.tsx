@@ -294,7 +294,9 @@ export function BlogPostPage({ post, relatedPosts, relatedProducts, relatedProdu
                   <strong style={{ color: 'var(--ink-900)' }}>{reviewerLabel(reviewer)}</strong>
                 )}
                 {reviewer.specialty ? ` · ${reviewer.specialty}` : ''}
-                {' '}· Last reviewed {post.updated_at ? new Date(post.updated_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ }) : formatBlogDate(post.date)}
+                {/* reviewed_at is the doctor's actual sign-off moment; fall back
+                    to updated_at for grandfathered rows without one. */}
+                {' '}· Last reviewed {(post.reviewed_at ?? post.updated_at) ? new Date((post.reviewed_at ?? post.updated_at)!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ }) : formatBlogDate(post.date)}
               </span>
             </div>
           )}

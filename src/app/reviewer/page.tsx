@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { getSignedInReviewer, getReviewedPosts } from '@/lib/reviewer-portal';
-import { updateReviewerProfile, signOutReviewer } from './actions';
+import { updateReviewerProfile, signOutReviewer, approveReviewAssignment, requestChangesOnAssignment } from './actions';
 import { PhotoUpload } from '@/components/reviewers/PhotoUpload';
 import { REVIEW_TOPICS, canonicalTopics } from '@/lib/review-topics';
 import { PK_TZ } from '@/lib/dates';
@@ -26,14 +26,18 @@ function ago(iso: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: PK_TZ });
 }
 
-export default async function ReviewerDashboard() {
+export default async function ReviewerDashboard({ searchParams }: { searchParams?: Promise<{ sent?: string }> }) {
+  const sp = (await searchParams) ?? {};
   const reviewer = await getSignedInReviewer();
   if (!reviewer) redirect('/reviewer/login');
 
   const posts = await getReviewedPosts(reviewer.id);
-  // Every assigned post is live (blog_posts has no draft/published state), so
-  // the reviewer's assigned count is their published count.
-  const publishedCount = posts.length;
+  // Sign-off split: a post is either waiting for this doctor's review
+  // (pending; the public byline stays hidden) or reviewed (approved; the
+  // byline + schema are live). Assigned rows without a status are legacy
+  // oddities, treat them as pending so nothing slips past the doctor.
+  const pendingPosts = posts.filter(p => p.review_status !== 'approved');
+  const approvedPosts = posts.filter(p => p.review_status === 'approved');
   // Profile completeness encourages a rich, trustworthy public profile.
   const checks = [
     !!reviewer.credentials, !!reviewer.specialty, !!reviewer.bio, !!reviewer.photo_url,

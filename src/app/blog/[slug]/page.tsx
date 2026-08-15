@@ -9,7 +9,7 @@ import { socialSameAs } from '@/lib/socials';
 import { authorForName } from '@/lib/authors';
 import { redirectIfMapped } from '@/lib/redirects';
 import { type MedicalReviewer } from '@/lib/eeat';
-import { getReviewerById, getActiveReviewers } from '@/lib/reviewers';
+import { getReviewerById } from '@/lib/reviewers';
 import { isHealthCategory } from '@/lib/category-taxonomy';
 import { selectRelatedProducts } from '@/lib/related-products';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
@@ -64,20 +64,19 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   // Unpublished/renamed post? Honour a manual redirect before 404ing.
   if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
 
-  // E-E-A-T: resolve the medical reviewer. An explicit per-post Review Board
-  // assignment always wins and always shows, even on a post whose category
-  // isn't auto-classified as health (e.g. a minoxidil piece filed under
-  // "Hair"), that's exactly the admin saying "this needs a doctor's name". The
-  // default board reviewer is only used as a fallback on health-category posts
-  // that haven't been assigned one. null otherwise. (The Medical Review Board
-  // is the single source of truth; the legacy store-wide setting was retired.)
+  // E-E-A-T: resolve the medical reviewer. The byline and the Article
+  // reviewedBy schema are a truth claim about who read the article, so they
+  // render ONLY once the assigned doctor has signed off: reviewer_id set AND
+  // review_status = 'approved'. A pending assignment (the DB trigger
+  // auto-assigns new health posts as 'pending') shows nothing public until the
+  // doctor approves it in their portal (or an admin records an offline
+  // approval). The old "default board reviewer" render-time fallback is gone,
+  // it credited a doctor who never saw the post; the default reviewer is now
+  // only the assignment fallback inside the DB trigger, and still goes
+  // through the same pending → approved sign-off.
   let reviewer: MedicalReviewer | null = null;
-  {
-    const pid = (post as { reviewer_id?: string | null }).reviewer_id;
-    let r = pid ? await getReviewerById(pid) : null;
-    if (!r && isHealthCategory(post.category)) {
-      r = (await getActiveReviewers()).find(x => x.is_default) ?? null;
-    }
+  if (post.reviewer_id && post.review_status === 'approved') {
+    const r = await getReviewerById(post.reviewer_id);
     reviewer = r
       ? { name: r.name, credentials: r.credentials ?? undefined, specialty: r.specialty ?? undefined, url: r.profile_url ?? undefined, profileSlug: r.slug }
       : null;

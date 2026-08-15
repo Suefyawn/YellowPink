@@ -268,6 +268,16 @@ export interface BlogPost {
   /** Reviewer-topic catalogue label (lib/review-topics). Drives the direct
    *  match to a medical reviewer who covers that topic. */
   topic?: string | null;
+  /** Medical Review Board assignment (content_reviewers.id). New health posts
+   *  are auto-assigned by a DB trigger (topic match, load-balanced, default
+   *  fallback); admins can also assign manually. */
+  reviewer_id?: string | null;
+  /** Review sign-off state: 'pending' until the assigned doctor approves,
+   *  'approved' once they have. The public byline + Article reviewedBy schema
+   *  render ONLY when approved. null = no reviewer workflow (e.g. makeup). */
+  review_status?: 'pending' | 'approved' | null;
+  /** When the doctor (or an admin override) approved the review. */
+  reviewed_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }

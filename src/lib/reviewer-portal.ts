@@ -43,21 +43,27 @@ export async function getSignedInReviewer(): Promise<ReviewerSelf | null> {
 }
 
 export interface ReviewedPost {
+  id: string;
   slug: string;
   title: string;
   date: string;
   created_at: string;
+  /** 'pending' = waiting for this doctor's sign-off; 'approved' = signed off.
+   *  (null shouldn't occur on assigned posts, treat it as pending.) */
+  review_status: 'pending' | 'approved' | null;
+  reviewed_at: string | null;
 }
 
-/** Articles credited to this reviewer (newest first). blog_posts has no
- *  status column — every post is live once assigned — so we simply return the
- *  reviewer's assigned posts ordered by editorial date (with created_at as a
- *  stable tiebreak for same-day batches). Read with the service role so the
- *  dashboard isn't gated by the storefront read policy. */
+/** Articles assigned to this reviewer (newest first), including their
+ *  sign-off state so the dashboard can split "waiting for your review"
+ *  (pending) from "reviewed" (approved). Every assigned post is live on the
+ *  storefront, but the public byline only renders once approved. Read with
+ *  the service role so the dashboard isn't gated by the storefront read
+ *  policy. */
 export async function getReviewedPosts(reviewerId: string): Promise<ReviewedPost[]> {
   const { data } = await supabaseAdmin()
     .from('blog_posts')
-    .select('slug, title, date, created_at')
+    .select('id, slug, title, date, created_at, review_status, reviewed_at')
     .eq('reviewer_id', reviewerId)
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
