@@ -38,9 +38,10 @@ as $$
     and p_topic <> 'Makeup & beauty'
     and review_topics @> array[p_topic]
   order by (
+    -- Immediate crediting means nothing stays 'pending'; balance on the
+    -- total credited count instead.
     select count(*) from public.blog_posts b
     where b.reviewer_id = content_reviewers.id
-      and b.review_status = 'pending'
   ) asc, sort_order asc
   limit 1
 $$;

@@ -149,16 +149,25 @@ export default async function ReviewersPage({ searchParams }: { searchParams?: P
       .select('id, name, email, credentials, specialty, pmdc_number, bio, profile_url, photo_url, review_topics, message, created_at')
       .eq('status', 'pending')
       .order('created_at', { ascending: true }),
-    admin.from('blog_posts').select('reviewer_id'),
+    admin.from('blog_posts').select('id, slug, title, reviewer_id, created_at').order('created_at', { ascending: false }),
   ]);
   const reviewers = (data ?? []) as ReviewerRow[];
   const applications = (apps ?? []) as ApplicationRow[];
 
-  // Tally how many posts each reviewer is credited on, for the header summary.
+  // Per-reviewer workload: how many posts each doctor is credited on, plus
+  // their most recent credits (newest first, per the query order) for the
+  // workload cards' reassign controls.
+  interface CreditedPost { id: string; slug: string; title: string; reviewer_id: string | null; created_at: string }
+  const credited = ((postRows ?? []) as CreditedPost[]).filter(p => p.reviewer_id);
   const countByReviewer = new Map<string, number>();
-  for (const p of (postRows ?? []) as { reviewer_id: string | null }[]) {
-    if (p.reviewer_id) countByReviewer.set(p.reviewer_id, (countByReviewer.get(p.reviewer_id) ?? 0) + 1);
+  const recentByReviewer = new Map<string, CreditedPost[]>();
+  for (const p of credited) {
+    const rid = p.reviewer_id!;
+    countByReviewer.set(rid, (countByReviewer.get(rid) ?? 0) + 1);
+    const list = recentByReviewer.get(rid) ?? [];
+    if (list.length < 5) { list.push(p); recentByReviewer.set(rid, list); }
   }
+  const activeReviewers = reviewers.filter(r => r.active);
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px', maxWidth: 1000 }}>
@@ -221,6 +230,80 @@ export default async function ReviewersPage({ searchParams }: { searchParams?: P
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Review workload ─────────────────────────────────────────────
+          Per-doctor crediting at a glance: how many live articles carry each
+          reviewer's byline, which topics route to them (edited in their
+          profile form below), and their latest credits with a reassign
+          control. Reassigning moves the byline immediately and emails the
+          newly credited doctor. */}
+      {activeReviewers.length > 0 && credited.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <h2 style={{ margin: '0 0 4px', fontSize: '1rem', fontWeight: 700, color: '#111827' }}>Review workload</h2>
+          <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280', maxWidth: 720 }}>
+            New health articles are assigned automatically by topic and the doctor is emailed each time their
+            name is credited. Latest credits per doctor below; move one with <strong>Reassign</strong> (the new
+            doctor gets the notification email). Topics are edited in each doctor&apos;s profile form further down.
+          </p>
+          <div style={{ display: 'grid', gap: 12 }}>
+            {activeReviewers.map(r => {
+              const recent = recentByReviewer.get(r.id) ?? [];
+              const total = countByReviewer.get(r.id) ?? 0;
+              const others = activeReviewers.filter(o => o.id !== r.id);
+              return (
+                <div key={r.id} style={{ border: '1px solid #e5e7eb', borderRadius: 10, background: 'white', padding: '14px 16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: '#111827' }}>{r.name}</span>
+                    {r.is_default && <DotChip label="Default" color="#C5286A" />}
+                    <span style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 700, color: '#9d174d', background: '#fdf2f8', padding: '2px 10px', borderRadius: 999 }}>
+                      {total} credited article{total === 1 ? '' : 's'}
+                    </span>
+                  </div>
+                  {r.review_topics.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+                      {canonicalTopics(r.review_topics).map(t => (
+                        <span key={t} style={{ padding: '2px 10px', background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 999, fontSize: '0.6875rem', fontWeight: 600, color: '#374151' }}>{t}</span>
+                      ))}
+                    </div>
+                  )}
+                  {recent.length > 0 && (
+                    <ul style={{ listStyle: 'none', margin: '12px 0 0', padding: 0, display: 'grid', gap: 6 }}>
+                      {recent.map(p => (
+                        <li key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '8px 10px', background: '#f9fafb', borderRadius: 8 }}>
+                          <div style={{ flex: 1, minWidth: 200 }}>
+                            <Link href={`/admin/blog/${p.id}`} style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#111827', textDecoration: 'none' }}>{p.title}</Link>
+                            {' '}
+                            <a href={`/blog/${p.slug}`} target="_blank" rel="noreferrer" style={{ fontSize: '0.6875rem', color: '#9ca3af', textDecoration: 'none', whiteSpace: 'nowrap' }}>live ↗</a>
+                          </div>
+                          {others.length > 0 && (
+                            <form action={reassignPostReviewer} style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
+                              <input type="hidden" name="post_id" value={p.id} />
+                              <select name="reviewer_id" defaultValue="" required style={{ ...inp, width: 'auto', padding: '5px 8px', fontSize: '0.75rem' }}>
+                                <option value="" disabled>Move to…</option>
+                                {others.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                              </select>
+                              <button type="submit" style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 12px', borderRadius: 6, border: 'none', background: '#C5286A', color: '#fff', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m16 3 4 4-4 4" /><path d="M20 7H4" /><path d="m8 21-4-4 4-4" /><path d="M4 17h16" /></svg>
+                                Reassign
+                              </button>
+                            </form>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {total > recent.length && (
+                    <p style={{ margin: '8px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
+                      Showing the {recent.length} most recent of {total}. The full list is on{' '}
+                      <Link href="/admin/reviewers/assignments" style={{ color: '#9d174d' }}>Article assignments</Link>.
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
