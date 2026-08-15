@@ -263,7 +263,7 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
               </div>
             )}
             <span style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: 4, display: 'block' }}>
-              For health/supplement posts, assign a real doctor from your <a href="/admin/reviewers" style={{ color: '#9d174d' }}>Review Board</a> who has reviewed it. Adds a &ldquo;Medically reviewed by&rdquo; byline + schema. Only assign if they genuinely reviewed it.
+              Adds a &ldquo;Medically reviewed by&rdquo; byline + schema from your <a href="/admin/reviewers" style={{ color: '#9d174d' }}>Review Board</a>, and emails the doctor that they&apos;ve been credited. Leave on &ldquo;None&rdquo; for a new post with a health topic and the system assigns a board doctor who covers that topic automatically (makeup posts get no reviewer).
             </span>
           </div>
 

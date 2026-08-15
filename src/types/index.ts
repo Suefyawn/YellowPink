@@ -268,6 +268,16 @@ export interface BlogPost {
   /** Reviewer-topic catalogue label (lib/review-topics). Drives the direct
    *  match to a medical reviewer who covers that topic. */
   topic?: string | null;
+  /** Medical Review Board credit (content_reviewers.id). New health posts are
+   *  auto-assigned by a DB trigger at insert (topic match, board fallback);
+   *  admins can also assign or reassign manually. The credited doctor is
+   *  emailed on every assignment. Drives the public byline + reviewedBy
+   *  schema. */
+  reviewer_id?: string | null;
+  /** Bookkeeping columns written alongside the credit ('approved' + the
+   *  crediting timestamp). Not used to gate anything public. */
+  review_status?: 'pending' | 'approved' | null;
+  reviewed_at?: string | null;
   created_at?: string;
   updated_at?: string;
 }

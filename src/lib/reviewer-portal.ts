@@ -43,21 +43,23 @@ export async function getSignedInReviewer(): Promise<ReviewerSelf | null> {
 }
 
 export interface ReviewedPost {
+  id: string;
   slug: string;
   title: string;
   date: string;
   created_at: string;
 }
 
-/** Articles credited to this reviewer (newest first). blog_posts has no
- *  status column — every post is live once assigned — so we simply return the
- *  reviewer's assigned posts ordered by editorial date (with created_at as a
- *  stable tiebreak for same-day batches). Read with the service role so the
- *  dashboard isn't gated by the storefront read policy. */
+/** Articles credited to this reviewer (newest first). Every assigned post is
+ *  live once credited (crediting happens at insert via the DB trigger, or via
+ *  an admin assignment, both of which email the doctor). `id` is carried so
+ *  the dashboard's "flag a concern" form can reference the exact post. Read
+ *  with the service role so the dashboard isn't gated by the storefront read
+ *  policy. */
 export async function getReviewedPosts(reviewerId: string): Promise<ReviewedPost[]> {
   const { data } = await supabaseAdmin()
     .from('blog_posts')
-    .select('slug, title, date, created_at')
+    .select('id, slug, title, date, created_at')
     .eq('reviewer_id', reviewerId)
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });

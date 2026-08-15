@@ -9,7 +9,7 @@ import { socialSameAs } from '@/lib/socials';
 import { authorForName } from '@/lib/authors';
 import { redirectIfMapped } from '@/lib/redirects';
 import { type MedicalReviewer } from '@/lib/eeat';
-import { getReviewerById, getActiveReviewers } from '@/lib/reviewers';
+import { getReviewerById } from '@/lib/reviewers';
 import { isHealthCategory } from '@/lib/category-taxonomy';
 import { selectRelatedProducts } from '@/lib/related-products';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
@@ -64,20 +64,18 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
   // Unpublished/renamed post? Honour a manual redirect before 404ing.
   if (!post) { await redirectIfMapped(`/blog/${slug}`); notFound(); }
 
-  // E-E-A-T: resolve the medical reviewer. An explicit per-post Review Board
-  // assignment always wins and always shows, even on a post whose category
-  // isn't auto-classified as health (e.g. a minoxidil piece filed under
-  // "Hair"), that's exactly the admin saying "this needs a doctor's name". The
-  // default board reviewer is only used as a fallback on health-category posts
-  // that haven't been assigned one. null otherwise. (The Medical Review Board
-  // is the single source of truth; the legacy store-wide setting was retired.)
+  // E-E-A-T: resolve the medical reviewer. The byline + Article reviewedBy
+  // schema render whenever the post carries a Review Board credit
+  // (reviewer_id). Assignment happens at insert time — a DB trigger matches
+  // the post's health topic to a board doctor (default reviewer as fallback;
+  // makeup posts get none) and the credited doctor is emailed — or via the
+  // admin's manual assignment/reassignment, which also emails. The old
+  // render-time "default board reviewer" fallback for unassigned health posts
+  // is gone: a credit must be recorded on the row so it is countable,
+  // reassignable, and always accompanied by the notification to the doctor.
   let reviewer: MedicalReviewer | null = null;
-  {
-    const pid = (post as { reviewer_id?: string | null }).reviewer_id;
-    let r = pid ? await getReviewerById(pid) : null;
-    if (!r && isHealthCategory(post.category)) {
-      r = (await getActiveReviewers()).find(x => x.is_default) ?? null;
-    }
+  if (post.reviewer_id) {
+    const r = await getReviewerById(post.reviewer_id);
     reviewer = r
       ? { name: r.name, credentials: r.credentials ?? undefined, specialty: r.specialty ?? undefined, url: r.profile_url ?? undefined, profileSlug: r.slug }
       : null;

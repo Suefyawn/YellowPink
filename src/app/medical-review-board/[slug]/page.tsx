@@ -3,6 +3,7 @@ export const revalidate = 3600;
 import type { Metadata } from 'next';
 import { Fragment } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getReviewerBySlug, getActiveReviewers } from '@/lib/reviewers';
 import { supabase, isDemo } from '@/lib/supabase';
@@ -95,8 +96,12 @@ export default async function ReviewerProfilePage({ params }: { params: Promise<
 
           <div style={{ display: 'flex', gap: 20, alignItems: 'center', margin: '24px 0 28px', flexWrap: 'wrap' }}>
             {r.photo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={r.photo_url} alt={r.name} width={96} height={96} style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover' }} />
+              // next/image (not a raw <img>): reviewer photos are stored
+              // full-size (some multi-MB); the /img resizer the loader points
+              // at serves a small derivative for this 96px circle. Above the
+              // fold, so load eagerly (this fork's `preload` replaces the
+              // deprecated `priority`).
+              <Image src={r.photo_url} alt={r.name} width={96} height={96} preload loading="eager" style={{ width: 96, height: 96, borderRadius: '50%', objectFit: 'cover' }} />
             ) : (
               <div style={{ width: 96, height: 96, borderRadius: '50%', background: 'var(--paper2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: '1.75rem', fontWeight: 600, color: 'var(--ink-700)' }}>

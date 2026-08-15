@@ -7,6 +7,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { log } from '@/lib/logger';
 import { sendReviewerApprovedEmail, sendReviewerProfileInviteEmail } from '@/lib/email';
+import { notifyReviewerCredited } from '@/lib/review-assignment';
 import { canonicalTopics } from '@/lib/review-topics';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -252,10 +253,44 @@ export async function rejectReviewerApplication(formData: FormData): Promise<voi
   ok('Application rejected.');
 }
 
+/** Shared credit move: point a post's reviewer credit at `reviewerId` (or
+ *  clear it), keep the crediting bookkeeping columns consistent with the DB
+ *  trigger, and email the newly credited doctor. Returns the post's slug for
+ *  revalidation, or throws a message string on failure. */
+async function moveReviewerCredit(
+  session: Awaited<ReturnType<typeof assertBlog>>,
+  postId: string,
+  reviewerId: string | null,
+): Promise<{ slug: string; changed: boolean }> {
+  const admin = supabaseAdmin();
+  const { data: post } = await admin.from('blog_posts').select('slug, title, reviewer_id').eq('id', postId).single();
+  if (!post) throw new Error('Post not found.');
+  if ((post.reviewer_id ?? null) === reviewerId) return { slug: post.slug as string, changed: false };
+
+  const { error } = await admin.from('blog_posts').update({
+    reviewer_id: reviewerId,
+    review_status: reviewerId ? 'approved' : null,
+    reviewed_at: reviewerId ? new Date().toISOString() : null,
+  }).eq('id', postId);
+  if (error) {
+    log.error('reviewer.assign_failed', { postId, reviewerId, error: error.message });
+    throw new Error(`Could not update the post: ${error.message}`);
+  }
+  // The credited doctor always hears about it (best-effort mail).
+  if (reviewerId) await notifyReviewerCredited(postId);
+
+  void logAudit(session, {
+    action: 'blog.reviewer_assigned', entity: 'blog_post', entity_id: postId,
+    diff: { post: post.title, from: post.reviewer_id, to: reviewerId },
+  });
+  revalidatePath(`/blog/${post.slug}`);
+  return { slug: post.slug as string, changed: true };
+}
+
 /** Assign (or clear) a post's medical reviewer from the assignments triage.
- *  The byline + Article.reviewedBy schema change immediately, so the UI keeps
- *  this behind an explicit per-post button — suggestions are never bulk-applied
- *  silently: "medically reviewed by" is a claim about who actually read it. */
+ *  The byline + Article.reviewedBy schema change immediately and the doctor
+ *  gets a notification email, so the UI keeps this behind an explicit
+ *  per-post button — suggestions are never bulk-applied silently. */
 export async function assignPostReviewer(formData: FormData): Promise<void> {
   const session = await assertBlog();
   const postId = str(formData, 'post_id');
@@ -264,21 +299,32 @@ export async function assignPostReviewer(formData: FormData): Promise<void> {
   const failA = (msg: string): never => redirect(`${A}?error=${encodeURIComponent(msg)}`);
   if (!postId) failA('Missing post.');
 
-  const admin = supabaseAdmin();
-  const { data: post } = await admin.from('blog_posts').select('slug, title, reviewer_id').eq('id', postId).single();
-  if (!post) failA('Post not found.');
-
-  const { error } = await admin.from('blog_posts').update({ reviewer_id: reviewerId }).eq('id', postId);
-  if (error) {
-    log.error('reviewer.assign_failed', { postId, reviewerId, error: error.message });
-    failA(`Could not update the post: ${error.message}`);
+  try {
+    await moveReviewerCredit(session, postId, reviewerId);
+  } catch (err) {
+    failA(err instanceof Error ? err.message : 'Could not update the post.');
   }
-
-  void logAudit(session, {
-    action: 'blog.reviewer_assigned', entity: 'blog_post', entity_id: postId,
-    diff: { post: post!.title, from: post!.reviewer_id, to: reviewerId },
-  });
-  revalidatePath(`/blog/${post!.slug}`);
   revalidatePath('/admin/reviewers/assignments');
-  redirect(`${A}?saved=${encodeURIComponent(reviewerId ? 'Reviewer assigned.' : 'Reviewer removed.')}`);
+  redirect(`${A}?saved=${encodeURIComponent(reviewerId ? 'Reviewer assigned, the doctor has been emailed.' : 'Reviewer removed.')}`);
+}
+
+/** Reassign a credit from the workload view on /admin/reviewers: moves the
+ *  post to the chosen doctor and emails them. Same write as the triage page,
+ *  different landing page. */
+export async function reassignPostReviewer(formData: FormData): Promise<void> {
+  const session = await assertBlog();
+  const postId = str(formData, 'post_id');
+  const reviewerId = str(formData, 'reviewer_id');
+  if (!postId) fail('Missing post.');
+  if (!reviewerId) fail('Pick a doctor to reassign to.');
+
+  let changed = false;
+  try {
+    ({ changed } = await moveReviewerCredit(session, postId, reviewerId));
+  } catch (err) {
+    fail(err instanceof Error ? err.message : 'Could not reassign.');
+  }
+  revalidatePath('/admin/reviewers');
+  revalidatePath('/admin/reviewers/assignments');
+  ok(changed ? 'Reassigned, the doctor has been emailed.' : 'That doctor already holds this credit.');
 }

@@ -150,9 +150,9 @@ export default async function ReviewerAssignmentsPage({
       <h1 style={{ margin: '0 0 4px', fontSize: '1.5rem', fontWeight: 700, color: '#111827' }}>Reviewer assignments</h1>
       <p style={{ margin: '0 0 24px', fontSize: '0.875rem', color: '#6b7280', maxWidth: 720 }}>
         Every article scored against the board&apos;s specialties — the same matcher that suggests a reviewer in
-        the post editor. Assigning changes the public &ldquo;Medically reviewed by&rdquo; byline immediately, so
-        only assign once the doctor has actually reviewed the article (they see their credited articles in
-        their portal).
+        the post editor. Assigning changes the public &ldquo;Medically reviewed by&rdquo; byline immediately and
+        emails the doctor that they have been credited (they also see their credited articles in their portal,
+        and can flag corrections from there).
       </p>
 
       {section(

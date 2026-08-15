@@ -3,10 +3,64 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { createServerSupabase } from '@/lib/supabase-server';
+import { supabaseAdmin } from '@/lib/supabase';
 import { canonicalTopics } from '@/lib/review-topics';
 import { log } from '@/lib/logger';
 
 const str = (fd: FormData, k: string) => ((fd.get(k) as string | null) ?? '').trim();
+
+/** The signed-in doctor's own reviewer row, or null. Every review action below
+ *  is guarded through this: the doctor can only touch posts whose reviewer_id
+ *  is their own row (looked up via auth_user_id, never from the form). */
+async function signedInReviewerRow(): Promise<{ id: string; name: string; slug: string } | null> {
+  const sb = await createServerSupabase();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return null;
+  const { data } = await supabaseAdmin()
+    .from('content_reviewers')
+    .select('id, name, slug')
+    .eq('auth_user_id', user.id)
+    .maybeSingle();
+  return (data as { id: string; name: string; slug: string } | null) ?? null;
+}
+
+/** "Flag a concern": the credited doctor sends the editorial team a note
+ *  about one of their articles (a correction, an objection to the credit,
+ *  anything). The note lands in admin notifications; the post itself is not
+ *  changed here — staff act on the note (edit, reassign or remove the
+ *  credit) from the admin side. */
+export async function flagArticleConcern(formData: FormData): Promise<void> {
+  const me = await signedInReviewerRow();
+  if (!me) redirect('/reviewer/login');
+  const postId = str(formData, 'post_id');
+  const note = str(formData, 'note').slice(0, 2000);
+  if (!postId || !note) return;
+
+  const admin = supabaseAdmin();
+  const { data: post } = await admin
+    .from('blog_posts')
+    .select('id, title, reviewer_id')
+    .eq('id', postId)
+    .maybeSingle();
+  // Only articles credited to the signed-in doctor; anything else is a
+  // stale/forged form post.
+  if (!post || post.reviewer_id !== me.id) {
+    log.warn('reviewer.concern_not_own_article', { postId, reviewerId: me.id });
+    return;
+  }
+
+  const { error } = await admin.from('admin_notifications').insert({
+    kind: 'review_concern',
+    title: `${me.name} flagged "${post.title}"`,
+    body: note,
+    link: `/admin/blog/${post.id}`,
+    entity_id: post.id,
+  });
+  if (error) { log.error('reviewer.concern_insert_failed', { postId, error: error.message }); return; }
+
+  log.info('reviewer.concern_flagged', { postId, reviewerId: me.id });
+  redirect('/reviewer?sent=1');
+}
 
 // Doctor self-service profile edit. Updates run through the reviewer's OWN
 // session, so RLS (content_reviewers_self_update: auth.uid() = auth_user_id)
