@@ -79,6 +79,12 @@ export const productInputSchema = z.object({
                     z.enum(['standard','tester','no_box']).optional(),
                   ),
   slug:           slugSchema,
+  // Inventory identifiers (Shopify's Inventory card, migration 1170). The
+  // product form submits them for simple products; optional so callers that
+  // omit them (CSV import, variable products) leave the stored values alone.
+  // Empty string normalises to null.
+  sku:            z.string().trim().max(120).transform(s => s || null).nullable().optional(),
+  barcode:        z.string().trim().max(120).transform(s => s || null).nullable().optional(),
   // Publication status. The admin form always submits it (new products
   // default to 'draft' there); optional so older callers that never sent a
   // status keep the DB value untouched (undefined keys are dropped by

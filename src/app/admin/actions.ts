@@ -832,6 +832,101 @@ export async function bulkUpdateOrderStatus(ids: string[], status: OrderStatus):
   return { count: count ?? ids.length };
 }
 
+/** Shopify's cancellation reason list, trimmed to what fits this store. Keys
+ *  are Shopify's own values so the vocabulary matches; labels are what staff
+ *  see in the cancel dialog and on the order timeline. */
+const ORDER_CANCEL_REASONS: Record<string, string> = {
+  customer:  'Customer changed their mind',
+  declined:  'Payment declined',
+  fraud:     'Fraudulent order',
+  inventory: 'Items unavailable',
+  staff:     'Staff error',
+  other:     'Other',
+};
+
+/** Cancel an order via the Shopify-style dialog (reason + restock + notify).
+ *  Distinct from a plain status change: restocking is optional (a parcel lost
+ *  in transit has nothing to put back on the shelf), the reason is recorded
+ *  on the order timeline (orders has no cancel_reason column; the timeline is
+ *  where staff read an order's history), and the customer email is optional.
+ *  The customer email only carries the reason when it is customer-meaningful
+ *  (changed mind / items unavailable) — "Fraudulent order" and "Staff error"
+ *  stay internal. */
+export async function cancelOrder(
+  id: string,
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertPermission('orders.edit');
+  const reasonKey = String(formData.get('reason') ?? 'other');
+  const reasonLabel = ORDER_CANCEL_REASONS[reasonKey] ?? ORDER_CANCEL_REASONS.other;
+  const restock = formData.get('restock') === 'on';
+  const notify = formData.get('notify') === 'on';
+
+  const admin = supabaseAdmin();
+  const { data: before } = await admin
+    .from('orders')
+    .select('status, email, first_name, order_number, items')
+    .eq('id', id)
+    .maybeSingle();
+  if (!before) return { error: 'Order no longer exists.' };
+  if (before.status === 'cancelled') return { error: 'This order is already cancelled.' };
+
+  const { error } = await admin.from('orders').update({ status: 'cancelled' }).eq('id', id);
+  if (error) return { error: error.message };
+
+  // Attribute the transition the order_events trigger just logged to the
+  // signed-in operator (same as updateOrderStatus).
+  await attributeOrderEvents(admin, [id], 'cancelled', session);
+
+  // Restock only when asked: same ledger path (record_stock_change, reason
+  // 'cancellation') as the plain status change and the bulk cancel.
+  if (restock) {
+    await restockCancelledOrder(admin, session, { id, order_number: before.order_number, items: before.items });
+    revalidatePath('/admin/inventory');
+  }
+
+  const willNotify = notify && Boolean(before.email);
+
+  // The reason lands on the order timeline, interleaved with the status
+  // events, so "why was this cancelled?" has an answer months later.
+  await admin.from('order_comments').insert({
+    order_id: id,
+    author: session.email || 'staff',
+    body: `Order cancelled. Reason: ${reasonLabel}. Items ${restock ? 'restocked' : 'not restocked'}.`
+      + (willNotify ? ' Customer notified by email.' : ''),
+  });
+
+  await logAudit(session, {
+    action: 'order.cancel', entity: 'order', entity_id: id,
+    diff: { reason: reasonKey, reason_label: reasonLabel, restock, notified: willNotify },
+  });
+
+  // Customer notification through the branded shell (sendCancelledEmail).
+  // Best-effort: a provider hiccup must not fail the cancellation itself.
+  if (willNotify) {
+    const customerReason =
+      reasonKey === 'customer' ? 'You asked us to cancel'
+      : reasonKey === 'inventory' ? 'The items were unavailable'
+      : undefined;
+    try {
+      const { sendCancelledEmail } = await import('@/lib/email');
+      await sendCancelledEmail({
+        email: before.email as string,
+        first_name: (before.first_name as string | null) ?? 'there',
+        order_number: (before.order_number as string | null) ?? '',
+        reason: customerReason,
+      });
+    } catch (e) {
+      logActionError('admin.orders.cancel_email', e, { order_id: id });
+    }
+  }
+
+  revalidatePath(`/admin/orders/${id}`);
+  revalidatePath('/admin/orders');
+  return { success: true };
+}
+
 export async function updateOrderStatus(
   id: string,
   _prev: { error?: string; success?: boolean } | null,

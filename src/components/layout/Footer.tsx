@@ -107,6 +107,7 @@ const ANSWER_LINKS = [
   { label: 'Fertile Days Finder',  href: '/ovulation-calculator' },
   { label: 'Healthy Weight Check', href: '/bmi-calculator' },
   { label: 'Daily Calorie Check',  href: '/calorie-calculator' },
+  { label: 'Daily Burn Check',     href: '/tdee-calculator' },
   { label: 'Routine Finder',       href: '/quiz' },
   { label: 'All Quick Answers',    href: '/answers' },
 ];

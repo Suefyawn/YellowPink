@@ -23,6 +23,7 @@ const ANSWER_META: Record<string, { href: string }> = {
   ovulation: { href: '/ovulation-calculator' },
   bmi: { href: '/bmi-calculator' },
   calorie: { href: '/calorie-calculator' },
+  tdee: { href: '/tdee-calculator' },
   'quiz-fertility': { href: '/fertility-quiz' },
 };
 

@@ -67,6 +67,11 @@ export interface Product {
   subcategory?: string;
   tag?: string;
   slug: string;
+  /** SKU (Stock Keeping Unit) for simple products; variable products keep
+   *  per-variant SKUs on product_variants (migration 1170). */
+  sku?: string | null;
+  /** Barcode (ISBN, UPC, GTIN, etc.) for simple products. */
+  barcode?: string | null;
   stock: number;
   /** Stock level at/below which to reorder. 0 = use the global low-stock
    *  threshold. Drives the inventory "reorder needed" list. */
@@ -182,6 +187,8 @@ export interface ProductVariant {
   id: string;
   product_id: string;
   sku: string | null;
+  /** Barcode (ISBN, UPC, GTIN, etc.), migration 1170. */
+  barcode?: string | null;
   price: number;
   compare_at_price?: number | null;
   stock: number;
