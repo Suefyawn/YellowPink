@@ -40,10 +40,13 @@ export function SaveBar({ dirty, saving, onDiscard, onSave, formId }: {
   const [mounted, setMounted] = useState(show);
   const [leaving, setLeaving] = useState(false);
   useEffect(() => {
-    if (show) { setMounted(true); setLeaving(false); return; }
-    setLeaving(true);
+    if (show) {
+      const raf = requestAnimationFrame(() => { setMounted(true); setLeaving(false); });
+      return () => cancelAnimationFrame(raf);
+    }
+    const raf = requestAnimationFrame(() => setLeaving(true));
     const t = setTimeout(() => { setMounted(false); setLeaving(false); }, 180);
-    return () => clearTimeout(t);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t); };
   }, [show]);
 
   // Warn before tab close / refresh / external nav while edits are unsaved.
