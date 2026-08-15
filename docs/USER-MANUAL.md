@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 14 August 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 15 August 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -414,10 +414,10 @@ Here's what each link is for:
 
 Your command centre, laid out in the order a morning check actually happens.
 
-- **Today row** — opens the page: sales, orders, average order value (and visitors once Google Analytics is connected) for the current day, each with a 14-day mini-trend and a comparison pill against **the same weekday last week** (the fairest daily baseline; an early-morning "down" is normal since it compares against last week's full day).
-- **Needs attention** — directly below, a card listing everything waiting on a human: payment-pending orders stuck over 24 hours and unconfirmed orders over 3 days old (red), plus return requests awaiting approval, unread customer messages, and reviews awaiting moderation (amber). Each row deep-links to the filtered list so you can clear it in one click; the card hides when there's nothing to clear.
+- **Today row** — opens the page: sales, orders, average order value (and visitors once Google Analytics is connected) for the current day, each with a 14-day mini-trend and a comparison pill against **yesterday**. The small caption underneath keeps the same-weekday-last-week comparison too (the fairest daily baseline; an early-morning "down" is normal since it compares against a full day).
+- **Needs attention** — directly below, a card listing everything waiting on a human: payment-pending orders stuck over 24 hours and unconfirmed orders over 3 days old (red), plus return requests awaiting approval, unread customer messages, reviews awaiting moderation, abandoned checkouts from the last 48 hours, delivered COD orders whose cash is not yet confirmed, vendor payouts pending, and unanswered product questions (amber). Each row deep-links to the filtered list so you can clear it in one click; the card hides when there's nothing to clear.
 - **Overview chart** — interactive: sales/orders/AOV/sessions over 7/30/90 days vs the previous period.
-- **Quick-stat cards** — *Orders to fulfil* (jumps straight to the To fulfil tab), *Low stock items*, *New customers*.
+- **Quick-stat cards** — *Orders to fulfil* (jumps straight to the To fulfil tab), *Low stock items*, *New customers*. The low-stock strip respects each product's **reorder point** when one is set on the product page (falling back to 5 units), so a fast seller can alert early and a slow one stays quiet.
 - **Recent Orders** — with the same split Payment/Fulfilment chips as the orders list — plus low-stock alerts, order-status and top-product breakdowns.
 - **Product finder quiz funnel** — starts, completions, emails captured, and most-recommended products — lives in a collapsed **More insights** section at the bottom; click to expand.
 
@@ -425,8 +425,8 @@ Your command centre, laid out in the order a morning check actually happens.
 
 Deeper performance data, organised as **four question tabs**:
 
-- **Sales** (am I selling more?) — revenue/orders/AOV cards with mini-trends and change vs the previous window, the revenue chart, orders by status with links into the filtered list, and top products.
-- **Customers** (who buys and do they return?) — unique customers, repeat-purchase rate, RFM segments, cohort retention.
+- **Sales** (am I selling more?) — revenue/orders/AOV cards plus a **returning customer rate** card (share of the window's orders placed by people who had bought before, with change vs the previous window) and an **items per order** card, all with mini-trends where a trend applies; the revenue chart; a **new vs returning customers** chart splitting each period's revenue between first-time and repeat buyers; a **sales by city** table of where the window's revenue actually came from; orders by status with links into the filtered list; and top products.
+- **Customers** (who buys and do they return?) — unique customers, repeat-purchase rate (marked *lifetime*, it is not affected by the date pills), RFM segments, cohort retention.
 - **Traffic** (is anyone finding us?) — the SEO trend, live **Search Console** and **Google Analytics 4** panels once you **Connect Google** in Settings → Integrations, and Core Web Vitals. Below those, an **on-site behaviour** block reads the rolling 7-day PostHog snapshot: top pages, top events & sources, a **device & browser** split (phone vs desktop, and which in-app browsers — Instagram/WhatsApp webviews — people arrive in), an **engagement** panel (pages per session, average session length, bounce rate) with the top **landing pages**, and a **Where visitors are** panel of the top cities and countries — the Pakistan-vs-international split that shows how much traffic can actually convert to COD. A final **Demand & product interest** block shows the top on-site **search terms** (what people type into the store search — a direct read on demand and catalogue gaps) and the **most-viewed products with their view→cart rate**, so a product pulling lots of views but no carts (a pricing/photo/description problem) is flagged for you to fix.
 - **Funnels** (where do shoppers leak?) — the conversion funnel, funnel-by-source and funnel-by-device, top user journeys, weekly active users, and PostHog session recordings.
 
@@ -1079,6 +1079,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 15 August 2026
+
+- **Dashboard and Analytics sharpened.** The dashboard's Today cards now compare against yesterday (the same-weekday comparison moved into the caption), the Needs-attention feed also flags abandoned checkouts, delivered COD cash awaiting confirmation, pending vendor payouts and unanswered product questions, and the low-stock strip respects per-product reorder points. Analytics' Sales tab gained a returning customer rate, items per order, a new-vs-returning revenue chart and a sales-by-city table, and Finance's ad performance table now groups by the same channel names as Analytics → Sources, so "fb", "facebook" and "facebook.com" finally count as one channel on both pages.
 
 ### 14 August 2026
 
