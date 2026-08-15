@@ -12,9 +12,13 @@ import type { Product } from '@/types';
 export type CollectionType = 'manual' | 'smart';
 
 export interface SmartCondition {
-  field: 'tag' | 'brand' | 'category' | 'price' | 'on_sale' | 'featured' | 'bestseller' | 'packaging';
-  op: 'in' | 'lte' | 'gte' | 'is';
-  value: string[] | number | boolean;
+  field: 'title' | 'tag' | 'brand' | 'category' | 'price' | 'stock' | 'on_sale' | 'featured' | 'bestseller' | 'packaging';
+  /** 'in' = exact membership (text fields); 'contains' / 'not_contains' =
+   *  case-insensitive substring on text fields (Shopify's "contains" /
+   *  "does not contain"); 'lte' / 'gte' compare numeric fields; 'is' is the
+   *  boolean flags' only op. */
+  op: 'in' | 'contains' | 'not_contains' | 'lte' | 'gte' | 'is';
+  value: string[] | string | number | boolean;
 }
 
 export interface SmartRules {

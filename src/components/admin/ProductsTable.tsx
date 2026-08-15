@@ -230,7 +230,13 @@ export function ProductsTable({ products }: { products: Product[] }) {
                       <td style={{ padding: '12px 16px', maxWidth: 260 }}>
                         <div style={{ fontSize: '0.75rem', color: '#9ca3af', marginBottom: 1 }}>{p.brand}</div>
                         <Link href={`/admin/products/${p.id}`} style={{ fontWeight: 600, fontSize: '0.875rem', color: '#111827', textDecoration: 'none', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{p.name}</Link>
-                        {p.variant && <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>{p.variant}</div>}
+                        {/* Row subtitle: pack size and, when set, the SKU
+                            (simple products, migration 1170). */}
+                        {(p.variant || p.sku) && (
+                          <div style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: 1 }}>
+                            {[p.variant, p.sku].filter(Boolean).join(' · ')}
+                          </div>
+                        )}
                       </td>
                       {/* Price, inline editable */}
                       <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>
