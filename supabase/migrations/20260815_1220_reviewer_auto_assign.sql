@@ -62,7 +62,9 @@ begin
   end if;
   if v_reviewer is not null then
     new.reviewer_id := v_reviewer;
-    new.review_status := 'pending';
+    -- Owner decision 15 Aug 2026: no sign-off step; assignment credits
+    -- immediately. The assignment email keeps the doctor informed.
+    new.review_status := 'approved';
   end if;
   return new;
 end;
