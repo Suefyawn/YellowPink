@@ -371,7 +371,7 @@ Here's what each link is for:
 
 | Section | What it's for |
 |---|---|
-| **Collections** | Curated product groups, each with its own landing page (`/collection/<slug>`). **Manual** collections are a hand-picked, drag-ordered product list; **Smart** collections fill themselves from rules (e.g. *tag is viral* **and** *price ≤ 3000*) and stay current as products change. Set a title, description, hero image, SEO, and Draft/Published status. Draft collections are hidden from the storefront. |
+| **Collections** | Curated product groups, each with its own landing page (`/collection/<slug>`). **Manual** collections are a hand-picked, drag-ordered product list; **Smart** collections fill themselves from rules (e.g. *tag is viral* **and** *price ≤ 3000*) and stay current as products change. Rules can match by product title, tag, brand, category, packaging, price, stock and the on-sale/featured/bestseller flags; text fields take *is*, *contains* and *does not contain* (Shopify's operators), and price and stock take at-most / at-least comparisons. The edit page's "Currently matching" preview uses the exact same matching as the live collection page, so the count you see is the count shoppers get. Set a title, description, hero image, SEO, and Draft/Published status. Draft collections are hidden from the storefront. |
 | **Brands** | The brand pages (`/brand/<slug>`) — logo, description and SEO text for each brand you stock. **Search** by name or slug above the list, and the summary cards flag brands still needing a description, logo or hero image. |
 | **Tags** | The tag vocabulary. Free-form labels (e.g. *viral*, *vegan*, *gift*) you attach to products for storefront filtering and curated edits. Create, rename (the storefront link stays stable), or delete a tag; deleting removes it from every product. The "N products" link jumps to the tagged products. |
 
@@ -486,6 +486,8 @@ The catalogue. Create, edit, publish, archive, and delete products; manage varia
 - **Bulk edit** — the Shopify-style spreadsheet: tick products, press **Bulk edit**, and the selection opens as one editable grid — status, price, compare-at, cost and (for products whose stock you hold and count) stock, all inline. One **Save all changes** writes only the rows you actually changed; stock edits land in Movement history like any other stock change, and the stock cell reads "N via variants", "vendor-held" or "not counted" where a single number would lie.
 - **Duplicate** — every row has a Duplicate button that deep-copies the product (variants, tags, gallery images and related-product links included) into a new **draft** named "… (copy)" and opens it for editing — the fastest way to add a product that's similar to an existing one.
 - **Export CSV / Import CSV** — the spreadsheet round-trip: Export downloads the whole catalogue (all statuses) as one file whose columns match the importer, so you can mass-edit prices, stock or statuses in Excel and re-import the same file — rows are matched by their `slug` column, so don't edit that column. The file includes a **`cost_price`** column, which makes costing a whole brand a single spreadsheet pass instead of hundreds of form saves — and Finance can only show real margin on own-stock items once it's filled. Leaving `cost_price`, `status` or `track_inventory` **blank keeps whatever the product already has**, so a sheet where you've only filled some rows never wipes the rest.
+
+The *Pricing & stock* section of the product form also takes a **SKU (Stock Keeping Unit)** and a **Barcode (ISBN, UPC, GTIN, etc.)** on simple (no-variant) products, the same two fields as Shopify's Inventory card. Both are optional: the SKU is your internal product code and shows in the products list under the product name, the barcode is the number printed under the barcode on the retail box. Products with variants keep their SKUs on each variant instead, so the form points you to the Variants section for those.
 
 The product form has a **Status** field (Basics section): new products start as **Draft**, so nothing goes live — or gets submitted to search engines — until you switch it to *Published*. Deleting a product that has ever been ordered archives it instead of removing it, so order history and analytics keep the product's name.
 
@@ -750,9 +752,27 @@ order confirmation email, the email field has a **Resend confirmation email**
 button right next to it (gated on Orders — Manage); the resend is recorded in
 the Activity log.
 
-> **Tip:** cancelling an order — from the order page or via the bulk bar on the
-> Orders list — automatically returns its items to stock. Because of that (and
-> because the customer is emailed), both cancel paths ask you to confirm first.
+**Cancelling an order.** Choosing *Cancelled* in the Update Order control does
+not fire straight away: it opens a small **cancel dialog**, the same shape
+Shopify uses. In it you pick a **reason** (Customer changed their mind, Payment
+declined, Fraudulent order, Items unavailable, Staff error, Other) and two
+checkboxes decide what happens next:
+
+- **Restock items** (ticked by default) returns the cancelled quantities to
+  stock through the inventory ledger, exactly like the old automatic restock.
+  Untick it when there is nothing to put back on the shelf, for example a
+  parcel lost in transit.
+- **Send a notification to the customer** (ticked by default when the order
+  has an email address) sends a branded cancellation email with the order
+  number. The email states the reason only when it means something to the
+  customer (changed their mind, items unavailable); internal reasons such as
+  Fraudulent order or Staff error are never shown to them. Orders without an
+  email get no automatic notice, so tell those customers on WhatsApp.
+
+The reason and both choices are recorded on the order timeline and in the
+Activity log, so "why was this cancelled?" always has an answer. Bulk
+cancellation from the Orders list bulk bar keeps the old behaviour: it
+restocks and emails automatically, with a confirm prompt first.
 
 ---
 
@@ -1081,6 +1101,12 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 15 August 2026
+
+- **Cancelling an order now asks the right questions.** Choosing *Cancelled* on an order opens a small dialog, Shopify-style: pick a reason (Customer changed their mind, Payment declined, Fraudulent order, Items unavailable, Staff error, Other), choose whether to **restock the items** (on by default), and whether to **email the customer** a branded cancellation notice (on by default when the order has an email; internal reasons like Fraudulent order or Staff error are never shown to the customer). The reason and choices land on the order timeline and in the Activity log. Details in [section 4](#4-processing-a-sale--the-order-workflow).
+
+- **SKU and barcode on products.** Simple (no-variant) products now take a **SKU (Stock Keeping Unit)** and a **Barcode (ISBN, UPC, GTIN, etc.)** in the product form's *Pricing & stock* section, the same fields as Shopify's Inventory card. The SKU shows under the product name in the products list. Products with variants keep per-variant SKUs as before.
+
+- **Smart collections learned more operators.** Rule-based collections can now match by **product title**, and text rules (title, tag, brand, category) take **contains** and **does not contain** alongside the exact pick. A **stock** rule joins price with the same at-most / at-least comparisons. The preview count and the live collection page use the same matching, so they always agree.
 
 - **Dashboard and Analytics sharpened.** The dashboard's Today cards now compare against yesterday (the same-weekday comparison moved into the caption), the Needs-attention feed also flags abandoned checkouts, delivered COD cash awaiting confirmation, pending vendor payouts and unanswered product questions, and the low-stock strip respects per-product reorder points. Analytics' Sales tab gained a returning customer rate, items per order, a new-vs-returning revenue chart and a sales-by-city table, and Finance's ad performance table now groups by the same channel names as Analytics → Sources, so "fb", "facebook" and "facebook.com" finally count as one channel on both pages.
 

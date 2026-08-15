@@ -10,14 +10,50 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { lacksPermission } from '@/lib/admin-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { parseCommerceConfig } from '@/lib/commerce';
-import { ManualOrderForm, type PickerProduct, type PickerVendor, type ShippingSuggestion } from './ManualOrderForm';
+import { ManualOrderForm, type InitialDraft, type PickerProduct, type PickerVendor, type ShippingSuggestion } from './ManualOrderForm';
+import { deleteOrderDraft, type DraftPayload } from './draft-actions';
 
-export default async function NewOrderPage() {
+interface DraftRow {
+  id: string;
+  payload: unknown;
+  customer_name: string | null;
+  note: string | null;
+  created_by: string | null;
+  updated_at: string;
+}
+
+// Item count (units) + subtotal straight off the stored payload, guarded
+// field by field — the card must survive any historical payload shape.
+function summarizeDraft(payload: unknown): { items: number; subtotal: number } {
+  const lines = (payload as { lines?: unknown } | null)?.lines;
+  let items = 0, subtotal = 0;
+  if (Array.isArray(lines)) {
+    for (const l of lines) {
+      const qty = Math.max(0, Number((l as { qty?: unknown } | null)?.qty) || 0);
+      const price = Math.max(0, Number((l as { price?: unknown } | null)?.price) || 0);
+      items += qty;
+      subtotal += qty * price;
+    }
+  }
+  return { items, subtotal };
+}
+
+function ago(iso: string): string {
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
+  const days = Math.floor(h / 24); if (days < 30) return `${days}d ago`;
+  return `${Math.floor(days / 30)}mo ago`;
+}
+
+export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ draft?: string }> }) {
   const session = await getStaffSession();
   if (lacksPermission(session, 'orders.edit')) return <NoAccess section="Orders" />;
+  const { draft: draftParam } = await searchParams;
 
   const admin = supabaseAdmin();
-  const [{ data: products }, { data: variantRows }, { data: vendorRows }, { data: provinceZones }, { data: rates }, settings] = await Promise.all([
+  const [{ data: products }, { data: variantRows }, { data: vendorRows }, { data: provinceZones }, { data: rates }, { data: draftRows }, settings] = await Promise.all([
     admin
       .from('products')
       .select('id, name, brand, price, stock, track_inventory, vendor_id')

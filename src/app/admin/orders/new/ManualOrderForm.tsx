@@ -5,9 +5,10 @@
 // banner WITHOUT React resetting the uncontrolled inputs — the operator's
 // half-typed order survives validation round trips.
 
-import { useActionState, useEffect, useMemo, useRef, useState, startTransition } from 'react';
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition, startTransition } from 'react';
 import Link from 'next/link';
 import { createManualOrder, searchCustomersForOrder, type CustomerMatch, type ManualOrderState } from './actions';
+import { saveOrderDraft, type DraftPayload } from './draft-actions';
 import { EmptyState } from '@/components/admin/EmptyState';
 
 export interface PickerProduct {
@@ -56,26 +57,68 @@ const lbl: React.CSSProperties = {
   display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#374151', marginBottom: 5,
 };
 
-export function ManualOrderForm({ products, vendors, shipping }: { products: PickerProduct[]; vendors: PickerVendor[]; shipping: ShippingSuggestion }) {
+/** A saved draft the page loaded server-side; the form rebuilds itself from it. */
+export interface InitialDraft {
+  id: string;
+  payload: DraftPayload;
+  note: string | null;
+}
+
+const str = (v: unknown): string => (typeof v === 'string' ? v : '');
+
+export function ManualOrderForm({ products, vendors, shipping, initialDraft = null }: { products: PickerProduct[]; vendors: PickerVendor[]; shipping: ShippingSuggestion; initialDraft?: InitialDraft | null }) {
   const [state, dispatch, pending] = useActionState<ManualOrderState, FormData>(createManualOrder, { error: null });
   const formRef = useRef<HTMLFormElement>(null);
 
-  const [lines, setLines] = useState<Line[]>([]);
+  // Resumed-draft payload (already shape-checked server-side, but every field
+  // is still guarded here — a draft can outlive the products it referenced).
+  const d = initialDraft?.payload;
+
+  const [lines, setLines] = useState<Line[]>(() => {
+    if (!d || !Array.isArray(d.lines) || d.lines.length === 0) return [];
+    const byId = new Map(products.map(p => [p.id, p]));
+    const out: Line[] = [];
+    for (const l of d.lines) {
+      if (!l || typeof l.id !== 'string') continue;
+      const p = byId.get(l.id);
+      // Product unpublished (or shade disabled) since the draft was saved —
+      // drop the line rather than carry a row the server would reject.
+      if (!p) continue;
+      const variantId = typeof l.variantId === 'string' && l.variantId ? l.variantId : null;
+      if (variantId && !p.variants.some(v => v.id === variantId)) continue;
+      if (out.some(x => lineKey(x) === lineKey({ id: l.id, variantId }))) continue;
+      out.push({
+        id: l.id,
+        variantId,
+        label: str(l.label) || [p.brand, p.name].filter(Boolean).join(' — '),
+        qty: Math.max(1, Math.min(500, Math.floor(Number(l.qty)) || 1)),
+        price: Math.max(0, Number(l.price) || 0),
+      });
+    }
+    return out;
+  });
   const [search, setSearch] = useState('');
-  const [province, setProvince] = useState('Punjab');
-  const [shipOverridden, setShipOverridden] = useState(false);
-  const [shipValue, setShipValue] = useState<number>(0);
-  const [discount, setDiscount] = useState(0);
-  const [email, setEmail] = useState('');
-  const [vendorId, setVendorId] = useState('');
+  const [province, setProvince] = useState(() => (d && PROVINCES.includes(str(d.province)) ? str(d.province) : 'Punjab'));
+  const [shipOverridden, setShipOverridden] = useState(d?.shipOverridden === true);
+  const [shipValue, setShipValue] = useState<number>(() => Math.max(0, Number(d?.shipValue) || 0));
+  const [discount, setDiscount] = useState(() => Math.max(0, Number(d?.discount) || 0));
+  const [email, setEmail] = useState(() => str(d?.email));
+  const [vendorId, setVendorId] = useState(() => (d && vendors.some(v => v.id === d.vendorId) ? str(d.vendorId) : ''));
 
   // Customer-detail fields are controlled (unlike the rest of the form) so
   // the repeat-customer picker below can fill them programmatically.
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [city, setCity] = useState('');
+  const [firstName, setFirstName] = useState(() => str(d?.firstName));
+  const [lastName, setLastName] = useState(() => str(d?.lastName));
+  const [phone, setPhone] = useState(() => str(d?.phone));
+  const [address, setAddress] = useState(() => str(d?.address));
+  const [city, setCity] = useState(() => str(d?.city));
+
+  // Draft bookkeeping: once saved (or resumed), the id makes every later
+  // "Save as draft" an update, and lets Create order clean the row up.
+  const [draftId, setDraftId] = useState<string | null>(initialDraft?.id ?? null);
+  const [draftNote, setDraftNote] = useState(initialDraft?.note ?? '');
+  const [draftMsg, setDraftMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [draftPending, startDraftTransition] = useTransition();
 
   // Repeat-customer lookup: min 3 chars, debounced, server action returns up
   // to 8 past-order customers (deduped by phone). Picking one fills the
@@ -186,11 +229,63 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
     fd.set('items', JSON.stringify(lines));
     fd.set('shipping', String(effectiveShipping));
     fd.set('discount_amount', String(discount));
+    // Completing the order removes its draft row server-side on success.
+    if (draftId) fd.set('draft_id', draftId);
     startTransition(() => dispatch(fd));
+  };
+
+  // Freeze the ENTIRE form state. Uncontrolled fields (pay method, status,
+  // send-confirmation) are read off the live form element.
+  const buildDraftPayload = (): DraftPayload => {
+    const fd = formRef.current ? new FormData(formRef.current) : null;
+    return {
+      lines,
+      firstName, lastName, phone, email, address, city, province,
+      payMethod: str(fd?.get('pay_method')) || 'cod',
+      status: str(fd?.get('status')) || 'pending',
+      sendConfirmation: fd?.get('send_confirmation') === 'true',
+      shipOverridden, shipValue, discount, vendorId,
+    };
+  };
+
+  const canSaveDraft = lines.length > 0 || firstName.trim() !== '';
+
+  const saveDraft = () => {
+    if (!canSaveDraft) return;
+    setDraftMsg(null);
+    const payload = buildDraftPayload();
+    startDraftTransition(async () => {
+      try {
+        const res = await saveOrderDraft({ draftId, payload, note: draftNote });
+        if (res.error) {
+          setDraftMsg({ ok: false, text: res.error });
+        } else {
+          setDraftId(res.id);
+          setDraftMsg({ ok: true, text: 'Draft saved.' });
+        }
+      } catch {
+        setDraftMsg({ ok: false, text: 'Could not save the draft. Please try again.' });
+      }
+    });
   };
 
   return (
     <form ref={formRef} onSubmit={submit} style={{ maxWidth: 860 }}>
+      {initialDraft && (
+        <div style={{
+          background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e',
+          borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: '0.8125rem',
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" style={{ flexShrink: 0 }}>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+          </svg>
+          <span>
+            Resuming a saved draft{(Array.isArray(initialDraft.payload?.lines) ? initialDraft.payload.lines.length : 0) !== lines.length ? ' (items no longer available were removed)' : ''}.
+            Creating the order will remove the draft.
+          </span>
+        </div>
+      )}
       {state.error && (
         <div role="alert" style={{
           background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c',
@@ -435,14 +530,14 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
         <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
           <div>
             <label style={lbl} htmlFor="mo-pay">Payment method</label>
-            <select id="mo-pay" name="pay_method" defaultValue="cod" style={inp}>
+            <select id="mo-pay" name="pay_method" defaultValue={d?.payMethod === 'bank' ? 'bank' : 'cod'} style={inp}>
               <option value="cod">Cash on Delivery</option>
               <option value="bank">Bank Transfer</option>
             </select>
           </div>
           <div>
             <label style={lbl} htmlFor="mo-status">Initial status</label>
-            <select id="mo-status" name="status" defaultValue="pending" style={inp}>
+            <select id="mo-status" name="status" defaultValue={d?.status === 'processing' ? 'processing' : 'pending'} style={inp}>
               <option value="pending">Pending (needs confirmation)</option>
               <option value="processing">Processing (already confirmed)</option>
             </select>
@@ -537,15 +632,38 @@ export function ManualOrderForm({ products, vendors, shipping }: { products: Pic
 
       {email.trim() !== '' && (
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16, fontSize: '0.8125rem', color: '#374151' }}>
-          <input type="checkbox" name="send_confirmation" value="true" defaultChecked />
+          <input type="checkbox" name="send_confirmation" value="true" defaultChecked={d ? d.sendConfirmation === true : true} />
           Email the order confirmation to {email.trim()}
         </label>
       )}
 
-      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
         <button type="submit" className="adm-btn adm-btn-primary" disabled={pending || lines.length === 0} style={{ padding: '10px 20px', fontSize: '0.875rem' }}>
           {pending ? 'Creating…' : 'Create order'}
         </button>
+        <button
+          type="button"
+          className="adm-btn adm-btn-secondary"
+          onClick={saveDraft}
+          disabled={draftPending || !canSaveDraft}
+          title={canSaveDraft ? undefined : 'Add an item or a customer name first'}
+          style={{ padding: '10px 16px', fontSize: '0.875rem' }}
+        >
+          {draftPending ? 'Saving…' : 'Save as draft'}
+        </button>
+        <input
+          value={draftNote}
+          onChange={e => setDraftNote(e.target.value)}
+          placeholder="Draft note (optional)"
+          aria-label="Draft note"
+          maxLength={500}
+          style={{ ...inp, width: 210, padding: '9px 12px' }}
+        />
+        {draftMsg && (
+          <span role="status" style={{ fontSize: '0.8125rem', color: draftMsg.ok ? '#15803d' : '#b91c1c' }}>
+            {draftMsg.text}
+          </span>
+        )}
         <Link href="/admin/orders" style={{ fontSize: '0.8125rem', color: '#6b7280' }}>Cancel</Link>
       </div>
     </form>
