@@ -1,7 +1,7 @@
 'use client';
 
-import { useActionState, useState } from 'react';
-import { createVariant, updateVariant, deleteVariant, createAttribute, createAttributeValue, removeValueFromProduct, bulkUpdateVariants, deleteAttribute } from '@/app/admin/variant-actions';
+import { useActionState, useState, useTransition } from 'react';
+import { createVariant, updateVariant, deleteVariant, createAttribute, createAttributeValue, removeValueFromProduct, bulkUpdateVariants, deleteAttribute, moveAttribute, moveAttributeValue, setVariantImage } from '@/app/admin/variant-actions';
 import type { ProductAttribute, AttributeValue, ProductVariant } from '@/types';
 
 interface AttributeWithValues extends ProductAttribute {
@@ -226,6 +226,54 @@ function AddValueForm({ productId, attributes, multiOption }: {
   );
 }
 
+// ─── Display-order arrows (Shopify's option / value reordering) ────────────
+// Chevron pair that swaps a row with its neighbour. Each pair is its own tiny
+// form (the chips beside it are forms too, so nesting is out); the direction
+// travels as the submit button's own name/value.
+function ChevronIcon({ dir }: { dir: 'up' | 'down' }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {dir === 'up' ? <path d="m18 15-6-6-6 6" /> : <path d="m6 9 6 6 6-6" />}
+    </svg>
+  );
+}
+
+function MoveButtons({ action, hidden, isFirst, isLast, label }: {
+  action: (prev: { error?: string; success?: boolean } | null, fd: FormData) => Promise<{ error?: string; success?: boolean }>;
+  /** Hidden inputs identifying what to move (product_id + attribute_id or value_id). */
+  hidden: Record<string, string>;
+  isFirst: boolean;
+  isLast: boolean;
+  label: string;
+}) {
+  const [state, formAction, pending] = useActionState(action, null);
+  const btn = (disabled: boolean): React.CSSProperties => ({
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: 20, height: 20, padding: 0,
+    background: 'transparent', border: 'none', borderRadius: 4,
+    color: disabled ? '#d1d5db' : '#6b7280',
+    cursor: disabled ? 'default' : 'pointer',
+  });
+  return (
+    <>
+      <form action={formAction} style={{ display: 'inline-flex', gap: 0, flexShrink: 0 }}>
+        {Object.entries(hidden).map(([k, v]) => (
+          <input key={k} type="hidden" name={k} value={v} />
+        ))}
+        <button type="submit" name="direction" value="up" disabled={pending || isFirst} aria-label={`Move ${label} up`} title={`Move ${label} up`} style={btn(pending || isFirst)}>
+          <ChevronIcon dir="up" />
+        </button>
+        <button type="submit" name="direction" value="down" disabled={pending || isLast} aria-label={`Move ${label} down`} title={`Move ${label} down`} style={btn(pending || isLast)}>
+          <ChevronIcon dir="down" />
+        </button>
+      </form>
+      {state?.error && (
+        <span style={{ flexBasis: '100%', fontSize: '0.75rem', color: '#dc2626' }}>{state.error}</span>
+      )}
+    </>
+  );
+}
+
 // ─── Product options overview: what this product varies on, chip per value ──
 // The Shopify view of the same data: each value this product's variants use,
 // removable with ×. Removal deletes this product's empty variants carrying the
@@ -266,18 +314,174 @@ function OptionsCard({ productId, attributes, variants }: {
   if (rows.length === 0) return null;
   return (
     <div style={{ marginBottom: 14, padding: '12px 14px', background: 'white', border: '1px solid #e5e7eb', borderRadius: 8 }}>
-      {rows.map(({ attr, used }) => (
+      {rows.map(({ attr, used }, rowIdx) => (
         <div key={attr.id} style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', padding: '4px 0' }}>
+          {/* Option reorder: only shown when there is more than one option
+              to order (a lone Shade row has nowhere to go). */}
+          {rows.length > 1 && (
+            <MoveButtons
+              action={moveAttribute}
+              hidden={{ product_id: productId, attribute_id: attr.id }}
+              isFirst={rowIdx === 0}
+              isLast={rowIdx === rows.length - 1}
+              label={`the ${attr.name} option`}
+            />
+          )}
           <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em', minWidth: 70 }}>{attr.name}</span>
-          {used.map(v => (
-            <ValueChip key={v.id} productId={productId} valueId={v.id} label={v.value} />
+          {used.map((v, valIdx) => (
+            <span key={v.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+              {used.length > 1 && (
+                <MoveButtons
+                  action={moveAttributeValue}
+                  hidden={{ product_id: productId, value_id: v.id }}
+                  isFirst={valIdx === 0}
+                  isLast={valIdx === used.length - 1}
+                  label={v.value}
+                />
+              )}
+              <ValueChip productId={productId} valueId={v.id} label={v.value} />
+            </span>
           ))}
         </div>
       ))}
       <p style={{ margin: '6px 0 0', fontSize: '0.6875rem', color: '#9ca3af' }}>
-        × removes that value&apos;s variant from this product (only when its stock is zero). Other products keep the value.
+        Arrows set the display order on the product page. Options and values are shared across
+        the catalogue, so the order applies wherever they appear. × removes that value&apos;s
+        variant from this product (only when its stock is zero). Other products keep the value.
       </p>
     </div>
+  );
+}
+
+// ─── Per-variant image (Shopify's variant media assignment) ────────────────
+// A thumbnail button on each grid row; clicking opens a chooser of the
+// product's existing images (cover + gallery, managed above — no separate
+// upload path). Picking one saves immediately; the PDP then swaps the photo
+// when that variant is selected.
+function ImagePlaceholderIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="9" cy="9" r="2" />
+      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+    </svg>
+  );
+}
+
+function VariantImagePicker({ variantId, productId, currentUrl, images, variantLabel }: {
+  variantId: string;
+  productId: string;
+  currentUrl: string | null;
+  /** The product's existing image URLs (cover first, then gallery order). */
+  images: string[];
+  variantLabel: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const [error, setError] = useState('');
+  const [pending, startTransition] = useTransition();
+
+  const choose = (url: string | null) => {
+    setOpen(false);
+    setError('');
+    startTransition(async () => {
+      const res = await setVariantImage(variantId, productId, url);
+      if (res?.error) setError(res.error);
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        disabled={pending}
+        title={currentUrl ? `Change the image for ${variantLabel}` : `Assign an image to ${variantLabel}`}
+        aria-label={currentUrl ? `Change the image for ${variantLabel}` : `Assign an image to ${variantLabel}`}
+        style={{
+          width: 36, height: 36, padding: 0, flexShrink: 0,
+          border: currentUrl ? '1px solid #d1d5db' : '1px dashed #d1d5db',
+          borderRadius: 6, background: '#f9fafb', color: '#9ca3af',
+          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          cursor: pending ? 'wait' : 'pointer', overflow: 'hidden',
+        }}
+      >
+        {currentUrl ? (
+          <img src={currentUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+        ) : (
+          <ImagePlaceholderIcon />
+        )}
+      </button>
+      {error && <span style={{ display: 'block', fontSize: '0.6875rem', color: '#dc2626' }}>{error}</span>}
+      {open && (
+        <div
+          role="dialog"
+          aria-label={`Choose an image for ${variantLabel}`}
+          onClick={() => setOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(17,24,39,0.45)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+          }}
+        >
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: 'white', borderRadius: 10, padding: 20, maxWidth: 440,
+              width: '100%', maxHeight: '70vh', overflowY: 'auto',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+              <h3 style={{ margin: 0, fontSize: '0.9375rem', fontWeight: 700, color: '#111827' }}>Variant image</h3>
+              <button type="button" onClick={() => setOpen(false)} aria-label="Close" style={{ background: 'transparent', border: 'none', color: '#6b7280', cursor: 'pointer', padding: 4, display: 'inline-flex' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+              </button>
+            </div>
+            <p style={{ margin: '0 0 14px', fontSize: '0.75rem', color: '#6b7280' }}>
+              {variantLabel}. Shoppers see this photo when they pick the variant.
+            </p>
+            {images.length === 0 ? (
+              <p style={{ margin: '0 0 14px', fontSize: '0.8125rem', color: '#6b7280' }}>
+                This product has no images yet. Add them in the Product image section or the
+                gallery above, then assign one here.
+              </p>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(84px, 1fr))', gap: 8, marginBottom: 14 }}>
+                {images.map(url => {
+                  const active = url === currentUrl;
+                  return (
+                    <button
+                      key={url}
+                      type="button"
+                      onClick={() => choose(url)}
+                      title={active ? 'Currently assigned' : 'Use this image'}
+                      style={{
+                        aspectRatio: '1 / 1', padding: 0, overflow: 'hidden',
+                        border: active ? '2px solid #C5286A' : '1px solid #e5e7eb',
+                        borderRadius: 8, background: '#f9fafb', cursor: 'pointer',
+                      }}
+                    >
+                      <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => choose(null)}
+              disabled={!currentUrl}
+              style={{
+                padding: '8px 14px', background: 'white', color: currentUrl ? '#374151' : '#9ca3af',
+                border: '1px solid #d1d5db', borderRadius: 6, fontSize: '0.8125rem',
+                cursor: currentUrl ? 'pointer' : 'default',
+              }}
+            >
+              No image (use the shared gallery)
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -308,7 +512,7 @@ function CreateAttributeForm({ productId }: { productId: string }) {
 
 // ─── Main section ──────────────────────────────────────────────────────────
 export function VariantsSection({
-  productId, productKind, attributes, variants, stockCounted = true,
+  productId, productKind, attributes, variants, stockCounted = true, productImages = [],
 }: {
   productId: string;
   productKind: string;
@@ -316,6 +520,9 @@ export function VariantsSection({
   variants: VariantWithOptions[];
   /** false for vendor-held / uncounted products (stock_mode !== 'own'). */
   stockCounted?: boolean;
+  /** The product's existing image URLs (cover + gallery) for the per-variant
+   *  image picker. No new uploads happen here — assignment only. */
+  productImages?: string[];
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
@@ -406,6 +613,7 @@ export function VariantsSection({
           variants={variants}
           stockCounted={stockCounted}
           onDetails={setEditingId}
+          productImages={productImages}
         />
       )}
 
@@ -420,12 +628,13 @@ export function VariantsSection({
 // stock column collapses to "not counted" for vendor-held products. Details
 // (image, options, sort) live behind the per-row Details button, and Delete
 // posts the same form to the delete action via the button's own name/value.
-function VariantGrid({ productId, attributes, variants, stockCounted, onDetails }: {
+function VariantGrid({ productId, attributes, variants, stockCounted, onDetails, productImages }: {
   productId: string;
   attributes: AttributeWithValues[];
   variants: VariantWithOptions[];
   stockCounted: boolean;
   onDetails: (id: string) => void;
+  productImages: string[];
 }) {
   const [state, formAction, pending] = useActionState(bulkUpdateVariants, null);
   const gth: React.CSSProperties = { padding: '8px 10px', textAlign: 'left', fontSize: '0.6875rem', fontWeight: 700, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.04em' };
@@ -439,6 +648,7 @@ function VariantGrid({ productId, attributes, variants, stockCounted, onDetails 
         <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 720 }}>
           <thead>
             <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <th style={{ ...gth, width: 48 }}>Image</th>
               <th style={gth}>Variant</th>
               <th style={gth}>SKU</th>
               <th style={{ ...gth, width: 110 }}>Price</th>
@@ -451,6 +661,15 @@ function VariantGrid({ productId, attributes, variants, stockCounted, onDetails 
           <tbody>
             {variants.map(v => (
               <tr key={v.id} style={{ borderTop: '1px solid #f3f4f6', opacity: v.enabled ? 1 : 0.6 }}>
+                <td style={gtd}>
+                  <VariantImagePicker
+                    variantId={v.id}
+                    productId={productId}
+                    currentUrl={v.image_url ?? null}
+                    images={productImages}
+                    variantLabel={describeOptions(v, attributes)}
+                  />
+                </td>
                 <td style={{ ...gtd, fontSize: '0.8125rem', fontWeight: 600, whiteSpace: 'nowrap' }}>
                   <input type="hidden" name={`v__${v.id}__present`} value="1" />
                   {describeOptions(v, attributes)}

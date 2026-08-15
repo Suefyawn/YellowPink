@@ -32,7 +32,7 @@ const row3: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1
 // long product edit reads as grouped steps, not one undifferentiated wall.
 // Section titles in render order, also drives the "jump to" nav. Keep in
 // sync with the <Section> blocks below.
-const FORM_SECTIONS = ['Basics', 'Merchandising', 'Pricing & stock', 'Vendor & sourcing', 'Page link', 'Product image', 'Product-page content', 'Search & social'];
+const FORM_SECTIONS = ['Basics', 'Merchandising', 'Pricing & stock', 'Shipping', 'Vendor & sourcing', 'Page link', 'Product image', 'Product-page content', 'Search & social'];
 
 function Section({ title, desc, first, children }: {
   title: string; desc?: string; first?: boolean; children: React.ReactNode;
@@ -440,6 +440,18 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
                 <span style={hint}>Flag this product for reorder when stock falls to this level. The default is 5; set 0 to leave this product out of the reorder list.</span>
               </div>
             )}
+          </Section>
+
+          {/* ── Shipping ───────────────────────────────────────────────── */}
+          <Section title="Shipping" desc="Used when booking the courier. Nothing here is shown to shoppers.">
+            <div style={{ ...fieldWrap, maxWidth: 240 }}>
+              <label style={lbl}>Weight (grams)</label>
+              <input name="weight_grams" type="number" min={0} step={1} defaultValue={product?.weight_grams ?? ''} style={inp} placeholder="e.g. 250" />
+              <span style={hint}>
+                Optional. The courier booking sums the weights of the items in a parcel;
+                items without a weight are assumed at 500 g each.
+              </span>
+            </div>
           </Section>
 
           {/* ── Vendor & sourcing ──────────────────────────────────────── */}

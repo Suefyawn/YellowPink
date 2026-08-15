@@ -143,6 +143,14 @@ export const productInputSchema = z.object({
                     v => (v === '' || v == null ? null : v),
                     positiveNumber.nullable(),
                   ),
+  // Package weight in grams (Shopify's Shipping card). Feeds courier booking
+  // (the parcel weight is the sum of item weights); never shown to shoppers.
+  // Absent leaves the stored value alone (CSV import without the column);
+  // an empty string from the form clears it to null.
+  weight_grams:   z.preprocess(
+                    v => (v == null ? undefined : v === '' ? null : v),
+                    positiveInt.nullable().optional(),
+                  ),
   image_url:      httpsUrlSchema.optional().or(z.literal('')).nullable(),
   // Optional short product video (PDP gallery slide). Empty string from the
   // form normalises to null.

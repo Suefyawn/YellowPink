@@ -253,6 +253,177 @@ export async function removeValueFromProduct(
   return { success: true };
 }
 
+// ─── Display order (Shopify's option / value reordering) ───────────────────
+// product_attributes.sort_order and attribute_values.sort_order drive both the
+// admin and the storefront picker (every query orders by sort_order). The
+// registry is shared across products, so a move here re-ranks the option or
+// value everywhere it appears — same as Shopify's shared option ordering.
+// Ties (imports that left sort_order at 0) would make a swap a silent no-op,
+// so the whole sibling list is renumbered 1..n in its current display order
+// before the two rows trade ranks.
+async function renumberAndSwap(
+  table: 'product_attributes' | 'attribute_values',
+  siblings: Array<{ id: string; sort_order: number }>,
+  aId: string,
+  bId: string,
+): Promise<string | null> {
+  const admin = supabaseAdmin();
+  const ranks = new Map(siblings.map((s, i) => [s.id, i + 1]));
+  const aRank = ranks.get(aId);
+  const bRank = ranks.get(bId);
+  if (aRank == null || bRank == null) return 'Row not found.';
+  ranks.set(aId, bRank);
+  ranks.set(bId, aRank);
+  for (const s of siblings) {
+    const next = ranks.get(s.id)!;
+    if (next === s.sort_order) continue;
+    const { error } = await admin.from(table).update({ sort_order: next }).eq('id', s.id);
+    if (error) return error.message;
+  }
+  return null;
+}
+
+/** Attribute-value ids linked to this product's variants, and the attribute
+ *  ids those values belong to. The reorder UI only shows what the product
+ *  actually uses, so moves swap with the adjacent USED row. */
+async function usedOptionIds(productId: string): Promise<{ valueIds: Set<string>; attributeIds: Set<string> }> {
+  const admin = supabaseAdmin();
+  const { data: variantRows } = await admin
+    .from('product_variants')
+    .select('id')
+    .eq('product_id', productId);
+  const variantIds = ((variantRows ?? []) as Array<{ id: string }>).map(v => v.id);
+  if (!variantIds.length) return { valueIds: new Set(), attributeIds: new Set() };
+  const { data: links } = await admin
+    .from('variant_attribute_values')
+    .select('attribute_value_id')
+    .in('variant_id', variantIds);
+  const valueIds = new Set(((links ?? []) as Array<{ attribute_value_id: string }>).map(l => l.attribute_value_id));
+  if (!valueIds.size) return { valueIds, attributeIds: new Set() };
+  const { data: valueRows } = await admin
+    .from('attribute_values')
+    .select('id, attribute_id')
+    .in('id', [...valueIds]);
+  const attributeIds = new Set(((valueRows ?? []) as Array<{ attribute_id: string }>).map(r => r.attribute_id));
+  return { valueIds, attributeIds };
+}
+
+/** Move an option (e.g. Shade above Size) one step up or down in display
+ *  order. Swaps with the neighbouring option as shown on this product. */
+export async function moveAttribute(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertProducts();
+  const attributeId = String(formData.get('attribute_id') ?? '');
+  const productId = String(formData.get('product_id') ?? '');
+  const direction = String(formData.get('direction') ?? '');
+  if (!attributeId || !productId || (direction !== 'up' && direction !== 'down')) {
+    return { error: 'Missing option or direction.' };
+  }
+
+  const admin = supabaseAdmin();
+  // Full registry in display order (ties broken by id, deterministically).
+  const { data: attrRows } = await admin
+    .from('product_attributes')
+    .select('id, sort_order')
+    .order('sort_order')
+    .order('id');
+  const all = (attrRows ?? []) as Array<{ id: string; sort_order: number }>;
+  const { attributeIds } = await usedOptionIds(productId);
+  const displayed = all.filter(a => attributeIds.has(a.id));
+  const idx = displayed.findIndex(a => a.id === attributeId);
+  if (idx < 0) return { error: 'That option is not on this product.' };
+  const j = direction === 'up' ? idx - 1 : idx + 1;
+  if (j < 0 || j >= displayed.length) return { success: true }; // already at the edge
+
+  const err = await renumberAndSwap('product_attributes', all, attributeId, displayed[j].id);
+  if (err) return { error: err };
+
+  void logAudit(session, {
+    action: 'attribute.reorder', entity: 'product_attributes', entity_id: attributeId,
+    diff: { product_id: productId, direction },
+  });
+  revalidatePath(`/admin/products/${productId}`);
+  return { success: true };
+}
+
+/** Move a value (a shade, a size) one step up or down within its option.
+ *  Swaps with the neighbouring value as shown on this product. */
+export async function moveAttributeValue(
+  _prev: { error?: string; success?: boolean } | null,
+  formData: FormData
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertProducts();
+  const valueId = String(formData.get('value_id') ?? '');
+  const productId = String(formData.get('product_id') ?? '');
+  const direction = String(formData.get('direction') ?? '');
+  if (!valueId || !productId || (direction !== 'up' && direction !== 'down')) {
+    return { error: 'Missing value or direction.' };
+  }
+
+  const admin = supabaseAdmin();
+  const { data: valueRow } = await admin
+    .from('attribute_values')
+    .select('id, attribute_id')
+    .eq('id', valueId)
+    .maybeSingle();
+  if (!valueRow) return { error: 'Value not found.' };
+
+  // Every value of the same attribute, in display order.
+  const { data: siblingRows } = await admin
+    .from('attribute_values')
+    .select('id, sort_order')
+    .eq('attribute_id', (valueRow as { attribute_id: string }).attribute_id)
+    .order('sort_order')
+    .order('id');
+  const all = (siblingRows ?? []) as Array<{ id: string; sort_order: number }>;
+  const { valueIds } = await usedOptionIds(productId);
+  const displayed = all.filter(v => valueIds.has(v.id));
+  const idx = displayed.findIndex(v => v.id === valueId);
+  if (idx < 0) return { error: 'That value is not on this product.' };
+  const j = direction === 'up' ? idx - 1 : idx + 1;
+  if (j < 0 || j >= displayed.length) return { success: true }; // already at the edge
+
+  const err = await renumberAndSwap('attribute_values', all, valueId, displayed[j].id);
+  if (err) return { error: err };
+
+  void logAudit(session, {
+    action: 'attribute_value.reorder', entity: 'attribute_values', entity_id: valueId,
+    diff: { product_id: productId, direction },
+  });
+  revalidatePath(`/admin/products/${productId}`);
+  return { success: true };
+}
+
+/** Point a variant at one of the product's images (Shopify's per-variant
+ *  media assignment): picking that variant on the PDP swaps the photo.
+ *  Pass null to clear, the PDP then keeps the shared gallery. */
+export async function setVariantImage(
+  variantId: string,
+  productId: string,
+  imageUrl: string | null,
+): Promise<{ error?: string; success?: boolean }> {
+  const session = await assertProducts();
+  if (!variantId || !productId) return { error: 'Missing variant or product.' };
+  const url = imageUrl && imageUrl.trim() ? imageUrl.trim() : null;
+  if (url && !/^https?:\/\//i.test(url) && !url.startsWith('/')) {
+    return { error: 'Image must be an https URL or a /path.' };
+  }
+  const { error } = await supabaseAdmin()
+    .from('product_variants')
+    .update({ image_url: url })
+    .eq('id', variantId)
+    .eq('product_id', productId);
+  if (error) return { error: error.message };
+  void logAudit(session, {
+    action: 'variant.set_image', entity: 'product_variants', entity_id: variantId,
+    diff: { product_id: productId, image_url: url },
+  });
+  revalidatePath(`/admin/products/${productId}`);
+  return { success: true };
+}
+
 /** Create a new attribute (Shade, Size, Form…) with its first value, for
  *  products whose variants need an axis that doesn't exist yet. */
 export async function createAttribute(
