@@ -97,7 +97,7 @@ export async function confirmCashSuggestion(formData: FormData): Promise<void> {
   const orderId = UUID_RE.test(orderIdRaw) ? orderIdRaw : null;
   const vendorId = UUID_RE.test(vendorIdRaw) ? vendorIdRaw : null;
 
-  if (!sourceKey.startsWith('settle:') && !sourceKey.startsWith('payment:')) back('error', 'Bad suggestion.');
+  if (!sourceKey.startsWith('settle:') && !sourceKey.startsWith('payment:') && !sourceKey.startsWith('refund:')) back('error', 'Bad suggestion.');
   if (!CASH_CATEGORY_VALUES.includes(category)) back('error', 'Pick a category.');
   if (!Number.isFinite(amount) || amount <= 0) back('error', 'The amount has to be a positive number.');
   if (entryDate && !/^\d{4}-\d{2}-\d{2}$/.test(entryDate)) back('error', 'That date does not look right.');
@@ -131,7 +131,7 @@ export async function confirmCashSuggestion(formData: FormData): Promise<void> {
 export async function skipCashSuggestion(formData: FormData): Promise<void> {
   const session = await requireFinance();
   const sourceKey = String(formData.get('source_key') ?? '').slice(0, 200);
-  if (!sourceKey.startsWith('settle:') && !sourceKey.startsWith('payment:')) back('error', 'Bad suggestion.');
+  if (!sourceKey.startsWith('settle:') && !sourceKey.startsWith('payment:') && !sourceKey.startsWith('refund:')) back('error', 'Bad suggestion.');
   const { error } = await supabaseAdmin()
     .from('cash_suggestion_skips')
     .upsert({ source_key: sourceKey }, { onConflict: 'source_key', ignoreDuplicates: true });

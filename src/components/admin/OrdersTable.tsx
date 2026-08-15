@@ -3,9 +3,10 @@
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { bulkUpdateOrderStatus } from '@/app/admin/actions';
+import { bulkUpdateOrderStatus, cancelOrder } from '@/app/admin/actions';
 import { useToast } from '@/components/admin/Toast';
 import { ORDER_STATUS_COLORS } from '@/components/admin/OrderStatusBadge';
+import { CANCEL_REASONS } from '@/components/admin/OrderStatusForm';
 import { paymentState, fulfilmentState, needsCodConfirmation, DotChip, itemCount } from '@/components/admin/OrderChips';
 import { OrderPeekDrawer } from '@/components/admin/OrderPeekDrawer';
 import { SortHeader } from '@/components/admin/SortHeader';
@@ -97,10 +98,146 @@ function CourierChip({ status }: { status: string | undefined }) {
   return <DotChip label={meta.label} color={meta.color} />;
 }
 
+const dlgInp: React.CSSProperties = {
+  width: '100%', padding: '8px 12px',
+  border: '1px solid #d1d5db', borderRadius: 6,
+  fontSize: '0.875rem', color: '#111827',
+  background: 'white', outline: 'none', boxSizing: 'border-box',
+};
+
+const dlgCheckRow: React.CSSProperties = {
+  display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer',
+  padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: 8, background: '#f9fafb',
+};
+
+/** Bulk-cancel confirm dialog: the same Restock / Notify choices as the
+ *  single-order cancel dialog, plus one reason applied to every selected
+ *  order. The submit hands the choices back to the table, which routes each
+ *  order through the same cancelOrder server action the single-order dialog
+ *  uses — so restock, timeline comment, audit row and customer email behave
+ *  identically order by order. */
+function BulkCancelDialog({ count, pending, onClose, onConfirm }: {
+  count: number;
+  pending: boolean;
+  onClose: () => void;
+  onConfirm: (opts: { reason: string; restock: boolean; notify: boolean }) => void;
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="bulk-cancel-title"
+      style={{
+        position: 'fixed', inset: 0, zIndex: 60,
+        background: 'rgba(17,24,39,0.5)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
+      }}
+      onClick={e => { if (e.target === e.currentTarget && !pending) onClose(); }}
+    >
+      <div style={{
+        background: 'white', borderRadius: 12, width: '100%', maxWidth: 460,
+        boxShadow: '0 20px 50px rgba(0,0,0,0.25)', padding: '20px 22px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+          <h3 id="bulk-cancel-title" style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: '#111827' }}>
+            Cancel {count} order{count !== 1 ? 's' : ''}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            aria-label="Close"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: 4, display: 'flex' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+            </svg>
+          </button>
+        </div>
+        <p style={{ margin: '0 0 16px', fontSize: '0.8125rem', color: '#6b7280' }}>
+          Cancelling drops these orders from revenue. The reason and choices below apply to every selected order.
+        </p>
+
+        <form
+          onSubmit={e => {
+            e.preventDefault();
+            const fd = new FormData(e.currentTarget);
+            onConfirm({
+              reason: String(fd.get('reason') ?? 'other'),
+              restock: fd.get('restock') === 'on',
+              notify: fd.get('notify') === 'on',
+            });
+          }}
+          style={{ display: 'flex', flexDirection: 'column', gap: 12 }}
+        >
+          <div>
+            <label htmlFor="bulk-cancel-reason" style={{ display: 'block', fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 5 }}>
+              Reason for cancellation (applied to all)
+            </label>
+            <select id="bulk-cancel-reason" name="reason" defaultValue="customer" style={dlgInp}>
+              {CANCEL_REASONS.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <label style={dlgCheckRow}>
+            <input type="checkbox" name="restock" defaultChecked style={{ marginTop: 2, accentColor: '#C5286A' }} />
+            <span>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Restock items</span>
+              <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                Return every cancelled quantity to stock through the inventory ledger.
+              </span>
+            </span>
+          </label>
+
+          <label style={dlgCheckRow}>
+            <input type="checkbox" name="notify" defaultChecked style={{ marginTop: 2, accentColor: '#C5286A' }} />
+            <span>
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151' }}>Send a notification to the customers</span>
+              <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>
+                Emails each customer a branded cancellation notice. Orders without an email address are skipped automatically.
+              </span>
+            </span>
+          </label>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={pending}
+              style={{
+                padding: '9px 16px', background: 'white', color: '#374151',
+                border: '1px solid #d1d5db', borderRadius: 7,
+                fontSize: '0.8125rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
+              }}
+            >
+              Keep orders
+            </button>
+            <button
+              type="submit"
+              disabled={pending}
+              style={{
+                padding: '9px 16px', background: pending ? '#9ca3af' : '#C5286A',
+                color: 'white', border: 'none', borderRadius: 7,
+                fontSize: '0.8125rem', fontWeight: 600, cursor: pending ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {pending ? 'Cancelling…' : `Cancel ${count} order${count !== 1 ? 's' : ''}`}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; courierStatus?: Record<string, string> }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   // Quick-view drawer: peek at an order without leaving the list.
   const [peek, setPeek] = useState<Order | null>(null);
+  // Bulk-cancel dialog (restock / notify / reason applied to all selected).
+  const [showBulkCancel, setShowBulkCancel] = useState(false);
   const [pending, startTransition] = useTransition();
   const toast = useToast();
   const router = useRouter();
@@ -139,11 +276,14 @@ export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; c
   const bulk = (status: OrderStatus) => {
     if (selected.size === 0) return;
     const count = selected.size;
-    // Cancellation is destructive (emails nothing here, but it restocks the
-    // items and drops the orders from revenue) — confirm it like delete does.
-    if (status === 'cancelled' && !window.confirm(
-      `Cancel ${count} selected order${count !== 1 ? 's' : ''}? Their items will be returned to stock.`
-    )) return;
+    // Cancellation is destructive and has choices attached (restock, notify,
+    // reason) — it opens the bulk-cancel dialog instead of firing directly,
+    // and each order then runs through the same cancelOrder action as the
+    // single-order cancel dialog.
+    if (status === 'cancelled') {
+      setShowBulkCancel(true);
+      return;
+    }
     startTransition(async () => {
       const result = await bulkUpdateOrderStatus(Array.from(selected), status);
       if (result.error) {
@@ -152,6 +292,34 @@ export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; c
       }
       setSelected(new Set());
       toast(`${count} order${count !== 1 ? 's' : ''} marked as ${ORDER_STATUS_LABELS[status]}`, 'success');
+    });
+  };
+
+  // Bulk cancel: one order at a time through the shared cancelOrder action so
+  // restock, timeline comment, audit row and (optional) customer email are
+  // identical to a single-order cancellation. Already-cancelled selections
+  // are reported rather than failed.
+  const runBulkCancel = (opts: { reason: string; restock: boolean; notify: boolean }) => {
+    const ids = Array.from(selected);
+    startTransition(async () => {
+      let ok = 0; let already = 0; let failed = 0;
+      for (const id of ids) {
+        const fd = new FormData();
+        fd.set('reason', opts.reason);
+        if (opts.restock) fd.set('restock', 'on');
+        if (opts.notify) fd.set('notify', 'on');
+        const result = await cancelOrder(id, null, fd);
+        if (result?.success) ok += 1;
+        else if (result?.error === 'This order is already cancelled.') already += 1;
+        else failed += 1;
+      }
+      setShowBulkCancel(false);
+      setSelected(new Set());
+      const parts = [`${ok} order${ok !== 1 ? 's' : ''} cancelled`];
+      if (already > 0) parts.push(`${already} already cancelled`);
+      if (failed > 0) parts.push(`${failed} failed`);
+      toast(parts.join(', '), failed > 0 ? 'error' : 'success');
+      router.refresh();
     });
   };
 
@@ -273,6 +441,15 @@ export function OrdersTable({ orders, courierStatus = {} }: { orders: Order[]; c
       </table>
 
       {peek && <OrderPeekDrawer order={peek} onClose={() => setPeek(null)} />}
+
+      {showBulkCancel && (
+        <BulkCancelDialog
+          count={selected.size}
+          pending={pending}
+          onClose={() => setShowBulkCancel(false)}
+          onConfirm={runBulkCancel}
+        />
+      )}
 
       {/* ── Mobile: swipe cards. Swipe a card left to reveal quick status
            actions; the card itself still links to the order detail. ── */}

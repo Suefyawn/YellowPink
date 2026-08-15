@@ -24,8 +24,9 @@ const statusColors: Record<OrderStatus, string> = {
 };
 
 // Shopify's cancellation reasons, trimmed to what fits this store. Keys must
-// stay in sync with ORDER_CANCEL_REASONS in app/admin/actions.ts.
-const CANCEL_REASONS: { value: string; label: string }[] = [
+// stay in sync with ORDER_CANCEL_REASONS in app/admin/actions.ts. Exported
+// for the Orders list's bulk-cancel dialog so the two lists can't drift.
+export const CANCEL_REASONS: { value: string; label: string }[] = [
   { value: 'customer',  label: 'Customer changed their mind' },
   { value: 'declined',  label: 'Payment declined' },
   { value: 'fraud',     label: 'Fraudulent order' },

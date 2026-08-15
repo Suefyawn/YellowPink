@@ -96,6 +96,30 @@ export async function loadReturnedDeliveryLoss(
   return { count: rows.length, loss, fees, estimatedCount, vendorDeliveredCount };
 }
 
+/** Refunds issued (order_refunds ledger) in the window, for orders that are
+ *  still revenue-eligible. An order in a DEAD state (refunded / returned /
+ *  cancelled / payment_*) already contributes zero revenue to the P&L, so
+ *  deducting its refund rows too would double-count the loss — a fully
+ *  refunded order's money simply disappears from Revenue when its status
+ *  flips. What this line captures is the money given back on orders that
+ *  STILL count at full value in Revenue: partial and goodwill refunds.
+ *  Windowed on the refund's own date (the money moved then, not when the
+ *  order was placed). */
+export async function loadRefundsIssued(fromISO: string | null): Promise<{ count: number; total: number }> {
+  const admin = supabaseAdmin();
+  let q = admin
+    .from('order_refunds')
+    .select('amount, created_at, orders!inner(status, archived_at)')
+    .is('orders.archived_at', null)
+    .not('orders.status', 'in', `(${[...DEAD_STATES].join(',')})`);
+  if (fromISO) q = q.gte('created_at', fromISO);
+  type Row = { amount: number | string | null };
+  const { data } = await fetchAll<Row>(q.order('created_at', { ascending: true }));
+  const rows = data ?? [];
+  const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+  return { count: rows.length, total };
+}
+
 export const fnum = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
 
 export function resolveRange(key?: string) {
