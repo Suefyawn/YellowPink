@@ -45,7 +45,9 @@ jobs:
             echo "SUPABASE_DB_URL secret is not set - see the header comment in this workflow." >&2
             exit 1
           fi
-          pg_dump "$DB_URL" \
+          # Use the versioned binary directly: the runner preinstalls client 16
+          # and the /usr/bin/pg_dump wrapper keeps resolving to it.
+          /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" \
             --format=custom \
             --no-owner \
             --no-privileges \
