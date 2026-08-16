@@ -1,0 +1,62 @@
+# Weekly database backup.
+#
+# The store runs on Supabase's Free plan (owner decision, Aug 2026), which
+# has no automated backups. This workflow pg_dumps the whole database every
+# Monday 02:00 UTC (07:00 PKT) and stores it as a GitHub Actions artifact
+# with 90-day retention, so there are always ~12 restore points.
+#
+# Setup (one time): add a repository secret SUPABASE_DB_URL containing the
+# project's Postgres connection string (Supabase dashboard → Project
+# Settings → Database → Connection string → URI, use the session pooler
+# port 5432 form). Rotate it whenever the database password changes.
+#
+# Restore: download the artifact, then
+#   pg_restore --clean --if-exists -d "$NEW_DB_URL" backup.dump
+
+name: Database backup
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+
+      - name: Dump database
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "$DB_URL" ]; then
+            echo "SUPABASE_DB_URL secret is not set - see the header comment in this workflow." >&2
+            exit 1
+          fi
+          pg_dump "$DB_URL" \
+            --format=custom \
+            --no-owner \
+            --no-privileges \
+            --exclude-schema=storage \
+            --exclude-schema=auth \
+            --file=backup.dump
+          # auth + storage schemas are Supabase-managed and restore poorly
+          # across projects; auth.users is captured separately below so
+          # customer accounts are not lost.
+          psql "$DB_URL" -c "\copy (select id, email, raw_user_meta_data, created_at from auth.users) to 'auth-users.csv' csv header"
+          ls -la backup.dump auth-users.csv
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: |
+            backup.dump
+            auth-users.csv
+          retention-days: 90
+          if-no-files-found: error
