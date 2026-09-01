@@ -64,6 +64,16 @@ and both Routine prompts are API-only. Same bearer token as `/api/blog`.
 If a Routine run ever reports it cannot reach the database: that is
 correct behaviour, the fix is an API endpoint, never a connector grant.
 
+One caveat from the 1 Sep rework: the ranking-check Routine had to be
+recreated (its old prompt was locked to a persistent session), and Routines
+created through the API in this org store **no connector grants** — its
+first fired run stopped early, almost certainly without Semrush tools. The
+1 Sep batch was appended manually through the API instead. Before the
+15 Sep fire, the owner should open claude.ai → Routines → "Yellow Pink SEO
+ranking check (1st & 15th)" and enable the **Semrush** connector on it (or
+recreate the Routine from that UI). Semrush is the only connector it needs;
+the daily blog Routine kept its original grants and is unaffected.
+
 **2. `/api/media` R2 411 on chunked uploads (FIXED in the 1 Sep deploy).**
 The R2 PUT now sends an explicit Content-Length. The Routine prompt carries
 a fallback for the window until that deploy is live.
