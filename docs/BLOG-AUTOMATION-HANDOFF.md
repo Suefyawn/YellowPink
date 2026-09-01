@@ -33,9 +33,10 @@ AI work, so blog automation adds nothing to the Vercel/Supabase/Resend bills.
    is derived server-side from the body.
 5. Verifies the live URL, hero, meta and every link, then reports.
 
-The reviewer auto-assign trigger then credits a board doctor for health topics
-and emails them; posts without a manual reviewer arrive with
-`review_status = NULL` and count as "pending review" in admin.
+The reviewer auto-assign trigger then credits a board doctor from the post's
+`topic` (no email — the doctor's dashboard lists their credited articles).
+Posts sent without a topic get no doctor, which is correct only for
+makeup/hair content.
 
 ## Health as of 1 Sep 2026
 
