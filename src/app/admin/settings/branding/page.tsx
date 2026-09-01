@@ -2,15 +2,13 @@ export const dynamic = 'force-dynamic';
 
 import Link from 'next/link';
 import { getSiteSettings } from '@/lib/supabase';
-import { saveSettings, saveSeasonalTheme } from '../actions';
-import { ImageUpload } from '@/components/admin/ImageUpload';
+import { saveSettings } from '../actions';
 import { STORE_THEMES, normalizeTheme } from '@/lib/themes';
 import { activeSeasonalTheme, parsePktDate } from '@/lib/seasonal-theme';
 import {
-  inp, lbl, Section, Card, Divider, ColorPicker,
+  lbl, Section, Card, Divider, ColorPicker,
   StatusBanner, SettingsPageHeader,
 } from '@/components/admin/settings-controls';
-import { SaveBarForm } from '@/components/admin/SaveBar';
 
 const PATH = '/admin/settings/branding';
 
@@ -61,145 +59,40 @@ export default async function SettingsBrandingPage({ searchParams }: { searchPar
           text: 'No seasonal theme active — the storefront wears the default Yellow Pink look.',
         };
 
-  const radio = (value: 'off' | 'now' | 'schedule', title: string, desc: string) => (
-    <label style={{
-      display: 'flex', gap: 10, alignItems: 'flex-start', padding: '12px 14px',
-      border: '1px solid #e5e7eb', borderRadius: 10, cursor: 'pointer', background: 'white',
-    }}>
-      <input type="radio" name="seasonal_mode" value={value} defaultChecked={mode === value}
-        style={{ marginTop: 3, accentColor: '#C5286A' }} />
-      <span>
-        <span style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#111827' }}>{title}</span>
-        <span style={{ display: 'block', fontSize: '0.75rem', color: '#6b7280', marginTop: 2 }}>{desc}</span>
-      </span>
-    </label>
-  );
-
   return (
     <>
       <SettingsPageHeader
         title="Branding & theme"
-        subtitle="Brand colours, and the seasonal makeover: pick a theme, choose when it runs, and the palette, announcement bar and homepage hero all follow."
+        subtitle="Brand colours here; the seasonal makeover now lives in Sales & occasions, where every occasion keeps its complete pre-stored look."
       />
       <StatusBanner saved={sp.saved === '1'} saveError={sp.error} />
 
-      {/* Seasonal theme card — its own form + action: the form speaks in one
-          mental model (a theme + when it runs) and saveSeasonalTheme maps it
-          to the backing keys, so the switches can't contradict each other.
-          SaveBarForm shows the contextual "Unsaved changes" bar (with the
-          Save button) the moment any field is edited, Shopify-style. */}
-      <SaveBarForm action={saveSeasonalTheme}>
-        <Card>
-          <Section
-            title="Seasonal theme"
-            desc="One theme, one decision about when it runs. While a theme is active the storefront wears its colours and background motif, the announcement bar shows your event message, and the homepage hero swaps to the seasonal copy below. Everything reverts to the default look the moment it ends."
-          />
-          <Divider />
-          <div style={{ display: 'grid', gap: 18 }}>
-            <div style={{
-              padding: '10px 14px', borderRadius: 10, fontSize: '0.8125rem', fontWeight: 600,
-              color: status.color, background: status.bg, border: `1px solid ${status.border}`,
-            }}>
-              {status.text}
-            </div>
-
-            <div>
-              <label style={lbl} htmlFor="set-seasonal-theme-pick">Theme</label>
-              <select id="set-seasonal-theme-pick" name="seasonal_theme_pick" defaultValue={theme} style={inp}>
-                {STORE_THEMES.filter(t => t.key !== 'default').map(t => (
-                  <option key={t.key} value={t.key}>{t.label} — {t.hint}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label style={lbl}>When does it run?</label>
-              <div style={{ display: 'grid', gap: 8, marginTop: 6 }}>
-                {radio('off', 'Off', 'Default look. The dates and copy below are kept for next time.')}
-                {radio('now', 'On now', 'Switches the theme on immediately and keeps it on until you come back and turn it off. Good for a quick preview too.')}
-                {radio('schedule', 'Scheduled', 'Turns itself on at the start time and off at the end time — nothing to remember. Times are Pakistan time.')}
-              </div>
-            </div>
-
-            <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <div>
-                <label style={lbl}>Starts (PKT)</label>
-                <input type="datetime-local" name="seasonal_theme_start" defaultValue={g('seasonal_theme_start')} style={inp} />
-              </div>
-              <div>
-                <label style={lbl}>Ends (PKT)</label>
-                <input type="datetime-local" name="seasonal_theme_end" defaultValue={g('seasonal_theme_end')} style={inp} />
-              </div>
-            </div>
-            <p style={{ margin: '-8px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-              Only used with Scheduled. Storefront pages are cached, so a flip reaches every visitor within a few minutes.
-            </p>
-
-            <div>
-              <label style={lbl}>Announcement-bar message</label>
-              <input name="seasonal_theme_message" defaultValue={g('seasonal_theme_message')} style={inp}
-                placeholder="Azadi Sale is live: 14% off storewide with code AZADI14" />
-              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                Shown in the theme-coloured bar at the top of every page while the theme is active. Leave blank for no bar (palette and hero only).
-              </p>
-            </div>
-            <div>
-              <label style={lbl}>Coupon code shown in the bar</label>
-              <input name="seasonal_theme_coupon" defaultValue={g('seasonal_theme_coupon')} style={inp}
-                placeholder="AZADI14" />
-              <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                Display only — create or edit the code itself on the <Link href="/admin/coupons" style={{ color: '#C5286A', fontWeight: 600 }}>Coupons</Link> page.
-              </p>
-            </div>
-
-            <div>
-              <div style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#374151', marginBottom: 2 }}>
-                Seasonal homepage hero
-              </div>
-              <p style={{ margin: '0 0 12px', fontSize: '0.75rem', color: '#9ca3af' }}>
-                Replaces the homepage hero while the theme is active. Leave a field blank to keep your normal hero&apos;s value for it.
-              </p>
-              <div style={{ display: 'grid', gap: 12 }}>
-                <div>
-                  <label style={lbl}>Overline (small label above headline)</label>
-                  <input name="season_hero_overline" defaultValue={g('season_hero_overline')} style={inp}
-                    placeholder="14 August · Jashn e Azadi" />
-                </div>
-                <div>
-                  <label style={lbl}>Headline</label>
-                  <textarea name="season_hero_headline" defaultValue={g('season_hero_headline').replace(/<br\/>/g, '\n')} rows={2} style={{ ...inp, resize: 'vertical' }}
-                    placeholder="Azadi Sale." />
-                  <p style={{ margin: '4px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                    Use a new line where you want a line break. Italics with HTML: &lt;em&gt;text&lt;/em&gt;
-                  </p>
-                </div>
-                <div>
-                  <label style={lbl}>Sub-text</label>
-                  <textarea name="season_hero_subline" defaultValue={g('season_hero_subline')} rows={3} style={{ ...inp, resize: 'vertical' }} />
-                </div>
-                <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div>
-                    <label style={lbl}>Button text</label>
-                    <input name="season_hero_cta1_text" defaultValue={g('season_hero_cta1_text')} style={inp}
-                      placeholder="Shop the Azadi Sale" />
-                  </div>
-                  <div>
-                    <label style={lbl}>Button URL</label>
-                    <input name="season_hero_cta1_url" defaultValue={g('season_hero_cta1_url')} style={inp}
-                      placeholder="/shop" />
-                  </div>
-                </div>
-                <div>
-                  <ImageUpload name="season_hero_image_url" currentUrl={g('season_hero_image_url')} label="Seasonal hero image" aspect={4 / 3} />
-                  <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af' }}>
-                    Recommended 800×700px or taller. Leave blank to keep your normal hero image.
-                  </p>
-                </div>
-              </div>
-            </div>
+      {/* Seasonal status only — control moved to Sales & occasions (owner
+          ask, 1 Sep 2026: one place, pre-stored looks, one-click switch).
+          This card just says what the storefront is doing and links there. */}
+      <Card>
+        <Section
+          title="Seasonal look"
+          desc="The storefront's seasonal makeover — palette, announcement bar, hero and image — is managed from Sales & occasions, where every occasion keeps a complete pre-stored version you can preview and publish with one click."
+        />
+        <Divider />
+        <div style={{ display: 'grid', gap: 14 }}>
+          <div style={{
+            padding: '10px 14px', borderRadius: 10, fontSize: '0.8125rem', fontWeight: 600,
+            color: status.color, background: status.bg, border: `1px solid ${status.border}`,
+          }}>
+            {status.text}
           </div>
-        </Card>
-      </SaveBarForm>
+          <div>
+            <Link href="/admin/sales" style={{
+              display: 'inline-block', padding: '9px 18px', background: '#C5286A', color: 'white',
+              borderRadius: 8, fontWeight: 700, fontSize: '0.875rem', textDecoration: 'none',
+            }}>
+              Open Sales &amp; occasions
+            </Link>
+          </div>
+        </div>
+      </Card>
 
       {/* Brand colours keep the generic settings action — unrelated to the
           seasonal mapping above, so they save independently, via their own

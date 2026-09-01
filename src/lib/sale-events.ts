@@ -42,9 +42,27 @@ export const SEASONAL_SETTING_KEYS = [
   'seasonal_theme_message', 'seasonal_theme_coupon',
   'season_hero_overline', 'season_hero_headline', 'season_hero_subline',
   'season_hero_cta1_text', 'season_hero_cta1_url', 'season_hero_image_url',
+  'seasonal_source_event',
 ] as const;
 
 export type ActivationMode = 'now' | 'schedule';
+
+/** Per-theme swatches for the admin's storefront mock-ups, mirroring the
+ *  `:root[data-theme=…]` palette blocks in globals.css (paper = page ground,
+ *  accent = the dark CTA/text tone, yellow = the theme's gold). Keep in sync
+ *  with the CSS — the mock exists so the owner sees the real look before
+ *  clicking "Turn on now". */
+export const THEME_PREVIEW: Record<string, { paper: string; accent: string; yellow: string }> = {
+  default:      { paper: '#FAF6EE', accent: '#C5286A', yellow: '#F7C948' },
+  eid:          { paper: '#FBF6EA', accent: '#AE2766', yellow: '#D4A431' },
+  sale:         { paper: '#FFFFFF', accent: '#D11148', yellow: '#FFC400' },
+  christmas:    { paper: '#FBF4EF', accent: '#9E1528', yellow: '#C99A3C' },
+  easter:       { paper: '#FBF7F4', accent: '#A33D6E', yellow: '#EFC65C' },
+  independence: { paper: '#F8FBF8', accent: '#0E5A2F', yellow: '#E5B93C' },
+  ramadan:      { paper: '#F7F9FC', accent: '#1B3A5C', yellow: '#C9A227' },
+  women:        { paper: '#FCF7FB', accent: '#6E2670', yellow: '#E7B23C' },
+  blackfriday:  { paper: '#F6F6F5', accent: '#111111', yellow: '#F7C948' },
+};
 
 /** Day AFTER an inclusive end date, as a PKT datetime-local string — the
  *  seasonal window treats `end` as exclusive (see scheduledWindowOpen). */
@@ -71,6 +89,10 @@ export function saleEventToSeasonalSettings(
 ): { settings: Record<string, string>; error: string | null } {
   const base: Record<string, string> = {
     active_theme: event.theme,
+    // Which library card is wearing the crown. Lets the admin show an exact
+    // LIVE/SCHEDULED badge and propagate edits of the live event; cleared by
+    // "turn off". Purely informational for the storefront resolver.
+    seasonal_source_event: event.key,
     seasonal_theme_message: event.bar_message ?? '',
     seasonal_theme_coupon: event.bar_coupon ?? '',
     season_hero_overline: event.hero_overline ?? '',
@@ -107,5 +129,21 @@ export function saleEventToSeasonalSettings(
 /** Settings writes that turn every seasonal look off (the one "Turn off"
  *  button on the Sales page — same effect as Branding's Off mode). */
 export function seasonOffSettings(): Record<string, string> {
-  return { season_active: 'false', seasonal_theme: '', seasonal_theme_start: '', seasonal_theme_end: '' };
+  return {
+    season_active: 'false', seasonal_theme: '',
+    seasonal_theme_start: '', seasonal_theme_end: '',
+    seasonal_source_event: '',
+  };
+}
+
+/** How the current settings relate to one library event: is this card the
+ *  one that's live (or armed), and in which mode? Pure, for the admin page. */
+export function eventActivationState(
+  event: Pick<SaleEvent, 'key'>,
+  settings: Record<string, string>,
+): 'live' | 'scheduled' | null {
+  if ((settings.seasonal_source_event ?? '') !== event.key) return null;
+  if (settings.season_active === 'true') return 'live';
+  if ((settings.seasonal_theme ?? '').trim()) return 'scheduled';
+  return null;
 }

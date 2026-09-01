@@ -13,9 +13,9 @@ import {
   getOnSale,
   getProductsByBrands,
   getWellnessProducts,
-  getSiteSettings,
   getBlogPosts,
 } from '@/lib/supabase';
+import { getStorefrontSettings } from '@/lib/preview-look';
 import { jsonLd, itemListLd, productInStock } from '@/lib/seo';
 import { K_BEAUTY_BRANDS } from '@/lib/k-beauty';
 import { getPublishedCollectionsWithCovers } from '@/lib/collections-data';
@@ -83,14 +83,16 @@ export default async function HomePage() {
   // returns fewer rows than requested, so empty sections shouldn't happen
   // once the catalog has any products. Migration 076 backfilled
   // is_featured + is_bestseller; the queries respect those first.
-  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, settings, blogPosts, featuredPost, collections, socialProof, newArrivals, popularBrands] = await Promise.all([
+  const [featured, topSellers, trending, saleProducts, wellnessProducts, kBeautyProducts, { settings }, blogPosts, featuredPost, collections, socialProof, newArrivals, popularBrands] = await Promise.all([
     getFeatured(),
     getTopSellers(8),
     getTrending(12),
     getOnSale(8),
     getWellnessProducts(),
     getProductsByBrands(K_BEAUTY_BRANDS, 24),
-    getSiteSettings(),
+    // Preview-aware: a staff look preview renders the homepage with the
+    // occasion's seasonal settings overlaid (see lib/preview-look).
+    getStorefrontSettings(),
     getBlogPosts({ limit: 4 }),
     getFeaturedBlogPost(),
     getPublishedCollectionsWithCovers(3),
