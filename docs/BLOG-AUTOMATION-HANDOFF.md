@@ -14,6 +14,7 @@ measures whether those posts are working.
 | "Yellow Pink SEO ranking check" | Claude Routine, fires the 1st & 15th 05:00 UTC, persistent session | claude.ai Routines (trigger `trig_014f2KdL56S86T9d15h7CLEi`) |
 | `/api/blog` | Token-authed create/list endpoint the automation publishes through | `src/app/api/blog/route.ts`, auth in `src/lib/blog-api.ts` |
 | `/api/media` | Token-authed image upload (now normalises: EXIF-rotate, crop, WebP) | `src/app/api/media/route.ts`, pipeline in `src/lib/image-normalize.ts` |
+| `/api/seo/rankings` | Token-authed keyword list (GET) + snapshot append (POST) for the ranking check | `src/app/api/seo/rankings/route.ts` |
 | Reviewer auto-assign | DB trigger matches each health post to a Medical Review Board doctor by topic (assignment emails retired 1 Sep 2026 — the doctor's dashboard is the record) | migration `20260815_1220`, `src/lib/review-assignment.ts` |
 | Rankings dashboard | Admin → SEO rankings, fed by `seo_ranking_snapshots` | `src/app/admin/seo-rankings` |
 
@@ -52,16 +53,16 @@ makeup/hair content.
 
 ## Known issues and their fixes
 
-**1. Supabase MCP scoped to the wrong project (OPEN — needs the owner).**
-The Routine sessions' Supabase connector resolves to the JetNine project, so
-`seo_tracked_keywords` / `seo_ranking_snapshots` in `cngsjtthiexcfpjpcpsg`
-are unreadable from those runs. Consequences so far: the daily run works
-around it (uses `/api/blog` for dedupe), but the **ranking check could not
-append its 1 Sep snapshot batch** — the Admin → SEO rankings dashboard is
-frozen at 15 Aug until this is fixed.
-Fix: claude.ai → Settings → Connectors → Supabase → make sure the connection
-covers the `yellowpink` project (or all projects), then fire the ranking
-check Routine once manually.
+**1. Routines never touch the database (FIXED 1 Sep 2026, by design).**
+The Routine sessions' Supabase connector resolved to the wrong project
+(JetNine), which froze the rankings dashboard at 15 Aug. Rather than
+re-scoping the connector, the owner ruled that scheduled tasks must not use
+the Supabase MCP at all — the site's token-authed APIs are the interface.
+`/api/seo/rankings` now serves the ranking check (GET returns the tracked
+keyword list + when it was last checked; POST appends a snapshot batch),
+and both Routine prompts are API-only. Same bearer token as `/api/blog`.
+If a Routine run ever reports it cannot reach the database: that is
+correct behaviour, the fix is an API endpoint, never a connector grant.
 
 **2. `/api/media` R2 411 on chunked uploads (FIXED in the 1 Sep deploy).**
 The R2 PUT now sends an explicit Content-Length. The Routine prompt carries
@@ -84,7 +85,7 @@ prompt. Rotating it takes two minutes.
   dropping to 4–5/week and spending the difference on refreshing the posts
   that already rank at positions 5–15.
 - **Topic steering**: the tracked keyword list (Admin → SEO rankings) is the
-  Routine's step 1 input once the connector scoping is fixed. Add keywords
+  Routine's step 1 input, read through `GET /api/seo/rankings`. Add keywords
   there to steer what gets written.
 - **Review coverage**: E-E-A-T is the moat for health content. The monthly
   sweep of unreviewed posts matters more than one extra post.
