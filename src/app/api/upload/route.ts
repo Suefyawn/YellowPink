@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getStaffSession } from '@/lib/staff-auth';
 import { uploadLimiter, ipFromHeaders } from '@/lib/ratelimit';
 import { uploadMedia } from '@/lib/media-storage';
+import { normalizeImageUpload, type ImagePreset } from '@/lib/image-normalize';
 
-const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+// 25 MB inbound: images are normalised server-side (resized + WebP) before
+// storage, so a raw phone photo is welcome — what gets stored is small.
+const MAX_IMAGE_SIZE = 25 * 1024 * 1024;
 // Short product clips only, a hard 30 MB cap keeps PDP videos light so they
 // don't hurt performance (they're lazy-loaded + never autoplay on the storefront).
 const MAX_VIDEO_SIZE = 30 * 1024 * 1024;
@@ -39,11 +42,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `Max file size is ${isVideo ? 30 : 5} MB` }, { status: 400 });
   }
 
+  // Images are normalised before storage: EXIF-rotated, capped to the
+  // preset's box, re-encoded WebP (metadata dropped). The picture is not
+  // otherwise altered; unprocessable files pass through as-is. Videos are
+  // stored untouched. Preset comes from the uploader ('product' for the
+  // product gallery, 'hero' for the blog hero, default 'general').
+  let bytes = await file.arrayBuffer();
+  let contentType = file.type;
+  let ext = IMAGE_EXT[file.type] ?? VIDEO_EXT[file.type] ?? 'bin';
+  if (isImage) {
+    const presetRaw = (formData.get('preset') as string) ?? 'general';
+    const preset: ImagePreset = presetRaw === 'hero' || presetRaw === 'product' ? presetRaw : 'general';
+    const out = await normalizeImageUpload(bytes, contentType, preset);
+    bytes = out.bytes;
+    contentType = out.contentType;
+    ext = out.ext;
+  }
+
   // Sanitize extension from the content type, not the user-supplied filename.
-  const ext = IMAGE_EXT[file.type] ?? VIDEO_EXT[file.type] ?? 'bin';
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
 
-  const res = await uploadMedia(filename, await file.arrayBuffer(), file.type);
+  const res = await uploadMedia(filename, bytes, contentType);
   if ('error' in res) return NextResponse.json({ error: res.error }, { status: 500 });
   return NextResponse.json({ url: res.url });
 }

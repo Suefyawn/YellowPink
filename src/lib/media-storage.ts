@@ -51,7 +51,15 @@ export async function uploadMedia(
         body: bytes,
         // Immutable is right for our naming scheme: every upload gets a
         // unique timestamped filename, nothing is ever overwritten in place.
-        headers: { 'Content-Type': contentType, 'Cache-Control': 'public, max-age=31536000, immutable' },
+        // Content-Length is set explicitly: when the runtime streams the
+        // body (observed when the INBOUND request arrived chunked), R2
+        // rejects the unsized PUT with 411 Length Required (1 Sep 2026,
+        // blog-automation upload failures).
+        headers: {
+          'Content-Type': contentType,
+          'Content-Length': String(bytes.byteLength),
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
       });
       if (!r.ok) return { error: `Image upload failed (R2 HTTP ${r.status})` };
       return { url: `${process.env.R2_PUBLIC_BASE!.replace(/\/$/, '')}/${encodeKey(path)}` };

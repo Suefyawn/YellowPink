@@ -70,6 +70,27 @@ export async function submitReview(
     .filter((s: string) => !allowedPrefix || s.startsWith(allowedPrefix))
     .slice(0, 6); // hard cap on photos per review
 
+  // One review per shopper per product per 30 days. Repeat submissions used
+  // to sail through (30 Aug: one customer posted the same review three times
+  // in three minutes; all three were approved and each minted its own
+  // thank-you coupon). Same-identity means the signed-in user, or the
+  // same email for guests.
+  {
+    const email = (parsed.data.reviewer_email || '').trim().toLowerCase();
+    if (userId || email) {
+      let dupe = supabaseAdmin()
+        .from('product_reviews')
+        .select('id', { count: 'exact', head: true })
+        .eq('product_id', parsed.data.product_id)
+        .gte('created_at', new Date(Date.now() - 30 * 86_400_000).toISOString());
+      dupe = userId ? dupe.eq('user_id', userId) : dupe.ilike('reviewer_email', email);
+      const { count } = await dupe;
+      if ((count ?? 0) > 0) {
+        return { error: 'You have already reviewed this product recently. Thank you! Your earlier review is in our queue or already live.' };
+      }
+    }
+  }
+
   // Write with the service role. The anon INSERT policy on product_reviews
   // (migration 306) forces approved=false AND verified_purchase=false for the
   // public key, so a review the server has legitimately derived as a verified

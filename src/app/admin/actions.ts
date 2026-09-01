@@ -20,6 +20,7 @@ import { logAudit } from '@/lib/audit';
 import { applyReturnFinancialsForOrder } from '@/lib/return-financials';
 import { applyCodFlagTransition, flagCodIdentity, clearCodFlag } from '@/lib/cod-flags';
 import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
+import { deriveReadTime } from '@/lib/reading-time';
 import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 import { recordSlugRedirect } from '@/lib/slug-redirects';
 import { log } from '@/lib/logger';
@@ -480,6 +481,9 @@ export async function createBlogPost(
   // trigger writes for auto-assignment (the trigger skips rows that arrive
   // with a reviewer already set).
   const row: Record<string, unknown> = { ...parsed.data };
+  // Blank read time → derive it from the body (200 wpm), so writers stop
+  // hand-guessing "7 min read".
+  if (!String(row.read_time ?? '').trim()) row.read_time = deriveReadTime(String(row.body ?? ''));
   if (parsed.data.reviewer_id) {
     row.review_status = 'approved';
     row.reviewed_at = new Date().toISOString();
@@ -525,6 +529,8 @@ export async function updateBlogPost(
   const { data: prev } = await admin.from('blog_posts').select('reviewer_id').eq('id', id).maybeSingle();
   const reviewerChanged = (prev?.reviewer_id ?? null) !== parsed.data.reviewer_id;
   const row: Record<string, unknown> = { ...parsed.data };
+  // Blank read time → derive from the body, same as createBlogPost.
+  if (!String(row.read_time ?? '').trim()) row.read_time = deriveReadTime(String(row.body ?? ''));
   if (reviewerChanged) {
     row.review_status = parsed.data.reviewer_id ? 'approved' : null;
     row.reviewed_at = parsed.data.reviewer_id ? new Date().toISOString() : null;
