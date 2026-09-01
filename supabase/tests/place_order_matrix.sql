@@ -459,6 +459,34 @@ begin
       "subtotal": 2900, "discount_amount": 900, "total": 2200, "order_number": "MTX-BXGY-4"}'),
     'discount mismatch');
 
+  -- 14l. Free-delivery threshold is judged on the DISCOUNTED subtotal
+  --      (migration 1240, owner report 2026-09-01). 5 × A = 5000 clears the
+  --      threshold, but MATRIX10 takes it to 4500 — the old rule let this
+  --      order keep free delivery, saving the shopper the discount AND the
+  --      fee. Now shipping 0 is an undercharge; the paid rate is accepted.
+  perform yp_tests.expect_reject('coupon below threshold loses free delivery',
+    yp_tests.payload('{"coupon_code": "MATRIX10",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 5}],
+      "subtotal": 5000, "discount_amount": 500, "shipping": 0, "total": 4500, "order_number": "MTX-SHIP-1"}'),
+    'shipping mismatch');
+  o := yp_tests.expect_ok('coupon below threshold pays delivery',
+    yp_tests.payload('{"coupon_code": "MATRIX10",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 5}],
+      "subtotal": 5000, "discount_amount": 500, "shipping": 200, "total": 4700, "order_number": "MTX-SHIP-2"}'));
+  perform yp_tests.assert('coupon below threshold pays delivery',
+    o.shipping = 200 and o.total = 4700,
+    'expected shipping 200/total 4700, got ' || o.shipping || '/' || o.total);
+
+  -- 14m. …but a discount that leaves the order at/above the threshold keeps
+  --      free delivery: 6 × A = 6000, MATRIX10 → 5400 ≥ 5000.
+  o := yp_tests.expect_ok('discounted subtotal still over threshold ships free',
+    yp_tests.payload('{"coupon_code": "MATRIX10",
+      "items": [{"id": "00000000-0000-0000-0000-00000000000a", "qty": 6}],
+      "subtotal": 6000, "discount_amount": 600, "shipping": 0, "total": 5400, "order_number": "MTX-SHIP-3"}'));
+  perform yp_tests.assert('discounted subtotal still over threshold ships free',
+    o.shipping = 0 and o.total = 5400,
+    'expected shipping 0/total 5400, got ' || o.shipping || '/' || o.total);
+
   -- 15. Client subtotal that disagrees with server-recomputed prices.
   perform yp_tests.expect_reject('subtotal mismatch',
     yp_tests.payload('{"subtotal": 1500, "total": 1700}'),

@@ -64,6 +64,10 @@ interface Row {
 
 export async function resolveShipping(opts: {
   province?: string;
+  /** The amount the free-delivery threshold is judged against. Callers pass
+   *  the DISCOUNTED merchandise subtotal (subtotal minus coupon/referral
+   *  discount) — owner directive 2026-09-01: a coupon that drops the order
+   *  below the threshold takes the free-delivery promise with it. */
   subtotal: number;
   /** Cart lines; enables the vendor free-shipping rule (NB Sons ≥ Rs 1,999). */
   items?: ShippingItem[];

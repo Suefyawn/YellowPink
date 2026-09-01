@@ -325,14 +325,16 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     (async () => {
       if (subtotal === 0) return;
       setShippingLoading(true);
-      // Free shipping is earned on the merchandise subtotal (pre-discount), so
-      // a coupon never removes a free-shipping promise already shown. Items go
-      // along for the vendor rule (NB Sons ≥ Rs 1,999 ships free); place_order
-      // re-validates the final figure server-side at submit.
+      // Free shipping is earned on what the customer actually pays for the
+      // merchandise (subtotal minus the coupon/referral discount) — owner
+      // directive 2026-09-01: a coupon that drops the order below the
+      // threshold also takes the free-delivery promise with it. place_order
+      // enforces the same discounted figure server-side at submit. Items go
+      // along for the vendor rule (NB Sons ≥ Rs 1,999 ships free).
       try {
         const res = await calculateShipping({
           province: formData.province || undefined,
-          subtotal,
+          subtotal: Math.max(0, subtotal - discount),
           // `id` lets the server re-resolve vendor_id from the products table,
           // so lines saved by older storefront code (no vendor_id) still count.
           items: cartItems.map(i => ({ id: i.id, vendor_id: i.vendor_id ?? null, price: i.price, qty: i.qty })),
@@ -344,7 +346,7 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
         // its undercharge rejection maps to a friendly re-quote message.
         if (!cancelled) {
           const free =
-            (freeShippingEnabled && subtotal >= freeShippingThreshold) ||
+            (freeShippingEnabled && Math.max(0, subtotal - discount) >= freeShippingThreshold) ||
             vendorFreeShippingEligible(cartItems, vendorFreeShipThresholds);
           setShippingInfo({ rate: free ? 0 : defaultShippingRate, free, label: 'Standard' });
         }
@@ -354,9 +356,10 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
     })();
     return () => { cancelled = true; };
     // cartItems is intentionally keyed by subtotal: any change that affects the
-    // vendor rule also changes the subtotal.
+    // vendor rule also changes the subtotal. `discount` is a dep because the
+    // free-delivery threshold is judged on the discounted subtotal.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subtotal, formData.province, requoteTick]);
+  }, [subtotal, discount, formData.province, requoteTick]);
 
   // Capture abandoned-cart snapshot when the user supplies a phone OR an
   // email AND the cart is non-empty. Phone is the FIRST checkout field, so
