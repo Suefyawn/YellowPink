@@ -13,6 +13,7 @@ import { logAudit } from '@/lib/audit';
 import { normalizeTheme } from '@/lib/themes';
 import {
   saleEventToSeasonalSettings, seasonOffSettings, eventActivationState,
+  pickAutoEvent, autoSnoozeValue,
   type ActivationMode, type SaleEvent,
 } from '@/lib/sale-events';
 
@@ -69,14 +70,25 @@ export async function scheduleSaleEvent(formData: FormData): Promise<void> {
   await activate(formData, 'schedule');
 }
 
-/** One switch back to the year-round look (clears manual AND scheduled). */
+/** One switch back to the year-round look (clears manual AND scheduled).
+ *  If the autopilot has an occasion running, its current window is snoozed
+ *  too — otherwise the calendar would put the look straight back. The NEXT
+ *  occasion still runs by itself. */
 export async function turnOffSeason(): Promise<void> {
   const session = await assertSales();
-  const dbError = await writeSettings(seasonOffSettings());
+  const off = seasonOffSettings();
+
+  const { data } = await supabaseAdmin().from('sale_events').select('*');
+  const autoEvent = pickAutoEvent((data ?? []) as SaleEvent[]);
+  if (autoEvent) off.season_auto_snooze = autoSnoozeValue(autoEvent);
+
+  const dbError = await writeSettings(off);
   if (dbError) redirect(`${PATH}?error=${encodeURIComponent(dbError)}`);
-  void logAudit(session, { action: 'sale_event.off', entity: 'sale_events', diff: {} });
+  void logAudit(session, { action: 'sale_event.off', entity: 'sale_events', diff: { snoozed: autoEvent?.key ?? null } });
   bustStorefront();
-  redirect(`${PATH}?saved=${encodeURIComponent('Seasonal look switched off, the store is back to the year-round theme')}`);
+  redirect(`${PATH}?saved=${encodeURIComponent(autoEvent
+    ? `Seasonal look switched off — ${autoEvent.name}'s current window is skipped; the calendar resumes with the next occasion`
+    : 'Seasonal look switched off, the store is back to the year-round theme')}`);
 }
 
 /** Save edits to one event's copy, coupon, theme or this year's dates. */
@@ -116,6 +128,7 @@ export async function saveSaleEvent(formData: FormData): Promise<void> {
     hero_cta1_url: text('hero_cta1_url', 300),
     hero_image_url: text('hero_image_url', 500),
     notes: text('notes', 500),
+    auto_schedule: formData.get('auto_schedule') === 'on',
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabaseAdmin().from('sale_events').update(patch).eq('id', id);

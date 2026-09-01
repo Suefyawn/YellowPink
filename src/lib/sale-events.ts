@@ -31,6 +31,10 @@ export interface SaleEvent {
   hero_image_url: string | null;
   /** Owner-facing guidance ("no discounts on this day", date rules…). */
   notes: string | null;
+  /** Autopilot: run this look every cycle over its stored window without the
+   *  owner arming anything (owner ask, 1 Sep 2026). Dates still need their
+   *  yearly refresh — the resolver only trusts the stored window. */
+  auto_schedule: boolean;
   sort_order: number;
 }
 
@@ -42,7 +46,7 @@ export const SEASONAL_SETTING_KEYS = [
   'seasonal_theme_message', 'seasonal_theme_coupon',
   'season_hero_overline', 'season_hero_headline', 'season_hero_subline',
   'season_hero_cta1_text', 'season_hero_cta1_url', 'season_hero_image_url',
-  'seasonal_source_event',
+  'seasonal_source_event', 'season_auto_snooze',
 ] as const;
 
 export type ActivationMode = 'now' | 'schedule';
@@ -61,7 +65,8 @@ export const THEME_PREVIEW: Record<string, { paper: string; accent: string; yell
   independence: { paper: '#F8FBF8', accent: '#0E5A2F', yellow: '#E5B93C' },
   ramadan:      { paper: '#F7F9FC', accent: '#1B3A5C', yellow: '#C9A227' },
   women:        { paper: '#FCF7FB', accent: '#6E2670', yellow: '#E7B23C' },
-  blackfriday:  { paper: '#F6F6F5', accent: '#111111', yellow: '#F7C948' },
+  blackfriday:  { paper: '#F4F8F7', accent: '#0B4F43', yellow: '#D4A72C' },
+  mourning:     { paper: '#F5F5F4', accent: '#18181B', yellow: '#A8A29E' },
 };
 
 /** Day AFTER an inclusive end date, as a PKT datetime-local string — the
@@ -104,7 +109,10 @@ export function saleEventToSeasonalSettings(
   };
   if (mode === 'now') {
     return {
-      settings: { ...base, season_active: 'true', seasonal_theme: '', seasonal_theme_start: '', seasonal_theme_end: '' },
+      settings: {
+        ...base, season_active: 'true', seasonal_theme: '',
+        seasonal_theme_start: '', seasonal_theme_end: '', season_auto_snooze: '',
+      },
       error: null,
     };
   }
@@ -121,9 +129,80 @@ export function saleEventToSeasonalSettings(
       seasonal_theme: event.theme,
       seasonal_theme_start: `${event.starts_on}T00:00`,
       seasonal_theme_end: exclusiveEnd(event.ends_on),
+      season_auto_snooze: '',
     },
     error: null,
   };
+}
+
+// ── Autopilot ───────────────────────────────────────────────────────────────
+// "Schedule them according to their dates on annual cycles" (owner,
+// 1 Sep 2026): occasions with auto_schedule run BY THEMSELVES over their
+// stored windows. The storefront resolver overlays the picked event as an
+// armed schedule (same settings shape as clicking Schedule), so the client
+// clock still opens and closes the window to the minute. Explicit choices
+// always win: a manual "Turn on now" or an owner-armed schedule suppresses
+// the calendar entirely.
+
+/** How early the overlay is applied ahead of a window opening. The overlay
+ *  is window-gated, so arming early changes nothing visually — it just lets
+ *  the (≤1h-cached) page shell carry the window before midnight, and the
+ *  client clock flips the look exactly on time. */
+const AUTO_ARM_AHEAD_MS = 24 * 60 * 60 * 1000;
+
+const pktStartMs = (day: string) => new Date(`${day}T00:00:00+05:00`).getTime();
+
+/** The occasion the calendar wants right now (or armed for the next day):
+ *  smallest window wins an overlap (the more specific occasion, e.g. Eid
+ *  Milad inside Azadi week), an already-open window beats a pre-armed one. */
+export function pickAutoEvent(events: SaleEvent[], now: Date = new Date()): SaleEvent | null {
+  const t = now.getTime();
+  const scored = events
+    .filter(e =>
+      e.auto_schedule !== false && e.starts_on && e.ends_on &&
+      e.theme && e.theme !== 'default' &&
+      e.ends_on >= e.starts_on)
+    .map(e => {
+      const start = pktStartMs(e.starts_on!);
+      const endEx = pktStartMs(e.ends_on!) + 24 * 60 * 60 * 1000;
+      return { e, start, endEx, open: t >= start && t < endEx };
+    })
+    .filter(c => t >= c.start - AUTO_ARM_AHEAD_MS && t < c.endEx);
+  if (scored.length === 0) return null;
+  scored.sort((a, b) =>
+    Number(b.open) - Number(a.open) ||
+    (a.endEx - a.start) - (b.endEx - b.start) ||
+    a.e.sort_order - b.e.sort_order);
+  return scored[0].e;
+}
+
+/** True while "Turn seasonal look off" has snoozed THIS event's current
+ *  window (stored as "<key>@<PKT datetime>"). A different occasion's window
+ *  still runs — turning one sale off doesn't kill the whole year. */
+export function autoSnoozed(
+  event: Pick<SaleEvent, 'key'>,
+  settings: Record<string, string>,
+  now: Date = new Date(),
+): boolean {
+  const raw = (settings.season_auto_snooze ?? '').trim();
+  const at = raw.indexOf('@');
+  if (at < 1) return false;
+  const key = raw.slice(0, at);
+  if (key !== event.key) return false;
+  const until = new Date(`${raw.slice(at + 1)}:00+05:00`);
+  return !Number.isNaN(until.getTime()) && now < until;
+}
+
+/** The snooze value turnOffSeason stores while an autopilot window is open. */
+export function autoSnoozeValue(event: SaleEvent): string {
+  return `${event.key}@${exclusiveEnd(event.ends_on!)}`;
+}
+
+/** True when the stored settings carry an explicit owner choice (manual
+ *  switch or an armed schedule) — the calendar must stand down. */
+export function explicitLookConfigured(settings: Record<string, string>): boolean {
+  if ((settings.seasonal_theme ?? '').trim()) return true;
+  return settings.season_active === 'true';
 }
 
 /** Settings writes that turn every seasonal look off (the one "Turn off"

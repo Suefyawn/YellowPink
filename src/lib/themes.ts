@@ -25,7 +25,8 @@ export const STORE_THEMES: StoreTheme[] = [
   { key: 'independence', label: 'Independence Day', hint: 'Pakistan green, white and gold' },
   { key: 'ramadan',   label: 'Ramadan',       hint: 'Calm midnight blue and gold' },
   { key: 'women',     label: 'Women’s Day',   hint: 'Bold plum and orchid' },
-  { key: 'blackfriday', label: 'Blessed Friday', hint: 'Ink black with brand yellow' },
+  { key: 'blackfriday', label: 'Blessed Friday', hint: 'Deep teal and rich gold' },
+  { key: 'mourning',  label: 'Quiet / Mourning', hint: 'Subdued black and stone grey' },
 ];
 
 const THEME_KEYS = new Set(STORE_THEMES.map(t => t.key));

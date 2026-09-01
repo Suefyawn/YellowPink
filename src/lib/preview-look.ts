@@ -10,7 +10,10 @@ import 'server-only';
 
 import { draftMode, cookies } from 'next/headers';
 import { getSiteSettings, supabaseAdmin } from '@/lib/supabase';
-import { saleEventToSeasonalSettings, type SaleEvent } from '@/lib/sale-events';
+import {
+  saleEventToSeasonalSettings, pickAutoEvent, autoSnoozed,
+  explicitLookConfigured, type SaleEvent,
+} from '@/lib/sale-events';
 
 export const LOOK_PREVIEW_COOKIE = 'look_preview';
 
@@ -19,36 +22,65 @@ export interface PreviewLook {
   name: string;
 }
 
-/** Site settings as the STOREFRONT should render them: the stored settings,
- *  overlaid with the previewed occasion when this request carries an active
- *  look preview. Only layout.tsx and the homepage use this — admin pages,
- *  emails and APIs keep reading the raw stored settings. */
+/** Site settings as the STOREFRONT should render them, in priority order:
+ *  1. a staff look preview (draft-mode request) wins outright;
+ *  2. an explicit owner choice (manual switch / armed schedule) as stored;
+ *  3. the occasions autopilot — the calendar event whose window is open (or
+ *     opens within a day) is overlaid as an armed schedule, so the client
+ *     clock still flips it exactly on time. `auto` names that occasion.
+ *  Only layout.tsx, the homepage and the Sales admin page use this — emails
+ *  and APIs keep reading the raw stored settings. */
 export async function getStorefrontSettings(): Promise<{
   settings: Record<string, string>;
   preview: PreviewLook | null;
+  auto: PreviewLook | null;
 }> {
   const settings = await getSiteSettings();
+
+  // 1. Staff preview. draftMode() is static-rendering-safe: on cached renders
+  // it reports disabled without touching the request, so only actual
+  // previewer requests (bypass cookie present) go down this dynamic path.
   try {
-    // draftMode() is static-rendering-safe: on cached renders it reports
-    // disabled without touching the request, so only actual previewer
-    // requests (bypass cookie present) go down the dynamic path below.
     const { isEnabled } = await draftMode();
-    if (!isEnabled) return { settings, preview: null };
-    const key = (await cookies()).get(LOOK_PREVIEW_COOKIE)?.value?.trim();
-    if (!key) return { settings, preview: null };
+    if (isEnabled) {
+      const key = (await cookies()).get(LOOK_PREVIEW_COOKIE)?.value?.trim();
+      if (key) {
+        const { data } = await supabaseAdmin()
+          .from('sale_events').select('*').eq('key', key).maybeSingle();
+        if (data) {
+          const event = data as SaleEvent;
+          const { settings: overlay } = saleEventToSeasonalSettings(event, 'now');
+          return {
+            settings: { ...settings, ...overlay },
+            preview: { key: event.key, name: event.name },
+            auto: null,
+          };
+        }
+      }
+    }
+  } catch {
+    /* a preview hiccup must never break the storefront for real visitors */
+  }
 
-    const { data } = await supabaseAdmin()
-      .from('sale_events').select('*').eq('key', key).maybeSingle();
-    if (!data) return { settings, preview: null };
-    const event = data as SaleEvent;
+  // 2. Explicit owner choice — stored settings stand as they are.
+  if (explicitLookConfigured(settings)) return { settings, preview: null, auto: null };
 
-    const { settings: overlay } = saleEventToSeasonalSettings(event, 'now');
+  // 3. Autopilot.
+  try {
+    const { data } = await supabaseAdmin().from('sale_events').select('*');
+    const events = (data ?? []) as SaleEvent[];
+    const event = pickAutoEvent(events);
+    if (!event || autoSnoozed(event, settings)) return { settings, preview: null, auto: null };
+    const { settings: overlay, error } = saleEventToSeasonalSettings(event, 'schedule');
+    if (error) return { settings, preview: null, auto: null };
+    // Keep the stored snooze visible to the resolver chain (the overlay
+    // clears it, but nothing is written back — this is per-render only).
     return {
-      settings: { ...settings, ...overlay },
-      preview: { key: event.key, name: event.name },
+      settings: { ...settings, ...overlay, season_auto_snooze: settings.season_auto_snooze ?? '' },
+      preview: null,
+      auto: { key: event.key, name: event.name },
     };
   } catch {
-    // Any preview hiccup must never break the storefront for real visitors.
-    return { settings, preview: null };
+    return { settings, preview: null, auto: null };
   }
 }
