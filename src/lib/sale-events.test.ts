@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   saleEventToSeasonalSettings, seasonOffSettings, exclusiveEnd,
-  eventActivationState, type SaleEvent,
+  eventActivationState, pickAutoEvent, autoSnoozed, autoSnoozeValue,
+  explicitLookConfigured, type SaleEvent,
 } from './sale-events';
 import { activeSeasonalTheme } from './seasonal-theme';
 
@@ -21,6 +22,7 @@ const event = (over: Partial<SaleEvent> = {}): SaleEvent => ({
   hero_cta1_url: '/shop',
   hero_image_url: null,
   notes: null,
+  auto_schedule: true,
   sort_order: 80,
   ...over,
 });
@@ -88,6 +90,63 @@ describe('seasonOffSettings', () => {
     const { settings } = saleEventToSeasonalSettings(event(), 'now');
     const off = { ...settings, ...seasonOffSettings() };
     expect(activeSeasonalTheme(off)).toBeNull();
+  });
+});
+
+describe('pickAutoEvent (the occasions autopilot)', () => {
+  // 12:00 PKT on 10 Aug 2026 = 07:00 UTC.
+  const during = new Date('2026-08-10T07:00:00Z');
+
+  it('picks the occasion whose window is open', () => {
+    expect(pickAutoEvent([event()], during)?.key).toBe('azadi');
+  });
+
+  it('arms an occasion up to a day before its window (window still gates the look)', () => {
+    const dayBefore = new Date('2026-07-31T07:00:00Z');
+    const ev = pickAutoEvent([event()], dayBefore);
+    expect(ev?.key).toBe('azadi');
+    // …but the overlaid settings only open on the client at the start time:
+    const { settings } = saleEventToSeasonalSettings(ev!, 'schedule');
+    expect(activeSeasonalTheme(settings, dayBefore)).toBeNull();
+    expect(activeSeasonalTheme(settings, during)?.key).toBe('independence');
+  });
+
+  it('an overlapping shorter window wins (the more specific occasion)', () => {
+    const milad = event({ key: 'eid-milad', theme: 'eid', starts_on: '2026-08-09', ends_on: '2026-08-11', sort_order: 200 });
+    expect(pickAutoEvent([event(), milad], during)?.key).toBe('eid-milad');
+  });
+
+  it('an open window beats a merely pre-armed one', () => {
+    const tomorrow = event({ key: 'defence-day', starts_on: '2026-08-11', ends_on: '2026-08-11', sort_order: 1 });
+    expect(pickAutoEvent([event(), tomorrow], during)?.key).toBe('azadi');
+  });
+
+  it('skips occasions taken off the calendar or without dates', () => {
+    expect(pickAutoEvent([event({ auto_schedule: false })], during)).toBeNull();
+    expect(pickAutoEvent([event({ starts_on: null, ends_on: null })], during)).toBeNull();
+  });
+
+  it('returns null outside every window', () => {
+    expect(pickAutoEvent([event()], new Date('2026-09-20T07:00:00Z'))).toBeNull();
+  });
+});
+
+describe('autoSnoozed + explicitLookConfigured', () => {
+  const during = new Date('2026-08-10T07:00:00Z');
+
+  it('turn-off snoozes only THIS window of THIS occasion', () => {
+    const settings = { season_auto_snooze: autoSnoozeValue(event()) };
+    expect(autoSnoozed(event(), settings, during)).toBe(true);
+    // Different occasion: not snoozed.
+    expect(autoSnoozed(event({ key: 'eid-milad' }), settings, during)).toBe(false);
+    // After the window's exclusive end (15 Aug 00:00 PKT): expired.
+    expect(autoSnoozed(event(), settings, new Date('2026-08-14T20:00:00Z'))).toBe(false);
+  });
+
+  it('an explicit manual or armed look suppresses the calendar', () => {
+    expect(explicitLookConfigured({ season_active: 'true', active_theme: 'eid' })).toBe(true);
+    expect(explicitLookConfigured({ seasonal_theme: 'sale' })).toBe(true);
+    expect(explicitLookConfigured({ season_active: 'false', seasonal_theme: '' })).toBe(false);
   });
 });
 

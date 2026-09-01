@@ -6,7 +6,8 @@ export const dynamic = 'force-dynamic';
 // of saved occasion looks below, each a complete pre-stored version (palette,
 // announcement bar, hero copy + image, coupon) that publishes with one click.
 
-import { supabaseAdmin, getSiteSettings } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
+import { getStorefrontSettings } from '@/lib/preview-look';
 import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { STORE_THEMES } from '@/lib/themes';
@@ -68,9 +69,11 @@ export default async function SalesPage({
   const { saved, error, edit } = await searchParams;
 
   const admin = supabaseAdmin();
-  const [{ data }, settings] = await Promise.all([
+  // Storefront-effective settings: includes the autopilot overlay, so this
+  // page always describes what shoppers actually see.
+  const [{ data }, { settings, auto }] = await Promise.all([
     admin.from('sale_events').select('*').order('sort_order'),
-    getSiteSettings(),
+    getStorefrontSettings(),
   ]);
   const events = (data ?? []) as SaleEvent[];
   const live = activeSeasonalTheme(settings);
@@ -86,15 +89,15 @@ export default async function SalesPage({
   const liveHeading = live
     ? `Live now: ${sourceEvent?.name ?? `${themeLabel(live.key)} (custom look)`}`
     : armedNotLive
-      ? `Scheduled: ${sourceEvent?.name ?? themeLabel(armedKey)}`
+      ? `${auto ? 'Up next (calendar)' : 'Scheduled'}: ${sourceEvent?.name ?? themeLabel(armedKey)}`
       : 'Year-round Yellow Pink look';
   const liveDetail = live
     ? live.source === 'scheduled'
-      ? `Running on its schedule${armedEnd ? `, turns itself off after ${armedEnd}` : ''}.`
+      ? `${auto ? 'Running from the occasions calendar' : 'Running on its schedule'}${armedEnd ? `, turns itself off after ${armedEnd}` : ''}.`
       : 'Switched on manually — stays on until you turn it off.'
     : armedNotLive
       ? `Turns itself on ${armedStart ?? 'when the window opens'} and off after ${armedEnd ?? 'the window closes'}. Until then the store wears the default look.`
-      : 'No occasion is live or scheduled. Publish one from the library below.';
+      : 'No occasion is live or scheduled. Occasions with dates run themselves from the calendar; you can also publish any look right now from the library below.';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -194,7 +197,7 @@ export default async function SalesPage({
               <div style={{ fontSize: '0.78125rem', color: '#6b7280' }}>
                 {themeLabel(ev.theme)} theme
                 {window
-                  ? <> &middot; {window}</>
+                  ? <> &middot; {window}{ev.auto_schedule !== false && <> &middot; runs itself</>}</>
                   : <> &middot; <span style={{ color: '#B45309' }}>set this year&rsquo;s dates to schedule</span></>}
               </div>
               {ev.notes && <div style={{ fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>{ev.notes}</div>}
@@ -260,6 +263,10 @@ export default async function SalesPage({
                     <ImageUpload name="hero_image_url" currentUrl={ev.hero_image_url ?? ''}
                       label="Hero image (blank = normal hero image)" aspect={4 / 3} />
                   </div>
+                  <label style={{ fontSize: '0.8125rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" name="auto_schedule" defaultChecked={ev.auto_schedule !== false} />
+                    Runs itself every cycle over its dates (untick to keep it manual-only)
+                  </label>
                   <div><span style={lbl}>Notes (only staff see this)</span>
                     <textarea name="notes" rows={2} defaultValue={ev.notes ?? ''}
                       style={{ ...inp, resize: 'vertical' }} maxLength={500}

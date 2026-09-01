@@ -46,7 +46,8 @@ export const BAR_COLORS: Record<string, string> = {
   easter: '#A33D6E',
   ramadan: '#1B3A5C',
   women: '#6E2670',
-  blackfriday: '#111111',
+  blackfriday: '#0B4F43',
+  mourning: '#18181B',
 };
 
 /** Parse an owner-authored datetime-local value ("2026-08-10T00:00", seconds
