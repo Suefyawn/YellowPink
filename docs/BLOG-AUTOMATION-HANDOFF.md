@@ -14,7 +14,7 @@ measures whether those posts are working.
 | "Yellow Pink SEO ranking check" | Claude Routine, fires the 1st & 15th 05:00 UTC, persistent session | claude.ai Routines (trigger `trig_014f2KdL56S86T9d15h7CLEi`) |
 | `/api/blog` | Token-authed create/list endpoint the automation publishes through | `src/app/api/blog/route.ts`, auth in `src/lib/blog-api.ts` |
 | `/api/media` | Token-authed image upload (now normalises: EXIF-rotate, crop, WebP) | `src/app/api/media/route.ts`, pipeline in `src/lib/image-normalize.ts` |
-| Reviewer auto-assign | DB trigger matches each health post to a Medical Review Board doctor by topic and emails them | migration `20260815_1220`, `src/lib/review-assignment.ts` |
+| Reviewer auto-assign | DB trigger matches each health post to a Medical Review Board doctor by topic (assignment emails retired 1 Sep 2026 — the doctor's dashboard is the record) | migration `20260815_1220`, `src/lib/review-assignment.ts` |
 | Rankings dashboard | Admin → SEO rankings, fed by `seo_ranking_snapshots` | `src/app/admin/seo-rankings` |
 
 Both Routines run on the account's Claude subscription; the site itself does no
@@ -43,8 +43,11 @@ and emails them; posts without a manual reviewer arrive with
 - Blogs are the site's traffic engine: 7 of the top 10 pages are posts, and
   the fertility-supplement cluster is the only content ranking on Google
   page 1.
-- 42 posts carry no review_status (auto-assign only backfills health topics
-  it can match). Worth a monthly sweep in Admin → Blog to assign reviewers.
+- 1 Sep 2026: all older health posts that had slipped through without a
+  doctor were backfilled; only makeup/hair posts are reviewer-free (by
+  design). The daily Routine now sends a `topic` on every post, so new posts
+  auto-credit a doctor at insert. Doctors are no longer emailed about
+  assignments; their dashboard lists their credited articles.
 
 ## Known issues and their fixes
 
