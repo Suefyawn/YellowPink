@@ -41,10 +41,23 @@ export async function GET(req: NextRequest) {
     .order('checked_at', { ascending: false })
     .limit(1)
     .maybeSingle();
+  const lastCheckedAt = (latest as { checked_at: string } | null)?.checked_at ?? null;
+
+  // The previous batch in full, so the caller can report movement (and skip
+  // appending a duplicate batch when the source index hasn't refreshed).
+  let previous: unknown[] = [];
+  if (lastCheckedAt) {
+    const { data: prevRows } = await supabaseAdmin()
+      .from('seo_ranking_snapshots')
+      .select('keyword, position, volume, url, source')
+      .eq('checked_at', lastCheckedAt);
+    previous = prevRows ?? [];
+  }
 
   return NextResponse.json({
     keywords: keywords ?? [],
-    last_checked_at: (latest as { checked_at: string } | null)?.checked_at ?? null,
+    last_checked_at: lastCheckedAt,
+    previous_snapshots: previous,
   });
 }
 
