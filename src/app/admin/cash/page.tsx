@@ -14,6 +14,7 @@ import {
 } from '@/lib/cash';
 import { addCashEntry, deleteCashEntry, confirmCashSuggestion, skipCashSuggestion } from './actions';
 import { loadCashSuggestions } from '@/lib/cash-suggestions';
+import { computeStockValuation, type ValuationProduct, type ValuationVariant } from '@/lib/stock-valuation';
 
 // The cashbook. Finance says what was earned; this page says what is actually
 // in hand. Entries are real cash movements, recorded by a human, often in
@@ -49,7 +50,7 @@ export default async function CashPage({
   const { ok: okMsg, error: errMsg } = await searchParams;
 
   const admin = supabaseAdmin();
-  const [{ data }, suggestions, { data: vendorRows }] = await Promise.all([
+  const [{ data }, suggestions, { data: vendorRows }, { data: stockRows }, { data: variantRows }] = await Promise.all([
     admin
       .from('cash_entries')
       .select('id, direction, amount, category, note, entry_date, created_by, created_at, order_id, vendor_id')
@@ -60,6 +61,13 @@ export default async function CashPage({
     // vendor chips — money can still move to a vendor who has since been
     // deactivated.
     admin.from('vendors').select('id, name').order('name'),
+    // Stock valuation inputs (owner ask, 1 Sep 2026): what the OWNED stock is
+    // worth if liquidated, next to what's in the till. Tracked products only;
+    // dropship/external listings are the vendor's stock, not ours.
+    admin.from('products')
+      .select('id, kind, track_inventory, stock, price, cost_price')
+      .neq('status', 'archived'),
+    admin.from('product_variants').select('product_id, stock, price, enabled'),
   ]);
   const entries = ((data ?? []) as CashRow[]).map(e => ({ ...e, amount: Number(e.amount) }));
   const vendors = (vendorRows ?? []) as Array<{ id: string; name: string }>;
@@ -78,6 +86,13 @@ export default async function CashPage({
   const balances = runningBalancesNewestFirst(entries);
   const months = monthlySummary(entries);
   const thisMonth = months[0]?.month === new Date().toISOString().slice(0, 7) ? months[0] : null;
+  const stock = computeStockValuation(
+    (stockRows ?? []) as ValuationProduct[],
+    (variantRows ?? []) as ValuationVariant[],
+  );
+  // Total position = cash in the till + owned stock at what it cost. Retail
+  // is shown too, but cost is the honest liquidation number.
+  const totalPosition = inHand + stock.atCost;
 
   return (
     <div className="adm-page" style={{ padding: '32px 36px' }}>
@@ -100,6 +115,25 @@ export default async function CashPage({
         <KpiCard label="In this month" value={rs(thisMonth?.inflow ?? 0)} accent="#1d4ed8" />
         <KpiCard label="Out this month" value={rs(thisMonth?.outflow ?? 0)} accent="#d97706" />
       </div>
+
+      {/* ─── Stock & total position ──────────────────────────────────────────
+          The till alone understates the business: stock bought with that cash
+          still has value. Stock at cost is the liquidation number; retail is
+          what it becomes if it all sells at today's prices. Tracked stock
+          only — dropship listings are the vendor's inventory, not ours. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 8 }} className="adm-stat-grid">
+        <KpiCard label="Stock on hand" value={`${stock.units.toLocaleString('en-PK')} units`} accent="#6b7280" />
+        <KpiCard label="Stock at cost" value={rs(stock.atCost)} accent="#7c3aed" />
+        <KpiCard label="Stock at retail" value={rs(stock.atRetail)} accent="#0e7490" />
+        <KpiCard label="Total position" value={rs(totalPosition)} accent={totalPosition >= 0 ? '#16a34a' : '#dc2626'} />
+      </div>
+      <p style={{ margin: '0 0 24px', fontSize: '0.75rem', color: '#9ca3af', maxWidth: 720 }}>
+        Total position = cash in hand + stock at cost.
+        {stock.productsMissingCost > 0 && (
+          <> {stock.productsMissingCost} stocked product{stock.productsMissingCost !== 1 ? 's' : ''} ({stock.unitsMissingCost.toLocaleString('en-PK')} units)
+          {' '}have no cost price set, so the real stock value is higher than shown — add their cost in the product editor.</>
+        )}
+      </p>
 
       {/* ─── Suggested entries ───────────────────────────────────────────────
           Movements already recorded elsewhere (vendor settlements, reconciled

@@ -3,11 +3,30 @@ const ALLOWED_TAGS = new Set(['p','br','b','strong','i','em','u','s','ul','ol','
   // the sanitizer stripped every <table> and flattened the cells into an
   // unreadable run-on of text. Table elements carry no script surface, so
   // they're safe to allow (their attributes are still stripped below).
-  'table','thead','tbody','tfoot','tr','th','td','figure','figcaption','caption']);
+  'table','thead','tbody','tfoot','tr','th','td','figure','figcaption','caption',
+  // In-body images (1 Sep 2026): the blog editor can now upload and place
+  // images inside a post, not just the hero. Sources are restricted to our
+  // own hosts below (allowedImageSrc) so an imported body can't hotlink or
+  // beacon to third parties.
+  'img']);
 const ALLOWED_ATTRS: Record<string, string[]> = {
   a: ['href', 'target', 'rel'],
   span: ['style'],
+  img: ['src', 'alt', 'width', 'height', 'loading'],
 };
+
+// Hosts an in-body <img> may load from: the storefront itself, the media CDN
+// (R2), and the Supabase storage bucket (legacy uploads). Relative /paths are
+// fine too. Anything else drops the whole tag.
+const IMG_SRC_OK = /^(\/(?!\/)|https:\/\/(www\.)?yellowpink\.pk\/|https:\/\/images\.yellowpink\.pk\/|https:\/\/[a-z0-9-]+\.supabase\.co\/storage\/)/i;
+
+function dropDisallowedImages(html: string): string {
+  return html.replace(/<img\b[^>]*>/gi, tag => {
+    const m = tag.match(/src\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+    const src = m ? (m[1] ?? m[2] ?? m[3] ?? '') : '';
+    return IMG_SRC_OK.test(src) ? tag : '';
+  });
+}
 
 const OWN_HOST = /^https?:\/\/(www\.)?yellowpink\.pk(\/|$)/i;
 
@@ -49,5 +68,5 @@ export function sanitizeHtml(raw: string): string {
       if (allowed.length === 0) return match.replace(/\s+[a-zA-Z][^=>"'\s]*(?:=(?:"[^"]*"|'[^']*'|[^\s>]*))?/g, '');
       return match;
     });
-  return markExternalLinks(cleaned);
+  return markExternalLinks(dropDisallowedImages(cleaned));
 }

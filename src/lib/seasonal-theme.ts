@@ -38,12 +38,15 @@ export interface SeasonalTheme {
 
 // Bar background per theme: the same dark accent tone that carries text in
 // each palette block in globals.css, so the bar always matches the skin.
-const BAR_COLORS: Record<string, string> = {
+export const BAR_COLORS: Record<string, string> = {
   independence: '#01411C',
   eid: '#AE2766',
   sale: '#D11148',
   christmas: '#9E1528',
   easter: '#A33D6E',
+  ramadan: '#1B3A5C',
+  women: '#6E2670',
+  blackfriday: '#111111',
 };
 
 /** Parse an owner-authored datetime-local value ("2026-08-10T00:00", seconds

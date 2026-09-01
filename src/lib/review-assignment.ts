@@ -1,50 +1,23 @@
 import 'server-only';
-import { supabaseAdmin } from './supabase';
-import { sendReviewAssignmentEmail } from './email';
 import { log } from './logger';
 
-// Reviewer-credit notification. Crediting a board doctor on an article can
-// happen three ways: the DB trigger at insert (topic-matched auto-assignment),
-// the blog form's reviewer picker, and the admin reassignment controls. All
-// of them funnel through this helper AFTER the row is written, so the doctor
-// is always emailed the moment their name goes on a piece.
+// Reviewer-credit notification — RETIRED (owner decision, 1 Sep 2026).
 //
-// Best-effort by design: a mail failure must never fail the post save that
-// triggered it. Errors are logged and swallowed.
+// Crediting a board doctor used to email them on every assignment (auto,
+// manual pick, or reassignment). The owner asked for that to stop: with a
+// post published daily, the assignment emails were noise, and the doctors
+// already see every article credited to them on their reviewer dashboard
+// (their profile page lists all their credited posts). Assignment itself is
+// unchanged — the DB trigger, the blog form's picker and the reassignment
+// controls all still credit the doctor and stamp review_status; only the
+// email is gone.
+//
+// The function is kept as a no-op (rather than deleting the call sites) so
+// re-enabling later is a one-file change. It logs at debug level for the
+// audit trail.
 
-/** Email the doctor currently credited on this post. Call after the insert or
- *  update that set (or changed) reviewer_id; no-op when the post has no
- *  reviewer or the reviewer has no email on file. */
+/** Formerly emailed the doctor credited on a post. Now a deliberate no-op:
+ *  doctors see their credited articles on their dashboard instead. */
 export async function notifyReviewerCredited(postId: string): Promise<void> {
-  try {
-    const admin = supabaseAdmin();
-    const { data: post } = await admin
-      .from('blog_posts')
-      .select('id, slug, title, reviewer_id')
-      .eq('id', postId)
-      .maybeSingle();
-    if (!post?.reviewer_id) return;
-
-    const { data: r } = await admin
-      .from('content_reviewers')
-      .select('name, email')
-      .eq('id', post.reviewer_id)
-      .maybeSingle();
-    if (!r?.email) {
-      log.warn('review_assignment.no_reviewer_email', { postId, reviewerId: post.reviewer_id });
-      return;
-    }
-
-    await sendReviewAssignmentEmail({
-      name: r.name as string,
-      email: r.email as string,
-      postTitle: post.title as string,
-      postSlug: post.slug as string,
-    });
-  } catch (err) {
-    log.warn('review_assignment.notify_failed', {
-      postId,
-      err: err instanceof Error ? err.message : String(err),
-    });
-  }
+  log.info('review_assignment.credit_email_skipped', { postId, reason: 'assignment emails retired 2026-09-01' });
 }

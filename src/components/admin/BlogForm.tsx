@@ -3,6 +3,7 @@ import { startTransition, useActionState, useEffect, useMemo, useState } from 'r
 import Link from 'next/link';
 import { createBlogPost, updateBlogPost } from '@/app/admin/actions';
 import { ImageUpload } from './ImageUpload';
+import { BlogBodyEditor } from './BlogBodyEditor';
 import { SubmitToIndexButton } from './IndexingButtons';
 import { suggestReviewer } from '@/lib/reviewer-match';
 import { REVIEW_TOPICS } from '@/lib/review-topics';
@@ -197,8 +198,8 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
               <input name="date" type="date" required defaultValue={post?.date ?? today()} style={inp} />
             </div>
             <div>
-              <label style={lbl}>Read Time *</label>
-              <input name="read_time" required defaultValue={post?.read_time} style={inp} placeholder="5 min read" />
+              <label style={lbl}>Read Time</label>
+              <input name="read_time" defaultValue={post?.read_time} style={inp} placeholder="Blank = worked out from the body" />
             </div>
           </div>
 
@@ -272,7 +273,7 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
           <Section title="Media & placement">
           {/* Cover Image */}
           <div style={{ marginBottom: 16 }}>
-            <ImageUpload name="image_url" currentUrl={imageUrl} label="Cover Image" aspect={16 / 9} />
+            <ImageUpload name="image_url" currentUrl={imageUrl} label="Cover Image" aspect={16 / 9} preset="hero" />
           </div>
 
           {/* Featured */}
@@ -302,16 +303,11 @@ export function BlogForm({ post, reviewers = [], initialTitle }: { post?: BlogPo
             />
           </div>
 
-          {/* Body */}
+          {/* Body: toolbar editor with live preview through the storefront
+              sanitizer (BlogBodyEditor). Submits the same "body" field. */}
           <div style={{ marginBottom: 28 }}>
             <label style={lbl}>Body</label>
-            <textarea
-              name="body"
-              defaultValue={post?.body ?? ''}
-              rows={16}
-              style={{ ...inp, resize: 'vertical', lineHeight: 1.7, fontFamily: 'monospace', fontSize: '0.8125rem' }}
-              placeholder="Full post content (plain text or Markdown)…"
-            />
+            <BlogBodyEditor name="body" defaultValue={post?.body ?? ''} />
           </div>
 
           </Section>

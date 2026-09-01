@@ -9,6 +9,7 @@ import { ProductImage } from '@/components/ui/ProductImage';
 import { useCart } from '@/context/CartContext';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
 import { brandPlusName } from '@/lib/product-display';
+import { computeCouponDiscount } from '@/lib/coupon-validation';
 import { useCommerceSettings } from '@/context/CommerceSettings';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import { vendorFreeShippingEligible } from '@/lib/vendor-shipping';
@@ -16,7 +17,7 @@ import { FreeShippingProgress } from '@/components/cart/FreeShippingProgress';
 import type { Product } from '@/types';
 
 export function MiniCart({ crossSell = [] }: { crossSell?: Product[] }) {
-  const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty, addToCart } = useCart();
+  const { cartItems, cartOpen, setCartOpen, removeFromCart, updateQty, addToCart, appliedCoupon } = useCart();
   const { freeShippingEnabled, freeShippingThreshold, defaultShippingRate, vendorFreeShipThresholds } = useCommerceSettings();
   const router = useRouter();
   const pathname = usePathname();
@@ -27,11 +28,17 @@ export function MiniCart({ crossSell = [] }: { crossSell?: Product[] }) {
   // Brief "Added ✓" state on the cross-sell row's button.
   const [crossSellAdded, setCrossSellAdded] = useState(false);
   const total = cartItems.reduce((s, i) => s + i.price * i.qty, 0);
+  // Free delivery is earned on the discounted subtotal (owner directive
+  // 2026-09-01), so a coupon already applied on the cart page counts here
+  // too — otherwise the drawer would promise free delivery the checkout
+  // then charges for.
+  const couponDiscount = appliedCoupon ? computeCouponDiscount(appliedCoupon, cartItems) : 0;
+  const effectiveTotal = Math.max(0, total - couponDiscount);
   // Standard-zone free-delivery check; mirrors FreeShippingProgress (which
   // spells out the zone caveat right above these items). The vendor rule
   // (NB Sons ≥ Rs 1,999) unlocks free delivery nationwide on its own.
   const deliveryFree =
-    (freeShippingEnabled && freeShippingThreshold > 0 && total >= freeShippingThreshold) ||
+    (freeShippingEnabled && freeShippingThreshold > 0 && effectiveTotal >= freeShippingThreshold) ||
     vendorFreeShippingEligible(cartItems, vendorFreeShipThresholds);
   // One tappable cross-sell: first bestseller that isn't already in the bag
   // and is one-tap addable (simple product, purchasable). Replaces the old
@@ -104,7 +111,7 @@ export function MiniCart({ crossSell = [] }: { crossSell?: Product[] }) {
             either; the bar itself returns null when neither rule is in play. */}
         {(freeShippingEnabled || deliveryFree) && cartItems.length > 0 && (
         <div style={{ padding: '14px 24px', borderBottom: '1px solid var(--line)' }}>
-          <FreeShippingProgress subtotal={cartItems.reduce((s, i) => s + i.price * i.qty, 0)} items={cartItems} />
+          <FreeShippingProgress subtotal={effectiveTotal} items={cartItems} />
         </div>
         )}
 

@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
   let subject = event.data.subject ?? '';
   let text = '';
   let html = '';
+  let attachmentNote = '';
   if (process.env.RESEND_API_KEY) {
     try {
       const { data } = await new Resend(process.env.RESEND_API_KEY).emails.receiving.get(event.data.email_id);
@@ -97,6 +98,16 @@ export async function POST(req: NextRequest) {
         subject = data.subject ?? subject;
         text = data.text ?? '';
         html = data.html ?? '';
+        // Attachments used to vanish silently — the sender assumed we saw
+        // their photo/receipt and we never knew one existed. Their names and
+        // sizes are appended so staff can ask the customer to resend inline
+        // or via WhatsApp (we don't store the files themselves).
+        const atts = (data.attachments ?? []).filter(a => a.size > 0).slice(0, 10);
+        if (atts.length > 0) {
+          attachmentNote = '\n\n📎 ' + atts
+            .map(a => `${a.filename ?? 'unnamed file'} (${Math.max(1, Math.round(a.size / 1024))} KB)`)
+            .join(', ') + ' — attachment files are not stored; ask for a resend via WhatsApp if needed.';
+        }
       }
     } catch (err) {
       log.warn('inbound_email.body_fetch_failed', { error: (err as Error).message });
@@ -108,7 +119,10 @@ export async function POST(req: NextRequest) {
   // making Resend retry a message we can never store usefully.
   if (!email) return NextResponse.json({ ok: true });
 
-  const message = clamp(text || (html ? stripHtml(html) : '') || '(no text content)', MAX.message);
+  const message = clamp(
+    (text || (html ? stripHtml(html) : '') || '(no text content)') + attachmentNote,
+    MAX.message,
+  );
 
   if (isDemo) {
     log.info('inbound_email.demo', { email, subject });

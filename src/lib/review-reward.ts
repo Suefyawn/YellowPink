@@ -65,15 +65,36 @@ export async function issueReviewReward(reviewId: string): Promise<void> {
     const admin = supabaseAdmin();
     const { data: review } = await admin
       .from('product_reviews')
-      .select('id, approved, reviewer_email, user_id, reward_issued_at, products(name, brand)')
+      .select('id, product_id, approved, reviewer_email, user_id, reward_issued_at, products(name, brand)')
       .eq('id', reviewId)
       .maybeSingle();
-    const r = review as ReviewRow | null;
+    const r = review as (ReviewRow & { product_id: string | null }) | null;
     if (!r || !r.approved) return;
     // Guests only: registered reviewers get loyalty points via the DB trigger.
     if (r.user_id) return;
     const email = (r.reviewer_email ?? '').trim().toLowerCase();
     if (!email || r.reward_issued_at) return;
+
+    // One reward per reviewer PER PRODUCT, not per review row. On 30 Aug a
+    // shopper submitted the same review three times and collected three
+    // codes; submitReview now blocks the duplicates, and this closes the
+    // reward side for any that still slip through (older rows, edits).
+    if (r.product_id) {
+      const { count } = await admin
+        .from('product_reviews')
+        .select('id', { count: 'exact', head: true })
+        .eq('product_id', r.product_id)
+        .ilike('reviewer_email', email)
+        .not('reward_issued_at', 'is', null)
+        .neq('id', reviewId);
+      if ((count ?? 0) > 0) {
+        // Stamp it so future approval toggles stop re-checking, but no coupon.
+        await admin.from('product_reviews')
+          .update({ reward_issued_at: new Date().toISOString() })
+          .eq('id', reviewId).is('reward_issued_at', null);
+        return;
+      }
+    }
 
     // Atomically claim the reward: only the update that flips reward_issued_at
     // from NULL proceeds, so concurrent/re-approvals can't mint two codes.

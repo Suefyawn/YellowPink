@@ -47,7 +47,7 @@ describe('activeSeasonalTheme — scheduled window', () => {
     expect(t?.barColor).toBe('#AE2766');
   });
   it('an unknown scheduled key is ignored', () => {
-    expect(activeSeasonalTheme({ ...SCHEDULED, seasonal_theme: 'ramadan' }, new Date('2026-08-14T07:00:00Z'))).toBeNull();
+    expect(activeSeasonalTheme({ ...SCHEDULED, seasonal_theme: 'halloween' }, new Date('2026-08-14T07:00:00Z'))).toBeNull();
   });
   it('no message → no bar content, theme still active', () => {
     const t = activeSeasonalTheme({ ...SCHEDULED, seasonal_theme_message: '' }, new Date('2026-08-14T07:00:00Z'));

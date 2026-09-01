@@ -542,7 +542,7 @@ export function ProductForm({ product, vendors = [], initialName, linkedPosts = 
 
           {/* ── Image ──────────────────────────────────────────────────── */}
           <Section title="Product image">
-            <ImageUpload name="image_url" currentUrl={product?.image_url} label="" aspect={1} />
+            <ImageUpload name="image_url" currentUrl={product?.image_url} label="" aspect={1} preset="product" />
           </Section>
 
           {/* ── Video ──────────────────────────────────────────────────── */}

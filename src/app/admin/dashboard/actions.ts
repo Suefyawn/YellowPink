@@ -23,15 +23,27 @@ const SENTRY_PROJECT = 'yellowpink';
 type PermissiveSupabase = SupabaseClient<unknown, never, never, never, never>;
 
 // ─── PostHog helpers ────────────────────────────────────────────────────────
+// One transient PostHog failure used to fail the ENTIRE refresh: all ~25
+// panel queries run in a single Promise.all, so a lone 504 ("query hit the
+// max execution time", owner report 31 Aug) or 503 (29 Jul) rejected the
+// whole PostHog section. Their query cache usually answers the same query
+// on a second attempt, so retry 5xx twice with a short pause before giving
+// up. 4xx (bad query, auth) still fails fast — retrying those is pointless.
 async function phQuery(apiKey: string, sql: string) {
-  const res = await fetch(`${PH_BASE}/api/projects/${PH_PROJECT_ID}/query`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ query: { kind: 'HogQLQuery', query: sql } }),
-    cache: 'no-store',
-  });
-  if (!res.ok) throw new Error(`PostHog ${res.status}: ${await res.text()}`);
-  return (await res.json()).results as unknown[][];
+  let lastError = '';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, 1500 * attempt));
+    const res = await fetch(`${PH_BASE}/api/projects/${PH_PROJECT_ID}/query`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: { kind: 'HogQLQuery', query: sql } }),
+      cache: 'no-store',
+    });
+    if (res.ok) return (await res.json()).results as unknown[][];
+    lastError = `PostHog ${res.status}: ${await res.text()}`;
+    if (res.status < 500) break;
+  }
+  throw new Error(lastError);
 }
 
 // Cast helper so a single `.upsert` payload isn't fighting the `never[]` inference.

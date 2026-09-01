@@ -10,6 +10,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { authorizeBlogApi, blogApiCreateSchema, BLOG_COLUMNS } from '@/lib/blog-api';
+import { deriveReadTime } from '@/lib/reading-time';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -63,9 +64,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Validation failed.', issues: parsed.error.flatten() }, { status: 422 });
   }
 
+  // Blank read time → derive it from the body, same rule as the admin form.
+  const insertRow: Record<string, unknown> = { ...parsed.data };
+  if (!String(insertRow.read_time ?? '').trim()) {
+    insertRow.read_time = deriveReadTime(String(insertRow.body ?? ''));
+  }
+
   const { data, error } = await supabaseAdmin()
     .from('blog_posts')
-    .insert(parsed.data)
+    .insert(insertRow)
     .select(BLOG_COLUMNS)
     .single();
   if (error) {

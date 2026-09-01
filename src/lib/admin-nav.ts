@@ -40,6 +40,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     { href: '/admin/vendors',   label: 'Vendors',   icon: 'truck', permission: 'vendors' },
   ]},
   { label: 'Catalogue', items: [
+    { href: '/admin/homepage-preview', label: 'Homepage rails', icon: 'layout-dashboard', permission: 'products.view' },
     { href: '/admin/collections', label: 'Collections', icon: 'layers', permission: 'products.view' },
     { href: '/admin/brands',    label: 'Brands',    icon: 'gem', permission: 'products.view' },
     { href: '/admin/tags',      label: 'Tags',      icon: 'tag', permission: 'products.view' },
@@ -56,6 +57,7 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     { href: '/admin/questions', label: 'Questions', icon: 'help-circle', permission: 'reviews' },
   ]},
   { label: 'Marketing', items: [
+    { href: '/admin/sales',     label: 'Sales & occasions', icon: 'megaphone', permission: 'settings' },
     { href: '/admin/coupons',   label: 'Coupons',   icon: 'ticket', permission: 'coupons' },
     { href: '/admin/blog',      label: 'Blog',      icon: 'pen-line', permission: 'blog' },
     { href: '/admin/reviewers', label: 'Medical reviewers', icon: 'shield-check', permission: 'blog' },

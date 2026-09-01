@@ -10,11 +10,15 @@ interface Props {
   /** 'image' (default) or 'video', switches the accepted types, size cap and
    *  preview element. Both upload through the same /api/upload endpoint. */
   kind?: 'image' | 'video';
+  /** Server-side normalisation preset: 'hero' cover-crops to the blog hero's
+   *  1216x688, 'product' caps at 1600, 'general' (default) caps at 2000.
+   *  The server resizes + re-encodes WebP, so big phone photos are fine. */
+  preset?: 'general' | 'hero' | 'product';
 }
 
-export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1, kind = 'image' }: Props) {
+export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1, kind = 'image', preset = 'general' }: Props) {
   const isVideo = kind === 'video';
-  const maxMb = isVideo ? 30 : 5;
+  const maxMb = isVideo ? 30 : 25;
   const [url, setUrl] = useState(currentUrl ?? '');
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -36,6 +40,7 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1, kin
     try {
       const fd = new FormData();
       fd.append('file', file);
+      if (!isVideo) fd.append('preset', preset);
 
       // Simulate progress while uploading
       const timer = setInterval(() => setProgress(p => Math.min(p + 15, 85)), 200);
@@ -53,7 +58,7 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1, kin
       setUploading(false);
       setTimeout(() => setProgress(0), 600);
     }
-  }, [isVideo, maxMb]);
+  }, [isVideo, maxMb, preset]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -151,7 +156,7 @@ export function ImageUpload({ name, currentUrl, label = 'Image', aspect = 1, kin
               {dragging ? 'Drop to upload' : isVideo ? 'Upload video' : 'Upload image'}
             </div>
             <div style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-              Drag & drop or click to browse<br />{isVideo ? 'MP4, WebM, MOV · Max 30 MB' : 'JPEG, PNG, WebP · Max 5 MB'}
+              Drag & drop or click to browse<br />{isVideo ? 'MP4, WebM, MOV · Max 30 MB' : 'JPEG, PNG, WebP · up to 25 MB, optimised automatically'}
             </div>
           </div>
         )}

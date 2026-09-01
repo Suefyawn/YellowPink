@@ -66,6 +66,11 @@ export interface RailInputs {
   /** Full wellness set, demand-ordered. */
   wellnessPool: Product[];
   saleActive: boolean;
+  /** When false, the Featured rail shows ONLY owner-flagged products (it may
+   *  run short or hide) instead of topping up from the trending pool. Owner
+   *  toggle (1 Sep 2026): the automatic fill was surfacing products the
+   *  owner considered off-brand for the "This Week" row. Default true. */
+  featuredFillup?: boolean;
 }
 
 const demand = (p: Product) => Number(p.popularity_score ?? 0);
@@ -106,7 +111,7 @@ export function composeHomepageRails(inp: RailInputs): HomepageRails {
   const sellerIds = new Set(inp.sellersPool.map(p => p.id));
   const flaggedPool = [...inp.featuredPool].sort(byDemandThenFresh).slice(0, 12);
   const flaggedPicks = dailyRotation(flaggedPool, 4, 'featured');
-  const fillPicks = flaggedPicks.length >= 4 ? [] :
+  const fillPicks = (flaggedPicks.length >= 4 || inp.featuredFillup === false) ? [] :
     [...inp.trendingPool].sort(byDemandThenFresh)
       .filter(p => !sellerIds.has(p.id) && !flaggedPicks.some(f => f.id === p.id))
       .slice(0, 4 - flaggedPicks.length);

@@ -195,7 +195,11 @@ export function CartPage({ restoreToken = null, recommended = [], estimatedDays 
           <div style={{ padding: '16px 0 32px', borderBottom: '1px solid var(--line)' }}>
             {(freeShippingEnabled || vendorFreeShip) && (
               <div style={{ maxWidth: 480 }}>
-                <FreeShippingProgress subtotal={cartItems.reduce((s, i) => s + i.price * i.qty, 0)} items={cartItems} />
+                {/* Free delivery is earned on the discounted subtotal (owner
+                    directive 2026-09-01), so the progress bar counts the
+                    coupon too — otherwise it would promise free delivery the
+                    checkout then charges for. */}
+                <FreeShippingProgress subtotal={Math.max(0, cartItems.reduce((s, i) => s + i.price * i.qty, 0) - discount)} items={cartItems} />
               </div>
             )}
             {estimatedDays && (
