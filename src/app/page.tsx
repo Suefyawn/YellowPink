@@ -122,6 +122,9 @@ export default async function HomePage() {
     kBeautyPool: kBeautyProducts,
     wellnessPool: wellnessProducts,
     saleActive,
+    // Owner switch (Admin → Homepage rails): off = the This Week row shows
+    // only flagged products instead of topping up from trending.
+    featuredFillup: settings.featured_fillup !== 'false',
   });
   const displayedFeatured = rails.featured.map(t => t.product);
   const topSellersRail = rails.bestSellers.map(t => t.product);
