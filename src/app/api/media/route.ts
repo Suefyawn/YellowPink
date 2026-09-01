@@ -68,8 +68,12 @@ export async function POST(req: NextRequest) {
   const preset: ImagePreset = presetRaw === 'hero' || presetRaw === 'product' ? presetRaw : 'general';
   const out = await normalizeImageUpload(await file.arrayBuffer(), file.type, preset);
 
-  // Name from the content type, never the client-supplied filename.
-  const filename = `blog/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${out.processed ? out.ext : ext}`;
+  // Name from the content type, never the client-supplied filename. The
+  // optional "folder" field namespaces the upload (allowlisted so a caller
+  // can't write outside the automation's areas); default stays blog/.
+  const folderRaw = (form.get('folder') as string) ?? 'blog';
+  const folder = folderRaw === 'seasonal' ? 'seasonal' : 'blog';
+  const filename = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${out.processed ? out.ext : ext}`;
   const res = await uploadMedia(filename, out.bytes, out.contentType);
   if ('error' in res) return NextResponse.json({ error: res.error }, { status: 500 });
   return NextResponse.json({ url: res.url }, { status: 201 });

@@ -45,7 +45,9 @@ import { getWelcomeOffer } from '@/lib/offers';
 import { CartAnnouncer } from '@/components/cart/CartAnnouncer';
 import { AddToCartToast } from '@/components/cart/AddToCartToast';
 import { CouponCapture } from '@/components/marketing/CouponCapture';
-import { getSiteSettings, getBestsellers } from '@/lib/supabase';
+import { getBestsellers } from '@/lib/supabase';
+import { getStorefrontSettings } from '@/lib/preview-look';
+import { PreviewRibbon } from '@/components/layout/PreviewRibbon';
 import { parseCommerceConfig } from '@/lib/commerce';
 import { getVendorFreeShipThresholds } from '@/lib/shipping';
 import { loadTrendingBrands, loadPopularCategories } from '@/lib/search-data';
@@ -120,8 +122,11 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [settings, searchTrending, searchCategories, welcomeOffer, footerCollections, cartCrossSell, vendorFreeShipThresholds] = await Promise.all([
-    getSiteSettings(),
+  const [{ settings, preview }, searchTrending, searchCategories, welcomeOffer, footerCollections, cartCrossSell, vendorFreeShipThresholds] = await Promise.all([
+    // Storefront-effective settings: identical to the stored settings except
+    // for a staff member holding a look preview (Sales & occasions), whose
+    // request renders with the previewed occasion overlaid.
+    getStorefrontSettings(),
     loadTrendingBrands(),
     loadPopularCategories(),
     getWelcomeOffer(),
@@ -204,6 +209,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       </head>
       <body>
         <a href="#main" className="skip-link">Skip to main content</a>
+        {preview && <PreviewRibbon name={preview.name} />}
         <DemoBanner />
         <ConsentBanner />
         <NewsletterModal discountPct={welcomeOffer ? welcomeOffer.pct : null} />

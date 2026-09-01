@@ -5,7 +5,6 @@ import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
-import { applySeasonalModeMapping } from '@/lib/seasonal-theme';
 
 // Settings is a grantable permission ('settings' — see lib/permissions.ts),
 // and every other settings surface (the settings layout, integrations,
@@ -96,36 +95,7 @@ export async function saveSettings(formData: FormData): Promise<void> {
   redirect(`${redirectTarget}?saved=1`);
 }
 
-// Seasonal-theme card on the Branding page. The form speaks the owner's
-// language (a theme + when it runs); applySeasonalModeMapping translates
-// that into the backing keys (season_active / active_theme / seasonal_theme
-// + window) before the same upsert-and-revalidate flow as saveSettings.
-export async function saveSeasonalTheme(formData: FormData): Promise<void> {
-  const session = await assertSettings();
-  const PATH = '/admin/settings/branding';
-
-  const map = new Map<string, string>();
-  for (const [key, val] of formData.entries()) {
-    if (typeof val !== 'string') continue;
-    if (key.startsWith('$') || key === '_redirect') continue;
-    map.set(key, val);
-  }
-
-  const modeError = applySeasonalModeMapping(map);
-  if (modeError) redirect(`${PATH}?error=${encodeURIComponent(modeError)}`);
-
-  const pairs = Array.from(map.entries()).map(([key, value]) => ({ key, value }));
-  const { error } = await supabaseAdmin().from('site_settings').upsert(pairs, { onConflict: 'key' });
-  if (error) redirect(`${PATH}?error=${encodeURIComponent(error.message)}`);
-
-  void logAudit(session, {
-    action: 'settings.save',
-    entity: 'site_settings',
-    diff: { keys_updated: pairs.map(p => p.key), card: 'seasonal_theme' },
-  });
-
-  revalidatePath('/', 'layout');
-  revalidatePath('/', 'page');
-  revalidatePath(PATH);
-  redirect(`${PATH}?saved=1`);
-}
+// The Branding page's seasonal-theme card (saveSeasonalTheme) was retired on
+// 1 Sep 2026: all seasonal control lives in Admin → Sales & occasions, whose
+// actions write the same settings keys with the source occasion recorded.
+// applySeasonalModeMapping in lib/seasonal-theme.ts documents the key mapping.

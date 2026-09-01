@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { saleEventToSeasonalSettings, seasonOffSettings, exclusiveEnd, type SaleEvent } from './sale-events';
+import {
+  saleEventToSeasonalSettings, seasonOffSettings, exclusiveEnd,
+  eventActivationState, type SaleEvent,
+} from './sale-events';
 import { activeSeasonalTheme } from './seasonal-theme';
 
 const event = (over: Partial<SaleEvent> = {}): SaleEvent => ({
@@ -85,5 +88,23 @@ describe('seasonOffSettings', () => {
     const { settings } = saleEventToSeasonalSettings(event(), 'now');
     const off = { ...settings, ...seasonOffSettings() };
     expect(activeSeasonalTheme(off)).toBeNull();
+  });
+});
+
+describe('eventActivationState (the LIVE/SCHEDULED badge)', () => {
+  it('records which event was activated, and in which mode', () => {
+    const now = saleEventToSeasonalSettings(event(), 'now').settings;
+    expect(now.seasonal_source_event).toBe('azadi');
+    expect(eventActivationState(event(), now)).toBe('live');
+    expect(eventActivationState(event({ key: 'eid-ul-fitr' }), now)).toBeNull();
+
+    const armed = saleEventToSeasonalSettings(event(), 'schedule').settings;
+    expect(eventActivationState(event(), armed)).toBe('scheduled');
+  });
+
+  it('turning the season off clears the source event', () => {
+    const settings = { ...saleEventToSeasonalSettings(event(), 'now').settings, ...seasonOffSettings() };
+    expect(eventActivationState(event(), settings)).toBeNull();
+    expect(settings.seasonal_source_event).toBe('');
   });
 });
