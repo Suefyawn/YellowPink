@@ -161,6 +161,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // ad accounts may run conversion events for it. Owner-set in admin, env
   // fallback; rendered as a runtime <meta> like the GSC tag above.
   const fbDomainVerification = settings.facebook_domain_verification?.trim() || process.env.FACEBOOK_DOMAIN_VERIFICATION || undefined;
+  // Bing Webmaster Tools meta-tag verification (msvalidate.01). Same
+  // owner-set-in-admin / env-fallback pattern as the Google tag; importing
+  // the property from Search Console needs no tag, this is the backup route.
+  const bingVerification = settings.bing_site_verification?.trim() || process.env.BING_SITE_VERIFICATION || undefined;
   // Single source of truth for free-shipping copy/threshold across the
   // storefront, seeds the client CommerceSettings provider so the cart,
   // mini-cart, PDP and checkout never drift from the owner's setting.
@@ -194,6 +198,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {gscVerification && <meta name="google-site-verification" content={gscVerification} />}
         {/* Meta domain verification (owner-set in admin, env fallback). */}
         {fbDomainVerification && <meta name="facebook-domain-verification" content={fbDomainVerification} />}
+        {bingVerification && <meta name="msvalidate.01" content={bingVerification} />}
         {/* Site-wide JSON-LD: a single Organization node (@id-referenced by
             WebSite.publisher) plus WebSite for the sitelinks search box.
             Both render on every page, the duplication-across-pages pattern

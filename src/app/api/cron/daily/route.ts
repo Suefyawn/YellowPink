@@ -107,6 +107,9 @@ export async function GET(req: NextRequest) {
     // reconcile → settle): cheap DB-only sweep, revenue-relevant, so it runs
     // ahead of the analytics tail.
     '/api/cron/order-actions',
+    // The occasion the calendar is running (or arming for tomorrow) gets its
+    // advertised coupon code created/refreshed, bounded to its window.
+    '/api/cron/occasion-coupons',
     // Popularity feeds the storefront rails (Best Sellers / Trending / every
     // demand ordering) — it must not sit behind the analytics tail where a
     // budget-exhausted run silently skips it and the homepage rides day-old

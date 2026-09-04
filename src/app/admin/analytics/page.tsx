@@ -20,6 +20,7 @@ import { FunnelByDeviceWidget } from '@/components/admin/FunnelByDeviceWidget';
 import { RetentionWidget } from '@/components/admin/RetentionWidget';
 import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
 import { WebVitalsWidget } from '@/components/admin/WebVitalsWidget';
+import { BingSearchWidget } from '@/components/admin/BingSearchWidget';
 import { TrafficSearchDashboard } from '@/components/admin/insights/TrafficSearchDashboard';
 import { getTrafficSearchData } from '@/lib/traffic-insights';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
@@ -780,6 +781,12 @@ export default async function AnalyticsPage({
               range switches are instant. */}
           <TrafficSection title="Search & discovery" hint="Google Analytics + Search Console, interactive">
             <TrafficSearchDashboard data={await getTrafficSearchData()} />
+          </TrafficSection>
+
+          {/* ── Bing ── the second engine (and DuckDuckGo/Yahoo/Copilot behind
+              it), read from Bing Webmaster Tools on each analytics refresh. */}
+          <TrafficSection title="Bing search" hint="Bing Webmaster Tools, last 28 days (refreshed with the analytics cache)">
+            <BingSearchWidget />
           </TrafficSection>
 
           {/* ── Site performance ── real field Core Web Vitals (p75), also

@@ -561,7 +561,7 @@ export async function requestIndexing(path: string): Promise<{ ok: boolean; mess
   const result = await submitToSearchEngines([path]);
   if (result.submitted.length === 0) return { ok: false, message: 'No valid URL to submit.' };
   const parts = result.results.map(r => {
-    const name = r.channel === 'google' ? 'Google' : 'IndexNow';
+    const name = r.channel === 'google' ? 'Google' : r.channel === 'bing' ? 'Bing Webmaster' : 'IndexNow';
     if (r.skipped) return `${name}: not configured`;
     return `${name}: ${r.ok ? 'OK' : 'failed'}`;
   });

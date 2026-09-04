@@ -12,7 +12,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { NoAccess } from '@/components/admin/NoAccess';
 import { STORE_THEMES } from '@/lib/themes';
 import { activeSeasonalTheme, parsePktDate } from '@/lib/seasonal-theme';
-import { eventActivationState, type SaleEvent } from '@/lib/sale-events';
+import { eventActivationState, describeSaleEventCoupon, SALE_EVENT_COUPON_MARK, type SaleEvent } from '@/lib/sale-events';
 import { LookPreview } from '@/components/admin/LookPreview';
 import { ImageUpload } from '@/components/admin/ImageUpload';
 import {
@@ -36,6 +36,39 @@ const fmtPkt = (value: string | undefined) => {
     timeZone: 'Asia/Karachi', day: 'numeric', month: 'short',
   }).format(d);
 };
+
+interface CouponRow {
+  code: string; active: boolean; type: string; value: number | string; free_shipping: boolean;
+  min_order: number | string; starts_at: string | null; expires_at: string | null; used_count: number; description: string | null;
+}
+
+const fmtStamp = (iso: string | null) => iso
+  ? new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Karachi', day: 'numeric', month: 'short' }).format(new Date(iso))
+  : null;
+
+/** "DEFENCE · live now, 15% off, 3 used, ends 6 Sep" for the card. */
+function couponStatus(ev: SaleEvent, row: CouponRow | undefined, now: Date): { text: string; tone: 'ok' | 'warn' | 'muted' } {
+  const code = (ev.bar_coupon ?? '').trim().toUpperCase();
+  const terms = describeSaleEventCoupon(ev);
+  if (!code) return { text: 'No coupon on this occasion.', tone: 'muted' };
+  if (!terms) return { text: `${code}: set a discount value below, or the code will not be created.`, tone: 'warn' };
+  if (!row) return { text: `${code} (${terms}): created automatically when this occasion goes live or is scheduled.`, tone: 'muted' };
+  const managed = (row.description ?? '').startsWith(SALE_EVENT_COUPON_MARK);
+  const startsFuture = row.starts_at ? new Date(row.starts_at) > now : false;
+  const expired = row.expires_at ? new Date(row.expires_at) <= now : false;
+  const state = !row.active ? 'switched off'
+    : expired ? `expired ${fmtStamp(row.expires_at)}`
+    : startsFuture ? `opens ${fmtStamp(row.starts_at)}`
+    : 'live now';
+  const rowTerms = row.free_shipping ? 'free delivery'
+    : row.type === 'percent' ? `${Number(row.value)}% off` : `PKR ${Number(row.value).toLocaleString('en-PK')} off`;
+  const mismatch = !rowTerms.startsWith(terms.split(',')[0]);
+  const bits = [`${code}: ${state}`, rowTerms, `${row.used_count ?? 0} used`];
+  if (row.expires_at && !expired && state !== `expired ${fmtStamp(row.expires_at)}`) bits.push(`ends ${fmtStamp(row.expires_at)}`);
+  if (!managed) bits.push('created by hand in Coupons; activating adopts it');
+  if (mismatch) bits.push(`card says ${terms.split(',')[0]}, will update on activation`);
+  return { text: bits.join(' · '), tone: !row.active || expired ? 'warn' : 'ok' };
+}
 
 // ── shared styles ───────────────────────────────────────────────────────────
 const btn: React.CSSProperties = {
@@ -76,6 +109,14 @@ export default async function SalesPage({
     getStorefrontSettings(),
   ]);
   const events = (data ?? []) as SaleEvent[];
+  // Coupon status per occasion: does the advertised code exist, is it live,
+  // and does it match the card's discount? Read once for all codes.
+  const codes = [...new Set(events.map(e => (e.bar_coupon ?? '').trim().toUpperCase()).filter(Boolean))];
+  const { data: couponRows } = codes.length
+    ? await admin.from('coupons').select('code, active, type, value, free_shipping, min_order, starts_at, expires_at, used_count, description').in('code', codes)
+    : { data: [] as CouponRow[] };
+  const couponByCode = new Map((couponRows ?? []).map(c => [String(c.code).toUpperCase(), c as CouponRow]));
+  const now = new Date();
   const live = activeSeasonalTheme(settings);
   const sourceKey = (settings.seasonal_source_event ?? '').trim();
   const sourceEvent = events.find(ev => ev.key === sourceKey) ?? null;
@@ -106,8 +147,8 @@ export default async function SalesPage({
           <h1 style={{ margin: 0, fontSize: '1.375rem' }}>Sales &amp; occasions</h1>
           <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '0.875rem', maxWidth: '64ch' }}>
             Every occasion keeps a complete saved look — colours, announcement bar, hero and image.
-            Publish it with one click, or schedule it and it runs itself. Coupons are display-only
-            here: create the code itself in Coupons.
+            Publish it with one click, or schedule it and it runs itself. The coupon code the bar
+            advertises is created with the look and bounded to its dates, so it is never a dead code.
           </p>
         </div>
         <form action={createSaleEvent} style={{ display: 'flex', gap: 8 }}>
@@ -201,6 +242,15 @@ export default async function SalesPage({
                   : <> &middot; <span style={{ color: '#B45309' }}>set this year&rsquo;s dates to schedule</span></>}
               </div>
               {ev.notes && <div style={{ fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>{ev.notes}</div>}
+              {(() => {
+                const cs = couponStatus(ev, couponByCode.get((ev.bar_coupon ?? '').trim().toUpperCase()), now);
+                const color = cs.tone === 'ok' ? '#166534' : cs.tone === 'warn' ? '#B45309' : '#6b7280';
+                return (
+                  <div style={{ fontSize: '0.75rem', color, lineHeight: 1.5, padding: '6px 8px', background: '#faf6ee', borderRadius: 6 }}>
+                    <span style={{ fontWeight: 700 }}>Coupon</span> &middot; {cs.text}
+                  </div>
+                );
+              })()}
 
               <div style={{ display: 'flex', gap: 8, marginTop: 'auto', flexWrap: 'wrap' }}>
                 <form action={activateSaleEventNow}>
@@ -241,9 +291,37 @@ export default async function SalesPage({
                     </select></div>
                   <div><span style={lbl}>Announcement bar</span>
                     <input name="bar_message" defaultValue={ev.bar_message ?? ''} style={inp} maxLength={160} /></div>
-                  <div><span style={lbl}>Coupon code shown in the bar</span>
-                    <input name="bar_coupon" defaultValue={ev.bar_coupon ?? ''} style={inp} maxLength={40}
-                      placeholder="Create the code in Coupons first" /></div>
+                  <div style={{ padding: '10px 12px', background: '#faf6ee', borderRadius: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#111827' }}>Coupon (publishes with the look)</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 10 }}>
+                      <div><span style={lbl}>Code shown in the bar</span>
+                        <input name="bar_coupon" defaultValue={ev.bar_coupon ?? ''} style={inp} maxLength={40}
+                          placeholder="e.g. EIDI (blank = no coupon)" /></div>
+                      <div><span style={lbl}>Discount</span>
+                        <select name="coupon_type" defaultValue={ev.coupon_type ?? 'percent'} style={inp}>
+                          <option value="percent">Percent off</option>
+                          <option value="fixed">Fixed PKR off</option>
+                          <option value="free_shipping">Free delivery</option>
+                        </select></div>
+                      <div><span style={lbl}>Value</span>
+                        <input type="number" name="coupon_value" min={0} step="1" defaultValue={String(ev.coupon_value ?? 10)} style={inp} /></div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                      <div><span style={lbl}>Min order (PKR)</span>
+                        <input type="number" name="coupon_min_order" min={0} step="1" defaultValue={String(ev.coupon_min_order ?? 0)} style={inp} /></div>
+                      <div><span style={lbl}>Per customer</span>
+                        <input type="number" name="coupon_per_user" min={1} step="1" defaultValue={ev.coupon_per_user ?? ''} style={inp} placeholder="unlimited" /></div>
+                      <div><span style={lbl}>Total uses</span>
+                        <input type="number" name="coupon_max_uses" min={1} step="1" defaultValue={ev.coupon_max_uses ?? ''} style={inp} placeholder="unlimited" /></div>
+                    </div>
+                    <label style={{ fontSize: '0.75rem', color: '#374151', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <input type="checkbox" name="coupon_exclude_sale_items" defaultChecked={Boolean(ev.coupon_exclude_sale_items)} />
+                      Skip items already on sale (discount applies to full-price lines only)
+                    </label>
+                    <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>
+                      Turn on now, Schedule and the calendar all create or update this code in Coupons, valid for exactly the occasion&rsquo;s dates. Turning the look off switches the code off.
+                    </div>
+                  </div>
                   <div><span style={lbl}>Hero overline</span>
                     <input name="hero_overline" defaultValue={ev.hero_overline ?? ''} style={inp} maxLength={80} /></div>
                   <div><span style={lbl}>Hero headline (new line = line break)</span>

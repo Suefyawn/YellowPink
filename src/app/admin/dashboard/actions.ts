@@ -8,6 +8,7 @@ import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { getGoogleConnection, gscQuery, ga4RunReport, listSitemaps, submitSitemap } from '@/lib/google';
 import { SITE_URL } from '@/lib/seo';
+import { isBingConfigured, bingSiteUrl, getRankAndTrafficStats, getQueryStats, getPageStats, getCrawlStats, getUrlSubmissionQuota } from '@/lib/bing';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
@@ -803,6 +804,53 @@ async function refreshGoogle(supabase: PermissiveSupabase): Promise<void> {
   }
 }
 
+// ─── refreshBing ────────────────────────────────────────────────────────────
+// Bing Webmaster Tools, the Search Console equivalent for Bing / DuckDuckGo /
+// Yahoo / Copilot. Cached under 'bing' for the Analytics → Search & discovery
+// widget. Best-effort and independent of Google: absent key = nothing cached
+// (the widget shows the setup hint); a failed call logs and moves on.
+async function refreshBing(supabase: PermissiveSupabase): Promise<void> {
+  if (!isBingConfigured()) return;
+  const site = bingSiteUrl();
+  const settled = await Promise.allSettled([
+    getRankAndTrafficStats(site),
+    getQueryStats(site),
+    getPageStats(site),
+    getCrawlStats(site),
+    getUrlSubmissionQuota(site),
+  ]);
+  const [traffic, queries, pages, crawl, quota] = settled.map(r => (r.status === 'fulfilled' ? r.value : null));
+  const failures = settled
+    .map((r, i) => (r.status === 'rejected' ? `${['traffic', 'queries', 'pages', 'crawl', 'quota'][i]}: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}` : null))
+    .filter(Boolean) as string[];
+  if (failures.length === settled.length) {
+    console.error('[refreshBing] every Bing call failed:', failures.join(' | '));
+    return;
+  }
+  if (failures.length) console.error('[refreshBing] partial failure:', failures.join(' | '));
+
+  const days = (traffic as Awaited<ReturnType<typeof getRankAndTrafficStats>> | null) ?? [];
+  const last28 = days.slice(-28);
+  const prev28 = days.slice(-56, -28);
+  const sum = (rows: typeof days, k: 'clicks' | 'impressions') => rows.reduce((t, r) => t + (r[k] ?? 0), 0);
+  const crawlDays = (crawl as Awaited<ReturnType<typeof getCrawlStats>> | null) ?? [];
+  await upsertCache(supabase, 'bing', {
+    site,
+    range: last28.length ? { start: last28[0].day, end: last28[last28.length - 1].day } : null,
+    totals: { clicks: sum(last28, 'clicks'), impressions: sum(last28, 'impressions') },
+    previous: { clicks: sum(prev28, 'clicks'), impressions: sum(prev28, 'impressions') },
+    daily: last28,
+    queries: ((queries as Awaited<ReturnType<typeof getQueryStats>> | null) ?? [])
+      .sort((a, b) => b.impressions - a.impressions).slice(0, 50),
+    pages: ((pages as Awaited<ReturnType<typeof getPageStats>> | null) ?? [])
+      .sort((a, b) => b.impressions - a.impressions).slice(0, 25),
+    crawl: crawlDays.length ? crawlDays[crawlDays.length - 1] : null,
+    crawlDaily: crawlDays.slice(-28),
+    quota: quota ?? null,
+    failures,
+  });
+}
+
 // Persist a per-DAY GSC + GA4 trend into seo_daily_metrics so the admin can see
 // whether organic clicks/impressions/position + sessions + indexation are
 // improving over time (refreshGoogle only caches an overwriting snapshot).
@@ -949,6 +997,7 @@ export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: str
     refreshPostHog(supabase),
     refreshSentry(supabase),
     refreshGoogle(supabase),
+    refreshBing(supabase),
     refreshSeoTrend(supabase),
     resubmitSitemap(),
   ]);
