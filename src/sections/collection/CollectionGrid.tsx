@@ -138,7 +138,7 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
         <div
           ref={gridRef}
           tabIndex={-1}
-          aria-label="Products"
+          role="region" aria-label="Products"
           className="product-grid"
           style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)', outline: 'none' }}
         >

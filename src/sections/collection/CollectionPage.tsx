@@ -943,7 +943,7 @@ export function CollectionPage({
               <div
                 ref={resultsGridRef}
                 tabIndex={-1}
-                aria-label="Products"
+                role="region" aria-label="Products"
                 style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)', outline: 'none' }}
                 className="product-grid"
               >
