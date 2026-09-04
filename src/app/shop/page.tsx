@@ -3,6 +3,7 @@
 // 2026-05-24 audit.
 export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
+import { renderDateTokens } from '@/lib/price-tokens';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
@@ -305,7 +306,7 @@ export default async function ShopPage({ searchParams }: { searchParams: Promise
     landingGuides = ((guideRows ?? []) as Array<{ slug: string; title: string; category: string | null }>)
       .filter(g => isHealthCategory(g.category))
       .slice(0, 4)
-      .map(g => ({ slug: g.slug, title: g.title }));
+      .map(g => ({ slug: g.slug, title: renderDateTokens(g.title) }));
   }
 
   // Free-text searches also surface matching journal articles in the same

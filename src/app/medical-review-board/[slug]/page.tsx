@@ -1,5 +1,6 @@
 export const revalidate = 3600;
 
+import { renderDateTokens } from '@/lib/price-tokens';
 import type { Metadata } from 'next';
 import { Fragment } from 'react';
 import Link from 'next/link';
@@ -33,7 +34,8 @@ async function reviewedPosts(reviewerId: string): Promise<{ slug: string; title:
     .order('date', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(50);
-  return (data ?? []) as { slug: string; title: string }[];
+  return ((data ?? []) as { slug: string; title: string }[])
+    .map(p => ({ ...p, title: renderDateTokens(p.title) }));
 }
 
 export default async function ReviewerProfilePage({ params }: { params: Promise<{ slug: string }> }) {
