@@ -10,17 +10,19 @@ describe('sanitizeHtml', () => {
     expect(sanitizeHtml('<a href="javascript:alert(1)">x</a>')).toContain('href="#"');
   });
 
-  it('adds nofollow + noopener + target to external links', () => {
+  it('adds noopener + noreferrer + target to external links, and does NOT nofollow editorial citations', () => {
     const out = sanitizeHtml('<a href="https://example.com/page">ref</a>');
-    expect(out).toMatch(/rel="[^"]*nofollow[^"]*"/);
     expect(out).toMatch(/rel="[^"]*noopener[^"]*"/);
+    expect(out).toMatch(/rel="[^"]*noreferrer[^"]*"/);
+    expect(out).not.toMatch(/nofollow/);
     expect(out).toContain('target="_blank"');
   });
 
-  it('merges into an existing rel and keeps target', () => {
-    const out = sanitizeHtml('<a href="https://example.com" rel="sponsored" target="_self">x</a>');
+  it('merges into an existing rel (an editor-written nofollow or sponsored survives) and keeps target', () => {
+    const out = sanitizeHtml('<a href="https://example.com" rel="sponsored nofollow" target="_self">x</a>');
     expect(out).toMatch(/rel="[^"]*sponsored[^"]*"/);
     expect(out).toMatch(/rel="[^"]*nofollow[^"]*"/);
+    expect(out).toMatch(/rel="[^"]*noopener[^"]*"/);
     expect(out).toContain('target="_self"'); // existing target preserved
   });
 

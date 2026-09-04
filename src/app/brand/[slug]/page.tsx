@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getProducts } from '@/lib/supabase';
 import { ProductBrowser } from '@/components/shop/ProductBrowser';
+import { ShopFilterButton } from '@/components/brand/ShopFilterButton';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
 import { ContentAndFaqs } from '@/components/seo/ContentAndFaqs';
@@ -110,10 +111,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
                 <p className="body-text" style={{ color: 'var(--ink-700)' }}>{description}</p>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
                   <span className="small-text" style={{ color: 'var(--ink-700)' }}>{list.length} {list.length === 1 ? 'product' : 'products'}</span>
-                  {/* No literal arrow: .text-link::after already renders one. */}
-                  <Link href={`/shop?brand=${encodeURIComponent(brand)}`} className="text-link">
-                    Filter &amp; sort all {brand} products
-                  </Link>
+                  <ShopFilterButton brand={brand} />
                 </div>
               </div>
             </div>
@@ -129,9 +127,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
             <p className="body-text" style={{ color: 'var(--ink-700)', maxWidth: 520, marginBottom: 20 }}>{description}</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 28 }}>
               <span className="small-text">{list.length} {list.length === 1 ? 'product' : 'products'}</span>
-              <Link href={`/shop?brand=${encodeURIComponent(brand)}`} className="text-link">
-                Filter &amp; sort all {brand} products
-              </Link>
+              <ShopFilterButton brand={brand} />
             </div>
           </div>
         </section>
