@@ -9,7 +9,7 @@ import { ProductBrowser } from '@/components/shop/ProductBrowser';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
 import { ContentAndFaqs } from '@/components/seo/ContentAndFaqs';
-import { renderPriceTokens, renderFaqPriceTokens } from '@/lib/price-tokens';
+import { renderContentTokens, renderFaqTokens } from '@/lib/price-tokens';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { brandNameFromSlug, brandSlug, getBrandRecord } from '@/lib/brands';
 import { redirectIfMapped } from '@/lib/redirects';
@@ -153,8 +153,8 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
           so shoppers see products first and search engines still get a
           substantive page. Shared with the collection landing pages. */}
       <ContentAndFaqs
-        html={renderPriceTokens(record?.content_html, products)}
-        faqs={renderFaqPriceTokens(record?.faqs, products)}
+        html={renderContentTokens(record?.content_html, products)}
+        faqs={renderFaqTokens(record?.faqs, products)}
         faqHeading={`${brand} FAQs`}
       />
     </main>
