@@ -14,7 +14,7 @@ import { isHealthCategory } from '@/lib/category-taxonomy';
 import { selectRelatedProducts } from '@/lib/related-products';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
 import { pageMeta, jsonLd, articleLd, breadcrumbLd } from '@/lib/seo';
-import { renderPriceTokens } from '@/lib/price-tokens';
+import { renderContentTokens } from '@/lib/price-tokens';
 import type { Product } from '@/types';
 
 // Pre-render every blog post at build so articles are static CDN HTML (fast
@@ -175,7 +175,7 @@ export default async function BlogPostRoute({ params }: { params: Promise<{ slug
           ])),
         }}
       />
-      <BlogPostPage post={{ ...post, body: renderPriceTokens(post.body, allProducts) }} relatedPosts={relatedPosts} relatedProducts={relatedProducts} relatedProductsMentioned={mentionedInPost} reviewer={reviewer} catalogProducts={allProducts} />
+      <BlogPostPage post={{ ...post, body: renderContentTokens(post.body, allProducts) }} relatedPosts={relatedPosts} relatedProducts={relatedProducts} relatedProductsMentioned={mentionedInPost} reviewer={reviewer} catalogProducts={allProducts} />
     </main>
   );
 }
