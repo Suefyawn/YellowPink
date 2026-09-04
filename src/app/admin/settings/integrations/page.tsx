@@ -235,6 +235,13 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
               </p>
             </div>
             <div>
+              <label style={lbl}>Microsoft Clarity, project ID</label>
+              <input name="clarity_project_id" defaultValue={g('clarity_project_id')} style={inp} placeholder="e.g. yd8j54h168" />
+              <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                Session recordings and heatmaps. clarity.microsoft.com → your project → <em>Settings → Overview</em> → the ID in the tracking code. Loads only for shoppers who accept analytics cookies, and never records the admin.
+              </p>
+            </div>
+            <div>
               <label style={lbl}>Meta (Facebook/Instagram), domain verification code</label>
               <input name="facebook_domain_verification" defaultValue={g('facebook_domain_verification')} style={inp} placeholder="paste only the content=… value" />
               <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>

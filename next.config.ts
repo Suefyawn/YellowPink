@@ -149,6 +149,7 @@ const nextConfig: NextConfig = {
     //   Meta Pixel      script  connect.facebook.net; beacons www.facebook.com/tr
     //   PostHog         script/connect us.i.posthog.com + us-assets.i.posthog.com
     //                   (NEXT_PUBLIC_POSTHOG_HOST default; replay worker = blob:)
+    //   Clarity         script  www.clarity.ms; connect *.clarity.ms (regional beacons)
     //   Sentry          connect *.ingest.sentry.io / *.ingest.us.sentry.io
     //   Vercel          script /_vercel/* (same-origin in prod),
     //                   va.vercel-scripts.com (dev); connect vitals.vercel-insights.com
@@ -178,6 +179,10 @@ const nextConfig: NextConfig = {
       'https://www.facebook.com',
       'https://us.i.posthog.com',
       'https://us-assets.i.posthog.com',
+      // Microsoft Clarity: the tag loads from www.clarity.ms (script-src) and
+      // posts session data to regional hosts (a.clarity.ms, b.clarity.ms, …),
+      // so the beacon host is wildcarded. Consent-gated in the component.
+      'https://*.clarity.ms',
       'https://*.ingest.sentry.io',
       'https://*.ingest.us.sentry.io',
       'https://vitals.vercel-insights.com',
@@ -211,7 +216,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
       // Next's inline runtime; move to nonces before enforcing if feasible.
-      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vercel.live`,
+      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://www.clarity.ms https://va.vercel-scripts.com https://vercel.live`,
       // Our fonts are self-hosted (next/font), but Chrome's built-in page
       // translation injects its own UI styled from fonts.googleapis.com and
       // loads the faces from fonts.gstatic.com — live Sentry CSP reports

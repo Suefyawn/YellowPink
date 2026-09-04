@@ -30,6 +30,7 @@ const fontUI = Inter({
 import { SiteChrome } from '@/components/layout/SiteChrome';
 import { activeSeasonalTheme } from '@/lib/seasonal-theme';
 import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
+import { MicrosoftClarity } from '@/components/analytics/MicrosoftClarity';
 import { MetaPixel } from '@/components/analytics/MetaPixel';
 import { AttributionCapture } from '@/components/analytics/AttributionCapture';
 import { Analytics } from '@vercel/analytics/next';
@@ -155,6 +156,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // stored in site_settings; fall back to env so existing deployments keep
   // working. Reading them here means changing the IDs needs no redeploy.
   const gaMeasurementId = settings.ga_measurement_id?.trim() || undefined;
+  // Microsoft Clarity (session recordings / heatmaps). Owner-set in admin,
+  // env fallback inside the component; consent-gated there too.
+  const clarityProjectId = settings.clarity_project_id?.trim() || undefined;
   const gscVerification = settings.google_site_verification?.trim() || process.env.GOOGLE_SITE_VERIFICATION || undefined;
   // Meta (Facebook/Instagram) domain verification, required in Business Manager
   // to claim the domain for Aggregated Event Measurement and to control which
@@ -219,6 +223,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ConsentBanner />
         <NewsletterModal discountPct={welcomeOffer ? welcomeOffer.pct : null} />
         <GoogleAnalytics measurementId={gaMeasurementId} />
+        <MicrosoftClarity projectId={clarityProjectId} />
         <MetaPixel />
         <AttributionCapture />
         <WebVitalsReporter />
