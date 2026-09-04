@@ -154,7 +154,8 @@ const nextConfig: NextConfig = {
     //                   va.vercel-scripts.com (dev); connect vitals.vercel-insights.com
     //   Supabase        connect https + wss on the configured project host
     //   Images          images.weserv.nl proxy + assorted CDNs → img-src https:
-    //   Fonts           self-hosted via next/font → no Google Fonts origins
+    //   Fonts           self-hosted via next/font; Google Fonts hosts allowed
+    //                   only for Chrome's page-translation UI (see style-src)
     //   Payments        JazzCash/Easypaisa hand-off is a full-page form POST → form-action
     //   wa.me links     plain navigation, not governed by CSP
     const connectSrc = [
@@ -211,7 +212,13 @@ const nextConfig: NextConfig = {
       // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
       // Next's inline runtime; move to nonces before enforcing if feasible.
       `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vercel.live`,
-      "style-src 'self' 'unsafe-inline'",
+      // Our fonts are self-hosted (next/font), but Chrome's built-in page
+      // translation injects its own UI styled from fonts.googleapis.com and
+      // loads the faces from fonts.gstatic.com — live Sentry CSP reports
+      // YELLOWPINK-F (style) and YELLOWPINK-J (font), Aug–Sep 2026, both from
+      // shoppers translating to Urdu. Allowing the two Google Fonts hosts costs
+      // nothing (they serve only fonts) and keeps translation intact.
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // Catalogue imagery is served from many hosts (Supabase, weserv proxy,
       // yellowpink.pk, Cloudinary/Shopify/Unsplash CDNs) plus analytics pixels;
       // a blanket https: keeps this maintainable. data:/blob: for placeholders.
@@ -223,7 +230,7 @@ const nextConfig: NextConfig = {
       "media-src 'self' data: blob: https:",
       // vercel.live/assets.vercel.com: the Vercel toolbar loads its own font
       // (same team-member-only surface as its script/frame allowances).
-      "font-src 'self' data: https://vercel.live https://assets.vercel.com",
+      "font-src 'self' data: https://vercel.live https://assets.vercel.com https://fonts.gstatic.com",
       `connect-src ${connectSrc.join(' ')}`,
       // Service worker + PostHog session-replay worker (blob:).
       "worker-src 'self' blob:",

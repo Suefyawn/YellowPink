@@ -35,6 +35,13 @@ describe('SEO JSON-LD helpers', () => {
     expect((ld.offers as { availability: string }).availability).toBe('https://schema.org/BackOrder');
   });
 
+  // Vendor-held stock (stock_mode external → track_inventory false) is
+  // dispatched on the normal timeline; the 0 on our counter is not a shelf.
+  it('marks a vendor-held product as InStock even at zero', () => {
+    const ld = productLd({ ...sampleProduct, stock: 0, track_inventory: false });
+    expect((ld.offers as { availability: string }).availability).toBe('https://schema.org/InStock');
+  });
+
   it('omits aggregateRating when there are no reviews', () => {
     const ld = productLd(sampleProduct);
     expect(ld.aggregateRating).toBeUndefined();

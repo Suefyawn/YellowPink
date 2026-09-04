@@ -124,7 +124,10 @@ export function NotFoundSuggestions() {
                 Search the shop for &ldquo;{query}&rdquo;
               </Link>
               {' '}or{' '}
-              <Link href="/go/whatsapp" className="text-link">ask us on WhatsApp</Link>.
+              {/* A plain anchor, not <Link>: the router prefetches Link targets with
+                  an RSC fetch, and /go/whatsapp answers with a redirect to wa.me,
+                  which connect-src then blocks (Sentry CSP report YELLOWPINK-G). */}
+              <a href="/go/whatsapp?src=not-found" className="text-link" target="_blank" rel="noopener noreferrer">ask us on WhatsApp</a>.
             </p>
           )}
         </div>

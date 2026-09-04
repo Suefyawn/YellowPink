@@ -40,17 +40,29 @@ export function isSellable(p: SellableProduct, available?: number | null): boole
 /**
  * What to publish in structured data and the merchant feeds.
  *
- * A keep-selling product at zero is NOT "in stock" — we do not have it, we
- * intend to source it. Google has a value for exactly that, and using it keeps
- * the listing purchasable in Shopping without claiming stock we cannot show.
- * Saying "in stock" for everything is what gets a Merchant Center account
- * flagged for availability mismatch.
+ * Stock WE hold that has run to zero but keeps selling is NOT "in stock" — we
+ * do not have it, we intend to source it. Google has a value for exactly that
+ * (BackOrder), and using it keeps the listing purchasable in Shopping without
+ * claiming stock we cannot show. Saying "in stock" for a shelf we know is
+ * empty is what gets a Merchant Center account flagged for availability
+ * mismatch.
+ *
+ * Stock somebody ELSE holds (stock_mode 'external' — the vendor ships it on
+ * the normal timeline — or 'untracked') is a different case: the item is
+ * available and dispatches like any other order, so it is InStock. Our own
+ * counter for those rows is always 0 because nothing maintains it, and
+ * publishing that 0 as BackOrder made Google show 222 of 244 live products
+ * without the "In stock" label — the branded queries where those PDPs sit at
+ * position 3–5 were drawing zero clicks (Search Console, Aug–Sep 2026).
  */
 export type Availability = 'in_stock' | 'backorder' | 'out_of_stock';
 
 export function availabilityState(p: SellableProduct, available?: number | null): Availability {
   const n = available ?? p.stock ?? 0;
   if (n > 0) return 'in_stock';
+  // Not our shelf (vendor-held / untracked): the count means nothing, the
+  // item ships normally.
+  if (p.track_inventory === false) return 'in_stock';
   return stockIsEnforced(p) ? 'out_of_stock' : 'backorder';
 }
 
