@@ -120,6 +120,7 @@ The shipment-booking UI gracefully degrades when these aren't set — every cour
 | Var | Why |
 |---|---|
 | `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring — paid Sentry org `trellee/yellowpink` already wired |
+| `BING_WEBMASTER_API_KEY` | Optional. Bing Webmaster Tools API key: Bing search data on Analytics + authenticated URL submission (IndexNow works without it) |
 | `POSTHOG_PERSONAL_API_KEY` | Powers the admin analytics widgets — without it the "Refresh Analytics" button surfaces an error toast |
 | `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | If using Plausible, set the domain |
 | `UPSTASH_REDIS_REST_URL` + `_TOKEN` | Rate-limiting on `/login`, `/forgot-password`, newsletter, etc. |

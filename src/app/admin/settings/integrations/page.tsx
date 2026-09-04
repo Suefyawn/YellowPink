@@ -82,6 +82,14 @@ const INTEGRATIONS: IntegrationCheck[] = [
     setupRef: 'docs/USER-MANUAL.md §7',
   },
   {
+    name: 'Bing Webmaster Tools',
+    purpose: 'Bing/DuckDuckGo/Yahoo/Copilot search data (queries, pages, crawl health) on Analytics → Search & discovery, plus authenticated URL submission next to IndexNow. Generate the key in Bing Webmaster Tools → Settings → API access.',
+    envVars: ['BING_WEBMASTER_API_KEY'],
+    optionalEnvVars: ['BING_SITE_VERIFICATION', 'BING_SITE_URL'],
+    cacheKey: 'bing',
+    setupRef: 'docs/USER-MANUAL.md §7',
+  },
+  {
     name: 'WhatsApp business',
     purpose: 'The footer button + per-order WhatsApp link to message the customer about their order.',
     envVars: ['NEXT_PUBLIC_WHATSAPP_NUMBER'],
@@ -202,7 +210,7 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
       <Card>
         <form action={saveSettings}>
           <input type="hidden" name="_redirect" value="/admin/settings/integrations" />
-          <Section title="Connect Google" desc="Paste your IDs to link Google Analytics 4 and Search Console directly, changes go live immediately, no redeploy." />
+          <Section title="Connect Google & Bing" desc="Paste your IDs to link Google Analytics 4, Search Console and Bing Webmaster Tools directly, changes go live immediately, no redeploy." />
           <Divider />
           <div className="adm-form-2col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
             <div>
@@ -217,6 +225,13 @@ export default async function SettingsIntegrationsPage({ searchParams }: { searc
               <input name="google_site_verification" defaultValue={g('google_site_verification')} style={inp} placeholder="paste only the content=… value" />
               <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
                 Search Console → add a URL-prefix property → <em>HTML tag</em> method → paste only the <code>content</code> value, then click Verify.
+              </p>
+            </div>
+            <div>
+              <label style={lbl}>Bing Webmaster Tools, verification code</label>
+              <input name="bing_site_verification" defaultValue={g('bing_site_verification')} style={inp} placeholder="paste only the content=… value" />
+              <p style={{ margin: '6px 0 0', fontSize: '0.75rem', color: '#9ca3af', lineHeight: 1.5 }}>
+                Easiest: Bing Webmaster Tools → <em>Import from Google Search Console</em> (no tag needed). Otherwise add the site → <em>HTML Meta Tag</em> → paste only the <code>content</code> value. The API key itself goes in the <code>BING_WEBMASTER_API_KEY</code> env var (see the status card below).
               </p>
             </div>
             <div>

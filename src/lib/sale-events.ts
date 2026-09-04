@@ -36,6 +36,92 @@ export interface SaleEvent {
    *  yearly refresh — the resolver only trusts the stored window. */
   auto_schedule: boolean;
   sort_order: number;
+  /** The discount behind bar_coupon (migration 1330). Optional in the type so
+   *  older fixtures and rows read before the migration still type-check; the
+   *  mapper below applies the column defaults. */
+  coupon_type?: SaleEventCouponType | null;
+  coupon_value?: number | string | null;
+  coupon_min_order?: number | string | null;
+  coupon_max_uses?: number | null;
+  coupon_per_user?: number | null;
+  coupon_exclude_sale_items?: boolean | null;
+}
+
+export type SaleEventCouponType = 'percent' | 'fixed' | 'free_shipping';
+
+/** Marker written into coupons.description so the retire step only ever
+ *  touches codes this page created or adopted. */
+export const SALE_EVENT_COUPON_MARK = 'Sales & occasions:';
+
+/** The public.coupons row an activation writes for the event's bar code.
+ *  Pure, so the action, the autopilot cron and the tests share one truth. */
+export interface SaleEventCouponRow {
+  code: string;
+  trigger_kind: 'code';
+  type: 'percent' | 'fixed';
+  discount_type: 'percent' | 'fixed';
+  value: number;
+  free_shipping: boolean;
+  min_order: number;
+  max_uses: number | null;
+  usage_limit_per_user: number | null;
+  exclude_sale_items: boolean;
+  active: true;
+  starts_at: string | null;
+  expires_at: string | null;
+  description: string;
+}
+
+const pktIso = (dayT00: string) => new Date(`${dayT00}:00+05:00`).toISOString();
+
+/**
+ * Build the coupon row for an event, or null when the event carries no
+ * usable discount (no code, or a percent/fixed coupon with a zero value).
+ *
+ * Window: a manual "Turn on now" makes the code usable immediately and still
+ * expires it with the occasion's end date when there is one; a schedule (and
+ * the autopilot calendar) binds it to the window exactly as the storefront
+ * bar shows it, so a code can't be redeemed before the sale opens.
+ */
+export function saleEventCouponRow(event: SaleEvent, mode: ActivationMode): SaleEventCouponRow | null {
+  const code = (event.bar_coupon ?? '').trim().toUpperCase();
+  if (!code || !/^[A-Z0-9_-]+$/.test(code)) return null;
+  const kind: SaleEventCouponType = event.coupon_type ?? 'percent';
+  const value = Math.max(0, Number(event.coupon_value ?? 10) || 0);
+  if (kind !== 'free_shipping' && value <= 0) return null;
+  if (kind === 'percent' && value > 100) return null;
+  const startsAt = mode === 'schedule' && event.starts_on ? pktIso(`${event.starts_on}T00:00`) : null;
+  const expiresAt = event.ends_on ? pktIso(exclusiveEnd(event.ends_on)) : null;
+  return {
+    code,
+    trigger_kind: 'code',
+    type: kind === 'fixed' ? 'fixed' : 'percent',
+    discount_type: kind === 'fixed' ? 'fixed' : 'percent',
+    value: kind === 'free_shipping' ? 0 : value,
+    free_shipping: kind === 'free_shipping',
+    min_order: Math.max(0, Number(event.coupon_min_order ?? 0) || 0),
+    max_uses: event.coupon_max_uses ?? null,
+    usage_limit_per_user: event.coupon_per_user ?? null,
+    exclude_sale_items: Boolean(event.coupon_exclude_sale_items),
+    active: true,
+    starts_at: startsAt,
+    expires_at: expiresAt,
+    description: `${SALE_EVENT_COUPON_MARK} ${event.name}. Created and kept in step by the occasion; edit its discount on the occasion card.`,
+  };
+}
+
+/** One-line human summary of the discount an occasion carries, for the card. */
+export function describeSaleEventCoupon(event: SaleEvent): string | null {
+  const row = saleEventCouponRow(event, 'now');
+  if (!row) return null;
+  const what = row.free_shipping
+    ? 'free delivery'
+    : row.type === 'percent' ? `${row.value}% off` : `PKR ${row.value.toLocaleString('en-PK')} off`;
+  const parts = [what];
+  if (row.min_order > 0) parts.push(`orders over PKR ${row.min_order.toLocaleString('en-PK')}`);
+  if (row.usage_limit_per_user) parts.push(`${row.usage_limit_per_user} per customer`);
+  if (row.max_uses) parts.push(`${row.max_uses} uses total`);
+  return parts.join(', ');
 }
 
 /** The settings keys an activation writes. Kept in one place so the admin

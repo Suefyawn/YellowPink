@@ -64,7 +64,19 @@ until you publish. See `docs/catalogue-gaps.csv` for supplier + price per item.
 - [ ] Consider stocking the catalogue gaps + the launch blog posts already
       published to capture that demand.
 
-## 8. From the 4 Sep 2026 audit (`docs/AUDIT-2026-09-04.md`)
+## 8. Bing Webmaster Tools (5 minutes, unlocks the Bing card on Analytics)
+- [ ] Go to **bing.com/webmasters**, sign in, choose **Import from Google Search
+      Console** (uses the Google connection you already have; no meta tag needed).
+      If you prefer the tag route, paste the `msvalidate.01` content value into
+      **Admin → Settings → Integrations → Bing Webmaster Tools, verification code**.
+- [ ] In Bing Webmaster Tools: **Settings → API access → Generate API key**. Copy it.
+- [ ] In Vercel: **Project → Settings → Environment Variables** → add
+      `BING_WEBMASTER_API_KEY` = the key (Production), then **Redeploy**.
+- [ ] Next morning (or after **Refresh** on Analytics), the **Bing search** card
+      fills in. IndexNow already submits every new page to Bing without the key;
+      the key adds Bing's own submission channel and the reporting.
+
+## 9. From the 4 Sep 2026 audit (`docs/AUDIT-2026-09-04.md`)
 - [ ] **Supabase → Authentication → Settings:** turn on **Leaked password
       protection** (checks sign-up passwords against HaveIBeenPwned). One
       toggle; nothing else changes.

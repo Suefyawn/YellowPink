@@ -167,3 +167,56 @@ describe('eventActivationState (the LIVE/SCHEDULED badge)', () => {
     expect(settings.seasonal_source_event).toBe('');
   });
 });
+
+// ── Coupons publish with the look (migration 1330) ──────────────────────────
+import { saleEventCouponRow, describeSaleEventCoupon } from './sale-events';
+
+describe('saleEventCouponRow', () => {
+  it('maps a percent occasion to an active coupon bounded to the window when scheduled', () => {
+    const row = saleEventCouponRow(event({ coupon_type: 'percent', coupon_value: 14, coupon_min_order: 1500, coupon_per_user: 1 }), 'schedule');
+    expect(row).toMatchObject({ code: 'AZADI', type: 'percent', value: 14, free_shipping: false, min_order: 1500, usage_limit_per_user: 1, active: true, trigger_kind: 'code' });
+    // 1 Aug 00:00 PKT → 31 Jul 19:00 UTC; ends_on 14 Aug inclusive → opens 15 Aug 00:00 PKT.
+    expect(row!.starts_at).toBe('2026-07-31T19:00:00.000Z');
+    expect(row!.expires_at).toBe('2026-08-14T19:00:00.000Z');
+    expect(row!.description.startsWith('Sales & occasions:')).toBe(true);
+  });
+
+  it('a manual "turn on now" makes the code usable immediately but still ends with the occasion', () => {
+    const row = saleEventCouponRow(event({ coupon_value: 20 }), 'now');
+    expect(row!.starts_at).toBeNull();
+    expect(row!.expires_at).toBe('2026-08-14T19:00:00.000Z');
+  });
+
+  it('applies the column defaults when the row predates the migration', () => {
+    const row = saleEventCouponRow(event(), 'now');
+    expect(row).toMatchObject({ type: 'percent', value: 10, min_order: 0, max_uses: null, usage_limit_per_user: null, exclude_sale_items: false });
+  });
+
+  it('free delivery writes a zero-value free_shipping coupon', () => {
+    const row = saleEventCouponRow(event({ coupon_type: 'free_shipping', coupon_value: 0 }), 'now');
+    expect(row).toMatchObject({ type: 'percent', value: 0, free_shipping: true });
+  });
+
+  it('refuses to create a dead or nonsensical code', () => {
+    expect(saleEventCouponRow(event({ bar_coupon: null }), 'now')).toBeNull();
+    expect(saleEventCouponRow(event({ bar_coupon: 'bad code!' }), 'now')).toBeNull();
+    expect(saleEventCouponRow(event({ coupon_value: 0 }), 'now')).toBeNull();
+    expect(saleEventCouponRow(event({ coupon_type: 'percent', coupon_value: 150 }), 'now')).toBeNull();
+  });
+
+  it('upper-cases the code and never binds a start when there is no start date', () => {
+    const row = saleEventCouponRow(event({ bar_coupon: 'eidi', starts_on: null, ends_on: null }), 'schedule');
+    expect(row!.code).toBe('EIDI');
+    expect(row!.starts_at).toBeNull();
+    expect(row!.expires_at).toBeNull();
+  });
+});
+
+describe('describeSaleEventCoupon', () => {
+  it('summarises the terms for the card', () => {
+    expect(describeSaleEventCoupon(event({ coupon_value: 15, coupon_min_order: 2000, coupon_per_user: 1, coupon_max_uses: 100 })))
+      .toBe('15% off, orders over PKR 2,000, 1 per customer, 100 uses total');
+    expect(describeSaleEventCoupon(event({ coupon_type: 'free_shipping' }))).toBe('free delivery');
+    expect(describeSaleEventCoupon(event({ bar_coupon: null }))).toBeNull();
+  });
+});

@@ -25,13 +25,14 @@ import { after } from 'next/server';
 import { SITE_URL, absoluteUrl } from '@/lib/seo';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getGoogleConnection, submitSitemap } from '@/lib/google';
+import { isBingConfigured, submitUrlBatch } from '@/lib/bing';
 
 // Public-by-design IndexNow key. A matching file lives at /public/<key>.txt.
 // Override with INDEXNOW_KEY only if you also host a matching <key>.txt.
 export const INDEXNOW_KEY = process.env.INDEXNOW_KEY || '64328ac823511a95cebb5695cd688f5b';
 
 export interface ChannelResult {
-  channel: 'indexnow' | 'google';
+  channel: 'indexnow' | 'google' | 'bing';
   ok: boolean;
   /** true when the channel isn't configured and was skipped (not an error). */
   skipped?: boolean;
@@ -86,6 +87,26 @@ async function submitIndexNow(urls: string[]): Promise<ChannelResult> {
     return { channel: 'indexnow', ok: false, detail: `IndexNow HTTP ${res.status}.` };
   } catch (err) {
     return { channel: 'indexnow', ok: false, detail: `IndexNow request failed: ${(err as Error).message}` };
+  }
+}
+
+// ─── Bing Webmaster URL Submission API ───────────────────────────────────────
+// IndexNow already reaches Bing anonymously. When the owner has generated a
+// Bing Webmaster Tools API key this ALSO pushes the same URLs through Bing's
+// authenticated submission endpoint, which Bing weights higher (it is tied to
+// a verified property) and which shows up in the Webmaster Tools submission
+// log. Skipped silently without the key.
+
+async function submitBing(urls: string[]): Promise<ChannelResult> {
+  if (!isBingConfigured()) {
+    return { channel: 'bing', ok: true, skipped: true, detail: 'Bing Webmaster Tools not configured.' };
+  }
+  if (urls.length === 0) return { channel: 'bing', ok: true, detail: 'No URLs.' };
+  try {
+    const n = await submitUrlBatch(urls);
+    return { channel: 'bing', ok: true, detail: `Submitted ${n} URL(s) to Bing Webmaster Tools.` };
+  } catch (err) {
+    return { channel: 'bing', ok: false, detail: `Bing submission failed: ${(err as Error).message}` };
   }
 }
 
@@ -206,6 +227,7 @@ export async function submitToSearchEngines(
   }
   const results = await Promise.all([
     submitIndexNow(urls),
+    submitBing(urls),
     ...(google ? [submitGoogle(urls)] : []),
   ]);
   return { submitted: urls, results };
@@ -280,6 +302,6 @@ export async function submitToSearchEnginesQuietly(paths: string[]): Promise<voi
 }
 
 /** Which channels are currently configured, for the admin status panel. */
-export function indexingConfig(): { indexnow: boolean; google: boolean } {
-  return { indexnow: true, google: !!loadServiceAccount() };
+export function indexingConfig(): { indexnow: boolean; google: boolean; bing: boolean } {
+  return { indexnow: true, google: !!loadServiceAccount(), bing: isBingConfigured() };
 }
