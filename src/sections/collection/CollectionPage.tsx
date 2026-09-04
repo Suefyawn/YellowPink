@@ -403,6 +403,9 @@ export function CollectionPage({
     return qs ? `/shop?${qs}` : '/shop';
   }, [q, activeCategory, activeSubcategory, sortBy, selectedBrands, selectedTags, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly]);
 
+  // Scroll-to-grid + focus on a pagination click; see usePaginationScroll.
+  const { gridRef: resultsGridRef, markIntent: markPageIntent, scrolledPage } = usePaginationScroll<HTMLDivElement>(page);
+
   useEffect(() => {
     const target = shopUrlFor(page);
     // Skip the no-op replace. On mount the URL already matches the state, and
@@ -412,13 +415,11 @@ export function CollectionPage({
     // tags on every listing page. Skipping also saves the redundant RSC
     // round-trip on every /shop and /category landing.
     if (target === window.location.pathname + window.location.search) return;
-    // A page change pushes so Back returns the shopper to the previous page;
-    // a filter change replaces so filtering never piles up history entries.
-    // pagination.intentRef is set by goToPage and cleared by the scroll
-    // effect declared after this one, so it is still true here.
-    if (pagination.intentRef.current) router.push(target, { scroll: false });
-    else router.replace(target, { scroll: false });
-  }, [shopUrlFor, page, router, pagination.intentRef]);
+    // Replace, not push: filtering must not pile up history entries. A page
+    // change is pushed by goToPage itself, so by the time this runs for one
+    // the URL already matches and the early return above skips it.
+    router.replace(target, { scroll: false });
+  }, [shopUrlFor, page, router]);
 
   const activeFilterCount =
     (q.trim() ? 1 : 0) +
@@ -448,8 +449,11 @@ export function CollectionPage({
   // after the click, which ran BEFORE the new page's tiles streamed in and
   // could still strand the viewport at the foot of the old page.
   function goToPage(next: number) {
-    pagination.markIntent();
+    markPageIntent();
     setPage(next);
+    // Push (not replace) so Back returns to the previous page. The URL-sync
+    // effect sees the URL already matches and does nothing further.
+    router.push(shopUrlFor(next), { scroll: false });
   }
 
   // Prev/next pagination arrow, shared by the enabled <a> and the disabled
@@ -544,8 +548,6 @@ export function CollectionPage({
 
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-  // Declared after the URL-sync effect above on purpose (see its comment).
-  const pagination = usePaginationScroll<HTMLDivElement>(page, totalPages);
 
   // Sub-category chips = the active taxon's leaf categories, filtered to the
   // ones that actually have products so the row never shows an empty chip.
@@ -939,7 +941,7 @@ export function CollectionPage({
             {/* ─── Product grid (always full-width, rail floats over the top) ─ */}
             <div>
               <div
-                ref={pagination.gridRef}
+                ref={resultsGridRef}
                 tabIndex={-1}
                 aria-label="Products"
                 style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)', outline: 'none' }}
@@ -1024,7 +1026,7 @@ export function CollectionPage({
               crawl-discoverable, while onClick intercepts for the same
               instant client-side page flip as before. Disabled prev/next
               at the bounds are spans, not dead links. */}
-          <p className="sr-only" aria-live="polite" aria-atomic="true">{pagination.announcement}</p>
+          <p className="sr-only" aria-live="polite" aria-atomic="true">{scrolledPage ? `Showing page ${scrolledPage} of ${totalPages}` : ''}</p>
           {totalPages > 1 && (
             <nav aria-label="Product pages" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 48 }}>
               {page === 1 ? (

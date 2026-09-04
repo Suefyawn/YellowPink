@@ -27,19 +27,23 @@
 // Filters do none of this. The click handlers that mean "change page" call
 // markIntent() first; a page value that changes any other way (a filter
 // resetting to page 1, a Back navigation) is left alone.
+//
+// The hook owns scroll and focus only. Pushing the URL (so Back returns to
+// the previous page) happens in the page-click handler itself, so nothing
+// here depends on effect ordering. The live-region text is built by the
+// caller from scrolledPage + its own totalPages.
 
 import { useEffect, useRef, useState, type RefObject } from 'react';
 
 export interface PaginationScroll<T extends HTMLElement> {
   /** Attach to the grid container (give it tabIndex={-1}). */
   gridRef: RefObject<T | null>;
-  /** True between a pagination click and the post-commit scroll. Read it in
-   *  a URL-sync effect to choose push (page change) over replace (filter). */
-  intentRef: RefObject<boolean>;
   /** Call from every prev/next/number handler before changing the page. */
   markIntent: () => void;
-  /** Render in a `.sr-only` element with aria-live="polite". */
-  announcement: string;
+  /** The page the grid was last scrolled to after a pagination click, or
+   *  null before the first one. Render "Showing page N of M" from it in a
+   *  `.sr-only` element with aria-live="polite". */
+  scrolledPage: number | null;
 }
 
 function stickyHeaderHeight(): number {
@@ -50,10 +54,10 @@ function stickyHeaderHeight(): number {
   return pos === 'sticky' || pos === 'fixed' ? el.getBoundingClientRect().height : 0;
 }
 
-export function usePaginationScroll<T extends HTMLElement>(page: number, totalPages: number): PaginationScroll<T> {
+export function usePaginationScroll<T extends HTMLElement>(page: number): PaginationScroll<T> {
   const gridRef = useRef<T | null>(null);
   const intentRef = useRef(false);
-  const [announcement, setAnnouncement] = useState('');
+  const [scrolledPage, setScrolledPage] = useState<number | null>(null);
 
   useEffect(() => {
     if (!intentRef.current) return;
@@ -63,13 +67,12 @@ export function usePaginationScroll<T extends HTMLElement>(page: number, totalPa
     const top = grid.getBoundingClientRect().top + window.scrollY - stickyHeaderHeight() - 16;
     window.scrollTo({ top: Math.max(0, top), behavior: 'auto' });
     grid.focus({ preventScroll: true });
-    setAnnouncement(`Showing page ${page} of ${totalPages}`);
-  }, [page, totalPages]);
+    setScrolledPage(page);
+  }, [page]);
 
   return {
     gridRef,
-    intentRef,
     markIntent: () => { intentRef.current = true; },
-    announcement,
+    scrolledPage,
   };
 }

@@ -71,7 +71,7 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
   const clampedPage = Math.min(page, Math.max(1, totalPages));
   const paginated = filtered.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
 
-  const { gridRef, markIntent, announcement } = usePaginationScroll<HTMLDivElement>(clampedPage, totalPages);
+  const { gridRef, markIntent, scrolledPage } = usePaginationScroll<HTMLDivElement>(clampedPage);
   const goToPage = (p: number) => { markIntent(); setParams({ page: p === 1 ? null : String(p) }, { push: true }); };
 
   const chipStyle = (active: boolean): React.CSSProperties => ({
@@ -150,7 +150,7 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
         <p className="body-text" style={{ color: 'var(--ink-700)' }}>No products match this filter.</p>
       )}
 
-      <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
+      <p className="sr-only" aria-live="polite" aria-atomic="true">{scrolledPage ? `Showing page ${scrolledPage} of ${totalPages}` : ''}</p>
       {totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 'var(--section-gap)' }}>
           <button type="button" className="shop-tap" disabled={clampedPage <= 1} style={{ ...pageBtn(false), opacity: clampedPage <= 1 ? 0.4 : 1, cursor: clampedPage <= 1 ? 'not-allowed' : 'pointer' }}
