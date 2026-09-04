@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { usePaginationScroll } from '@/lib/use-pagination-scroll';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Overline } from '@/components/ui/Overline';
 import { ProductTile } from '@/components/ui/ProductTile';
@@ -402,6 +403,9 @@ export function CollectionPage({
     return qs ? `/shop?${qs}` : '/shop';
   }, [q, activeCategory, activeSubcategory, sortBy, selectedBrands, selectedTags, selectedValueIds, priceMin, priceMax, inStockOnly, onSaleOnly, featuredOnly, bestsellerOnly]);
 
+  // Scroll-to-grid + focus on a pagination click; see usePaginationScroll.
+  const { gridRef: resultsGridRef, markIntent: markPageIntent, scrolledPage } = usePaginationScroll<HTMLDivElement>(page);
+
   useEffect(() => {
     const target = shopUrlFor(page);
     // Skip the no-op replace. On mount the URL already matches the state, and
@@ -411,7 +415,9 @@ export function CollectionPage({
     // tags on every listing page. Skipping also saves the redundant RSC
     // round-trip on every /shop and /category landing.
     if (target === window.location.pathname + window.location.search) return;
-    // Replace, not push, filtering shouldn't pile up history entries.
+    // Replace, not push: filtering must not pile up history entries. A page
+    // change is pushed by goToPage itself, so by the time this runs for one
+    // the URL already matches and the early return above skips it.
     router.replace(target, { scroll: false });
   }, [shopUrlFor, page, router]);
 
@@ -438,15 +444,16 @@ export function CollectionPage({
     setActiveSubcategory(null);
   }
 
-  // Pagination clicks must scroll back to the top of the catalogue.
-  // `router.replace(..., { scroll: false })` suppresses Next's own scroll
-  // restoration, so we scroll explicitly. Deferred one frame so it runs
-  // after the new page's tiles commit, and INSTANT (not smooth), a smooth
-  // scroll gets aborted by the layout shift as the fresh tiles render,
-  // which left the viewport stranded at the foot of the previous page.
+  // Pagination clicks scroll to the top of the results grid and move focus
+  // there; see usePaginationScroll. The previous version scrolled one frame
+  // after the click, which ran BEFORE the new page's tiles streamed in and
+  // could still strand the viewport at the foot of the old page.
   function goToPage(next: number) {
+    markPageIntent();
     setPage(next);
-    requestAnimationFrame(() => window.scrollTo({ top: 0 }));
+    // Push (not replace) so Back returns to the previous page. The URL-sync
+    // effect sees the URL already matches and does nothing further.
+    router.push(shopUrlFor(next), { scroll: false });
   }
 
   // Prev/next pagination arrow, shared by the enabled <a> and the disabled
@@ -933,7 +940,13 @@ export function CollectionPage({
 
             {/* ─── Product grid (always full-width, rail floats over the top) ─ */}
             <div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }} className="product-grid">
+              <div
+                ref={resultsGridRef}
+                tabIndex={-1}
+                role="region" aria-label="Products"
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)', outline: 'none' }}
+                className="product-grid"
+              >
             {/* First four tiles on page 1 are the likely LCP candidates: preload
                 them and skip the hydration-gated fade (see ProductImage). */}
             {paginated.map((p, i) => (
@@ -1013,6 +1026,7 @@ export function CollectionPage({
               crawl-discoverable, while onClick intercepts for the same
               instant client-side page flip as before. Disabled prev/next
               at the bounds are spans, not dead links. */}
+          <p className="sr-only" aria-live="polite" aria-atomic="true">{scrolledPage ? `Showing page ${scrolledPage} of ${totalPages}` : ''}</p>
           {totalPages > 1 && (
             <nav aria-label="Product pages" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 4, marginTop: 48 }}>
               {page === 1 ? (
