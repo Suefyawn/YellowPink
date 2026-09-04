@@ -1,6 +1,7 @@
 import 'server-only';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { withRenderedDates } from '@/lib/price-tokens';
 
 // Server-only data access for the doctor portal (/reviewer). Kept apart from
 // lib/reviewers.ts (which is the public, anon-keyed board) because everything
@@ -63,5 +64,7 @@ export async function getReviewedPosts(reviewerId: string): Promise<ReviewedPost
     .eq('reviewer_id', reviewerId)
     .order('date', { ascending: false })
     .order('created_at', { ascending: false });
-  return (data ?? []) as unknown as ReviewedPost[];
+  // Headlines carry [[year]] (see price-tokens.ts); the doctor should read
+  // the title as it appears on the site, not the token.
+  return ((data ?? []) as unknown as ReviewedPost[]).map(p => withRenderedDates(p));
 }

@@ -30,10 +30,18 @@ function dropDisallowedImages(html: string): string {
 
 const OWN_HOST = /^https?:\/\/(www\.)?yellowpink\.pk(\/|$)/i;
 
-// Add rel="nofollow noopener noreferrer" + target="_blank" to absolute external
-// links in user/imported content (blog bodies, CMS pages). Keeps our own and
-// relative links untouched. SEO hygiene: don't pass link equity to, or take
-// responsibility for, third-party URLs embedded in content.
+// Add rel="noopener noreferrer" + target="_blank" to absolute external links
+// in editorial content (blog bodies, CMS pages). Keeps our own and relative
+// links untouched.
+//
+// No nofollow. Until 5 Sep 2026 every external link was also nofollowed,
+// which is the right default for content we do not vouch for (comments,
+// paid placements). The bodies that pass through here are staff-written
+// guides whose ~290 outbound links cite Cleveland Clinic, the NHS, Mayo,
+// NIH, WHO and the like; those citations are part of the E-E-A-T case, and
+// Google's guidance is to reserve nofollow for links you cannot vouch for.
+// Nofollowing every source also lit up the Semrush audit (808 "nofollow
+// external links"). A rel the editor wrote (sponsored, nofollow) is kept.
 function markExternalLinks(html: string): string {
   return html.replace(/<a\b([^>]*)>/gi, (whole, attrs: string) => {
     const href = attrs.match(/href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
@@ -43,7 +51,7 @@ function markExternalLinks(html: string): string {
     let out = attrs;
     const relMatch = out.match(/\srel\s*=\s*(?:"([^"]*)"|'([^']*)')/i);
     const rel = new Set((relMatch ? (relMatch[1] ?? relMatch[2] ?? '') : '').split(/\s+/).filter(Boolean));
-    rel.add('nofollow'); rel.add('noopener'); rel.add('noreferrer');
+    rel.add('noopener'); rel.add('noreferrer');
     out = relMatch ? out.replace(relMatch[0], ` rel="${[...rel].join(' ')}"`) : `${out} rel="${[...rel].join(' ')}"`;
     if (!/\starget\s*=/i.test(out)) out += ' target="_blank"';
     return `<a${out}>`;
