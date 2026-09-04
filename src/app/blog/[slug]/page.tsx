@@ -13,7 +13,7 @@ import { getReviewerById } from '@/lib/reviewers';
 import { isHealthCategory } from '@/lib/category-taxonomy';
 import { selectRelatedProducts } from '@/lib/related-products';
 import { BlogPostPage } from '@/sections/blog/BlogPostPage';
-import { pageMeta, jsonLd, articleLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, jsonLd, articleLd, breadcrumbLd, truncateOnWord } from '@/lib/seo';
 import { renderContentTokens } from '@/lib/price-tokens';
 import type { Product } from '@/types';
 
@@ -42,7 +42,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // headline + brand suffix blew past Google's ~60-char display budget
     // (Semrush #102); the on-page H1 below still shows the full headline.
     title: post.seo_title?.trim() || post.title,
-    description: post.excerpt ?? post.title,
+    // Trim to a word boundary, the same way /page/[slug] does. 155 of 261
+    // excerpts are longer than the ~160 chars Google renders, and an untrimmed
+    // one gets cut mid-word in the SERP. truncateOnWord adds the ellipsis and
+    // strips a dangling comma or colon, so the snippet ends cleanly (audit fix,
+    // 4 Sep 2026).
+    description: truncateOnWord(post.excerpt ?? post.title, 155),
     path: `/blog/${post.slug}`,
     image: post.image_url ?? undefined,
     type: 'article',
