@@ -8,7 +8,7 @@ import { notFound } from 'next/navigation';
 export const revalidate = 300;
 import { supabase, isDemo, getSiteSettings } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
-import { parseCommerceConfig, formatPkr } from '@/lib/commerce';
+import { parseCommerceConfig, formatPkr, type CommerceConfig } from '@/lib/commerce';
 import { DEMO_PAGES } from '@/lib/demo-data';
 import { sanitizeHtml } from '@/lib/sanitize';
 import { pageMeta, jsonLd, pageArticleLd, faqLd, breadcrumbLd, truncateOnWord } from '@/lib/seo';
@@ -80,6 +80,16 @@ function cleanMetaText(raw: string | null | undefined): string {
     .trim();
 }
 
+/** Substitute the shipping tokens into text destined for a title, meta
+ *  description or JSON-LD field. {{shipping_zones}} expands to a table, which
+ *  belongs in the body only, so it is stripped rather than rendered here. */
+function subShippingTokens(s: string, commerce: CommerceConfig): string {
+  return s
+    .replaceAll('{{flat_shipping}}', formatPkr(commerce.defaultShippingRate))
+    .replaceAll('{{free_shipping_threshold}}', formatPkr(commerce.freeShippingThreshold))
+    .replaceAll('{{shipping_zones}}', '');
+}
+
 /** First candidate that still reads like a sentence after cleaning; a
  *  too-short remnant (e.g. shortcode-only excerpt) falls through to the next
  *  source. Trimmed to ~155 chars at a word boundary. */
@@ -98,11 +108,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   // Substitute the same shipping tokens used in the body so the <title>/meta
   // description never carry a stale hard-coded figure either.
   const commerce = parseCommerceConfig(await getSiteSettings());
-  const sub = (s: string) => s
-    .replaceAll('{{flat_shipping}}', formatPkr(commerce.defaultShippingRate))
-    .replaceAll('{{free_shipping_threshold}}', formatPkr(commerce.freeShippingThreshold))
-    // The zone table is body-only; strip the token from title/meta text.
-    .replaceAll('{{shipping_zones}}', '');
+  const sub = (s: string) => subShippingTokens(s, commerce);
   return pageMeta({
     title: sub(page.meta_title ?? page.title),
     description: sub(deriveDescription(page)),
@@ -143,10 +149,12 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: jsonLd(pageArticleLd({
-            title: page.title,
-            // Same cleaned derivation as generateMetadata, so the JSON-LD
-            // description never carries shortcode/entity junk either.
-            description: deriveDescription(page),
+            title: subShippingTokens(page.title, commerce),
+            // Same cleaned derivation AND the same token substitution as
+            // generateMetadata. Without the substitution this shipped raw
+            // "{{free_shipping_threshold}}" to Google in the Article
+            // description (audit fix, 4 Sep 2026).
+            description: subShippingTokens(deriveDescription(page), commerce),
             path: `/page/${page.slug}`,
           })),
         }}
