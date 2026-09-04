@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 1 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 4 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1163,6 +1163,12 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 4 September 2026
+
+- **Products a supplier holds for you now tell Google they are in stock.** Most of the catalogue is stocked by the vendor rather than on your shelf (stock mode **External** or **Untracked**), so the store's own count for those items always reads zero. Until now that zero was published to Google and the Shopping/Meta feeds as *on backorder*, and Google was showing those product listings without the "In stock" label; searches for the product names were getting no clicks even from page one. Those items are now published as **in stock**, which is what they are: the order ships on the normal timeline. Nothing changes for stock you hold yourself: a keep-selling item at zero is still *on backorder*, and a **Show as sold out** item at zero is still *out of stock*.
+- **The WhatsApp button no longer trips a security report when a page pre-loads it.** No visible change; the "ask us on WhatsApp" links behave as before.
+- **In-browser translation keeps its fonts.** Chrome's page translation (English → Urdu) was having its own fonts blocked; they are now allowed.
 
 ### 1 September 2026
 

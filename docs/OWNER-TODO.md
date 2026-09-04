@@ -1,6 +1,6 @@
 # Owner to-do — things only you can finish
 
-**Last updated:** 2026-06-21
+**Last updated:** 2026-09-04
 
 These are the steps that need *your* accounts, domain/DNS access, or business
 decisions — the code side is done and live. Roughly in priority order.
@@ -63,3 +63,17 @@ until you publish. See `docs/catalogue-gaps.csv` for supplier + price per item.
       `docs/SEO-KEYWORDS.md`).
 - [ ] Consider stocking the catalogue gaps + the launch blog posts already
       published to capture that demand.
+
+## 8. From the 4 Sep 2026 audit (`docs/AUDIT-2026-09-04.md`)
+- [ ] **Supabase → Authentication → Settings:** turn on **Leaked password
+      protection** (checks sign-up passwords against HaveIBeenPwned). One
+      toggle; nothing else changes.
+- [ ] **WhatsApp order confirmations** have never sent (the automated
+      Confirm/Cancel message needs the Cloud API credentials). Four of the
+      last seven cancellations were cash-on-delivery orders that came from
+      ChatGPT; confirming them by message before dispatch is the cheapest fix.
+- [ ] **Backlinks:** the site has one referring domain. Pick 5–10 prospects
+      from Admin → Outreach and offer them the calculators / review board as a
+      free resource to link to.
+- [ ] **Semrush Position Tracking:** the project has no campaign. Optional;
+      the twice-monthly ranking Routine already records positions.

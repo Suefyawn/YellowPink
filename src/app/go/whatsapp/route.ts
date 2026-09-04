@@ -30,6 +30,16 @@ function normalizeNumber(v: string | null | undefined): string | null {
 }
 
 export async function GET(req: NextRequest) {
+  // The App Router prefetches <Link> targets (and some in-app browsers
+  // speculatively fetch anchors) with an RSC request. Answering that with a
+  // 302 to wa.me makes the browser follow a cross-origin redirect from a
+  // fetch(), which the enforcing CSP's connect-src blocks — Sentry logged it
+  // as "Blocked 'connect' from 'www.yellowpink.pk'" (YELLOWPINK-G). A prefetch
+  // is not a click: answer it empty, log nothing, and let the real tap (a
+  // top-level navigation, which CSP does not govern) do the redirect.
+  if (req.headers.get('rsc') === '1' || req.headers.get('next-router-prefetch') === '1' || req.headers.get('purpose') === 'prefetch' || req.headers.get('sec-purpose')?.includes('prefetch')) {
+    return new NextResponse(null, { status: 204, headers: { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } });
+  }
   const sp = req.nextUrl.searchParams;
   const text = (sp.get('text') ?? '').slice(0, 600);
   const src = (sp.get('src') ?? '').slice(0, 40) || null;

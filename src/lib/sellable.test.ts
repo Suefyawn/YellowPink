@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isSellable, purchasableCap, stockIsEnforced } from './sellable';
+import { availabilityState, isSellable, purchasableCap, stockIsEnforced } from './sellable';
 
 // The owner's rule: a live listing is never shown sold out, because if we do
 // not hold it we will source it. The count stays honest; only the SELLING gate
@@ -63,5 +63,35 @@ describe('purchasableCap', () => {
 
   it('uses the shade count when given one', () => {
     expect(purchasableCap({ ...own, stock: 99 }, 2)).toBe(2);
+  });
+});
+
+describe('availabilityState', () => {
+  it('reports a positive count as in stock whatever the mode', () => {
+    expect(availabilityState({ ...own, stock: 2 })).toBe('in_stock');
+    expect(availabilityState({ ...backorder, stock: 2 })).toBe('in_stock');
+    expect(availabilityState({ ...external, stock: 2 })).toBe('in_stock');
+  });
+
+  // Our shelf, empty, but the owner keeps selling: purchasable, yet not a
+  // claim that we hold it.
+  it('reports our own empty keep-selling stock as backorder', () => {
+    expect(availabilityState({ ...backorder, stock: 0 })).toBe('backorder');
+  });
+
+  it('reports a deliberate sell-out as out of stock', () => {
+    expect(availabilityState({ ...own, stock: 0 })).toBe('out_of_stock');
+  });
+
+  // Vendor-held / untracked stock: the counter is always 0 because nobody
+  // maintains it, and the item ships on the normal timeline.
+  it('reports vendor-held stock as in stock even at zero', () => {
+    expect(availabilityState({ ...external, stock: 0 })).toBe('in_stock');
+    expect(availabilityState({ track_inventory: false, stock: null })).toBe('in_stock');
+  });
+
+  it('judges on the caller-supplied count when given one', () => {
+    expect(availabilityState({ ...backorder, stock: 0 }, 3)).toBe('in_stock');
+    expect(availabilityState({ ...backorder, stock: 9 }, 0)).toBe('backorder');
   });
 });
