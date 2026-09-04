@@ -38,6 +38,42 @@ export function currentYearLabel(now: Date = new Date()): string {
   return now.toLocaleDateString('en-GB', { year: 'numeric', timeZone: PK_TZ });
 }
 
+const DATE_TOKEN = /\[\[(month|year)\]\]/g;
+
+/** Date tokens only, for headlines. A title never carries a price token (a
+ *  price in a headline reads badly and rots on a different clock), so this
+ *  needs no product list and can be applied at the data layer.
+ *
+ *  Exists because 151 of 261 post titles hard-coded "2026" and would all have
+ *  gone wrong at once on 1 Jan 2027. */
+export function renderDateTokens(text: string | null | undefined, now: Date = new Date()): string {
+  if (!text || !text.includes('[[')) return text ?? '';
+  return text.replace(DATE_TOKEN, (_m, kind: string) =>
+    kind === 'month' ? currentMonthLabel(now) : currentYearLabel(now));
+}
+
+/** Resolve the date tokens in a post's headline fields.
+ *
+ *  Applied in the loaders (getBlogPosts, getBlogPostBySlug, …) rather than at
+ *  each of the ~20 places a title is rendered, so the H1, the listing tiles,
+ *  the <title>, the Article JSON-LD headline, breadcrumbs, search, llms.txt
+ *  and the sitemap page all get the resolved value without having to remember.
+ *  Missing one consumer is exactly how raw {{tokens}} reached Google in the
+ *  CMS page JSON-LD earlier the same day.
+ *
+ *  The admin edits rows through supabaseAdmin, which does not pass through
+ *  here, so the editor still sees and saves the literal [[year]]. That is
+ *  deliberate: you want to edit the token, not a snapshot of it. */
+export function withRenderedDates<T extends { title?: string | null; seo_title?: string | null }>(
+  post: T,
+  now: Date = new Date(),
+): T {
+  const title = post.title == null ? post.title : renderDateTokens(post.title, now);
+  const seo = post.seo_title == null ? post.seo_title : renderDateTokens(post.seo_title, now);
+  if (title === post.title && seo === post.seo_title) return post;
+  return { ...post, title, seo_title: seo };
+}
+
 /** Replace every supported token with its live value.
  *  An unknown product slug or a null price renders as an empty string (the
  *  sentence should be written to survive that) — never the raw token, which

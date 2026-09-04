@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { renderContentTokens, renderFaqTokens, formatRs, currentMonthLabel } from './price-tokens';
+import { renderContentTokens, renderFaqTokens, formatRs, currentMonthLabel, renderDateTokens, withRenderedDates } from './price-tokens';
 
 const PRODUCTS = [
   { slug: 'kajal', price: 160 },
@@ -70,5 +70,35 @@ describe('date tokens', () => {
   it('still fast-paths text with no tokens at all', () => {
     expect(renderContentTokens('September 2026 in plain text', PRODUCTS, AUG))
       .toBe('September 2026 in plain text');
+  });
+});
+
+// Headline date tokens. 151 of 261 post titles hard-coded "2026"; these
+// resolve at the data layer so every title consumer gets the live year.
+describe('renderDateTokens / withRenderedDates', () => {
+  const AUG = new Date('2026-08-15T12:00:00Z');
+
+  it('resolves [[year]] and [[month]] with no product list', () => {
+    expect(renderDateTokens('Best Sunscreen in Pakistan [[year]]', AUG)).toBe('Best Sunscreen in Pakistan 2026');
+    expect(renderDateTokens('Prices ([[month]])', AUG)).toBe('Prices (August 2026)');
+  });
+
+  it('leaves price tokens alone: a headline is never a price surface', () => {
+    expect(renderDateTokens('costs [[price:kajal]]', AUG)).toBe('costs [[price:kajal]]');
+  });
+
+  it('fast-paths text with no tokens and tolerates null', () => {
+    expect(renderDateTokens('plain 2026 title', AUG)).toBe('plain 2026 title');
+    expect(renderDateTokens(null, AUG)).toBe('');
+  });
+
+  it('renders title and seo_title on a post, returning the same object when untouched', () => {
+    const post = { slug: 'x', title: 'Guide [[year]]', seo_title: 'Guide [[year]] | Yellow Pink', body: 'b' };
+    const out = withRenderedDates(post, AUG);
+    expect(out.title).toBe('Guide 2026');
+    expect(out.seo_title).toBe('Guide 2026 | Yellow Pink');
+    expect(out.body).toBe('b');
+    const plain = { slug: 'y', title: 'No token', seo_title: null };
+    expect(withRenderedDates(plain, AUG)).toBe(plain);
   });
 });

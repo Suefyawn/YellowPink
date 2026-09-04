@@ -1,3 +1,4 @@
+import { withRenderedDates } from './price-tokens';
 import { createClient } from '@supabase/supabase-js';
 import type { Product, BlogPost } from '@/types';
 import { DEMO_PRODUCTS, DEMO_BLOG_POSTS, DEMO_SITE_SETTINGS } from './demo-data';
@@ -462,7 +463,9 @@ export async function getBlogPosts(opts: { limit?: number } = {}): Promise<BlogP
     if (opts.limit) q = q.limit(opts.limit);
     const { data, error } = await q;
     if (error) throw error;
-    return (data ?? []) as unknown as BlogPost[];
+    // Resolve [[year]]/[[month]] in headlines once, here, so every surface
+    // that renders a title gets the live value. See withRenderedDates.
+    return ((data ?? []) as unknown as BlogPost[]).map(p => withRenderedDates(p));
   }, DEMO_BLOG_POSTS);
 }
 
@@ -479,7 +482,8 @@ export async function getFeaturedBlogPost(): Promise<BlogPost | null> {
       .limit(1)
       .maybeSingle();
     if (error) throw error;
-    return (data ?? null) as unknown as BlogPost | null;
+    const row = (data ?? null) as unknown as BlogPost | null;
+    return row ? withRenderedDates(row) : null;
   }, null);
 }
 
@@ -506,7 +510,8 @@ export async function getPostsLinkingProduct(slug: string, limit = 3): Promise<B
       .filter(p => exact.test((p as { body?: string }).body ?? ''))
       .slice(0, limit)
       // Drop the heavy body column before the rows enter the RSC payload.
-      .map(p => { const tile = { ...(p as Record<string, unknown>) }; delete tile.body; return tile; }) as unknown as BlogPost[];
+      .map(p => { const tile = { ...(p as Record<string, unknown>) }; delete tile.body; return tile; })
+      .map(p => withRenderedDates(p as unknown as BlogPost)) as unknown as BlogPost[];
   }, []);
 }
 
@@ -519,7 +524,7 @@ export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> 
       .eq('slug', slug)
       .single();
     if (error) return null;
-    return data as BlogPost;
+    return withRenderedDates(data as BlogPost);
   }, DEMO_BLOG_POSTS.find(p => p.slug === slug) ?? null);
 }
 

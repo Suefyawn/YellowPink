@@ -14,6 +14,7 @@
 // soft-404s (see the tag/brand routes' history).
 export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontCatalog); long window = warm cache
 
+import { renderDateTokens } from '@/lib/price-tokens';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { permanentRedirect } from 'next/navigation';
@@ -118,7 +119,7 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
     guides = ((guideRows ?? []) as Array<{ slug: string; title: string; category: string | null }>)
       .filter(g => isHealthCategory(g.category))
       .slice(0, 4)
-      .map(g => ({ slug: g.slug, title: g.title }));
+      .map(g => ({ slug: g.slug, title: renderDateTokens(g.title) }));
   }
 
   const breadcrumb = [

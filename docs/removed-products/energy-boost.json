@@ -1,0 +1,44 @@
+{
+  "removed_on": "2026-09-04",
+  "removed_by": "content fact-check, owner confirmed twice that this is not a real product",
+  "why": [
+    "Duplicate identity: this row was named 'Women's Energy Booster (Femeez + Vit KD) for Period Energy' at Rs 400, while a separate published product 'womens-energy-booster' sells the same pairing at Rs 1,224.",
+    "Zombie slug: three blog posts still sold it under an older identity, 'Energy Boost Multivitamin & Mineral' at around Rs 400, which the row no longer described. One post recommended it as best-value multivitamin while recommending the real Women's Energy Booster four lines below as best for women.",
+    "Never ordered (0 orders), in no collection, stock 0, and after the blog links were repointed to Multiflux there were no remaining references anywhere in the catalogue, blog, pages or collections."
+  ],
+  "cascade_deleted_with_it": {
+    "inventory_ledger_entries": 2,
+    "product_images": 1,
+    "product_relations": 4,
+    "product_reviews": 0,
+    "product_questions": 0,
+    "product_variants": 0,
+    "bundle_memberships": 0
+  },
+  "restore_note": "To restore, re-insert the row below into public.products. The image file itself was not deleted from storage.",
+  "row": {
+    "id": "d53916a1-e90f-4ed7-8786-22e67f77db99",
+    "slug": "energy-boost",
+    "name": "Women's Energy Booster (Femeez + Vit KD) for Period Energy",
+    "brand": "NB Sons",
+    "category": "Women's Health",
+    "price": 400,
+    "original_price": 800,
+    "discount_pct": 50,
+    "stock": 0,
+    "status": "draft",
+    "kind": "simple",
+    "stock_mode": "external",
+    "track_inventory": false,
+    "continue_selling_when_out": true,
+    "weight_grams": 350,
+    "wp_product_id": 2687,
+    "vendor_id": "81d10e4b-c794-4d3c-977f-e6b862b264fa",
+    "image_url": "https://images.yellowpink.pk/wp/2713-0c40d99d.webp",
+    "created_at": "2026-05-19T11:10:15.905197+00:00",
+    "short_description": "Femeez (chaste berry, magnesium, B6, B12) with Vit KD (vitamin D3 and K2), for women who feel drained around their period.",
+    "seo_title": "Women's Energy Booster: Femeez + Vit KD for Period Energy",
+    "seo_description": "Women's Energy Booster pairs Femeez and Vit KD for energy and menstrual wellness around your period: chaste berry, B6, B12, D3, K2. COD across Pakistan.",
+    "ingredients": "Femeez: chaste berry extract (USP) 40 mg, magnesium oxide (BP) 100 mg, vitamin B6 (BP) 50 mg, vitamin B12 (BP) 2.5 mg, ginger extract (BP) 200 mg, chamomile extract (BP) 100 mg. Vit KD: vitamin D3 (USP) 10,000 IU, vitamin K2 (USP) 180 mcg."
+  }
+}

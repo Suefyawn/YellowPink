@@ -149,6 +149,7 @@ const nextConfig: NextConfig = {
     //   Meta Pixel      script  connect.facebook.net; beacons www.facebook.com/tr
     //   PostHog         script/connect us.i.posthog.com + us-assets.i.posthog.com
     //                   (NEXT_PUBLIC_POSTHOG_HOST default; replay worker = blob:)
+    //   Clarity         script  *.clarity.ms; connect *.clarity.ms + c.bing.com (MS docs)
     //   Sentry          connect *.ingest.sentry.io / *.ingest.us.sentry.io
     //   Vercel          script /_vercel/* (same-origin in prod),
     //                   va.vercel-scripts.com (dev); connect vitals.vercel-insights.com
@@ -178,6 +179,13 @@ const nextConfig: NextConfig = {
       'https://www.facebook.com',
       'https://us.i.posthog.com',
       'https://us-assets.i.posthog.com',
+      // Microsoft Clarity. Per learn.microsoft.com/clarity/setup-and-installation/
+      // clarity-csp the service load-balances across www.clarity.ms,
+      // a.clarity.ms … z.clarity.ms AND c.bing.com, so all three shapes are
+      // allowed; omit c.bing.com and a share of beacons fail silently under
+      // enforcement. Consent-gated in the component.
+      'https://*.clarity.ms',
+      'https://c.bing.com',
       'https://*.ingest.sentry.io',
       'https://*.ingest.us.sentry.io',
       'https://vitals.vercel-insights.com',
@@ -211,7 +219,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
       // Next's inline runtime; move to nonces before enforcing if feasible.
-      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://va.vercel-scripts.com https://vercel.live`,
+      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://*.clarity.ms https://va.vercel-scripts.com https://vercel.live`,
       // Our fonts are self-hosted (next/font), but Chrome's built-in page
       // translation injects its own UI styled from fonts.googleapis.com and
       // loads the faces from fonts.gstatic.com — live Sentry CSP reports

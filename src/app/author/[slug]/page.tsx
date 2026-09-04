@@ -9,6 +9,7 @@
 // WordPress /author/<user> ones) return a real HTTP 404.
 export const revalidate = 300;
 
+import { renderDateTokens } from '@/lib/price-tokens';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -51,7 +52,7 @@ async function postsByAuthor(dbNames: string[]): Promise<AuthorPostRow[]> {
     .in('author', dbNames)
     .order('date', { ascending: false })
     .limit(500);
-  return (data ?? []) as AuthorPostRow[];
+  return ((data ?? []) as AuthorPostRow[]).map(p => ({ ...p, title: renderDateTokens(p.title) }));
 }
 
 export default async function AuthorPage({ params }: { params: Promise<{ slug: string }> }) {
