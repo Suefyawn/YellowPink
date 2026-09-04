@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useCallback } from 'react';
+import { usePaginationScroll } from '@/lib/use-pagination-scroll';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ProductTile } from '@/components/ui/ProductTile';
 import { track } from '@/lib/analytics';
@@ -41,15 +42,20 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
     return [...set].sort((a, b) => a.localeCompare(b));
   }, [products]);
 
-  const setParams = useCallback((next: Record<string, string | null>) => {
+  const setParams = useCallback((next: Record<string, string | null>, opts: { push?: boolean } = {}) => {
     const params = new URLSearchParams(sp.toString());
     for (const [k, v] of Object.entries(next)) {
       if (v === null || v === '' || v === 'All' || (k === 'page' && v === '1')) params.delete(k);
       else params.set(k, v);
     }
     const qs = params.toString();
+    const url = `${basePath}${qs ? `?${qs}` : ''}`;
     // scroll:false so applying a filter doesn't jump the viewport to the top.
-    router.replace(`${basePath}${qs ? `?${qs}` : ''}`, { scroll: false });
+    // A PAGE change pushes (so Back returns to the previous page) and scrolls
+    // to the grid via usePaginationScroll; a filter change replaces and stays
+    // put, so filtering never piles up history entries.
+    if (opts.push) router.push(url, { scroll: false });
+    else router.replace(url, { scroll: false });
   }, [router, sp, basePath]);
 
   const filtered = useMemo(() => {
@@ -64,6 +70,9 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
   const clampedPage = Math.min(page, Math.max(1, totalPages));
   const paginated = filtered.slice((clampedPage - 1) * PAGE_SIZE, clampedPage * PAGE_SIZE);
+
+  const { gridRef, markIntent, announcement } = usePaginationScroll<HTMLDivElement>(clampedPage, totalPages);
+  const goToPage = (p: number) => { markIntent(); setParams({ page: p === 1 ? null : String(p) }, { push: true }); };
 
   const chipStyle = (active: boolean): React.CSSProperties => ({
     padding: '6px 14px', borderRadius: 999, cursor: 'pointer',
@@ -126,7 +135,13 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
       </div>
 
       {paginated.length > 0 ? (
-        <div className="product-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)' }}>
+        <div
+          ref={gridRef}
+          tabIndex={-1}
+          aria-label="Products"
+          className="product-grid"
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--gutter)', outline: 'none' }}
+        >
           {/* First four tiles on page 1 are the likely LCP candidates: preload
               them and skip the hydration-gated fade (see ProductImage). */}
           {paginated.map((p, i) => <ProductTile key={p.id} product={p} list="Collection" priority={clampedPage === 1 && i < 4} />)}
@@ -135,15 +150,16 @@ export function CollectionGrid({ products, basePath }: { products: Product[]; ba
         <p className="body-text" style={{ color: 'var(--ink-700)' }}>No products match this filter.</p>
       )}
 
+      <p className="sr-only" aria-live="polite" aria-atomic="true">{announcement}</p>
       {totalPages > 1 && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 'var(--section-gap)' }}>
           <button type="button" className="shop-tap" disabled={clampedPage <= 1} style={{ ...pageBtn(false), opacity: clampedPage <= 1 ? 0.4 : 1, cursor: clampedPage <= 1 ? 'not-allowed' : 'pointer' }}
-            onClick={() => setParams({ page: String(clampedPage - 1) })} aria-label="Previous page">‹</button>
+            onClick={() => goToPage(clampedPage - 1)} aria-label="Previous page">‹</button>
           {pageNumbers.map((p, i) => p === '…'
             ? <span key={`e${i}`} style={{ color: 'var(--ink-500)', padding: '0 4px' }}>…</span>
-            : <button key={p} type="button" className="shop-tap" style={pageBtn(p === clampedPage)} onClick={() => setParams({ page: p === 1 ? null : String(p) })} aria-current={p === clampedPage ? 'page' : undefined}>{p}</button>)}
+            : <button key={p} type="button" className="shop-tap" style={pageBtn(p === clampedPage)} onClick={() => goToPage(p)} aria-current={p === clampedPage ? 'page' : undefined}>{p}</button>)}
           <button type="button" className="shop-tap" disabled={clampedPage >= totalPages} style={{ ...pageBtn(false), opacity: clampedPage >= totalPages ? 0.4 : 1, cursor: clampedPage >= totalPages ? 'not-allowed' : 'pointer' }}
-            onClick={() => setParams({ page: String(clampedPage + 1) })} aria-label="Next page">›</button>
+            onClick={() => goToPage(clampedPage + 1)} aria-label="Next page">›</button>
         </div>
       )}
     </div>
