@@ -30,3 +30,23 @@ export function revalidateStorefrontCatalog(): void {
   revalidatePath('/category/[slug]', 'page');
   revalidatePath('/blog/[slug]', 'page');
 }
+
+/**
+ * Revalidate the storefront pages a single blog write touches: the post
+ * itself, the journal listing, and the home page (which surfaces the featured
+ * and latest posts).
+ *
+ * Every blog write must call this. Without it a post keeps serving its old
+ * body for up to the route's 1-hour ISR window, and because the write paths
+ * also ping IndexNow/Google, a crawler is invited to re-read a page that is
+ * still stale — the correction lands in the index an hour late, or not at all
+ * if the crawl beats the regeneration (audit fix, 4 Sep 2026).
+ *
+ * `slug` is optional so a delete, which no longer has a live path to bust,
+ * still clears the listing and home page.
+ */
+export function revalidateBlogPost(slug?: string | null): void {
+  if (slug) revalidatePath(`/blog/${slug}`);
+  revalidatePath('/blog');
+  revalidatePath('/');
+}

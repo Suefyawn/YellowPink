@@ -11,6 +11,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { authorizeBlogApi, blogApiCreateSchema, BLOG_COLUMNS } from '@/lib/blog-api';
 import { deriveReadTime } from '@/lib/reading-time';
+import { revalidateBlogPost } from '@/lib/revalidate-storefront';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -81,7 +82,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status });
   }
 
+  // Bust the ISR entries BEFORE the search-engine ping, so the crawler we are
+  // about to invite reads the new post rather than a stale cache entry.
+  const { slug } = data as { slug: string };
+  revalidateBlogPost(slug);
   // Blog posts go live immediately, nudge the search engines (best-effort).
-  await submitToSearchEnginesQuietly([`/blog/${(data as { slug: string }).slug}`]);
+  await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   return NextResponse.json({ post: data }, { status: 201 });
 }

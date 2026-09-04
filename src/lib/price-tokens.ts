@@ -12,8 +12,8 @@
 // "Pregnancy Test Prices in Pakistan (August 2026)" were hand-typed, so a
 // freshness signal shoppers and Google both read silently went stale (the
 // pregnancy-test heading was already a month behind when it was found).
-// Pages are ISR (revalidate = 300), so a rendered month follows the real
-// calendar within ~5 minutes of rollover.
+// Pages are ISR on a 1-hour window, so a rendered month catches up with the
+// real calendar within an hour of rollover, sooner if a write busts the page.
 
 import { PK_TZ } from './dates';
 

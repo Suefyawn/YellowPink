@@ -21,7 +21,7 @@ import { applyReturnFinancialsForOrder } from '@/lib/return-financials';
 import { applyCodFlagTransition, flagCodIdentity, clearCodFlag } from '@/lib/cod-flags';
 import { submitToSearchEngines, submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { deriveReadTime } from '@/lib/reading-time';
-import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
+import { revalidateStorefrontCatalog, revalidateBlogPost } from '@/lib/revalidate-storefront';
 import { recordSlugRedirect } from '@/lib/slug-redirects';
 import { log } from '@/lib/logger';
 import { verifyTotp } from '@/lib/totp';
@@ -500,12 +500,12 @@ export async function createBlogPost(
   if (created?.reviewer_id) await notifyReviewerCredited(created.id as string);
   // Blog posts go live immediately, ping search engines (best-effort).
   const slug = (parsed.data as { slug?: string }).slug;
-  if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   revalidatePath('/admin/blog');
   // The storefront surfaces that show this post: without these, a featured
-  // toggle took up to the 1-hour ISR window to appear (audit fix).
-  revalidatePath('/blog');
-  revalidatePath('/');
+  // toggle took up to the 1-hour ISR window to appear (audit fix). Bust before
+  // the search-engine ping so the crawler reads the new post, not a stale one.
+  revalidateBlogPost(slug);
+  if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   redirect('/admin/blog');
 }
 
@@ -539,10 +539,10 @@ export async function updateBlogPost(
   if (error) return { error: error.message };
   if (reviewerChanged && parsed.data.reviewer_id) await notifyReviewerCredited(id);
   const slug = (parsed.data as { slug?: string }).slug;
-  if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   revalidatePath('/admin/blog');
-  revalidatePath('/blog');
-  revalidatePath('/');
+  // See createBlogPost: /blog/<slug> is the one that actually carries the edit.
+  revalidateBlogPost(slug);
+  if (slug) await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   redirect('/admin/blog');
 }
 
@@ -597,11 +597,20 @@ export async function resubmitAllUrls(): Promise<{ ok: boolean; message: string 
 export async function deleteBlogPost(formData: FormData) {
   await assertPermission('blog');
   const id = formData.get('id') as string;
-  const { error } = await supabaseAdmin().from('blog_posts').delete().eq('id', id);
+  // Select the slug back so the deleted post's own page can be busted too;
+  // without it the listing dropped the post while /blog/<slug> kept serving
+  // it for up to an hour (audit fix, 4 Sep 2026).
+  const { data, error } = await supabaseAdmin()
+    .from('blog_posts')
+    .delete()
+    .eq('id', id)
+    .select('slug')
+    .maybeSingle();
   if (error) {
     redirect(`/admin/blog?error=${encodeURIComponent(error.message)}`);
   }
   revalidatePath('/admin/blog');
+  revalidateBlogPost((data as { slug?: string } | null)?.slug ?? null);
   redirect('/admin/blog?deleted=1');
 }
 

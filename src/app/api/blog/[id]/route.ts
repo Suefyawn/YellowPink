@@ -12,6 +12,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { submitToSearchEnginesQuietly } from '@/lib/indexing';
 import { authorizeBlogApi, blogApiUpdateSchema, idColumn, BLOG_COLUMNS } from '@/lib/blog-api';
+import { revalidateBlogPost } from '@/lib/revalidate-storefront';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -71,7 +72,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
   if (!data) return NextResponse.json({ error: 'Post not found.' }, { status: 404 });
 
-  await submitToSearchEnginesQuietly([`/blog/${(data as { slug: string }).slug}`]);
+  // Bust the ISR entries BEFORE the search-engine ping (see POST /api/blog):
+  // an edit that only pings leaves the crawler reading the pre-edit body.
+  const { slug } = data as { slug: string };
+  revalidateBlogPost(slug);
+  await submitToSearchEnginesQuietly([`/blog/${slug}`]);
   return NextResponse.json({ post: data });
 }
 
@@ -89,5 +94,6 @@ export async function DELETE(req: NextRequest, { params }: Params) {
     .maybeSingle();
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!data) return NextResponse.json({ error: 'Post not found.' }, { status: 404 });
+  revalidateBlogPost((data as { slug: string }).slug);
   return NextResponse.json({ deleted: data });
 }
