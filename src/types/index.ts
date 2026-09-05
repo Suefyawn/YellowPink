@@ -13,7 +13,7 @@ export type OrderStatus =
   | 'returned'
   | 'refunded';
 
-export type PayMethod = 'cod' | 'card' | 'bank' | 'jazzcash' | 'easypaisa' | 'gift_card';
+export type PayMethod = 'cod' | 'card' | 'bank' | 'jazzcash' | 'jazzcash_qr' | 'easypaisa' | 'gift_card';
 
 // Customer-facing labels for the orders.pay_method enum. The one shared map,
 // used by every admin surface (dashboard, orders list/detail, printed
@@ -558,7 +558,7 @@ export interface TaxClass {
 export interface Payment {
   id: string;
   order_id: string;
-  gateway: 'jazzcash' | 'easypaisa' | 'cod' | 'bank' | 'manual' | 'gift_card';
+  gateway: 'jazzcash' | 'jazzcash_qr' | 'easypaisa' | 'cod' | 'bank' | 'manual' | 'gift_card';
   amount: number;
   currency: string;
   status: 'initiated' | 'succeeded' | 'failed' | 'refunded' | 'cancelled';

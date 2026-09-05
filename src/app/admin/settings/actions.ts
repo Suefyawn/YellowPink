@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
+import { isValidEmv } from '@/lib/payments/emv-qr';
 
 // Settings is a grantable permission ('settings' — see lib/permissions.ts),
 // and every other settings surface (the settings layout, integrations,
@@ -37,6 +38,12 @@ function validateSettings(pairs: { key: string; value: string }[]): string | nul
       if (!Number.isFinite(n) || n < 0) return `${key} must be a number of zero or more`;
     }
     if (/email$/.test(key) && !isEmail(value)) return `${key} must be a valid email address`;
+    // The scan-to-pay code carries its own checksum. Refusing a bad paste here
+    // means the owner is told at the point of saving, rather than the method
+    // silently never appearing at checkout.
+    if (key === 'pay_jazzcash_qr' && !isValidEmv(value)) {
+      return 'The QR content is not a readable payment code (its checksum does not match). Copy it again from your QR.';
+    }
   }
   return null;
 }

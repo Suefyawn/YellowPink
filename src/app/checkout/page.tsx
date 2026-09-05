@@ -4,6 +4,8 @@ import { getSiteSettings } from '@/lib/supabase';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { activeSeasonalTheme } from '@/lib/seasonal-theme';
 import { jazzcashConfigured, easypaisaConfigured } from '@/lib/payments/configured';
+import { parseJazzCashQr } from '@/lib/payments/jazzcash-qr';
+import { qrRows } from '@/lib/payments/qr-matrix';
 import type { PayMethod } from '@/types';
 
 // Cart→checkout pages must not be indexed (audit SEV-2). Also override the
@@ -25,6 +27,14 @@ export default async function CheckoutRoute({ searchParams }: { searchParams: Pr
   const settings = await getSiteSettings();
   const isEnabled = (key: string) => settings[key] !== 'false';
   const bankAccounts = parseBankAccounts(settings.pay_bank_accounts);
+  // Scan-to-pay. parseJazzCashQr returns null when the stored payload fails
+  // its own checksum, so a bad paste hides the method instead of putting an
+  // unscannable code in front of a shopper.
+  const jazzQr = parseJazzCashQr(settings);
+  // Checkout shows the shop's plain code: the order does not exist yet, so
+  // there is no total to write into it. The thank-you page shows the one
+  // carrying the amount.
+  const jazzQrRows = jazzQr ? qrRows(jazzQr.payload) : null;
   // Gateway methods are only offered when their credentials exist — an
   // enabled-but-unconfigured method dead-ends the customer (order created in
   // payment_pending, then the payment route 500s on the missing env var).
@@ -36,6 +46,8 @@ export default async function CheckoutRoute({ searchParams }: { searchParams: Pr
     (isEnabled('pay_card_enabled') && jazzcashConfigured()) && 'card',
     // Bank Transfer is only offered once at least one account is configured,     // otherwise the customer reaches a dead end with nowhere to pay.
     (isEnabled('pay_bank_enabled') && bankAccounts.length > 0) && 'bank',
+    // Same rule as Bank Transfer: only offered once there is something to pay to.
+    (isEnabled('pay_jazzcash_qr_enabled') && jazzQr != null && jazzQrRows != null) && 'jazzcash_qr',
   ].filter(Boolean) as PayMethod[];
 
   // Active seasonal-sale coupon (e.g. AZADI14 while the Azadi window is
@@ -49,6 +61,9 @@ export default async function CheckoutRoute({ searchParams }: { searchParams: Pr
         enabledMethods={enabledMethods}
         bankAccounts={bankAccounts}
         bankNotes={settings.pay_bank_instructions ?? ''}
+        jazzQrRows={jazzQrRows}
+        jazzQrTitle={jazzQr?.title ?? ''}
+        jazzQrNotes={jazzQr?.notes ?? ''}
         paymentError={paymentError ?? null}
         failedOrder={failedOrder ?? null}
         seasonalCoupon={seasonalCoupon}

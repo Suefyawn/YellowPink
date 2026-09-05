@@ -5,6 +5,8 @@ import { saveSettings } from '../actions';
 import { BankAccountsEditor } from '@/components/admin/BankAccountsEditor';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { jazzcashConfigured, easypaisaConfigured } from '@/lib/payments/configured';
+import { parseJazzCashQr } from '@/lib/payments/jazzcash-qr';
+import { JazzCashQrEditor } from '@/components/admin/JazzCashQrEditor';
 import {
   inp, lbl, Section, Card, Divider, PayMethodRow,
   SaveBar, StatusBanner, SettingsPageHeader,
@@ -15,6 +17,9 @@ const PATH = '/admin/settings/payments';
 export default async function SettingsPaymentsPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   const [s, sp] = await Promise.all([getSiteSettings(), searchParams]);
   const g = (key: string, fallback = '') => s[key] ?? fallback;
+  // Null until a code that passes its own checksum is saved, which is also
+  // what gates the method at checkout.
+  const jazzQr = parseJazzCashQr(s);
 
   return (
     <>
@@ -64,6 +69,13 @@ export default async function SettingsPaymentsPage({ searchParams }: { searchPar
               label="Bank transfer"
               desc="Manual: the customer transfers to one of your accounts, then you confirm and ship. Add your accounts below, they show at checkout and on the order confirmation page."
             />
+            <PayMethodRow
+              name="pay_jazzcash_qr_enabled"
+              checked={g('pay_jazzcash_qr_enabled', 'true') !== 'false'}
+              label="JazzCash / Raast QR"
+              desc="Manual: the customer scans your shop code from any bank or wallet app, then you confirm and ship. No gateway account needed. Paste your code below."
+              configured={jazzQr != null}
+            />
           </div>
         </Card>
 
@@ -83,6 +95,20 @@ export default async function SettingsPaymentsPage({ searchParams }: { searchPar
               />
             </div>
           </div>
+        </Card>
+
+        <Card>
+          <Section
+            title="Scan to pay (JazzCash / Raast QR)"
+            desc="Your shop's own payment code, shown at checkout and on the order confirmation page. The customer scans it with any bank or wallet app, so it works for people who do not have JazzCash."
+          />
+          <Divider />
+          <JazzCashQrEditor
+            payload={g('pay_jazzcash_qr', '')}
+            title={g('pay_jazzcash_qr_title', '')}
+            dynamic={g('pay_jazzcash_qr_dynamic') === '1'}
+            notes={g('pay_jazzcash_qr_notes', '')}
+          />
         </Card>
 
         <SaveBar />

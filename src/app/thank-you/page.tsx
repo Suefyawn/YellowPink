@@ -8,6 +8,10 @@ import { getSiteSettings, supabaseAdmin } from '@/lib/supabase';
 import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
+import { JazzCashQrPanel } from '@/components/checkout/JazzCashQrPanel';
+import { parseJazzCashQr, qrPayloadForOrder } from '@/lib/payments/jazzcash-qr';
+import { qrRows } from '@/lib/payments/qr-matrix';
+import type { QrRows } from '@/lib/payments/qr-matrix';
 import { ThankYouPurchase } from './ThankYouPurchase';
 import { ThankYouAccountOffer } from './ThankYouAccountOffer';
 import type { BankAccount } from '@/types';
@@ -45,6 +49,7 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
   };
   let bankAccounts: BankAccount[] = [];
   let bankNotes = '';
+  let jazzQr: { rows: QrRows; title: string; notes: string; carriesAmount: boolean } | null = null;
   let summary: OrderRow | null = null;
   if (order) {
     const { data: row } = await supabaseAdmin()
@@ -57,6 +62,17 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
       const settings = await getSiteSettings();
       bankAccounts = parseBankAccounts(settings.pay_bank_accounts);
       bankNotes = settings.pay_bank_instructions ?? '';
+    }
+    if (summary?.pay_method === 'jazzcash_qr') {
+      const settings = await getSiteSettings();
+      const config = parseJazzCashQr(settings);
+      if (config) {
+        // This is where the shopper actually pays, and here the order exists,
+        // so the code can carry the exact total and the order number.
+        const { payload, carriesAmount } = qrPayloadForOrder(config, summary.total, order);
+        const rows = qrRows(payload);
+        if (rows) jazzQr = { rows, title: config.title, notes: config.notes, carriesAmount };
+      }
     }
   }
   const summaryItems = Array.isArray(summary?.items) ? summary!.items! : [];
@@ -128,6 +144,19 @@ export default async function ThankYouPage({ searchParams }: { searchParams: Pro
           {bankAccounts.length > 0 && (
             <div style={{ marginBottom: 24 }}>
               <BankAccountsList accounts={bankAccounts} notes={bankNotes} reference={orderNumber} />
+            </div>
+          )}
+
+          {jazzQr && (
+            <div style={{ marginBottom: 24 }}>
+              <JazzCashQrPanel
+                rows={jazzQr.rows}
+                merchantTitle={jazzQr.title}
+                amount={summary?.total ?? null}
+                reference={orderNumber}
+                carriesAmount={jazzQr.carriesAmount}
+                notes={jazzQr.notes}
+              />
             </div>
           )}
 
