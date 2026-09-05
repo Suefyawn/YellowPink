@@ -9,6 +9,9 @@ import { OrderStatusTimeline } from '@/components/order/OrderStatusTimeline';
 import { brandPlusName } from '@/lib/product-display';
 import { courierTrackingUrl } from '@/lib/couriers/profiles';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
+import { JazzCashQrPanel } from '@/components/checkout/JazzCashQrPanel';
+import { parseJazzCashQr, qrPayloadForOrder } from '@/lib/payments/jazzcash-qr';
+import { qrRows, type QrRows } from '@/lib/payments/qr-matrix';
 import { parseBankAccounts } from '@/lib/bank-accounts';
 import type { BankAccount, Order, OrderStatus } from '@/types';
 
@@ -71,6 +74,29 @@ function TrackForm() {
         const map = new Map(((data ?? []) as { key: string; value: string }[]).map(r => [r.key, r.value]));
         setBankAccounts(parseBankAccounts(map.get('pay_bank_accounts')));
         setBankNotes(map.get('pay_bank_instructions') ?? '');
+      });
+  }, [order]);
+
+  // Same idea for an unpaid scan-to-pay order: rebuild the code, with this
+  // order's total and number on it, for a customer who closed the tab.
+  // Encoding happens here rather than on the server because this page is a
+  // client component; the qrcode package ships a browser build, so no request
+  // and no serverless invocation is involved.
+  // Stamped with the order it was built for: looking up a second order must
+  // never show the first order's amount while the new code is being built.
+  const [jazzQr, setJazzQr] = useState<{ forOrder: string; rows: QrRows; title: string; notes: string; carriesAmount: boolean } | null>(null);
+  useEffect(() => {
+    if (!order || order.status !== 'payment_pending' || order.pay_method !== 'jazzcash_qr') return;
+    const sb = getBrowserClient();
+    sb.from('site_settings').select('key, value')
+      .in('key', ['pay_jazzcash_qr', 'pay_jazzcash_qr_title', 'pay_jazzcash_qr_dynamic', 'pay_jazzcash_qr_notes'])
+      .then(({ data }) => {
+        const map = Object.fromEntries(((data ?? []) as { key: string; value: string }[]).map(r => [r.key, r.value]));
+        const config = parseJazzCashQr(map);
+        if (!config) return;
+        const { payload, carriesAmount } = qrPayloadForOrder(config, order.total, order.order_number);
+        const rows = qrRows(payload);
+        setJazzQr(rows ? { forOrder: order.order_number, rows, title: config.title, notes: config.notes, carriesAmount } : null);
       });
   }, [order]);
 
@@ -260,6 +286,20 @@ function TrackForm() {
               {status === 'payment_pending' && order.pay_method === 'bank' && bankAccounts.length > 0 && (
                 <div style={{ marginBottom: 24 }}>
                   <BankAccountsList accounts={bankAccounts} notes={bankNotes} reference={order.order_number} />
+                </div>
+              )}
+
+              {status === 'payment_pending' && order.pay_method === 'jazzcash_qr'
+                && jazzQr && jazzQr.forOrder === order.order_number && (
+                <div style={{ marginBottom: 24 }}>
+                  <JazzCashQrPanel
+                    rows={jazzQr.rows}
+                    merchantTitle={jazzQr.title}
+                    amount={order.total}
+                    reference={order.order_number}
+                    carriesAmount={jazzQr.carriesAmount}
+                    notes={jazzQr.notes}
+                  />
                 </div>
               )}
 

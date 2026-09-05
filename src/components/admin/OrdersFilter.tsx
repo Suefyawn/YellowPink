@@ -35,7 +35,7 @@ const RANGES: { value: string; label: string }[] = [
 // Payment-method options for the More-filters row, in checkout order.
 // Labels come from the shared PAY_METHOD_LABELS map so no surface leaks a
 // raw enum value like "jazzcash".
-const PAY_METHODS = ['cod', 'bank', 'card', 'jazzcash', 'easypaisa', 'gift_card'];
+const PAY_METHODS = ['cod', 'bank', 'jazzcash_qr', 'card', 'jazzcash', 'easypaisa', 'gift_card'];
 
 export interface SavedView { id: string; name: string; query: string }
 

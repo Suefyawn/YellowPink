@@ -560,6 +560,13 @@ export async function sendOrderConfirmationEmail(
      *  the thank-you page they may have closed. */
     bankAccounts?: import('@/types').BankAccount[];
     bankNotes?: string;
+    /** Scan-to-pay orders: where to go to see the code again. The QR itself is
+     *  not embedded, because an emailed image is blocked by default in most
+     *  inboxes and a payment instruction that silently does not render is
+     *  worse than a link that always works. */
+    qrTrackUrl?: string;
+    qrMerchantTitle?: string;
+    qrNotes?: string;
   },
 ): Promise<boolean> {
   const isBank = args.pay_method === 'bank' && (args.bankAccounts?.length ?? 0) > 0;
@@ -578,6 +585,16 @@ export async function sendOrderConfirmationEmail(
       ${args.bankNotes ? `<p style="margin:8px 0 0;font-size:13px;color:${MUTED}">${escapeHtml(args.bankNotes)}</p>` : ''}
     </div>`
     : '';
+  const isQr = args.pay_method === 'jazzcash_qr' && Boolean(args.qrTrackUrl);
+  const qrBlock = isQr
+    ? `
+    <div style="margin:20px 0 0;padding:14px 16px;border:1px solid #fde68a;background:#fffbeb;border-radius:8px">
+      <p style="margin:0 0 8px;font-weight:600;color:#92400e">To complete your order, scan and pay ${money(args.total)}</p>
+      <p style="margin:0 0 10px;font-size:13px;color:${INK};line-height:1.5">Open your payment code on the page below, then scan it with any bank or wallet app${args.qrMerchantTitle ? ` (the payment will show as <strong>${escapeHtml(args.qrMerchantTitle)}</strong>, that is us)` : ''}. Quote <strong>${escapeHtml(args.order_number)}</strong> if your app asks for a reference, and send us the receipt so we can confirm and ship.</p>
+      <a href="${args.qrTrackUrl}" style="display:inline-block;padding:8px 16px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:13px">Show my payment code</a>
+      ${args.qrNotes ? `<p style="margin:10px 0 0;font-size:13px;color:${MUTED}">${escapeHtml(args.qrNotes)}</p>` : ''}
+    </div>`
+    : '';
   const introLine = isBank
     ? `We've received your order <strong>${escapeHtml(args.order_number)}</strong>. It will be prepared as soon as your bank transfer is confirmed — the details are below.`
     : `We've received your order <strong>${escapeHtml(args.order_number)}</strong> and will start preparing it shortly.
@@ -586,7 +603,7 @@ export async function sendOrderConfirmationEmail(
   // that happens, so the email should predict it — a message from an unknown
   // number lands very differently when you were told to expect it.
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
-  const codWhatsAppBlock = (!isBank && args.pay_method === 'cod' && whatsappNumber)
+  const codWhatsAppBlock = (!isBank && !isQr && args.pay_method === 'cod' && whatsappNumber)
     ? `
     <div style="margin:20px 0 0;padding:14px 16px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:8px">
       <p style="margin:0 0 8px;font-weight:600;color:#166534">Next step: WhatsApp confirmation</p>
@@ -600,6 +617,7 @@ export async function sendOrderConfirmationEmail(
     ${renderItemsTable(args.items)}
     <p style="margin:8px 0 0;text-align:right;font-size:16px"><strong>Total: ${money(args.total)}</strong></p>
     ${bankBlock}
+    ${qrBlock}
     ${codWhatsAppBlock}
     <p style="margin:20px 0 0">
       <a href="${SITE_URL}/track?order=${encodeURIComponent(args.order_number)}${args.phone ? `&phone=${encodeURIComponent(args.phone)}` : ''}" style="display:inline-block;padding:10px 18px;background:${BRAND_PINK};color:#fff;text-decoration:none;border-radius:6px;font-weight:600">Track your order</a>

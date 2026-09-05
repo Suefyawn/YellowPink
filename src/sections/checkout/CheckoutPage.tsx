@@ -26,6 +26,7 @@ import { successHaptic } from '@/lib/haptics';
 import { readAttribution } from '@/lib/attribution';
 import { readReferral } from '@/lib/referral';
 import { BankAccountsList } from '@/components/checkout/BankAccountsList';
+import { JazzCashQrPanel } from '@/components/checkout/JazzCashQrPanel';
 import type { CartItem, Coupon, PayMethod, LoyaltyAccount, BankAccount } from '@/types';
 
 const PROVINCES = ['Punjab', 'Sindh', 'KPK', 'Balochistan', 'Islamabad', 'AJK', 'Gilgit-Baltistan'];
@@ -36,6 +37,7 @@ const PAY_METHODS: ReadonlyArray<[PayMethod, string, string]> = [
   ['easypaisa', 'Easypaisa',              'Pay with Easypaisa mobile wallet'],
   ['card',      'Credit / Debit Card',    'Visa, Mastercard via JazzCash'],
   ['bank',      'Bank Transfer',          'Direct bank deposit'],
+  ['jazzcash_qr', 'JazzCash / Raast QR',  'Scan and pay from any bank or wallet app'],
 ];
 
 function makeOrderNumber() {
@@ -61,6 +63,10 @@ interface CheckoutPageProps {
   enabledMethods?: PayMethod[];
   bankAccounts?: BankAccount[];
   bankNotes?: string;
+  /** Pre-encoded modules of the shop's scan-to-pay code (server-side encoder). */
+  jazzQrRows?: string[] | null;
+  jazzQrTitle?: string;
+  jazzQrNotes?: string;
   /** Error code a gateway callback bounced back with
    *  (`/checkout?error=payment_failed|signature|payment_config|order_missing`).
    *  Triggers the payment-failed banner + cart restore below. */
@@ -97,7 +103,7 @@ const CheckIcon = ({ size = 13 }: { size?: number }) => (
   </svg>
 );
 
-export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, paymentError = null, failedOrder = null, seasonalCoupon = null }: CheckoutPageProps = {}) {
+export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, jazzQrRows = null, jazzQrTitle = '', jazzQrNotes = '', paymentError = null, failedOrder = null, seasonalCoupon = null }: CheckoutPageProps = {}) {
   const { cartItems, clearCart, restoreCart, removeFromCart, updateQty, appliedCoupon: cartCoupon, setAppliedCoupon } = useCart();
   const { user } = useAuth();
   const router = useRouter();
@@ -999,6 +1005,11 @@ export function CheckoutPage({ enabledMethods, bankAccounts = [], bankNotes, pay
               {payMethod === 'bank' && bankAccounts.length > 0 && (
                 <div style={{ marginTop: 16 }}>
                   <BankAccountsList accounts={bankAccounts} notes={bankNotes} />
+                </div>
+              )}
+              {payMethod === 'jazzcash_qr' && jazzQrRows && jazzQrRows.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <JazzCashQrPanel rows={jazzQrRows} merchantTitle={jazzQrTitle} notes={jazzQrNotes} />
                 </div>
               )}
             </form>

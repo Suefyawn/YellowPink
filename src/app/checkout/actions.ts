@@ -12,6 +12,7 @@ import { notifyStockRanOut } from '@/lib/stock-alerts';
 import { supabase, supabaseAdmin, getSiteSettings } from '@/lib/supabase';
 import { isCodFlagged } from '@/lib/cod-flags';
 import { parseBankAccounts } from '@/lib/bank-accounts';
+import { parseJazzCashQr } from '@/lib/payments/jazzcash-qr';
 import { sendMetaPurchaseEvent } from '@/lib/meta-capi';
 import { isWhatsAppCloudConfigured, sendOrderConfirmationTemplate } from '@/lib/whatsapp-cloud';
 import { log } from '@/lib/logger';
@@ -87,6 +88,25 @@ export async function notifyNewOrder(order: {
         bankNotes = settings.pay_bank_instructions ?? undefined;
       } catch { /* email still goes out without the block */ }
     }
+    // Scan-to-pay orders get the same treatment: a closed tab must not be the
+    // difference between an order that gets paid and one that does not. The
+    // code itself lives on the tracking page, which can redraw it for this
+    // order at any time; the email carries the link and the amount.
+    let qrTrackUrl: string | undefined;
+    let qrMerchantTitle: string | undefined;
+    let qrNotes: string | undefined;
+    if (order.pay_method === 'jazzcash_qr') {
+      try {
+        const settings = await getSiteSettings();
+        const config = parseJazzCashQr(settings);
+        if (config) {
+          qrTrackUrl = `${SITE_URL}/track?order=${encodeURIComponent(order.order_number)}`
+            + `&phone=${encodeURIComponent(order.phone ?? '')}`;
+          qrMerchantTitle = config.title;
+          qrNotes = config.notes || undefined;
+        }
+      } catch { /* email still goes out without the block */ }
+    }
     sends.push(
       sendOrderConfirmationEmail({
         email: order.email,
@@ -101,6 +121,9 @@ export async function notifyNewOrder(order: {
         pay_method: order.pay_method,
         bankAccounts,
         bankNotes,
+        qrTrackUrl,
+        qrMerchantTitle,
+        qrNotes,
       })
     );
   }

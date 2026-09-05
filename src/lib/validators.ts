@@ -279,7 +279,7 @@ export const checkoutSchema = z.object({
   city:       z.string().trim().min(1).max(120),
   province:   z.string().optional(),
   zip:        z.string().regex(/^[0-9-]*$/).max(12).optional().or(z.literal('')),
-  payMethod:  z.enum(['cod','card','bank','jazzcash','easypaisa','gift_card']),
+  payMethod:  z.enum(['cod','card','bank','jazzcash','jazzcash_qr','easypaisa','gift_card']),
 });
 export type CheckoutInput = z.infer<typeof checkoutSchema>;
 
