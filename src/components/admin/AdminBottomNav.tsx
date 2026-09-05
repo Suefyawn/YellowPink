@@ -47,6 +47,7 @@ export function AdminBottomNav({
           <Link
             key={s.href}
             href={s.href}
+            prefetch={false}
             className={`adm-bottom-nav-item${active ? ' active' : ''}`}
             aria-current={active ? 'page' : undefined}
           >
