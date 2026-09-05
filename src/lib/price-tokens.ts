@@ -52,7 +52,13 @@ export function renderDateTokens(text: string | null | undefined, now: Date = ne
     kind === 'month' ? currentMonthLabel(now) : currentYearLabel(now));
 }
 
-/** Resolve the date tokens in a post's headline fields.
+/** Resolve the date tokens in a post's headline and excerpt.
+ *
+ *  The excerpt is the meta description (blog/[slug] truncates it on a word
+ *  boundary at 155 chars) and it also carries the listing tiles, the RSS
+ *  <description> and the share text, so a year typed into it rots on the same
+ *  1 Jan clock the titles did. It renders here rather than at each surface for
+ *  the same reason the headline does.
  *
  *  Applied in the loaders (getBlogPosts, getBlogPostBySlug, …) rather than at
  *  each of the ~20 places a title is rendered, so the H1, the listing tiles,
@@ -64,14 +70,14 @@ export function renderDateTokens(text: string | null | undefined, now: Date = ne
  *  The admin edits rows through supabaseAdmin, which does not pass through
  *  here, so the editor still sees and saves the literal [[year]]. That is
  *  deliberate: you want to edit the token, not a snapshot of it. */
-export function withRenderedDates<T extends { title?: string | null; seo_title?: string | null }>(
-  post: T,
-  now: Date = new Date(),
-): T {
+export function withRenderedDates<
+  T extends { title?: string | null; seo_title?: string | null; excerpt?: string | null },
+>(post: T, now: Date = new Date()): T {
   const title = post.title == null ? post.title : renderDateTokens(post.title, now);
   const seo = post.seo_title == null ? post.seo_title : renderDateTokens(post.seo_title, now);
-  if (title === post.title && seo === post.seo_title) return post;
-  return { ...post, title, seo_title: seo };
+  const excerpt = post.excerpt == null ? post.excerpt : renderDateTokens(post.excerpt, now);
+  if (title === post.title && seo === post.seo_title && excerpt === post.excerpt) return post;
+  return { ...post, title, seo_title: seo, excerpt };
 }
 
 /** Replace every supported token with its live value.

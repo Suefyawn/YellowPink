@@ -101,4 +101,11 @@ describe('renderDateTokens / withRenderedDates', () => {
     const plain = { slug: 'y', title: 'No token', seo_title: null };
     expect(withRenderedDates(plain, AUG)).toBe(plain);
   });
+
+  it('renders the excerpt too: it is the meta description and the RSS description', () => {
+    const post = { slug: 'x', title: 'Guide', excerpt: 'Prices checked in [[month]].' };
+    expect(withRenderedDates(post, AUG).excerpt).toBe('Prices checked in August 2026.');
+    const untouched = { slug: 'z', title: 'Guide', excerpt: 'No token here' };
+    expect(withRenderedDates(untouched, AUG)).toBe(untouched);
+  });
 });

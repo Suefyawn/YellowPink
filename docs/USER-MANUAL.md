@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 4 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 5 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1163,6 +1163,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 5 September 2026
+
+- **A post's summary can carry the live month and year too.** `[[month]]` and `[[year]]` already worked in a post's title; they now render in the **excerpt** as well. That matters because the excerpt is what Google shows under the headline, and it is also the text on the blog listing tiles, in the RSS feed and in the share sheet. A summary that says "prices checked in [[month]]" reads as the real month everywhere, instead of a typed month that goes stale. As with titles, the editor still shows and saves the literal token, and `[[price:slug]]` stays out of summaries (a price in a search snippet is cached by Google long after it changes).
 
 ### 4 September 2026
 
