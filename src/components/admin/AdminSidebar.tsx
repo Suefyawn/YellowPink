@@ -108,7 +108,13 @@ export function AdminSidebar({
                 href === '/admin/questions' && pendingQuestionCount > 0 ? pendingQuestionCount :
                 0;
               return (
-                <Link key={href} href={href} onClick={onClose} className="adm-nav-link" style={{
+                // prefetch={false}: every admin route is dynamic, so the default
+                // prefetch fetched ~25 routes' loading boundaries on each admin
+                // page load, one function invocation each, before the owner
+                // clicked anything. On the free tier that was most of the
+                // admin's invocation budget. Navigation still streams in fast
+                // through the loading.tsx skeletons.
+                <Link key={href} href={href} prefetch={false} onClick={onClose} className="adm-nav-link" style={{
                   display: 'flex', alignItems: 'center', gap: 12,
                   // 44 px min tap target for mobile phones, desktop still looks
                   // tight because the font size is 0.875rem so the row reads
@@ -147,7 +153,7 @@ export function AdminSidebar({
       {/* Bottom links */}
       <div style={{ padding: '12px 20px 0', borderTop: '1px solid #1f2937' }}>
         {!session.isOwner && (
-          <Link href="/admin/profile" onClick={onClose} style={{
+          <Link href="/admin/profile" prefetch={false} onClick={onClose} style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '8px 0', color: '#9ca3af', textDecoration: 'none',
             fontSize: '0.8125rem',
@@ -157,7 +163,7 @@ export function AdminSidebar({
         )}
         {/* User manual, visible to every signed-in staff member so anyone with
             admin access can learn how the store + storefront work. */}
-        <Link href="/admin/help" onClick={onClose} style={{
+        <Link href="/admin/help" prefetch={false} onClick={onClose} style={{
           display: 'flex', alignItems: 'center', gap: 8,
           padding: '8px 0', color: '#9ca3af', textDecoration: 'none',
           fontSize: '0.8125rem', borderTop: '1px solid #1f2937', marginTop: 8,

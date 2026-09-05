@@ -387,6 +387,11 @@ export const config = {
      * - _next/static, _next/image, _next/data
      * - any file with an extension (.svg, .png, .jpg, .css, .js, .woff…)
      */
-    '/((?!_next/static|_next/image|_next/data|.*\\..*).*)',
+    // /img and /api are skipped inside proxy() too (isOwnedPath), but an
+    // excluded path here never invokes the edge function at all. Every product
+    // image on every page view and every API beacon was an edge invocation
+    // that immediately returned next(); on Vercel's free tier those count
+    // against the same monthly middleware budget as real page views.
+    '/((?!_next/static|_next/image|_next/data|img$|api/|.*\\..*).*)',
   ],
 };
