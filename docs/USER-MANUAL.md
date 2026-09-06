@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 5 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 6 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -150,12 +150,15 @@ customers and spot where an order is.
   discounts first, updated automatically as offers start and end. The header's
   **Sale** link now points here (it's a shareable, searchable page instead of a
   filter view).
-- **Category pages** (`/category/hair-care`, `/category/womens-health`, …) —
+- **Category pages** (`/category/hair-care`, `/category/women-s-health`, …) —
   every product category has its own fast, shareable web address with an intro,
   the product grid (sort + pagination), a short FAQ, and, for health
   categories, links to matching buyer guides. Old `/shop?category=…` links
   redirect here automatically, and picking a category on the Shop page takes
-  the shopper to that category's page.
+  the shopper to that category's page. A category whose name has an apostrophe
+  answers to the plain spelling too: `/category/womens-health` redirects to
+  `/category/women-s-health`, so a link typed by hand still lands on the
+  category rather than on a search result.
 - **Search overlay** — the header magnifying glass opens a full-width search
   panel. When the box is empty it shows the shopper's **Recent** searches as
   one-tap chips (the last 6, deduped), then Trending brands and Categories.
@@ -635,6 +638,14 @@ Every URL on the store that returned a **404**, captured automatically the momen
 - **Ignore** it — a 404 for genuinely removed content is perfectly fine and doesn't hurt ranking.
 
 You also get a **daily email digest** of any *new* broken links so nothing slips past.
+
+**A URL that already redirects is never shown as open.** The Open tab and the
+daily digest both check the live redirect list, not just whether somebody
+remembered to tick the URL off, so a redirect added outside this page (during a
+bulk import, or by your developer) closes the entry by itself. Those entries
+move to **Resolved** with a **Now goes to** column showing the destination.
+Ones you deliberately left as a 404 read "Left as a 404, on purpose", and can
+be reopened; a redirected one cannot, because it does not 404 any more.
 
 **Two things happen before a visitor ever sees the 404 page.** First, if the address is a mangled version of a real one — an old WordPress `-copy` suffix, odd capitals, a stray `%20` from a badly pasted link — the store sends them straight to the correct page, but only when that exact page is genuinely live. Second, if it can't be repaired, the 404 page reads the address and shows **what the visitor was probably after**: matching products from the catalogue, the brand page if the address names a brand you stock, a shop search already filled in, and a WhatsApp link. Someone landing on a dead product link sees the nearest real products instead of a dead end.
 
@@ -1390,7 +1401,7 @@ A dated history of user-facing changes, newest first.
 - **Traffic sources on the Analytics page are finally real.** The funnel, its by-source and by-device slices, and the top-referrers panel previously branded every visitor "direct" (they read a tracking field this site never captured, and the funnel only counted people who entered via the homepage — which organic visitors rarely do). All four now count unique sessions from whatever page a visitor lands on, attributed to the site that sent them. First honest reading: Google is already the number-two source with real purchases, and ChatGPT, Bing and Facebook all send measurable traffic. Numbers refresh with the next analytics update.
 
 - **The homepage is now systematically merchandised, and you can see why.** Every product rail runs on one engine with a one-sentence rule: Featured shows your flagged products taking daily turns (in stock only now); Best Sellers shows up to two of your pins first, then the genuine top sellers weighted toward recent sales; Trending shows real shopper momentum (and never a rotated-out best seller); On Sale shows the deepest live discounts (minimum 10%); New In shows the newest arrivals not already placed above; K-Beauty caps at two products per brand; the Wellness rail rotates the most-engaged products. No product ever appears in two rails, and the demand-driven rails always get first claim. A new **Admin → Homepage preview** page (linked from the Dashboard) shows today's exact tiles with each product's reason.
-- **A "Merchandising health" card on the Dashboard.** It warns when something is genuinely broken (a sold-out product holding a pin, the sale section on with nothing qualifying, a post missing its hero image, the score refresh not having run in 48 hours) and quietly advises on the rest (a featured post older than 60 days, pins with no shopper activity, extra best-seller pins beyond the two slots). It nags, never blocks.
+- **A "Merchandising health" card on the Dashboard.** It warns when something is genuinely broken (a sold-out product holding a pin, the sale section on with nothing qualifying, a post missing its hero image, the score refresh not having run in 48 hours) and quietly advises on the rest (a featured post older than 60 days, pins with no shopper activity, extra best-seller pins beyond the two slots, products still on an unmeasured shipping weight). It nags, never blocks.
 - **Featuring a blog post is now exclusive and fresh.** Ticking "Featured" on a post automatically unfeatures every other (16 posts silently carried the flag; only the newest ever showed). The blog hero is the featured post while it's under 60 days old, then falls back to the newest post; the hero no longer repeats as the first grid card; and the homepage journal row always leads with the same hero, so the two surfaces can never disagree. Featured changes now appear on the site immediately instead of within an hour.
 - **SEO rankings: an "All queries explorer".** A new collapsed section at the bottom of Marketing → SEO rankings lists every search Google has ever shown the site for (lifetime impressions, clicks, most recent position, last seen), not just the tracked list and the top opportunities. Search it, filter to "With clicks" / "Top 10" / "Untracked", sort, and track any query with one click. Tracked and brand queries are labelled.
 

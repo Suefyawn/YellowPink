@@ -8,6 +8,7 @@ import { KpiCard } from '@/components/admin/insights/KpiCard';
 import { DotChip } from '@/components/admin/OrderChips';
 import { ListToolbar } from '@/components/admin/ListToolbar';
 import { classifyPath, PATH_TYPE_LABELS, PATH_TYPE_COLORS, type PathType } from '@/lib/path-type';
+import { triageNotFound } from '@/lib/not-found-triage';
 import { addRedirect, ignoreNotFound, reopenNotFound } from './actions';
 
 interface Row {
@@ -51,17 +52,27 @@ export default async function BrokenLinksPage({
   const sort = BL_SORTS[sortParam ?? ''] ? sortParam! : 'hits_desc';
 
   const admin = supabaseAdmin();
-  const { data } = await admin
-    .from('not_found_log')
-    .select('id, path, hit_count, first_seen, last_seen, last_referer, is_bot, resolved')
-    .order('resolved', { ascending: true })
-    .order('hit_count', { ascending: false })
-    .order('last_seen', { ascending: false })
-    .limit(300);
+  const [{ data }, redirectRes] = await Promise.all([
+    admin
+      .from('not_found_log')
+      .select('id, path, hit_count, first_seen, last_seen, last_referer, is_bot, resolved')
+      .order('resolved', { ascending: true })
+      .order('hit_count', { ascending: false })
+      .order('last_seen', { ascending: false })
+      .limit(300),
+    admin.from('redirects').select('from_path, to_path'),
+  ]);
 
+  // A path that already 301s is not an open 404, whether or not anybody
+  // remembered to tick it off. See lib/not-found-triage.
+  const redirectByPath = new Map(
+    ((redirectRes.data ?? []) as { from_path: string; to_path: string }[])
+      .map(r => [r.from_path, r.to_path] as const),
+  );
   const rows = (data ?? []) as Row[];
-  const open = rows.filter(r => !r.resolved);
-  const resolved = rows.filter(r => r.resolved);
+  const { open: openTriaged, handled } = triageNotFound(rows, redirectByPath);
+  const open = openTriaged.map(t => t.row);
+  const resolved = handled.map(t => t.row);
   const totalHits = open.reduce((n, r) => n + r.hit_count, 0);
 
   // View → type → search filtering in memory (≤300 rows already fetched).
@@ -175,12 +186,14 @@ export default async function BrokenLinksPage({
               <th style={th}>Type</th>
               <th style={{ ...th, textAlign: 'right' }}>Hits</th>
               <th style={th}>Last seen</th>
+              <th style={th}>Now goes to</th>
               <th style={{ ...th, width: 120 }}></th>
             </tr>
           </thead>
           <tbody>
             {list.map(r => {
               const t = classifyPath(r.path);
+              const redirectTo = redirectByPath.get(r.path) ?? null;
               return (
                 <tr key={r.id}>
                   <td data-label="Path" style={{ ...td, fontFamily: 'monospace', color: '#6b7280', overflowWrap: 'anywhere' }}>{r.path}</td>
@@ -189,13 +202,22 @@ export default async function BrokenLinksPage({
                   </td>
                   <td data-label="Hits" style={{ ...td, textAlign: 'right', color: '#9ca3af' }}>{r.hit_count}</td>
                   <td data-label="Last seen" style={{ ...td, whiteSpace: 'nowrap', color: '#9ca3af' }}>{ago(r.last_seen)}</td>
+                  <td data-label="Now goes to" style={{ ...td, fontFamily: redirectTo ? 'monospace' : undefined, fontSize: '0.75rem', color: '#6b7280', overflowWrap: 'anywhere' }}>
+                    {redirectTo ?? <span style={{ color: '#9ca3af' }}>Left as a 404, on purpose</span>}
+                  </td>
                   <td style={td}>
-                    <form action={reopenNotFound}>
-                      <input type="hidden" name="path" value={r.path} />
-                      <button type="submit" style={{ padding: 0, fontSize: '0.75rem', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline' }}>
-                        Reopen
-                      </button>
-                    </form>
+                    {redirectTo ? (
+                      // Reopening would put a path back on the Open tab that
+                      // does not 404 any more. Remove the redirect first.
+                      <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Redirected</span>
+                    ) : (
+                      <form action={reopenNotFound}>
+                        <input type="hidden" name="path" value={r.path} />
+                        <button type="submit" style={{ padding: 0, fontSize: '0.75rem', background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', textDecoration: 'underline' }}>
+                          Reopen
+                        </button>
+                      </form>
+                    )}
                   </td>
                 </tr>
               );

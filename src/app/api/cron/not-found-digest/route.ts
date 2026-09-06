@@ -43,9 +43,22 @@ export async function GET(req: NextRequest) {
     .limit(MAX_PER_DIGEST);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const items = (data ?? []) as Array<{
+  const candidates = (data ?? []) as Array<{
     id: string; path: string; hit_count: number; last_referer: string | null; is_bot: boolean;
   }>;
+
+  if (candidates.length === 0) return NextResponse.json({ ok: true, newBrokenLinks: 0 });
+
+  // A path that already 301s is not a broken link, even if nobody ticked its
+  // `resolved` flag — a redirect added by SQL, a migration or an import leaves
+  // the flag untouched, and the owner would get an email about a URL that has
+  // been working for days (audit, 6 Sep 2026). The redirects table decides.
+  const { data: redirectRows } = await sb
+    .from('redirects')
+    .select('from_path')
+    .in('from_path', candidates.map(c => c.path));
+  const redirected = new Set(((redirectRows ?? []) as { from_path: string }[]).map(r => r.from_path));
+  const items = candidates.filter(c => !redirected.has(c.path));
 
   if (items.length === 0) return NextResponse.json({ ok: true, newBrokenLinks: 0 });
 

@@ -16,7 +16,7 @@ const DAY_MS = 86_400_000;
 // carries its own dates; components never read the clock).
 async function loadHealthIssues(): Promise<{ broken: Issue[]; advisory: Issue[] }> {
   const admin = supabaseAdmin();
-  const [pinsRes, saleCountRes, saleSettingRes, nullHeroRes, featuredPostRes, cronRes, staleCompareRes] = await Promise.all([
+  const [pinsRes, saleCountRes, saleSettingRes, nullHeroRes, featuredPostRes, cronRes, staleCompareRes, seedWeightRes] = await Promise.all([
     admin.from('products').select('id, name, stock, track_inventory, is_featured, is_bestseller, popularity_score')
       .eq('status', 'published').or('is_featured.eq.true,is_bestseller.eq.true'),
     admin.from('products').select('id', { count: 'exact', head: true })
@@ -27,6 +27,13 @@ async function loadHealthIssues(): Promise<{ broken: Issue[]; advisory: Issue[] 
     admin.from('analytics_cache').select('data, updated_at').eq('key', 'popularity_refresh_last_run').maybeSingle(),
     admin.from('products').select('id', { count: 'exact', head: true })
       .not('original_price', 'is', null).filter('discount_pct', 'lte', 0),
+    // Shipping weight still sitting on a seeded default. The catalogue import
+    // filled every product with a flat 250 g (beauty) or 350 g (supplements)
+    // and left some blank; nothing distinguishes those from a weight somebody
+    // actually measured.
+    admin.from('products').select('id', { count: 'exact', head: true })
+      .eq('status', 'published')
+      .or('weight_grams.is.null,weight_grams.eq.250,weight_grams.eq.350'),
   ]);
 
   const pins = (pinsRes.data ?? []) as { id: string; name: string; stock: number | null; track_inventory: boolean | null; is_featured: boolean | null; is_bestseller: boolean | null; popularity_score: number | null }[];
@@ -74,6 +81,17 @@ async function loadHealthIssues(): Promise<{ broken: Issue[]; advisory: Issue[] 
 
   if (zeroDemandPins.length > 0) {
     advisory.push({ text: `${zeroDemandPins.length} pinned product${zeroDemandPins.length > 1 ? 's have' : ' has'} had no shopper activity at all recently (no views, carts or sales) — worth reviewing whether the pin still earns its slot.` });
+  }
+
+  if ((seedWeightRes.count ?? 0) > 0) {
+    // Advisory, not broken: booking still works, it just declares a made-up
+    // weight to TCS (who re-weigh and bill on their own figure), and staff can
+    // override the weight on the booking form. Worth chipping away at, not
+    // worth a red alarm.
+    advisory.push({
+      text: `${seedWeightRes.count} product${(seedWeightRes.count ?? 0) > 1 ? 's are' : ' is'} still on an unmeasured shipping weight (blank, or the imported 250 g / 350 g default). TCS bookings declare that figure, so the courier's re-weigh can differ from what we said. Fill in real weights as you pack them.`,
+      href: '/admin/products',
+    });
   }
 
   if ((staleCompareRes.count ?? 0) > 0) {
