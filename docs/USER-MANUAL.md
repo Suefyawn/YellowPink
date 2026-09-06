@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 5 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 6 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -150,12 +150,15 @@ customers and spot where an order is.
   discounts first, updated automatically as offers start and end. The header's
   **Sale** link now points here (it's a shareable, searchable page instead of a
   filter view).
-- **Category pages** (`/category/hair-care`, `/category/womens-health`, …) —
+- **Category pages** (`/category/hair-care`, `/category/women-s-health`, …) —
   every product category has its own fast, shareable web address with an intro,
   the product grid (sort + pagination), a short FAQ, and, for health
   categories, links to matching buyer guides. Old `/shop?category=…` links
   redirect here automatically, and picking a category on the Shop page takes
-  the shopper to that category's page.
+  the shopper to that category's page. A category whose name has an apostrophe
+  answers to the plain spelling too: `/category/womens-health` redirects to
+  `/category/women-s-health`, so a link typed by hand still lands on the
+  category rather than on a search result.
 - **Search overlay** — the header magnifying glass opens a full-width search
   panel. When the box is empty it shows the shopper's **Recent** searches as
   one-tap chips (the last 6, deduped), then Trending brands and Categories.

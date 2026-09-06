@@ -41,13 +41,18 @@ export function generateStaticParams() {
 }
 
 // Resolve a /category/<slug> segment. Returns the canonical label for a leaf
-// category; taxon slugs and unknown values are redirected by the caller.
+// category; taxon slugs, alias slugs and unknown values are redirected by the
+// caller.
 function resolveLeaf(slug: string): string | null {
   const label = canonicalCategory(slug);
   if (!label) return null;
   // canonicalCategory maps taxon inputs to the taxon LABEL — those live at
   // /shop?taxon=, not here.
-  return findTaxon(label) ? null : label;
+  if (findTaxon(label)) return null;
+  // The taxonomy also answers to alias slugs ("womens-health" for "Women's
+  // Health"). Render only the canonical slug, so an alias 301s here instead of
+  // serving the same products under a second indexable URL.
+  return categorySlug(label) === slug ? label : null;
 }
 
 // Unknown slug handling, shared by metadata + body (metadata resolves first
@@ -59,6 +64,11 @@ function resolveLeaf(slug: string): string | null {
 async function redirectAway(slug: string): Promise<never> {
   const taxon = findTaxon(slug);
   if (taxon) permanentRedirect(`/shop?taxon=${taxon.key}`);
+  // An alias of a real leaf category (see CATEGORY_BY_KEY) goes to that
+  // category, not to shop search: /category/womens-health is a link somebody
+  // meant to point at Women's Health.
+  const alias = canonicalCategory(slug);
+  if (alias && !findTaxon(alias)) permanentRedirect(`/category/${categorySlug(alias)}`);
   await redirectIfMapped(`/category/${slug}`);
   permanentRedirect(`/shop?q=${encodeURIComponent(slug.replace(/-/g, ' '))}`);
 }

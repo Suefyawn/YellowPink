@@ -266,12 +266,21 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
 /** Every fine-grained leaf category, flattened across all taxons. */
 export const ALL_CATEGORIES: readonly string[] = TAXONS.flatMap(t => t.categories);
 
-// Leaf category lookup keyed by both the lower-cased label and its slug
-// ("combo-packs"), so either URL form resolves to the canonical label.
+// Leaf category lookup keyed by the lower-cased label, its slug
+// ("combo-packs"), and its apostrophe-free slug, so every URL form resolves to
+// the canonical label.
+//
+// The third key exists because categorySlug() turns an apostrophe into a
+// separator: "Women's Health" becomes "women-s-health", which nobody writes by
+// hand. Editors, other sites and our own older copy link to /category/womens-health,
+// and without this key that slug missed the taxonomy entirely and fell through
+// to /shop?q=womens%20health — a search page, not the category (Semrush audit,
+// 6 Sep 2026). The canonical slug is unchanged; the alias only resolves.
 const CATEGORY_BY_KEY: Record<string, string> = Object.fromEntries(
   ALL_CATEGORIES.flatMap(c => [
     [c.toLowerCase(), c] as [string, string],
     [categorySlug(c), c] as [string, string],
+    [categorySlug(c.replace(/['\u2019]/g, '')), c] as [string, string],
   ]),
 );
 
