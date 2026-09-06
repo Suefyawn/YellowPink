@@ -639,6 +639,14 @@ Every URL on the store that returned a **404**, captured automatically the momen
 
 You also get a **daily email digest** of any *new* broken links so nothing slips past.
 
+**A URL that already redirects is never shown as open.** The Open tab and the
+daily digest both check the live redirect list, not just whether somebody
+remembered to tick the URL off, so a redirect added outside this page (during a
+bulk import, or by your developer) closes the entry by itself. Those entries
+move to **Resolved** with a **Now goes to** column showing the destination.
+Ones you deliberately left as a 404 read "Left as a 404, on purpose", and can
+be reopened; a redirected one cannot, because it does not 404 any more.
+
 **Two things happen before a visitor ever sees the 404 page.** First, if the address is a mangled version of a real one — an old WordPress `-copy` suffix, odd capitals, a stray `%20` from a badly pasted link — the store sends them straight to the correct page, but only when that exact page is genuinely live. Second, if it can't be repaired, the 404 page reads the address and shows **what the visitor was probably after**: matching products from the catalogue, the brand page if the address names a brand you stock, a shop search already filled in, and a WhatsApp link. Someone landing on a dead product link sees the nearest real products instead of a dead end.
 
 Two deliberate limits worth knowing. The store will **not** guess its way between similar products — `beauty-cream` and `white-beauty-cream` are different tubs at different prices, so those are offered as suggestions for the shopper to pick from rather than jumped to automatically, which would quietly sell the wrong item. And the page still reports itself as a 404 to Google even though it now looks helpful: pretending a missing page exists is penalised by search engines, and it would also stop these URLs appearing in this report, which is how you find out about them at all.
