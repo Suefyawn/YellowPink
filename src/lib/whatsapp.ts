@@ -106,3 +106,38 @@ export const WA_TEMPLATES = {
   orderConfirm: (orderNumber: string) =>
     `Hi Yellow Pink! Confirming my order ${orderNumber}. Please process it.`,
 };
+
+/** Rewrite raw wa.me / api.whatsapp.com links inside staff-authored HTML to the
+ *  internal `/go/whatsapp` redirect.
+ *
+ *  The storefront's own components all call `whatsappGoUrl()`, but CMS page
+ *  bodies are HTML typed in the admin editor, where pasting a plain wa.me link
+ *  is the obvious thing to do. Six of them had (Semrush site audit, 14 Sep 2026:
+ *  9 of the 9 "broken external links" were this one number) — crawlers probe the
+ *  link, WhatsApp 429s them, and the audit reports it as broken. Rewriting at
+ *  render time fixes the pages already written AND every one written later,
+ *  which a one-off content migration would not.
+ *
+ *  Any `?text=` on the original is carried over so a pre-typed message survives;
+ *  the phone number in the href is deliberately dropped, because /go/whatsapp
+ *  resolves the merchant number server-side and is therefore always current. */
+export function rewriteWaMeLinks(html: string, src = 'cms'): string {
+  // Only touch the href of an anchor — a wa.me URL printed as visible text is
+  // left alone so the page can still show the number to a human reader.
+  return html.replace(
+    /href=(["'])\s*(?:https?:)?\/\/(?:wa\.me|api\.whatsapp\.com)\/[^"']*\1/gi,
+    (match, quote: string) => {
+      let text: string | undefined;
+      const q = match.indexOf('?');
+      if (q !== -1) {
+        // Strip the trailing quote before parsing so the last param is clean.
+        const params = new URLSearchParams(match.slice(q + 1, -1).replace(/&amp;/g, '&'));
+        text = params.get('text') ?? undefined;
+      }
+      // The result is spliced back into an HTML attribute, so the separator
+      // between query params has to be the entity, not a bare ampersand.
+      const href = whatsappGoUrl(text, { src }).replace(/&/g, '&amp;');
+      return `href=${quote}${href}${quote}`;
+    },
+  );
+}

@@ -21,14 +21,43 @@ export interface BrandSummary { name: string; slug: string; count: number }
 /** Brand list (name, slug, product count) from a product set, sorted A→Z.
  *  Only counts the products the caller passes in (already visibility-filtered). */
 export function brandsFromProducts(products: Pick<Product, 'brand'>[]): BrandSummary[] {
-  const counts = new Map<string, number>();
+  // Grouped by SLUG, not by the raw brand string. The catalogue has carried
+  // the same brand under two spellings ("PIXI" on 7 products, "Pixi" on 3),
+  // which a raw-string key turned into two entries on /brands that both linked
+  // to the one /brand/pixi page. Slug is what the URL is built from, so it is
+  // what identity has to be keyed on. Display name is the spelling used by the
+  // most products, so the label follows the catalogue rather than whichever
+  // row happened to sort first.
+  const groups = new Map<string, Map<string, number>>();
   for (const p of products) {
     if (!p.brand) continue;
-    counts.set(p.brand, (counts.get(p.brand) ?? 0) + 1);
+    const slug = brandSlug(p.brand);
+    if (!slug) continue;
+    const spellings = groups.get(slug) ?? new Map<string, number>();
+    spellings.set(p.brand, (spellings.get(p.brand) ?? 0) + 1);
+    groups.set(slug, spellings);
   }
-  return [...counts.entries()]
-    .map(([name, count]) => ({ name, slug: brandSlug(name), count }))
+  return [...groups.entries()]
+    .map(([slug, spellings]) => {
+      let name = '';
+      let best = -1;
+      let count = 0;
+      for (const [spelling, n] of spellings) {
+        count += n;
+        if (n > best) { best = n; name = spelling; }
+      }
+      return { name, slug, count };
+    })
     .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Every product belonging to a /brand/[slug] page.
+ *  Compares on the slug so a brand spelled two ways in the catalogue still
+ *  returns one complete list; an exact `p.brand === name` filter silently
+ *  dropped 3 of PIXI's 10 products from its brand page. */
+export function productsForBrandSlug<T extends Pick<Product, 'brand'>>(slug: string, products: T[]): T[] {
+  const want = slug.toLowerCase();
+  return products.filter(p => !!p.brand && brandSlug(p.brand) === want);
 }
 
 /** Resolve a /brand/[slug] segment back to the exact brand string (or null). */

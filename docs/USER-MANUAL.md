@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 6 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 14 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1182,6 +1182,12 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 14 September 2026
+
+- **Eight new collection pages, chosen on search demand.** **Sunscreens**, **Moisturizers**, **Serums & Essences**, **Blushes**, **Cleansers & Face Wash**, **Lip Gloss, Balm & Lipstick**, **Hair Care** and **Makeup Brushes & Tools** are live at `/collection/<slug>`. Each is a smart collection, so it fills itself from the catalogue and stays current as products come and go, and each carries a buying guide under the product grid plus four FAQs that Google can show as rich results. The guides quote live prices through `[[price:slug]]` rather than typed numbers, so a repricing updates the guide on its own. These eight were picked by checking Semrush's Pakistani search volume and difficulty against how many products the catalogue could actually fill each page with; the reasoning, and why the rest of the list was held back, is recorded in the migration that created them. Edit any of them in **Admin → Collections** like any other collection.
+- **A brand spelled two ways no longer splits its own page.** Ten PIXI products were stored under two spellings ("PIXI" and "Pixi"). The **Brands** page listed PIXI twice, both entries opening the same page, and that page showed only 7 of the 10 products, hiding the other 3 from anyone browsing the brand. Brand pages now group products by their web address rather than by the exact spelling, so every product for a brand appears on its page whatever case it was typed in, the Brands list shows one entry per brand, and the sitemap no longer sends Google the same brand address twice. The catalogue's own spellings have also been aligned to the name on each brand's record.
+- **WhatsApp links typed into a page now route through the store.** When staff paste a `wa.me` link into a page in **Content → Pages**, it is quietly converted to the store's own WhatsApp redirect when the page is shown. Shoppers notice nothing: the button still opens the same chat. It matters because search-engine crawlers probe raw `wa.me` links until WhatsApp rate-limits them, which was being reported as nine broken links on the site audit. Six pages (Terms, Shipping, Returns, FAQ, Editorial standards, Disclaimer) were affected and are now clean, and any link pasted in future is handled the same way.
 
 ### 5 September 2026
 
