@@ -15,6 +15,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { authorizeBlogApi } from '@/lib/blog-api';
 import { uploadMedia } from '@/lib/media-storage';
 import { normalizeImageUpload, type ImagePreset } from '@/lib/image-normalize';
+import { resolveImageType } from '@/lib/image-sniff';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -50,15 +51,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No file provided (form field "file").' }, { status: 400 });
   }
 
-  const ext = EXT_BY_TYPE[file.type];
+  if (file.size > MAX_SIZE) {
+    return NextResponse.json(
+      { error: `Max file size is ${MAX_SIZE / (1024 * 1024)} MB.` },
+      { status: 413 },
+    );
+  }
+
+  // Decide the type from the BYTES, not from what the caller said it was.
+  // `curl -F "file=@hero.webp"` sends application/octet-stream unless the
+  // caller appends ";type=image/webp" by hand, so a type-only check rejected
+  // valid WebP heroes with a 415 and no hint as to why. Sniffing also means a
+  // caller cannot get a non-image stored by mislabelling it.
+  const buf = await file.arrayBuffer();
+  const resolved = resolveImageType(buf, file.type, Object.keys(EXT_BY_TYPE));
+  const ext = resolved ? EXT_BY_TYPE[resolved] : undefined;
   if (!ext) {
     return NextResponse.json(
       { error: 'Image type not allowed. Use JPG, PNG, WebP, or AVIF.' },
       { status: 415 },
     );
-  }
-  if (file.size > MAX_SIZE) {
-    return NextResponse.json({ error: 'Max file size is 5 MB.' }, { status: 413 });
   }
 
   // Normalise before storing: EXIF-rotate, cap to the preset box, WebP.
@@ -66,7 +78,7 @@ export async function POST(req: NextRequest) {
   // AGENTS.md convention); everything else caps the long edge at 2000px.
   const presetRaw = (form.get('preset') as string) ?? 'general';
   const preset: ImagePreset = presetRaw === 'hero' || presetRaw === 'product' ? presetRaw : 'general';
-  const out = await normalizeImageUpload(await file.arrayBuffer(), file.type, preset);
+  const out = await normalizeImageUpload(buf, resolved as string, preset);
 
   // Name from the content type, never the client-supplied filename. The
   // optional "folder" field namespaces the upload (allowlisted so a caller

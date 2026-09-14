@@ -1,6 +1,6 @@
 # Blog automation — operating handoff
 
-Last updated: 1 September 2026
+Last updated: 14 September 2026
 
 This is the operating guide for the automated blog pipeline that publishes one
 post a day to yellowpink.pk, and for the twice-monthly SEO ranking check that
@@ -30,8 +30,8 @@ AI work, so blog automation adds nothing to the Vercel/Supabase/Resend bills.
 3. Generates a hero image (no bindi/forehead markings, still-life or
    dupatta/hijab styling preferred), uploads via `/api/media` with
    `preset=hero` — the server crops to the canonical 1216×688 WebP.
-4. Publishes via `POST /api/blog` (published, not draft). Blank `read_time`
-   is derived server-side from the body.
+4. Publishes via `POST /api/blog` (published, not draft). Omit `read_time`
+   and it is derived server-side from the body.
 5. Verifies the live URL, hero, meta and every link, then reports.
 
 The reviewer auto-assign trigger then credits a board doctor from the post's
@@ -73,6 +73,25 @@ first fired run stopped early, almost certainly without Semrush tools. The
 ranking check (1st & 15th)" and enable the **Semrush** connector on it (or
 recreate the Routine from that UI). Semrush is the only connector it needs;
 the daily blog Routine kept its original grants and is unaffected.
+
+**0. Three API papercuts fixed on 14 Sep 2026.** All three bit the 13 Sep
+scheduled post, which went live with an empty body and "3 min read".
+
+- *`content` is not a field.* The post body is `body`. Posting `content`
+  used to return **201 with an empty post**, because the validator dropped
+  unknown keys silently. It now returns **422** naming the key, and says
+  outright that the field is called `body`. Same on `PATCH`.
+- *`read_time` now derives properly.* The schema used to default it to the
+  literal string `3 min read`, which meant the "blank → derive from body"
+  branch could never run for an API caller. Omit the field and you get the
+  real figure. A `PATCH` that rewrites `body` also recomputes it, unless you
+  pass `read_time` in the same request.
+- *`/api/media` no longer needs a `;type=` hint.* Upload type is decided from
+  the file's magic number, so `curl -F "file=@hero.webp"` works as-is; the old
+  415 happened because curl sends `application/octet-stream` by default. The
+  declared type is only a fallback now, which also means a non-image cannot be
+  stored by mislabelling it. (The size-limit error also said "5 MB" while the
+  real cap was 25 MB; it now reports the real cap.)
 
 **2. `/api/media` R2 411 on chunked uploads (FIXED in the 1 Sep deploy).**
 The R2 PUT now sends an explicit Content-Length. The Routine prompt carries

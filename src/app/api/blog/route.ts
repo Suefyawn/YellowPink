@@ -9,7 +9,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { submitToSearchEnginesQuietly } from '@/lib/indexing';
-import { authorizeBlogApi, blogApiCreateSchema, BLOG_COLUMNS } from '@/lib/blog-api';
+import { authorizeBlogApi, blogApiCreateSchema, unknownKeyError, BLOG_COLUMNS } from '@/lib/blog-api';
 import { deriveReadTime } from '@/lib/reading-time';
 import { revalidateBlogPost } from '@/lib/revalidate-storefront';
 
@@ -62,7 +62,13 @@ export async function POST(req: NextRequest) {
 
   const parsed = blogApiCreateSchema.safeParse(raw);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Validation failed.', issues: parsed.error.flatten() }, { status: 422 });
+    // Name the unknown key rather than burying it in Zod's _errors array, so a
+    // pipeline posting `content` instead of `body` is told exactly that.
+    const unknown = unknownKeyError(parsed.error);
+    return NextResponse.json(
+      { error: unknown ?? 'Validation failed.', issues: parsed.error.flatten() },
+      { status: 422 },
+    );
   }
 
   // Blank read time → derive it from the body, same rule as the admin form.
