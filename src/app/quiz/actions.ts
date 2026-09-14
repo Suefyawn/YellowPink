@@ -10,6 +10,9 @@ import { quizEmailLimiter, quizEventLimiter, ipFromHeaders } from '@/lib/ratelim
 import { log } from '@/lib/logger';
 import {
   CONCERN_RULES, SKIN_TYPE_RULES, SKINCARE_STEPS, GOAL_CATEGORIES, FOCUS_RULES,
+  HAIRCARE_STEPS, HAIR_CONCERN_RULES, HAIR_TYPE_RULES, HAIR_INSIDE_KEYWORDS,
+  classifyIntoSteps,
+  HAIR_INSIDE_CATEGORIES,
   guidesForAnswers, resultHeadline,
   type Branch, type QuizAnswers,
 } from '@/lib/quiz';
@@ -110,13 +113,7 @@ function skincareSections(all: Product[], answers: QuizAnswers): RoutineSection[
 
   // Classify each product into exactly one step (priority order of
   // SKINCARE_STEPS: protect wins over moisturise for sun creams).
-  const byStep = new Map<string, Product[]>();
-  for (const p of beauty) {
-    const name = (p.name ?? '').toLowerCase();
-    const step = SKINCARE_STEPS.find(s => s.match.some(m => name.includes(m)));
-    if (!step) continue;
-    (byStep.get(step.key) ?? byStep.set(step.key, []).get(step.key)!).push(p);
-  }
+  const byStep = classifyIntoSteps(beauty, SKINCARE_STEPS);
 
   const sections: RoutineSection[] = [];
   for (const step of SKINCARE_STEPS) {
@@ -135,6 +132,54 @@ function skincareSections(all: Product[], answers: QuizAnswers): RoutineSection[
   // Routine reads cleanse → treat → moisturise → protect on screen.
   const order = ['cleanse', 'treat', 'moisturize', 'protect'];
   sections.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+  return sections;
+}
+
+function haircareSections(all: Product[], answers: QuizAnswers): RoutineSection[] {
+  const concern = HAIR_CONCERN_RULES[answers.hair_concern] ?? HAIR_CONCERN_RULES.hairfall;
+  const typeKws = HAIR_TYPE_RULES[answers.hair_type] ?? [];
+  const sections: RoutineSection[] = [];
+
+  // ── Topical sections, classified by name like the skincare routine ──
+  const hair = all.filter(p => p.category === 'Hair Care');
+  const byStep = classifyIntoSteps(hair, HAIRCARE_STEPS);
+  for (const step of HAIRCARE_STEPS) {
+    const pool = byStep.get(step.key) ?? [];
+    if (pool.length === 0) continue;
+    const ranked = pool
+      .map(p => scoreProduct(p, concern.keywords, typeKws))
+      .sort((a, b) => b.score - a.score);
+    sections.push({
+      key: step.key, label: step.label, note: step.note,
+      picks: ranked.slice(0, 2).map((r, i) => ({
+        product: r.product,
+        why: i === 0 ? buildWhy(concern.label, r.hits) : 'Or try this instead',
+      })),
+    });
+  }
+
+  // ── "From the inside" ──
+  // Deliberately drawn from OUTSIDE Hair Care: the store's hair supplements
+  // (Dermazon, the collagen range) are filed under Women's Health, and hair
+  // fall is as often a nutrition problem as a product one. Requiring a real
+  // keyword hit keeps an unrelated multivitamin out of a hair result.
+  const supplements = all
+    .filter(p => HAIR_INSIDE_CATEGORIES.includes(p.category ?? ''))
+    .map(p => scoreProduct(p, HAIR_INSIDE_KEYWORDS, []))
+    .filter(r => r.hits.some(h => h === 'biotin' || h === 'collagen' || h === 'hair' || h === 'nails'))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 2);
+  if (supplements.length > 0) {
+    sections.push({
+      key: 'inside', label: 'Support from the inside',
+      note: 'Hair fall is often a nutrition story. This is the slow half of the plan: give it three months.',
+      picks: supplements.map((r, i) => ({
+        product: r.product,
+        why: i === 0 ? buildWhy(concern.label, r.hits) : 'Or try this instead',
+      })),
+    });
+  }
+
   return sections;
 }
 
@@ -170,8 +215,8 @@ function wellnessSections(all: Product[], answers: QuizAnswers): RoutineSection[
 export async function buildRoutine(answers: QuizAnswers): Promise<RoutineResult | null> {
   try {
     const all = await catalogueForEngine();
-    const sections = answers.branch === 'skincare'
-      ? skincareSections(all, answers)
+    const sections = answers.branch === 'skincare' ? skincareSections(all, answers)
+      : answers.branch === 'haircare' ? haircareSections(all, answers)
       : wellnessSections(all, answers);
     if (sections.length === 0) return null;
     const guides = guidesForAnswers(answers);

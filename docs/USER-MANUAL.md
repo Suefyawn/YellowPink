@@ -86,13 +86,18 @@ customers and spot where an order is.
   the curated K-beauty list — there is nothing extra to configure per product
   beyond setting its brand.
 - **Routine Finder** (`/quiz`, in the main menu) — the shopper picks a path
-  (skincare or wellness) and answers two questions. Skincare answers build a
-  numbered routine (Cleanse → Treat → Moisturise → Protect) where each step
-  is filled by matching the shopper's skin type and concern against the live
-  catalogue's ingredients and descriptions, with a one-line reason under
-  every pick and an alternate where one exists. Wellness answers build a
-  supplement plan (a core pick plus supporting picks) the same way, and both
-  paths link the matching buyer guides from the journal. Results are **saved
+  (skincare, hair & scalp, or wellness) and answers two questions. Skincare
+  answers build a numbered routine (Cleanse → Treat → Moisturise → Protect)
+  where each step is filled by matching the shopper's skin type and concern
+  against the live catalogue's ingredients and descriptions, with a one-line
+  reason under every pick and an alternate where one exists. **Hair & scalp**
+  answers (hair type, then hair fall / damage / slow growth) build a plan in
+  up to three parts: *Treat the scalp*, *Look after the lengths*, and
+  *Support from the inside*, the last drawn from the supplement range rather
+  than Hair Care, because hair fall is as often a nutrition story as a
+  product one. Wellness answers build a supplement plan (a core pick plus
+  supporting picks) the same way, and all three paths link the matching buyer
+  guides from the journal. Results are **saved
   to a shareable link** (`/quiz/r/<code>`) that survives refreshes and can be
   sent over WhatsApp; there's a one-tap **Add all picks to cart**, and the
   email option sends the shopper their actual picks with the reasons, the
@@ -1185,6 +1190,8 @@ store owner.
 A dated history of user-facing changes, newest first.
 
 ### 14 September 2026
+
+- **The Routine Finder now has a hair path.** Alongside skincare and wellness, shoppers can pick **Hair & scalp**, say whether their hair is dry, oily, coloured or normal, and pick what is bothering them: hair fall and thinning, dryness and damage, or slow growth. The result is a plan in up to three parts, *Treat the scalp*, *Look after the lengths* and *Support from the inside*, each pick carrying the reason it was chosen, and links to the matching hair guides in the journal (there are already fifteen of them, covering minoxidil, rosemary oil, castor oil, biotin, argan oil, conditioner and hair serum). **A note on what the quiz deliberately does not ask:** there is no "dandruff and flaky scalp" option, because the store currently publishes no anti-dandruff products, and walking someone through a quiz to an empty answer is worse than not asking. Add that option once the stock exists. The same goes for depth generally: **there are only five Hair Care products published**, so the plans are honest but short. The hair path gets noticeably better the moment there is a shampoo, a conditioner and a scalp serum to choose between. Completion counts now split three ways (skin / hair / wellness) on the admin's quiz card.
 
 - **Hello Hair is archived, along with the wholesale trade packs.** All 59 Hello Hair lines now sit in **Archived** instead of **Draft**, and six Golden Pearl wholesale multipacks (the 180ml/75ml "Trade Pack" boxes and 36-sachet cartons priced in the thousands, meant for resellers rather than shoppers) went with them. Nothing changes on the storefront: drafts were never visible to shoppers. What changes is the admin, where a brand you have decided against now reads as *no longer sold* rather than *not finished yet*, so nobody re-reviews those rows. Four of the Hello Hair shampoos were also filed under a "Bulk Face Cream" subcategory by mistake and are now filed as Shampoo. **Cheap is not the same as low quality, so the inexpensive lines you actually sell were left alone** — the PKR 40 emergency contraceptive, the PKR 60 pregnancy strips and the children's zinc and iron syrups are all still published.
 
