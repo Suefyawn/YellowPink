@@ -35,6 +35,7 @@ export async function QuizStatsWidget() {
 
   const completedRows = rows.filter(r => r.type === 'completed');
   const skincare = completedRows.filter(r => r.branch === 'skincare').length;
+  const haircare = completedRows.filter(r => r.branch === 'haircare').length;
   const wellness = completedRows.filter(r => r.branch === 'wellness').length;
 
   // Top recommended products across all completions.
@@ -65,7 +66,7 @@ export async function QuizStatsWidget() {
             <Stat label="Starts" value={starts} />
             <Stat label="Completed" value={completes} sub={`${rate}% completion`} />
             <Stat label="Emails" value={emails} sub={`${emailRate}% of completions`} />
-            <Stat label="Split" value={`${skincare}/${wellness}`} sub="skincare / wellness" />
+            <Stat label="Split" value={`${skincare}/${haircare}/${wellness}`} sub="skin / hair / wellness" />
           </div>
           {topProducts.length > 0 && (
             <div>

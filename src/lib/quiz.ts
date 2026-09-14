@@ -14,7 +14,7 @@
 // client bundle without dragging Supabase in.
 // ============================================================================
 
-export type Branch = 'skincare' | 'wellness';
+export type Branch = 'skincare' | 'haircare' | 'wellness';
 
 export interface QuizOption {
   value: string;
@@ -36,6 +36,7 @@ export interface QuizAnswers {
 // ─── Branch picker ──────────────────────────────────────────────────────────
 export const BRANCHES: { value: Branch; label: string; blurb: string }[] = [
   { value: 'skincare', label: 'Skincare & beauty', blurb: 'Get a step-by-step routine for your skin' },
+  { value: 'haircare', label: 'Hair & scalp', blurb: 'Work out what your hair actually needs' },
   { value: 'wellness', label: 'Health & wellness', blurb: 'Build a supplement plan for your goals' },
 ];
 
@@ -62,6 +63,34 @@ const SKINCARE_QUESTIONS: QuizQuestion[] = [
       { value: 'aging', label: 'Fine lines & firmness' },
       { value: 'dullness', label: 'Dullness & uneven tone' },
       { value: 'sun', label: 'Sun protection' },
+    ],
+  },
+];
+
+// ─── Haircare questions ─────────────────────────────────────────────────────
+// Only three concerns are offered, and that is a catalogue decision rather
+// than an editorial one: the store currently publishes five Hair Care
+// products and ZERO anti-dandruff products. A "dandruff & flaky scalp"
+// option would take a shopper through the quiz to an empty result, which is
+// worse than not asking. Add the option back when the stock exists.
+const HAIRCARE_QUESTIONS: QuizQuestion[] = [
+  {
+    key: 'hair_type',
+    prompt: 'How would you describe your hair?',
+    options: [
+      { value: 'dry', label: 'Dry / frizzy' },
+      { value: 'oily', label: 'Oily roots' },
+      { value: 'colour', label: 'Coloured / chemically treated' },
+      { value: 'normal', label: 'Normal / balanced' },
+    ],
+  },
+  {
+    key: 'hair_concern',
+    prompt: "What's bothering you most?",
+    options: [
+      { value: 'hairfall', label: 'Hair fall & thinning' },
+      { value: 'damage', label: 'Dryness, frizz & damage' },
+      { value: 'growth', label: 'Slow growth & length' },
     ],
   },
 ];
@@ -146,6 +175,7 @@ export const WELLNESS_FOCUS: Record<string, QuizQuestion> = {
  *  the chosen goal). */
 export function questionsFor(branch: Branch, answers?: Partial<QuizAnswers>): QuizQuestion[] {
   if (branch === 'skincare') return SKINCARE_QUESTIONS;
+  if (branch === 'haircare') return HAIRCARE_QUESTIONS;
   const goal = answers?.goal;
   return goal && WELLNESS_FOCUS[goal] ? [WELLNESS_GOAL, WELLNESS_FOCUS[goal]] : [WELLNESS_GOAL];
 }
@@ -226,6 +256,90 @@ export const SKIN_TYPE_RULES: Record<string, string[]> = {
   normal: [],
 };
 
+// ─── Haircare matching rules ────────────────────────────────────────────────
+// Same shape as the skincare rules, but three sections instead of four, and
+// the last one reaches OUTSIDE the Hair Care category on purpose: hair fall
+// is as often a nutrition problem as a product problem, and the store's
+// answer to it (Dermazon, the collagen range) sits under Women's Health.
+//
+// Section order below is also match PRIORITY — a product is classified by the
+// first section whose keywords appear in its name. 'scalp' is listed first so
+// "Rosemary Essential Oil" is treated as a scalp treatment rather than being
+// swallowed by the 'oil' keyword under lengths.
+
+export const HAIRCARE_STEPS: RoutineStepDef[] = [
+  {
+    key: 'scalp', label: 'Treat the scalp',
+    note: 'Hair grows out of skin, so anything that changes growth works here.',
+    match: ['minoxidil', 'rosemary', 'hair growth', 'scalp', 'tonic', 'hair serum'],
+  },
+  {
+    key: 'lengths', label: 'Look after the lengths',
+    note: 'What is already grown cannot repair itself, so this is about condition.',
+    match: ['mask', 'conditioner', 'shampoo', 'oil', 'keratin', 'hair'],
+  },
+];
+
+/** The third section is built from supplements rather than the Hair Care
+ *  category, so it carries its own keyword list instead of a name match. */
+export const HAIR_INSIDE_KEYWORDS = ['biotin', 'collagen', 'hair', 'nails', 'multivitamin', 'iron', 'zinc'];
+
+/** Categories the "from the inside" section may draw from — the INGESTIBLE
+ *  ones. Listed explicitly rather than excluding beauty categories, because
+ *  'collagen' also matches a body lotion and a face cream, and recommending a
+ *  moisturiser as a hair supplement would be nonsense. */
+export const HAIR_INSIDE_CATEGORIES = [
+  "Women's Health", "Men's Health", 'Immunity', 'Digestive & Gut',
+  'Bone & Joint', 'Brain & Cognitive', 'Heart Health', 'Kids',
+];
+
+export const HAIR_CONCERN_RULES: Record<string, { label: string; keywords: string[] }> = {
+  hairfall: {
+    label: 'hair fall & thinning',
+    keywords: ['minoxidil', 'hair fall', 'hair loss', 'thinning', 'regrow', 'rosemary', 'biotin', 'density', 'follicle'],
+  },
+  damage: {
+    label: 'dryness, frizz & damage',
+    keywords: ['argan', 'mask', 'repair', 'hydrate', 'frizz', 'moistur', 'keratin', 'conditioner', 'smooth', 'shine'],
+  },
+  growth: {
+    label: 'growth & length',
+    keywords: ['growth', 'rosemary', 'castor', 'length', 'strengthen', 'root', 'biotin', 'nourish'],
+  },
+};
+
+/** Hair type → smaller scoring nudge, same role as SKIN_TYPE_RULES. */
+export const HAIR_TYPE_RULES: Record<string, string[]> = {
+  dry: ['hydrat', 'moistur', 'nourish', 'oil', 'mask', 'rich'],
+  oily: ['light', 'scalp', 'clarify', 'water', 'serum'],
+  colour: ['repair', 'keratin', 'protect', 'mask', 'argan'],
+  normal: [],
+};
+
+/** Put each product in exactly ONE step: the first step in `steps` whose
+ *  keywords appear in the product name. Order is priority, which is what makes
+ *  a sun cream a "protect" and not a "moisturise", and rosemary oil a scalp
+ *  treatment rather than a length oil. Products matching nothing are dropped
+ *  rather than bucketed somewhere arbitrary.
+ *
+ *  Pure and name-only, so both routines share it and it can be tested without
+ *  a database. */
+export function classifyIntoSteps<T extends { name?: string | null }>(
+  products: T[],
+  steps: RoutineStepDef[],
+): Map<string, T[]> {
+  const byStep = new Map<string, T[]>();
+  for (const p of products) {
+    const name = (p.name ?? '').toLowerCase();
+    const step = steps.find(st => st.match.some(m => name.includes(m)));
+    if (!step) continue;
+    const bucket = byStep.get(step.key);
+    if (bucket) bucket.push(p);
+    else byStep.set(step.key, [p]);
+  }
+  return byStep;
+}
+
 // ─── Wellness matching rules ────────────────────────────────────────────────
 export const GOAL_CATEGORIES: Record<string, string[]> = {
   womens: ["Women's Health"],
@@ -284,6 +398,22 @@ export const RESULT_GUIDES: Record<string, { slug: string; title: string }[]> = 
     { slug: 'best-sunscreen-in-pakistan', title: 'Best Sunscreen in Pakistan: SPF Guide + Top Picks' },
     { slug: 'tinted-sunscreen-benefits-pakistan', title: 'Tinted Sunscreen: Why It Beats Plain SPF' },
   ],
+  // haircare concerns, namespaced so 'growth' cannot collide with a skincare key
+  'hair:hairfall': [
+    { slug: 'how-to-reduce-hair-fall-pakistan', title: 'How to Reduce Hair Fall: Causes & Proven Solutions' },
+    { slug: 'minoxidil-for-hair-loss-pakistan', title: 'Minoxidil in Pakistan: How to Use It, Results Timeline & Side Effects' },
+    { slug: 'biotin-hair-loss-pakistan-women-supplement-guide', title: "Biotin for Hair Loss: Women's Complete Supplement Guide" },
+  ],
+  'hair:damage': [
+    { slug: 'argan-oil-for-hair-benefits-pakistan', title: 'Argan Oil for Hair: Benefits & How to Use It' },
+    { slug: 'hair-conditioner-guide-pakistan', title: 'Hair Conditioner: How to Use It Right, Best Picks and Real Prices' },
+    { slug: 'hair-serum-guide-pakistan', title: 'Hair Serum Guide: What It Does, Serum vs Oil & How to Apply' },
+  ],
+  'hair:growth': [
+    { slug: 'hair-growth-oil-pakistan-guide', title: 'Best Hair Growth Oil in Pakistan: What Actually Works' },
+    { slug: 'rosemary-oil-for-hair-growth-pakistan', title: 'Rosemary Oil for Hair Growth: Does It Actually Work?' },
+    { slug: 'castor-oil-for-hair-lashes-brows-pakistan', title: 'Castor Oil for Hair, Lashes & Brows: A Practical Guide' },
+  ],
   // wellness goal:focus
   'womens:pcos': [
     { slug: 'pcos-symptoms-causes-treatment-pakistan', title: 'What Is PCOS? Signs, Causes and How to Manage It' },
@@ -338,6 +468,7 @@ export const RESULT_GUIDES: Record<string, { slug: string; title: string }[]> = 
 
 export function guidesForAnswers(answers: QuizAnswers): { slug: string; title: string }[] {
   if (answers.branch === 'skincare') return RESULT_GUIDES[answers.concern] ?? [];
+  if (answers.branch === 'haircare') return RESULT_GUIDES[`hair:${answers.hair_concern}`] ?? [];
   return RESULT_GUIDES[`${answers.goal}:${answers.focus}`] ?? [];
 }
 
@@ -346,6 +477,10 @@ export function resultHeadline(answers: QuizAnswers): string {
   if (answers.branch === 'skincare') {
     const c = CONCERN_RULES[answers.concern]?.label;
     return c ? `Your routine for ${c}` : 'Your personalised routine';
+  }
+  if (answers.branch === 'haircare') {
+    const h = HAIR_CONCERN_RULES[answers.hair_concern]?.label;
+    return h ? `Your hair plan for ${h}` : 'Your personalised hair plan';
   }
   const f = FOCUS_RULES[`${answers.goal}:${answers.focus}`]?.label;
   return f ? `Your plan for ${f}` : 'Your wellness plan';

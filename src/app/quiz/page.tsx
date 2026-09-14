@@ -5,9 +5,9 @@ import { QuizClient } from '@/components/quiz/QuizClient';
 
 export function generateMetadata(): Metadata {
   return pageMeta({
-    title: 'Routine Finder, build your skincare or wellness plan',
+    title: 'Routine Finder, build your skin, hair or wellness plan',
     description:
-      'Answer two quick questions and get a step-by-step skincare routine or supplement plan matched to you, saved to a link you can share. Cash on delivery across Pakistan.',
+      'Answer two quick questions and get a skincare routine, a hair plan for hair fall or damage, or a supplement plan matched to you, saved to a link you can share. Cash on delivery across Pakistan.',
     path: '/quiz',
   });
 }

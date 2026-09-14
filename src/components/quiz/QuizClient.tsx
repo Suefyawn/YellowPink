@@ -21,23 +21,46 @@ const card: React.CSSProperties = {
 };
 
 /** Lucide-style branch icons for the intro panels (24×24, currentColor,
- *  strokeWidth 2, never emoji): sparkles for the beauty path, heart-pulse
- *  for wellness. */
+ *  strokeWidth 2, never emoji): sparkles for the beauty path, flowing strands
+ *  for hair, heart-pulse for wellness. */
+const BRANCH_PATHS: Record<Branch, React.ReactNode> = {
+  skincare: (
+    <>
+      <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
+      <path d="M20 3v4" /><path d="M22 5h-4" /><path d="M4 17v2" /><path d="M5 18H3" />
+    </>
+  ),
+  // Three strands falling from a crown, each ending in a different curl —
+  // reads as hair at 22px without needing colour or fill.
+  haircare: (
+    <>
+      <path d="M4 10a8 8 0 0 1 16 0" />
+      <path d="M4 10c0 4 .5 7 2 11" />
+      <path d="M12 10v7a4 4 0 0 0 4 4" />
+      <path d="M20 10c0 4-.5 7-2 11" />
+    </>
+  ),
+  wellness: (
+    <>
+      <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />
+      <path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27" />
+    </>
+  ),
+};
+
+/** Each branch gets its own chip colour so the three cards stay tellable
+ *  apart at a glance. All three are brand tokens, not near-misses. */
+const BRANCH_CHIP: Record<Branch, { background: string; color: string }> = {
+  skincare: { background: '#F9E4ED', color: 'var(--brand-pink-text, #C5286A)' },
+  haircare: { background: '#FDECF3', color: 'var(--brand-pink-text, #C5286A)' },
+  wellness: { background: 'var(--brand-yellow-soft, #fdf2cc)', color: 'var(--ink-900)' },
+};
+
 function BranchIcon({ branch }: { branch: Branch }) {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor"
       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      {branch === 'skincare' ? (
-        <>
-          <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" />
-          <path d="M20 3v4" /><path d="M22 5h-4" /><path d="M4 17v2" /><path d="M5 18H3" />
-        </>
-      ) : (
-        <>
-          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z" />
-          <path d="M3.22 12H9.5l.5-1 2 4.5 2-7 1.5 3.5h5.27" />
-        </>
-      )}
+      {BRANCH_PATHS[branch]}
     </svg>
   );
 }
@@ -105,7 +128,7 @@ export function QuizClient() {
           Answer a couple of quick questions and get a step-by-step plan built from
           products we actually stock, with the reason behind every pick.
         </p>
-        <div className="quiz-branch-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+        <div className="quiz-branch-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
           {BRANCHES.map(b => (
             <button
               key={b.value}
@@ -123,8 +146,7 @@ export function QuizClient() {
               <span aria-hidden="true" style={{
                 width: 44, height: 44, borderRadius: '50%',
                 display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                background: b.value === 'skincare' ? '#F9E4ED' : 'var(--brand-yellow-soft, #fdf2cc)',
-                color: b.value === 'skincare' ? 'var(--brand-pink-text, #C5286A)' : 'var(--ink-900)',
+                ...BRANCH_CHIP[b.value],
               }}>
                 <BranchIcon branch={b.value} />
               </span>

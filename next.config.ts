@@ -166,8 +166,13 @@ const nextConfig: NextConfig = {
     //                   (NEXT_PUBLIC_POSTHOG_HOST default; replay worker = blob:)
     //   Clarity         script  *.clarity.ms; connect *.clarity.ms + c.bing.com (MS docs)
     //   Sentry          connect *.ingest.sentry.io / *.ingest.us.sentry.io
-    //   Vercel          script /_vercel/* (same-origin in prod),
-    //                   va.vercel-scripts.com (dev); connect vitals.vercel-insights.com
+    //   Vercel          script vercel.live + font assets.vercel.com — the
+    //                   comment toolbar, which runs on production too (see the
+    //                   note above connectSrc.push below).
+    //                   va.vercel-scripts.com and vitals.vercel-insights.com were
+    //                   dropped with @vercel/analytics and @vercel/speed-insights
+    //                   (PR #753): nothing loads from them now, and a script-src
+    //                   grant to a host the site never calls is pure attack surface.
     //   Supabase        connect https + wss on the configured project host
     //   Images          images.weserv.nl proxy + assorted CDNs → img-src https:
     //   Fonts           self-hosted via next/font; Google Fonts hosts allowed
@@ -203,8 +208,6 @@ const nextConfig: NextConfig = {
       'https://c.bing.com',
       'https://*.ingest.sentry.io',
       'https://*.ingest.us.sentry.io',
-      'https://vitals.vercel-insights.com',
-      'https://va.vercel-scripts.com',
       // Chrome's built-in page translation (English → Urdu for a chunk of this
       // store's shoppers) fetches translations from page context, so it IS
       // governed by our CSP — live Sentry CSP report, 2026-08-12, blocked
@@ -234,7 +237,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
       // Next's inline runtime; move to nonces before enforcing if feasible.
-      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://*.clarity.ms https://va.vercel-scripts.com https://vercel.live`,
+      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://*.clarity.ms https://vercel.live`,
       // Our fonts are self-hosted (next/font), but Chrome's built-in page
       // translation injects its own UI styled from fonts.googleapis.com and
       // loads the faces from fonts.gstatic.com — live Sentry CSP reports

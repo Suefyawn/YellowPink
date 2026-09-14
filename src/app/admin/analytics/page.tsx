@@ -21,6 +21,7 @@ import { RetentionWidget } from '@/components/admin/RetentionWidget';
 import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
 import { WebVitalsWidget } from '@/components/admin/WebVitalsWidget';
 import { BingSearchWidget } from '@/components/admin/BingSearchWidget';
+import { ClarityWidget } from '@/components/admin/ClarityWidget';
 import { TrafficSearchDashboard } from '@/components/admin/insights/TrafficSearchDashboard';
 import { getTrafficSearchData } from '@/lib/traffic-insights';
 import { RefreshAnalyticsButton } from '@/components/admin/RefreshAnalyticsButton';
@@ -787,6 +788,14 @@ export default async function AnalyticsPage({
               it), read from Bing Webmaster Tools on each analytics refresh. */}
           <TrafficSection title="Bing search" hint="Bing Webmaster Tools, last 28 days (refreshed with the analytics cache)">
             <BingSearchWidget />
+          </TrafficSection>
+
+          {/* ── Clarity ── the frustration signals (rage/dead clicks, script
+              errors). Rolling 3 days only: that is the whole history the
+              Clarity API exposes, so it sits next to the 28-day Bing card
+              with its own window stated rather than sharing the picker. */}
+          <TrafficSection title="On-page frustration" hint="Microsoft Clarity, last 3 days (the longest window its API allows)">
+            <ClarityWidget />
           </TrafficSection>
 
           {/* ── Site performance ── real field Core Web Vitals (p75), also
