@@ -12,7 +12,7 @@ import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/li
 import { ContentAndFaqs } from '@/components/seo/ContentAndFaqs';
 import { renderContentTokens, renderFaqTokens } from '@/lib/price-tokens';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
-import { brandNameFromSlug, brandSlug, getBrandRecord } from '@/lib/brands';
+import { brandNameFromSlug, brandSlug, getBrandRecord, productsForBrandSlug } from '@/lib/brands';
 import { redirectIfMapped } from '@/lib/redirects';
 import type { Product } from '@/types';
 
@@ -58,7 +58,10 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   const brand = record?.name ?? brandNameFromSlug(slug, products);
   if (!brand) { await redirectIfMapped(`/brand/${slug}`); notFound(); }
 
-  const list = products.filter(p => p.brand === brand);
+  // By slug, not by exact brand string: the catalogue spells some brands two
+  // ways (PIXI / Pixi) and an equality filter hid the minority spelling's
+  // products from their own brand page.
+  const list = productsForBrandSlug(slug, products);
   const breadcrumb = [
     { name: 'Home', path: '/' },
     { name: 'Brands', path: '/brands' },
@@ -75,7 +78,7 @@ export default async function BrandPage({ params }: { params: Promise<{ slug: st
   // two-sentence keyword-led fallback so the page carries real body text for
   // shoppers and search engines rather than a single generic line.
   const description = record?.description
-    || `Discover ${brand} at Yellow Pink, every ${brand} product we stock is 100% authentic and imported, sourced from authorised channels for the Pakistani market, never a counterfeit. Browse the full ${brand} lineup below in sealed packaging at fair prices, with cash on delivery nationwide across Pakistan.`;
+    || `Every ${brand} product we stock at Yellow Pink is 100% authentic and imported, sourced from authorised channels for the Pakistani market, never a counterfeit. Browse the full ${brand} lineup below in sealed packaging at fair prices, with cash on delivery nationwide across Pakistan.`;
 
   return (
     <main className="fade-in">

@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 6 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 14 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1182,6 +1182,25 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 14 September 2026
+
+- **Six leftover backup tables have been deleted.** Copies of the products, posts, brands, collections and pages tables were made during the 4 September content check and never cleared away. They were the only tables in the database without row-level security, which meant the public key that ships inside the website could read and change them. Everything in them was already in the live tables, with one exception that is kept in the code repository instead, so nothing was lost. The database's own security check no longer reports the issue.
+
+
+- **A way to sneak scripts into pages and posts has been closed.** The filter that cleans up content typed in the admin removed things like `onclick="..."` only when the value was in quotes. Written without quotes, the same thing slipped through and would then run in the browser of everyone who read that page. Nobody appears to have used it, and it needed admin or blog-API access in the first place, but it was a route by which a single compromised account could have reached every visitor. Links, images, tables, coloured text and the citation links in the health guides are all unaffected: the filter now keeps exactly the attributes each tag is allowed and drops the rest.
+
+
+- **Product photos on grid cards are no longer cropped.** Cards draw the picture in a square, and anything that was not already square was being cut to fit: 16 of the 81 covers on the new collection pages were losing between 5% and 26% of the image, which on a tall bottle is its cap and its base. Cards now fit the whole picture inside the square instead, letterboxed onto the same cream background. Nothing changes for the 65 covers that were already square. A list of the products whose photos are still lower resolution than the rest of the catalogue, including the Argan hair mask, is in `docs/PRODUCT-IMAGE-AUDIT-2026-09-14.md`; those need better source photos rather than a code change.
+
+
+- **Customers can confirm their own cash-on-delivery order.** Every COD order email now carries a **Confirm my order** button. Pressing it records the confirmation on the order itself, so the order page shows a green *Confirmed* stamp and the timeline says the customer did it, with no staff member having to read a WhatsApp reply and type it in. This was the gap behind the cancellations: in the 90 days to 14 September, **every one of the 8 cancelled orders was cash on delivery, and every one was cancelled by staff** between 2 hours and 9 days after it was placed, which is the shape of staff being unable to reach the customer rather than customers refusing. That is PKR 31,712 of cancellations against PKR 64,961 delivered. The WhatsApp option is still there for shoppers who would rather speak to someone, and it now routes through the store's own redirect, so for the first time you can see in **Analytics → Sources** how many people use each route. Nothing about how you dispatch changes: confirmation still does not move the order, you do.
+
+
+- **Four more collection pages.** **Body Care**, **Highlighters**, **Face Scrubs & Exfoliators** and **Toners & Essences** join the eight below, built the same way and for the same reason. Body Care is the pick of them: body wash, body scrub, shower gel, body lotion and body butter together draw around 14,000 searches a month in Pakistan at a difficulty the site can realistically reach, and there are 11 products to fill it. Two more are ready to build as soon as the shelves are deeper: **concealer** (6,600 a month) and **face masks** (4,400) both have only four products today, which would make a thin page.
+- **Eight new collection pages, chosen on search demand.** **Sunscreens**, **Moisturizers**, **Serums & Essences**, **Blushes**, **Cleansers & Face Wash**, **Lip Gloss, Balm & Lipstick**, **Hair Care** and **Makeup Brushes & Tools** are live at `/collection/<slug>`. Each is a smart collection, so it fills itself from the catalogue and stays current as products come and go, and each carries a buying guide under the product grid plus four FAQs that Google can show as rich results. The guides quote live prices through `[[price:slug]]` rather than typed numbers, so a repricing updates the guide on its own. These eight were picked by checking Semrush's Pakistani search volume and difficulty against how many products the catalogue could actually fill each page with; the reasoning, and why the rest of the list was held back, is recorded in the migration that created them. Edit any of them in **Admin → Collections** like any other collection.
+- **A brand spelled two ways no longer splits its own page.** Ten PIXI products were stored under two spellings ("PIXI" and "Pixi"). The **Brands** page listed PIXI twice, both entries opening the same page, and that page showed only 7 of the 10 products, hiding the other 3 from anyone browsing the brand. Brand pages now group products by their web address rather than by the exact spelling, so every product for a brand appears on its page whatever case it was typed in, the Brands list shows one entry per brand, and the sitemap no longer sends Google the same brand address twice. The catalogue's own spellings have also been aligned to the name on each brand's record.
+- **WhatsApp links typed into a page now route through the store.** When staff paste a `wa.me` link into a page in **Content → Pages**, it is quietly converted to the store's own WhatsApp redirect when the page is shown. Shoppers notice nothing: the button still opens the same chat. It matters because search-engine crawlers probe raw `wa.me` links until WhatsApp rate-limits them, which was being reported as nine broken links on the site audit. Six pages (Terms, Shipping, Returns, FAQ, Editorial standards, Disclaimer) were affected and are now clean, and any link pasted in future is handled the same way.
 
 ### 5 September 2026
 

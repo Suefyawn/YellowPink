@@ -11,7 +11,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { submitToSearchEnginesQuietly } from '@/lib/indexing';
-import { authorizeBlogApi, blogApiUpdateSchema, idColumn, BLOG_COLUMNS } from '@/lib/blog-api';
+import { authorizeBlogApi, blogApiUpdateSchema, unknownKeyError, idColumn, BLOG_COLUMNS } from '@/lib/blog-api';
+import { deriveReadTime } from '@/lib/reading-time';
 import { revalidateBlogPost } from '@/lib/revalidate-storefront';
 
 export const runtime = 'nodejs';
@@ -50,7 +51,11 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   const parsed = blogApiUpdateSchema.safeParse(raw);
   if (!parsed.success) {
-    return NextResponse.json({ error: 'Validation failed.', issues: parsed.error.flatten() }, { status: 422 });
+    const unknown = unknownKeyError(parsed.error);
+    return NextResponse.json(
+      { error: unknown ?? 'Validation failed.', issues: parsed.error.flatten() },
+      { status: 422 },
+    );
   }
   if (Object.keys(parsed.data).length === 0) {
     return NextResponse.json({ error: 'No updatable fields provided.' }, { status: 422 });
@@ -58,7 +63,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
 
   // blog_posts.updated_at has no auto-update trigger; bump it so the sitemap's
   // lastModified and any "recently updated" view stay accurate.
-  const patch = { ...parsed.data, updated_at: new Date().toISOString() };
+  const patch: Record<string, unknown> = { ...parsed.data, updated_at: new Date().toISOString() };
+
+  // Rewriting the body changes how long the post takes to read, so recompute
+  // it unless the caller stated a read time in the same request. Without this,
+  // a post created with a placeholder body and then PATCHed with the real one
+  // kept the old figure: on 13 Sep 2026 a ~1,890-word post sat on "3 min read"
+  // until it was corrected by hand.
+  if (typeof patch.body === 'string' && parsed.data.read_time === undefined) {
+    patch.read_time = deriveReadTime(patch.body);
+  }
 
   const { data, error } = await supabaseAdmin()
     .from('blog_posts')

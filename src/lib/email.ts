@@ -19,6 +19,7 @@ import { stripEmoji } from './text';
 import { supabaseAdmin } from './supabase';
 import { brandPlusName } from '@/lib/product-display';
 import { SITE_URL } from './seo';
+import { orderConfirmUrl } from './order-confirm-token';
 import { getRecipientsForEvent } from './notification-recipients';
 import { getWelcomeOffer } from './offers';
 import { courierTrackingUrl } from '@/lib/couriers/profiles';
@@ -602,13 +603,27 @@ export async function sendOrderConfirmationEmail(
   // COD sequence priming: the staff WhatsApp confirmation is the next thing
   // that happens, so the email should predict it — a message from an unknown
   // number lands very differently when you were told to expect it.
+  // COD confirmation. Two ways to say yes, because the WhatsApp-only version
+  // of this block was not closing the loop: pressing it opened a chat, but
+  // somebody on staff still had to read the message and record the yes by
+  // hand. In the 90 days to 14 Sep 2026 every one of the 8 cancelled orders
+  // was COD, cancelled by staff with no note between 2 and 213 hours after the
+  // order — staff giving up on reaching the customer, not customers refusing.
+  // The confirm link sets orders.confirmed_at directly, with no transcription
+  // step, and it works for a customer who does not use WhatsApp.
+  //
+  // The WhatsApp option stays, because many PK shoppers would rather talk to a
+  // person, but it now goes through /go/whatsapp so the press is logged in
+  // whatsapp_clicks and we can finally see which of the two customers use.
   const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
-  const codWhatsAppBlock = (!isBank && !isQr && args.pay_method === 'cod' && whatsappNumber)
+  const confirmHref = orderConfirmUrl(SITE_URL, args.order_number);
+  const codWhatsAppBlock = (!isBank && !isQr && args.pay_method === 'cod')
     ? `
     <div style="margin:20px 0 0;padding:14px 16px;border:1px solid #bbf7d0;background:#f0fdf4;border-radius:8px">
-      <p style="margin:0 0 8px;font-weight:600;color:#166534">Next step: WhatsApp confirmation</p>
-      <p style="margin:0 0 10px;font-size:13px;color:${INK};line-height:1.5">Our team will message you on WhatsApp to confirm your order before dispatch. Want to skip the wait? Confirm right now, it takes two seconds:</p>
-      <a href="https://wa.me/${whatsappNumber}?text=${encodeURIComponent(`Hi Yellow Pink! Confirming my order ${args.order_number}. Please process it.`)}" style="display:inline-block;padding:8px 16px;background:#25D366;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:13px">Confirm on WhatsApp</a>
+      <p style="margin:0 0 8px;font-weight:600;color:#166534">One step left: confirm your order</p>
+      <p style="margin:0 0 12px;font-size:13px;color:${INK};line-height:1.5">We dispatch cash-on-delivery orders once you confirm them, so your parcel moves as soon as you press the button. You still pay the rider on delivery, nothing is charged now.</p>
+      <a href="${confirmHref}" style="display:inline-block;padding:10px 18px;background:#166534;color:#fff;text-decoration:none;border-radius:6px;font-weight:600;font-size:14px">Confirm my order</a>
+      ${whatsappNumber ? `<p style="margin:12px 0 0;font-size:13px;color:${MUTED}">Prefer to talk to someone? <a href="${SITE_URL}/go/whatsapp?src=order-confirm-email&p=${encodeURIComponent(args.order_number)}" style="color:#166534;font-weight:600">Confirm on WhatsApp</a> instead.</p>` : ''}
     </div>`
     : '';
   const html = shell(`

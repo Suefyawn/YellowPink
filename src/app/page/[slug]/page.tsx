@@ -18,6 +18,7 @@ import { ContactForm } from '@/components/contact/ContactForm';
 import { ContactChannels } from '@/components/contact/ContactChannels';
 import { Overline } from '@/components/ui/Overline';
 import { socialLinks } from '@/lib/socials';
+import { rewriteWaMeLinks } from '@/lib/whatsapp';
 import type { Page } from '@/types';
 
 // Static content imported from WordPress (About, Privacy, Terms, FAQ…).
@@ -136,7 +137,11 @@ export default async function StaticPage({ params }: { params: Promise<{ slug: s
   const zonesHtml = page.body_html.includes(zonesToken)
     ? shippingZonesHtml(await getShippingZonesForDisplay(), commerce.freeShippingEnabled)
     : '';
-  const safeHtml = sanitizeHtml(page.body_html)
+  // Raw wa.me links pasted into the admin editor become "broken external
+  // links" in the site audit (crawlers probe them, WhatsApp 429s the crawler).
+  // Rewrite them to the robots-disallowed /go/whatsapp redirect the storefront
+  // buttons already use, so CMS copy can never reintroduce the problem.
+  const safeHtml = rewriteWaMeLinks(sanitizeHtml(page.body_html), `page-${page.slug}`)
     .replaceAll('{{flat_shipping}}', formatPkr(commerce.defaultShippingRate))
     .replaceAll('{{free_shipping_threshold}}', formatPkr(commerce.freeShippingThreshold))
     .replaceAll(zonesToken, zonesHtml);

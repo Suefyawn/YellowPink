@@ -167,9 +167,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // Brand archive pages (/brand/[slug]), one per distinct brand.
-  const brands = Array.from(new Set(products.map(p => p.brand).filter((b): b is string => Boolean(b))));
-  const brandUrls: MetadataRoute.Sitemap = brands.map(brand => ({
-    url: absoluteUrl(`/brand/${brandSlug(brand)}`),
+  // Deduped on the SLUG, not the raw brand string. Two spellings of one brand
+  // ("PIXI" and "Pixi") survive a Set of names but collapse to the same URL
+  // after brandSlug, which emitted /brand/pixi twice in the sitemap.
+  const brandSlugs = Array.from(new Set(
+    products.map(p => (p.brand ? brandSlug(p.brand) : '')).filter(Boolean),
+  ));
+  const brandUrls: MetadataRoute.Sitemap = brandSlugs.map(slug => ({
+    url: absoluteUrl(`/brand/${slug}`),
     changeFrequency: 'weekly',
     priority: 0.6,
   }));

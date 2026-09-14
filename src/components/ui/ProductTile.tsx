@@ -137,7 +137,17 @@ export function ProductTile({ product, list, priority = false }: ProductTileProp
             transform: hovered ? 'scale(1.035)' : 'scale(1)',
             transition: 'transform 500ms ease-out',
           }}>
-            <ProductImage src={product.image_url} alt={brandPlusName(brand, name)} label={brand} priority={priority} />
+            {/* `contain`, not the default `cover`. The tile box is a square and
+                the catalogue is not: of the 84 covers on the collection pages,
+                66 are 1:1 but 8 are 3:4 portrait, a few sit at odd ratios, and
+                one is landscape (1440x1120). Under `cover` every one of those
+                was centre-cropped to the square, so a 900x1200 bottle lost a
+                quarter of its height — its cap and its base — which is what
+                made some cards look wrong. `contain` costs the square majority
+                nothing (a 1:1 image fills a 1:1 box either way) and letterboxes
+                the rest onto the tile's cream ground instead of cutting them.
+                The PDP hero already made this same call for the same reason. */}
+            <ProductImage src={product.image_url} alt={brandPlusName(brand, name)} label={brand} priority={priority} fit="contain" />
           </div>
           {/* Top-left badge stack: "Sale" sits above a low-stock urgency pill
               when the tracked item is running low (mirrors the PDP "Only N

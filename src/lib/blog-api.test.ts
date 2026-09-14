@@ -5,7 +5,9 @@ import {
   idColumn,
   blogApiCreateSchema,
   blogApiUpdateSchema,
+  unknownKeyError,
 } from './blog-api';
+import { deriveReadTime } from './reading-time';
 
 function req(authHeader?: string): NextRequest {
   return new NextRequest('https://www.yellowpink.pk/api/blog', {
@@ -97,5 +99,79 @@ describe('blogApiUpdateSchema', () => {
   });
   it('still validates a slug when present', () => {
     expect(blogApiUpdateSchema.safeParse({ slug: 'Bad Slug' }).success).toBe(false);
+  });
+});
+
+// Regression for the 13 Sep 2026 scheduled post, which went live with an empty
+// body and "3 min read". Two separate defects produced that single outcome.
+describe('blog API rejects mistyped fields instead of dropping them', () => {
+  const valid = {
+    title: 'Best Sunscreen in Pakistan',
+    slug: 'best-sunscreen-pakistan',
+    excerpt: 'Which SPF to buy and why.',
+    category: 'Skincare',
+    topic: null,
+    date: '2026-09-13',
+    featured: false,
+    reviewer_id: null,
+  };
+
+  it('accepts a well-formed post', () => {
+    expect(blogApiCreateSchema.safeParse({ ...valid, body: '<p>Hello</p>' }).success).toBe(true);
+  });
+
+  it('rejects `content` rather than silently discarding it', () => {
+    // This is the exact call that produced a 201 and an empty post.
+    const r = blogApiCreateSchema.safeParse({ ...valid, content: '<p>The whole article</p>' });
+    expect(r.success).toBe(false);
+  });
+
+  it('names the offending key, and points `content` at `body`', () => {
+    const r = blogApiCreateSchema.safeParse({ ...valid, content: '<p>x</p>' });
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    const msg = unknownKeyError(r.error);
+    expect(msg).toContain('content');
+    expect(msg).toContain('"body"');
+  });
+
+  it('rejects unknown keys on PATCH too', () => {
+    expect(blogApiUpdateSchema.safeParse({ content: '<p>x</p>' }).success).toBe(false);
+  });
+
+  it('returns null from unknownKeyError for ordinary validation failures', () => {
+    const r = blogApiCreateSchema.safeParse({ ...valid, title: '' });
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(unknownKeyError(r.error)).toBeNull();
+  });
+});
+
+describe('blog API read time', () => {
+  const valid = {
+    title: 'T', slug: 'read-time-post', excerpt: 'E', category: 'Skincare',
+    topic: null, date: '2026-09-13', featured: false, reviewer_id: null,
+  };
+
+  it('leaves read_time undefined when omitted, so the route can derive it', () => {
+    // The admin schema defaults this to the literal '3 min read', which made
+    // the route's "blank → derive" branch unreachable for API callers.
+    const r = blogApiCreateSchema.safeParse({ ...valid, body: '<p>hi</p>' });
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+    expect(r.data.read_time).toBeUndefined();
+  });
+
+  it('still honours an explicit read_time', () => {
+    const r = blogApiCreateSchema.safeParse({ ...valid, body: '<p>hi</p>', read_time: '8 min read' });
+    expect(r.success).toBe(true);
+    if (!r.success) return;
+    expect(r.data.read_time).toBe('8 min read');
+  });
+
+  it('derives a figure that matches the real length of a long post', () => {
+    // ~1,890 words was the post that stayed on "3 min read".
+    const body = `<p>${'word '.repeat(1890)}</p>`;
+    expect(deriveReadTime(body)).toBe('9 min read');
   });
 });
