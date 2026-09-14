@@ -33,8 +33,6 @@ import { GoogleAnalytics } from '@/components/analytics/GoogleAnalytics';
 import { MicrosoftClarity } from '@/components/analytics/MicrosoftClarity';
 import { MetaPixel } from '@/components/analytics/MetaPixel';
 import { AttributionCapture } from '@/components/analytics/AttributionCapture';
-import { Analytics } from '@vercel/analytics/next';
-import { SpeedInsights } from '@vercel/speed-insights/next';
 import { WebVitalsReporter } from '@/components/layout/WebVitalsReporter';
 import { ServiceWorkerRegister } from '@/components/layout/ServiceWorkerRegister';
 import { PWAInstallPrompt } from '@/components/layout/PWAInstallPrompt';
@@ -226,9 +224,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <MicrosoftClarity projectId={clarityProjectId} />
         <MetaPixel />
         <AttributionCapture />
+        {/* Vercel Analytics and Speed Insights used to mount here. Both were
+            removed with the move to a self-hosted Node server: neither runs
+            off Vercel, and both were already duplicated by something the store
+            owns. Pageviews and events go to GA4, PostHog and Clarity;
+            WebVitalsReporter above beacons every Core Web Vital to /api/vitals,
+            which is what the admin Analytics page reads. Nothing was lost. */}
         <WebVitalsReporter />
-        <Analytics />
-        <SpeedInsights />
         <ServiceWorkerRegister />
         <PWAInstallPrompt />
         <ImageCdnFallback />

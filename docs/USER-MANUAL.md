@@ -1185,6 +1185,9 @@ A dated history of user-facing changes, newest first.
 
 ### 14 September 2026
 
+- **The store can now run on its own server instead of Vercel.** Nothing about the site changes for shoppers or for you; this is groundwork so the hosting bill can move somewhere cheaper. Vercel's free tier is not available to a shop that takes payments, so the choice was to move rather than downgrade. Cloudflare Workers was looked at first and ruled out: it cannot run the image-resizing and push-notification pieces the store depends on, and its Next.js support is still in beta. A plain Node server runs everything unchanged. See `docs/SELF-HOSTING.md` for the steps. Two Vercel-only measurement widgets were removed in the process, and neither is a loss: page views were already going to Google Analytics, PostHog and Clarity, and the speed figures on **Analytics** come from the store's own measurements, not from Vercel.
+
+
 - **Six leftover backup tables have been deleted.** Copies of the products, posts, brands, collections and pages tables were made during the 4 September content check and never cleared away. They were the only tables in the database without row-level security, which meant the public key that ships inside the website could read and change them. Everything in them was already in the live tables, with one exception that is kept in the code repository instead, so nothing was lost. The database's own security check no longer reports the issue.
 
 
