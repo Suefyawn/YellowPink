@@ -1185,6 +1185,9 @@ A dated history of user-facing changes, newest first.
 
 ### 14 September 2026
 
+- **Six leftover backup tables have been deleted.** Copies of the products, posts, brands, collections and pages tables were made during the 4 September content check and never cleared away. They were the only tables in the database without row-level security, which meant the public key that ships inside the website could read and change them. Everything in them was already in the live tables, with one exception that is kept in the code repository instead, so nothing was lost. The database's own security check no longer reports the issue.
+
+
 - **A way to sneak scripts into pages and posts has been closed.** The filter that cleans up content typed in the admin removed things like `onclick="..."` only when the value was in quotes. Written without quotes, the same thing slipped through and would then run in the browser of everyone who read that page. Nobody appears to have used it, and it needed admin or blog-API access in the first place, but it was a route by which a single compromised account could have reached every visitor. Links, images, tables, coloured text and the citation links in the health guides are all unaffected: the filter now keeps exactly the attributes each tag is allowed and drops the rest.
 
 
