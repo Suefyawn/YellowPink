@@ -76,6 +76,21 @@ until you publish. See `docs/catalogue-gaps.csv` for supplier + price per item.
       fills in. IndexNow already submits every new page to Bing without the key;
       the key adds Bing's own submission channel and the reporting.
 
+## 8b. Microsoft Clarity API token (2 minutes, unlocks the frustration card)
+The Clarity **tag** is already live and recording; this is the separate read
+key that pulls the numbers back into the admin.
+- [ ] Go to **clarity.microsoft.com**, open the Yellow Pink project →
+      **Settings → Data export → Generate new API token**. Copy it.
+- [ ] Add `CLARITY_API_TOKEN` = the token to the server environment
+      (Vercel: **Project → Settings → Environment Variables**, Production, then
+      **Redeploy**; on the self-hosted box: `/etc/yellowpink.env`, then restart).
+- [ ] Next morning (or after **Refresh** on Analytics), the **On-page
+      frustration** card on **Analytics → Traffic** fills in with rage clicks,
+      dead clicks, quickbacks and script errors.
+- [ ] Worth knowing: the token is read-only, the API returns only the **last 3
+      days** (there is no longer history to request), and the quota is **10
+      calls per project per day** — the daily analytics refresh spends one.
+
 ## 9. From the 4 Sep 2026 audit (`docs/AUDIT-2026-09-04.md`)
 - [ ] **Supabase → Authentication → Settings:** turn on **Leaked password
       protection** (checks sign-up passwords against HaveIBeenPwned). One

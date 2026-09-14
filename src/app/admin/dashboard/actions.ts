@@ -9,6 +9,7 @@ import { logAudit } from '@/lib/audit';
 import { getGoogleConnection, gscQuery, ga4RunReport, listSitemaps, submitSitemap } from '@/lib/google';
 import { SITE_URL } from '@/lib/seo';
 import { isBingConfigured, bingSiteUrl, getRankAndTrafficStats, getQueryStats, getPageStats, getCrawlStats, getUrlSubmissionQuota } from '@/lib/bing';
+import { isClarityConfigured, getClaritySnapshot, ClarityApiError } from '@/lib/clarity';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
@@ -851,6 +852,35 @@ async function refreshBing(supabase: PermissiveSupabase): Promise<void> {
   });
 }
 
+// ─── refreshClarity ─────────────────────────────────────────────────────────
+// Microsoft Clarity's frustration signals — rage clicks, dead clicks,
+// quickbacks, script errors. The Clarity TAG has been on the storefront since
+// 4 Sep, but until now the data only existed inside Clarity's own dashboard,
+// so nothing surfaced next to the Google/Bing/PostHog cards.
+//
+// The API allows only 10 requests per project per DAY and can only look back
+// 1-3 days, so this makes exactly ONE call for a 3-day window and derives
+// every metric from that single response. It also means the numbers are a
+// rolling 3-day figure, not all-time — the card says so.
+//
+// Best-effort like every other source: no token = nothing cached (the widget
+// shows the setup hint), a failed call logs and moves on. A 429 is logged at
+// warn level rather than error because burning the quota is expected if
+// someone also refreshes by hand, and it self-heals at midnight UTC.
+async function refreshClarity(supabase: PermissiveSupabase): Promise<void> {
+  if (!isClarityConfigured()) return;
+  try {
+    const snapshot = await getClaritySnapshot(3);
+    await upsertCache(supabase, 'clarity', snapshot);
+  } catch (err) {
+    if (err instanceof ClarityApiError && err.status === 429) {
+      console.warn('[refreshClarity] quota exhausted, keeping the previous snapshot:', err.message);
+      return;
+    }
+    console.error('[refreshClarity] refresh failed:', err instanceof Error ? err.message : err);
+  }
+}
+
 // Persist a per-DAY GSC + GA4 trend into seo_daily_metrics so the admin can see
 // whether organic clicks/impressions/position + sessions + indexation are
 // improving over time (refreshGoogle only caches an overwriting snapshot).
@@ -998,6 +1028,7 @@ export async function refreshAnalyticsCore(): Promise<{ ok: boolean; errors: str
     refreshSentry(supabase),
     refreshGoogle(supabase),
     refreshBing(supabase),
+    refreshClarity(supabase),
     refreshSeoTrend(supabase),
     resubmitSitemap(),
   ]);
