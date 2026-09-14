@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import { confirmOrderAction, type ConfirmResult } from './actions';
 
@@ -10,6 +10,26 @@ import { confirmOrderAction, type ConfirmResult } from './actions';
 export function ConfirmPanel({ orderNumber, token }: { orderNumber: string; token: string }) {
   const [result, setResult] = useState<ConfirmResult | null>(null);
   const [pending, startTransition] = useTransition();
+
+  // Take the spent token out of the address bar once the order is confirmed.
+  //
+  // The storefront layout loads GA4, Meta Pixel, PostHog and Microsoft Clarity
+  // (which records sessions), and all of them report the page URL, so the token
+  // also lingers in history and in any Referer. Clearing it after use keeps a
+  // working credential out of all of that.
+  //
+  // Deliberately after the confirm rather than on mount: stripping it on mount
+  // would mean a shopper who reloads before pressing the button lands on the
+  // invalid-link screen, and breaking a legitimate confirmation is the worse
+  // outcome. The token only ever permits setting confirmed_at once, so once
+  // that has happened there is nothing left for it to do.
+  useEffect(() => {
+    if (!result?.ok || typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (!url.searchParams.has('t')) return;
+    url.searchParams.delete('t');
+    window.history.replaceState(null, '', url.pathname + url.search);
+  }, [result]);
 
   if (result?.ok) {
     return (

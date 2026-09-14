@@ -1185,6 +1185,9 @@ A dated history of user-facing changes, newest first.
 
 ### 14 September 2026
 
+- **A way to sneak scripts into pages and posts has been closed.** The filter that cleans up content typed in the admin removed things like `onclick="..."` only when the value was in quotes. Written without quotes, the same thing slipped through and would then run in the browser of everyone who read that page. Nobody appears to have used it, and it needed admin or blog-API access in the first place, but it was a route by which a single compromised account could have reached every visitor. Links, images, tables, coloured text and the citation links in the health guides are all unaffected: the filter now keeps exactly the attributes each tag is allowed and drops the rest.
+
+
 - **Product photos on grid cards are no longer cropped.** Cards draw the picture in a square, and anything that was not already square was being cut to fit: 16 of the 81 covers on the new collection pages were losing between 5% and 26% of the image, which on a tall bottle is its cap and its base. Cards now fit the whole picture inside the square instead, letterboxed onto the same cream background. Nothing changes for the 65 covers that were already square. A list of the products whose photos are still lower resolution than the rest of the catalogue, including the Argan hair mask, is in `docs/PRODUCT-IMAGE-AUDIT-2026-09-14.md`; those need better source photos rather than a code change.
 
 

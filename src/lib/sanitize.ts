@@ -58,6 +58,37 @@ function markExternalLinks(html: string): string {
   });
 }
 
+// Attribute tokens, in the three shapes HTML permits: name="value",
+// name='value', name=value (unquoted), and a bare boolean name. The unquoted
+// form is the one the event-handler passes miss, so it has to be parsed here
+// rather than pattern-matched away.
+const ATTR_RE = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]*)))?/g;
+
+/** Rebuild an allowed tag carrying only its allowlisted attributes, with every
+ *  value re-quoted so nothing can leak out of the attribute it sits in. */
+function rebuildTag(match: string, tag: string, allowed: string[]): string {
+  if (match.startsWith('</')) return `</${tag}>`;
+  const allow = new Set(allowed);
+  // Everything between the tag name and the closing '>' (or '/>').
+  const inner = match.slice(1 + tag.length + 1).replace(/\/?>$/, '');
+  const kept: string[] = [];
+  for (const m of inner.matchAll(ATTR_RE)) {
+    const name = m[1].toLowerCase();
+    if (!allow.has(name)) continue;
+    const value = m[2] ?? m[3] ?? m[4];
+    // A bare boolean attribute keeps its name; anything with a value is
+    // re-emitted double-quoted, with quotes and angle brackets escaped.
+    kept.push(value === undefined ? name : `${name}="${escapeAttr(value)}"`);
+  }
+  const selfClosing = /\/>$/.test(match);
+  return `<${tag}${kept.length ? ' ' + kept.join(' ') : ''}${selfClosing ? ' /' : ''}>`;
+}
+
+function escapeAttr(v: string): string {
+  return v.replace(/&/g, '&amp;').replace(/"/g, '&quot;')
+          .replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 export function sanitizeHtml(raw: string): string {
   const cleaned = raw
     // Strip script/style/iframe tags entirely (including content)
@@ -71,10 +102,19 @@ export function sanitizeHtml(raw: string): string {
     .replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)[^>]*>/g, (match, tag: string) => {
       const lower = tag.toLowerCase();
       if (!ALLOWED_TAGS.has(lower)) return '';
-      // For allowed tags with specific allowed attrs, strip everything else
+      // For allowed tags with specific allowed attrs, strip everything else.
       const allowed = ALLOWED_ATTRS[lower] ?? [];
       if (allowed.length === 0) return match.replace(/\s+[a-zA-Z][^=>"'\s]*(?:=(?:"[^"]*"|'[^']*'|[^\s>]*))?/g, '');
-      return match;
+      // Tags that DO allow attributes used to be returned untouched, which
+      // meant <a>, <span> and <img> kept every attribute an author wrote.
+      // The two event-handler passes above only match QUOTED handlers, so an
+      // unquoted one survived the whole sanitizer:
+      //   <span onmouseover=alert(1)>  →  unchanged
+      //   <span onmouseover="alert(1)"> →  stripped
+      // Anyone with CMS or blog-API write access could therefore store script
+      // that ran for every reader, because these bodies are rendered through
+      // dangerouslySetInnerHTML. Enforce the allowlist instead of trusting it.
+      return rebuildTag(match, lower, allowed);
     });
   return markExternalLinks(dropDisallowedImages(cleaned));
 }
