@@ -1,0 +1,48 @@
+# systemd unit for the self-hosted store. See docs/SELF-HOSTING.md.
+#
+#   sudo cp deploy/yellowpink.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now yellowpink
+
+[Unit]
+Description=Yellow Pink storefront (Next.js standalone)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=yellowpink
+WorkingDirectory=/srv/yellowpink
+
+# Same variables the Vercel deployment used; see .env.example.
+EnvironmentFile=/etc/yellowpink.env
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# Bind to loopback only. TLS and the public port belong to nginx/Caddy in front.
+Environment=HOSTNAME=127.0.0.1
+
+ExecStart=/usr/bin/node /srv/yellowpink/.next/standalone/server.js
+
+Restart=always
+RestartSec=5
+
+# after() callbacks (the WhatsApp click log, order emails, the analytics
+# refresh) run AFTER the response is sent. Next needs a graceful shutdown for
+# them to finish rather than being killed mid-flight, so SIGTERM and a real
+# drain window rather than SIGKILL on the spot.
+KillSignal=SIGTERM
+TimeoutStopSec=30
+
+# The process only needs to read its own directory and write nothing outside
+# /tmp; the catalogue and orders all live in Supabase.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/yellowpink/.next/cache
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=yellowpink
+
+[Install]
+WantedBy=multi-user.target

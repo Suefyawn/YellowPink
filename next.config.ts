@@ -28,6 +28,21 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
+  // Self-hostable build. `standalone` emits .next/standalone with a server.js
+  // and only the node_modules the trace actually needs, so the store runs as a
+  // plain `node server.js` behind any reverse proxy.
+  //
+  // Next's own deployment guide is blunt about why this is the target: "To run
+  // Next.js, your platform needs a Node.js server. That's it," and Node
+  // deployments are the only option it marks as supporting every feature. The
+  // alternative considered was Cloudflare Workers, which at the time of writing
+  // is a beta adapter that Next.js does not list as verified, and which cannot
+  // run this app's two native dependencies (sharp for upload resizing,
+  // web-push for notifications) at all.
+  //
+  // Harmless on Vercel, which ignores it, so the two can be run side by side
+  // during a cutover.
+  output: 'standalone',
   // The admin "User manual" page (/admin/help) reads docs/USER-MANUAL.md from
   // disk at request time. That file isn't statically imported, so Next's trace
   // wouldn't bundle it into the serverless function — force-include it for this
