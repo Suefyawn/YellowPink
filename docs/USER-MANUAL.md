@@ -1185,6 +1185,9 @@ A dated history of user-facing changes, newest first.
 
 ### 14 September 2026
 
+- **Product photos on grid cards are no longer cropped.** Cards draw the picture in a square, and anything that was not already square was being cut to fit: 16 of the 81 covers on the new collection pages were losing between 5% and 26% of the image, which on a tall bottle is its cap and its base. Cards now fit the whole picture inside the square instead, letterboxed onto the same cream background. Nothing changes for the 65 covers that were already square. A list of the products whose photos are still lower resolution than the rest of the catalogue, including the Argan hair mask, is in `docs/PRODUCT-IMAGE-AUDIT-2026-09-14.md`; those need better source photos rather than a code change.
+
+
 - **Customers can confirm their own cash-on-delivery order.** Every COD order email now carries a **Confirm my order** button. Pressing it records the confirmation on the order itself, so the order page shows a green *Confirmed* stamp and the timeline says the customer did it, with no staff member having to read a WhatsApp reply and type it in. This was the gap behind the cancellations: in the 90 days to 14 September, **every one of the 8 cancelled orders was cash on delivery, and every one was cancelled by staff** between 2 hours and 9 days after it was placed, which is the shape of staff being unable to reach the customer rather than customers refusing. That is PKR 31,712 of cancellations against PKR 64,961 delivered. The WhatsApp option is still there for shoppers who would rather speak to someone, and it now routes through the store's own redirect, so for the first time you can see in **Analytics → Sources** how many people use each route. Nothing about how you dispatch changes: confirmation still does not move the order, you do.
 
 
