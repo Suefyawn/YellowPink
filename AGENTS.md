@@ -28,6 +28,25 @@ with no Shopify equivalent (the outreach desk, quick answers, health
 tools, vendor settlements, the cashbook…) are separate parts and free to
 be their own thing.
 
+# What we sell: imported, not cheap local
+
+Owner directive, 14 Sep 2026: the catalogue focuses on **imported** brands.
+Cheap local lines are not worth stocking here, whatever the search volume
+behind them: the margin is too thin to be worth the shelf space, the
+fulfilment effort or the brand association.
+
+Concretely, when a gap is found in the catalogue, do **not** propose filling
+it from the low-price local drafts (Hello Hair, Golden Pearl "Set and Touch"
+and similar, roughly PKR 130-350). Those were archived on purpose. Propose
+imported stock instead, and prefer brands the store already has a vendor
+relationship with — CeraVe, La Roche-Posay, The Ordinary, OGX, Anua,
+Medicube, SKIN1004, COSRX, Beauty of Joseon, PIXI — because sourcing one
+more line from an existing supplier is far cheaper than opening a new one.
+
+This is why some obvious collection and quiz gaps stay open rather than
+being filled with whatever is nearest. An empty shelf is better than a
+shelf of stock the owner does not want to sell.
+
 # One brand image everywhere
 
 Owner directive, 13 Aug 2026: the whole online presence carries one
