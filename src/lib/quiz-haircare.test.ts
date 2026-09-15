@@ -67,6 +67,19 @@ describe('haircare branch wiring', () => {
     expect(lengths).toContain('OGX Hydrating + Tea Tree Mint Shampoo 385ml');
   });
 
+  it('every offered concern matches something on the live shelf', () => {
+    // The invariant the option list rests on, and the one a future catalogue
+    // change is most likely to break silently: an option must lead to a real
+    // product, or the quiz walks a shopper to an empty plan. Checked against
+    // the concern's own keywords rather than a hand-listed expectation, so
+    // adding a concern without stock fails here rather than in production.
+    for (const o of questionsFor('haircare')[1].options) {
+      const kws = HAIR_CONCERN_RULES[o.value].keywords;
+      const hits = LIVE_HAIR.filter(p => kws.some(k => p.name.toLowerCase().includes(k)));
+      expect(hits.length, `concern "${o.value}" matches no published product`).toBeGreaterThan(0);
+    }
+  });
+
   it('has a scoring rule for every concern offered', () => {
     for (const o of questionsFor('haircare')[1].options) {
       expect(HAIR_CONCERN_RULES[o.value]).toBeDefined();
