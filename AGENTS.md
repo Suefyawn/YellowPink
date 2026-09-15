@@ -47,6 +47,21 @@ This is why some obvious collection and quiz gaps stay open rather than
 being filled with whatever is nearest. An empty shelf is better than a
 shelf of stock the owner does not want to sell.
 
+# Cash on delivery stays, and stays unconditional
+
+Owner directive, 15 Sep 2026: do **not** propose advance payment, a deposit,
+or part-payment above a value threshold. "People shy away from the sale when
+they see advanced payments." COD is how this market buys, and a checkout that
+asks for money up front loses the order rather than securing it.
+
+This will keep looking like an obvious fix, so it is written down. Roughly
+31% of COD orders are cancelled (PKR 31,712 over 120 days), and any future
+conversion analysis will surface that number and point at a deposit. The
+answer is already no. The lever that IS available is confirmation: the
+one-click confirm link in the order email (`/order/confirm`, shipped 14 Sep)
+lets a customer confirm without talking to anyone, and that is the thing to
+measure and improve.
+
 # One brand image everywhere
 
 Owner directive, 13 Aug 2026: the whole online presence carries one
