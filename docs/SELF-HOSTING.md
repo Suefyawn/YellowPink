@@ -120,9 +120,28 @@ The script exits non-zero on failure so `MAILTO` or a cron monitor notices. A
 silently failing cron is how the abandoned-cart and review-request emails would
 stop going out without anyone finding out for weeks.
 
+## Automated setup
+
+`scripts/provision.sh <domain>` performs this whole document on a fresh
+Ubuntu box: packages, Node 22, Caddy with automatic TLS, the app user, the
+clone, swap if the machine is small, the build, the systemd unit, the
+firewall and the three cron jobs. It is idempotent, so a failed run can
+simply be repeated, and it stops to have `/etc/yellowpink.env` filled in
+rather than starting a store in demo mode.
+
+`scripts/deploy.sh` updates a running server afterwards. It builds before it
+restarts, so a broken commit leaves the previous version serving.
+
+[`SERVER-SETUP.md`](./SERVER-SETUP.md) is the same ground written for
+someone who has never used a server.
+
 ## Cutover checklist
 
 1. Provision the box, install Node 22, nginx/Caddy, and a TLS certificate.
+   **If you have never done this, follow [`SERVER-SETUP.md`](./SERVER-SETUP.md)**,
+   which walks through choosing a provider, creating the machine and running
+   `scripts/provision.sh` — one command that does steps 1, 2 and 4 of this
+   list for you.
 2. Copy the repo, set the environment file, `npm ci && npm run build:standalone`.
 3. Start it on localhost, proxy to it, and check the site over the real domain
    **before** moving DNS: `/`, `/shop`, a product page, a collection page,

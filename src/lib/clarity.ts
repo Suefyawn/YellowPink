@@ -58,6 +58,21 @@ export function num(v: unknown): number {
 export interface ClarityRow { [key: string]: unknown }
 export interface ClarityMetric { metricName: string; information: ClarityRow[] }
 
+/** One frustration signal. Clarity gives both the raw count and the share of
+ *  sessions that hit it; the share is the comparable number day to day, since
+ *  a raw count rises simply because traffic rose. */
+export interface ClaritySignal {
+  /** Occurrences over the window. Null when Clarity did not report it. */
+  count: number | null;
+  /** Percent of sessions with at least one, 0-100. Null when not reported. */
+  sessionPercent: number | null;
+}
+
+export interface ClarityDimensionRow {
+  name: string;
+  sessions: number;
+}
+
 export interface ClaritySummary {
   /** Real (non-bot) sessions over the window. */
   sessions: number;
@@ -67,103 +82,131 @@ export interface ClaritySummary {
   botSessions: number;
   distinctUsers: number;
   pagesPerSession: number | null;
+  /** Average share of a page scrolled, 0-100. */
+  averageScrollDepth: number | null;
+  /** Clarity reports engagement in minutes, total and active. Active time is
+   *  the one worth reading: total time counts a tab left open. */
+  totalTimeMinutes: number | null;
+  activeTimeMinutes: number | null;
   /** Frustration signals. These are the reason to wire Clarity up at all:
-   *  they point at the exact places a checkout loses people.
-   *
-   *  NULL means "Clarity returned this metric but its value could not be read
-   *  confidently", which is different from zero. See metricTotal. */
-  rageClicks: number | null;
-  deadClicks: number | null;
-  quickbackClicks: number | null;
-  excessiveScroll: number | null;
-  scriptErrors: number | null;
-  errorClicks: number | null;
+   *  they point at the exact places a checkout loses people. */
+  rageClicks: ClaritySignal;
+  deadClicks: ClaritySignal;
+  quickbackClicks: ClaritySignal;
+  excessiveScroll: ClaritySignal;
+  scriptErrors: ClaritySignal;
+  errorClicks: ClaritySignal;
+  /** Session split by device. Mobile share decides a lot of layout arguments,
+   *  and it arrives free on the same call. */
+  devices: ClarityDimensionRow[];
   /** Which metric names the API actually returned, so the dashboard can tell
    *  "zero rage clicks" apart from "Clarity did not report rage clicks". */
   metricsSeen: string[];
 }
 
-/** Sum one numeric field across every row of a named metric. */
-function sumField(metrics: ClarityMetric[], metricName: string, field: string): number {
-  const m = metrics.find(x => x.metricName === metricName);
-  if (!m || !Array.isArray(m.information)) return 0;
-  return m.information.reduce((t, row) => t + num(row[field]), 0);
-}
-
-/** Field names that are a DENOMINATOR, not a metric value. Every metric's
- *  rows carry the project's session total alongside the metric's own figure,
- *  and picking the first numeric field meant every frustration signal read
- *  back as the session count. Observed live on 14 Sep 2026: sessions 51,
- *  rage clicks 51, dead clicks 51, script errors 51 — all the same number,
- *  all wrong. These are excluded from the search. */
-const DENOMINATOR_FIELDS = /^(total)?(session|bot|distinct|distant|user|page)s?(count|views)?$/i;
-
-/** Words that identify a field as belonging to a specific metric rather than
- *  being a shared total. Keyed by metric so "rage" only matches rage clicks. */
-const METRIC_WORDS: Record<string, RegExp> = {
-  RageClickCount:    /rage/i,
-  DeadClickCount:    /dead/i,
-  QuickbackClick:    /quickback|quick_back/i,
-  ExcessiveScroll:   /excessive|scroll/i,
-  ScriptErrorCount:  /script/i,
-  ErrorClickCount:   /errorclick|error_click/i,
-};
-
-/** Total a frustration metric, or return NULL when it cannot be read
- *  confidently.
+/** Field names, pinned to a real response.
  *
- *  Microsoft documents the response shape for `Traffic` only, and says
- *  outright that "additional metrics and dimensions may be included in the
- *  full API response" without listing their fields. So the field name for
- *  each frustration metric is genuinely unknown, and the first version of
- *  this function guessed — which is how the card shipped showing the session
- *  count six times over.
+ *  Microsoft documents the shape of `Traffic` and nothing else, and the first
+ *  two versions of this file GUESSED at the rest. The first guess picked the
+ *  first numeric field in each row, which is the session total, so the card
+ *  shipped reporting 51 rage clicks, 51 dead clicks and 51 script errors on a
+ *  day with 51 sessions. The second guess refused to read anything it could
+ *  not name, which was honest but printed a dash for every signal.
  *
- *  The rule now: take a field whose name carries this metric's own concept
- *  (a "rageClickCount" for RageClickCount), never a shared denominator. If
- *  nothing matches, return null so the card prints "not reported" instead of
- *  a confident wrong number. The raw response is stored alongside the summary
- *  so the real field names can be read off a live payload and pinned here. */
-function metricTotal(metrics: ClarityMetric[], metricName: string): number | null {
+ *  The token is live now, so this is no longer guesswork. Observed response,
+ *  15 Sep 2026 (stored in full under `raw` on every snapshot):
+ *
+ *    { "metricName": "DeadClickCount", "information": [{
+ *        "subTotal": 5, "pagesViews": 4, "sessionsCount": 54,
+ *        "sessionsWithMetricPercentage": 7.41,
+ *        "sessionsWithoutMetricPercentage": 92.59 }] }
+ *
+ *  So every frustration metric carries its count in `subTotal` and the share
+ *  of sessions affected in `sessionsWithMetricPercentage`, and `sessionsCount`
+ *  is the denominator that fooled the first version.
+ *
+ *  The names stay in one table so a future rename is a one-line edit, and
+ *  anything not found still yields null rather than a confident wrong number. */
+export type FrustrationMetric =
+  | 'RageClickCount'
+  | 'DeadClickCount'
+  | 'QuickbackClick'
+  | 'ExcessiveScroll'
+  | 'ScriptErrorCount'
+  | 'ErrorClickCount';
+
+/** The count field on a frustration metric. */
+const COUNT_FIELD = 'subTotal';
+/** The share-of-sessions field on a frustration metric. */
+const SHARE_FIELD = 'sessionsWithMetricPercentage';
+
+/** Read one field off every row of a metric, returning null when the metric is
+ *  absent or the field is not present on any row.
+ *
+ *  Null and zero are different answers and the card renders them differently:
+ *  zero means Clarity counted none, null means we could not read it. Returning
+ *  0 for an unreadable field is the specific mistake this module has already
+ *  made once. */
+function readField(
+  metrics: ClarityMetric[],
+  metricName: string,
+  field: string,
+  combine: 'sum' | 'mean' = 'sum',
+): number | null {
   const m = metrics.find(x => x.metricName === metricName);
   if (!m || !Array.isArray(m.information) || m.information.length === 0) return null;
 
-  const concept = METRIC_WORDS[metricName];
-  let found = false;
-  let total = 0;
+  const rows = m.information.filter(r => r && r[field] !== undefined && r[field] !== null);
+  if (rows.length === 0) return null;
 
-  for (const row of m.information) {
-    const key = Object.keys(row).find(k => {
-      if (DENOMINATOR_FIELDS.test(k)) return false;
-      if (concept && !concept.test(k)) return false;
-      return typeof row[k] === 'number' || typeof row[k] === 'string';
-    });
-    if (key !== undefined) { found = true; total += num(row[key]); }
-  }
-
-  return found ? total : null;
+  const total = rows.reduce((t, r) => t + num(r[field]), 0);
+  return combine === 'mean' ? total / rows.length : total;
 }
 
-/** Fold the raw API response into the handful of figures the admin card shows. */
+/** One named dimension (Device, Country, Browser…) as name → sessions, largest
+ *  first. Clarity returns these on the same single call, so they cost nothing
+ *  extra against the 10-per-day quota. */
+function dimension(metrics: ClarityMetric[], metricName: string): ClarityDimensionRow[] {
+  const m = metrics.find(x => x.metricName === metricName);
+  if (!m || !Array.isArray(m.information)) return [];
+  return m.information
+    .filter(r => typeof r.name === 'string' && r.name)
+    .map(r => ({ name: String(r.name), sessions: num(r.sessionsCount) }))
+    .sort((a, b) => b.sessions - a.sessions);
+}
+
+/** Fold the raw API response into the figures the admin card shows. */
 export function summarise(metrics: ClarityMetric[]): ClaritySummary {
-  const traffic = metrics.find(m => m.metricName === 'Traffic');
-  const pps = traffic?.information?.length
-    ? traffic.information.reduce((t, r) => t + num(r.PagesPerSessionPercentage), 0) / traffic.information.length
-    : null;
+  const signal = (name: FrustrationMetric): ClaritySignal => ({
+    count: readField(metrics, name, COUNT_FIELD),
+    sessionPercent: round2(readField(metrics, name, SHARE_FIELD, 'mean')),
+  });
 
   return {
-    sessions: sumField(metrics, 'Traffic', 'totalSessionCount'),
-    botSessions: sumField(metrics, 'Traffic', 'totalBotSessionCount'),
-    distinctUsers: sumField(metrics, 'Traffic', 'distantUserCount'),
-    pagesPerSession: pps === null ? null : Math.round(pps * 100) / 100,
-    rageClicks: metricTotal(metrics, 'RageClickCount'),
-    deadClicks: metricTotal(metrics, 'DeadClickCount'),
-    quickbackClicks: metricTotal(metrics, 'QuickbackClick'),
-    excessiveScroll: metricTotal(metrics, 'ExcessiveScroll'),
-    scriptErrors: metricTotal(metrics, 'ScriptErrorCount'),
-    errorClicks: metricTotal(metrics, 'ErrorClickCount'),
+    // Counts SUM and rates AVERAGE, so that a response split by dimension
+    // (one row per OS, say) totals correctly instead of reporting only the
+    // first row. The daily call requests no dimension and returns a single
+    // row, where both rules agree.
+    sessions: readField(metrics, 'Traffic', 'totalSessionCount') ?? 0,
+    botSessions: readField(metrics, 'Traffic', 'totalBotSessionCount') ?? 0,
+    distinctUsers: readField(metrics, 'Traffic', 'distinctUserCount') ?? 0,
+    pagesPerSession: round2(readField(metrics, 'Traffic', 'pagesPerSessionPercentage', 'mean')),
+    averageScrollDepth: round2(readField(metrics, 'ScrollDepth', 'averageScrollDepth', 'mean')),
+    totalTimeMinutes: readField(metrics, 'EngagementTime', 'totalTime'),
+    activeTimeMinutes: readField(metrics, 'EngagementTime', 'activeTime'),
+    rageClicks: signal('RageClickCount'),
+    deadClicks: signal('DeadClickCount'),
+    quickbackClicks: signal('QuickbackClick'),
+    excessiveScroll: signal('ExcessiveScroll'),
+    scriptErrors: signal('ScriptErrorCount'),
+    errorClicks: signal('ErrorClickCount'),
+    devices: dimension(metrics, 'Device'),
     metricsSeen: metrics.map(m => m.metricName).filter(Boolean),
   };
+}
+
+function round2(v: number | null): number | null {
+  return v === null ? null : Math.round(v * 100) / 100;
 }
 
 /** One call, because the quota is 10 per project per DAY.

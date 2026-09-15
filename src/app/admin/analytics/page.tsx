@@ -21,6 +21,7 @@ import { RetentionWidget } from '@/components/admin/RetentionWidget';
 import { SessionRecordingsWidget } from '@/components/admin/SessionRecordingsWidget';
 import { WebVitalsWidget } from '@/components/admin/WebVitalsWidget';
 import { BingSearchWidget } from '@/components/admin/BingSearchWidget';
+import { CodConfirmationWidget, type CodConfirmationRow } from '@/components/admin/CodConfirmationWidget';
 import { ClarityWidget } from '@/components/admin/ClarityWidget';
 import { TrafficSearchDashboard } from '@/components/admin/insights/TrafficSearchDashboard';
 import { getTrafficSearchData } from '@/lib/traffic-insights';
@@ -148,7 +149,7 @@ export default async function AnalyticsPage({
   // Double-window daily series: the last `window` days are the charts/KPIs,
   // the `window` days before them are the delta baseline — one source for
   // headline, sparkline and trend pill, so they can never disagree.
-  const [daily2x, kpis, byStatus, top, rfm, cohort, returning2x, unitsRow, byRegion] = await Promise.all([
+  const [daily2x, kpis, byStatus, top, rfm, cohort, returning2x, unitsRow, byRegion, codConfirm] = await Promise.all([
     rpc<DailyRow>('analytics_daily', { p_days: window * 2 }),
     rpc<KpiRow>('analytics_kpis', { p_days: window }).then(rows => rows[0]),
     rpc<StatusRow>('analytics_orders_by_status'),
@@ -160,6 +161,10 @@ export default async function AnalyticsPage({
     rpc<ReturningRow>('analytics_returning_split', { p_days: window * 2 }),
     rpc<UnitsRow>('analytics_units_per_order', { p_days: window }).then(rows => rows[0]),
     rpc<RegionRow>('analytics_sales_by_region', { p_days: window }),
+    // COD confirmation: the scoreboard for the confirm link, which is the
+    // only lever left against cancellations now that advance payment is
+    // ruled out by owner directive.
+    rpc<CodConfirmationRow>('analytics_cod_confirmation', { p_days: window }).then(rows => rows[0] ?? null),
   ]);
   const daily = daily2x.slice(-window);
   const prevDaily = daily2x.slice(-(window * 2), -window);
@@ -567,6 +572,12 @@ export default async function AnalyticsPage({
                 })}
               </div>
             )}
+          </div>
+
+          {/* Post-purchase, so it sits below the browse-to-buy cards: a COD
+              order is won at checkout and then lost at confirmation. */}
+          <div style={{ marginBottom: 28 }}>
+            <CodConfirmationWidget row={codConfirm} days={window} />
           </div>
         </>
       )}
