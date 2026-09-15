@@ -29,6 +29,7 @@ import { NoAccess } from '@/components/admin/NoAccess';
 import { AbandonedRow, type AbandonedCartRow } from '@/components/admin/AbandonedRow';
 import { saveAbandonedSettings } from './actions';
 import { whatsappUrlForCustomer } from '@/lib/whatsapp';
+import { checkRecoveryCoupon, explainRejection, stripCouponSentence, type RecoveryCoupon } from '@/lib/recovery-coupon';
 import { SITE_URL } from '@/lib/seo';
 import { PK_TZ } from '@/lib/dates';
 import type { CartItem } from '@/types';
@@ -36,6 +37,12 @@ import type { CartItem } from '@/types';
 const DEFAULT_TEMPLATE =
   `Hi {name}! It's Yellow Pink 💛 You were about to order {items} (PKR {total}) and we saved your cart for you: {link} ` +
   `Cash on delivery is available nationwide. Use code {coupon} for a discount if you order today. Reply here if anything held you back, happy to help!`;
+
+// The coupon that actually exists for cart recovery: created 14 July 2026,
+// 15% off over PKR 1,500. The previous default here was COMEBACK10, which has
+// never existed in the coupons table. Staff can override this in the box on
+// the page; whatever is set, it is checked before any message promises it.
+const DEFAULT_COUPON = 'COMEBACK15';
 
 interface Row {
   id: string;
@@ -84,9 +91,21 @@ export default async function AbandonedPage() {
 
   const settings = new Map((settingRows ?? []).map((r: { key: string; value: string | null }) => [r.key, r.value ?? '']));
   const template = settings.get('abandoned_wa_template') || DEFAULT_TEMPLATE;
-  // Default matches the tier-3 reminder email's code so the discount story is
-  // consistent whichever channel reaches the shopper first.
-  const coupon = settings.get('abandoned_wa_coupon') || 'COMEBACK10';
+  const configuredCode = (settings.get('abandoned_wa_coupon') || DEFAULT_COUPON).trim();
+
+  // The configured code is looked up before it is promised. Until 15 Sep this
+  // page and the tier-3 reminder email both defaulted to 'COMEBACK10', a
+  // coupon that has never existed, so every recovery message sent a hesitating
+  // shopper back to checkout with a code that would be rejected there. If the
+  // code does not resolve to a usable coupon now, the sentence promising it is
+  // dropped from the message and staff are told why.
+  const { data: couponRow } = await admin
+    .from('coupons')
+    .select('code, active, value, min_order, expires_at, starts_at, max_uses, used_count')
+    .ilike('code', configuredCode)
+    .maybeSingle();
+  const verdict = checkRecoveryCoupon(couponRow as RecoveryCoupon | null, undefined);
+  const coupon = verdict.code ?? configuredCode;
 
   const queue: AbandonedCartRow[] = ((cartRows ?? []) as Row[])
     .map(r => {
@@ -95,12 +114,17 @@ export default async function AbandonedPage() {
       const itemsSummary = items.length > 1 ? `${first} + ${items.length - 1} more` : first;
       const firstName = (r.first_name ?? '').split(' ')[0] || 'there';
       const link = `${SITE_URL}/cart?restore=${r.restore_token}&utm_source=whatsapp&utm_medium=outreach&utm_campaign=abandoned-checkout`;
-      const message = template
+      const rendered = template
         .replaceAll('{name}', firstName)
         .replaceAll('{items}', itemsSummary)
         .replaceAll('{total}', Math.round(r.subtotal).toLocaleString())
         .replaceAll('{coupon}', coupon)
         .replaceAll('{link}', link);
+      // Re-checked per cart, because a coupon can be usable for the queue as a
+      // whole and still not reach this cart's minimum order value. Promising
+      // it anyway is the failure this whole change is about.
+      const perCart = checkRecoveryCoupon(couponRow as RecoveryCoupon | null, Number(r.subtotal) || 0);
+      const message = perCart.code ? rendered : stripCouponSentence(rendered, coupon);
       const waHref = whatsappUrlForCustomer(r.phone, message);
       return waHref ? {
         id: r.id,
@@ -135,6 +159,22 @@ export default async function AbandonedPage() {
           also left an email keep getting the automatic reminder emails; the Emails column shows how far that sequence got.
         </p>
       </div>
+
+      {/* The configured discount is checked against the coupons table on every
+          load. A code that does not resolve is the failure that made this queue
+          useless for two months, so it is shown here rather than silently
+          dropped. */}
+      {verdict.reason && (
+        <div style={{
+          background: '#FEF3C7', border: '1px solid #F7C948', borderRadius: 10,
+          padding: '12px 16px', marginBottom: 20, fontSize: '0.8125rem', color: '#374151',
+        }}>
+          <strong style={{ color: '#111827' }}>Messages are going out without a discount code.</strong>{' '}
+          {explainRejection(verdict.reason, configuredCode)}{' '}
+          Everything else in the message is unchanged, and the cart link still works.{' '}
+          <a href="/admin/coupons" style={{ color: '#C5286A', fontWeight: 600 }}>Manage coupons</a>
+        </div>
+      )}
 
       {/* Template + coupon settings */}
       <form action={saveAbandonedSettings} style={{ background: 'white', borderRadius: 10, border: '1px solid #e5e7eb', padding: 20, marginBottom: 24 }}>
