@@ -12,7 +12,7 @@
 
 'use client';
 
-import { readConsent } from './consent';
+import { effectiveConsent } from './consent';
 
 export interface TrackProductPayload {
   product_id?: string;
@@ -80,7 +80,7 @@ export function track(event: TrackEvent): void {
   // Plausible and gtag require an explicit opt-in to send anything because
   // they originate the network request from this code, not from a vendor SDK
   // that has its own consent UI.
-  const consent = readConsent();
+  const consent = effectiveConsent();
   if (!consent?.analytics) return;
 
   // Plausible has a tiny events endpoint that needs no SDK.

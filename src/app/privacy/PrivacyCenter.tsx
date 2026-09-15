@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { readConsent, writeConsent, DEFAULT_CONSENT, type Consent } from '@/lib/consent';
+import { effectiveConsent, writeConsent, DEFAULT_CONSENT, type Consent } from '@/lib/consent';
 
 // Inline interactive consent management for /privacy. Mirrors the banner
 // toggles so a user who already made a choice (and dismissed the banner)
@@ -11,8 +11,13 @@ export function PrivacyCenter() {
   const [consent, setLocal] = useState<Consent>(DEFAULT_CONSENT);
   const [saved, setSaved] = useState<'idle' | 'just-saved'>('idle');
 
+  // effectiveConsent, so this page shows what is actually in force. A visitor
+  // outside the prompt regions has implied consent and would otherwise be shown
+  // two unticked boxes while analytics was in fact running — the one place that
+  // must never misreport the state. Toggling anything here writes an explicit
+  // choice, which then wins everywhere.
   // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { setLocal(readConsent() ?? DEFAULT_CONSENT); }, []);
+  useEffect(() => { setLocal(effectiveConsent() ?? DEFAULT_CONSENT); }, []);
 
   const persist = (next: Partial<Consent>) => {
     const merged = writeConsent({ ...consent, ...next });
