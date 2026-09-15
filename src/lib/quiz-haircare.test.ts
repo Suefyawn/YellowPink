@@ -16,6 +16,15 @@ const LIVE_HAIR = [
   { name: 'Conatural Rosemary Essential Oil 10ml' },
   { name: 'Minoxin Plus Minoxidil 5% 60ml' },
   { name: 'OGX Hydrate & Repair+ Argan Oil of Morocco Hair Mask 168g' },
+  // Published 15 Sep 2026, which is what re-opened the dandruff branch.
+  { name: 'CeraVe Anti-Dandruff Hydrating Shampoo 236ml' },
+  { name: 'CeraVe Anti-Dandruff Hydrating Conditioner 236ml' },
+  { name: 'La Roche-Posay Kerium DS Anti-Dandruff Intensive Shampoo 125ml' },
+  { name: 'OGX Renewing + Argan Oil of Morocco Shampoo 385ml' },
+  { name: 'OGX Renewing + Argan Oil of Morocco Conditioner 385ml' },
+  { name: 'OGX Thick & Full + Biotin & Collagen Shampoo 385ml' },
+  { name: 'OGX Thick & Full + Biotin & Collagen Conditioner 385ml' },
+  { name: 'OGX Hydrating + Tea Tree Mint Shampoo 385ml' },
 ];
 
 describe('haircare branch wiring', () => {
@@ -30,11 +39,32 @@ describe('haircare branch wiring', () => {
   });
 
   it('only offers concerns the catalogue can answer', () => {
-    // Zero anti-dandruff products are published. Offering the option would
-    // walk a shopper through the quiz to an empty result.
+    // The rule that governs this list: an option must lead to something
+    // buyable. Dandruff was withheld on 14 Sep with zero anti-dandruff
+    // products published, and restored on 15 Sep when three went live.
     const values = questionsFor('haircare')[1].options.map(o => o.value);
-    expect(values).toEqual(['hairfall', 'damage', 'growth']);
-    expect(values).not.toContain('dandruff');
+    expect(values).toEqual(['hairfall', 'dandruff', 'damage', 'growth']);
+  });
+
+  it('has real anti-dandruff stock behind the dandruff option', () => {
+    // The guard that keeps the option honest: if these are ever unpublished,
+    // this fails and the option must come out with them.
+    const dandruff = LIVE_HAIR.filter(p => /dandruff|kerium/i.test(p.name));
+    expect(dandruff.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('files an anti-dandruff shampoo as a SCALP treatment, not a length wash', () => {
+    // classifyIntoSteps takes the FIRST matching step, and the lengths step
+    // matches a bare 'shampoo'. Without 'dandruff' on the scalp step, the
+    // dandruff plan would recommend nothing for the scalp — which is the
+    // whole point of the branch.
+    const byStep = classifyIntoSteps(LIVE_HAIR, HAIRCARE_STEPS);
+    const scalp = (byStep.get('scalp') ?? []).map(p => p.name);
+    expect(scalp).toContain('CeraVe Anti-Dandruff Hydrating Shampoo 236ml');
+    expect(scalp).toContain('La Roche-Posay Kerium DS Anti-Dandruff Intensive Shampoo 125ml');
+    // A plain shampoo is still lengths care.
+    const lengths = (byStep.get('lengths') ?? []).map(p => p.name);
+    expect(lengths).toContain('OGX Hydrating + Tea Tree Mint Shampoo 385ml');
   });
 
   it('has a scoring rule for every concern offered', () => {
@@ -112,7 +142,7 @@ describe('haircare results', () => {
     ({ branch: 'haircare', hair_type: 'dry', hair_concern: c }) as QuizAnswers;
 
   it('links real guides for every concern', () => {
-    for (const c of ['hairfall', 'damage', 'growth']) {
+    for (const c of ['hairfall', 'dandruff', 'damage', 'growth']) {
       expect(guidesForAnswers(answers(c)).length).toBeGreaterThan(0);
     }
   });

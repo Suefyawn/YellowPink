@@ -68,11 +68,15 @@ const SKINCARE_QUESTIONS: QuizQuestion[] = [
 ];
 
 // ─── Haircare questions ─────────────────────────────────────────────────────
-// Only three concerns are offered, and that is a catalogue decision rather
-// than an editorial one: the store currently publishes five Hair Care
-// products and ZERO anti-dandruff products. A "dandruff & flaky scalp"
-// option would take a shopper through the quiz to an empty result, which is
-// worse than not asking. Add the option back when the stock exists.
+// The concern list is a CATALOGUE decision, not an editorial one: an option
+// here must lead to something buyable, or the quiz walks a shopper to an
+// empty result, which is worse than not asking.
+//
+// "Dandruff & flaky scalp" was held back on 14 Sep because the store
+// published zero anti-dandruff products. It is offered again from 15 Sep,
+// when three went live: the CeraVe anti-dandruff shampoo and conditioner and
+// the La Roche-Posay Kerium DS. If those are ever unpublished, this option
+// comes out with them.
 const HAIRCARE_QUESTIONS: QuizQuestion[] = [
   {
     key: 'hair_type',
@@ -89,6 +93,7 @@ const HAIRCARE_QUESTIONS: QuizQuestion[] = [
     prompt: "What's bothering you most?",
     options: [
       { value: 'hairfall', label: 'Hair fall & thinning' },
+      { value: 'dandruff', label: 'Dandruff & flaky scalp' },
       { value: 'damage', label: 'Dryness, frizz & damage' },
       { value: 'growth', label: 'Slow growth & length' },
     ],
@@ -271,7 +276,12 @@ export const HAIRCARE_STEPS: RoutineStepDef[] = [
   {
     key: 'scalp', label: 'Treat the scalp',
     note: 'Hair grows out of skin, so anything that changes growth works here.',
-    match: ['minoxidil', 'rosemary', 'hair growth', 'scalp', 'tonic', 'hair serum'],
+    // 'dandruff' sits here rather than under the lengths step because
+    // classifyIntoSteps takes the FIRST matching step, and an anti-dandruff
+    // shampoo is a scalp treatment that happens to be a shampoo. Without it,
+    // the plain 'shampoo' match on the lengths step would claim it and the
+    // dandruff plan would recommend nothing for the scalp.
+    match: ['minoxidil', 'rosemary', 'hair growth', 'scalp', 'tonic', 'hair serum', 'dandruff'],
   },
   {
     key: 'lengths', label: 'Look after the lengths',
@@ -297,6 +307,10 @@ export const HAIR_CONCERN_RULES: Record<string, { label: string; keywords: strin
   hairfall: {
     label: 'hair fall & thinning',
     keywords: ['minoxidil', 'hair fall', 'hair loss', 'thinning', 'regrow', 'rosemary', 'biotin', 'density', 'follicle'],
+  },
+  dandruff: {
+    label: 'dandruff & flaky scalp',
+    keywords: ['dandruff', 'flake', 'flaky', 'kerium', 'zinc pyrithione', 'pyrithione', 'ketoconazole', 'selenium', 'scalp', 'itch'],
   },
   damage: {
     label: 'dryness, frizz & damage',
@@ -403,6 +417,11 @@ export const RESULT_GUIDES: Record<string, { slug: string; title: string }[]> = 
     { slug: 'how-to-reduce-hair-fall-pakistan', title: 'How to Reduce Hair Fall: Causes & Proven Solutions' },
     { slug: 'minoxidil-for-hair-loss-pakistan', title: 'Minoxidil in Pakistan: How to Use It, Results Timeline & Side Effects' },
     { slug: 'biotin-hair-loss-pakistan-women-supplement-guide', title: "Biotin for Hair Loss: Women's Complete Supplement Guide" },
+  ],
+  'hair:dandruff': [
+    { slug: 'dandruff-treatment-shampoos-home-remedies-pakistan', title: 'Dandruff Treatment: Causes, Best Shampoos & Home Remedies' },
+    { slug: 'best-shampoo-in-pakistan', title: 'Best Shampoo in Pakistan: Match It to Your Scalp, Not the Ad' },
+    { slug: 'hair-conditioner-guide-pakistan', title: 'Hair Conditioner: How to Use It Right, Best Picks and Real Prices' },
   ],
   'hair:damage': [
     { slug: 'argan-oil-for-hair-benefits-pakistan', title: 'Argan Oil for Hair: Benefits & How to Use It' },
