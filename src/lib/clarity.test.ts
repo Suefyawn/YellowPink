@@ -9,15 +9,32 @@ import {
   type ClarityMetric,
 } from './clarity';
 
-// The shape in Microsoft's own docs: counts are STRINGS, rates are numbers,
-// and each metric carries whatever dimension was requested.
-const TRAFFIC: ClarityMetric = {
-  metricName: 'Traffic',
-  information: [
-    { totalSessionCount: '9554', totalBotSessionCount: '8369', distantUserCount: '189733', PagesPerSessionPercentage: 1.0931, OS: 'Other' },
-    { totalSessionCount: '291942', totalBotSessionCount: '31076', distantUserCount: '212836', PagesPerSessionPercentage: 2.2609, OS: 'Android' },
-  ],
-};
+// ── The real response, captured live ────────────────────────────────────────
+// Every earlier version of these tests invented this fixture from a reading of
+// Microsoft's docs, which document `Traffic` and nothing else. The invented
+// field names (`distantUserCount`, `PagesPerSessionPercentage`, a
+// `rageClickCount` on RageClickCount) were all wrong, so the suite passed
+// against the parser's own assumptions and could not possibly catch the bug
+// that shipped. This fixture is copied verbatim from the payload the live API
+// returned on 15 Sep 2026, stored under `raw` on the snapshot.
+//
+// Rule for this file: a fixture asserts what the API sends, never what the
+// parser hopes for.
+const LIVE: ClarityMetric[] = [
+  { metricName: 'DeadClickCount', information: [{ subTotal: 5, pagesViews: 4, sessionsCount: 54, sessionsWithMetricPercentage: 7.41, sessionsWithoutMetricPercentage: 92.59 }] },
+  { metricName: 'ExcessiveScroll', information: [{ subTotal: 0, pagesViews: 0, sessionsCount: 54, sessionsWithMetricPercentage: 0, sessionsWithoutMetricPercentage: 100 }] },
+  { metricName: 'RageClickCount', information: [{ subTotal: 0, pagesViews: 0, sessionsCount: 54, sessionsWithMetricPercentage: 0, sessionsWithoutMetricPercentage: 100 }] },
+  { metricName: 'QuickbackClick', information: [{ subTotal: 30, pagesViews: 30, sessionsCount: 54, sessionsWithMetricPercentage: 27.78, sessionsWithoutMetricPercentage: 72.22 }] },
+  { metricName: 'ScriptErrorCount', information: [{ subTotal: 0, pagesViews: 0, sessionsCount: 54, sessionsWithMetricPercentage: 0, sessionsWithoutMetricPercentage: 100 }] },
+  { metricName: 'ErrorClickCount', information: [{ subTotal: 0, pagesViews: 0, sessionsCount: 54, sessionsWithMetricPercentage: 0, sessionsWithoutMetricPercentage: 100 }] },
+  { metricName: 'ScrollDepth', information: [{ averageScrollDepth: 41.75 }] },
+  { metricName: 'Traffic', information: [{ distinctUserCount: 48, totalSessionCount: 54, totalBotSessionCount: 1, pagesPerSessionPercentage: 3.3275862068965516 }] },
+  { metricName: 'EngagementTime', information: [{ totalTime: 136, activeTime: 75 }] },
+  { metricName: 'Device', information: [{ name: 'Mobile', sessionsCount: 48 }, { name: 'PC', sessionsCount: 6 }] },
+  { metricName: 'Country', information: [{ name: 'Pakistan', sessionsCount: 53 }, { name: 'Bahrain', sessionsCount: 1 }] },
+];
+
+const TRAFFIC: ClarityMetric = LIVE.find(m => m.metricName === 'Traffic')!;
 
 describe('num', () => {
   it('coerces the string counts the API actually returns', () => {
@@ -37,84 +54,110 @@ describe('num', () => {
 });
 
 describe('summarise', () => {
-  it('totals traffic across dimension rows', () => {
-    const s = summarise([TRAFFIC]);
-    expect(s.sessions).toBe(9554 + 291942);
-    expect(s.botSessions).toBe(8369 + 31076);
-    expect(s.distinctUsers).toBe(189733 + 212836);
+  it('reads every traffic figure off the live payload', () => {
+    const s = summarise(LIVE);
+    expect(s.sessions).toBe(54);
+    expect(s.botSessions).toBe(1);
+    expect(s.distinctUsers).toBe(48);
+    expect(s.pagesPerSession).toBe(3.33);
   });
 
-  it('averages pages-per-session and rounds to 2dp', () => {
-    expect(summarise([TRAFFIC]).pagesPerSession).toBe(1.68);
+  // ── The regression this rewrite exists for ────────────────────────────────
+  // Shipped 14 Sep 2026 and wrong against the live API twice over. First it
+  // took the first numeric field in each row, which is the session total, so
+  // every signal read back as 51 on a day with 51 sessions. The fix for that
+  // refused any field it could not name, so every signal read back as a dash.
+  // Both were caused by the same thing: nobody had looked at a real response.
+  it('reads each frustration count from subTotal, not from the denominator', () => {
+    const s = summarise(LIVE);
+    expect(s.deadClicks.count).toBe(5);
+    expect(s.quickbackClicks.count).toBe(30);
+    expect(s.rageClicks.count).toBe(0);
+    expect(s.scriptErrors.count).toBe(0);
+    expect(s.errorClicks.count).toBe(0);
+    expect(s.excessiveScroll.count).toBe(0);
+
+    // The specific wrong answers, named so neither can come back.
+    for (const sig of [s.deadClicks, s.quickbackClicks, s.rageClicks, s.scriptErrors]) {
+      expect(sig.count).not.toBe(54); // the session count
+      expect(sig.count).not.toBeNull(); // the over-correction
+    }
+  });
+
+  it('carries the share of sessions Clarity reports for each signal', () => {
+    const s = summarise(LIVE);
+    expect(s.deadClicks.sessionPercent).toBe(7.41);
+    expect(s.quickbackClicks.sessionPercent).toBe(27.78);
+    expect(s.rageClicks.sessionPercent).toBe(0);
+  });
+
+  it('reads scroll depth and engagement time', () => {
+    const s = summarise(LIVE);
+    expect(s.averageScrollDepth).toBe(41.75);
+    expect(s.totalTimeMinutes).toBe(136);
+    expect(s.activeTimeMinutes).toBe(75);
+  });
+
+  it('orders the device split largest first', () => {
+    expect(summarise(LIVE).devices).toEqual([
+      { name: 'Mobile', sessions: 48 },
+      { name: 'PC', sessions: 6 },
+    ]);
+  });
+
+  it('coerces the string counts the docs say may arrive', () => {
+    const s = summarise([
+      { metricName: 'Traffic', information: [{ totalSessionCount: '9554', totalBotSessionCount: '8369', distinctUserCount: '189733', pagesPerSessionPercentage: 1.0931 }] },
+      { metricName: 'RageClickCount', information: [{ subTotal: '12' }] },
+    ]);
+    expect(s.sessions).toBe(9554);
+    expect(s.distinctUsers).toBe(189733);
+    expect(s.rageClicks.count).toBe(12);
+  });
+
+  it('sums counts and averages rates across dimension rows', () => {
+    // Requesting a dimension splits every metric into one row per value. The
+    // daily call requests none, but reading only the first row would silently
+    // undercount if that ever changed.
+    const s = summarise([
+      { metricName: 'Traffic', information: [
+        { totalSessionCount: 100, totalBotSessionCount: 1, distinctUserCount: 90, pagesPerSessionPercentage: 2 },
+        { totalSessionCount: 300, totalBotSessionCount: 3, distinctUserCount: 280, pagesPerSessionPercentage: 4 },
+      ] },
+      { metricName: 'DeadClickCount', information: [{ subTotal: 5 }, { subTotal: 7 }] },
+    ]);
+    expect(s.sessions).toBe(400);
+    expect(s.distinctUsers).toBe(370);
+    expect(s.pagesPerSession).toBe(3);
+    expect(s.deadClicks.count).toBe(12);
+  });
+
+  it('returns null rather than 0 when a metric arrives without its count field', () => {
+    // If Microsoft renames subTotal, the card must print a dash. A zero would
+    // read as "no rage clicks", which is a claim the data does not support.
+    const s = summarise([
+      { metricName: 'RageClickCount', information: [{ sessionsCount: 54, pagesViews: 3 }] },
+    ]);
+    expect(s.rageClicks.count).toBeNull();
+    expect(s.rageClicks.sessionPercent).toBeNull();
+  });
+
+  it('returns null for a metric with an empty information array', () => {
+    expect(summarise([{ metricName: 'RageClickCount', information: [] }]).rageClicks.count).toBeNull();
+  });
+
+  it('distinguishes a real zero from "not reported" via metricsSeen', () => {
+    const reported = summarise(LIVE);
+    expect(reported.rageClicks.count).toBe(0);
+    expect(reported.metricsSeen).toContain('RageClickCount');
+
+    const absent = summarise([TRAFFIC]);
+    expect(absent.rageClicks.count).toBeNull();
+    expect(absent.metricsSeen).not.toContain('RageClickCount');
   });
 
   it('reports null pages-per-session when Traffic is absent', () => {
     expect(summarise([]).pagesPerSession).toBeNull();
-  });
-
-  it('totals a frustration signal from its own metric-specific field', () => {
-    const s = summarise([
-      { metricName: 'RageClickCount', information: [{ rageClickCount: '12' }, { rageClickCount: '3' }] },
-      { metricName: 'DeadClickCount', information: [{ deadClickCount: '7' }] },
-      { metricName: 'QuickbackClick', information: [{ quickbackClickCount: '5' }] },
-      { metricName: 'ScriptErrorCount', information: [{ scriptErrorCount: '2' }] },
-    ]);
-    expect(s.rageClicks).toBe(15);
-    expect(s.deadClicks).toBe(7);
-    expect(s.quickbackClicks).toBe(5);
-    expect(s.scriptErrors).toBe(2);
-  });
-
-  // ── The regression this whole rewrite exists for ────────────────────────
-  // Shipped 14 Sep 2026 and immediately wrong against the live API: every
-  // frustration metric read back as 51, which was the session count. The
-  // cause was taking the first field matching /count|sessions|clicks/, and
-  // every metric's rows carry the project session total alongside their own
-  // figure. A metric must never report the denominator as its value.
-  it('never reports the shared session total as a metric value', () => {
-    const s = summarise([
-      { metricName: 'Traffic', information: [{ totalSessionCount: '51', totalBotSessionCount: '1' }] },
-      { metricName: 'RageClickCount', information: [{ sessionsCount: '51' }] },
-      { metricName: 'DeadClickCount', information: [{ totalSessionCount: '51' }] },
-      { metricName: 'ScriptErrorCount', information: [{ pagesViews: '51' }] },
-    ]);
-    expect(s.sessions).toBe(51);
-    // None of these carried a rage/dead/script-specific field, so none may
-    // claim a number. Null, not 51 and not 0.
-    expect(s.rageClicks).toBeNull();
-    expect(s.deadClicks).toBeNull();
-    expect(s.scriptErrors).toBeNull();
-  });
-
-  it('picks the metric field even when a denominator sits beside it', () => {
-    const s = summarise([
-      { metricName: 'RageClickCount', information: [{ sessionsCount: '51', rageClickCount: '3' }] },
-    ]);
-    expect(s.rageClicks).toBe(3);
-  });
-
-  it('does not let one metric read another metric field', () => {
-    // A DeadClickCount row that somehow carries a rage field must not be
-    // totalled as dead clicks.
-    const s = summarise([
-      { metricName: 'DeadClickCount', information: [{ rageClickCount: '9' }] },
-    ]);
-    expect(s.deadClicks).toBeNull();
-  });
-
-  it('returns null rather than 0 for a metric with an empty information array', () => {
-    const s = summarise([{ metricName: 'RageClickCount', information: [] }]);
-    expect(s.rageClicks).toBeNull();
-  });
-
-  it('distinguishes a real zero from "not reported" via metricsSeen', () => {
-    const reported = summarise([{ metricName: 'RageClickCount', information: [{ rageClickCount: '0' }] }]);
-    expect(reported.rageClicks).toBe(0);
-    expect(reported.metricsSeen).toContain('RageClickCount');
-
-    const absent = summarise([TRAFFIC]);
-    expect(absent.rageClicks).toBeNull();
-    expect(absent.metricsSeen).not.toContain('RageClickCount');
   });
 
   it('ignores metrics it does not know rather than throwing', () => {
@@ -126,6 +169,7 @@ describe('summarise', () => {
     const s = summarise([{ metricName: 'Traffic', information: [] }]);
     expect(s.sessions).toBe(0);
     expect(s.pagesPerSession).toBeNull();
+    expect(s.devices).toEqual([]);
   });
 });
 

@@ -168,7 +168,17 @@ export async function deleteVendor(formData: FormData) {
  *  WhatsApp). Bound with the order id + target state by the order page. */
 export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
   const session = await assertPermission('orders.edit');
-  const { error } = await supabaseAdmin()
+  const db = supabaseAdmin();
+
+  // Read the status first, so the timeline row below records the status the
+  // confirmation happened at.
+  const { data: before } = await db
+    .from('orders')
+    .select('status')
+    .eq('id', orderId)
+    .maybeSingle();
+
+  const { error } = await db
     .from('orders')
     .update({ confirmed_at: confirmed ? new Date().toISOString() : null })
     .eq('id', orderId);
@@ -179,6 +189,31 @@ export async function setOrderConfirmed(orderId: string, confirmed: boolean) {
     log.error('order.set_confirmed_failed', { order_id: orderId, confirmed, error: error.message });
     redirect(`/admin/orders/${orderId}?err=` + encodeURIComponent(`Could not update confirmation: ${error.message}`));
   }
+  // Timeline row, matching the one the customer confirm link writes.
+  //
+  // Both routes set the same orders.confirmed_at, so that column alone cannot
+  // say WHICH route confirmed an order — and the whole point of the link is
+  // that it confirms without staff having to reach the customer. Until this
+  // was added, a staff confirmation left only an audit_log entry, so
+  // analytics_cod_confirmation could not tell a link confirmation from a
+  // WhatsApp one. Writing here puts both in order_events, and puts staff
+  // confirmations on the order timeline where they should always have been.
+  if (before?.status) {
+    const { error: evErr } = await db.from('order_events').insert({
+      order_id: orderId,
+      from_status: before.status,
+      to_status: before.status,
+      actor_kind: 'staff',
+      actor_id: session.id,
+      note: confirmed
+        ? 'Staff recorded the customer confirmation.'
+        : 'Staff cleared the order confirmation.',
+    });
+    // A timeline row is a record, not a gate: if it fails the confirmation
+    // itself has already been saved and must not be reported as failed.
+    if (evErr) log.warn('order.confirm_event_failed', { order_id: orderId, error: evErr.message });
+  }
+
   void logAudit(session, {
     action: confirmed ? 'order.customer_confirmed' : 'order.confirmation_cleared',
     entity: 'orders', entity_id: orderId,
