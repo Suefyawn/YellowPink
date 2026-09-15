@@ -108,17 +108,28 @@ rest.
 - [ ] Cancel Vercel only after the new box has served a full day **including
       one successful daily cron run** (`tail -50 /var/log/yellowpink-cron.log`).
 
-## 8d. Photographs for the ten hair drafts
-The ten imported hair products are written, categorised, tagged and ready; each
-needs a photograph and a confirmed price before it can be published. The list
-is in `docs/HAIR-CATALOGUE-DRAFTS-2026-09-14.md`. See
-`docs/PRODUCT-IMAGES.md` for where the images can legitimately come from.
-- [ ] Ask each distributor for their retailer asset pack (a request you can
-      copy is in `docs/PRODUCT-IMAGES.md`). This is the cheapest route and the
-      images are licensed for exactly this use.
-- [ ] Confirm the selling price for each of the ten.
-- [ ] Publish. This also completes the hair branch of the Routine Finder, which
-      currently has no anti-dandruff answer to give.
+## 8d. The eight hair products are LIVE — two things need checking today
+Published 15 Sep on the owner's instruction, because
+`/blog/best-shampoo-in-pakistan` is the store's single biggest entry point
+(216 visitors/30d) and the store had zero published shampoos. Hair Care went
+from 5 products to 13, and the Routine Finder's dandruff branch is open again.
+
+They went live WITHOUT two things that normally come first, so these are now
+urgent rather than optional:
+- [ ] **Check the prices.** They are extrapolated from your own per-brand bands
+      (`docs/HAIR-CATALOGUE-DRAFTS-2026-09-14.md` marks every one
+      "Unconfirmed"), not from supplier cost. CeraVe 6,500 · La Roche-Posay
+      6,900 · OGX 2,250–2,450. On cash on delivery a wrong price is lost
+      margin or a cancelled order.
+- [ ] **Check you can actually supply them.** All eight are `external` stock
+      mode, so they never show as sold out and can always be ordered. An
+      order you cannot fulfil feeds the 32% COD cancellation rate.
+- [ ] **Get the photographs.** They render as a branded monogram tile until
+      then, which is tidy but converts worse than a photograph. The
+      distributor request email is in `docs/PRODUCT-IMAGES.md`.
+- [ ] Still in Draft on purpose: Olaplex No.3 and The Ordinary hair serum (not
+      shampoo or conditioner), and the six Set and Touch shampoos (cheap local
+      lines, excluded by the imported-only directive).
 
 ## 9. From the 4 Sep 2026 audit (`docs/AUDIT-2026-09-04.md`)
 - [ ] **Supabase → Authentication → Settings:** turn on **Leaked password
