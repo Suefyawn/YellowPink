@@ -76,20 +76,49 @@ until you publish. See `docs/catalogue-gaps.csv` for supplier + price per item.
       fills in. IndexNow already submits every new page to Bing without the key;
       the key adds Bing's own submission channel and the reporting.
 
-## 8b. Microsoft Clarity API token (2 minutes, unlocks the frustration card)
-The Clarity **tag** is already live and recording; this is the separate read
-key that pulls the numbers back into the admin.
-- [ ] Go to **clarity.microsoft.com**, open the Yellow Pink project →
-      **Settings → Data export → Generate new API token**. Copy it.
-- [ ] Add `CLARITY_API_TOKEN` = the token to the server environment
-      (Vercel: **Project → Settings → Environment Variables**, Production, then
-      **Redeploy**; on the self-hosted box: `/etc/yellowpink.env`, then restart).
-- [ ] Next morning (or after **Refresh** on Analytics), the **On-page
-      frustration** card on **Analytics → Traffic** fills in with rage clicks,
-      dead clicks, quickbacks and script errors.
+## 8b. Microsoft Clarity API token — ✅ DONE (15 Sep 2026)
+Token generated and set; the card is reading live numbers. First reading:
+**27.8% of sessions are quickbacks** (open a page, immediately go back),
+7.4% dead clicks, no rage clicks and no script errors.
+- [x] Token generated at clarity.microsoft.com → Settings → Data export.
+- [x] `CLARITY_API_TOKEN` set in the server environment.
+- [x] The **On-page frustration** card on **Analytics → Traffic** is populated.
 - [ ] Worth knowing: the token is read-only, the API returns only the **last 3
       days** (there is no longer history to request), and the quota is **10
       calls per project per day** — the daily analytics refresh spends one.
+
+## 8c. Move off Vercel onto your own server (about an hour)
+The code side is finished and merged; what is left needs a person with a credit
+card and an hour. **`docs/SERVER-SETUP.md` is written for someone who has never
+touched a server** — which provider to rent from and what it costs, how to make
+an SSH key on Windows or Mac, how to log in, and then one command that does the
+rest.
+- [ ] Rent a machine. **Hetzner CX22, Singapore, about €4/month** is the
+      straightforward choice (~75% cheaper than Vercel Pro). **Oracle Cloud
+      Always Free** in Mumbai or Hyderabad is PKR 0 forever and a bigger
+      machine, but its free capacity is often unavailable and you may have to
+      retry over a few days.
+- [ ] `sudo bash provision.sh yellowpink.pk` on the new box. It stops once to
+      have you paste the settings from Vercel into `/etc/yellowpink.env`, then
+      carries on by itself.
+- [ ] Test it over the real domain using your computer's hosts file, **before**
+      moving DNS. The checklist is in the guide; it includes placing a real
+      test order.
+- [ ] Move DNS, leave Vercel running alongside it.
+- [ ] Cancel Vercel only after the new box has served a full day **including
+      one successful daily cron run** (`tail -50 /var/log/yellowpink-cron.log`).
+
+## 8d. Photographs for the ten hair drafts
+The ten imported hair products are written, categorised, tagged and ready; each
+needs a photograph and a confirmed price before it can be published. The list
+is in `docs/HAIR-CATALOGUE-DRAFTS-2026-09-14.md`. See
+`docs/PRODUCT-IMAGES.md` for where the images can legitimately come from.
+- [ ] Ask each distributor for their retailer asset pack (a request you can
+      copy is in `docs/PRODUCT-IMAGES.md`). This is the cheapest route and the
+      images are licensed for exactly this use.
+- [ ] Confirm the selling price for each of the ten.
+- [ ] Publish. This also completes the hair branch of the Routine Finder, which
+      currently has no anti-dandruff answer to give.
 
 ## 9. From the 4 Sep 2026 audit (`docs/AUDIT-2026-09-04.md`)
 - [ ] **Supabase → Authentication → Settings:** turn on **Leaked password
