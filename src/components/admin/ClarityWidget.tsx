@@ -82,29 +82,50 @@ export async function ClarityWidget() {
         Frustration signals
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, padding: '8px 18px 16px' }}>
-        <Stat label="Rage clicks" value={d.rageClicks} sub={seen('RageClickCount') ? per1k(d.rageClicks, d.sessions) : 'not reported'} warn={d.rageClicks > 0} />
-        <Stat label="Dead clicks" value={d.deadClicks} sub={seen('DeadClickCount') ? per1k(d.deadClicks, d.sessions) : 'not reported'} warn={d.deadClicks > 0} />
-        <Stat label="Quickbacks" value={d.quickbackClicks} sub={seen('QuickbackClick') ? per1k(d.quickbackClicks, d.sessions) : 'not reported'} />
-        <Stat label="Excessive scroll" value={d.excessiveScroll} sub={seen('ExcessiveScroll') ? per1k(d.excessiveScroll, d.sessions) : 'not reported'} />
-        <Stat label="Script errors" value={d.scriptErrors} sub={seen('ScriptErrorCount') ? per1k(d.scriptErrors, d.sessions) : 'not reported'} warn={d.scriptErrors > 0} />
-        <Stat label="Error clicks" value={d.errorClicks} sub={seen('ErrorClickCount') ? per1k(d.errorClicks, d.sessions) : 'not reported'} warn={d.errorClicks > 0} />
+        <Signal label="Rage clicks" value={d.rageClicks} sessions={d.sessions} reported={seen('RageClickCount')} />
+        <Signal label="Dead clicks" value={d.deadClicks} sessions={d.sessions} reported={seen('DeadClickCount')} />
+        <Signal label="Quickbacks" value={d.quickbackClicks} sessions={d.sessions} reported={seen('QuickbackClick')} />
+        <Signal label="Excessive scroll" value={d.excessiveScroll} sessions={d.sessions} reported={seen('ExcessiveScroll')} />
+        <Signal label="Script errors" value={d.scriptErrors} sessions={d.sessions} reported={seen('ScriptErrorCount')} />
+        <Signal label="Error clicks" value={d.errorClicks} sessions={d.sessions} reported={seen('ErrorClickCount')} />
       </div>
 
       <div style={{ margin: '0 18px 16px', padding: '8px 12px', background: '#faf6ee', borderRadius: 8, fontSize: '0.75rem', color: '#6b7280', lineHeight: 1.5 }}>
         A <strong>rage click</strong> is repeated clicking in one spot, a <strong>dead click</strong> is a click that does nothing, and a{' '}
         <strong>quickback</strong> is opening a page and immediately going back. Any of them rising on a checkout or product page is
         usually a broken control, not impatience. Open the recordings to see the session itself.
+        A dash means Clarity returned that metric but not in a form this page can read; the raw
+        response is stored with the snapshot so it can be pinned down.
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, sub, warn, decimals = 0 }: { label: string; value: number; sub?: string; warn?: boolean; decimals?: number }) {
+/** A frustration signal has THREE states, not two, and conflating them is how
+ *  the card first shipped showing the session count as the rage-click count:
+ *
+ *    value = a number  → Clarity reported it and it parsed
+ *    value = null      → Clarity returned the metric but its field name is
+ *                        undocumented and could not be read; show a dash,
+ *                        never a number
+ *    reported = false  → Clarity did not return the metric at all
+ *
+ *  A dash is the honest answer for the middle case. A zero would read as
+ *  "no rage clicks", which is a claim we cannot make. */
+function Signal({ label, value, sessions, reported }: { label: string; value: number | null; sessions: number; reported: boolean }) {
+  if (!reported) return <Stat label={label} value={0} sub="not reported by Clarity" muted />;
+  if (value === null) return <Stat label={label} value={null} sub="value not readable" muted />;
+  return <Stat label={label} value={value} sub={per1k(value, sessions)} warn={value > 0} />;
+}
+
+function Stat({ label, value, sub, warn, muted, decimals = 0 }: { label: string; value: number | null; sub?: string; warn?: boolean; muted?: boolean; decimals?: number }) {
   return (
     <div style={{ padding: '10px 12px', background: '#faf6ee', borderRadius: 8 }}>
       <div style={{ fontSize: '0.6875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#9ca3af', fontWeight: 600 }}>{label}</div>
-      <div style={{ fontSize: '1.375rem', fontWeight: 700, color: warn ? '#b45309' : '#111827', fontVariantNumeric: 'tabular-nums' }}>
-        {value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
+      <div style={{ fontSize: '1.375rem', fontWeight: 700, color: muted ? '#9ca3af' : warn ? '#b45309' : '#111827', fontVariantNumeric: 'tabular-nums' }}>
+        {value === null || muted
+          ? '—'
+          : value.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}
       </div>
       {sub ? <div style={{ fontSize: '0.6875rem', color: '#6b7280' }}>{sub}</div> : null}
     </div>

@@ -52,12 +52,12 @@ describe('summarise', () => {
     expect(summarise([]).pagesPerSession).toBeNull();
   });
 
-  it('totals the frustration signals, which are the point of the integration', () => {
+  it('totals a frustration signal from its own metric-specific field', () => {
     const s = summarise([
-      { metricName: 'RageClickCount', information: [{ sessionsCount: '12' }, { sessionsCount: '3' }] },
-      { metricName: 'DeadClickCount', information: [{ sessionsCount: '7' }] },
-      { metricName: 'QuickbackClick', information: [{ sessionsCount: '5' }] },
-      { metricName: 'ScriptErrorCount', information: [{ sessionsCount: '2' }] },
+      { metricName: 'RageClickCount', information: [{ rageClickCount: '12' }, { rageClickCount: '3' }] },
+      { metricName: 'DeadClickCount', information: [{ deadClickCount: '7' }] },
+      { metricName: 'QuickbackClick', information: [{ quickbackClickCount: '5' }] },
+      { metricName: 'ScriptErrorCount', information: [{ scriptErrorCount: '2' }] },
     ]);
     expect(s.rageClicks).toBe(15);
     expect(s.deadClicks).toBe(7);
@@ -65,13 +65,55 @@ describe('summarise', () => {
     expect(s.scriptErrors).toBe(2);
   });
 
-  it('distinguishes "zero" from "not reported" via metricsSeen', () => {
-    const reported = summarise([{ metricName: 'RageClickCount', information: [{ sessionsCount: '0' }] }]);
+  // ── The regression this whole rewrite exists for ────────────────────────
+  // Shipped 14 Sep 2026 and immediately wrong against the live API: every
+  // frustration metric read back as 51, which was the session count. The
+  // cause was taking the first field matching /count|sessions|clicks/, and
+  // every metric's rows carry the project session total alongside their own
+  // figure. A metric must never report the denominator as its value.
+  it('never reports the shared session total as a metric value', () => {
+    const s = summarise([
+      { metricName: 'Traffic', information: [{ totalSessionCount: '51', totalBotSessionCount: '1' }] },
+      { metricName: 'RageClickCount', information: [{ sessionsCount: '51' }] },
+      { metricName: 'DeadClickCount', information: [{ totalSessionCount: '51' }] },
+      { metricName: 'ScriptErrorCount', information: [{ pagesViews: '51' }] },
+    ]);
+    expect(s.sessions).toBe(51);
+    // None of these carried a rage/dead/script-specific field, so none may
+    // claim a number. Null, not 51 and not 0.
+    expect(s.rageClicks).toBeNull();
+    expect(s.deadClicks).toBeNull();
+    expect(s.scriptErrors).toBeNull();
+  });
+
+  it('picks the metric field even when a denominator sits beside it', () => {
+    const s = summarise([
+      { metricName: 'RageClickCount', information: [{ sessionsCount: '51', rageClickCount: '3' }] },
+    ]);
+    expect(s.rageClicks).toBe(3);
+  });
+
+  it('does not let one metric read another metric field', () => {
+    // A DeadClickCount row that somehow carries a rage field must not be
+    // totalled as dead clicks.
+    const s = summarise([
+      { metricName: 'DeadClickCount', information: [{ rageClickCount: '9' }] },
+    ]);
+    expect(s.deadClicks).toBeNull();
+  });
+
+  it('returns null rather than 0 for a metric with an empty information array', () => {
+    const s = summarise([{ metricName: 'RageClickCount', information: [] }]);
+    expect(s.rageClicks).toBeNull();
+  });
+
+  it('distinguishes a real zero from "not reported" via metricsSeen', () => {
+    const reported = summarise([{ metricName: 'RageClickCount', information: [{ rageClickCount: '0' }] }]);
     expect(reported.rageClicks).toBe(0);
     expect(reported.metricsSeen).toContain('RageClickCount');
 
     const absent = summarise([TRAFFIC]);
-    expect(absent.rageClicks).toBe(0);
+    expect(absent.rageClicks).toBeNull();
     expect(absent.metricsSeen).not.toContain('RageClickCount');
   });
 

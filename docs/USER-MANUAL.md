@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 14 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 15 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1189,7 +1189,13 @@ store owner.
 
 A dated history of user-facing changes, newest first.
 
+### 15 September 2026
+
+- **The ten highest-earning brand pages now have a proper buyer's guide.** Anua, Beauty of Joseon, SKIN1004, Medicube, PIXI, NARS, Huda Beauty, SHEGLAM, Real Techniques and NB Sons each got a written guide plus four FAQs, in the same shape as the collection pages. **Why brand pages and not more blog posts:** looking at which page each order actually started from over the past year, brand pages produced the highest-value orders of any page type, roughly PKR 6,600 per order against PKR 2,900 for a blog post. More tellingly, the three brand pages that have ever produced an order (La Roche-Posay, Nutrifactor, Rivaj UK) all already had a written guide, and only 14 of 59 brand pages did. That is a small sample and not proof, but it points one way and these pages are the cheapest content in the store to write, since the brand and the products are already known. Prices inside the guides update themselves, so they never go stale. **49 brand pages still have no guide**, and the next batch should be picked the same way, on what actually sells.
+
 ### 14 September 2026
+
+- **Correction to the Clarity card: it was showing wrong numbers, and now it will not.** The first version reported rage clicks, dead clicks, quickbacks, excessive scrolling and script errors as **51 each** on the first real refresh, which was simply the session count repeated six times. Microsoft documents the response format for one metric only and says outright that other metrics may appear without listing their fields, so the card was reading whichever number it found first, and every metric carries the session total next to its own figure. It now reads only a field that names the metric itself, and where it cannot, it shows a **dash** rather than a number. A dash means "Clarity sent this but not in a form the page can read yet", which is a different thing from zero and is the honest answer. The raw response is stored with each snapshot so the correct field names can be pinned down from live data without spending another of the 10 daily API calls. Session and bot-session counts were always correct and are unaffected.
 
 - **Ten imported hair products are waiting in Draft.** CeraVe anti-dandruff shampoo and conditioner, three OGX shampoos and two OGX conditioners (Argan Oil of Morocco, Biotin & Collagen, Tea Tree Mint), The Ordinary's hair density serum, La Roche-Posay Kerium DS, and Olaplex No.3. Nine of the ten are from brands you already sell, so they come from suppliers you already have. Every one is written up in full: description, how to use, ingredients, benefits, FAQs and SEO. **They need two things from you before they go live: a product photo and a confirmed price.** The full list with the reasoning behind each price is in `docs/HAIR-CATALOGUE-DRAFTS-2026-09-14.md`. Publishing them takes Hair Care from 5 products to 15, gives the Routine Finder's hair path the shampoo step it currently lacks, and lets the **dandruff** question finally be added to the quiz.
 

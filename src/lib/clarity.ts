@@ -68,13 +68,16 @@ export interface ClaritySummary {
   distinctUsers: number;
   pagesPerSession: number | null;
   /** Frustration signals. These are the reason to wire Clarity up at all:
-   *  they point at the exact places a checkout loses people. */
-  rageClicks: number;
-  deadClicks: number;
-  quickbackClicks: number;
-  excessiveScroll: number;
-  scriptErrors: number;
-  errorClicks: number;
+   *  they point at the exact places a checkout loses people.
+   *
+   *  NULL means "Clarity returned this metric but its value could not be read
+   *  confidently", which is different from zero. See metricTotal. */
+  rageClicks: number | null;
+  deadClicks: number | null;
+  quickbackClicks: number | null;
+  excessiveScroll: number | null;
+  scriptErrors: number | null;
+  errorClicks: number | null;
   /** Which metric names the API actually returned, so the dashboard can tell
    *  "zero rage clicks" apart from "Clarity did not report rage clicks". */
   metricsSeen: string[];
@@ -87,17 +90,58 @@ function sumField(metrics: ClarityMetric[], metricName: string, field: string): 
   return m.information.reduce((t, row) => t + num(row[field]), 0);
 }
 
-/** Total the `sessionsCount`-style field a frustration metric reports. The
- *  docs do not pin the field name per metric and warn that the response may
- *  carry extra fields, so take the first numeric-looking one that is not a
- *  dimension label rather than hard-coding a name that may drift. */
-function sumCount(metrics: ClarityMetric[], metricName: string): number {
+/** Field names that are a DENOMINATOR, not a metric value. Every metric's
+ *  rows carry the project's session total alongside the metric's own figure,
+ *  and picking the first numeric field meant every frustration signal read
+ *  back as the session count. Observed live on 14 Sep 2026: sessions 51,
+ *  rage clicks 51, dead clicks 51, script errors 51 — all the same number,
+ *  all wrong. These are excluded from the search. */
+const DENOMINATOR_FIELDS = /^(total)?(session|bot|distinct|distant|user|page)s?(count|views)?$/i;
+
+/** Words that identify a field as belonging to a specific metric rather than
+ *  being a shared total. Keyed by metric so "rage" only matches rage clicks. */
+const METRIC_WORDS: Record<string, RegExp> = {
+  RageClickCount:    /rage/i,
+  DeadClickCount:    /dead/i,
+  QuickbackClick:    /quickback|quick_back/i,
+  ExcessiveScroll:   /excessive|scroll/i,
+  ScriptErrorCount:  /script/i,
+  ErrorClickCount:   /errorclick|error_click/i,
+};
+
+/** Total a frustration metric, or return NULL when it cannot be read
+ *  confidently.
+ *
+ *  Microsoft documents the response shape for `Traffic` only, and says
+ *  outright that "additional metrics and dimensions may be included in the
+ *  full API response" without listing their fields. So the field name for
+ *  each frustration metric is genuinely unknown, and the first version of
+ *  this function guessed — which is how the card shipped showing the session
+ *  count six times over.
+ *
+ *  The rule now: take a field whose name carries this metric's own concept
+ *  (a "rageClickCount" for RageClickCount), never a shared denominator. If
+ *  nothing matches, return null so the card prints "not reported" instead of
+ *  a confident wrong number. The raw response is stored alongside the summary
+ *  so the real field names can be read off a live payload and pinned here. */
+function metricTotal(metrics: ClarityMetric[], metricName: string): number | null {
   const m = metrics.find(x => x.metricName === metricName);
-  if (!m || !Array.isArray(m.information)) return 0;
-  return m.information.reduce((total, row) => {
-    const key = Object.keys(row).find(k => /count|sessions|clicks/i.test(k) && num(row[k]) > 0);
-    return total + (key ? num(row[key]) : 0);
-  }, 0);
+  if (!m || !Array.isArray(m.information) || m.information.length === 0) return null;
+
+  const concept = METRIC_WORDS[metricName];
+  let found = false;
+  let total = 0;
+
+  for (const row of m.information) {
+    const key = Object.keys(row).find(k => {
+      if (DENOMINATOR_FIELDS.test(k)) return false;
+      if (concept && !concept.test(k)) return false;
+      return typeof row[k] === 'number' || typeof row[k] === 'string';
+    });
+    if (key !== undefined) { found = true; total += num(row[key]); }
+  }
+
+  return found ? total : null;
 }
 
 /** Fold the raw API response into the handful of figures the admin card shows. */
@@ -112,12 +156,12 @@ export function summarise(metrics: ClarityMetric[]): ClaritySummary {
     botSessions: sumField(metrics, 'Traffic', 'totalBotSessionCount'),
     distinctUsers: sumField(metrics, 'Traffic', 'distantUserCount'),
     pagesPerSession: pps === null ? null : Math.round(pps * 100) / 100,
-    rageClicks: sumCount(metrics, 'RageClickCount'),
-    deadClicks: sumCount(metrics, 'DeadClickCount'),
-    quickbackClicks: sumCount(metrics, 'QuickbackClick'),
-    excessiveScroll: sumCount(metrics, 'ExcessiveScroll'),
-    scriptErrors: sumCount(metrics, 'ScriptErrorCount'),
-    errorClicks: sumCount(metrics, 'ErrorClickCount'),
+    rageClicks: metricTotal(metrics, 'RageClickCount'),
+    deadClicks: metricTotal(metrics, 'DeadClickCount'),
+    quickbackClicks: metricTotal(metrics, 'QuickbackClick'),
+    excessiveScroll: metricTotal(metrics, 'ExcessiveScroll'),
+    scriptErrors: metricTotal(metrics, 'ScriptErrorCount'),
+    errorClicks: metricTotal(metrics, 'ErrorClickCount'),
     metricsSeen: metrics.map(m => m.metricName).filter(Boolean),
   };
 }
@@ -155,8 +199,18 @@ export async function fetchClarityInsights(numOfDays = 1): Promise<ClarityMetric
   );
 }
 
-/** What the refresh job stores under the `clarity` key in analytics_cache. */
-export async function getClaritySnapshot(numOfDays = 1): Promise<ClaritySummary & { days: number }> {
+/** What the refresh job stores under the `clarity` key in analytics_cache.
+ *
+ *  `raw` is kept deliberately. Microsoft documents the field names for the
+ *  Traffic metric ONLY, so the frustration metrics are parsed by inference;
+ *  storing the payload means the next refresh reveals the true field names
+ *  without spending another call from the 10-per-day quota. It is small (a
+ *  dozen-odd metrics with a handful of rows each) and it is not shopper data. */
+export async function getClaritySnapshot(numOfDays = 1): Promise<ClaritySummary & { days: number; raw: ClarityMetric[] }> {
   const metrics = await fetchClarityInsights(numOfDays);
-  return { ...summarise(metrics), days: Math.min(3, Math.max(1, Math.round(numOfDays))) };
+  return {
+    ...summarise(metrics),
+    days: Math.min(3, Math.max(1, Math.round(numOfDays))),
+    raw: metrics,
+  };
 }
