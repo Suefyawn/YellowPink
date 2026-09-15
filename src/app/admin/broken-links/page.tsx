@@ -9,6 +9,7 @@ import { DotChip } from '@/components/admin/OrderChips';
 import { ListToolbar } from '@/components/admin/ListToolbar';
 import { classifyPath, PATH_TYPE_LABELS, PATH_TYPE_COLORS, type PathType } from '@/lib/path-type';
 import { triageNotFound } from '@/lib/not-found-triage';
+import { DeadContentLinks } from '@/components/admin/DeadContentLinks';
 import { addRedirect, ignoreNotFound, reopenNotFound } from './actions';
 
 interface Row {
@@ -225,6 +226,14 @@ export default async function BrokenLinksPage({
           </tbody>
         </table>
       )}
+
+      {/* The proactive half. The table above is fed by real 404s, so it only
+          reports a dead link after a visitor has already hit it; this block is
+          computed from the catalogue and catches the same breakage on the day
+          it happens. */}
+      <Suspense fallback={null}>
+        <DeadContentLinks />
+      </Suspense>
     </div>
   );
 }
