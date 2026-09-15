@@ -10,6 +10,7 @@ import { getGoogleConnection, gscQuery, ga4RunReport, listSitemaps, submitSitema
 import { SITE_URL } from '@/lib/seo';
 import { isBingConfigured, bingSiteUrl, getRankAndTrafficStats, getQueryStats, getPageStats, getCrawlStats, getUrlSubmissionQuota } from '@/lib/bing';
 import { isClarityConfigured, getClaritySnapshot, ClarityApiError } from '@/lib/clarity';
+import { HUMAN_TRAFFIC_SQL } from '@/lib/analytics-bots';
 
 // ─── Config ─────────────────────────────────────────────────────────────────
 const PH_PROJECT_ID = 429225;
@@ -66,7 +67,13 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
   // Exclude /admin from every panel, staff dashboard activity isn't
   // storefront traffic. (before_send in PostHogProvider stops new admin
   // events; this also drops any already in the 7-day window.)
-  const NOT_ADMIN = `NOT startsWith(coalesce(properties.\`$pathname\`, ''), '/admin')`;
+  //
+  // Also excludes the men's-health scraper. PostHog scores it
+  // `$virt_is_bot = false` / `$virt_traffic_type = 'Regular'` because it
+  // drives a real headless Chrome, so nothing upstream drops it and every
+  // panel here counted it as a visitor. See src/lib/analytics-bots.ts for
+  // the fingerprint and the evidence behind it.
+  const HUMAN_TRAFFIC = HUMAN_TRAFFIC_SQL;
   // Session id, the unit every funnel step counts (see the funnel comment).
   const SESS = 'properties.`$session_id`';
 
@@ -85,10 +92,10 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     answersRecRows, answersRecConvRows,
   ] = await Promise.all([
     // ── core stats
-    phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
-    phQuery(apiKey, `SELECT count(distinct distinct_id) FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
-    phQuery(apiKey, `SELECT count(distinct properties.\`$session_id\`) FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}`),
-    phQuery(apiKey, `SELECT toString(toDate(timestamp)) as d, count() FROM events WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} GROUP BY d ORDER BY d`),
+    phQuery(apiKey, `SELECT count() FROM events WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC}`),
+    phQuery(apiKey, `SELECT count(distinct distinct_id) FROM events WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC}`),
+    phQuery(apiKey, `SELECT count(distinct properties.\`$session_id\`) FROM events WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC}`),
+    phQuery(apiKey, `SELECT toString(toDate(timestamp)) as d, count() FROM events WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC} GROUP BY d ORDER BY d`),
 
     // ── top 10 pages (path + count + uniques)
     phQuery(apiKey, `
@@ -96,7 +103,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
              count() as views,
              count(distinct distinct_id) as uniques
       FROM events
-      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND properties.\`$pathname\` is not null
+      WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC} AND properties.\`$pathname\` is not null
       GROUP BY path
       ORDER BY views DESC
       LIMIT 10
@@ -106,7 +113,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     phQuery(apiKey, `
       SELECT event, count() as n, count(distinct distinct_id) as uniques
       FROM events
-      WHERE ${W7} AND ${NOT_ADMIN}
+      WHERE ${W7} AND ${HUMAN_TRAFFIC}
       GROUP BY event
       ORDER BY n DESC
       LIMIT 10
@@ -126,7 +133,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
                     THEN 'direct'
                     ELSE argMin(properties.\`$referring_domain\`, timestamp) END as source
         FROM events
-        WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND ${SESS} IS NOT NULL
+        WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC} AND ${SESS} IS NOT NULL
         GROUP BY sid
       )
       GROUP BY src
@@ -141,7 +148,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
     // never entered the funnel, and the by-source slice showed only "direct".
     // Session-scoping also stops one shopper's five product views from
     // reading as five funnel entrants.
-    // NOT_ADMIN matters here too: without it the funnel counts staff
+    // HUMAN_TRAFFIC matters here too: without it the funnel counts staff
     // adding-to-cart / placing test orders from the dashboard, inflating it
     // out of step with every other panel (which all exclude /admin).
     phQuery(apiKey, `
@@ -152,7 +159,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         uniqIf(${SESS}, event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as begin_checkout,
         uniqIf(${SESS}, event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
       FROM events
-      WHERE ${W7} AND ${NOT_ADMIN} AND ${SESS} IS NOT NULL
+      WHERE ${W7} AND ${HUMAN_TRAFFIC} AND ${SESS} IS NOT NULL
     `),
 
     // ── Top 15 user journeys (4-page sequences per session)
@@ -167,7 +174,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
             ' → '
           ) as journey
         FROM events
-        WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND properties.\`$session_id\` IS NOT NULL
+        WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC} AND properties.\`$session_id\` IS NOT NULL
         GROUP BY properties.\`$session_id\`
       )
       WHERE journey != ''
@@ -200,7 +207,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
                max(if(event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout'), 1, 0)) as b,
                max(if(event = 'purchase' OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you'), 1, 0)) as pu
         FROM events
-        WHERE ${W7} AND ${NOT_ADMIN} AND ${SESS} IS NOT NULL
+        WHERE ${W7} AND ${HUMAN_TRAFFIC} AND ${SESS} IS NOT NULL
         GROUP BY sid
       )
       GROUP BY source
@@ -221,7 +228,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         uniqIf(${SESS}, event = 'begin_checkout' OR (event = '$pageview' AND properties.\`$pathname\` = '/checkout')) as checkout,
         uniqIf(${SESS}, event = 'purchase'      OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you')) as purchase
       FROM events
-      WHERE ${W7} AND ${NOT_ADMIN} AND ${SESS} IS NOT NULL
+      WHERE ${W7} AND ${HUMAN_TRAFFIC} AND ${SESS} IS NOT NULL
       GROUP BY device
       ORDER BY visit DESC
     `),
@@ -232,7 +239,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         toString(toMonday(timestamp)) as week,
         count(distinct distinct_id)   as users
       FROM events
-      WHERE event = '$pageview' AND timestamp >= now() - interval 28 day AND ${NOT_ADMIN}
+      WHERE event = '$pageview' AND timestamp >= now() - interval 28 day AND ${HUMAN_TRAFFIC}
       GROUP BY week
       ORDER BY week
     `),
@@ -244,7 +251,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       SELECT coalesce(nullIf(properties.\`$device_type\`, ''), 'Unknown') as device,
              count(distinct distinct_id) as visitors
       FROM events
-      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC}
       GROUP BY device
       ORDER BY visitors DESC
     `),
@@ -255,7 +262,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       SELECT coalesce(nullIf(properties.\`$browser\`, ''), 'Unknown') as browser,
              count(distinct distinct_id) as visitors
       FROM events
-      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC}
       GROUP BY browser
       ORDER BY visitors DESC
       LIMIT 6
@@ -268,7 +275,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       FROM (
         SELECT argMin(properties.\`$pathname\`, timestamp) as entry
         FROM events
-        WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND properties.\`$session_id\` IS NOT NULL
+        WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC} AND properties.\`$session_id\` IS NOT NULL
         GROUP BY properties.\`$session_id\`
       )
       WHERE entry IS NOT NULL AND entry != ''
@@ -291,7 +298,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
                count()                    as pv,
                dateDiff('second', min(timestamp), max(timestamp)) as dur
         FROM events
-        WHERE ${PV} AND ${W7} AND ${NOT_ADMIN} AND properties.\`$session_id\` IS NOT NULL
+        WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC} AND properties.\`$session_id\` IS NOT NULL
         GROUP BY sid
       )
     `),
@@ -305,7 +312,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         coalesce(nullIf(properties.\`$geoip_subdivision_1_name\`, ''), '') as region,
         count(distinct distinct_id) as visitors
       FROM events
-      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC}
       GROUP BY city, region
       ORDER BY visitors DESC
       LIMIT 10
@@ -319,7 +326,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         coalesce(nullIf(properties.\`$geoip_country_code\`, ''), '') as code,
         count(distinct distinct_id) as visitors
       FROM events
-      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC}
       GROUP BY country, code
       ORDER BY visitors DESC
       LIMIT 6
@@ -333,7 +340,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
              count() as n,
              count(distinct distinct_id) as uniques
       FROM events
-      WHERE event = 'search' AND ${W7} AND ${NOT_ADMIN}
+      WHERE event = 'search' AND ${W7} AND ${HUMAN_TRAFFIC}
         AND properties.query IS NOT NULL AND trim(properties.query) != ''
       GROUP BY q
       ORDER BY n DESC
@@ -350,7 +357,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
         countIf(event = 'view_item')   as views,
         countIf(event = 'add_to_cart') as carts
       FROM events
-      WHERE event IN ('view_item', 'add_to_cart') AND ${W7} AND ${NOT_ADMIN}
+      WHERE event IN ('view_item', 'add_to_cart') AND ${W7} AND ${HUMAN_TRAFFIC}
         AND coalesce(nullIf(properties.product_name, ''), properties.product_id) IS NOT NULL
       GROUP BY product
       ORDER BY views DESC
@@ -365,7 +372,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
              count() as uses,
              count(distinct distinct_id) as users
       FROM events
-      WHERE event = 'answer_used' AND ${W7} AND ${NOT_ADMIN}
+      WHERE event = 'answer_used' AND ${W7} AND ${HUMAN_TRAFFIC}
       GROUP BY answer
       ORDER BY uses DESC
     `),
@@ -374,7 +381,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
              count() as views,
              count(distinct distinct_id) as uniques
       FROM events
-      WHERE ${PV} AND ${W7} AND ${NOT_ADMIN}
+      WHERE ${PV} AND ${W7} AND ${HUMAN_TRAFFIC}
         AND properties.\`$pathname\` IN ('/answers', '/ovulation-calculator', '/pregnancy-calculator', '/bmi-calculator', '/calorie-calculator', '/fertility-quiz')
       GROUP BY path
     `),
@@ -382,7 +389,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       SELECT count(distinct distinct_id)
       FROM events
       WHERE (event = 'purchase' OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you'))
-        AND ${W7} AND ${NOT_ADMIN}
+        AND ${W7} AND ${HUMAN_TRAFFIC}
         AND distinct_id IN (
           SELECT distinct distinct_id FROM events WHERE event = 'answer_used' AND ${W7}
         )
@@ -399,7 +406,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
              count() as clicks,
              count(distinct distinct_id) as users
       FROM events
-      WHERE event = 'answer_rec_clicked' AND ${W7} AND ${NOT_ADMIN}
+      WHERE event = 'answer_rec_clicked' AND ${W7} AND ${HUMAN_TRAFFIC}
       GROUP BY answer, rec_case, href
       ORDER BY clicks DESC
     `),
@@ -407,7 +414,7 @@ async function refreshPostHog(supabase: PermissiveSupabase): Promise<void> {
       SELECT count(distinct distinct_id)
       FROM events
       WHERE (event = 'purchase' OR (event = '$pageview' AND properties.\`$pathname\` = '/thank-you'))
-        AND ${W7} AND ${NOT_ADMIN}
+        AND ${W7} AND ${HUMAN_TRAFFIC}
         AND distinct_id IN (
           SELECT distinct distinct_id FROM events WHERE event = 'answer_rec_clicked' AND ${W7}
         )

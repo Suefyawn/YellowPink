@@ -28,6 +28,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { HUMAN_TRAFFIC_SQL } from '@/lib/analytics-bots';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -72,6 +73,10 @@ async function phDemand(): Promise<Map<string, { views: number; carts: number }>
   const out = new Map<string, { views: number; carts: number }>();
   if (!apiKey) return out;
   // Storefront (not /admin) + human traffic only, keyed by product_id.
+  // `$virt_is_bot` alone is not enough: the men's-health scraper drives a real
+  // headless Chrome and PostHog scores it as regular human traffic, so it was
+  // feeding view_item counts straight into popularity_score for the four
+  // supplement SKUs it watches. HUMAN_TRAFFIC_SQL is what actually drops it.
   // Grouped per day so each day's counts can be recency-decayed in JS.
   const sql = `
     SELECT properties.product_id AS pid,
@@ -83,7 +88,7 @@ async function phDemand(): Promise<Map<string, { views: number; carts: number }>
       AND timestamp >= now() - interval ${VIEW_WINDOW_DAYS} day
       AND properties.product_id != ''
       AND coalesce(properties.\`$virt_is_bot\`, false) = false
-      AND NOT startsWith(coalesce(properties.\`$pathname\`, ''), '/admin')
+      AND ${HUMAN_TRAFFIC_SQL}
     GROUP BY pid, d`;
   try {
     const res = await fetch(`${PH_BASE}/api/projects/${PH_PROJECT_ID}/query`, {
@@ -130,7 +135,7 @@ async function phSearchDemand(sb: SupabaseClient): Promise<Map<string, number>> 
       AND timestamp >= now() - interval ${SEARCH_WINDOW_DAYS} day
       AND coalesce(properties.query, '') != ''
       AND coalesce(properties.\`$virt_is_bot\`, false) = false
-      AND NOT startsWith(coalesce(properties.\`$pathname\`, ''), '/admin')
+      AND ${HUMAN_TRAFFIC_SQL}
     GROUP BY q, d ORDER BY n DESC LIMIT 400`;
   let terms: { q: string; n: number }[] = [];
   try {

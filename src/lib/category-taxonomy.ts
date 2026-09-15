@@ -160,7 +160,7 @@ export const CATEGORY_INTRO: Record<string, string> = {
   'Brushes & Tools':
     'Get a smooth, professional finish at home with our makeup brushes, sponges and beauty tools, for flawless blending of foundation, concealer, powder and eye makeup. Durable, easy to clean and chosen to suit every routine, all genuine and imported, with cash on delivery nationwide across Pakistan.',
   'Hair Care':
-    'Care for stronger, healthier hair with our hair care range: anti-dandruff shampoos, an argan oil hair mask, rosemary and castor oils, a herbal scalp tonic and Minoxin 5% minoxidil for pattern hair loss. Sourced from trusted brands and 100% authentic, with cash on delivery nationwide across Pakistan.',
+    'Care for stronger, healthier hair with our hair care range: CeraVe and La Roche-Posay anti-dandruff shampoos and conditioners, the OGX argan oil and biotin ranges, Olaplex No.3 bond repair, The Ordinary multi-peptide density serum, an argan oil hair mask, rosemary and castor oils, a herbal scalp tonic and Minoxin 5% minoxidil for pattern hair loss. Sourced from trusted brands and 100% authentic, with cash on delivery nationwide across Pakistan.',
   "Women's Health":
     "Yellow Pink's women's health range covers fertility and PCOS support, prenatal and breastfeeding nutrition, iron, cycle and menopause support, collagen, pregnancy and ovulation tests, and prescription and pharmacy contraceptives such as Famila-28F, Diane-35 and emergency pills. Whether you're planning a pregnancy, managing your cycle, or simply topping up key nutrients, every product here is 100% authentic and sealed, with cash on delivery nationwide across Pakistan.",
   "Men's Health":
@@ -244,7 +244,7 @@ export const CATEGORY_DESCRIPTIONS: Record<string, string> = {
   // ── Skincare leaves ──
   'Cleansers & Treatments': 'Face washes, serums, exfoliants, sunscreens and targeted treatments to cleanse, clear and protect your skin.',
   'Moisturizers': 'Hydrating creams and lotions that soften, nourish and strengthen your skin barrier.',
-  'Hair Care': 'Shampoos, hair masks, scalp oils and minoxidil for stronger, healthier hair from root to tip.',
+  'Hair Care': 'Shampoos, conditioners, bond repair, scalp serums, hair masks and minoxidil for stronger, healthier hair from root to tip.',
 
   // ── Wellness leaves ──
   "Women's Health": 'Fertility and PCOS support, prenatal nutrition, iron, menopause care, pregnancy tests and contraceptive pills for women.',

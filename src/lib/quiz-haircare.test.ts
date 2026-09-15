@@ -6,10 +6,13 @@ import {
   type QuizAnswers,
 } from './quiz';
 
-// The five Hair Care products actually published at the time this branch was
-// built. The classification rules are keyed on real names, so the test uses
-// the real names — a synthetic "Test Shampoo" would pass while the live
-// catalogue silently produced an empty routine.
+// Every product published in the Hair Care category, by its exact catalogue
+// name, read from the live shelf on 15 Sep 2026. The classification rules are
+// keyed on real names, so the test uses the real names — a synthetic "Test
+// Shampoo" would pass while the live catalogue silently produced an empty
+// routine. Keep this list in step with the shelf when Hair Care changes: it is
+// the only thing standing between a catalogue edit and a quiz that walks a
+// shopper to an empty plan.
 const LIVE_HAIR = [
   { name: 'Saeed Ghani Hair Growth Water 120ml' },
   { name: 'Hemani Castor Oil 30ml' },
@@ -17,14 +20,18 @@ const LIVE_HAIR = [
   { name: 'Minoxin Plus Minoxidil 5% 60ml' },
   { name: 'OGX Hydrate & Repair+ Argan Oil of Morocco Hair Mask 168g' },
   // Published 15 Sep 2026, which is what re-opened the dandruff branch.
-  { name: 'CeraVe Anti-Dandruff Hydrating Shampoo 236ml' },
-  { name: 'CeraVe Anti-Dandruff Hydrating Conditioner 236ml' },
+  { name: 'CeraVe Anti-Dandruff Hydrating Shampoo 355ml' },
+  { name: 'CeraVe Anti-Dandruff Hydrating Conditioner 266ml' },
   { name: 'La Roche-Posay Kerium DS Anti-Dandruff Intensive Shampoo 125ml' },
   { name: 'OGX Renewing + Argan Oil of Morocco Shampoo 385ml' },
   { name: 'OGX Renewing + Argan Oil of Morocco Conditioner 385ml' },
   { name: 'OGX Thick & Full + Biotin & Collagen Shampoo 385ml' },
   { name: 'OGX Thick & Full + Biotin & Collagen Conditioner 385ml' },
-  { name: 'OGX Hydrating + Tea Tree Mint Shampoo 385ml' },
+  { name: 'Olaplex No.3 Hair Perfector 100ml' },
+  { name: 'The Ordinary Multi-Peptide Serum for Hair Density 60ml' },
+  // OGX Hydrating + Tea Tree Mint is deliberately absent: OGX discontinued it
+  // and it was unpublished on 15 Sep. Putting it back here would make the
+  // suite assert a shelf that no longer exists.
 ];
 
 describe('haircare branch wiring', () => {
@@ -60,11 +67,37 @@ describe('haircare branch wiring', () => {
     // whole point of the branch.
     const byStep = classifyIntoSteps(LIVE_HAIR, HAIRCARE_STEPS);
     const scalp = (byStep.get('scalp') ?? []).map(p => p.name);
-    expect(scalp).toContain('CeraVe Anti-Dandruff Hydrating Shampoo 236ml');
+    expect(scalp).toContain('CeraVe Anti-Dandruff Hydrating Shampoo 355ml');
     expect(scalp).toContain('La Roche-Posay Kerium DS Anti-Dandruff Intensive Shampoo 125ml');
     // A plain shampoo is still lengths care.
     const lengths = (byStep.get('lengths') ?? []).map(p => p.name);
-    expect(lengths).toContain('OGX Hydrating + Tea Tree Mint Shampoo 385ml');
+    expect(lengths).toContain('OGX Renewing + Argan Oil of Morocco Shampoo 385ml');
+  });
+
+  it('files the hair-density serum as a SCALP treatment, not a length serum', () => {
+    // Same trap as the dandruff shampoo, one step further on. The lengths step
+    // matches a bare 'hair', so "Multi-Peptide Serum for Hair Density" landed
+    // next to the conditioners and masks until 'density' was added to the
+    // scalp step. It is the most expensive product on the hair shelf and the
+    // one a hair-fall answer should lead with, so filing it under conditioning
+    // is not a cosmetic mistake.
+    const byStep = classifyIntoSteps(LIVE_HAIR, HAIRCARE_STEPS);
+    const scalp = (byStep.get('scalp') ?? []).map(p => p.name);
+    expect(scalp).toContain('The Ordinary Multi-Peptide Serum for Hair Density 60ml');
+    expect((byStep.get('lengths') ?? []).map(p => p.name))
+      .not.toContain('The Ordinary Multi-Peptide Serum for Hair Density 60ml');
+  });
+
+  it('leaves no published hair product out of the routine entirely', () => {
+    // classifyIntoSteps drops anything matching no step, silently. A product
+    // that is published, costed and photographed but unreachable from the
+    // Routine Finder is stock the quiz can never sell.
+    const byStep = classifyIntoSteps(LIVE_HAIR, HAIRCARE_STEPS);
+    const placed = new Set(
+      HAIRCARE_STEPS.flatMap(s => (byStep.get(s.key) ?? []).map(p => p.name)),
+    );
+    const dropped = LIVE_HAIR.map(p => p.name).filter(n => !placed.has(n));
+    expect(dropped, `unreachable from the quiz: ${dropped.join(', ')}`).toEqual([]);
   });
 
   it('every offered concern matches something on the live shelf', () => {

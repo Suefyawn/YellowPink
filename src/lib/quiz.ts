@@ -281,7 +281,14 @@ export const HAIRCARE_STEPS: RoutineStepDef[] = [
     // shampoo is a scalp treatment that happens to be a shampoo. Without it,
     // the plain 'shampoo' match on the lengths step would claim it and the
     // dandruff plan would recommend nothing for the scalp.
-    match: ['minoxidil', 'rosemary', 'hair growth', 'scalp', 'tonic', 'hair serum', 'dandruff'],
+    //
+    // 'density' is here for the same reason. The lengths step matches a bare
+    // 'hair', so "Multi-Peptide Serum for Hair Density" was being filed next
+    // to the conditioners and masks. It is a scalp treatment: its own
+    // directions say to part the hair and work along the partings, not over
+    // the lengths. 'hair serum' does not catch it because the words are not
+    // adjacent in the name.
+    match: ['minoxidil', 'rosemary', 'hair growth', 'scalp', 'tonic', 'hair serum', 'dandruff', 'density'],
   },
   {
     key: 'lengths', label: 'Look after the lengths',
