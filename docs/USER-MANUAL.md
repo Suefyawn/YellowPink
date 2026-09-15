@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 14 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 15 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1188,6 +1188,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 15 September 2026
+
+- **The ten highest-earning brand pages now have a proper buyer's guide.** Anua, Beauty of Joseon, SKIN1004, Medicube, PIXI, NARS, Huda Beauty, SHEGLAM, Real Techniques and NB Sons each got a written guide plus four FAQs, in the same shape as the collection pages. **Why brand pages and not more blog posts:** looking at which page each order actually started from over the past year, brand pages produced the highest-value orders of any page type, roughly PKR 6,600 per order against PKR 2,900 for a blog post. More tellingly, the three brand pages that have ever produced an order (La Roche-Posay, Nutrifactor, Rivaj UK) all already had a written guide, and only 14 of 59 brand pages did. That is a small sample and not proof, but it points one way and these pages are the cheapest content in the store to write, since the brand and the products are already known. Prices inside the guides update themselves, so they never go stale. **49 brand pages still have no guide**, and the next batch should be picked the same way, on what actually sells.
 
 ### 14 September 2026
 
