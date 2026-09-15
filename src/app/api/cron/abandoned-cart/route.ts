@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendAbandonedCartEmail, sendAbandonedCartStaffAlert } from '@/lib/email';
+import { checkRecoveryCoupon, type RecoveryCoupon } from '@/lib/recovery-coupon';
 import type { CartItem } from '@/types';
 
 interface AbandonedCart {
@@ -31,8 +32,14 @@ interface AbandonedCart {
 }
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://yellowpink.pk';
-const TIER_3_DISCOUNT_CODE = process.env.ABANDONED_CART_DISCOUNT_CODE ?? 'COMEBACK10';
-const TIER_3_DISCOUNT_PCT = Number(process.env.ABANDONED_CART_DISCOUNT_PCT ?? 10);
+// The tier-3 code, like the WhatsApp queue's, is looked up in the coupons
+// table before it is promised. Until 15 Sep this defaulted to 'COMEBACK10', a
+// coupon that has never existed, so the last-chance email closed by sending a
+// hesitating shopper back to checkout with a code that would be rejected
+// there. COMEBACK15 is the coupon actually created for this, on 14 July 2026.
+// The percentage is read off the coupon row rather than configured separately,
+// so the two can no longer drift apart.
+const TIER_3_DISCOUNT_CODE = process.env.ABANDONED_CART_DISCOUNT_CODE ?? 'COMEBACK15';
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 const ONE_DAY_MS  = 24 * ONE_HOUR_MS;
@@ -90,6 +97,16 @@ export async function GET(req: NextRequest) {
   let sent = 0;
   const errors: string[] = [];
 
+  const tier3Coupon = (c: AbandonedCart) =>
+    checkRecoveryCoupon(couponRow as RecoveryCoupon | null, Number(c.subtotal) || 0);
+
+  // One lookup per run, reused for every tier-3 candidate below.
+  const { data: couponRow } = await sb
+    .from('coupons')
+    .select('code, active, value, min_order, expires_at, starts_at, max_uses, used_count')
+    .ilike('code', TIER_3_DISCOUNT_CODE)
+    .maybeSingle();
+
   // Tier-1 fires immediately; tier-2/3 cluster on the same cart row so process
   // one cart at a time to avoid racing the update.
   for (const { c, tier } of candidates) {
@@ -101,8 +118,12 @@ export async function GET(req: NextRequest) {
         total:        c.subtotal,
         restore_url:  restoreUrl,
         tier,
-        discount_code: tier === 3 ? TIER_3_DISCOUNT_CODE : undefined,
-        discount_pct:  tier === 3 ? TIER_3_DISCOUNT_PCT : undefined,
+        // Checked against this cart's subtotal, so a coupon with a minimum
+        // order value is never promised to a cart that cannot use it. An
+        // unusable coupon sends the email with no discount rather than a
+        // broken one.
+        discount_code: tier === 3 ? (tier3Coupon(c).code ?? undefined) : undefined,
+        discount_pct:  tier === 3 ? (tier3Coupon(c).percent ?? undefined) : undefined,
       });
       const { error: upErr } = await sb
         .from('abandoned_carts')
@@ -116,8 +137,15 @@ export async function GET(req: NextRequest) {
   }
 
   // ── Staff alert pass (event 'cart.abandoned') ─────────────────────────────
-  // One internal email per abandoned cart, ~1 hour after the shopper goes
-  // quiet, to everyone subscribed in Settings → Notifications (Tanya + owner).
+  // One internal email per abandoned cart, on the first cron run after the
+  // shopper goes quiet, to everyone subscribed in Settings → Notifications
+  // (Tanya + owner). That used to say "~1 hour", which is what the cutoff
+  // below asks for but not what shoppers get: every job here runs inside the
+  // single daily /api/cron/daily entry (Vercel's free plan caps cron entries),
+  // so the alert lands whenever 09:00 UTC next comes round. Measured on the
+  // four carts lost in the 30 days to 15 Sep: 3.0, 4.0, 15.8 and 16.6 hours.
+  // Splitting this back onto its own schedule is the self-hosting upgrade path
+  // already noted at the top of the daily route.
   // Unlike the customer reminders above this INCLUDES phone-only captures —
   // those shoppers can never receive a reminder email, so the personal
   // WhatsApp nudge this alert enables is the only recovery path. Deduped via
