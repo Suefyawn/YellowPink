@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NewsletterSignup } from './NewsletterSignup';
 import { useBodyScrollLock, useEscapeKey, useFocusTrap } from '@/lib/hooks/useBodyScrollLock';
-import { readConsent } from '@/lib/consent';
+import { shouldPromptForConsent } from '@/lib/consent';
 import { WELCOME_DISCOUNT_PCT } from '@/lib/commerce';
 
 // Newsletter capture. Desktop: modal on exit-intent or a 60s timed fallback.
@@ -35,8 +35,12 @@ function shouldSuppress(): boolean {
     const dismissed = Number(window.localStorage.getItem(DISMISS_KEY) ?? 0);
     if (dismissed && Date.now() - dismissed < DISMISS_WINDOW) return true;
   } catch {}
-  // Don't pop until the visitor has decided on cookies, stacking modals is rude.
-  if (!readConsent()) return true;
+  // Don't pop while the cookie banner is still on screen, stacking modals is
+  // rude. This asks whether the banner is showing, NOT whether a choice is
+  // stored: since the banner became region-gated, most visitors never store
+  // one, and the old `!readConsent()` check would have suppressed this modal
+  // for them permanently.
+  if (shouldPromptForConsent()) return true;
   // Don't pop on these high-intent flows (signup/login/checkout).
   const p = window.location.pathname;
   if (p.startsWith('/checkout') || p.startsWith('/admin') || p.startsWith('/login') || p.startsWith('/forgot-password') || p.startsWith('/reset-password') || p === '/thank-you') return true;

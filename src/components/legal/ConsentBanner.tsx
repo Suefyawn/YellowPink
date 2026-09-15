@@ -3,12 +3,18 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { readConsent, writeConsent, acceptAll, rejectAll } from '@/lib/consent';
+import { writeConsent, acceptAll, rejectAll, shouldPromptForConsent } from '@/lib/consent';
 
-// Bottom-left consent prompt shown until the user makes a choice. We keep
+// Bottom-left consent prompt, shown to visitors who have not chosen yet AND
+// are in a region that requires the prompt (lib/consent-region). We keep
 // it small + dismissible (no full-screen modal blocking the page) so first
 // impressions aren't ruined by a compliance wall. Once a choice is recorded
 // it never reappears unless the user resets from /privacy.
+//
+// It used to show everywhere, and 72% of visitors simply never answered it,
+// which left GA / Clarity / the Meta Pixel switched off for all of them. Those
+// regions now get implied consent instead; anyone can still change it at
+// /privacy, and an explicit choice always wins over the region rule.
 //
 // Mounted once in src/app/layout.tsx so it's available on every route.
 
@@ -30,7 +36,10 @@ export function ConsentBanner() {
     setMounted(true);
     // Wait a beat so we don't compete with the page load animation.
     const t = setTimeout(() => {
-      if (!readConsent()) setVisible(true);
+      // Only where consent is actually required. Everywhere else the visitor
+      // has implied consent and there is nothing to ask, which is why this is
+      // shouldPromptForConsent rather than a bare "have they answered yet".
+      if (shouldPromptForConsent()) setVisible(true);
     }, ESCAPE_DELAY_MS);
     return () => clearTimeout(t);
   }, []);
