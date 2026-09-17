@@ -16,6 +16,14 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+On Windows, `npm ci` skips the native `sharp` and `rollup` binaries (the lockfile
+was generated on Linux), which breaks `vitest` and the image tests. After
+installing, add them for this machine only:
+
+```bash
+npm install --no-save @rollup/rollup-win32-x64-msvc @img/sharp-win32-x64
+```
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

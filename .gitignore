@@ -59,3 +59,6 @@ playwright-report/
 
 # graphify knowledge-graph output (derived, machine-specific)
 graphify-out/
+
+# Owner's working files dropped in the repo root (price lists, exports)
+*.xlsx
