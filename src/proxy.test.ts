@@ -79,3 +79,42 @@ describe('wpPatternRedirect: existing rules still fire', () => {
     expect(at('/', 's=serum')).toBe('/shop?q=serum');
   });
 });
+
+// The matcher literal must stay a literal (Next reads it at build time), so
+// the list it is built from is exported and checked against it here.
+import { config, PROXY_MATCHER } from './proxy';
+
+describe('proxy matcher', () => {
+  // Next compiles the matcher with path-to-regexp; for a single `(...)`
+  // group this is the same as anchoring the inner regex.
+  const inner = config.matcher[0].slice(1); // drop the leading "/"
+  const re = new RegExp(`^/${inner}$`);
+  const runs = (p: string) => re.test(p);
+
+  it('is the literal built from PROXY_SKIPPED_EXACT', () => {
+    expect(config.matcher[0]).toBe(PROXY_MATCHER);
+  });
+
+  it('skips the static shells that were being flooded', () => {
+    for (const p of ['/wishlist', '/login', '/privacy', '/quiz', '/answers', '/brands',
+                     '/k-beauty', '/blog', '/deals', '/medical-review-board',
+                     '/medical-review-board/areej-saeed']) {
+      expect(runs(p), p).toBe(false);
+    }
+  });
+
+  it('still runs where the proxy has a job', () => {
+    for (const p of ['/', '/shop', '/admin/orders', '/account/orders',
+                     '/product/cerave-foaming-cleanser', '/blog/best-shampoo-in-pakistan',
+                     '/blog/feed', '/product/product/f-lium-drops', '/about-us',
+                     '/brand/cerave', '/collection/sunscreens', '/login-page']) {
+      expect(runs(p), p).toBe(true);
+    }
+  });
+
+  it('keeps skipping assets, the resizer and API routes', () => {
+    for (const p of ['/img', '/api/404', '/_next/static/x.js', '/icon-192.png']) {
+      expect(runs(p), p).toBe(false);
+    }
+  });
+});

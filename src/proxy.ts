@@ -379,19 +379,45 @@ export function wpPatternRedirect(pathname: string, params: URLSearchParams): st
   return null;
 }
 
-// Run on everything except Next.js internals and static assets.
+// Static storefront shells that the proxy has nothing to do for. Exact
+// paths only (anchored with `$` below), so `/blog/<slug>` and `/blog/feed`
+// still run through the WP rules and the redirect lookup. For these the
+// proxy's only job was the apex→www hop, which next.config's host redirect
+// already covers (as a two-hop chain via the trailing-slash strip, which is
+// fine for URLs the old WordPress site never had).
+//
+// Why they are listed: on 16-17 Sep the Vercel logs showed ~10,700 proxy
+// invocations in 20 minutes, near-uniform across /wishlist, /login,
+// /privacy, /quiz, /answers, /brands, /k-beauty and /blog (about 490 each
+// per 10 minutes, every one a CDN cache HIT), against a storefront that sees
+// a few dozen human sessions a day. Whatever is looping those URLs, every
+// hit was a function invocation that returned next() untouched. Keeping
+// them out of the matcher removes roughly half of all invocations at that
+// traffic shape; the flood itself is a Firewall job, not a code one.
+export const PROXY_SKIPPED_EXACT = [
+  'wishlist', 'login', 'privacy', 'quiz', 'answers', 'k-beauty', 'brands',
+  'blog', 'deals', 'collections', 'cart', 'checkout', 'thank-you', 'track',
+  'forgot-password', 'reset-password',
+];
+
+export const PROXY_MATCHER =
+  `/((?!_next/static|_next/image|_next/data|img$|api/|(?:${PROXY_SKIPPED_EXACT.join('|')})$|medical-review-board(?:/|$)|.*\\..*).*)`;
+
+// Run on everything except Next.js internals, static assets, and the shells
+// above.
 export const config = {
   matcher: [
     /*
      * Match all request paths EXCEPT:
      * - _next/static, _next/image, _next/data
      * - any file with an extension (.svg, .png, .jpg, .css, .js, .woff…)
+     * - the exact static shells in PROXY_SKIPPED_EXACT (+ the review board)
      */
     // /img and /api are skipped inside proxy() too (isOwnedPath), but an
     // excluded path here never invokes the edge function at all. Every product
     // image on every page view and every API beacon was an edge invocation
     // that immediately returned next(); on Vercel's free tier those count
     // against the same monthly middleware budget as real page views.
-    '/((?!_next/static|_next/image|_next/data|img$|api/|.*\\..*).*)',
+    '/((?!_next/static|_next/image|_next/data|img$|api/|(?:wishlist|login|privacy|quiz|answers|k-beauty|brands|blog|deals|collections|cart|checkout|thank-you|track|forgot-password|reset-password)$|medical-review-board(?:/|$)|.*\\..*).*)',
   ],
 };
