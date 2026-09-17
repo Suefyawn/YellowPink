@@ -39,6 +39,13 @@ export async function addRedirect(formData: FormData): Promise<void> {
   // The path now 301s, so it's no longer a live 404, close it out.
   await admin.from('not_found_log').update({ resolved: true }).eq('path', from);
   await logAudit(session, { action: 'redirect.create', entity: 'redirect', diff: { from, to } });
+  // Owned dynamic routes (/product/, /blog/, /page/…) are served by ISR and
+  // edge-cached with a week of stale-while-revalidate, and a 404 render is
+  // cached exactly like a hit. The route honours the new mapping on its next
+  // render (redirectIfMapped), but without this purge the old URL keeps
+  // serving the cached 404 for up to a week, which is what the owner saw on
+  // 16 Sep: redirect saved, row marked fixed, browser still on the 404 page.
+  revalidatePath(from);
   revalidatePath('/admin/broken-links');
 }
 

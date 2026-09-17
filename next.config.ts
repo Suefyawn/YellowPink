@@ -313,7 +313,13 @@ const nextConfig: NextConfig = {
       // Public catalog HTML — explicit s-maxage so the Vercel edge serves
       // cached renders. Listed individually rather than as one big regex
       // so Vercel's matcher stays predictable.
-      { source: '/',                 headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
+      { source: '/',                 headers: [
+        { key: 'Cache-Control', value: PUBLIC_CACHE },
+        // RFC 8288 discovery for agents: the two machine-readable
+        // descriptions of the store that already exist. No api-catalog link
+        // because the store exposes no public API for agents to call.
+        { key: 'Link', value: '</llms.txt>; rel="describedby"; type="text/plain", </sitemap.xml>; rel="describedby"; type="application/xml"' },
+      ] },
       { source: '/shop',             headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
       { source: '/product/:slug',    headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },
       { source: '/blog',             headers: [{ key: 'Cache-Control', value: PUBLIC_CACHE }] },

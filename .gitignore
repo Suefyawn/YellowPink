@@ -56,3 +56,6 @@ yellowpink.pk_*.csv
 # Playwright artifacts
 test-results/
 playwright-report/
+
+# graphify knowledge-graph output (derived, machine-specific)
+graphify-out/
