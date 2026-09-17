@@ -143,6 +143,17 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  // ─── Markdown for agents ─────────────────────────────────────────────────
+  // `Accept: text/markdown` on the home, product or post URL gets the same
+  // page as markdown from /api/md (see that route). Browsers never send that
+  // Accept value, so this costs one header read on the paths it applies to.
+  if (
+    request.headers.get('accept')?.includes('text/markdown') &&
+    (pathname === '/' || /^\/(product|blog)\/[^/]+$/.test(pathname))
+  ) {
+    return NextResponse.rewrite(new URL(`/api/md?path=${encodeURIComponent(pathname)}`, request.url));
+  }
+
   // ─── Admin auth gate ──────────────────────────────────────────────────────
   // The legacy admin_session cookie is HMAC-signed (see lib/signed-cookie.ts);
   // we verify the signature + age here in Edge. The staff_session cookie's
