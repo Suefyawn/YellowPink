@@ -135,6 +135,15 @@ restarts, so a broken commit leaves the previous version serving.
 [`SERVER-SETUP.md`](./SERVER-SETUP.md) is the same ground written for
 someone who has never used a server.
 
+## Render instead of a VPS
+
+`render.yaml` at the repo root is the same deployment as a Render blueprint:
+one Starter web service running `server.js` and the three cron jobs above.
+Create the `yellow-pink-env` environment group first (`vercel env pull`, then
+"Add from .env" in the Render dashboard), then Render → New → Blueprint →
+pick this repo. Steps 1, 2 and 4 of the checklist below are then done for
+you; steps 3, 5 and 6 are unchanged.
+
 ## Cutover checklist
 
 1. Provision the box, install Node 22, nginx/Caddy, and a TLS certificate.

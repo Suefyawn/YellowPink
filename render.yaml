@@ -1,0 +1,83 @@
+# Render blueprint: the Vercel exit as one "New → Blueprint" click.
+#
+# The repo already builds a self-contained Node server (`output: 'standalone'`,
+# docs/SELF-HOSTING.md). This file maps that onto Render so the owner does not
+# have to provision a VPS by hand: one web service running server.js and three
+# cron jobs calling the same routes Vercel's vercel.json crons called. Vercel
+# keeps serving the same commit until DNS moves (SELF-HOSTING.md, cutover
+# checklist), so applying this blueprint changes nothing for shoppers.
+#
+# The app reads about seventy environment variables (payments, couriers,
+# Google, Meta, WhatsApp, R2, Resend…), so they are not enumerated here. They
+# live in one Render environment group, `yellow-pink-env`, created ONCE in the
+# dashboard before applying this blueprint:
+#   1. `vercel env pull .env.render --environment production` on your machine
+#   2. Render → Environment Groups → New → name `yellow-pink-env` → "Add from
+#      .env" → paste the file → save. Delete .env.render afterwards.
+# The web service and the three crons all pull from that group. The cron jobs
+# only need CRON_SECRET and APP_URL out of it; the rest is inert there.
+#
+# Region is Singapore: the closest Render region to Pakistan and to the
+# Supabase project (ap-south-1). Plan `starter` is the smallest that keeps the
+# process running between requests, which ISR and after() callbacks need.
+
+services:
+  - type: web
+    name: yellow-pink
+    runtime: node
+    region: singapore
+    plan: starter
+    buildCommand: npm ci && npm run build:standalone
+    startCommand: node .next/standalone/server.js
+    # /api/health is gated behind CRON_SECRET in production (401 unauthenticated),
+    # so the platform probe uses the static robots route instead.
+    healthCheckPath: /robots.txt
+    envVars:
+      - fromGroup: yellow-pink-env
+      - key: NODE_ENV
+        value: production
+      - key: HOSTNAME
+        value: 0.0.0.0
+      - key: NEXT_PUBLIC_SITE_URL
+        value: https://www.yellowpink.pk
+
+  # Same three schedules as vercel.json, UTC. /api/cron/daily fans out to the
+  # other nine jobs itself; do not add them here (scripts/run-cron.sh).
+  - type: cron
+    name: yellow-pink-cron-daily
+    runtime: node
+    region: singapore
+    plan: starter
+    schedule: "0 9 * * *"
+    buildCommand: "true"
+    startCommand: bash scripts/run-cron.sh daily
+    envVars:
+      - fromGroup: yellow-pink-env
+      - key: APP_URL
+        value: https://www.yellowpink.pk
+
+  - type: cron
+    name: yellow-pink-cron-indexing
+    runtime: node
+    region: singapore
+    plan: starter
+    schedule: "30 9 * * *"
+    buildCommand: "true"
+    startCommand: bash scripts/run-cron.sh indexing-check
+    envVars:
+      - fromGroup: yellow-pink-env
+      - key: APP_URL
+        value: https://www.yellowpink.pk
+
+  - type: cron
+    name: yellow-pink-cron-weekly
+    runtime: node
+    region: singapore
+    plan: starter
+    schedule: "0 10 * * 1"
+    buildCommand: "true"
+    startCommand: bash scripts/run-cron.sh weekly
+    envVars:
+      - fromGroup: yellow-pink-env
+      - key: APP_URL
+        value: https://www.yellowpink.pk
