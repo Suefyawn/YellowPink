@@ -18,9 +18,14 @@ USD 45/month. Nothing to migrate.
       requests a minute per IP on the storefront. The 17 Sep trigger was a
       crawler doing 10,723 page loads in twenty minutes; the cache makes that
       cheap on Supabase now, but it still costs Vercel function invocations.
-- [ ] **Sentry → Alerts:** make sure the alert rule for new issues emails an
-      inbox you read. The new `supabase-restricted` alert only helps if it
-      reaches a person; the admin bell is useless when the database is down.
+- [x] **You will be told next time, without any dashboard setting.** Two
+      channels that need nothing from the database: the nightly run emails
+      `OWNER_EMAIL` directly when every job fails (subject starts "URGENT"),
+      and a public probe at `/api/health/db` answers 503 the moment a read
+      fails, watched by a Sentry uptime monitor every five minutes. Sentry's
+      own alert-rule routing could not be checked from here (its API returned
+      410); worth a one-time look at Sentry → Alerts to confirm new issues
+      email you, but nothing above depends on it.
 - [ ] **Around 18 Oct 2026, the egress review** (a reminder is scheduled):
       Supabase → Reports → Egress for the 30 days on Pro. The fix predicts a
       few megabytes a day. If the month came in well under 5 GB, dropping

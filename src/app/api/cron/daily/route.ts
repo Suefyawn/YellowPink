@@ -33,6 +33,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
+import { sendDatabaseOutageAlertEmail } from '@/lib/email';
+import { isSupabaseRestricted } from '@/lib/supabase-resilience';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -144,6 +146,10 @@ export async function GET(req: NextRequest) {
   // deploy) being unreachable. On 18 Sep 2026 this run returned 207 with
   // eight failures while Supabase was restricted and nobody was told.
   if (!allOk && results.every(r => !r.ok)) {
+    const failures = results.map(r => ({
+      job: r.job.replace('/api/cron/', ''),
+      detail: r.error ?? (r.body ? JSON.stringify(r.body).slice(0, 200) : `HTTP ${r.status}`),
+    }));
     try {
       Sentry.captureMessage('cron/daily: every job failed', {
         level: 'fatal',
@@ -151,6 +157,11 @@ export async function GET(req: NextRequest) {
         extra: { results: results.map(r => ({ job: r.job, status: r.status, error: r.error ?? r.body })) },
       });
     } catch { /* telemetry must not fail the run */ }
+    // And a direct email to the owner, which depends on nothing but Resend:
+    // Sentry's routing is configured outside this repo and the admin bell
+    // lives in the database that is down.
+    const restricted = failures.some(f => isSupabaseRestricted({ message: f.detail }));
+    await sendDatabaseOutageAlertEmail({ source: 'nightly maintenance', restricted, failures });
   }
   // Log the per-job outcome so a slow/failed day is diagnosable from Vercel's
   // runtime logs — before this, a killed invocation left no trace of which

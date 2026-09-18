@@ -1220,6 +1220,44 @@ export async function sendStuckPaymentsAlertEmail(args: {
   await send({ to: OWNER_EMAIL, subject: `Action needed, ${args.orders.length} payment${args.orders.length === 1 ? '' : 's'} stuck pending`, html, kind: 'batch', category: 'Stuck payments' });
 }
 
+// ─── 11c. Owner: the nightly run failed end to end ───────────────────────────
+// Every job failing at once means the database (or the deploy) is unreachable,
+// not eight separate bugs. On 18 Sep 2026 this exact state produced a 207 to
+// nobody while Supabase was restricted for two days. This mail needs nothing
+// from the database: send() fails open when the quota RPC errors, and the
+// email_log insert is best-effort, so it still leaves the building when the
+// database is the thing that is down. Transactional so the daily batch cap
+// can never drop it.
+export async function sendDatabaseOutageAlertEmail(args: {
+  source: string;
+  restricted: boolean;
+  failures: { job: string; detail: string }[];
+}) {
+  const rows = args.failures.map(f =>
+    `<tr><td style="padding:6px 8px;font-size:14px">${escapeHtml(f.job)}</td>
+         <td style="padding:6px 8px;font-size:14px;color:${INK_700}">${escapeHtml(f.detail)}</td></tr>`
+  ).join('');
+  const cause = args.restricted
+    ? `Supabase has <strong>restricted the project</strong> (a plan quota was exceeded). The storefront is showing an empty shop and the admin panel has no data until the plan is changed on the Supabase billing page. Nothing is lost.`
+    : `The store could not reach its database from the ${escapeHtml(args.source)} run. If <a href="${SITE_URL}/api/health/db" style="color:${BRAND_PINK}">the database probe</a> is still failing when you read this, the storefront is showing an empty shop and the admin panel has no data.`;
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">Database unreachable, ${escapeHtml(args.source)} failed end to end</h2>
+    <p>${cause}</p>
+    <table style="width:100%;border-collapse:collapse;margin-top:12px">
+      <tr><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Job</th><th align="left" style="padding:6px 8px;font-size:12px;color:#6b7280">Result</th></tr>
+      ${rows}
+    </table>
+    <p style="margin:20px 0 0"><a href="https://supabase.com/dashboard/org/_/billing" style="color:${BRAND_PINK};font-weight:600">→ Supabase billing</a> · <a href="${SITE_URL}/api/health/db" style="color:${BRAND_PINK};font-weight:600">→ Database probe</a></p>
+  `);
+  await send({
+    to: OWNER_EMAIL,
+    subject: args.restricted ? 'URGENT: the store database is restricted, shop is empty' : `URGENT: database unreachable, ${args.source} failed`,
+    html,
+    kind: 'transactional',
+    category: 'Database outage',
+  });
+}
+
 // Price-parity alert: our arrangement with NB Sons is that their individual
 // products are never sold below their own store price (discounts live only
 // in bundles). The weekly cron compares catalogs and this alert names any
