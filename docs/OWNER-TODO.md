@@ -19,13 +19,17 @@ USD 45/month. Nothing to migrate.
       crawler doing 10,723 page loads in twenty minutes; the cache makes that
       cheap on Supabase now, but it still costs Vercel function invocations.
 - [x] **You will be told next time, without any dashboard setting.** Two
-      channels that need nothing from the database: the nightly run emails
-      `OWNER_EMAIL` directly when every job fails (subject starts "URGENT"),
-      and a public probe at `/api/health/db` answers 503 the moment a read
-      fails, watched by a Sentry uptime monitor every five minutes. Sentry's
-      own alert-rule routing could not be checked from here (its API returned
-      410); worth a one-time look at Sentry → Alerts to confirm new issues
-      email you, but nothing above depends on it.
+      channels that need nothing from the database: a probe cron every 15
+      minutes (`/api/cron/db-probe`) emails `OWNER_EMAIL` when a read fails
+      (subject starts "URGENT", at most once every six hours while it stays
+      down, then one "Recovered" mail), and the nightly run sends the same
+      mail when every one of its jobs fails. A public probe at
+      `/api/health/db` answers 503 during an outage for any external checker.
+      A Sentry uptime monitor on it exists but is **disabled**: the Sentry
+      org has no uptime seat ("not enough pay-as-you-go available"), so
+      enable it only if you add Sentry budget; nothing depends on it.
+      Sentry's alert-rule routing could not be checked from here either (its
+      API returned 410).
 - [ ] **Around 18 Oct 2026, the egress review** (a reminder is scheduled):
       Supabase → Reports → Egress for the 30 days on Pro. The fix predicts a
       few megabytes a day. If the month came in well under 5 GB, dropping
