@@ -1251,11 +1251,55 @@ export async function sendDatabaseOutageAlertEmail(args: {
   `);
   await send({
     to: OWNER_EMAIL,
-    subject: args.restricted ? 'URGENT: the store database is restricted, shop is empty' : `URGENT: database unreachable, ${args.source} failed`,
+    subject: args.restricted ? `${DB_ALERT_SUBJECT_PREFIX}the store database is restricted, shop is empty` : `${DB_ALERT_SUBJECT_PREFIX}database unreachable, ${args.source} failed`,
     html,
     kind: 'transactional',
     category: 'Database outage',
   });
+}
+
+const DB_ALERT_SUBJECT_PREFIX = 'URGENT: ';
+const DB_RECOVERED_SUBJECT_PREFIX = 'Recovered: ';
+
+/** The store is readable again after an outage alert. */
+export async function sendDatabaseRecoveredEmail(args: { source: string; downSince: Date }) {
+  const minutes = Math.max(1, Math.round((Date.now() - args.downSince.getTime()) / 60000));
+  const html = shell(`
+    <h2 style="margin:0 0 12px;font-size:18px">Database reachable again</h2>
+    <p>The ${escapeHtml(args.source)} read the database successfully. The first alert went out about ${minutes} minute${minutes === 1 ? '' : 's'} ago. Product, order and admin pages are serving live data again; cached pages refresh within the hour.</p>
+    <p style="margin:20px 0 0"><a href="${SITE_URL}/admin" style="color:${BRAND_PINK};font-weight:600">→ Open admin</a></p>
+  `);
+  await send({ to: OWNER_EMAIL, subject: `${DB_RECOVERED_SUBJECT_PREFIX}the store database is reachable again`, html, kind: 'transactional', category: 'Database outage' });
+}
+
+/**
+ * When did the last database outage / recovery mail go out, and which was it?
+ * Read back from Resend's sent-mail log rather than email_log, because this
+ * is consulted precisely when the database may be down. `null` means the log
+ * is readable and holds no such mail; `'unknown'` means the log could not be
+ * read, and the caller falls back to a fixed slow cadence rather than either
+ * staying silent or mailing on every run.
+ */
+export async function lastDatabaseAlertSentAt(): Promise<{ kind: 'outage' | 'recovered'; at: Date } | null | 'unknown'> {
+  if (!resend) return 'unknown';
+  try {
+    const { data } = await withTimeout(resend.emails.list({ limit: 100 }), SEND_TIMEOUT_MS, 'emails.list');
+    const rows = (data?.data ?? []) as Array<{ subject?: string; created_at?: string; to?: string | string[] }>;
+    for (const row of rows) {
+      const subject = row.subject ?? '';
+      const kind = subject.startsWith(DB_ALERT_SUBJECT_PREFIX)
+        ? 'outage'
+        : subject.startsWith(DB_RECOVERED_SUBJECT_PREFIX) ? 'recovered' : null;
+      if (!kind || !row.created_at) continue;
+      const at = new Date(row.created_at);
+      if (Number.isNaN(at.getTime())) continue;
+      return { kind, at }; // the list is newest first
+    }
+    return null;
+  } catch (err) {
+    log.warn('email.list_failed', { err });
+    return 'unknown';
+  }
 }
 
 // Price-parity alert: our arrangement with NB Sons is that their individual
