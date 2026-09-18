@@ -2,15 +2,29 @@
 // getter file so the collections feature stays self-contained.
 
 import { supabase, isDemo, getProducts } from '@/lib/supabase';
+import { cachedRead, reportSupabaseFailure } from '@/lib/supabase-resilience';
+import { CATALOG_CACHE_TAG } from '@/lib/cache-tags';
 import { loadTagData } from '@/lib/shop-facets';
 import { resolveCollectionProducts, type Collection } from '@/lib/collections';
 
-export async function getPublishedCollections(limit?: number): Promise<Collection[]> {
-  if (isDemo) return [];
+// Read by the root layout on every dynamic page; cached under the catalogue
+// tag, which every collection write busts (admin/collection-actions).
+const readPublishedCollections = cachedRead(['collections:published'], async (limit: number | undefined) => {
   let q = supabase.from('collections').select('*').eq('status', 'published').order('sort_order').order('title');
   if (limit) q = q.limit(limit);
-  const { data } = await q;
+  const { data, error } = await q;
+  if (error) throw error;
   return (data ?? []) as Collection[];
+}, { tags: [CATALOG_CACHE_TAG], revalidate: 3600 });
+
+export async function getPublishedCollections(limit?: number): Promise<Collection[]> {
+  if (isDemo) return [];
+  try {
+    return await readPublishedCollections(limit);
+  } catch (err) {
+    reportSupabaseFailure('getPublishedCollections', err);
+    return [];
+  }
 }
 
 // Same as getPublishedCollections, but every collection card gets a cover

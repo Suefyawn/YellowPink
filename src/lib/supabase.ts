@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import type { Product, BlogPost } from '@/types';
 import { DEMO_PRODUCTS, DEMO_BLOG_POSTS, DEMO_SITE_SETTINGS } from './demo-data';
 import { isDemo } from './is-demo';
+import { cachedRead, liveFallback, reportSupabaseFailure } from './supabase-resilience';
+import { CATALOG_CACHE_TAG, BLOG_CACHE_TAG, SETTINGS_CACHE_TAG } from './cache-tags';
 
 /** True when no Supabase env vars are configured. Storefront helpers fall
  *  back to stub data so the site renders for design / a11y review on a
@@ -51,29 +53,48 @@ export function supabaseAdmin() {
 }
 
 // ─── Resilience layer ───────────────────────────────────────────────────────
-// Every public storefront getter routes through this so a missing-table or
-// RLS-denied error returns the demo fallback instead of throwing, that way a
-// half-configured production (env vars set but schema not yet migrated) still
-// renders pages instead of triggering the global-error boundary on every
-// page that touches the database. Errors are logged so the deployment can
-// still be debugged via Vercel logs.
+// Every public storefront getter routes through this so a failed read never
+// throws into the global-error boundary. What it returns instead depends on
+// the mode:
+//
+//   * demo mode (no Supabase env): the demo fallback, so a fresh clone renders.
+//   * production: the EMPTY shape of that fallback (`[]` / `null`, or the
+//     explicit `live` value), and the failure is reported to Sentry.
+//
+// Production used to get the demo rows too. On 17 Sep 2026 Supabase restricted
+// the project (Free-plan egress quota) and for two days every page served the
+// sample catalogue, fake prices and all, while every monitor read "200 OK".
+// An empty shelf plus an alert beats a fake shelf and silence.
 
 async function safe<T>(
   label: string,
   fn: () => Promise<T>,
   fallback: T,
+  live?: T,
 ): Promise<T> {
   try {
     return await fn();
   } catch (err) {
-    // Don't spam the demo client with errors, demo mode is opt-in for offline
-    // rendering and the placeholder URL deliberately can't be reached.
-    if (!isDemo) {
-      console.warn(`[supabase] ${label} failed; falling back. ${(err as Error).message}`);
-    }
-    return fallback;
+    // Demo mode is opt-in for offline rendering and the placeholder URL
+    // deliberately can't be reached, so don't report those failures.
+    if (isDemo) return fallback;
+    reportSupabaseFailure(label, err);
+    return live !== undefined ? live : liveFallback(fallback);
   }
 }
+
+// ─── Cross-request caching ──────────────────────────────────────────────────
+// Catalogue reads are cached in Next's data cache and busted by tag from the
+// admin write paths (lib/revalidate-storefront), so the TTLs below are safety
+// nets, not the freshness mechanism. Before this the full 177 kB product
+// projection was fetched on nearly every render (~10,000 times a day under a
+// crawler), which is how the Free plan's 5 GB monthly egress went in eleven
+// days. Settings and the sale calendar keep a short TTL because a handful of
+// their writers do not bust the tag.
+const CATALOG_TTL = 3600;
+const SETTINGS_TTL = 300;
+const catalog = { tags: [CATALOG_CACHE_TAG], revalidate: CATALOG_TTL } as const;
+const blog = { tags: [BLOG_CACHE_TAG], revalidate: CATALOG_TTL } as const;
 
 // Tile-projection for collection / listing pages, narrow on purpose so
 // the inline RSC payload that ships every Product to the client doesn't
@@ -106,47 +127,56 @@ const PRODUCT_TILE_COLUMNS =
 // SQL half of the same rule.
 const PURCHASABLE = 'stock.gt.0,track_inventory.is.false,continue_selling_when_out.is.true';
 
+const readPublishedProducts = cachedRead(['products:published'], async () => {
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_TILE_COLUMNS)
+    // Storefront catalogue, published only. Draft products aren't live
+    // yet, and archived products (a soft-deleted product with order
+    // history) must drop off the storefront while keeping their row for
+    // Analytics + order detail.
+    .eq('status', 'published')
+    .order('id');
+  if (error) throw error;
+  return (data ?? []) as unknown as Product[];
+}, catalog);
+
 export async function getProducts(): Promise<Product[]> {
   if (isDemo) return DEMO_PRODUCTS;
-  return safe('getProducts', async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select(PRODUCT_TILE_COLUMNS)
-      // Storefront catalogue, published only. Draft products aren't live
-      // yet, and archived products (a soft-deleted product with order
-      // history) must drop off the storefront while keeping their row for
-      // Analytics + order detail.
-      .eq('status', 'published')
-      .order('id');
-    if (error) throw error;
-    return (data ?? []) as unknown as Product[];
-  }, DEMO_PRODUCTS);
+  return safe('getProducts', readPublishedProducts, DEMO_PRODUCTS);
 }
+
+// PostgREST's "no rows" code for .single(): an expected miss, not a failure.
+const NO_ROWS = 'PGRST116';
+
+const readProductBySlug = cachedRead(['product:by-slug'], async (slug: string) => {
+  // Published only, an archived/draft product has no live PDP; the page
+  // 404s on a null product (see product/[slug]/page.tsx).
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .single();
+  if (error && error.code !== NO_ROWS) throw error;
+  if (data) return data as Product;
+
+  // Fallback: some slugs have a doubled brand prefix (e.g. cerave-cerave-acne-control-cleanser).
+  // If the exact slug fails, try matching any slug that ends with -{slug}.
+  const { data: fallback, error: fallbackError } = await supabase
+    .from('products')
+    .select('*')
+    .ilike('slug', `%-${slug}`)
+    .eq('status', 'published')
+    .limit(1)
+    .single();
+  if (fallbackError && fallbackError.code !== NO_ROWS) throw fallbackError;
+  return (fallback as Product | null) ?? null;
+}, catalog);
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (isDemo) return DEMO_PRODUCTS.find(p => p.slug === slug) ?? null;
-  return safe('getProductBySlug', async () => {
-    // Published only, an archived/draft product has no live PDP; the page
-    // 404s on a null product (see product/[slug]/page.tsx).
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .eq('slug', slug)
-      .eq('status', 'published')
-      .single();
-    if (data) return data as Product;
-
-    // Fallback: some slugs have a doubled brand prefix (e.g. cerave-cerave-acne-control-cleanser).
-    // If the exact slug fails, try matching any slug that ends with -{slug}.
-    const { data: fallback } = await supabase
-      .from('products')
-      .select('*')
-      .ilike('slug', `%-${slug}`)
-      .eq('status', 'published')
-      .limit(1)
-      .single();
-    return (fallback as Product | null) ?? null;
-  }, DEMO_PRODUCTS.find(p => p.slug === slug) ?? null);
+  return safe('getProductBySlug', () => readProductBySlug(slug), DEMO_PRODUCTS.find(p => p.slug === slug) ?? null);
 }
 
 /** Real social proof for the homepage "Real shoppers, real results" section.
@@ -162,9 +192,7 @@ export interface HomeSocialProof {
   reviews: Array<{ author: string; body: string; verified: boolean; brand: string | null; product: string }>;
 }
 
-export async function getHomeSocialProof(): Promise<HomeSocialProof | null> {
-  if (isDemo) return null;
-  return safe('getHomeSocialProof', async () => {
+const readHomeSocialProof = cachedRead(['home:social-proof'], async (): Promise<HomeSocialProof | null> => {
     const [ratingsRes, reviewsRes, brandsRes] = await Promise.all([
       supabase.from('product_reviews').select('rating').eq('approved', true),
       supabase
@@ -178,6 +206,8 @@ export async function getHomeSocialProof(): Promise<HomeSocialProof | null> {
       supabase.from('brands').select('id', { count: 'exact', head: true }),
     ]);
 
+    if (ratingsRes.error) throw ratingsRes.error;
+    if (reviewsRes.error) throw reviewsRes.error;
     const ratings = (ratingsRes.data ?? []) as Array<{ rating: number }>;
     if (ratings.length < 10) return null; // too thin to make claims from
 
@@ -212,15 +242,17 @@ export async function getHomeSocialProof(): Promise<HomeSocialProof | null> {
       brandCount: brandsRes.count ?? 0,
       reviews,
     };
-  }, null);
+}, catalog);
+
+export async function getHomeSocialProof(): Promise<HomeSocialProof | null> {
+  if (isDemo) return null;
+  return safe('getHomeSocialProof', readHomeSocialProof, null);
 }
 
 /** Editorial bestsellers, flagged by `is_bestseller=true`. Falls back to
  *  the highest-stock published products if the flag hasn't been seeded yet
  * , homepage rails should never go empty. */
-export async function getBestsellers(limit = 8): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
-  return safe('getBestsellers', async () => {
+const readBestsellers = cachedRead(['products:bestsellers'], async (limit: number) => {
     // Demand-driven "Popular right now" rail. Ordering, in priority:
     //   1. is_bestseller   , the owner's manual pin always leads (override)
     //   2. popularity_score, daily demand (views + carts + sales) set by the
@@ -230,7 +262,7 @@ export async function getBestsellers(limit = 8): Promise<Product[]> {
     //      demand signal yet still ranks above older zero-demand ones
     // Published + in-stock only, so the rail never shows a dead tile. One
     // query: the manual pins fall out on top for free.
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
@@ -239,17 +271,20 @@ export async function getBestsellers(limit = 8): Promise<Product[]> {
       .order('popularity_score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
+    if (error) throw error;
     return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.slice(0, limit));
+}, catalog);
+
+export async function getBestsellers(limit = 8): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getBestsellers', () => readBestsellers(limit), DEMO_PRODUCTS.slice(0, limit));
 }
 
 /** "Best Sellers" rail — ordered by real units sold (nightly `units_sold`),
  *  with the manual is_bestseller pin still leading as the owner override.
  *  Zero-sale products sort last by recency, so the rail is never empty. */
-export async function getTopSellers(limit = 4): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
-  return safe('getTopSellers', async () => {
-    const { data } = await supabase
+const readTopSellers = cachedRead(['products:top-sellers'], async (limit: number) => {
+    const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
@@ -261,17 +296,20 @@ export async function getTopSellers(limit = 4): Promise<Product[]> {
       .order('popularity_score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
+    if (error) throw error;
     return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.slice(0, limit));
+}, catalog);
+
+export async function getTopSellers(limit = 4): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getTopSellers', () => readTopSellers(limit), DEMO_PRODUCTS.slice(0, limit));
 }
 
 /** "Trending Now" rail — ordered purely by recent momentum (nightly
  *  `trend_score` = views + add-to-carts). No manual pin: trending is a live
  *  signal by definition. Zero-signal products sort last by recency. */
-export async function getTrending(limit = 4): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
-  return safe('getTrending', async () => {
-    const { data } = await supabase
+const readTrending = cachedRead(['products:trending'], async (limit: number) => {
+    const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
@@ -279,19 +317,22 @@ export async function getTrending(limit = 4): Promise<Product[]> {
       .order('trend_score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
+    if (error) throw error;
     return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.slice(0, limit));
+}, catalog);
+
+export async function getTrending(limit = 4): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getTrending', () => readTrending(limit), DEMO_PRODUCTS.slice(0, limit));
 }
 
 /** Newest published, purchasable products — the homepage "New In" rail and
  *  anywhere else fresh stock should surface. Pure recency, no flags. */
-export async function getNewArrivals(limit = 8): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
-  return safe('getNewArrivals', async () => {
+const readNewArrivals = cachedRead(['products:new-arrivals'], async (limit: number) => {
     // 30-day floor so "just landed" copy can't silently describe old stock;
     // the rail self-hides during a dry spell (ProductRail returns null on []).
     const floor = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('status', 'published')
@@ -302,8 +343,13 @@ export async function getNewArrivals(limit = 8): Promise<Product[]> {
       // order stable across renders.
       .order('id')
       .limit(limit);
+    if (error) throw error;
     return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.slice(0, limit));
+}, catalog);
+
+export async function getNewArrivals(limit = 8): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, limit);
+  return safe('getNewArrivals', () => readNewArrivals(limit), DEMO_PRODUCTS.slice(0, limit));
 }
 
 /** EVERY owner-flagged (`is_featured`), published, purchasable product,
@@ -311,10 +357,8 @@ export async function getNewArrivals(limit = 8): Promise<Product[]> {
  *  the merchandising composer picks the daily four and handles the fill-up
  *  when fewer than four are flagged (it needs the sellers pool to exclude,
  *  which this helper cannot see). */
-export async function getFeatured(): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.slice(0, 6);
-  return safe('getFeatured', async () => {
-    const { data } = await supabase
+const readFeatured = cachedRead(['products:featured'], async () => {
+    const { data, error } = await supabase
       .from('products')
       .select(PRODUCT_TILE_COLUMNS)
       .eq('is_featured', true)
@@ -323,15 +367,18 @@ export async function getFeatured(): Promise<Product[]> {
       .or(PURCHASABLE)
       .order('popularity_score', { ascending: false })
       .order('created_at', { ascending: false });
+    if (error) throw error;
     return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.slice(0, 6));
+}, catalog);
+
+export async function getFeatured(): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.slice(0, 6);
+  return safe('getFeatured', readFeatured, DEMO_PRODUCTS.slice(0, 6));
 }
 
 /** Products on sale = `original_price > price`. Sorted by discount % so the
  *  deepest deals lead. */
-export async function getOnSale(limit = 8): Promise<Product[]> {
-  if (isDemo) return DEMO_PRODUCTS.filter(p => p.original_price && p.original_price > p.price).slice(0, limit);
-  return safe('getOnSale', async () => {
+const readOnSale = cachedRead(['products:on-sale'], async (limit: number) => {
     // discount_pct is a STORED generated column (migration 2026-08-04):
     // round(100*(original_price-price)/original_price). Exact SQL predicate,
     // deepest discounts first, 10% floor so token discounts don't headline,
@@ -347,7 +394,11 @@ export async function getOnSale(limit = 8): Promise<Product[]> {
       .limit(limit);
     if (error) throw error;
     return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.slice(0, limit));
+}, catalog);
+
+export async function getOnSale(limit = 8): Promise<Product[]> {
+  if (isDemo) return DEMO_PRODUCTS.filter(p => p.original_price && p.original_price > p.price).slice(0, limit);
+  return safe('getOnSale', () => readOnSale(limit), DEMO_PRODUCTS.slice(0, limit));
 }
 
 /** Resolve a taxon slug ("makeup" / "wellness" / etc.) or a single-category
@@ -358,18 +409,21 @@ export async function getProductsByTaxon(taxonOrCategory: string, limit = 8): Pr
   const taxonCats = categoriesForTaxon(taxonOrCategory);
   const cats = taxonCats ?? [taxonOrCategory];
   if (isDemo) return DEMO_PRODUCTS.filter(p => cats.includes(p.category)).slice(0, limit);
-  return safe('getProductsByTaxon', async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select(PRODUCT_TILE_COLUMNS)
-      .in('category', cats as string[])
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.filter(p => cats.includes(p.category)).slice(0, limit));
+  return safe('getProductsByTaxon', () => readProductsByCategories(cats as string[], limit),
+    DEMO_PRODUCTS.filter(p => cats.includes(p.category)).slice(0, limit));
 }
+
+const readProductsByCategories = cachedRead(['products:by-categories'], async (cats: string[], limit: number) => {
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_TILE_COLUMNS)
+    .in('category', cats)
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as Product[];
+}, catalog);
 
 /** Every published wellness product, bestsellers first then newest. Powers
  *  the homepage WellnessSection, which derives its per-concern counts +
@@ -380,21 +434,23 @@ export async function getWellnessProducts(): Promise<Product[]> {
   const { categoriesForTaxon } = await import('./category-taxonomy');
   const cats = (categoriesForTaxon('wellness') ?? []) as string[];
   if (isDemo) return DEMO_PRODUCTS.filter(p => cats.includes(p.category));
-  return safe('getWellnessProducts', async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select(PRODUCT_TILE_COLUMNS)
-      .in('category', cats)
-      .eq('status', 'published')
-      // In stock only — a sold-out product made concern cards advertise a
-      // phantom "from" price (audit fix).
-      .or(PURCHASABLE)
-      .order('popularity_score', { ascending: false })
-      .order('created_at', { ascending: false });
-    if (error) throw error;
-    return (data ?? []) as Product[];
-  }, DEMO_PRODUCTS.filter(p => cats.includes(p.category)));
+  return safe('getWellnessProducts', () => readWellnessProducts(cats), DEMO_PRODUCTS.filter(p => cats.includes(p.category)));
 }
+
+const readWellnessProducts = cachedRead(['products:wellness'], async (cats: string[]) => {
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_TILE_COLUMNS)
+    .in('category', cats)
+    .eq('status', 'published')
+    // In stock only — a sold-out product made concern cards advertise a
+    // phantom "from" price (audit fix).
+    .or(PURCHASABLE)
+    .order('popularity_score', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Product[];
+}, catalog);
 
 /** Products from a single brand, powers the "More from {brand}" rail on
  *  the PDP. Published only; returns [] for a missing brand so the rail
@@ -402,18 +458,20 @@ export async function getWellnessProducts(): Promise<Product[]> {
 export async function getProductsByBrand(brand: string | null | undefined, limit = 8): Promise<Product[]> {
   if (!brand) return [];
   if (isDemo) return DEMO_PRODUCTS.filter(p => p.brand === brand).slice(0, limit);
-  return safe('getProductsByBrand', async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select(PRODUCT_TILE_COLUMNS)
-      .eq('brand', brand)
-      .eq('status', 'published')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    return (data ?? []) as Product[];
-  }, []);
+  return safe('getProductsByBrand', () => readProductsByBrand(brand, limit), []);
 }
+
+const readProductsByBrand = cachedRead(['products:by-brand'], async (brand: string, limit: number) => {
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_TILE_COLUMNS)
+    .eq('brand', brand)
+    .eq('status', 'published')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as Product[];
+}, catalog);
 
 /** Products across a curated brand list, powers brand edits like the
  *  homepage K-Beauty section (see lib/k-beauty.ts). Published only, newest
@@ -422,20 +480,22 @@ export async function getProductsByBrand(brand: string | null | undefined, limit
 export async function getProductsByBrands(brands: readonly string[], limit = 4): Promise<Product[]> {
   if (brands.length === 0) return [];
   if (isDemo) return DEMO_PRODUCTS.filter(p => p.brand && brands.includes(p.brand)).slice(0, limit);
-  return safe('getProductsByBrands', async () => {
-    const { data, error } = await supabase
-      .from('products')
-      .select(PRODUCT_TILE_COLUMNS)
-      .in('brand', brands as string[])
-      .eq('status', 'published')
-      .or(PURCHASABLE)
-      .order('popularity_score', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(limit);
-    if (error) throw error;
-    return (data ?? []) as Product[];
-  }, []);
+  return safe('getProductsByBrands', () => readProductsByBrands([...brands], limit), []);
 }
+
+const readProductsByBrands = cachedRead(['products:by-brands'], async (brands: string[], limit: number) => {
+  const { data, error } = await supabase
+    .from('products')
+    .select(PRODUCT_TILE_COLUMNS)
+    .in('brand', brands)
+    .eq('status', 'published')
+    .or(PURCHASABLE)
+    .order('popularity_score', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return (data ?? []) as Product[];
+}, catalog);
 
 // Tile-projection for the blog index. P0-2 finding in the 2026-05-19
 // launch audit: /blog was shipping 1.95 MB of HTML, ~1.76 MB of which
@@ -445,9 +505,7 @@ export async function getProductsByBrands(brands: readonly string[], limit = 4):
 const BLOG_TILE_COLUMNS =
   'id, slug, title, excerpt, category, date, read_time, featured, image_url, updated_at';
 
-export async function getBlogPosts(opts: { limit?: number } = {}): Promise<BlogPost[]> {
-  if (isDemo) return opts.limit ? DEMO_BLOG_POSTS.slice(0, opts.limit) : DEMO_BLOG_POSTS;
-  return safe('getBlogPosts', async () => {
+const readBlogPosts = cachedRead(['blog:posts'], async (limit: number | undefined) => {
     let q = supabase
       .from('blog_posts')
       .select(BLOG_TILE_COLUMNS)
@@ -460,21 +518,23 @@ export async function getBlogPosts(opts: { limit?: number } = {}): Promise<BlogP
       // among them.
       .order('date', { ascending: false })
       .order('created_at', { ascending: false });
-    if (opts.limit) q = q.limit(opts.limit);
+    if (limit) q = q.limit(limit);
     const { data, error } = await q;
     if (error) throw error;
     // Resolve [[year]]/[[month]] in headlines once, here, so every surface
     // that renders a title gets the live value. See withRenderedDates.
     return ((data ?? []) as unknown as BlogPost[]).map(p => withRenderedDates(p));
-  }, DEMO_BLOG_POSTS);
+}, blog);
+
+export async function getBlogPosts(opts: { limit?: number } = {}): Promise<BlogPost[]> {
+  if (isDemo) return opts.limit ? DEMO_BLOG_POSTS.slice(0, opts.limit) : DEMO_BLOG_POSTS;
+  return safe('getBlogPosts', () => readBlogPosts(opts.limit), DEMO_BLOG_POSTS);
 }
 
 /** The current featured post, if any (the one-featured unique index makes
  *  "any" mean "the"). Hero eligibility (60-day window) is applied by
  *  pickBlogHero in lib/merchandising. */
-export async function getFeaturedBlogPost(): Promise<BlogPost | null> {
-  if (isDemo) return DEMO_BLOG_POSTS.find(p => p.featured) ?? null;
-  return safe('getFeaturedBlogPost', async () => {
+const readFeaturedBlogPost = cachedRead(['blog:featured'], async () => {
     const { data, error } = await supabase
       .from('blog_posts')
       .select(BLOG_TILE_COLUMNS)
@@ -484,16 +544,18 @@ export async function getFeaturedBlogPost(): Promise<BlogPost | null> {
     if (error) throw error;
     const row = (data ?? null) as unknown as BlogPost | null;
     return row ? withRenderedDates(row) : null;
-  }, null);
+}, blog);
+
+export async function getFeaturedBlogPost(): Promise<BlogPost | null> {
+  if (isDemo) return DEMO_BLOG_POSTS.find(p => p.featured) ?? null;
+  return safe('getFeaturedBlogPost', readFeaturedBlogPost, null);
 }
 
 /** Posts whose body links to a product's PDP — the reverse of the blog's
  *  house convention of inline `<a href="/product/<slug>">` links. Powers the
  *  "From the blog" rail on PDPs. The LIKE scan over ~180 rows is fine at this
  *  scale and stays fresh through the PDP's ISR window. */
-export async function getPostsLinkingProduct(slug: string, limit = 3): Promise<BlogPost[]> {
-  if (isDemo || !slug) return [];
-  return safe('getPostsLinkingProduct', async () => {
+const readPostsLinkingProduct = cachedRead(['blog:linking-product'], async (slug: string, limit: number) => {
     // Select body too so we can boundary-check: a plain LIKE would let
     // "melatonin" match a link to "melatonin-plus". Slugs are [a-z0-9-],
     // so any of " ' / ? # after the slug means the link really ends there.
@@ -512,26 +574,40 @@ export async function getPostsLinkingProduct(slug: string, limit = 3): Promise<B
       // Drop the heavy body column before the rows enter the RSC payload.
       .map(p => { const tile = { ...(p as Record<string, unknown>) }; delete tile.body; return tile; })
       .map(p => withRenderedDates(p as unknown as BlogPost)) as unknown as BlogPost[];
-  }, []);
+}, blog);
+
+export async function getPostsLinkingProduct(slug: string, limit = 3): Promise<BlogPost[]> {
+  if (isDemo || !slug) return [];
+  return safe('getPostsLinkingProduct', () => readPostsLinkingProduct(slug, limit), []);
 }
+
+const readBlogPostBySlug = cachedRead(['blog:by-slug'], async (slug: string) => {
+  const { data, error } = await supabase
+    .from('blog_posts')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+  if (error) {
+    if (error.code === NO_ROWS) return null;
+    throw error;
+  }
+  return withRenderedDates(data as BlogPost);
+}, blog);
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   if (isDemo) return DEMO_BLOG_POSTS.find(p => p.slug === slug) ?? null;
-  return safe('getBlogPostBySlug', async () => {
-    const { data, error } = await supabase
-      .from('blog_posts')
-      .select('*')
-      .eq('slug', slug)
-      .single();
-    if (error) return null;
-    return withRenderedDates(data as BlogPost);
-  }, DEMO_BLOG_POSTS.find(p => p.slug === slug) ?? null);
+  return safe('getBlogPostBySlug', () => readBlogPostBySlug(slug), DEMO_BLOG_POSTS.find(p => p.slug === slug) ?? null);
 }
+
+const readSiteSettings = cachedRead(['site-settings:all'], async () => {
+  const { data, error } = await supabase.from('site_settings').select('key, value');
+  if (error) throw error;
+  return Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value])) as Record<string, string>;
+}, { tags: [SETTINGS_CACHE_TAG], revalidate: SETTINGS_TTL });
 
 export async function getSiteSettings(): Promise<Record<string, string>> {
   if (isDemo) return DEMO_SITE_SETTINGS;
-  return safe('getSiteSettings', async () => {
-    const { data } = await supabase.from('site_settings').select('key, value');
-    return Object.fromEntries((data ?? []).map((r: { key: string; value: string }) => [r.key, r.value]));
-  }, DEMO_SITE_SETTINGS);
+  // Empty map on failure (every consumer has a default per key), never the
+  // demo copy with its "DEMO MODE" announcement bar.
+  return safe('getSiteSettings', readSiteSettings, DEMO_SITE_SETTINGS, {});
 }

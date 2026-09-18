@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { supabaseAdmin } from '@/lib/supabase';
+import { revalidateSiteSettings } from '@/lib/revalidate-storefront';
 import { getStaffSession } from '@/lib/staff-auth';
 import { logAudit } from '@/lib/audit';
 import { isValidEmv } from '@/lib/payments/emv-qr';
@@ -93,11 +94,10 @@ export async function saveSettings(formData: FormData): Promise<void> {
     diff: { keys_updated: pairs.map(p => p.key) },
   });
 
-  revalidatePath('/', 'layout');
-  // Explicit page-level revalidation of the homepage too, the sale toggle
-  // and other settings drive homepage sections, and the layout-level call
-  // alone has been unreliable at refreshing the index render.
-  revalidatePath('/', 'page');
+  // Busts the cached settings map first, then the layout and the homepage
+  // (the sale toggle and other settings drive homepage sections, and the
+  // layout-level call alone has been unreliable at refreshing the index).
+  revalidateSiteSettings();
   revalidatePath(redirectTarget);
   redirect(`${redirectTarget}?saved=1`);
 }

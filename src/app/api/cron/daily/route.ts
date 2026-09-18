@@ -32,6 +32,7 @@
 // ============================================================================
 
 import { NextRequest, NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -139,6 +140,18 @@ export async function GET(req: NextRequest) {
   }
 
   const allOk = results.every(r => r.ok);
+  // Every job failing is not eight unrelated bugs, it is the database (or the
+  // deploy) being unreachable. On 18 Sep 2026 this run returned 207 with
+  // eight failures while Supabase was restricted and nobody was told.
+  if (!allOk && results.every(r => !r.ok)) {
+    try {
+      Sentry.captureMessage('cron/daily: every job failed', {
+        level: 'fatal',
+        fingerprint: ['cron-daily-all-failed'],
+        extra: { results: results.map(r => ({ job: r.job, status: r.status, error: r.error ?? r.body })) },
+      });
+    } catch { /* telemetry must not fail the run */ }
+  }
   // Log the per-job outcome so a slow/failed day is diagnosable from Vercel's
   // runtime logs — before this, a killed invocation left no trace of which
   // sub-job ate the budget.

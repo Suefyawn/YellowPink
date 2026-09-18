@@ -8,6 +8,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { supabaseAdmin, getSiteSettings } from '@/lib/supabase';
+import { revalidateSiteSettings } from '@/lib/revalidate-storefront';
 import { assertPermission } from '@/lib/admin-auth';
 import { logAudit } from '@/lib/audit';
 import { normalizeTheme } from '@/lib/themes';
@@ -37,8 +38,8 @@ async function writeSettings(settings: Record<string, string>): Promise<string |
 }
 
 function bustStorefront() {
-  revalidatePath('/', 'layout');
-  revalidatePath('/', 'page');
+  // Cached settings map + sale-event calendar, then layout and homepage.
+  revalidateSiteSettings();
   revalidatePath(PATH);
 }
 
@@ -207,7 +208,7 @@ export async function saveSaleEvent(formData: FormData): Promise<void> {
       : `Event saved and the ${state === 'live' ? 'live look' : 'scheduled look'} updated with it` + (coupon ? couponNote(coupon) : ''))}`);
   }
 
-  revalidatePath(PATH);
+  bustStorefront();
   redirect(`${PATH}?saved=${encodeURIComponent('Event saved')}`);
 }
 
@@ -234,7 +235,7 @@ export async function createSaleEvent(formData: FormData): Promise<void> {
   }
 
   void logAudit(session, { action: 'sale_event.create', entity: 'sale_events', entity_id: (data as { id: string }).id, diff: { key, name } });
-  revalidatePath(PATH);
+  bustStorefront();
   redirect(`${PATH}?saved=${encodeURIComponent(`${name} added — set its theme, dates and copy, then it's one click for ever after`)}&edit=${encodeURIComponent(key)}`);
 }
 
@@ -258,6 +259,6 @@ export async function deleteSaleEvent(formData: FormData): Promise<void> {
   if (error) redirect(`${PATH}?error=${encodeURIComponent(error.message)}`);
 
   void logAudit(session, { action: 'sale_event.delete', entity: 'sale_events', entity_id: event.id, diff: { key: event.key, name: event.name } });
-  revalidatePath(PATH);
+  bustStorefront();
   redirect(`${PATH}?saved=${encodeURIComponent(`${event.name} removed from the library`)}`);
 }

@@ -6,7 +6,13 @@
 // ============================================================================
 
 import { supabase, isDemo } from '@/lib/supabase';
+import { cachedRead } from '@/lib/supabase-resilience';
+import { CATALOG_CACHE_TAG } from '@/lib/cache-tags';
 import type { ProductAttribute, AttributeValue } from '@/types';
+
+// Facets are re-read on every /shop, brand and tag render; cached under the
+// catalogue tag so a variant/tag edit in admin still shows immediately.
+const catalog = { tags: [CATALOG_CACHE_TAG], revalidate: 3600 } as const;
 
 export interface AttributeWithValues extends ProductAttribute {
   values: AttributeValue[];
@@ -27,6 +33,10 @@ export interface TagData {
 export async function loadFacetData(): Promise<FacetData> {
   // Demo-mode short-circuit: no variants in stub data, no facets.
   if (isDemo) return { attributes: [], productValueMap: {} };
+  return readFacetData();
+}
+
+const readFacetData = cachedRead(['facets:attributes'], async (): Promise<FacetData> => {
   // Pull every active variant + its option links, joined with the value +
   // attribute metadata. One round-trip; data is small (one row per
   // variant-value pair across the active catalog).
@@ -67,13 +77,17 @@ export async function loadFacetData(): Promise<FacetData> {
     .filter(a => a.values.length > 0);
 
   return { attributes, productValueMap };
-}
+}, catalog);
 
 // Tags power the storefront Tags facet. product_tags + product_tag_map are
 // anon-readable (migration 143); the catalogue is small so one round-trip is
 // plenty. Demo mode has no tag tables, so short-circuit.
 export async function loadTagData(): Promise<TagData> {
   if (isDemo) return { productTagMap: {}, allTags: [] };
+  return readTagData();
+}
+
+const readTagData = cachedRead(['facets:tags'], async (): Promise<TagData> => {
   const [{ data: tagRows }, { data: mapRows }] = await Promise.all([
     supabase.from('product_tags').select('id, slug, name').order('name'),
     supabase.from('product_tag_map').select('product_id, tag_id'),
@@ -91,4 +105,4 @@ export async function loadTagData(): Promise<TagData> {
     (productTagMap[r.product_id] ??= []).push(slug);
   }
   return { productTagMap, allTags };
-}
+}, catalog);

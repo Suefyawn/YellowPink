@@ -6,6 +6,7 @@
 // just keeps the *advertised* number in sync with it.
 import { cache } from 'react';
 import { supabase } from './supabase';
+import { cachedRead } from './supabase-resilience';
 import { WELCOME_CODE, WELCOME_DISCOUNT_PCT, WELCOME_MIN_ORDER } from './commerce';
 
 export interface WelcomeOffer {
@@ -37,19 +38,27 @@ const FALLBACK: WelcomeOffer = {
 // deleted", which made this resolver advertise nothing while WELCOME10 was
 // active (caught by the 2026-07-04 regression sweep). The RPC is the same
 // anon-safe path cart/checkout use to validate codes.
+//
+// The RPC itself is cached across requests for five minutes: the layout calls
+// this on every dynamic page (~3,000 times a day), and a coupon edit showing
+// up within five minutes is fine for an advertised percentage.
+const readWelcomeOffer = cachedRead(['offers:welcome'], async (): Promise<WelcomeOffer | null> => {
+  const { data, error } = await supabase.rpc('lookup_coupon' as never, { p_code: WELCOME_CODE } as never);
+  if (error) throw error;
+  const row = (data as Array<{ code: string; type: string; value: number; min_order: number; active: boolean }> | null)?.[0];
+  if (row && row.active && row.type === 'percent') {
+    return {
+      code: row.code ?? WELCOME_CODE,
+      pct: Number(row.value) || WELCOME_DISCOUNT_PCT,
+      minOrder: Number(row.min_order) || 0,
+    };
+  }
+  return null; // deliberately absent/inactive → don't advertise
+}, { tags: ['coupons'], revalidate: 300 });
+
 export const getWelcomeOffer = cache(async (): Promise<WelcomeOffer | null> => {
   try {
-    const { data, error } = await supabase.rpc('lookup_coupon' as never, { p_code: WELCOME_CODE } as never);
-    if (error) return FALLBACK;
-    const row = (data as Array<{ code: string; type: string; value: number; min_order: number; active: boolean }> | null)?.[0];
-    if (row && row.active && row.type === 'percent') {
-      return {
-        code: row.code ?? WELCOME_CODE,
-        pct: Number(row.value) || WELCOME_DISCOUNT_PCT,
-        minOrder: Number(row.min_order) || 0,
-      };
-    }
-    return null; // deliberately absent/inactive → don't advertise
+    return await readWelcomeOffer();
   } catch {
     return FALLBACK;
   }

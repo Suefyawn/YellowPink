@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 15 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 18 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1199,6 +1199,10 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 18 September 2026
+- **The database outage that began on 18 September, and what changed.** From the early hours of 18 September until the database plan was changed, the store showed ten sample products with made-up prices, and the admin panel showed no orders or products. Nothing was lost: Supabase, the database provider, had switched the project off for exceeding the Free plan's monthly data allowance, because the storefront was re-downloading the whole catalogue on almost every page view. Three things are different now. The catalogue, journal and settings are fetched once and reused across visitors (your edits in admin still appear immediately, because saving busts that copy). If the database ever becomes unreachable again, the storefront shows an **empty** shop and the team gets a Sentry alert, instead of quietly selling sample products. And the nightly maintenance run raises the same alert when all of its jobs fail at once.
+- **Settings saved outside the Settings and Sales pages** (win-back copy, broadcast defaults, abandoned-cart message) can take up to five minutes to reach the storefront. Settings and Sales & occasions saves are immediate, as before.
 
 ### 15 September 2026
 

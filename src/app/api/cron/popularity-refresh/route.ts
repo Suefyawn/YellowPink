@@ -29,6 +29,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { HUMAN_TRAFFIC_SQL } from '@/lib/analytics-bots';
+import { revalidateStorefrontCatalog } from '@/lib/revalidate-storefront';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -276,6 +277,11 @@ export async function GET(req: NextRequest) {
   if (writeError) {
     return NextResponse.json({ ok: false, error: writeError.message }, { status: 500 });
   }
+
+  // The rails read cached product rows (lib/supabase, catalogue tag); without
+  // this the new scores would sit behind the cache until its TTL or the next
+  // admin edit.
+  revalidateStorefrontCatalog();
 
   // Run stamp: the admin merchandising health card alarms when this is older
   // than 48h — the silent-skip failure mode was previously invisible.
