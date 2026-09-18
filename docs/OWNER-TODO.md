@@ -1,9 +1,31 @@
 # Owner to-do — things only you can finish
 
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-18
 
 These are the steps that need *your* accounts, domain/DNS access, or business
 decisions — the code side is done and live. Roughly in priority order.
+
+## 0. RESTORE THE DATABASE (site has served demo data since 18 Sep 03:43 PKT)
+Supabase restricted the project for exceeding the Free plan's 5 GB monthly
+egress (`exceed_egress_quota`). Every database call returns 402, the
+storefront shows the ten built-in sample products and the admin panel is
+empty. Nothing is lost; the data is all there. Only a plan change lifts it.
+- [ ] **Supabase dashboard → Organization "Sufyan 's projects" → Billing →
+      upgrade to Pro** (USD 25/month; the included "Micro" compute is the size
+      the project already runs on, so pick that). Service returns within a
+      minute. The org is managed through Vercel's marketplace, so the same
+      switch is also under Vercel → Storage → Supabase → Plan.
+- [ ] Then load https://www.yellowpink.pk/shop and Admin → Orders to confirm
+      real data is back. The `claude/lucid-rubin-qhxuep` branch carries the
+      code fix that stops this recurring (catalogue reads cached, demo data
+      never served in production, Sentry alert on the next restriction);
+      merge and deploy it before considering a downgrade.
+- [ ] **Vercel → Project → Firewall → add a rate-limit rule** (roughly 120
+      requests a minute per IP on the storefront). The trigger on 17 Sep was
+      a crawler doing 10,723 page loads in twenty minutes.
+- [ ] Optional, if staying on Free: `docs/SUPABASE-FREE-PLAN.md` now has the
+      corrected egress maths. Even with the cache fix, the honest answer is
+      that Pro's 250 GB egress is the safe choice for a live store.
 
 ## 1. Connect Google (Analytics + Search Console) — ✅ DONE
 The wiring is built — IDs pasted in **Admin → Settings → Integrations → Connect

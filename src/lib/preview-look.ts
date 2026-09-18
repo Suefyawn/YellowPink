@@ -10,12 +10,22 @@ import 'server-only';
 
 import { draftMode, cookies } from 'next/headers';
 import { getSiteSettings, supabaseAdmin } from '@/lib/supabase';
+import { cachedRead } from '@/lib/supabase-resilience';
+import { SETTINGS_CACHE_TAG } from '@/lib/cache-tags';
 import {
   saleEventToSeasonalSettings, pickAutoEvent, autoSnoozed,
   explicitLookConfigured, type SaleEvent,
 } from '@/lib/sale-events';
 
 export const LOOK_PREVIEW_COOKIE = 'look_preview';
+
+// The occasions calendar is read by the root layout on every dynamic page;
+// cached alongside site_settings (same tag, same writers in admin/sales).
+const readSaleEvents = cachedRead(['sale-events:all'], async (): Promise<SaleEvent[]> => {
+  const { data, error } = await supabaseAdmin().from('sale_events').select('*');
+  if (error) throw error;
+  return (data ?? []) as SaleEvent[];
+}, { tags: [SETTINGS_CACHE_TAG], revalidate: 300 });
 
 export interface PreviewLook {
   key: string;
@@ -67,8 +77,7 @@ export async function getStorefrontSettings(): Promise<{
 
   // 3. Autopilot.
   try {
-    const { data } = await supabaseAdmin().from('sale_events').select('*');
-    const events = (data ?? []) as SaleEvent[];
+    const events = await readSaleEvents();
     const event = pickAutoEvent(events);
     if (!event || autoSnoozed(event, settings)) return { settings, preview: null, auto: null };
     const { settings: overlay, error } = saleEventToSeasonalSettings(event, 'schedule');

@@ -1,4 +1,10 @@
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { BLOG_CACHE_TAG, CATALOG_CACHE_TAG, SETTINGS_CACHE_TAG } from './cache-tags';
+
+// Immediate expiry, not stale-while-revalidate: staff expect the edit they
+// just saved to be on the live page they open next. `{ expire: 0 }` works
+// from server actions and route handlers alike (updateTag is actions-only).
+const NOW = { expire: 0 } as const;
 
 /**
  * Revalidate the storefront ISR pages that surface catalogue data — products,
@@ -18,6 +24,9 @@ import { revalidatePath } from 'next/cache';
  * enumerate which. The listing/home routes are literal paths.
  */
 export function revalidateStorefrontCatalog(): void {
+  // The cached readers first (lib/supabase, shop-facets, collections-data,
+  // search-data), then the pages, so the regenerated pages read fresh rows.
+  revalidateTag(CATALOG_CACHE_TAG, NOW);
   revalidatePath('/');
   revalidatePath('/shop');
   revalidatePath('/collections');
@@ -46,7 +55,20 @@ export function revalidateStorefrontCatalog(): void {
  * still clears the listing and home page.
  */
 export function revalidateBlogPost(slug?: string | null): void {
+  revalidateTag(BLOG_CACHE_TAG, NOW);
   if (slug) revalidatePath(`/blog/${slug}`);
   revalidatePath('/blog');
   revalidatePath('/');
+}
+
+/**
+ * Bust the cached site_settings map and the sale-event calendar, then the
+ * layout that renders them. Settings and Sales & occasions call this after a
+ * save; the other settings writers (winback, broadcast, abandoned-cart copy)
+ * touch keys no storefront page renders and ride the five-minute TTL.
+ */
+export function revalidateSiteSettings(): void {
+  revalidateTag(SETTINGS_CACHE_TAG, NOW);
+  revalidatePath('/', 'layout');
+  revalidatePath('/', 'page');
 }
