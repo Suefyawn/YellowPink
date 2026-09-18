@@ -5,27 +5,28 @@
 These are the steps that need *your* accounts, domain/DNS access, or business
 decisions — the code side is done and live. Roughly in priority order.
 
-## 0. RESTORE THE DATABASE (site has served demo data since 18 Sep 03:43 PKT)
-Supabase restricted the project for exceeding the Free plan's 5 GB monthly
-egress (`exceed_egress_quota`). Every database call returns 402, the
-storefront shows the ten built-in sample products and the admin panel is
-empty. Nothing is lost; the data is all there. Only a plan change lifts it.
-- [ ] **Supabase dashboard → Organization "Sufyan 's projects" → Billing →
-      upgrade to Pro** (USD 25/month; the included "Micro" compute is the size
-      the project already runs on, so pick that). Service returns within a
-      minute. The org is managed through Vercel's marketplace, so the same
-      switch is also under Vercel → Storage → Supabase → Plan.
-- [ ] Then load https://www.yellowpink.pk/shop and Admin → Orders to confirm
-      real data is back. The `claude/lucid-rubin-qhxuep` branch carries the
-      code fix that stops this recurring (catalogue reads cached, demo data
-      never served in production, Sentry alert on the next restriction);
-      merge and deploy it before considering a downgrade.
-- [ ] **Vercel → Project → Firewall → add a rate-limit rule** (roughly 120
-      requests a minute per IP on the storefront). The trigger on 17 Sep was
-      a crawler doing 10,723 page loads in twenty minutes.
-- [ ] Optional, if staying on Free: `docs/SUPABASE-FREE-PLAN.md` now has the
-      corrected egress maths. Even with the cache fix, the honest answer is
-      that Pro's 250 GB egress is the safe choice for a live store.
+## 0. Hosting decision, 18 Sep 2026: staying on Vercel + Supabase — ✅ DECIDED
+The 17–18 Sep outage (Supabase Free-plan egress restriction, two days of
+sample products, empty admin) is over: the project is on **Supabase Pro** as
+of 18 Sep and the code fix that stops it recurring is live (#765). You chose
+to stay put rather than take on a server: Supabase is billed through the
+Vercel dashboard (Storage → Supabase), so it is one login and one bill, about
+USD 45/month. Nothing to migrate.
+- [x] Supabase plan changed to Pro (18 Sep, 18:07 UTC). Real data back.
+- [x] Catalogue-read cache + outage alerting merged and deployed (#765).
+- [ ] **Vercel → Project → Firewall → add a rate-limit rule**, roughly 120
+      requests a minute per IP on the storefront. The 17 Sep trigger was a
+      crawler doing 10,723 page loads in twenty minutes; the cache makes that
+      cheap on Supabase now, but it still costs Vercel function invocations.
+- [ ] **Sentry → Alerts:** make sure the alert rule for new issues emails an
+      inbox you read. The new `supabase-restricted` alert only helps if it
+      reaches a person; the admin bell is useless when the database is down.
+- [ ] **Around 18 Oct 2026, the egress review** (a reminder is scheduled):
+      Supabase → Reports → Egress for the 30 days on Pro. The fix predicts a
+      few megabytes a day. If the month came in well under 5 GB, dropping
+      Supabase back to Free saves USD 25 with no migration; if not, stay on
+      Pro and find what is reading too much. Either way there is no server to
+      run.
 
 ## 1. Connect Google (Analytics + Search Console) — ✅ DONE
 The wiring is built — IDs pasted in **Admin → Settings → Integrations → Connect
@@ -109,26 +110,12 @@ Token generated and set; the card is reading live numbers. First reading:
       days** (there is no longer history to request), and the quota is **10
       calls per project per day** — the daily analytics refresh spends one.
 
-## 8c. Move off Vercel onto your own server (about an hour)
-The code side is finished and merged; what is left needs a person with a credit
-card and an hour. **`docs/SERVER-SETUP.md` is written for someone who has never
-touched a server** — which provider to rent from and what it costs, how to make
-an SSH key on Windows or Mac, how to log in, and then one command that does the
-rest.
-- [ ] Rent a machine. **Hetzner CX22, Singapore, about €4/month** is the
-      straightforward choice (~75% cheaper than Vercel Pro). **Oracle Cloud
-      Always Free** in Mumbai or Hyderabad is PKR 0 forever and a bigger
-      machine, but its free capacity is often unavailable and you may have to
-      retry over a few days.
-- [ ] `sudo bash provision.sh yellowpink.pk` on the new box. It stops once to
-      have you paste the settings from Vercel into `/etc/yellowpink.env`, then
-      carries on by itself.
-- [ ] Test it over the real domain using your computer's hosts file, **before**
-      moving DNS. The checklist is in the guide; it includes placing a real
-      test order.
-- [ ] Move DNS, leave Vercel running alongside it.
-- [ ] Cancel Vercel only after the new box has served a full day **including
-      one successful daily cron run** (`tail -50 /var/log/yellowpink-cron.log`).
+## 8c. Move off Vercel onto your own server — ❌ DROPPED (18 Sep 2026)
+Decided against after the 17–18 Sep outage: the store stays on Vercel +
+Supabase (see item 0). `docs/SELF-HOSTING.md` and `docs/SERVER-SETUP.md` stay
+in the repo as reference, and `provision.sh` still works, but nobody should
+be provisioning a server for this store. The cheaper lever, if cost matters,
+is the Supabase downgrade check in item 0.
 
 ## 8d. The eight hair products are LIVE — two things need checking today
 Published 15 Sep on the owner's instruction, because

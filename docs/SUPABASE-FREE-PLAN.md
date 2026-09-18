@@ -1,5 +1,12 @@
 # Moving back to the Supabase Free plan
 
+> **Status, 18 Sep 2026: back on Pro.** The Free plan restricted the project
+> a second time on 17 Sep (egress quota; see the incident section below) and
+> the owner moved to Pro on 18 Sep. Hosting stays on Vercel + Supabase by
+> owner decision the same day; no server migration. A downgrade is only on
+> the table after the 30-day egress review around 18 Oct 2026, and only if
+> the month on Pro came in well under 5 GB.
+
 Owner decision, 16 Aug 2026: the store leaves the Pro plan at the end of the
 current billing cycle. This file records why that is now safe, what was
 changed to make it safe, and the exact steps to do on the day.
