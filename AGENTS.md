@@ -62,6 +62,25 @@ one-click confirm link in the order email (`/order/confirm`, shipped 14 Sep)
 lets a customer confirm without talking to anyone, and that is the thing to
 measure and improve.
 
+# Hosting stays on Vercel + Supabase
+
+Owner decision, 18 Sep 2026, after the 17–18 Sep outage: the store stays on
+Vercel (Pro) with Supabase (Pro, billed through the Vercel marketplace).
+"I want a unified solution for everything; this feels like I am adding an
+extra problem." Do **not** propose, scaffold or revive a move to a VPS,
+Oracle Cloud, Hetzner, Render, Coolify, Cloudflare Workers or self-hosted
+Supabase, and do not reopen the "Vercel exit" work (the Render blueprint was
+reverted for this reason). `docs/SELF-HOSTING.md`, `docs/SERVER-SETUP.md`
+and `provision.sh` stay as reference only.
+
+What the outage actually taught: the failure was a Supabase egress quota with
+no alarm, not the vendor count. Any reader that runs in `layout.tsx` or on
+every render of a dynamic route goes through `cachedRead`
+(`src/lib/supabase-resilience.ts`) under a cache tag, and a production read
+failure returns an empty result and captures to Sentry, never demo data. If
+hosting cost comes up, the only lever to offer is the Supabase downgrade
+check after 30 days of egress data on Pro (`docs/SUPABASE-FREE-PLAN.md`).
+
 # One brand image everywhere
 
 Owner directive, 13 Aug 2026: the whole online presence carries one
