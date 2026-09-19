@@ -4,7 +4,8 @@
 // rest of staff-auth's Node-only crypto into the Edge bundle.
 //
 // Behaviour:
-//   - In production (NODE_ENV=production AND VERCEL_ENV=production), throws
+//   - In production (NODE_ENV=production AND APP_ENV=production, the
+//     wrangler var; Vercel sets it too), throws
 //     if the env var is unset or too short, refuses to start.
 //   - In dev/preview, uses a constant fallback so smoke tests don't break.
 
@@ -19,7 +20,7 @@ export function STAFF_SESSION_SECRET(): string {
     _cached = v;
     return v;
   }
-  if (process.env.NODE_ENV === 'production' && process.env.VERCEL_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && (process.env.APP_ENV ?? process.env.VERCEL_ENV) === 'production') {
     throw new Error('STAFF_SESSION_SECRET must be set (≥16 chars) in production');
   }
   _cached = DEV_FALLBACK;

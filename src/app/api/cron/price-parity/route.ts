@@ -18,6 +18,7 @@ import { createClient } from '@supabase/supabase-js';
 import { fetchNbSonsCatalog, matchCatalog, stripFormWords, type OurProduct } from '@/lib/price-parity';
 import { sendPriceParityAlertEmail } from '@/lib/email';
 import { log } from '@/lib/logger';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,14 +29,8 @@ export const maxDuration = 60;
 // regex only catches packs that predate bundle_components rows.
 const PACK_NAME_RE = /\b(bundle|combo|stack|pack|trio|duo|set|kit)\b/i;
 
-function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!authorize(req)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!cronAuthorized(req)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const force = new URL(req.url).searchParams.get('force') === '1';
   // Daily cron fires at 09:00 UTC; compare once a week, on Mondays.

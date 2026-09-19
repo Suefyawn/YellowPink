@@ -1,18 +1,17 @@
 export const dynamic = 'force-dynamic';
 
-import { readFile } from 'node:fs/promises';
-import path from 'node:path';
 import { marked } from 'marked';
 import { redirect } from 'next/navigation';
 import { getStaffSession } from '@/lib/staff-auth';
+import { publicFile } from '@/lib/platform';
 import { ManualViewer, type ManualTocEntry } from '@/components/admin/ManualViewer';
 
 // Renders docs/USER-MANUAL.md inside the admin so any staff member can read
 // how the store + storefront work. The markdown file stays the single source
 // of truth (project rule: keep the manual accurate); this page reads it at
-// request time rather than duplicating its content. The file is force-included
-// in the serverless trace for this route via `outputFileTracingIncludes` in
-// next.config.ts, without that, fs can't find it on Vercel.
+// request time rather than duplicating its content. `npm run build` copies it
+// to public/docs/USER-MANUAL.md (see package.json "prebuild"), where both Node
+// and the Workers static-assets binding can read it.
 
 // GitHub-style anchor slugs, kept in lock-step with the manual's own internal
 // [links](#4-processing-a-sale--the-order-workflow). GitHub converts EACH
@@ -54,7 +53,7 @@ export default async function AdminHelpPage() {
   let toc: ManualTocEntry[] = [];
   let error = false;
   try {
-    const md = await readFile(path.join(process.cwd(), 'docs', 'USER-MANUAL.md'), 'utf8');
+    const md = new TextDecoder().decode(await publicFile('docs/USER-MANUAL.md'));
     const raw = await marked.parse(md, { gfm: true, breaks: false });
     ({ html, toc } = addHeadingAnchors(raw));
   } catch {

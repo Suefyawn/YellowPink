@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendReviewRequestEmail } from '@/lib/email';
 import { brandPlusName } from '@/lib/product-display';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 const DAY_MS = 86_400_000;
 const MAX_PRODUCTS = 6;
@@ -34,15 +35,8 @@ interface OrderRow {
   items: OrderItem[] | null;
 }
 
-async function authorize(req: NextRequest): Promise<boolean> {
-  // P1: fail closed if CRON_SECRET isn't set.
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!(await authorize(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!(cronAuthorized(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

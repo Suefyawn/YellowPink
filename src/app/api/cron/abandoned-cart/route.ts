@@ -19,6 +19,7 @@ import { createClient } from '@supabase/supabase-js';
 import { sendAbandonedCartEmail, sendAbandonedCartStaffAlert } from '@/lib/email';
 import { checkRecoveryCoupon, type RecoveryCoupon } from '@/lib/recovery-coupon';
 import type { CartItem } from '@/types';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 interface AbandonedCart {
   id: string;
@@ -53,19 +54,8 @@ function nextTier(now: number, c: AbandonedCart): 1 | 2 | 3 | null {
   return null;
 }
 
-async function authorize(req: NextRequest): Promise<boolean> {
-  // Vercel Cron sends a Bearer token equal to CRON_SECRET.
-  // P1: fail closed if the secret isn't set, regardless of environment.
-  // The previous fall-open-in-dev branch also fired on Vercel preview
-  // deployments and self-hosted setups that forgot the env var, letting
-  // anyone trigger mass emails. Local dev: set CRON_SECRET in .env.local.
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!(await authorize(req))) {
+  if (!(cronAuthorized(req))) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   const sb = createClient(

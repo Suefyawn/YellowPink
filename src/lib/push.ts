@@ -3,9 +3,13 @@
 // table (no env vars, no dashboard setup). Deliberately NOT a 'use server'
 // file — only reachable through the permission-checked actions and the
 // secret-checked fan-out route.
+//
+// Web Crypto only (@block65/webcrypto-web-push, RFC 8291 aes128gcm + RFC 8292
+// vapid): the `web-push` package needs Node's crypto internals and does not
+// run on Cloudflare Workers. Keys keep the same base64url raw format
+// web-push used, so the rows in push_config carry over unchanged.
 
-import webpush from 'web-push';
-import { randomBytes } from 'node:crypto';
+import { buildPushPayload } from '@block65/webcrypto-web-push';
 import { supabaseAdmin } from './supabase';
 import { log } from './logger';
 
@@ -13,6 +17,18 @@ export interface PushConfig {
   vapid_public_key: string;
   vapid_private_key: string;
   webhook_secret: string;
+}
+
+const b64url = (bytes: ArrayBuffer | Uint8Array) =>
+  btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+/** P-256 pair in the format push services and web-push expect: raw
+ *  uncompressed public point (65 bytes) and the raw private scalar (32 bytes). */
+async function generateVapidKeys(): Promise<{ publicKey: string; privateKey: string }> {
+  const pair = await crypto.subtle.generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, true, ['sign', 'verify']);
+  const pub = await crypto.subtle.exportKey('raw', pair.publicKey);
+  const jwk = await crypto.subtle.exportKey('jwk', pair.privateKey);
+  return { publicKey: b64url(pub), privateKey: jwk.d! };
 }
 
 /** Load the push config, generating keys + webhook secret on first call. */
@@ -24,11 +40,11 @@ export async function getPushConfig(): Promise<PushConfig> {
     .maybeSingle();
   if (data) return data as PushConfig;
 
-  const keys = webpush.generateVAPIDKeys();
+  const keys = await generateVapidKeys();
   const row: PushConfig = {
     vapid_public_key: keys.publicKey,
     vapid_private_key: keys.privateKey,
-    webhook_secret: randomBytes(24).toString('base64url'),
+    webhook_secret: b64url(crypto.getRandomValues(new Uint8Array(24))),
   };
   const { error } = await admin.from('push_config').insert({ id: true, ...row });
   if (error) {
@@ -59,7 +75,7 @@ export async function sendAdminPush(payload: {
   const list = (subs ?? []) as { endpoint: string; p256dh: string; auth: string }[];
   if (list.length === 0) return { sent: 0, pruned: 0 };
 
-  webpush.setVapidDetails('mailto:jetnine.inc@gmail.com', cfg.vapid_public_key, cfg.vapid_private_key);
+  const vapid = { subject: 'mailto:jetnine.inc@gmail.com', publicKey: cfg.vapid_public_key, privateKey: cfg.vapid_private_key };
   const body = JSON.stringify({
     title: payload.title,
     body: payload.body ?? '',
@@ -71,20 +87,19 @@ export async function sendAdminPush(payload: {
   let pruned = 0;
   await Promise.all(list.map(async s => {
     try {
-      await webpush.sendNotification(
-        { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-        body,
-        { TTL: 3600 },
-      );
-      sent += 1;
-    } catch (e: unknown) {
-      const code = (e as { statusCode?: number }).statusCode;
-      if (code === 404 || code === 410) {
+      const subscription = { endpoint: s.endpoint, expirationTime: null, keys: { p256dh: s.p256dh, auth: s.auth } };
+      const init = await buildPushPayload({ data: body, options: { ttl: 3600 } }, subscription, vapid);
+      const res = await fetch(s.endpoint, init);
+      if (res.status === 404 || res.status === 410) {
         await admin.from('push_subscriptions').delete().eq('endpoint', s.endpoint);
         pruned += 1;
+      } else if (!res.ok) {
+        log.warn('push.send_failed', { statusCode: res.status });
       } else {
-        log.warn('push.send_failed', { statusCode: code });
+        sent += 1;
       }
+    } catch (e: unknown) {
+      log.warn('push.send_failed', { error: (e as Error).message });
     }
   }));
   if (sent > 0) {

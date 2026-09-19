@@ -48,8 +48,8 @@ interface HeaderShellProps {
   /** `${pathname}?${searchParams}`, changes on every navigation, used only to
    *  reset transient UI (open menus/drawer) when the route changes. Passed
    *  in rather than read directly with usePathname/useSearchParams so this
-   *  component has zero dependency on the router's search-params hook, see
-   *  HeaderFallback for why that matters. */
+   *  component has zero dependency on the router hooks (Header.tsx owns
+   *  that, and reads the query string after mount so nothing suspends). */
   navKey: string;
   isActiveLink: (href: string) => boolean;
   isTaxonActive: (taxon: Taxon) => boolean;
@@ -59,9 +59,7 @@ interface HeaderShellProps {
 /** All of the header's markup and self-contained UI state (scroll shadow,
  *  mobile drawer, mega-menu open state, cart badge hydration gate). Takes the
  *  route-derived "what's active" answers as props instead of calling
- *  usePathname/useSearchParams itself, so the exact same component can render
- *  as both the real (search-params-aware) header and a static, hook-free
- *  fallback with identical layout, see HeaderFallback.tsx. */
+ *  usePathname/useSearchParams itself; Header.tsx supplies them. */
 export function HeaderShell({ navKey, isActiveLink, isTaxonActive, isCategoryActive }: HeaderShellProps) {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenu, setMobileMenu] = useState(false);

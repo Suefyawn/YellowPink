@@ -74,8 +74,9 @@ export const metadata: Metadata = {
   // a plain link with no packshot thumbnail while competitors show one. Pages
   // that must stay out of the index set their own `robots:{index:false}` via
   // pageMeta(), which overrides this; private surfaces are also robots.txt-
-  // disallowed. (max-snippet/-video:-1 = no limit.)
-  robots: {
+  // disallowed. (max-snippet/-video:-1 = no limit.) NOINDEX=1 is the staging
+  // Worker (and production while deployed dark): every page noindexed.
+  robots: process.env.NOINDEX === '1' ? { index: false, follow: false } : {
     index: true,
     follow: true,
     googleBot: {

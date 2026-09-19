@@ -87,26 +87,14 @@ Token generated and set; the card is reading live numbers. First reading:
       days** (there is no longer history to request), and the quota is **10
       calls per project per day** — the daily analytics refresh spends one.
 
-## 8c. Move off Vercel onto your own server (about an hour)
-The code side is finished and merged; what is left needs a person with a credit
-card and an hour. **`docs/SERVER-SETUP.md` is written for someone who has never
-touched a server** — which provider to rent from and what it costs, how to make
-an SSH key on Windows or Mac, how to log in, and then one command that does the
-rest.
-- [ ] Rent a machine. **Hetzner CX22, Singapore, about €4/month** is the
-      straightforward choice (~75% cheaper than Vercel Pro). **Oracle Cloud
-      Always Free** in Mumbai or Hyderabad is PKR 0 forever and a bigger
-      machine, but its free capacity is often unavailable and you may have to
-      retry over a few days.
-- [ ] `sudo bash provision.sh yellowpink.pk` on the new box. It stops once to
-      have you paste the settings from Vercel into `/etc/yellowpink.env`, then
-      carries on by itself.
-- [ ] Test it over the real domain using your computer's hosts file, **before**
-      moving DNS. The checklist is in the guide; it includes placing a real
-      test order.
-- [ ] Move DNS, leave Vercel running alongside it.
-- [ ] Cancel Vercel only after the new box has served a full day **including
-      one successful daily cron run** (`tail -50 /var/log/yellowpink-cron.log`).
+## 8c. Move off Vercel onto Cloudflare (superseded the own-server plan, 19 Sep 2026)
+The store now builds for Cloudflare Workers the same way Searchable does, on the
+Workers Paid plan the account already pays for (no extra bill). The runbook is
+`docs/CUTOVER.md`; the SEO checks that guard it are in `docs/seo/README.md`.
+- [ ] Set the production secrets on the dark Worker (`wrangler secret put`, list in `docs/CLOUDFLARE.md`).
+- [ ] The day before: lower the `www` CNAME and apex `A` TTLs to 5 minutes in the Cloudflare DNS panel.
+- [ ] Cutover night: follow `docs/CUTOVER.md`. Keep Vercel running; rollback is putting the DNS records back.
+- [ ] Pause the Vercel project after 72 stable hours, delete it a week later.
 
 ## 8d. The eight hair products are LIVE — two things need checking today
 Published 15 Sep on the owner's instruction, because

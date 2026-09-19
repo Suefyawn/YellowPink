@@ -63,7 +63,7 @@ interface TableCheck {
 // passed as `?key=` or `Authorization: Bearer …`. The legacy unauth path
 // is still allowed in non-production so local debugging stays fast.
 function authorize(req: NextRequest): boolean {
-  if (process.env.VERCEL_ENV !== 'production' && process.env.NODE_ENV !== 'production') {
+  if ((process.env.APP_ENV ?? process.env.VERCEL_ENV) !== 'production' && process.env.NODE_ENV !== 'production') {
     return true;
   }
   const expected = process.env.HEALTH_CHECK_SECRET ?? process.env.CRON_SECRET;
@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
     supabase_service_role_key: Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
     resend_api_key: Boolean(process.env.RESEND_API_KEY),
     site_url: process.env.NEXT_PUBLIC_SITE_URL ?? null,
-    vercel_env: process.env.VERCEL_ENV ?? null,
+    app_env: process.env.APP_ENV ?? process.env.VERCEL_ENV ?? null,
     node_env: process.env.NODE_ENV ?? null,
   };
 

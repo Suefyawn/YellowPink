@@ -19,8 +19,8 @@
 // ── Why timezone rather than an IP lookup ──────────────────────────────────
 // A country header would be more precise, but there is no durable source for
 // one here. There is no middleware, nothing reads a country header today, and
-// Vercel's `x-vercel-ip-country` disappears the moment the store moves to its
-// own server (docs/SERVER-SETUP.md), which is on the owner's list. A timezone
+// Vercel’s `x-vercel-ip-country` does not exist on
+// Cloudflare Workers (cf-ipcountry is available there), so a timezone
 // read from the browser works identically on both, needs no request header, no
 // GeoIP database and no third-party lookup.
 //

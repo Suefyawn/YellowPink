@@ -56,10 +56,6 @@ function fmtValue(metric: string, p75: number): string {
 
 const card: React.CSSProperties = { background: 'white', borderRadius: 10, boxShadow: '0 1px 3px rgba(0,0,0,0.08)', overflow: 'hidden' };
 
-// Vercel Speed Insights for this project — the full drill-down (per-route,
-// per-percentile, device split) that we don't reproduce in-app.
-const VERCEL_SPEED_INSIGHTS_URL = 'https://vercel.com/sufyan-s-projects-6dac35c9/yellow-pink/speed-insights';
-
 export async function WebVitalsWidget({ days = 30 }: { days?: number }) {
   let rows: SummaryRow[] = [];
   try {
@@ -79,9 +75,6 @@ export async function WebVitalsWidget({ days = 30 }: { days?: number }) {
           Core Web Vitals · last {days} days
           <span style={{ fontWeight: 400, color: '#9ca3af', fontSize: '0.8125rem' }}> · field p75</span>
         </h2>
-        <a href={VERCEL_SPEED_INSIGHTS_URL} target="_blank" rel="noopener noreferrer" style={{ fontSize: '0.8125rem', color: '#C5286A', textDecoration: 'none' }}>
-          Open Speed Insights →
-        </a>
       </div>
 
       {totalSamples === 0 ? (

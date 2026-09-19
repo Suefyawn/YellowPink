@@ -73,9 +73,10 @@ export function buildRobotsTxt(isProd: boolean): string {
 }
 
 export function GET() {
-  const isProd =
-    process.env.VERCEL_ENV === 'production' ||
-    (!process.env.VERCEL_ENV && process.env.NODE_ENV === 'production');
+  // APP_ENV is the wrangler var (production | staging); Vercel sets VERCEL_ENV.
+  // NOINDEX=1 (staging, and production while deployed dark) wins outright.
+  const env = process.env.APP_ENV ?? process.env.VERCEL_ENV;
+  const isProd = process.env.NOINDEX !== '1' && (env === 'production' || (!env && process.env.NODE_ENV === 'production'));
   return new Response(buildRobotsTxt(isProd), {
     headers: { 'Content-Type': 'text/plain; charset=utf-8' },
   });

@@ -1,0 +1,13 @@
+{
+  // Local development (`npm run dev:workers`): the same bindings as wrangler.jsonc against wrangler's local R2,
+  // without the Response Store Durable Object, which vinext dev cannot host (pages are served uncached in dev).
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "yellowpink",
+  "compatibility_date": "2026-09-18",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "src/worker.ts",
+  "assets": { "directory": "dist/client", "not_found_handling": "none", "binding": "ASSETS" },
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "yellowpink-images" }],
+  "images": { "binding": "IMAGES" },
+  "vars": { "APP_ENV": "development", "R2_PUBLIC_BASE": "https://images.yellowpink.pk" }
+}

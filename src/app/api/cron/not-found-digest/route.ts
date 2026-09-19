@@ -12,20 +12,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendBrokenLinksDigestEmail } from '@/lib/email';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 // Don't alert on a single stray hit, wait until a dead URL is hit at least
 // twice (a real link, a crawler retry) so one-off junk probes stay quiet.
 const MIN_HITS = 2;
 const MAX_PER_DIGEST = 50;
 
-async function authorize(req: NextRequest): Promise<boolean> {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false; // fail closed
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!(await authorize(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!(cronAuthorized(req))) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

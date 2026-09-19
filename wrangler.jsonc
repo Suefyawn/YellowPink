@@ -1,0 +1,72 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // The default environment is STAGING (staging.yellowpink.pk). Production is `env.production` below.
+  // Deploy: `npm run deploy` (staging), `npm run deploy:production`. Never split build and deploy
+  // (a build without CLOUDFLARE_ENV=production writes the staging config; that took searchable.pk down for 25 min).
+  "name": "yellowpink",
+  "compatibility_date": "2026-09-18",
+  "compatibility_flags": ["nodejs_compat"],
+  // src/worker.ts wraps vinext's fetch handler with @sentry/cloudflare and re-exports the Response Store classes.
+  "main": "src/worker.ts",
+  "assets": { "directory": "dist/client", "not_found_handling": "none", "binding": "ASSETS" },
+  "cache": { "enabled": true },
+  "routes": [{ "pattern": "staging.yellowpink.pk", "custom_domain": true }],
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  "observability": { "logs": { "enabled": true, "head_sampling_rate": 1 }, "traces": { "enabled": true } },
+  // Supabase (ap-northeast-1) until Phase B; Smart Placement runs the Worker near the database.
+  "placement": { "mode": "smart" },
+  // /api/cron/indexing-check is a long, I/O-bound Search Console loop (was maxDuration 300 on Vercel).
+  "limits": { "cpu_ms": 300000 },
+  "r2_buckets": [
+    // MEDIA: the bucket behind images.yellowpink.pk, written by src/lib/media-storage.ts.
+    { "binding": "MEDIA", "bucket_name": "yellowpink-images" },
+    // Page cache bodies (vinext Response Store); the SQLite Durable Object below is the index.
+    { "binding": "CACHE_BODIES", "bucket_name": "yellowpink-page-cache" }
+  ],
+  "durable_objects": { "bindings": [{ "name": "CACHE_METADATA", "class_name": "CacheMetadata" }] },
+  "exports": {
+    "default": { "type": "worker", "cache": { "enabled": false } },
+    "ResponseStoreBinding": { "type": "worker", "cache": { "enabled": true } },
+    "CacheMetadata": { "type": "durable-object", "storage": "sqlite" }
+  },
+  // Upload-time resizing (src/lib/image-normalize.ts): 5,000 unique transformations a month included.
+  "images": { "binding": "IMAGES" },
+  // Public configuration. Secrets (SUPABASE_SERVICE_ROLE_KEY, RESEND_API_KEY, CRON_SECRET, ADMIN_PASSWORD,
+  // STAFF_SESSION_SECRET, SENTRY_DSN, UPSTASH_*, payment and courier keys, ...) are set with
+  // `wrangler secret put <NAME>` (add `--env production` for production), never here. NEXT_PUBLIC_* values
+  // are inlined at build time from the shell (or the Workers Builds variables), not read from here.
+  "vars": {
+    "APP_ENV": "staging",
+    "NEXT_PUBLIC_SITE_URL": "https://staging.yellowpink.pk",
+    "R2_PUBLIC_BASE": "https://images.yellowpink.pk",
+    // Staging fences: shares production Supabase, so it must not index, mail or run jobs.
+    "NOINDEX": "1",
+    "JOBS_DISABLED": "1",
+    "EMAIL_DISABLED": "1"
+  },
+  "env": {
+    "production": {
+      "name": "yellowpink-production",
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "limits": { "cpu_ms": 300000 },
+      "r2_buckets": [
+        { "binding": "MEDIA", "bucket_name": "yellowpink-images" },
+        { "binding": "CACHE_BODIES", "bucket_name": "yellowpink-production-page-cache" }
+      ],
+      "durable_objects": { "bindings": [{ "name": "CACHE_METADATA", "class_name": "CacheMetadata" }] },
+      "images": { "binding": "IMAGES" },
+      "vars": {
+        "APP_ENV": "production",
+        "NEXT_PUBLIC_SITE_URL": "https://www.yellowpink.pk",
+        "R2_PUBLIC_BASE": "https://images.yellowpink.pk",
+        // Deployed dark until cutover A (docs/CUTOVER.md): fenced like staging, reachable only on workers.dev.
+        "NOINDEX": "1",
+        "JOBS_DISABLED": "1",
+        "EMAIL_DISABLED": "1"
+      },
+      "workers_dev": true
+      // Cutover A: delete the three fences above, set "workers_dev": false and add
+      // "routes": [{ "pattern": "www.yellowpink.pk", "custom_domain": true }]
+    }
+  }
+}

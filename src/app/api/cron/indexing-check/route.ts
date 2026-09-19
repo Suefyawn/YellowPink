@@ -14,19 +14,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { refreshIndexingStatus } from '@/lib/indexing-status';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!authorize(req)) {
+  if (!cronAuthorized(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   // 50 URLs / 240 s: fits comfortably inside maxDuration with headroom for

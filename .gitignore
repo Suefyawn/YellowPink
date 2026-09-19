@@ -62,3 +62,9 @@ graphify-out/
 
 # Owner's working files dropped in the repo root (price lists, exports)
 *.xlsx
+public/docs/
+dist/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.vinext/

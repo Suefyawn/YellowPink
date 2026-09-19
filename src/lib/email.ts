@@ -13,7 +13,7 @@
 // ============================================================================
 
 import { Resend } from 'resend';
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from '@sentry/core';
 import { log } from './logger';
 import { stripEmoji } from './text';
 import { supabaseAdmin } from './supabase';
@@ -195,6 +195,12 @@ async function send(opts: {
   if (!resend) {
     log.warn('email.skip', { reason: 'RESEND_API_KEY not set', to: opts.to, subject: opts.subject });
     await recordEmailLog(opts, 'skipped', { error: 'RESEND_API_KEY not set' });
+    return false;
+  }
+  // Staging fence (wrangler.jsonc EMAIL_DISABLED=1): the staging Worker shares
+  // the production database and must never mail a real customer.
+  if (process.env.EMAIL_DISABLED === '1') {
+    log.warn('email.skip', { reason: 'EMAIL_DISABLED', to: opts.to, subject: opts.subject });
     return false;
   }
   // Free-tier guard: claim a slot in today's send budget. Fails open, a

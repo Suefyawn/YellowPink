@@ -13,11 +13,11 @@
 //   }
 //
 // Emits a structured log line (src/lib/logger.ts patterns) AND captures to
-// Sentry via @sentry/nextjs with the scope as a tag, so occurrences group
+// Sentry (via @sentry/core, so the same call works under the Next and the Workers SDK) with the scope as a tag, so occurrences group
 // per action and are searchable by `action_scope`.
 // ============================================================================
 
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from '@sentry/core';
 import { log } from './logger';
 
 export function logActionError(

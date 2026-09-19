@@ -1,11 +1,10 @@
 'use client';
-import { Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnnouncementBar } from './AnnouncementBar';
 import { SeasonalBar } from './SeasonalBar';
 import { activeSeasonalTheme, type SeasonalTheme } from '@/lib/seasonal-theme';
 import { Header } from './Header';
-import { HeaderFallback } from './HeaderFallback';
 import { Footer } from './Footer';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { MiniCart } from '@/components/cart/MiniCart';
@@ -92,20 +91,12 @@ export function SiteChrome({ children, settings, searchTrending, searchCategorie
         />
       )}
 
-      {/* Header reads useSearchParams() to highlight the active nav item;
-          without a Suspense boundary, static prerender bails on every
-          route that doesn't itself opt out. Wrapping here lets routes
-          like /forgot-password / /reset-password / /track / /login
-          prerender cleanly while Header still hydrates on the client.
-          The fallback is the SAME header markup (via HeaderShell) with
-          nav-highlighting forced off, not `null`, a `null` fallback
-          reserved zero height for the static shell and made the real
-          header visibly pop in a beat later, the "body loads, header
-          jitters in after" bug. Matching size = no layout shift either
-          way. */}
-      <Suspense fallback={<HeaderFallback />}>
-        <Header />
-      </Suspense>
+      {/* No Suspense boundary here on purpose. Header no longer calls
+          useSearchParams() (it reads the query string after mount), so
+          nothing suspends, and on Workers (vinext) a boundary around the
+          header made every cached page carry the header twice: the fallback
+          plus the hidden streamed copy (+18 links, +38 KB per page). */}
+      <Header />
       {children}
       <Footer socials={socialLinks(settings)} collections={footerCollections} />
       <MiniCart crossSell={cartCrossSell} />

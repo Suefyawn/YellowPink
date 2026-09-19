@@ -21,6 +21,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getAdapter } from '@/lib/couriers';
 import { reconcileTcsCosts } from '@/lib/couriers/reconcile-costs';
 import { notifyOrderShipmentTransition } from '@/lib/shipment-notify';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 interface ShipmentRow {
   id: string;
@@ -44,14 +45,8 @@ const TERMINAL = new Set(['delivered', 'returned', 'cancelled', 'failed']);
 // even on a sluggish courier API.
 const MAX_PER_RUN = 200;
 
-async function authorize(req: NextRequest): Promise<boolean> {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!(await authorize(req))) {
+  if (!(cronAuthorized(req))) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
 

@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { outstandingOrderActions, type OrderActionSnapshot } from '@/lib/order-actions';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 export const maxDuration = 30;
 
@@ -19,12 +20,6 @@ const ACTIVE_STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'retur
 // Delivered/returned orders older than this are left alone: a 60-day-old
 // gap is the monthly-review's job, not a daily nag.
 const LOOKBACK_DAYS = 45;
-
-function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
 
 interface OrderRow {
   id: string; order_number: string; status: string; pay_method: string; vendor_id: string | null;
@@ -35,7 +30,7 @@ interface OrderRow {
 }
 
 export async function GET(req: NextRequest) {
-  if (!authorize(req)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!cronAuthorized(req)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,

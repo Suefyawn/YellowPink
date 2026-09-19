@@ -17,18 +17,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { refreshAnalyticsCore } from '@/app/admin/dashboard/actions';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
-
 export async function GET(req: NextRequest) {
-  if (!authorize(req)) {
+  if (!cronAuthorized(req)) {
     return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
   }
   const result = await refreshAnalyticsCore();

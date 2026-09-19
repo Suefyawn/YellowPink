@@ -37,8 +37,7 @@ function normalizeOrigin(value: string | undefined | null): string | null {
 
 export const SITE_URL =
   normalizeOrigin(process.env.NEXT_PUBLIC_SITE_URL) ??
-  normalizeOrigin(process.env.VERCEL_PROJECT_PRODUCTION_URL) ??
-  'https://yellow-pink.vercel.app';
+  'https://www.yellowpink.pk';
 
 export const SITE_NAME = 'Yellow Pink';
 

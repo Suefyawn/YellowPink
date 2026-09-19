@@ -73,8 +73,11 @@ export const notFoundLimiter      = makeLimiter('notfound',      30, 60);      /
 export const suggestLimiter       = makeLimiter('suggest',       30, 60);      // 30 per minute per IP (one call per 404 render; matches notFoundLimiter, which fires alongside it)
 
 // ─── Identifier extraction ──────────────────────────────────────────────────
-// Use IP from Vercel-set x-forwarded-for, fall back to a stable header.
+// Cloudflare sets cf-connecting-ip (the real client, never spoofable through
+// the proxy); Vercel and plain Node set x-forwarded-for.
 export function ipFromHeaders(headers: Headers): string {
+  const cf = headers.get('cf-connecting-ip');
+  if (cf) return cf.trim();
   const fwd = headers.get('x-forwarded-for');
   if (fwd) return fwd.split(',')[0]!.trim();
   return headers.get('x-real-ip') ?? 'unknown';

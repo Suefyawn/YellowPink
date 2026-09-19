@@ -28,27 +28,29 @@ const supabaseHost = (() => {
 })();
 
 const nextConfig: NextConfig = {
-  // Self-hostable build. `standalone` emits .next/standalone with a server.js
-  // and only the node_modules the trace actually needs, so the store runs as a
-  // plain `node server.js` behind any reverse proxy.
+  // Hosting: Cloudflare Workers through vinext (vite.config.ts, wrangler.jsonc),
+  // Vercel until cutover A (docs/CUTOVER.md). Both build from this config;
+  // `next build` keeps working so the same commit serves on either. The two
+  // native dependencies that once ruled Workers out are gone: upload resizing
+  // uses the Cloudflare Images binding there (src/lib/image-normalize.ts) and
+  // push uses Web Crypto (src/lib/push.ts). Runtime differences live in
+  // src/lib/platform.ts / platform.workerd.ts and nowhere else.
   //
-  // Next's own deployment guide is blunt about why this is the target: "To run
-  // Next.js, your platform needs a Node.js server. That's it," and Node
-  // deployments are the only option it marks as supporting every feature. The
-  // alternative considered was Cloudflare Workers, which at the time of writing
-  // is a beta adapter that Next.js does not list as verified, and which cannot
-  // run this app's two native dependencies (sharp for upload resizing,
-  // web-push for notifications) at all.
-  //
-  // Harmless on Vercel, which ignores it, so the two can be run side by side
-  // during a cutover.
-  output: 'standalone',
-  // The admin "User manual" page (/admin/help) reads docs/USER-MANUAL.md from
-  // disk at request time. That file isn't statically imported, so Next's trace
-  // wouldn't bundle it into the serverless function — force-include it for this
-  // route so the read works on Vercel as well as locally.
-  outputFileTracingIncludes: {
-    '/admin/help': ['./docs/USER-MANUAL.md'],
+  // Title, canonical, description and social tags go in <head> for every
+  // visitor: Next streams them into the body for browsers and blocks only for
+  // known JS-less bots, but the Workers page cache serves one rendering to
+  // everyone, so the first visitor's copy is what Googlebot would get.
+  // patches/vinext+*.patch extends this to requests with no User-Agent (the
+  // cache's own revalidation), which otherwise re-rendered pages with the
+  // title streamed into the body and cached that for the ISR window.
+  htmlLimitedBots: /.*/,
+  // sharp is a native binary used only on Node (image-normalize.ts falls back
+  // to the Images binding on Workers); keep it out of every bundle.
+  serverExternalPackages: ['sharp'],
+  // vinext's router skips dot-directories; anything under /.well-known/ must
+  // live in src/app/well-known and be rewritten here.
+  async rewrites() {
+    return [{ source: '/.well-known/:path*', destination: '/well-known/:path*' }];
   },
   // Image optimisation: allow Supabase Storage + the WP source host (set
   // WP_IMAGE_HOST in env if your Woo images live somewhere else).
@@ -123,6 +125,8 @@ const nextConfig: NextConfig = {
       // Force apex → www as a PERMANENT (308) redirect. The platform default
       // can be a temporary 307 (SEO audit: "temporary redirects"); this pins
       // it at the app layer so link equity consolidates on the www host.
+      // After cutover A the apex is a zone Redirect Rule (301, one hop) and
+      // this entry never matches; it stays for the Vercel deployment.
       {
         source: '/:path*',
         has: [{ type: 'host', value: 'yellowpink.pk' }],
@@ -166,13 +170,6 @@ const nextConfig: NextConfig = {
     //                   (NEXT_PUBLIC_POSTHOG_HOST default; replay worker = blob:)
     //   Clarity         script  *.clarity.ms; connect *.clarity.ms + c.bing.com (MS docs)
     //   Sentry          connect *.ingest.sentry.io / *.ingest.us.sentry.io
-    //   Vercel          script vercel.live + font assets.vercel.com — the
-    //                   comment toolbar, which runs on production too (see the
-    //                   note above connectSrc.push below).
-    //                   va.vercel-scripts.com and vitals.vercel-insights.com were
-    //                   dropped with @vercel/analytics and @vercel/speed-insights
-    //                   (PR #753): nothing loads from them now, and a script-src
-    //                   grant to a host the site never calls is pure attack surface.
     //   Supabase        connect https + wss on the configured project host
     //   Images          images.weserv.nl proxy + assorted CDNs → img-src https:
     //   Fonts           self-hosted via next/font; Google Fonts hosts allowed
@@ -216,13 +213,6 @@ const nextConfig: NextConfig = {
       'https://translate.googleapis.com',
       'https://translate-pa.googleapis.com',
     ];
-    // Vercel's toolbar (vercel.live) isn't preview-only: with the Comments
-    // feature it also injects its feedback script for signed-in team members
-    // browsing PRODUCTION — live CSP reports YELLOWPINK-5/6 (2026-07-02..04)
-    // were exactly vercel.live script/frame loads on www.yellowpink.pk/admin.
-    // Allow it everywhere so enforcement doesn't break the owner's toolbar;
-    // it only ever activates for authenticated Vercel team members.
-    connectSrc.push('https://vercel.live', 'wss://*.pusher.com');
     // CSP violation reports → Sentry's security endpoint, derived from the
     // DSN when configured (no-op otherwise; reports then only hit the console).
     const cspReportUri = (() => {
@@ -237,7 +227,7 @@ const nextConfig: NextConfig = {
       "default-src 'self'",
       // 'unsafe-inline' is required by the gtag/pixel bootstrap snippets and
       // Next's inline runtime; move to nonces before enforcing if feasible.
-      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://*.clarity.ms https://vercel.live`,
+      `script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.googleadservices.com https://googleads.g.doubleclick.net https://connect.facebook.net https://us.i.posthog.com https://us-assets.i.posthog.com https://*.clarity.ms`,
       // Our fonts are self-hosted (next/font), but Chrome's built-in page
       // translation injects its own UI styled from fonts.googleapis.com and
       // loads the faces from fonts.gstatic.com — live Sentry CSP reports
@@ -254,13 +244,11 @@ const nextConfig: NextConfig = {
       // and get blocked — live Sentry CSP report YELLOWPINK-B (2026-07). Mirror
       // img-src's blanket https: so any video host works.
       "media-src 'self' data: blob: https:",
-      // vercel.live/assets.vercel.com: the Vercel toolbar loads its own font
-      // (same team-member-only surface as its script/frame allowances).
-      "font-src 'self' data: https://vercel.live https://assets.vercel.com https://fonts.gstatic.com",
+      "font-src 'self' data: https://fonts.gstatic.com",
       `connect-src ${connectSrc.join(' ')}`,
       // Service worker + PostHog session-replay worker (blob:).
       "worker-src 'self' blob:",
-      'frame-src \'self\' https://www.googletagmanager.com https://vercel.live',
+      'frame-src \'self\' https://www.googletagmanager.com',
       "object-src 'none'",
       "base-uri 'self'",
       // Checkout hands off to the wallet gateways via auto-submitting form POST.
@@ -381,7 +369,6 @@ export default withSentryConfig(withBundleAnalyzer(nextConfig), {
   widenClientFileUpload: true,
   sourcemaps: { deleteSourcemapsAfterUpload: true },
   webpack: {
-    automaticVercelMonitors: true,
     treeshake: { removeDebugLogging: true },
   },
 });

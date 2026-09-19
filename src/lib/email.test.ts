@@ -13,10 +13,10 @@ const { mockSend, mockCaptureMessage, mockCaptureException } = vi.hoisted(() => 
 }));
 
 vi.mock('resend', () => ({
-  Resend: vi.fn().mockImplementation(() => ({ emails: { send: mockSend } })),
+  Resend: vi.fn(function () { return { emails: { send: mockSend } }; }),
 }));
 
-vi.mock('@sentry/nextjs', () => ({
+vi.mock('@sentry/core', () => ({
   captureMessage: mockCaptureMessage,
   captureException: mockCaptureException,
 }));

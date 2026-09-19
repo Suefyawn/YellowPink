@@ -13,12 +13,17 @@
 // It deliberately does NOT sharpen, crop (except the hero preset's cover
 // crop), filter, or watermark — the picture itself is untouched.
 //
-// Fail-open: if sharp can't decode the bytes, the caller stores the original
-// exactly as before, so an odd-but-valid file never blocks an upload.
+// Fail-open: if the resizer can't decode the bytes, the caller stores the
+// original exactly as before, so an odd-but-valid file never blocks an upload.
+//
+// Two resizers, same presets: the Cloudflare Images binding on Workers (sharp
+// is a native binary and cannot run there; Searchable ADR-50), sharp on Node.
 // ============================================================================
 
 // (No 'server-only' guard: sharp itself refuses to load in a browser bundle,
 // and the unit tests import this module directly under vitest's node env.)
+
+import { bindings } from '@/lib/platform';
 
 export type ImagePreset = 'general' | 'hero' | 'product';
 
@@ -59,12 +64,34 @@ export async function normalizeImageUpload(
     processed: false,
   };
   if (!PROCESSABLE.has(contentType)) return passthrough;
+  const spec = PRESETS[preset];
+
+  const images = bindings().IMAGES;
+  if (images) {
+    try {
+      // Cloudflare Images does the decode/resize/encode off the isolate: the
+      // Worker only streams bytes. EXIF orientation is applied and metadata
+      // dropped by the transform, matching sharp's behaviour below. Animated
+      // inputs are not detected here (info() reports no frame count), which
+      // flattens an animated WebP to its first frame; rare for product photos.
+      const out = await images
+        .input(new Blob([bytes]).stream())
+        .transform(spec.fit === 'cover'
+          ? { width: spec.width, height: spec.height ?? undefined, fit: 'cover', gravity: 'auto' }
+          : { width: spec.width, height: spec.height ?? undefined, fit: 'scale-down' })
+        .output({ format: 'image/webp', quality: 82 });
+      const buf = await new Response(out.image()).arrayBuffer();
+      if (buf.byteLength >= bytes.byteLength && contentType === 'image/webp') return passthrough;
+      return { bytes: buf, contentType: 'image/webp', ext: 'webp', processed: true };
+    } catch {
+      return passthrough;
+    }
+  }
 
   try {
     // Dynamic import: sharp is a native module; loading it lazily keeps it
     // out of every route's cold-start that never touches an upload.
     const sharp = (await import('sharp')).default;
-    const spec = PRESETS[preset];
     const img = sharp(Buffer.from(bytes), { failOn: 'error' }).rotate(); // EXIF orientation
 
     const meta = await img.metadata();

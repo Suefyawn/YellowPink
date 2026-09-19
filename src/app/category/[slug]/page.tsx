@@ -16,17 +16,15 @@ export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontC
 
 import { renderDateTokens } from '@/lib/price-tokens';
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import { permanentRedirect } from 'next/navigation';
 import Link from 'next/link';
 import { getProducts, supabase, isDemo } from '@/lib/supabase';
 import { CollectionGrid } from '@/sections/collection/CollectionGrid';
-import { ProductTile } from '@/components/ui/ProductTile';
 import { Breadcrumbs } from '@/components/layout/Breadcrumbs';
 import { Overline } from '@/components/ui/Overline';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
 import {
-  ALL_CATEGORIES, CATEGORY_DESCRIPTIONS, CATEGORY_INTRO,
+  CATEGORY_DESCRIPTIONS, CATEGORY_INTRO,
   canonicalCategory, categorySlug, findTaxon, taxonForCategory, isHealthCategory,
 } from '@/lib/category-taxonomy';
 import { redirectIfMapped } from '@/lib/redirects';
@@ -34,11 +32,13 @@ import { getDefaultEstimatedDays } from '@/lib/shipping';
 import { RETURNS_WINDOW_DAYS } from '@/lib/commerce';
 import type { Product } from '@/types';
 
-// Pre-render every leaf category at build; the taxonomy is code, so the set
-// is closed and small (~20 pages).
-export function generateStaticParams() {
-  return ALL_CATEGORIES.map(c => ({ slug: categorySlug(c) }));
-}
+// Rendered on demand and cached for the ISR window, like collections and
+// brands. These ~20 pages used to be prerendered at build with a Suspense
+// boundary around the grid (CollectionGrid reads useSearchParams, which
+// bails to CSR during a static prerender). On Workers (vinext) that boundary
+// shipped every category page with the grid twice, the fallback tiles plus
+// the hidden streamed copy, doubling the tile count crawlers see. Rendering
+// at request time needs neither the prerender nor the boundary.
 
 // Resolve a /category/<slug> segment. Returns the canonical label for a leaf
 // category; taxon slugs, alias slugs and unknown values are redirected by the
@@ -172,22 +172,7 @@ export default async function CategoryLandingPage({ params }: { params: Promise<
       <section style={{ padding: 'var(--section-gap) 0' }}>
         <div className="container">
           {list.length > 0 ? (
-            // CollectionGrid reads useSearchParams (sort/page), which forces a
-            // CSR bailout during the static prerender — without a Suspense
-            // boundary the build fails outright ("missing-suspense-with-
-            // csr-bailout", found on the first Vercel build of this route).
-            // The fallback is a real server-rendered grid of the same
-            // products, so the prerendered HTML crawlers index still carries
-            // every tile; hydration swaps in the interactive toolbar.
-            <Suspense
-              fallback={
-                <div className="product-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 'var(--gutter)' }}>
-                  {list.slice(0, 24).map(p => <ProductTile key={p.id} product={p} />)}
-                </div>
-              }
-            >
-              <CollectionGrid products={list} basePath={`/category/${slug}`} />
-            </Suspense>
+            <CollectionGrid products={list} basePath={`/category/${slug}`} />
           ) : (
             <p className="body-text" style={{ color: 'var(--ink-700)' }}>
               Nothing here right now, <Link href="/shop" className="text-link">browse the full catalogue</Link>.

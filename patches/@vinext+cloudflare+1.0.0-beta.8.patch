@@ -1,0 +1,18 @@
+diff --git a/node_modules/@vinext/cloudflare/dist/cache/response-store-data.runtime.js b/node_modules/@vinext/cloudflare/dist/cache/response-store-data.runtime.js
+index bd02fa7..c3bc6b9 100644
+--- a/node_modules/@vinext/cloudflare/dist/cache/response-store-data.runtime.js
++++ b/node_modules/@vinext/cloudflare/dist/cache/response-store-data.runtime.js
+@@ -194,7 +194,12 @@ var WorkersResponseStoreCacheHandler = class {
+ 		const request = await cacheRequest(key);
+ 		const response = await this.store.fetch(request);
+ 		if (response.status === 404 && response.headers.get("X-Workers-Response-Store") === "MISS") return null;
+-		if (!response.ok) throw new Error(`Workers Response Store returned ${response.status}`);
++		if (!response.ok) {
++			// searchable.pk patch: a store outage (a Durable Object reset returned 500 for 30 seconds on 2026-09-19) is a
++			// cache miss, not a page error. The page renders from the database and the store is written on the way out.
++			console.warn(`[vinext] Workers Response Store returned ${response.status}; rendering without the cache`);
++			return null;
++		}
+ 		const entry = deserialize(await response.text());
+ 		if (!entry) {
+ 			await this.store.purge({ pathPrefixes: [new URL(request.url).pathname] });

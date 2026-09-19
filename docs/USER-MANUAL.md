@@ -13,7 +13,7 @@ store and process sales.
 > behaviour changes. If something here doesn't match what you see on screen,
 > the screen is right — please flag it so the manual can be corrected.
 >
-> **Last updated: 15 September 2026** — see [What's new](#9-whats-new) for the
+> **Last updated: 19 September 2026** — see [What's new](#9-whats-new) for the
 > change history.
 
 ---
@@ -1199,6 +1199,12 @@ store owner.
 <!-- Convention: when user-facing behaviour changes, prepend a bullet under today's date (create the date heading if needed). Keep bullets bold-led and factual. -->
 
 A dated history of user-facing changes, newest first.
+
+### 19 September 2026
+
+- **The store is moving from Vercel to Cloudflare, in two steps, and nothing changes for shoppers or staff.** The first step (this change) lets the same code run on Cloudflare Workers; the site keeps serving from Vercel until the switch-over night, when the domain is pointed at the new host. Every address, product page, article and redirect stays exactly as it is, which is the whole point: search rankings are earned by the address, and we have a before-and-after check that compares every one of the 692 listed pages so nothing drifts. The second step, moving the database off Supabase, comes later and will ask each customer to sign in again once. The old self-hosting guide has been withdrawn (its reasons for ruling out Cloudflare no longer hold), and the scheduled jobs now run from Cloudflare's scheduler instead of Vercel's.
+
+- **A page that fails to load no longer turns into a cached "Page not found".** A brief database hiccup used to make a live article or product answer 404 for up to an hour, and Google saw exactly that on six ranking articles on 18 and 19 September. It now shows a plain error for that one request and the next visitor gets the page.
 
 ### 15 September 2026
 

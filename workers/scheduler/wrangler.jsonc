@@ -1,0 +1,21 @@
+{
+  // The scheduler: Cron Triggers that call the site's /api/cron/* handlers through a service binding with the
+  // shared CRON_SECRET (set with `wrangler secret put CRON_SECRET -c workers/scheduler/wrangler.jsonc [--env production]`).
+  // Replaces vercel.json's three entries and the pg_cron job. Deploy: npm run deploy:scheduler(:production).
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "yellowpink-scheduler",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+  "observability": { "logs": { "enabled": true } },
+  "triggers": { "crons": ["0 9 * * *", "30 9 * * *", "0 10 * * 1", "*/10 * * * *"] },
+  "services": [{ "binding": "SITE", "service": "yellowpink" }],
+  "vars": { "SITE_URL": "https://staging.yellowpink.pk" },
+  "env": {
+    "production": {
+      "name": "yellowpink-scheduler-production",
+      "services": [{ "binding": "SITE", "service": "yellowpink-production" }],
+      "vars": { "SITE_URL": "https://www.yellowpink.pk" },
+      "triggers": { "crons": ["0 9 * * *", "30 9 * * *", "0 10 * * 1", "*/10 * * * *"] }
+    }
+  }
+}

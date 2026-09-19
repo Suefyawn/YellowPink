@@ -121,6 +121,15 @@ async function resolveRedirect(pathname: string): Promise<string | null> {
 }
 
 export async function proxy(request: NextRequest) {
+  const res = await route(request);
+  // Staging fence (wrangler.jsonc NOINDEX=1): belt and braces with the
+  // layout's robots meta and robots.txt Disallow, so a staging URL that
+  // leaks never enters an index.
+  if (process.env.NOINDEX === '1') res.headers.set('X-Robots-Tag', 'noindex, nofollow');
+  return res;
+}
+
+async function route(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
   // ─── Canonical host: apex → www in a SINGLE hop ───────────────────────────

@@ -31,7 +31,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # Both hosts build from this config: the Workers bundle (vinext) and the
+      # Next build Vercel still serves until cutover A (docs/CUTOVER.md).
       - run: npm run build
+      - run: npm run build:next
 
   db:
     # Two guarantees in one job: (a) the migration chain stays reproducible

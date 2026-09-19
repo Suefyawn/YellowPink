@@ -1,19 +1,25 @@
 'use client';
 
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { HeaderShell } from './HeaderShell';
 import { canonicalCategory, type Taxon } from '@/lib/category-taxonomy';
 
 /** Thin wrapper: the only thing this component does is turn the route
  *  (pathname + search params) into "what's active" answers for HeaderShell.
- *  useSearchParams() requires a Suspense boundary during static rendering
- *  (see SiteChrome), which is exactly why the actual markup lives in
- *  HeaderShell, not here, HeaderFallback renders that same markup with no
- *  router hooks at all so the Suspense fallback is pixel-identical to this
- *  and swapping the two causes no layout shift. */
+ *
+ *  The query string is read after mount rather than through useSearchParams():
+ *  that hook suspends during static rendering, and on Workers (vinext) every
+ *  cached page renders that way, so the HTML carried the header twice (the
+ *  Suspense fallback plus the hidden streamed copy: +18 links on every page,
+ *  found by scripts/seo-parity.ts). The server now renders the same markup
+ *  once with only pathname-based highlighting; the taxon/category highlight
+ *  on /shop?taxon= pages appears right after hydration. */
 export function Header() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const [searchParams, setSearchParams] = useState(() => new URLSearchParams());
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- deliberate post-mount read, see the note above
+  useEffect(() => { setSearchParams(new URLSearchParams(window.location.search)); }, [pathname]);
   const curCat = searchParams.get('category');
 
   // Decide which nav item is "active" for the current URL. We match on

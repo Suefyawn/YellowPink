@@ -29,6 +29,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { HUMAN_TRAFFIC_SQL } from '@/lib/analytics-bots';
+import { cronAuthorized } from '@/lib/cron-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -57,12 +58,6 @@ const SALES_WINDOW_MS = 60 * 86_400_000;
 const ENGAGEMENT_HALF_LIFE_DAYS = 14;
 const SALES_HALF_LIFE_DAYS = 30;
 const decay = (ageDays: number, halfLife: number) => Math.pow(0.5, Math.max(0, ageDays) / halfLife);
-
-function authorize(req: NextRequest): boolean {
-  const expected = process.env.CRON_SECRET;
-  if (!expected) return false;
-  return req.headers.get('authorization') === `Bearer ${expected}`;
-}
 
 interface OrderItem { id?: string; qty?: number }
 
@@ -191,7 +186,7 @@ async function phSearchDemand(sb: SupabaseClient): Promise<Map<string, number>> 
 }
 
 export async function GET(req: NextRequest) {
-  if (!authorize(req)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+  if (!cronAuthorized(req)) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
   const sb = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
