@@ -1,0 +1,625 @@
+{
+ "date": "2026-09-19",
+ "gsc": {
+  "days": 5,
+  "clicks": 7,
+  "impressions": 2871,
+  "avgPosition": 18.5
+ },
+ "vitals7": {
+  "CLS": {
+   "p75": 0.00229459832921242,
+   "samples": 428
+  },
+  "FCP": {
+   "p75": 1990,
+   "samples": 794
+  },
+  "INP": {
+   "p75": 184,
+   "samples": 106
+  },
+  "LCP": {
+   "p75": 2524,
+   "samples": 453
+  },
+  "TTFB": {
+   "p75": 1012,
+   "samples": 810
+  }
+ },
+ "index": {
+  "Submitted and indexed": 353,
+  "Discovered - currently not indexed": 41,
+  "Crawled - currently not indexed": 1,
+  "URL is unknown to Google": 10
+ },
+ "rank": {
+  "lastRun": "2026-09-01T12:59:56.341+00:00",
+  "keywords": 90,
+  "top10": 1,
+  "top30": 24
+ },
+ "semrush": {
+  "keywords": 747,
+  "traffic": 240,
+  "byUrl": {
+   "/blog/chia-seeds-in-urdu-benefits-price-pakistan": {
+    "best": 20,
+    "traffic": 61
+   },
+   "/blog/thyroid-tsh-test-price-pakistan": {
+    "best": 7,
+    "traffic": 38
+   },
+   "/blog/azelaic-acid-benefits-how-to-use-pakistan": {
+    "best": 21,
+    "traffic": 15
+   },
+   "/brand/saeed-ghani": {
+    "best": 25,
+    "traffic": 13
+   },
+   "/blog/cbc-test-price-pakistan": {
+    "best": 26,
+    "traffic": 7
+   },
+   "/blog/best-face-wash-for-oily-skin-pakistan": {
+    "best": 24,
+    "traffic": 17
+   },
+   "/brand/cerave": {
+    "best": 18,
+    "traffic": 6
+   },
+   "/blog/best-cough-syrup-in-pakistan": {
+    "best": 17,
+    "traffic": 9
+   },
+   "/blog/hyaluronic-acid-serum-pakistan": {
+    "best": 32,
+    "traffic": 6
+   },
+   "/blog/lipstick-shades-pakistani-skin-tones": {
+    "best": 20,
+    "traffic": 4
+   },
+   "/blog/best-multivitamin-in-pakistan": {
+    "best": 13,
+    "traffic": 7
+   },
+   "/blog/kiko-milano-products-guide-pakistan": {
+    "best": 16,
+    "traffic": 3
+   },
+   "/blog/vitamin-d-test-price-pakistan": {
+    "best": 24,
+    "traffic": 3
+   },
+   "/blog/best-sunscreen-for-oily-skin-pakistan": {
+    "best": 24,
+    "traffic": 6
+   },
+   "/blog/hair-growth-oil-pakistan-guide": {
+    "best": 22,
+    "traffic": 3
+   },
+   "/blog/lft-test-price-pakistan": {
+    "best": 23,
+    "traffic": 3
+   },
+   "/blog/best-gastric-stomach-gas-syrup-in-pakistan": {
+    "best": 13,
+    "traffic": 8
+   },
+   "/blog/best-face-wash-in-pakistan": {
+    "best": 22,
+    "traffic": 3
+   },
+   "/blog/bb-cream-guide-price-pakistan": {
+    "best": 18,
+    "traffic": 5
+   },
+   "/blog/snail-mucin-guide-pakistan": {
+    "best": 17,
+    "traffic": 3
+   },
+   "/blog/niacinamide-serum-guide-how-to-use-pakistan": {
+    "best": 35,
+    "traffic": 2
+   },
+   "/blog/neurobion-alternative-b-complex-pakistan": {
+    "best": 8,
+    "traffic": 2
+   },
+   "/blog/best-moisturizer-for-dry-skin-pakistan": {
+    "best": 17,
+    "traffic": 4
+   },
+   "/blog/best-moisturizer-for-oily-skin-pakistan": {
+    "best": 11,
+    "traffic": 3
+   },
+   "/blog/m-sol-vs-myofolic-best-myofolic-alternative-pakistan-2026": {
+    "best": 17,
+    "traffic": 1
+   },
+   "/blog/folic-acid-tablets-benefits-dosage-pakistan": {
+    "best": 22,
+    "traffic": 1
+   },
+   "/blog/cac-1000-plus-uses-price-alternatives-pakistan": {
+    "best": 19,
+    "traffic": 1
+   },
+   "/blog/best-vitamin-c-serum-pakistan": {
+    "best": 27,
+    "traffic": 1
+   },
+   "/blog/morr-moringa-supplement-pakistan": {
+    "best": 35,
+    "traffic": 2
+   },
+   "/product/famila-28-tablets": {
+    "best": 30,
+    "traffic": 1
+   },
+   "/blog/apple-cider-vinegar-benefits-pakistan": {
+    "best": 33,
+    "traffic": 1
+   },
+   "/blog/top-10-pcos-supplements-pakistan": {
+    "best": 25,
+    "traffic": 1
+   },
+   "/blog/vitamin-e-benefits-skin-hair-pakistan": {
+    "best": 52,
+    "traffic": 0
+   },
+   "/k-beauty": {
+    "best": 44,
+    "traffic": 0
+   },
+   "/brand/conatural": {
+    "best": 39,
+    "traffic": 0
+   },
+   "/blog/best-shampoo-in-pakistan": {
+    "best": 29,
+    "traffic": 0
+   },
+   "/blog/best-face-wash-for-dry-skin-pakistan": {
+    "best": 31,
+    "traffic": 0
+   },
+   "/blog/glycolic-acid-benefits-how-to-use-pakistan": {
+    "best": 25,
+    "traffic": 0
+   },
+   "/blog/best-prenatal-vitamins-pakistan-guide": {
+    "best": 22,
+    "traffic": 0
+   },
+   "/blog/best-multivitamin-pakistan": {
+    "best": 26,
+    "traffic": 0
+   },
+   "/blog/best-foundation-in-pakistan": {
+    "best": 33,
+    "traffic": 0
+   },
+   "/blog/rosemary-oil-for-hair-growth-pakistan": {
+    "best": 18,
+    "traffic": 0
+   },
+   "/blog/vitamin-c-serum-benefits-how-to-use-pakistan": {
+    "best": 33,
+    "traffic": 0
+   },
+   "/protein-supplements-men-pakistan-muscle-building/": {
+    "best": 41,
+    "traffic": 0
+   },
+   "/blog/dandruff-treatment-shampoos-home-remedies-pakistan": {
+    "best": 39,
+    "traffic": 0
+   },
+   "/blog/best-whitening-cream-in-pakistan": {
+    "best": 21,
+    "traffic": 0
+   },
+   "/blog/tranexamic-acid-txa-for-melasma-dark-spots-pakistan": {
+    "best": 31,
+    "traffic": 0
+   },
+   "/blog/face-toner-guide-pakistan": {
+    "best": 26,
+    "traffic": 0
+   },
+   "/product/emkit-emergency-pill": {
+    "best": 29,
+    "traffic": 0
+   },
+   "/product/greenstar-ecp-tablets": {
+    "best": 18,
+    "traffic": 0
+   },
+   "/blog/best-sunscreen-in-pakistan": {
+    "best": 46,
+    "traffic": 0
+   },
+   "/blog/micellar-water-benefits-how-to-use-pakistan": {
+    "best": 22,
+    "traffic": 0
+   },
+   "/blog/top-10-male-fertility-supplements-pakistan": {
+    "best": 17,
+    "traffic": 0
+   },
+   "/blog/hair-serum-guide-pakistan": {
+    "best": 18,
+    "traffic": 0
+   },
+   "/product/huda-beauty-fauxfilter-concealer": {
+    "best": 18,
+    "traffic": 0
+   },
+   "/product/beauty-of-joseon-relief-sun-rice-probiotics-spf50": {
+    "best": 40,
+    "traffic": 0
+   },
+   "/blog/ors-oral-rehydration-when-how-pakistan": {
+    "best": 29,
+    "traffic": 0
+   },
+   "/blog/magnesium-for-sleep-pakistan": {
+    "best": 49,
+    "traffic": 0
+   },
+   "/blog/calcium-supplements-how-much-best-time-pakistan": {
+    "best": 43,
+    "traffic": 0
+   },
+   "/brand/makeup-revolution": {
+    "best": 34,
+    "traffic": 0
+   },
+   "/blog/formula-milk-guide-pakistan": {
+    "best": 23,
+    "traffic": 0
+   },
+   "/blog/uric-acid-symptoms-treatment-diet-pakistan": {
+    "best": 70,
+    "traffic": 0
+   },
+   "/blog/stretch-marks-removal-creams-pakistan": {
+    "best": 51,
+    "traffic": 0
+   },
+   "/category/lip-cheek-tints": {
+    "best": 52,
+    "traffic": 0
+   },
+   "/blog/calcium-tablets-benefits-pakistan": {
+    "best": 48,
+    "traffic": 0
+   },
+   "/product/aquacolor-base": {
+    "best": 22,
+    "traffic": 0
+   },
+   "/tag/collagen": {
+    "best": 60,
+    "traffic": 0
+   },
+   "/product/primolut-n-tablets": {
+    "best": 26,
+    "traffic": 0
+   },
+   "/brand/e-l-f": {
+    "best": 41,
+    "traffic": 0
+   },
+   "/blog/cranberry-sachet-uses-price-pakistan": {
+    "best": 29,
+    "traffic": 0
+   },
+   "/brand/christine": {
+    "best": 26,
+    "traffic": 0
+   },
+   "/category/highlighters": {
+    "best": 67,
+    "traffic": 0
+   },
+   "/brand/milk-makeup": {
+    "best": 61,
+    "traffic": 0
+   },
+   "/brand/pixi": {
+    "best": 38,
+    "traffic": 0
+   },
+   "/category/bone-joint": {
+    "best": 63,
+    "traffic": 0
+   },
+   "/product/huda-beauty-easy-bake-loose-powder": {
+    "best": 52,
+    "traffic": 0
+   },
+   "/blog/best-blush-in-pakistan": {
+    "best": 23,
+    "traffic": 0
+   },
+   "/collection/hyaluronic-acid": {
+    "best": 63,
+    "traffic": 0
+   },
+   "/blog/multani-mitti-benefits-uses-pakistan": {
+    "best": 22,
+    "traffic": 0
+   },
+   "/brand/rare-beauty": {
+    "best": 48,
+    "traffic": 0
+   },
+   "/blog/skin1004-centella-asiatica-guide-pakistan": {
+    "best": 21,
+    "traffic": 0
+   },
+   "/blog/ivf-cost-in-pakistan-guide": {
+    "best": 31,
+    "traffic": 0
+   },
+   "/product/omega-3-fish-oil": {
+    "best": 55,
+    "traffic": 0
+   },
+   "/blog/korean-skincare-routine-glass-skin-pakistan": {
+    "best": 34,
+    "traffic": 0
+   },
+   "/blog/fsh-test-pakistan-guide": {
+    "best": 68,
+    "traffic": 0
+   },
+   "/collection/makeup-brushes": {
+    "best": 71,
+    "traffic": 0
+   },
+   "/brand/kryolan": {
+    "best": 48,
+    "traffic": 0
+   },
+   "/product/minoxidil": {
+    "best": 45,
+    "traffic": 0
+   },
+   "/brand/st-ives": {
+    "best": 30,
+    "traffic": 0
+   },
+   "/blog/hair-conditioner-guide-pakistan": {
+    "best": 64,
+    "traffic": 0
+   },
+   "/brand/the-ordinary": {
+    "best": 42,
+    "traffic": 0
+   },
+   "/category/sleep-relaxation": {
+    "best": 46,
+    "traffic": 0
+   },
+   "/category/men-s-health": {
+    "best": 56,
+    "traffic": 0
+   },
+   "/brand/nutrifactor": {
+    "best": 40,
+    "traffic": 0
+   },
+   "/product/simzee-zinc-syrup": {
+    "best": 39,
+    "traffic": 0
+   },
+   "/brand/sheglam": {
+    "best": 57,
+    "traffic": 0
+   },
+   "/blog/best-multivitamin-for-kids-pakistan": {
+    "best": 25,
+    "traffic": 0
+   },
+   "/brand/bayer": {
+    "best": 45,
+    "traffic": 0
+   },
+   "/blog/coq10-benefits-heart-energy-pakistan": {
+    "best": 70,
+    "traffic": 0
+   },
+   "/product/cosrx-advanced-snail-96-mucin-power-essence": {
+    "best": 64,
+    "traffic": 0
+   },
+   "/product/micellar-water": {
+    "best": 68,
+    "traffic": 0
+   },
+   "/product/semofer": {
+    "best": 70,
+    "traffic": 0
+   },
+   "/blog/cerave-products-guide-pakistan": {
+    "best": 54,
+    "traffic": 0
+   },
+   "/blog/collagen-supplements-pakistan-buyers-guide-2026": {
+    "best": 36,
+    "traffic": 0
+   },
+   "/category/digestive-gut": {
+    "best": 42,
+    "traffic": 0
+   },
+   "/blog/salicylic-acid-face-wash-pakistan": {
+    "best": 28,
+    "traffic": 0
+   },
+   "/blog/syror-menopause-support-soy-isoflavones-pakistan": {
+    "best": 58,
+    "traffic": 0
+   },
+   "/blog/best-facial-kit-in-pakistan": {
+    "best": 62,
+    "traffic": 0
+   },
+   "/blog/iui-treatment-cost-pakistan": {
+    "best": 23,
+    "traffic": 0
+   },
+   "/blog/aloe-vera-gel-guide-pakistan": {
+    "best": 48,
+    "traffic": 0
+   },
+   "/finkuff-herbal-cough-syrup-pakistan/": {
+    "best": 41,
+    "traffic": 0
+   },
+   "/blog/magnesium-glycinate-benefits-pakistan": {
+    "best": 35,
+    "traffic": 0
+   },
+   "/brand/hemani": {
+    "best": 31,
+    "traffic": 0
+   },
+   "/product/salicylic-acid-serum": {
+    "best": 61,
+    "traffic": 0
+   },
+   "/blog/finkuff-herbal-cough-syrup-pakistan": {
+    "best": 12,
+    "traffic": 0
+   },
+   "/blog/surbex-z-alternative-b-complex-zinc-pakistan": {
+    "best": 17,
+    "traffic": 0
+   },
+   "/product/la-roche-posay-cicaplast-baume-b5": {
+    "best": 83,
+    "traffic": 0
+   },
+   "/brand/nars": {
+    "best": 47,
+    "traffic": 0
+   },
+   "/blog/best-vitamin-d-tablets-pakistan": {
+    "best": 28,
+    "traffic": 0
+   },
+   "/blog/la-roche-posay-products-guide-pakistan": {
+    "best": 31,
+    "traffic": 0
+   },
+   "/product/setting-spray": {
+    "best": 56,
+    "traffic": 0
+   },
+   "/brand/celimax": {
+    "best": 48,
+    "traffic": 0
+   },
+   "/product/nars-afterglow-liquid-blush": {
+    "best": 54,
+    "traffic": 0
+   },
+   "/brand/la-roche-posay": {
+    "best": 55,
+    "traffic": 0
+   },
+   "/product/m-sol-sachet": {
+    "best": 41,
+    "traffic": 0
+   },
+   "/category/brushes-tools": {
+    "best": 72,
+    "traffic": 0
+   },
+   "/blog/myo-inositol-pcos-pakistan-guide": {
+    "best": 62,
+    "traffic": 0
+   },
+   "/blog/evening-primrose-oil-benefits-pakistan": {
+    "best": 33,
+    "traffic": 0
+   },
+   "/product/huda-beauty-easy-blur-foundation": {
+    "best": 57,
+    "traffic": 0
+   },
+   "/": {
+    "best": 22,
+    "traffic": 0
+   },
+   "/blog/argivital-sachet-l-arginine-coq10-lycopene-for-male-health-pakistan": {
+    "best": 17,
+    "traffic": 0
+   },
+   "/product/simrid": {
+    "best": 41,
+    "traffic": 0
+   },
+   "/blog/how-to-reduce-melanin-in-skin-naturally-pakistan": {
+    "best": 36,
+    "traffic": 0
+   },
+   "/blog/glutathione-capsules-benefits-dosage-pakistan": {
+    "best": 43,
+    "traffic": 0
+   },
+   "/product/kiko-milano-lip-gloss": {
+    "best": 26,
+    "traffic": 0
+   },
+   "/blog/best-concealer-in-pakistan": {
+    "best": 25,
+    "traffic": 0
+   },
+   "/brand/zafa": {
+    "best": 40,
+    "traffic": 0
+   },
+   "/product/zinc-supplement": {
+    "best": 54,
+    "traffic": 0
+   },
+   "/product/s-lyte": {
+    "best": 36,
+    "traffic": 0
+   },
+   "/product/iconic-london-liquid-highlighter": {
+    "best": 38,
+    "traffic": 0
+   },
+   "/brand/iconic-london": {
+    "best": 42,
+    "traffic": 0
+   },
+   "/blog/hsg-test-tube-test-pakistan": {
+    "best": 18,
+    "traffic": 0
+   },
+   "/product/charlotte-tilbury-beautiful-skin-foundation": {
+    "best": 25,
+    "traffic": 0
+   },
+   "/product/ginseng": {
+    "best": 56,
+    "traffic": 0
+   }
+  }
+ }
+}

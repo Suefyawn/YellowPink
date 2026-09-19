@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 // frozen in the static cache and kept showing the old hard-coded shipping figure
 // even after the body was tokenised and the admin threshold changed.
 export const revalidate = 300;
-import { supabase, isDemo, getSiteSettings } from '@/lib/supabase';
+import { supabase, isDemo, getSiteSettings, rowOrThrow } from '@/lib/supabase';
 import { redirectIfMapped } from '@/lib/redirects';
 import { parseCommerceConfig, formatPkr, type CommerceConfig } from '@/lib/commerce';
 import { DEMO_PAGES } from '@/lib/demo-data';
@@ -27,20 +27,13 @@ import type { Page } from '@/types';
 
 async function loadPage(slug: string): Promise<Page | null> {
   if (isDemo) return DEMO_PAGES.find(p => p.slug === slug) ?? null;
-  try {
-    const { data } = await supabase
-      .from('pages')
-      .select('*')
-      .eq('slug', slug)
-      .eq('status', 'published')
-      .maybeSingle();
-    return (data as Page | null) ?? null;
-  } catch (err) {
-    // Same resilience pattern as the storefront getters, a missing `pages`
-    // table shouldn't 404 every CMS slug.
-    console.warn(`[supabase] loadPage(${slug}) failed; falling back to null. ${(err as Error).message}`);
-    return null;
-  }
+  // A failed lookup throws (500, uncached) rather than 404ing a live CMS slug.
+  return rowOrThrow<Page>(await supabase
+    .from('pages')
+    .select('*')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .maybeSingle());
 }
 
 // ─── Meta-description hygiene for WordPress-imported fields ─────────────────

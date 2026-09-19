@@ -1,4 +1,4 @@
-import { supabase, isDemo } from '@/lib/supabase';
+import { supabase, isDemo, rowOrThrow } from '@/lib/supabase';
 
 // Medical Review Board data access (E-E-A-T). Public reads go through the
 // anon-keyed storefront client; RLS exposes only active reviewers.
@@ -36,13 +36,12 @@ export async function getActiveReviewers(): Promise<Reviewer[]> {
 
 export async function getReviewerBySlug(slug: string): Promise<Reviewer | null> {
   if (isDemo) return null;
-  const { data } = await supabase
+  return rowOrThrow<Reviewer>(await supabase
     .from('content_reviewers')
     .select(COLS)
     .eq('slug', slug)
     .eq('active', true)
-    .maybeSingle();
-  return (data as Reviewer | null) ?? null;
+    .maybeSingle());
 }
 
 export async function getReviewerById(id: string): Promise<Reviewer | null> {

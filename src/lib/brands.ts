@@ -8,7 +8,7 @@
 // and upload assets in admin.
 // ============================================================================
 
-import { supabase } from '@/lib/supabase';
+import { supabase, rowOrThrow } from '@/lib/supabase';
 import type { Product } from '@/types';
 
 /** URL-safe slug for a brand name. "Beauty of Joseon" → "beauty-of-joseon". */
@@ -90,10 +90,9 @@ export interface BrandRecord {
 
 /** Load a single published brand record by slug, or null if no row exists. */
 export async function getBrandRecord(slug: string): Promise<BrandRecord | null> {
-  const { data } = await supabase
+  return rowOrThrow<BrandRecord>(await supabase
     .from('brands').select('*')
-    .eq('slug', slug).eq('status', 'published').maybeSingle();
-  return (data as BrandRecord | null) ?? null;
+    .eq('slug', slug).eq('status', 'published').maybeSingle());
 }
 
 export interface BrandLogoEntry { name: string; logoUrl: string | null }

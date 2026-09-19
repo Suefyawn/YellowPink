@@ -3,7 +3,7 @@ export const revalidate = 3600; // writes bust explicitly (revalidateStorefrontC
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { getProducts, supabase, isDemo } from '@/lib/supabase';
+import { getProducts, supabase, isDemo, rowOrThrow } from '@/lib/supabase';
 import { Overline } from '@/components/ui/Overline';
 import { CollectionGrid } from '@/sections/collection/CollectionGrid';
 import { pageMeta, jsonLd, breadcrumbLd, itemListLd, productInStock } from '@/lib/seo';
@@ -20,8 +20,7 @@ import type { Product } from '@/types';
 // also filter explicitly so demo / service-role paths behave the same.
 async function loadCollection(slug: string): Promise<Collection | null> {
   if (isDemo) return null;
-  const { data } = await supabase.from('collections').select('*').eq('slug', slug).eq('status', 'published').maybeSingle();
-  return (data as Collection | null) ?? null;
+  return rowOrThrow<Collection>(await supabase.from('collections').select('*').eq('slug', slug).eq('status', 'published').maybeSingle());
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {

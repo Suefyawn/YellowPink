@@ -58,6 +58,17 @@ export function supabaseAdmin() {
 // page that touches the database. Errors are logged so the deployment can
 // still be debugged via Vercel logs.
 
+/** Single-row lookups that feed notFound(). PostgREST reports "no row" as
+ *  PGRST116 (.single()) or data:null (.maybeSingle()); anything else is a
+ *  transport/database failure. Returning null there let a transient outage
+ *  render a 404 that ISR then cached for the whole revalidate window, which
+ *  Semrush caught on six ranking blog URLs on 18-19 Sep 2026. Throwing sends
+ *  the render to error.tsx (500, never cached) so the next request retries. */
+export function rowOrThrow<T>(res: { data: T | null; error: { code?: string; message: string } | null }): T | null {
+  if (res.error && res.error.code !== 'PGRST116') throw new Error(res.error.message);
+  return res.data ?? null;
+}
+
 async function safe<T>(
   label: string,
   fn: () => Promise<T>,
@@ -125,28 +136,26 @@ export async function getProducts(): Promise<Product[]> {
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
   if (isDemo) return DEMO_PRODUCTS.find(p => p.slug === slug) ?? null;
-  return safe('getProductBySlug', async () => {
-    // Published only, an archived/draft product has no live PDP; the page
-    // 404s on a null product (see product/[slug]/page.tsx).
-    const { data } = await supabase
-      .from('products')
-      .select('*')
-      .eq('slug', slug)
-      .eq('status', 'published')
-      .single();
-    if (data) return data as Product;
+  // Not wrapped in safe(): a failed lookup must throw, not 404 (rowOrThrow).
+  // Published only, an archived/draft product has no live PDP; the page
+  // 404s on a null product (see product/[slug]/page.tsx).
+  const exact = rowOrThrow<Product>(await supabase
+    .from('products')
+    .select('*')
+    .eq('slug', slug)
+    .eq('status', 'published')
+    .maybeSingle());
+  if (exact) return exact;
 
-    // Fallback: some slugs have a doubled brand prefix (e.g. cerave-cerave-acne-control-cleanser).
-    // If the exact slug fails, try matching any slug that ends with -{slug}.
-    const { data: fallback } = await supabase
-      .from('products')
-      .select('*')
-      .ilike('slug', `%-${slug}`)
-      .eq('status', 'published')
-      .limit(1)
-      .single();
-    return (fallback as Product | null) ?? null;
-  }, DEMO_PRODUCTS.find(p => p.slug === slug) ?? null);
+  // Fallback: some slugs have a doubled brand prefix (e.g. cerave-cerave-acne-control-cleanser).
+  // If the exact slug fails, try matching any slug that ends with -{slug}.
+  return rowOrThrow<Product>(await supabase
+    .from('products')
+    .select('*')
+    .ilike('slug', `%-${slug}`)
+    .eq('status', 'published')
+    .limit(1)
+    .maybeSingle());
 }
 
 /** Real social proof for the homepage "Real shoppers, real results" section.
@@ -517,15 +526,13 @@ export async function getPostsLinkingProduct(slug: string, limit = 3): Promise<B
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
   if (isDemo) return DEMO_BLOG_POSTS.find(p => p.slug === slug) ?? null;
-  return safe('getBlogPostBySlug', async () => {
-    const { data, error } = await supabase
-      .from('blog_posts')
-      .select('*')
-      .eq('slug', slug)
-      .single();
-    if (error) return null;
-    return withRenderedDates(data as BlogPost);
-  }, DEMO_BLOG_POSTS.find(p => p.slug === slug) ?? null);
+  // Not wrapped in safe(): a failed lookup must throw, not 404 (rowOrThrow).
+  const post = rowOrThrow<BlogPost>(await supabase
+    .from('blog_posts')
+    .select('*')
+    .eq('slug', slug)
+    .maybeSingle());
+  return post ? withRenderedDates(post) : null;
 }
 
 export async function getSiteSettings(): Promise<Record<string, string>> {
