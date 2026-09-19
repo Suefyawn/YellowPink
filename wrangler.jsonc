@@ -64,9 +64,12 @@
         "JOBS_DISABLED": "1",
         "EMAIL_DISABLED": "1"
       },
-      "workers_dev": true
-      // Cutover A: delete the three fences above, set "workers_dev": false and add
+      "workers_dev": true,
+      // Explicit empty routes: without this the staging custom domain above is INHERITED by the production
+      // environment and the deploy moves staging.yellowpink.pk onto the production Worker (happened 19 Sep 2026).
+      // Cutover A: delete the three fences above, set "workers_dev": false and make this
       // "routes": [{ "pattern": "www.yellowpink.pk", "custom_domain": true }]
+      "routes": []
     }
   }
 }

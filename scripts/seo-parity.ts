@@ -132,9 +132,13 @@ async function load(source: string, ua: string, limit?: number, only?: string[])
   return crawl(source, ua, limit, only);
 }
 
-/** Origin-relative so www.yellowpink.pk vs staging.yellowpink.pk compare equal. */
+/** Origin-relative so www.yellowpink.pk vs staging.yellowpink.pk compare
+ *  equal. The production host is stripped on both sides too: a staging build
+ *  correctly canonicalises to production, and a local Worker carries whatever
+ *  NEXT_PUBLIC_SITE_URL the build inlined. */
+const PRODUCTION = 'https://www.yellowpink.pk';
 function rel(v: string | null, origin: string) {
-  return v ? v.replace(origin, '') : v;
+  return v ? v.replace(origin, '').replace(PRODUCTION, '') : v;
 }
 
 function diff(a: Page, b: Page, oa: string, ob: string): string[] {
@@ -152,7 +156,8 @@ function diff(a: Page, b: Page, oa: string, ob: string): string[] {
   // Canonical and og:image must be the production host on both sides once
   // live, but on staging they legitimately carry the staging host.
   cmp('canonical', rel(a.canonical, oa), rel(b.canonical, ob));
-  cmp('ogImage', rel(a.ogImage, oa), rel(b.ogImage, ob));
+  // The default social card carries a build hash in its query string.
+  cmp('ogImage', rel(a.ogImage, oa)?.split('?')[0] ?? null, rel(b.ogImage, ob)?.split('?')[0] ?? null);
   if (Math.abs(a.words - b.words) > Math.max(20, a.words * 0.03)) out.push(`words: ${a.words} -> ${b.words}`);
   return out;
 }
